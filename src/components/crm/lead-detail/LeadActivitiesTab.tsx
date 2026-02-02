@@ -36,6 +36,8 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
+import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
+import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
 
 interface Stage {
   id: string;
@@ -43,6 +45,13 @@ interface Stage {
   color: string;
   sort_order: number;
   is_final: boolean;
+}
+
+interface AutomationConfig {
+  mode: 'task' | 'whatsapp_send' | 'schedule_meeting';
+  whatsapp_template?: string;
+  meeting_staff_id?: string;
+  meeting_duration_minutes?: number;
 }
 
 interface Activity {
@@ -55,6 +64,9 @@ interface Activity {
   status: string;
   responsible?: { name: string } | null;
   created_at: string;
+  is_automation?: boolean;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  automation_config?: any;
 }
 
 interface ChecklistItem {
@@ -67,8 +79,12 @@ interface LeadActivitiesTabProps {
   leadId: string;
   leadName: string;
   leadEmail?: string;
+  leadPhone?: string;
+  leadCompany?: string;
   stages: Stage[];
   currentStageId: string | null;
+  stageName?: string;
+  pipelineName?: string;
   activities: Activity[];
   onActivityComplete: (activityId: string) => void;
   onStageChange: (stageId: string) => void;
@@ -79,8 +95,12 @@ export const LeadActivitiesTab = ({
   leadId,
   leadName,
   leadEmail,
+  leadPhone,
+  leadCompany,
   stages,
   currentStageId,
+  stageName,
+  pipelineName,
   activities,
   onActivityComplete,
   onStageChange,
@@ -235,39 +255,74 @@ export const LeadActivitiesTab = ({
 
             {/* Activities table */}
             <div className="flex-1">
-              <div className="grid grid-cols-3 gap-0 text-xs text-muted-foreground border-b border-border">
+              <div className="grid grid-cols-4 gap-0 text-xs text-muted-foreground border-b border-border">
                 <div className="px-3 py-2">Data</div>
                 <div className="px-3 py-2">Atividade</div>
+                <div className="px-3 py-2">Ação</div>
                 <div className="px-3 py-2">Concluído</div>
               </div>
 
               {sortedDates.map(dateStr => (
                 <div key={dateStr}>
-                  {groupedActivities[dateStr].map(activity => (
-                    <div
-                      key={activity.id}
-                      className="grid grid-cols-3 gap-0 items-center hover:bg-muted/30 transition-colors"
-                    >
-                      <div className="px-3 py-2 text-sm text-primary">
-                        {activity.scheduled_at && 
-                          format(new Date(activity.scheduled_at), "dd/MM", { locale: ptBR })
-                        }
+                  {groupedActivities[dateStr].map(activity => {
+                    const config = activity.automation_config as AutomationConfig | null;
+                    const isWhatsAppSend = activity.is_automation && config?.mode === 'whatsapp_send';
+                    const isScheduleMeeting = activity.is_automation && config?.mode === 'schedule_meeting';
+
+                    return (
+                      <div
+                        key={activity.id}
+                        className="grid grid-cols-4 gap-0 items-center hover:bg-muted/30 transition-colors"
+                      >
+                        <div className="px-3 py-2 text-sm text-primary">
+                          {activity.scheduled_at && 
+                            format(new Date(activity.scheduled_at), "dd/MM", { locale: ptBR })
+                          }
+                        </div>
+                        <div className="px-3 py-2 flex items-center gap-2">
+                          <span className="text-muted-foreground">
+                            {getActivityIcon(activity.type)}
+                          </span>
+                          <span className="text-sm truncate">{activity.title}</span>
+                        </div>
+                        <div className="px-3 py-2">
+                          {isWhatsAppSend && activity.status !== "completed" && config && (
+                            <WhatsAppQuickSendButton
+                              activityId={activity.id}
+                              automationConfig={config}
+                              lead={{
+                                id: leadId,
+                                name: leadName,
+                                email: leadEmail,
+                                phone: leadPhone,
+                                company: leadCompany,
+                              }}
+                              stageName={stageName}
+                              pipelineName={pipelineName}
+                              onSuccess={onRefresh}
+                            />
+                          )}
+                          {isScheduleMeeting && activity.status !== "completed" && config && (
+                            <ScheduleMeetingQuickButton
+                              activityId={activity.id}
+                              automationConfig={config}
+                              leadId={leadId}
+                              leadName={leadName}
+                              leadEmail={leadEmail}
+                              onSuccess={onRefresh}
+                            />
+                          )}
+                        </div>
+                        <div className="px-3 py-2">
+                          <Checkbox
+                            checked={activity.status === "completed"}
+                            onCheckedChange={() => onActivityComplete(activity.id)}
+                            disabled={activity.status === "completed"}
+                          />
+                        </div>
                       </div>
-                      <div className="px-3 py-2 flex items-center gap-2">
-                        <span className="text-muted-foreground">
-                          {getActivityIcon(activity.type)}
-                        </span>
-                        <span className="text-sm truncate">{activity.title}</span>
-                      </div>
-                      <div className="px-3 py-2">
-                        <Checkbox
-                          checked={activity.status === "completed"}
-                          onCheckedChange={() => onActivityComplete(activity.id)}
-                          disabled={activity.status === "completed"}
-                        />
-                      </div>
-                    </div>
-                  ))}
+                    );
+                  })}
                 </div>
               ))}
 

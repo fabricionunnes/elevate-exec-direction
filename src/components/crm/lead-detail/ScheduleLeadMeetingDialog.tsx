@@ -38,6 +38,10 @@ interface ScheduleLeadMeetingDialogProps {
   leadName: string;
   leadEmail?: string;
   onSuccess: () => void;
+  // Optional pre-configuration for automation
+  defaultDuration?: number;
+  defaultStaffId?: string;
+  activityIdToComplete?: string;
 }
 
 export const ScheduleLeadMeetingDialog = ({
@@ -47,6 +51,9 @@ export const ScheduleLeadMeetingDialog = ({
   leadName,
   leadEmail,
   onSuccess,
+  defaultDuration,
+  defaultStaffId,
+  activityIdToComplete,
 }: ScheduleLeadMeetingDialogProps) => {
   const [loading, setLoading] = useState(false);
   const [loadingStaff, setLoadingStaff] = useState(true);
@@ -55,30 +62,46 @@ export const ScheduleLeadMeetingDialog = ({
   const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   
+  // Calculate end time based on default duration
+  const calculateEndTime = (startTime: string, durationMinutes: number) => {
+    const [hours, minutes] = startTime.split(':').map(Number);
+    const totalMinutes = hours * 60 + minutes + durationMinutes;
+    const endHours = Math.floor(totalMinutes / 60) % 24;
+    const endMinutes = totalMinutes % 60;
+    return `${String(endHours).padStart(2, '0')}:${String(endMinutes).padStart(2, '0')}`;
+  };
+
+  const defaultEndTime = defaultDuration 
+    ? calculateEndTime("09:00", defaultDuration) 
+    : "10:00";
+
   const [formData, setFormData] = useState({
     title: `Reunião com ${leadName}`,
     description: "",
     date: format(new Date(), "yyyy-MM-dd"),
     startTime: "09:00",
-    endTime: "10:00",
+    endTime: defaultEndTime,
     attendees: leadEmail || "",
   });
 
   useEffect(() => {
     if (open) {
       loadConnectedStaff();
+      const endTime = defaultDuration 
+        ? calculateEndTime("09:00", defaultDuration) 
+        : "10:00";
       setFormData({
         title: `Reunião com ${leadName}`,
         description: "",
         date: format(new Date(), "yyyy-MM-dd"),
         startTime: "09:00",
-        endTime: "10:00",
+        endTime,
         attendees: leadEmail || "",
       });
       setCreatedMeetLink(null);
       setCopied(false);
     }
-  }, [open, leadName, leadEmail]);
+  }, [open, leadName, leadEmail, defaultDuration]);
 
   const loadConnectedStaff = async () => {
     setLoadingStaff(true);
@@ -105,8 +128,17 @@ export const ScheduleLeadMeetingDialog = ({
         );
         
         setConnectedStaff(filteredStaff);
-        // Auto-select first staff if available
-        if (filteredStaff.length > 0 && !selectedStaffUserId) {
+        
+        // Auto-select defaultStaffId if provided and available, otherwise first staff
+        if (defaultStaffId) {
+          // Find the staff by id and get their user_id
+          const defaultStaff = filteredStaff.find((s: StaffMember) => s.id === defaultStaffId);
+          if (defaultStaff) {
+            setSelectedStaffUserId(defaultStaff.user_id);
+          } else if (filteredStaff.length > 0 && !selectedStaffUserId) {
+            setSelectedStaffUserId(filteredStaff[0].user_id);
+          }
+        } else if (filteredStaff.length > 0 && !selectedStaffUserId) {
           setSelectedStaffUserId(filteredStaff[0].user_id);
         }
       }
@@ -183,6 +215,17 @@ export const ScheduleLeadMeetingDialog = ({
           responsible_staff_id: staffData?.id,
           status: "pending",
         });
+
+        // If this was triggered from an automation activity, mark it as completed
+        if (activityIdToComplete) {
+          await supabase
+            .from("crm_activities")
+            .update({ 
+              status: "completed",
+              completed_at: new Date().toISOString(),
+            })
+            .eq("id", activityIdToComplete);
+        }
 
         if (data.event?.meetingLink) {
           setCreatedMeetLink(data.event.meetingLink);

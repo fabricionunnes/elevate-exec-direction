@@ -9037,10 +9037,12 @@ export type Database = {
       }
       crm_activities: {
         Row: {
+          automation_config: Json | null
           completed_at: string | null
           created_at: string
           description: string | null
           id: string
+          is_automation: boolean | null
           lead_id: string
           notes: string | null
           responsible_staff_id: string | null
@@ -9051,10 +9053,12 @@ export type Database = {
           updated_at: string
         }
         Insert: {
+          automation_config?: Json | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_automation?: boolean | null
           lead_id: string
           notes?: string | null
           responsible_staff_id?: string | null
@@ -9065,10 +9069,12 @@ export type Database = {
           updated_at?: string
         }
         Update: {
+          automation_config?: Json | null
           completed_at?: string | null
           created_at?: string
           description?: string | null
           id?: string
+          is_automation?: boolean | null
           lead_id?: string
           notes?: string | null
           responsible_staff_id?: string | null
@@ -10578,6 +10584,7 @@ export type Database = {
       }
       crm_stage_actions: {
         Row: {
+          action_mode: string | null
           activity_description: string | null
           activity_title: string
           activity_type: string
@@ -10585,11 +10592,15 @@ export type Database = {
           days_offset: number | null
           id: string
           is_required: boolean | null
+          meeting_duration_minutes: number | null
+          meeting_staff_id: string | null
           sort_order: number | null
           stage_id: string
           updated_at: string
+          whatsapp_template: string | null
         }
         Insert: {
+          action_mode?: string | null
           activity_description?: string | null
           activity_title: string
           activity_type: string
@@ -10597,11 +10608,15 @@ export type Database = {
           days_offset?: number | null
           id?: string
           is_required?: boolean | null
+          meeting_duration_minutes?: number | null
+          meeting_staff_id?: string | null
           sort_order?: number | null
           stage_id: string
           updated_at?: string
+          whatsapp_template?: string | null
         }
         Update: {
+          action_mode?: string | null
           activity_description?: string | null
           activity_title?: string
           activity_type?: string
@@ -10609,11 +10624,21 @@ export type Database = {
           days_offset?: number | null
           id?: string
           is_required?: boolean | null
+          meeting_duration_minutes?: number | null
+          meeting_staff_id?: string | null
           sort_order?: number | null
           stage_id?: string
           updated_at?: string
+          whatsapp_template?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "crm_stage_actions_meeting_staff_id_fkey"
+            columns: ["meeting_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "crm_stage_actions_stage_id_fkey"
             columns: ["stage_id"]

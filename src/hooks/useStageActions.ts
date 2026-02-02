@@ -1,6 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
-
+import type { Json } from "@/integrations/supabase/types";
 interface StageAction {
   id: string;
   stage_id: string;
@@ -10,6 +10,10 @@ interface StageAction {
   days_offset: number;
   is_required: boolean;
   sort_order: number;
+  action_mode: string;
+  whatsapp_template: string | null;
+  meeting_staff_id: string | null;
+  meeting_duration_minutes: number | null;
 }
 
 export async function createStageActivities(
@@ -58,6 +62,29 @@ export async function createStageActivities(
         scheduledAt = ensureBusinessDay(new Date()).toISOString();
       }
 
+      // Build automation config based on action mode
+      const isAutomation = action.action_mode !== 'task';
+      let automationConfig: Json | null = null;
+
+      if (isAutomation) {
+        automationConfig = {
+          mode: action.action_mode,
+        };
+
+        if (action.action_mode === 'whatsapp_send' && action.whatsapp_template) {
+          automationConfig.whatsapp_template = action.whatsapp_template;
+        }
+
+        if (action.action_mode === 'schedule_meeting') {
+          if (action.meeting_staff_id) {
+            automationConfig.meeting_staff_id = action.meeting_staff_id;
+          }
+          if (action.meeting_duration_minutes) {
+            automationConfig.meeting_duration_minutes = action.meeting_duration_minutes;
+          }
+        }
+      }
+
       return {
         lead_id: leadId,
         type: action.activity_type,
@@ -66,6 +93,8 @@ export async function createStageActivities(
         scheduled_at: scheduledAt,
         status: "pending",
         responsible_staff_id: staffId || null,
+        is_automation: isAutomation,
+        automation_config: automationConfig,
       };
     });
 
