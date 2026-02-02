@@ -588,7 +588,7 @@ export const CRMDashboardPage = () => {
               <div>
                 <h3 className="text-lg font-semibold text-blue-700 dark:text-blue-400">Meta Diária</h3>
                 <p className="text-sm text-muted-foreground">
-                  {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} útil{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'eis' : ''} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} no mês
+                  {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} no mês
                 </p>
               </div>
             </div>
