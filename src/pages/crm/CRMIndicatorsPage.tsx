@@ -15,13 +15,13 @@ export const CRMIndicatorsPage = () => {
               value="sales" 
               className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
             >
-              Calls Diárias
+              Comercial
             </TabsTrigger>
             <TabsTrigger 
               value="presales"
               className="data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-6"
             >
-              Agendamentos SDR | SS
+              Pré vendas
             </TabsTrigger>
           </TabsList>
         </div>
