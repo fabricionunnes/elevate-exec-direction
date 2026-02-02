@@ -65,7 +65,7 @@ export function ChecklistMeetingScheduler({
     loadConnectedStaff();
   }, []);
 
-  // Fetch available slots when staff or date changes
+  // Fetch available slots when staff, date or duration changes
   useEffect(() => {
     if (selectedStaffUserId && selectedDate) {
       fetchAvailableSlots();
@@ -73,7 +73,7 @@ export function ChecklistMeetingScheduler({
       setAvailableSlots([]);
       setSelectedSlot(null);
     }
-  }, [selectedStaffUserId, selectedDate]);
+  }, [selectedStaffUserId, selectedDate, durationMinutes]);
 
   const loadConnectedStaff = async () => {
     setLoadingStaff(true);
