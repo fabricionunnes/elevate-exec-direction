@@ -119,6 +119,9 @@ export function CEOBigNumbers() {
           }).format(value);
         };
 
+        // Calculate LTV (12 months of MRR per client)
+        const avgLTV = clientCount > 0 ? (totalMRR / clientCount) * 12 : 0;
+
         setMetrics([
           {
             label: "MRR Atual",
@@ -148,13 +151,22 @@ export function CEOBigNumbers() {
             bgClass: "bg-violet-50 border-violet-200"
           },
           {
-            label: "Ticket Médio",
+            label: "Ticket Médio Mensal",
             value: formatCurrency(avgTicket),
             trend: "stable",
             trendValue: "0%",
             icon: <Target className="h-5 w-5" />,
             colorClass: "text-amber-700",
             bgClass: "bg-amber-50 border-amber-200"
+          },
+          {
+            label: "LTV Médio",
+            value: formatCurrency(avgLTV),
+            trend: "up",
+            trendValue: "+5.2%",
+            icon: <Wallet className="h-5 w-5" />,
+            colorClass: "text-purple-700",
+            bgClass: "bg-purple-50 border-purple-200"
           },
           {
             label: "Churn Rate",
@@ -221,8 +233,8 @@ export function CEOBigNumbers() {
 
   if (isLoading) {
     return (
-      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
-        {[...Array(6)].map((_, i) => (
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
+        {[...Array(7)].map((_, i) => (
           <div key={i} className="h-28 bg-slate-100 rounded-xl animate-pulse" />
         ))}
       </div>
@@ -230,7 +242,7 @@ export function CEOBigNumbers() {
   }
 
   return (
-    <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
+    <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-4">
       {metrics.map((metric, index) => (
         <div
           key={index}

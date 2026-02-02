@@ -15,7 +15,6 @@ import {
   RefreshCw, 
   TrendingDown, 
   Users, 
-  DollarSign,
   AlertTriangle,
   Heart
 } from "lucide-react";
@@ -38,8 +37,7 @@ export default function ExecutiveDashboardContent() {
     activeProjects: 0,
     avgHealthScore: 0,
     churnRate: 0,
-    criticalProjects: 0,
-    avgLTV: 0
+    criticalProjects: 0
   });
 
   useEffect(() => {
@@ -69,23 +67,12 @@ export default function ExecutiveDashboardContent() {
 
       const criticalCount = healthData?.filter(h => h.risk_level === "critical" || h.risk_level === "high").length || 0;
 
-      // Fetch LTV
-      const { data: ltvData } = await supabase
-        .from("onboarding_companies")
-        .select("contract_value")
-        .eq("status", "active")
-        .not("contract_value", "is", null);
-
-      const totalLTV = (ltvData || []).reduce((sum, c) => sum + (c.contract_value || 0), 0);
-      const avgLTV = (ltvData?.length || 0) > 0 ? totalLTV / ltvData!.length : 0;
-
       setMetrics({
         totalProjects: activeProjects,
         activeProjects,
         avgHealthScore,
         churnRate: 0,
-        criticalProjects: criticalCount,
-        avgLTV: Math.round(avgLTV)
+        criticalProjects: criticalCount
       });
 
     } catch (error) {
@@ -141,7 +128,7 @@ export default function ExecutiveDashboardContent() {
       </div>
 
       {/* KPI Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <Card className="border-blue-500/30 bg-blue-500/5">
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
@@ -172,19 +159,6 @@ export default function ExecutiveDashboardContent() {
                 <p className="text-3xl font-bold text-orange-600">{metrics.criticalProjects}</p>
               </div>
               <AlertTriangle className="h-8 w-8 text-orange-500 opacity-50" />
-            </div>
-          </CardContent>
-        </Card>
-        <Card className="border-purple-500/30 bg-purple-500/5">
-          <CardContent className="pt-4">
-            <div className="flex items-center justify-between">
-              <div>
-                <p className="text-sm text-muted-foreground">LTV Médio</p>
-                <p className="text-3xl font-bold text-purple-600">
-                  {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", maximumFractionDigits: 0 }).format(metrics.avgLTV)}
-                </p>
-              </div>
-              <DollarSign className="h-8 w-8 text-purple-500 opacity-50" />
             </div>
           </CardContent>
         </Card>
