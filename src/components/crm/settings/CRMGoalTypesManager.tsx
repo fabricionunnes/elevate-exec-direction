@@ -41,6 +41,7 @@ interface GoalType {
   category: string | null;
   has_super_meta: boolean;
   has_hiper_meta: boolean;
+  has_ote: boolean;
   is_active: boolean;
   sort_order: number;
 }
@@ -73,6 +74,7 @@ export const CRMGoalTypesManager = () => {
     category: "",
     has_super_meta: true,
     has_hiper_meta: true,
+    has_ote: false,
   });
 
   useEffect(() => {
@@ -106,6 +108,7 @@ export const CRMGoalTypesManager = () => {
       category: "",
       has_super_meta: true,
       has_hiper_meta: true,
+      has_ote: false,
     });
     setDialogOpen(true);
   };
@@ -119,6 +122,7 @@ export const CRMGoalTypesManager = () => {
       category: goalType.category || "",
       has_super_meta: goalType.has_super_meta,
       has_hiper_meta: goalType.has_hiper_meta,
+      has_ote: goalType.has_ote,
     });
     setDialogOpen(true);
   };
@@ -138,6 +142,7 @@ export const CRMGoalTypesManager = () => {
         category: formData.category || null,
         has_super_meta: formData.has_super_meta,
         has_hiper_meta: formData.has_hiper_meta,
+        has_ote: formData.has_ote,
       };
 
       if (editingType) {
@@ -296,7 +301,7 @@ export const CRMGoalTypesManager = () => {
                     </Select>
                   </div>
                 </div>
-                <div className="flex items-center gap-6">
+                <div className="flex items-center gap-6 flex-wrap">
                   <div className="flex items-center gap-2">
                     <Switch
                       checked={formData.has_super_meta}
@@ -310,6 +315,13 @@ export const CRMGoalTypesManager = () => {
                       onCheckedChange={(v) => setFormData(p => ({ ...p, has_hiper_meta: v }))}
                     />
                     <Label>Hiper Meta</Label>
+                  </div>
+                  <div className="flex items-center gap-2">
+                    <Switch
+                      checked={formData.has_ote}
+                      onCheckedChange={(v) => setFormData(p => ({ ...p, has_ote: v }))}
+                    />
+                    <Label>OTE (Comissão)</Label>
                   </div>
                 </div>
                 <Button onClick={handleSave} disabled={saving} className="w-full">

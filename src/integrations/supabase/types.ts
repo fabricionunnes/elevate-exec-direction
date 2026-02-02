@@ -9367,6 +9367,7 @@ export type Database = {
           created_at: string
           description: string | null
           has_hiper_meta: boolean
+          has_ote: boolean | null
           has_super_meta: boolean
           id: string
           is_active: boolean
@@ -9379,6 +9380,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           has_hiper_meta?: boolean
+          has_ote?: boolean | null
           has_super_meta?: boolean
           id?: string
           is_active?: boolean
@@ -9391,6 +9393,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           has_hiper_meta?: boolean
+          has_ote?: boolean | null
           has_super_meta?: boolean
           id?: string
           is_active?: boolean
@@ -9408,6 +9411,9 @@ export type Database = {
           id: string
           meta_value: number
           month: number
+          ote_accelerator: number | null
+          ote_base: number | null
+          ote_variable: number | null
           staff_id: string
           super_meta_value: number | null
           updated_at: string
@@ -9420,6 +9426,9 @@ export type Database = {
           id?: string
           meta_value?: number
           month: number
+          ote_accelerator?: number | null
+          ote_base?: number | null
+          ote_variable?: number | null
           staff_id: string
           super_meta_value?: number | null
           updated_at?: string
@@ -9432,6 +9441,9 @@ export type Database = {
           id?: string
           meta_value?: number
           month?: number
+          ote_accelerator?: number | null
+          ote_base?: number | null
+          ote_variable?: number | null
           staff_id?: string
           super_meta_value?: number | null
           updated_at?: string
