@@ -3,8 +3,8 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Dialog,
   DialogContent,
@@ -31,8 +31,9 @@ import {
   MessageSquare,
   Trash2,
   Edit3,
-  Plus,
   Check,
+  X,
+  Plus,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -84,9 +85,12 @@ export const SavedListsManager = ({
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [listToDelete, setListToDelete] = useState<SavedList | null>(null);
   const [listToEdit, setListToEdit] = useState<SavedList | null>(null);
+  const [editingItems, setEditingItems] = useState<any[]>([]);
   const [saving, setSaving] = useState(false);
   const [newListName, setNewListName] = useState("");
   const [saveType, setSaveType] = useState<"contacts" | "groups">("contacts");
+  const [showAddItemsDialog, setShowAddItemsDialog] = useState(false);
+  const [selectedItemsToAdd, setSelectedItemsToAdd] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     if (instanceId) {
@@ -107,7 +111,6 @@ export const SavedListsManager = ({
     if (error) {
       console.error("Error loading saved lists:", error);
     } else {
-      // Parse items JSON
       const parsedLists = (data || []).map((list: any) => ({
         ...list,
         items: typeof list.items === 'string' ? JSON.parse(list.items) : list.items,
@@ -168,12 +171,68 @@ export const SavedListsManager = ({
     setShowLoadDialog(false);
   };
 
-  const handleUpdateList = async () => {
+  const handleOpenEditDialog = (list: SavedList) => {
+    setListToEdit(list);
+    setEditingItems([...list.items]);
+    setShowLoadDialog(false);
+    setShowEditDialog(true);
+  };
+
+  const handleRemoveItem = (index: number) => {
+    setEditingItems(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleOpenAddItemsDialog = () => {
+    setSelectedItemsToAdd(new Set());
+    setShowAddItemsDialog(true);
+  };
+
+  const getAvailableItemsToAdd = () => {
+    if (!listToEdit) return [];
+    
+    if (listToEdit.list_type === "contacts") {
+      const existingPhones = new Set(editingItems.map((c: Contact) => c.phone_number));
+      return currentContacts.filter(c => !existingPhones.has(c.phone_number));
+    } else {
+      const existingIds = new Set(editingItems.map((g: Group) => g.id));
+      return currentGroups.filter(g => !existingIds.has(g.id));
+    }
+  };
+
+  const handleToggleItemToAdd = (itemId: string) => {
+    setSelectedItemsToAdd(prev => {
+      const next = new Set(prev);
+      if (next.has(itemId)) {
+        next.delete(itemId);
+      } else {
+        next.add(itemId);
+      }
+      return next;
+    });
+  };
+
+  const handleAddSelectedItems = () => {
     if (!listToEdit) return;
 
-    const items = listToEdit.list_type === "contacts" ? currentContacts : currentGroups;
-    if (items.length === 0) {
-      toast.error(`Nenhum ${listToEdit.list_type === "contacts" ? "contato" : "grupo"} para salvar`);
+    const availableItems = getAvailableItemsToAdd();
+    const itemsToAdd = availableItems.filter(item => {
+      const itemId = listToEdit.list_type === "contacts" 
+        ? (item as Contact).phone_number 
+        : (item as Group).id;
+      return selectedItemsToAdd.has(itemId);
+    });
+
+    setEditingItems(prev => [...prev, ...itemsToAdd]);
+    setShowAddItemsDialog(false);
+    setSelectedItemsToAdd(new Set());
+    toast.success(`${itemsToAdd.length} ${listToEdit.list_type === "contacts" ? "contatos" : "grupos"} adicionados`);
+  };
+
+  const handleSaveEditedList = async () => {
+    if (!listToEdit) return;
+
+    if (editingItems.length === 0) {
+      toast.error("A lista não pode ficar vazia");
       return;
     }
 
@@ -182,8 +241,8 @@ export const SavedListsManager = ({
       const { error } = await supabase
         .from("whatsapp_saved_lists" as any)
         .update({
-          items: JSON.stringify(items),
-          item_count: items.length,
+          items: JSON.stringify(editingItems),
+          item_count: editingItems.length,
           updated_at: new Date().toISOString(),
         })
         .eq("id", listToEdit.id);
@@ -193,6 +252,7 @@ export const SavedListsManager = ({
       toast.success("Lista atualizada com sucesso!");
       setShowEditDialog(false);
       setListToEdit(null);
+      setEditingItems([]);
       loadSavedLists();
     } catch (error: any) {
       toast.error(error.message || "Erro ao atualizar lista");
@@ -379,12 +439,8 @@ export const SavedListsManager = ({
                         <Button
                           variant="ghost"
                           size="icon"
-                          onClick={() => {
-                            setListToEdit(list);
-                            setShowLoadDialog(false);
-                            setShowEditDialog(true);
-                          }}
-                          title="Atualizar com lista atual"
+                          onClick={() => handleOpenEditDialog(list)}
+                          title="Editar lista"
                         >
                           <Edit3 className="h-4 w-4" />
                         </Button>
@@ -413,46 +469,165 @@ export const SavedListsManager = ({
         </DialogContent>
       </Dialog>
 
-      {/* Edit/Update List Dialog */}
+      {/* Edit List Dialog */}
       <Dialog open={showEditDialog} onOpenChange={setShowEditDialog}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-2xl max-h-[90vh]">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Edit3 className="h-5 w-5" />
-              Atualizar Lista
+              Editar Lista: {listToEdit?.name}
             </DialogTitle>
             <DialogDescription>
-              Substituir o conteúdo da lista "{listToEdit?.name}" com os {listToEdit?.list_type === "contacts" ? "contatos" : "grupos"} atuais?
+              Remova ou adicione {listToEdit?.list_type === "contacts" ? "contatos" : "grupos"} da lista
             </DialogDescription>
           </DialogHeader>
 
           <div className="py-4">
-            {listToEdit && (
-              <div className="space-y-3">
-                <div className="p-3 bg-muted rounded-lg">
-                  <p className="text-sm font-medium">Conteúdo atual da lista:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {listToEdit.item_count} {listToEdit.list_type === "contacts" ? "contatos" : "grupos"}
-                  </p>
-                </div>
-                <div className="p-3 bg-primary/10 rounded-lg border border-primary/20">
-                  <p className="text-sm font-medium">Novo conteúdo:</p>
-                  <p className="text-sm text-muted-foreground">
-                    {listToEdit.list_type === "contacts" ? currentContacts.length : currentGroups.length}{" "}
-                    {listToEdit.list_type === "contacts" ? "contatos" : "grupos"}
-                  </p>
-                </div>
+            <div className="flex items-center justify-between mb-4">
+              <p className="text-sm text-muted-foreground">
+                {editingItems.length} {listToEdit?.list_type === "contacts" ? "contatos" : "grupos"} na lista
+              </p>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={handleOpenAddItemsDialog}
+                disabled={getAvailableItemsToAdd().length === 0}
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Adicionar {listToEdit?.list_type === "contacts" ? "Contatos" : "Grupos"}
+              </Button>
+            </div>
+
+            <ScrollArea className="h-[400px] border rounded-lg">
+              <div className="p-2 space-y-1">
+                {editingItems.length === 0 ? (
+                  <div className="text-center py-8 text-muted-foreground">
+                    <p>Lista vazia</p>
+                  </div>
+                ) : (
+                  editingItems.map((item, index) => (
+                    <div
+                      key={listToEdit?.list_type === "contacts" ? (item as Contact).phone_number : (item as Group).id}
+                      className="flex items-center justify-between p-2 rounded-md hover:bg-muted/50"
+                    >
+                      <div className="flex items-center gap-3">
+                        {listToEdit?.list_type === "contacts" ? (
+                          <>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{(item as Contact).name || "Sem nome"}</p>
+                              <p className="text-xs text-muted-foreground">{(item as Contact).phone_number}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{(item as Group).name}</p>
+                              <p className="text-xs text-muted-foreground">{(item as Group).size} membros</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        onClick={() => handleRemoveItem(index)}
+                        className="h-8 w-8 text-destructive hover:text-destructive"
+                      >
+                        <X className="h-4 w-4" />
+                      </Button>
+                    </div>
+                  ))
+                )}
               </div>
-            )}
+            </ScrollArea>
           </div>
 
           <DialogFooter>
             <Button variant="outline" onClick={() => setShowEditDialog(false)}>
               Cancelar
             </Button>
-            <Button onClick={handleUpdateList} disabled={saving}>
-              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Edit3 className="h-4 w-4 mr-2" />}
-              Atualizar
+            <Button onClick={handleSaveEditedList} disabled={saving || editingItems.length === 0}>
+              {saving ? <Loader2 className="h-4 w-4 mr-2 animate-spin" /> : <Save className="h-4 w-4 mr-2" />}
+              Salvar Alterações
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Items Dialog */}
+      <Dialog open={showAddItemsDialog} onOpenChange={setShowAddItemsDialog}>
+        <DialogContent className="max-w-lg max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Plus className="h-5 w-5" />
+              Adicionar {listToEdit?.list_type === "contacts" ? "Contatos" : "Grupos"}
+            </DialogTitle>
+            <DialogDescription>
+              Selecione os itens da lista atual para adicionar
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="py-4">
+            {getAvailableItemsToAdd().length === 0 ? (
+              <div className="text-center py-8 text-muted-foreground">
+                <p>Nenhum item disponível para adicionar</p>
+                <p className="text-sm">Carregue mais {listToEdit?.list_type === "contacts" ? "contatos" : "grupos"} primeiro</p>
+              </div>
+            ) : (
+              <ScrollArea className="h-[300px] border rounded-lg">
+                <div className="p-2 space-y-1">
+                  {getAvailableItemsToAdd().map((item) => {
+                    const itemId = listToEdit?.list_type === "contacts" 
+                      ? (item as Contact).phone_number 
+                      : (item as Group).id;
+                    const isSelected = selectedItemsToAdd.has(itemId);
+
+                    return (
+                      <div
+                        key={itemId}
+                        className={`flex items-center gap-3 p-2 rounded-md cursor-pointer transition-colors ${
+                          isSelected ? "bg-primary/10" : "hover:bg-muted/50"
+                        }`}
+                        onClick={() => handleToggleItemToAdd(itemId)}
+                      >
+                        <Checkbox checked={isSelected} />
+                        {listToEdit?.list_type === "contacts" ? (
+                          <>
+                            <Users className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{(item as Contact).name || "Sem nome"}</p>
+                              <p className="text-xs text-muted-foreground">{(item as Contact).phone_number}</p>
+                            </div>
+                          </>
+                        ) : (
+                          <>
+                            <MessageSquare className="h-4 w-4 text-muted-foreground" />
+                            <div>
+                              <p className="text-sm font-medium">{(item as Group).name}</p>
+                              <p className="text-xs text-muted-foreground">{(item as Group).size} membros</p>
+                            </div>
+                          </>
+                        )}
+                      </div>
+                    );
+                  })}
+                </div>
+              </ScrollArea>
+            )}
+          </div>
+
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowAddItemsDialog(false)}>
+              Cancelar
+            </Button>
+            <Button 
+              onClick={handleAddSelectedItems} 
+              disabled={selectedItemsToAdd.size === 0}
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Adicionar ({selectedItemsToAdd.size})
             </Button>
           </DialogFooter>
         </DialogContent>
