@@ -10654,30 +10654,36 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          item_type: string | null
           sort_order: number
           stage_id: string
           title: string
           updated_at: string
+          whatsapp_template: string | null
         }
         Insert: {
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           sort_order?: number
           stage_id: string
           title: string
           updated_at?: string
+          whatsapp_template?: string | null
         }
         Update: {
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
+          item_type?: string | null
           sort_order?: number
           stage_id?: string
           title?: string
           updated_at?: string
+          whatsapp_template?: string | null
         }
         Relationships: [
           {
