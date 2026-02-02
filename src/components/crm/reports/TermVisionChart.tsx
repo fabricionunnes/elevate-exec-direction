@@ -2,26 +2,24 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  LineChart, 
-  Line, 
+  BarChart,
+  Bar,
   XAxis, 
   YAxis, 
   ResponsiveContainer, 
   Tooltip, 
   Legend,
-  ReferenceLine 
+  Cell,
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Eye, Calendar, Clock } from "lucide-react";
 
 interface MonthlyData {
   month: string;
   monthLabel: string;
+  shortLabel: string;
   revenue: number;
-  qtr: number | null;
-  ytd: number | null;
-  mat: number | null;
 }
 
 interface TermVisionChartProps {
@@ -32,10 +30,10 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<MonthlyData[]>([]);
   const [kpis, setKpis] = useState({
-    qtr: 0,
-    ytd: 0,
-    mat: 0,
-    currentMonth: 0,
+    qtr: 0,      // Soma dos últimos 3 meses
+    ytd: 0,      // Soma de janeiro até mês anterior
+    mat: 0,      // Soma dos últimos 12 meses
+    currentMonth: 0,  // Mês atual
   });
 
   useEffect(() => {
@@ -47,11 +45,11 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
     try {
       const now = new Date();
       const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth(); // 0-indexed
+      const currentMonth = now.getMonth(); // 0-indexed (0 = Janeiro)
       
-      // Get data for the last 12 months
+      // Get data for the last 12 months + current month
       const startDate = subMonths(startOfMonth(now), 12);
-      const endDate = endOfMonth(subMonths(now, 1)); // Up to last month
+      const endDate = endOfMonth(now);
       
       const { data: salesData } = await supabase
         .from("crm_sales")
@@ -68,117 +66,60 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
         monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + value;
       });
 
-      // Build chart data for the last 12 months
+      // Build chart data for the last 12 months (excluding current month for accuracy)
       const data: MonthlyData[] = [];
-      let matSum = 0;
       
-      for (let i = 11; i >= 0; i--) {
-        const monthDate = subMonths(now, i + 1); // +1 because we exclude current month
+      for (let i = 12; i >= 1; i--) {
+        const monthDate = subMonths(now, i);
         const monthKey = format(monthDate, "yyyy-MM");
         const monthLabel = format(monthDate, "MMMM", { locale: ptBR });
+        const shortLabel = format(monthDate, "MMM", { locale: ptBR }).replace(".", "");
         const revenue = monthlyRevenue[monthKey] || 0;
-        
-        matSum += revenue;
-        
-        // Calculate QTR (last 3 months average up to this point)
-        let qtrValue: number | null = null;
-        if (i <= 2) { // Only show QTR for the last 3 months
-          let qtrSum = 0;
-          for (let j = 0; j < 3; j++) {
-            const qtrMonthDate = subMonths(now, i + 1 + j);
-            const qtrMonthKey = format(qtrMonthDate, "yyyy-MM");
-            qtrSum += monthlyRevenue[qtrMonthKey] || 0;
-          }
-          qtrValue = qtrSum / 3;
-        }
-        
-        // Calculate YTD (January to this month, if within same year)
-        let ytdValue: number | null = null;
-        const monthYear = monthDate.getFullYear();
-        const monthIndex = monthDate.getMonth();
-        
-        if (monthYear === currentYear || (monthYear === currentYear - 1 && monthIndex >= currentMonth)) {
-          // Calculate YTD up to this month
-          let ytdSum = 0;
-          let ytdCount = 0;
-          for (let m = 0; m <= monthIndex; m++) {
-            const ytdMonthDate = new Date(monthYear, m, 1);
-            const ytdMonthKey = format(ytdMonthDate, "yyyy-MM");
-            if (monthlyRevenue[ytdMonthKey] !== undefined) {
-              ytdSum += monthlyRevenue[ytdMonthKey];
-              ytdCount++;
-            }
-          }
-          ytdValue = ytdCount > 0 ? ytdSum / ytdCount : null;
-        }
-        
-        // Calculate MAT (rolling 12-month average up to this point)
-        let matValue: number | null = null;
-        let matSumCalc = 0;
-        let matCount = 0;
-        for (let m = 0; m < 12; m++) {
-          const matMonthDate = subMonths(monthDate, m);
-          const matMonthKey = format(matMonthDate, "yyyy-MM");
-          if (monthlyRevenue[matMonthKey] !== undefined) {
-            matSumCalc += monthlyRevenue[matMonthKey];
-            matCount++;
-          }
-        }
-        matValue = matCount > 0 ? matSumCalc / matCount : null;
         
         data.push({
           month: monthKey,
           monthLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
+          shortLabel: shortLabel.charAt(0).toUpperCase() + shortLabel.slice(1),
           revenue,
-          qtr: qtrValue,
-          ytd: ytdValue,
-          mat: matValue,
         });
       }
       
       setChartData(data);
       
-      // Calculate KPIs
-      const lastMonth = subMonths(now, 1);
-      const lastMonthKey = format(lastMonth, "yyyy-MM");
-      const currentMonthRevenue = monthlyRevenue[lastMonthKey] || 0;
+      // Calculate KPIs based on correct definitions:
+      // QTR (Curto prazo): SOMA dos últimos 3 meses passados
+      // YTD (Médio prazo): SOMA de janeiro até o mês anterior do ano corrente
+      // MAT (Longo prazo): SOMA dos últimos 12 meses
       
-      // QTR: Average of last 3 months
+      // Current month revenue
+      const currentMonthKey = format(now, "yyyy-MM");
+      const currentMonthRevenue = monthlyRevenue[currentMonthKey] || 0;
+      
+      // QTR: Soma dos últimos 3 meses passados (não inclui mês atual)
       let qtrSum = 0;
       for (let i = 1; i <= 3; i++) {
         const monthKey = format(subMonths(now, i), "yyyy-MM");
         qtrSum += monthlyRevenue[monthKey] || 0;
       }
-      const qtrAvg = qtrSum / 3;
       
-      // YTD: Average from January to last month of current year
+      // YTD: Soma de janeiro até o mês anterior (do ano corrente)
       let ytdSum = 0;
-      let ytdCount = 0;
-      for (let m = 0; m < currentMonth; m++) {
+      for (let m = 0; m < currentMonth; m++) { // currentMonth é 0-indexed, então < exclui o mês atual
         const ytdMonthKey = format(new Date(currentYear, m, 1), "yyyy-MM");
-        if (monthlyRevenue[ytdMonthKey] !== undefined) {
-          ytdSum += monthlyRevenue[ytdMonthKey];
-          ytdCount++;
-        }
+        ytdSum += monthlyRevenue[ytdMonthKey] || 0;
       }
-      const ytdAvg = ytdCount > 0 ? ytdSum / ytdCount : 0;
       
-      // MAT: Average of last 12 months
-      let matSumKpi = 0;
-      let matCountKpi = 0;
+      // MAT: Soma dos últimos 12 meses (não inclui mês atual)
+      let matSum = 0;
       for (let i = 1; i <= 12; i++) {
         const monthKey = format(subMonths(now, i), "yyyy-MM");
-        if (monthlyRevenue[monthKey] !== undefined) {
-          matSumKpi += monthlyRevenue[monthKey];
-          matCountKpi++;
-        }
+        matSum += monthlyRevenue[monthKey] || 0;
       }
-      const matAvg = matCountKpi > 0 ? matSumKpi / matCountKpi : 0;
       
       setKpis({
-        qtr: qtrAvg,
-        ytd: ytdAvg,
-        mat: matAvg,
+        qtr: qtrSum,
+        ytd: ytdSum,
+        mat: matSum,
         currentMonth: currentMonthRevenue,
       });
       
@@ -205,10 +146,10 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
 
   const formatAxisValue = (value: number) => {
     if (value >= 1000000) {
-      return `${(value / 1000000).toFixed(0)} mi`;
+      return `${(value / 1000000).toFixed(0)}mi`;
     }
     if (value >= 1000) {
-      return `${Math.round(value / 1000)} mil`;
+      return `${Math.round(value / 1000)}k`;
     }
     return value.toString();
   };
@@ -256,133 +197,135 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
     );
   }
 
+  // Variations
   const qtrVsYtd = calculateVariation(kpis.qtr, kpis.ytd);
   const ytdVsMat = calculateVariation(kpis.ytd, kpis.mat);
-  const matVsMat = { value: 0, type: "neutral" as const }; // MAT compares to itself
-  const currentVsQtr = calculateVariation(kpis.currentMonth, kpis.qtr);
+
+  // Colors for bars based on performance
+  const getBarColor = (revenue: number, index: number) => {
+    // Last 3 months (QTR) get purple color
+    if (index >= chartData.length - 3) {
+      return "#8B5CF6"; // Purple for QTR
+    }
+    return "#94A3B8"; // Slate for older months
+  };
 
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg">Visão de Curto, Médio e Longo Prazo</CardTitle>
+        <div className="flex items-center gap-2">
+          <Eye className="h-5 w-5 text-primary" />
+          <CardTitle className="text-base sm:text-lg">Visão de Curto, Médio e Longo Prazo</CardTitle>
+        </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-          <div className="border rounded-lg p-3 text-center bg-card">
-            <p className="text-xs text-muted-foreground mb-1">QTR</p>
+          {/* QTR */}
+          <div className="border rounded-lg p-3 bg-purple-500/5 border-purple-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Clock className="h-3.5 w-3.5 text-purple-500" />
+              <p className="text-xs font-medium text-purple-600">QTR</p>
+            </div>
             <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.qtr)}</p>
-            <VariationBadge 
-              value={qtrVsYtd.value} 
-              type={qtrVsYtd.type} 
-              label="vs YTD" 
-            />
+            <p className="text-[10px] text-muted-foreground">Últimos 3 meses</p>
           </div>
           
-          <div className="border rounded-lg p-3 text-center bg-card">
-            <p className="text-xs text-muted-foreground mb-1">YTD</p>
+          {/* YTD */}
+          <div className="border rounded-lg p-3 bg-blue-500/5 border-blue-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <Calendar className="h-3.5 w-3.5 text-blue-500" />
+              <p className="text-xs font-medium text-blue-600">YTD</p>
+            </div>
             <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.ytd)}</p>
-            <VariationBadge 
-              value={ytdVsMat.value} 
-              type={ytdVsMat.type} 
-              label="vs MAT" 
-            />
+            <p className="text-[10px] text-muted-foreground">Jan até mês anterior</p>
           </div>
           
-          <div className="border rounded-lg p-3 text-center bg-card">
-            <p className="text-xs text-muted-foreground mb-1">MAT</p>
+          {/* MAT */}
+          <div className="border rounded-lg p-3 bg-orange-500/5 border-orange-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
+              <p className="text-xs font-medium text-orange-600">MAT</p>
+            </div>
             <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.mat)}</p>
-            <span className="text-xs text-muted-foreground">Média 12 meses</span>
+            <p className="text-[10px] text-muted-foreground">Últimos 12 meses</p>
           </div>
           
-          <div className="border rounded-lg p-3 text-center bg-card">
-            <p className="text-xs text-muted-foreground mb-1">RECEITA</p>
+          {/* Current Month */}
+          <div className="border rounded-lg p-3 bg-green-500/5 border-green-500/20">
+            <div className="flex items-center gap-2 mb-1">
+              <TrendingUp className="h-3.5 w-3.5 text-green-500" />
+              <p className="text-xs font-medium text-green-600">Mês Atual</p>
+            </div>
             <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.currentMonth)}</p>
-            <VariationBadge 
-              value={currentVsQtr.value} 
-              type={currentVsQtr.type} 
-              label="vs QTR" 
-            />
+            <p className="text-[10px] text-muted-foreground">{format(new Date(), "MMMM", { locale: ptBR })}</p>
           </div>
         </div>
 
-        {/* Chart */}
+        {/* Bar Chart - Monthly Revenue */}
         <div className="h-[280px] sm:h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
               <XAxis 
-                dataKey="monthLabel" 
+                dataKey="shortLabel" 
                 tick={{ fontSize: 10 }}
                 interval={0}
                 angle={-45}
                 textAnchor="end"
-                height={60}
+                height={50}
               />
               <YAxis 
                 tickFormatter={formatAxisValue}
                 tick={{ fontSize: 10 }}
-                width={50}
+                width={45}
               />
               <Tooltip 
-                formatter={(value: number) => [formatCurrency(value), ""]}
-                labelFormatter={(label) => label}
+                formatter={(value: number) => [formatCurrency(value), "Receita"]}
+                labelFormatter={(label, payload) => {
+                  if (payload && payload[0]) {
+                    return payload[0].payload.monthLabel;
+                  }
+                  return label;
+                }}
               />
               <Legend 
                 wrapperStyle={{ fontSize: "12px" }}
+                payload={[
+                  { value: 'Receita Mensal', type: 'square', color: '#8B5CF6' },
+                ]}
               />
               
-              {/* Revenue line (dashed) */}
-              <Line 
-                type="monotone" 
+              <Bar 
                 dataKey="revenue" 
-                name="RECEITA"
-                stroke="#22C55E"
-                strokeWidth={2}
-                strokeDasharray="5 5"
-                dot={{ r: 3 }}
-                connectNulls
-              />
-              
-              {/* QTR line */}
-              <Line 
-                type="monotone" 
-                dataKey="qtr" 
-                name="QTR"
-                stroke="#8B5CF6"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                connectNulls
-              />
-              
-              {/* YTD line */}
-              <Line 
-                type="monotone" 
-                dataKey="ytd" 
-                name="YTD"
-                stroke="#3B82F6"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                connectNulls
-              />
-              
-              {/* MAT line */}
-              <Line 
-                type="monotone" 
-                dataKey="mat" 
-                name="MAT"
-                stroke="#F97316"
-                strokeWidth={2}
-                dot={{ r: 3 }}
-                connectNulls
-              />
-            </LineChart>
+                name="Receita"
+                radius={[4, 4, 0, 0]}
+              >
+                {chartData.map((entry, index) => (
+                  <Cell 
+                    key={`cell-${index}`} 
+                    fill={getBarColor(entry.revenue, index)}
+                    fillOpacity={index >= chartData.length - 3 ? 1 : 0.6}
+                  />
+                ))}
+              </Bar>
+            </BarChart>
           </ResponsiveContainer>
         </div>
 
-        <div className="text-xs text-muted-foreground space-y-1">
-          <p><strong>QTR (Curto prazo):</strong> Média dos últimos 3 meses</p>
-          <p><strong>YTD (Médio prazo):</strong> Média de janeiro até o mês anterior</p>
-          <p><strong>MAT (Longo prazo):</strong> Média dos últimos 12 meses</p>
+        {/* Legend */}
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground border-t pt-3">
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-purple-500" />
+            <span><strong>QTR:</strong> Curto prazo (últimos 3 meses)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-blue-500" />
+            <span><strong>YTD:</strong> Médio prazo (Jan - mês anterior)</span>
+          </div>
+          <div className="flex items-center gap-2">
+            <div className="w-3 h-3 rounded bg-orange-500" />
+            <span><strong>MAT:</strong> Longo prazo (últimos 12 meses)</span>
+          </div>
         </div>
       </CardContent>
     </Card>
