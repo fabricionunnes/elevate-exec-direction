@@ -19230,6 +19230,50 @@ export type Database = {
           },
         ]
       }
+      whatsapp_saved_lists: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          instance_id: string | null
+          item_count: number
+          items: Json
+          list_type: string
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instance_id?: string | null
+          item_count?: number
+          items?: Json
+          list_type: string
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          instance_id?: string | null
+          item_count?: number
+          items?: Json
+          list_type?: string
+          name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_saved_lists_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
     }
     Views: {
       [_ in never]: never
