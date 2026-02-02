@@ -122,6 +122,7 @@ export const CRMLeadDetailPage = () => {
   const [loading, setLoading] = useState(true);
   const [wonDialogOpen, setWonDialogOpen] = useState(false);
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
+  const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
   const [selectedLossReason, setSelectedLossReason] = useState("");
   const [activeTab, setActiveTab] = useState("activities");
@@ -301,6 +302,40 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
+  const handleReopenLead = async () => {
+    if (!lead) return;
+
+    // Encontrar a primeira etapa do pipeline (que não seja final)
+    const firstStage = stages
+      .filter(s => !s.is_final)
+      .sort((a, b) => a.sort_order - b.sort_order)[0];
+    
+    if (!firstStage) {
+      toast.error("Nenhuma etapa inicial encontrada");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ 
+          stage_id: firstStage.id,
+          closed_at: null,
+          loss_reason_id: null
+        })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Lead reaberto com sucesso!");
+      setReopenDialogOpen(false);
+      loadLead();
+    } catch (error) {
+      console.error("Error reopening lead:", error);
+      toast.error("Erro ao reabrir lead");
+    }
+  };
+
   const handleDeleteLead = async () => {
     if (!lead) return;
 
@@ -439,14 +474,23 @@ export const CRMLeadDetailPage = () => {
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end">
-                <DropdownMenuItem onClick={() => setWonDialogOpen(true)} disabled={isClosed}>
-                  <Trophy className="h-4 w-4 mr-2 text-green-500" />
-                  Marcar como Ganho
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setLostDialogOpen(true)} disabled={isClosed}>
-                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                  Marcar como Perdido
-                </DropdownMenuItem>
+                {!isClosed ? (
+                  <>
+                    <DropdownMenuItem onClick={() => setWonDialogOpen(true)}>
+                      <Trophy className="h-4 w-4 mr-2 text-green-500" />
+                      Marcar como Ganho
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setLostDialogOpen(true)}>
+                      <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                      Marcar como Perdido
+                    </DropdownMenuItem>
+                  </>
+                ) : (
+                  <DropdownMenuItem onClick={() => setReopenDialogOpen(true)}>
+                    <Flag className="h-4 w-4 mr-2 text-blue-500" />
+                    Reabrir Lead
+                  </DropdownMenuItem>
+                )}
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
@@ -641,6 +685,24 @@ export const CRMLeadDetailPage = () => {
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleMarkLost} className="bg-red-600 hover:bg-red-700">
               Confirmar Perda
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Reopen Dialog */}
+      <AlertDialog open={reopenDialogOpen} onOpenChange={setReopenDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Reabrir Lead?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Este lead será reaberto e movido para a primeira etapa do funil.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleReopenLead} className="bg-blue-600 hover:bg-blue-700">
+              Reabrir Lead
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
