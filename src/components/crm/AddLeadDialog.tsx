@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -22,6 +22,96 @@ interface AddLeadDialogProps {
   onSuccess: () => void;
   initialStageId?: string;
 }
+
+// Debounced text input component for smooth typing
+const DebouncedInput = ({
+  value: externalValue,
+  onChange,
+  debounceMs = 300,
+  ...props
+}: React.ComponentProps<typeof Input> & {
+  value: string;
+  onChange: (value: string) => void;
+  debounceMs?: number;
+}) => {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setLocalValue(externalValue);
+    }
+  }, [externalValue]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onChange(newValue);
+    }, debounceMs);
+  }, [onChange, debounceMs]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return <Input {...props} value={localValue} onChange={handleChange} />;
+};
+
+// Debounced textarea component for smooth typing
+const DebouncedTextarea = ({
+  value: externalValue,
+  onChange,
+  debounceMs = 300,
+  ...props
+}: React.ComponentProps<typeof Textarea> & {
+  value: string;
+  onChange: (value: string) => void;
+  debounceMs?: number;
+}) => {
+  const [localValue, setLocalValue] = useState(externalValue);
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setLocalValue(externalValue);
+    }
+  }, [externalValue]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onChange(newValue);
+    }, debounceMs);
+  }, [onChange, debounceMs]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return <Textarea {...props} value={localValue} onChange={handleChange} />;
+};
 
 export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initialStageId }: AddLeadDialogProps) => {
   const [loading, setLoading] = useState(false);
@@ -191,10 +281,10 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="name">Nome *</Label>
-              <Input
+              <DebouncedInput
                 id="name"
                 value={formData.name}
-                onChange={(e) => setFormData(prev => ({ ...prev, name: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
                 placeholder="Nome do lead"
               />
             </div>
@@ -210,61 +300,61 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
 
             <div>
               <Label htmlFor="email">E-mail</Label>
-              <Input
+              <DebouncedInput
                 id="email"
                 type="email"
                 value={formData.email}
-                onChange={(e) => setFormData(prev => ({ ...prev, email: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, email: value }))}
                 placeholder="email@empresa.com"
               />
             </div>
 
             <div>
               <Label htmlFor="document">CPF/CNPJ</Label>
-              <Input
+              <DebouncedInput
                 id="document"
                 value={formData.document}
-                onChange={(e) => setFormData(prev => ({ ...prev, document: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, document: value }))}
                 placeholder="000.000.000-00 ou 00.000.000/0000-00"
               />
             </div>
 
             <div>
               <Label htmlFor="company">Empresa</Label>
-              <Input
+              <DebouncedInput
                 id="company"
                 value={formData.company}
-                onChange={(e) => setFormData(prev => ({ ...prev, company: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, company: value }))}
                 placeholder="Nome da empresa"
               />
             </div>
 
             <div>
               <Label htmlFor="role">Cargo</Label>
-              <Input
+              <DebouncedInput
                 id="role"
                 value={formData.role}
-                onChange={(e) => setFormData(prev => ({ ...prev, role: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, role: value }))}
                 placeholder="Cargo"
               />
             </div>
 
             <div>
               <Label htmlFor="city">Cidade</Label>
-              <Input
+              <DebouncedInput
                 id="city"
                 value={formData.city}
-                onChange={(e) => setFormData(prev => ({ ...prev, city: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, city: value }))}
                 placeholder="Cidade"
               />
             </div>
 
             <div>
               <Label htmlFor="state">UF</Label>
-              <Input
+              <DebouncedInput
                 id="state"
                 value={formData.state}
-                onChange={(e) => setFormData(prev => ({ ...prev, state: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, state: value }))}
                 placeholder="SP"
                 maxLength={2}
               />
@@ -309,11 +399,11 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
 
             <div>
               <Label htmlFor="opportunity_value">Valor da Oportunidade (R$)</Label>
-              <Input
+              <DebouncedInput
                 id="opportunity_value"
                 type="number"
                 value={formData.opportunity_value}
-                onChange={(e) => setFormData(prev => ({ ...prev, opportunity_value: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, opportunity_value: value }))}
                 placeholder="0"
               />
             </div>
@@ -359,20 +449,20 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           <div className="space-y-4">
             <div>
               <Label htmlFor="segment">Segmento</Label>
-              <Input
+              <DebouncedInput
                 id="segment"
                 value={formData.segment}
-                onChange={(e) => setFormData(prev => ({ ...prev, segment: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, segment: value }))}
                 placeholder="Ex: Tecnologia, Varejo, Serviços..."
               />
             </div>
 
             <div>
               <Label htmlFor="main_pain">Dor Principal</Label>
-              <Textarea
+              <DebouncedTextarea
                 id="main_pain"
                 value={formData.main_pain}
-                onChange={(e) => setFormData(prev => ({ ...prev, main_pain: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, main_pain: value }))}
                 placeholder="Qual o principal problema que o lead quer resolver?"
                 rows={2}
               />
@@ -380,10 +470,10 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
 
             <div>
               <Label htmlFor="notes">Observações</Label>
-              <Textarea
+              <DebouncedTextarea
                 id="notes"
                 value={formData.notes}
-                onChange={(e) => setFormData(prev => ({ ...prev, notes: e.target.value }))}
+                onChange={(value) => setFormData(prev => ({ ...prev, notes: value }))}
                 placeholder="Anotações gerais sobre o lead..."
                 rows={3}
               />
