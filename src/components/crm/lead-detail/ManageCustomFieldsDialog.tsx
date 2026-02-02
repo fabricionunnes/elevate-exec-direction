@@ -26,10 +26,46 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
+import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Collapsible,
+  CollapsibleContent,
+  CollapsibleTrigger,
+} from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
-import { Plus, Trash2, GripVertical, Lock, CreditCard, Building2 } from "lucide-react";
+import { 
+  Plus, 
+  Trash2, 
+  ChevronDown, 
+  User, 
+  Building2, 
+  Briefcase,
+  Type,
+  Hash,
+  DollarSign,
+  FileText,
+  Phone,
+  List,
+  ListChecks,
+  MoreVertical,
+  CreditCard,
+  Search
+} from "lucide-react";
 import { cn } from "@/lib/utils";
 
 interface CustomField {
@@ -68,16 +104,22 @@ interface ManageCustomFieldsDialogProps {
 }
 
 const FIELD_TYPES = [
-  { value: "text", label: "Texto" },
-  { value: "textarea", label: "Texto Longo" },
-  { value: "number", label: "Número" },
-  { value: "email", label: "E-mail" },
-  { value: "phone", label: "Telefone" },
-  { value: "url", label: "URL" },
-  { value: "select", label: "Seleção" },
+  { value: "text", label: "Texto", icon: Type },
+  { value: "number", label: "Número", icon: Hash },
+  { value: "currency", label: "Monetário", icon: DollarSign },
+  { value: "textarea", label: "Texto Rico", icon: FileText },
+  { value: "phone", label: "Telefone", icon: Phone },
+  { value: "select", label: "Seleção", icon: List },
+  { value: "multiselect", label: "Múltipla seleção", icon: ListChecks },
 ];
 
-const SECTIONS = [
+const CONTEXT_OPTIONS = [
+  { value: "contact", label: "Contato", icon: User },
+  { value: "company", label: "Empresa", icon: Building2 },
+  { value: "deal", label: "Negócio", icon: Briefcase },
+];
+
+const DEFAULT_SECTIONS = [
   "Informações Gerais",
   "Informações Adicionais",
   "Qualificação",
@@ -87,11 +129,12 @@ const SECTIONS = [
 export const ManageCustomFieldsDialog = ({
   open,
   onOpenChange,
-  context,
+  context: initialContext,
   onFieldsUpdated,
 }: ManageCustomFieldsDialogProps) => {
-  const [activeTab, setActiveTab] = useState("fields");
+  const [activeTab, setActiveTab] = useState<string>(initialContext);
   const [fields, setFields] = useState<CustomField[]>([]);
+  const [sections, setSections] = useState<string[]>(DEFAULT_SECTIONS);
   const [paymentMethods, setPaymentMethods] = useState<PaymentMethodOption[]>([]);
   const [banks, setBanks] = useState<BankOption[]>([]);
   const [loading, setLoading] = useState(true);
@@ -99,75 +142,92 @@ export const ManageCustomFieldsDialog = ({
   const [deleteField, setDeleteField] = useState<CustomField | null>(null);
   const [deletePaymentMethod, setDeletePaymentMethod] = useState<PaymentMethodOption | null>(null);
   const [deleteBank, setDeleteBank] = useState<BankOption | null>(null);
+  const [expandedSections, setExpandedSections] = useState<Set<string>>(new Set(DEFAULT_SECTIONS));
+  const [searchTerm, setSearchTerm] = useState("");
   
-  // New field form
-  const [showAddForm, setShowAddForm] = useState(false);
+  // Add field modal
+  const [showAddFieldModal, setShowAddFieldModal] = useState(false);
+  const [newFieldContext, setNewFieldContext] = useState<string>(initialContext);
   const [newFieldLabel, setNewFieldLabel] = useState("");
   const [newFieldType, setNewFieldType] = useState("text");
   const [newFieldSection, setNewFieldSection] = useState("Informações Gerais");
   const [newFieldOptions, setNewFieldOptions] = useState("");
 
-  // New payment method form
-  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
-  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
+  // Add section modal
+  const [showAddSectionModal, setShowAddSectionModal] = useState(false);
+  const [newSectionName, setNewSectionName] = useState("");
 
-  // New bank form
+  // Add payment/bank modal
+  const [showAddPaymentMethod, setShowAddPaymentMethod] = useState(false);
   const [showAddBank, setShowAddBank] = useState(false);
+  const [newPaymentMethodName, setNewPaymentMethodName] = useState("");
   const [newBankName, setNewBankName] = useState("");
+
+  // Config tab
+  const [configTab, setConfigTab] = useState<"fields" | "payment" | "banks">("fields");
 
   useEffect(() => {
     if (open) {
-      loadFields();
-      loadPaymentMethods();
-      loadBanks();
+      setActiveTab(initialContext);
+      setNewFieldContext(initialContext);
+      loadAllData();
     }
-  }, [open, context]);
+  }, [open, initialContext]);
 
-  const loadFields = async () => {
+  useEffect(() => {
+    if (open) {
+      loadFields(activeTab as "contact" | "company" | "deal");
+    }
+  }, [activeTab, open]);
+
+  const loadAllData = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("crm_custom_fields")
-        .select("*")
-        .eq("context", context)
-        .order("sort_order");
-
-      if (error) throw error;
-      setFields(data || []);
-    } catch (error) {
-      console.error("Error loading fields:", error);
-      toast.error("Erro ao carregar campos");
+      await Promise.all([
+        loadFields(activeTab as "contact" | "company" | "deal"),
+        loadPaymentMethods(),
+        loadBanks(),
+      ]);
     } finally {
       setLoading(false);
     }
   };
 
-  const loadPaymentMethods = async () => {
+  const loadFields = async (ctx: "contact" | "company" | "deal") => {
     try {
       const { data, error } = await supabase
-        .from("crm_payment_method_options")
+        .from("crm_custom_fields")
         .select("*")
+        .eq("context", ctx)
+        .order("section")
         .order("sort_order");
 
       if (error) throw error;
-      setPaymentMethods(data || []);
+      setFields(data || []);
+
+      // Extract unique sections
+      const uniqueSections = new Set(DEFAULT_SECTIONS);
+      data?.forEach(f => uniqueSections.add(f.section));
+      setSections(Array.from(uniqueSections));
     } catch (error) {
-      console.error("Error loading payment methods:", error);
+      console.error("Error loading fields:", error);
     }
   };
 
-  const loadBanks = async () => {
-    try {
-      const { data, error } = await supabase
-        .from("crm_bank_options")
-        .select("*")
-        .order("sort_order");
+  const loadPaymentMethods = async () => {
+    const { data } = await supabase
+      .from("crm_payment_method_options")
+      .select("*")
+      .order("sort_order");
+    setPaymentMethods(data || []);
+  };
 
-      if (error) throw error;
-      setBanks(data || []);
-    } catch (error) {
-      console.error("Error loading banks:", error);
-    }
+  const loadBanks = async () => {
+    const { data } = await supabase
+      .from("crm_bank_options")
+      .select("*")
+      .order("sort_order");
+    setBanks(data || []);
   };
 
   const generateFieldName = (label: string) => {
@@ -188,17 +248,18 @@ export const ManageCustomFieldsDialog = ({
     setSaving(true);
     try {
       const fieldName = generateFieldName(newFieldLabel);
-      const maxOrder = Math.max(...fields.map(f => f.sort_order), 0);
+      const contextFields = fields.filter(f => f.context === newFieldContext);
+      const maxOrder = Math.max(...contextFields.map(f => f.sort_order), 0);
       
       let options = null;
-      if (newFieldType === "select" && newFieldOptions.trim()) {
+      if ((newFieldType === "select" || newFieldType === "multiselect") && newFieldOptions.trim()) {
         options = newFieldOptions.split(",").map(o => o.trim()).filter(Boolean);
       }
 
       const { error } = await supabase
         .from("crm_custom_fields")
         .insert({
-          context,
+          context: newFieldContext,
           section: newFieldSection,
           field_name: fieldName,
           field_label: newFieldLabel.trim(),
@@ -213,12 +274,9 @@ export const ManageCustomFieldsDialog = ({
       if (error) throw error;
       
       toast.success("Campo adicionado com sucesso");
-      setNewFieldLabel("");
-      setNewFieldType("text");
-      setNewFieldSection("Informações Gerais");
-      setNewFieldOptions("");
-      setShowAddForm(false);
-      loadFields();
+      resetAddFieldForm();
+      setShowAddFieldModal(false);
+      loadFields(activeTab as "contact" | "company" | "deal");
       onFieldsUpdated();
     } catch (error) {
       console.error("Error adding field:", error);
@@ -226,6 +284,14 @@ export const ManageCustomFieldsDialog = ({
     } finally {
       setSaving(false);
     }
+  };
+
+  const resetAddFieldForm = () => {
+    setNewFieldLabel("");
+    setNewFieldType("text");
+    setNewFieldSection("Informações Gerais");
+    setNewFieldOptions("");
+    setNewFieldContext(activeTab);
   };
 
   const handleDeleteField = async () => {
@@ -245,9 +311,9 @@ export const ManageCustomFieldsDialog = ({
 
       if (error) throw error;
       
-      toast.success("Campo excluído com sucesso");
+      toast.success("Campo excluído");
       setDeleteField(null);
-      loadFields();
+      loadFields(activeTab as "contact" | "company" | "deal");
       onFieldsUpdated();
     } catch (error) {
       console.error("Error deleting field:", error);
@@ -257,20 +323,20 @@ export const ManageCustomFieldsDialog = ({
     }
   };
 
-  const handleToggleActive = async (field: CustomField) => {
-    try {
-      const { error } = await supabase
-        .from("crm_custom_fields")
-        .update({ is_active: !field.is_active })
-        .eq("id", field.id);
-
-      if (error) throw error;
-      loadFields();
-      onFieldsUpdated();
-    } catch (error) {
-      console.error("Error toggling field:", error);
-      toast.error("Erro ao atualizar campo");
+  const handleAddSection = () => {
+    if (!newSectionName.trim()) {
+      toast.error("Digite o nome do grupo");
+      return;
     }
+    if (sections.includes(newSectionName.trim())) {
+      toast.error("Esse grupo já existe");
+      return;
+    }
+    setSections(prev => [...prev, newSectionName.trim()]);
+    setNewFieldSection(newSectionName.trim());
+    setNewSectionName("");
+    setShowAddSectionModal(false);
+    toast.success("Grupo adicionado");
   };
 
   // Payment Methods handlers
@@ -323,24 +389,9 @@ export const ManageCustomFieldsDialog = ({
       loadPaymentMethods();
     } catch (error) {
       console.error("Error deleting payment method:", error);
-      toast.error("Erro ao excluir forma de pagamento");
+      toast.error("Erro ao excluir");
     } finally {
       setSaving(false);
-    }
-  };
-
-  const handleTogglePaymentMethodActive = async (pm: PaymentMethodOption) => {
-    try {
-      const { error } = await supabase
-        .from("crm_payment_method_options")
-        .update({ is_active: !pm.is_active })
-        .eq("id", pm.id);
-
-      if (error) throw error;
-      loadPaymentMethods();
-    } catch (error) {
-      console.error("Error toggling payment method:", error);
-      toast.error("Erro ao atualizar forma de pagamento");
     }
   };
 
@@ -394,485 +445,507 @@ export const ManageCustomFieldsDialog = ({
       loadBanks();
     } catch (error) {
       console.error("Error deleting bank:", error);
-      toast.error("Erro ao excluir banco");
+      toast.error("Erro ao excluir");
     } finally {
       setSaving(false);
     }
   };
 
-  const handleToggleBankActive = async (bank: BankOption) => {
-    try {
-      const { error } = await supabase
-        .from("crm_bank_options")
-        .update({ is_active: !bank.is_active })
-        .eq("id", bank.id);
+  const toggleSection = (section: string) => {
+    setExpandedSections(prev => {
+      const next = new Set(prev);
+      if (next.has(section)) {
+        next.delete(section);
+      } else {
+        next.add(section);
+      }
+      return next;
+    });
+  };
 
-      if (error) throw error;
-      loadBanks();
-    } catch (error) {
-      console.error("Error toggling bank:", error);
-      toast.error("Erro ao atualizar banco");
+  const getFieldTypeLabel = (type: string) => {
+    return FIELD_TYPES.find(t => t.value === type)?.label || type;
+  };
+
+  // Group fields by section
+  const fieldsBySection = fields.reduce((acc, field) => {
+    if (!acc[field.section]) {
+      acc[field.section] = [];
     }
-  };
+    acc[field.section].push(field);
+    return acc;
+  }, {} as Record<string, CustomField[]>);
 
-  const contextLabels: Record<string, string> = {
-    contact: "Contato",
-    company: "Empresa",
-    deal: "Negócio",
-  };
-
-  const activeFields = fields.filter(f => f.is_active);
-  const inactiveFields = fields.filter(f => !f.is_active);
-  const activePaymentMethods = paymentMethods.filter(p => p.is_active);
-  const inactivePaymentMethods = paymentMethods.filter(p => !p.is_active);
-  const activeBanks = banks.filter(b => b.is_active);
-  const inactiveBanks = banks.filter(b => !b.is_active);
+  // Filter fields by search
+  const filteredSections = searchTerm
+    ? Object.entries(fieldsBySection).reduce((acc, [section, sectionFields]) => {
+        const filtered = sectionFields.filter(f => 
+          f.field_label.toLowerCase().includes(searchTerm.toLowerCase()) ||
+          f.field_name.toLowerCase().includes(searchTerm.toLowerCase())
+        );
+        if (filtered.length > 0) {
+          acc[section] = filtered;
+        }
+        return acc;
+      }, {} as Record<string, CustomField[]>)
+    : fieldsBySection;
 
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-hidden flex flex-col">
-          <DialogHeader>
-            <DialogTitle>Gerenciar Campos - {contextLabels[context]}</DialogTitle>
+        <DialogContent className="max-w-4xl max-h-[85vh] overflow-hidden flex flex-col p-0">
+          <DialogHeader className="px-6 pt-6 pb-4 border-b">
+            <DialogTitle>Gerenciamento de campos</DialogTitle>
           </DialogHeader>
 
-          <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col overflow-hidden">
-            <TabsList className="grid w-full grid-cols-3">
-              <TabsTrigger value="fields">Campos</TabsTrigger>
-              <TabsTrigger value="payment" className="flex items-center gap-2">
-                <CreditCard className="h-4 w-4" />
-                Pagamento
-              </TabsTrigger>
-              <TabsTrigger value="banks" className="flex items-center gap-2">
-                <Building2 className="h-4 w-4" />
-                Bancos
-              </TabsTrigger>
-            </TabsList>
+          <div className="flex-1 overflow-hidden flex flex-col">
+            {/* Main Tabs: Contato, Empresa, Negócio + Config */}
+            <div className="flex items-center justify-between px-6 py-3 border-b bg-muted/30">
+              <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1">
+                <TabsList className="bg-transparent gap-4 h-auto p-0">
+                  {CONTEXT_OPTIONS.map(opt => (
+                    <TabsTrigger 
+                      key={opt.value} 
+                      value={opt.value}
+                      className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2"
+                    >
+                      {opt.label}
+                    </TabsTrigger>
+                  ))}
+                  <TabsTrigger 
+                    value="config"
+                    className="data-[state=active]:bg-transparent data-[state=active]:border-b-2 data-[state=active]:border-primary rounded-none px-0 pb-2 flex items-center gap-1"
+                  >
+                    <CreditCard className="h-4 w-4" />
+                    Configurações
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
 
-            {/* Fields Tab */}
-            <TabsContent value="fields" className="flex-1 overflow-y-auto space-y-4 mt-4">
+              {activeTab !== "config" && (
+                <div className="flex items-center gap-2">
+                  <div className="relative">
+                    <Search className="h-4 w-4 absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar..."
+                      value={searchTerm}
+                      onChange={(e) => setSearchTerm(e.target.value)}
+                      className="pl-9 w-48 h-9"
+                    />
+                  </div>
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    onClick={() => setShowAddSectionModal(true)}
+                  >
+                    Adicionar grupo
+                  </Button>
+                  <Button 
+                    size="sm"
+                    onClick={() => {
+                      setNewFieldContext(activeTab);
+                      setShowAddFieldModal(true);
+                    }}
+                  >
+                    Adicionar campo
+                  </Button>
+                </div>
+              )}
+            </div>
+
+            {/* Content */}
+            <div className="flex-1 overflow-y-auto">
               {loading ? (
-                <div className="flex items-center justify-center py-8">
+                <div className="flex items-center justify-center py-12">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
-              ) : (
-                <>
-                  {!showAddForm && (
-                    <Button
-                      variant="outline"
-                      className="w-full"
-                      onClick={() => setShowAddForm(true)}
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Adicionar novo campo
-                    </Button>
-                  )}
+              ) : activeTab === "config" ? (
+                // Config Tab Content
+                <div className="p-6">
+                  <Tabs value={configTab} onValueChange={(v) => setConfigTab(v as any)}>
+                    <TabsList className="mb-4">
+                      <TabsTrigger value="payment">Formas de Pagamento</TabsTrigger>
+                      <TabsTrigger value="banks">Bancos</TabsTrigger>
+                    </TabsList>
 
-                  {showAddForm && (
-                    <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                      <h4 className="font-medium">Novo Campo</h4>
-                      
-                      <div className="grid grid-cols-2 gap-4">
-                        <div className="space-y-2">
-                          <Label>Nome do campo</Label>
-                          <Input
-                            value={newFieldLabel}
-                            onChange={(e) => setNewFieldLabel(e.target.value)}
-                            placeholder="Ex: Data de Nascimento"
-                          />
-                        </div>
-                        
-                        <div className="space-y-2">
-                          <Label>Tipo</Label>
-                          <Select value={newFieldType} onValueChange={setNewFieldType}>
-                            <SelectTrigger>
-                              <SelectValue />
-                            </SelectTrigger>
-                            <SelectContent>
-                              {FIELD_TYPES.map(type => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                        </div>
-                      </div>
-
-                      <div className="space-y-2">
-                        <Label>Seção</Label>
-                        <Select value={newFieldSection} onValueChange={setNewFieldSection}>
-                          <SelectTrigger>
-                            <SelectValue />
-                          </SelectTrigger>
-                          <SelectContent>
-                            {SECTIONS.map(section => (
-                              <SelectItem key={section} value={section}>
-                                {section}
-                              </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                      </div>
-
-                      {newFieldType === "select" && (
-                        <div className="space-y-2">
-                          <Label>Opções (separadas por vírgula)</Label>
-                          <Input
-                            value={newFieldOptions}
-                            onChange={(e) => setNewFieldOptions(e.target.value)}
-                            placeholder="Ex: Opção 1, Opção 2, Opção 3"
-                          />
-                        </div>
-                      )}
-
-                      <div className="flex gap-2">
-                        <Button
-                          variant="outline"
-                          onClick={() => setShowAddForm(false)}
-                          disabled={saving}
-                        >
-                          Cancelar
-                        </Button>
-                        <Button onClick={handleAddField} disabled={saving}>
-                          {saving ? "Salvando..." : "Adicionar"}
+                    <TabsContent value="payment" className="space-y-4">
+                      <div className="flex justify-end">
+                        <Button size="sm" onClick={() => setShowAddPaymentMethod(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar
                         </Button>
                       </div>
-                    </div>
-                  )}
-
-                  <div className="space-y-2">
-                    <h4 className="text-sm font-medium text-muted-foreground">
-                      Campos Ativos ({activeFields.length})
-                    </h4>
-                    <div className="space-y-1">
-                      {activeFields.map(field => (
-                        <div
-                          key={field.id}
-                          className={cn(
-                            "flex items-center justify-between p-3 rounded-lg border bg-background",
-                            field.is_system && "bg-muted/30"
-                          )}
-                        >
-                          <div className="flex items-center gap-3">
-                            <GripVertical className="h-4 w-4 text-muted-foreground" />
-                            <div>
-                              <div className="flex items-center gap-2">
-                                <span className="font-medium">{field.field_label}</span>
-                                {field.is_system && (
-                                  <Badge variant="secondary" className="text-xs">
-                                    <Lock className="h-3 w-3 mr-1" />
-                                    Sistema
-                                  </Badge>
-                                )}
-                              </div>
-                              <span className="text-xs text-muted-foreground">
-                                {FIELD_TYPES.find(t => t.value === field.field_type)?.label || field.field_type}
-                                {" • "}{field.section}
-                              </span>
-                            </div>
-                          </div>
-                          
-                          {!field.is_system && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="text-destructive hover:text-destructive"
-                              onClick={() => setDeleteField(field)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-
-                  {inactiveFields.length > 0 && (
-                    <div className="space-y-2">
-                      <h4 className="text-sm font-medium text-muted-foreground">
-                        Campos Inativos ({inactiveFields.length})
-                      </h4>
-                      <div className="space-y-1">
-                        {inactiveFields.map(field => (
-                          <div
-                            key={field.id}
-                            className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 opacity-60"
-                          >
-                            <div className="flex items-center gap-3">
-                              <GripVertical className="h-4 w-4 text-muted-foreground" />
-                              <div>
-                                <span className="font-medium">{field.field_label}</span>
-                                <span className="text-xs text-muted-foreground block">
-                                  {FIELD_TYPES.find(t => t.value === field.field_type)?.label || field.field_type}
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="w-20">Status</TableHead>
+                            <TableHead className="w-12"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {paymentMethods.map(pm => (
+                            <TableRow key={pm.id}>
+                              <TableCell className="font-medium">{pm.name}</TableCell>
+                              <TableCell>
+                                <span className={cn(
+                                  "text-xs px-2 py-1 rounded-full",
+                                  pm.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                                )}>
+                                  {pm.is_active ? "Ativo" : "Inativo"}
                                 </span>
-                              </div>
-                            </div>
-                            
-                            <div className="flex items-center gap-2">
-                              <Button
-                                variant="outline"
-                                size="sm"
-                                onClick={() => handleToggleActive(field)}
-                              >
-                                Ativar
-                              </Button>
-                              {!field.is_system && (
+                              </TableCell>
+                              <TableCell>
                                 <Button
                                   variant="ghost"
                                   size="icon"
-                                  className="text-destructive hover:text-destructive"
-                                  onClick={() => setDeleteField(field)}
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => setDeletePaymentMethod(pm)}
                                 >
                                   <Trash2 className="h-4 w-4" />
                                 </Button>
-                              )}
-                            </div>
-                          </div>
-                        ))}
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
+
+                    <TabsContent value="banks" className="space-y-4">
+                      <div className="flex justify-end">
+                        <Button size="sm" onClick={() => setShowAddBank(true)}>
+                          <Plus className="h-4 w-4 mr-2" />
+                          Adicionar
+                        </Button>
                       </div>
+                      <Table>
+                        <TableHeader>
+                          <TableRow>
+                            <TableHead>Nome</TableHead>
+                            <TableHead className="w-20">Status</TableHead>
+                            <TableHead className="w-12"></TableHead>
+                          </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                          {banks.map(bank => (
+                            <TableRow key={bank.id}>
+                              <TableCell className="font-medium">{bank.name}</TableCell>
+                              <TableCell>
+                                <span className={cn(
+                                  "text-xs px-2 py-1 rounded-full",
+                                  bank.is_active ? "bg-green-100 text-green-700" : "bg-gray-100 text-gray-500"
+                                )}>
+                                  {bank.is_active ? "Ativo" : "Inativo"}
+                                </span>
+                              </TableCell>
+                              <TableCell>
+                                <Button
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-8 w-8 text-destructive hover:text-destructive"
+                                  onClick={() => setDeleteBank(bank)}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </TableCell>
+                            </TableRow>
+                          ))}
+                        </TableBody>
+                      </Table>
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              ) : (
+                // Fields Tab Content
+                <div className="px-6 py-4 space-y-2">
+                  {Object.entries(filteredSections).map(([section, sectionFields]) => (
+                    <Collapsible 
+                      key={section} 
+                      open={expandedSections.has(section)}
+                      onOpenChange={() => toggleSection(section)}
+                    >
+                      <CollapsibleTrigger className="flex items-center gap-2 w-full py-2 hover:bg-muted/50 rounded-lg px-2">
+                        <ChevronDown className={cn(
+                          "h-4 w-4 transition-transform",
+                          !expandedSections.has(section) && "-rotate-90"
+                        )} />
+                        <span className="font-medium text-sm">{section}</span>
+                        <span className="text-xs text-muted-foreground">({sectionFields.length})</span>
+                      </CollapsibleTrigger>
+                      <CollapsibleContent>
+                        <Table>
+                          <TableHeader>
+                            <TableRow className="hover:bg-transparent">
+                              <TableHead className="text-xs text-muted-foreground font-normal">Nome do campo</TableHead>
+                              <TableHead className="text-xs text-muted-foreground font-normal w-32">Tipo</TableHead>
+                              <TableHead className="text-xs text-muted-foreground font-normal w-48">Identificador</TableHead>
+                              <TableHead className="text-xs text-muted-foreground font-normal w-32 text-center">Usar como variável</TableHead>
+                              <TableHead className="w-12"></TableHead>
+                            </TableRow>
+                          </TableHeader>
+                          <TableBody>
+                            {sectionFields.map(field => (
+                              <TableRow key={field.id} className="hover:bg-muted/30">
+                                <TableCell className="font-medium">{field.field_label}</TableCell>
+                                <TableCell className="text-muted-foreground">{getFieldTypeLabel(field.field_type)}</TableCell>
+                                <TableCell className="text-muted-foreground font-mono text-xs">{field.field_name}</TableCell>
+                                <TableCell className="text-center">
+                                  <Checkbox 
+                                    disabled={field.is_system}
+                                    className={cn(field.is_system && "opacity-50")}
+                                  />
+                                </TableCell>
+                                <TableCell>
+                                  {!field.is_system && (
+                                    <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                          <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                        <DropdownMenuItem 
+                                          className="text-destructive focus:text-destructive"
+                                          onClick={() => setDeleteField(field)}
+                                        >
+                                          <Trash2 className="h-4 w-4 mr-2" />
+                                          Excluir
+                                        </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                    </DropdownMenu>
+                                  )}
+                                </TableCell>
+                              </TableRow>
+                            ))}
+                          </TableBody>
+                        </Table>
+                      </CollapsibleContent>
+                    </Collapsible>
+                  ))}
+
+                  {Object.keys(filteredSections).length === 0 && (
+                    <div className="text-center py-12 text-muted-foreground">
+                      {searchTerm ? "Nenhum campo encontrado" : "Nenhum campo cadastrado"}
                     </div>
                   )}
-                </>
-              )}
-            </TabsContent>
-
-            {/* Payment Methods Tab */}
-            <TabsContent value="payment" className="flex-1 overflow-y-auto space-y-4 mt-4">
-              {!showAddPaymentMethod && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setShowAddPaymentMethod(true)}
-                >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar forma de pagamento
-                </Button>
-              )}
-
-              {showAddPaymentMethod && (
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                  <h4 className="font-medium">Nova Forma de Pagamento</h4>
-                  
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input
-                      value={newPaymentMethodName}
-                      onChange={(e) => setNewPaymentMethodName(e.target.value)}
-                      placeholder="Ex: PIX, Cartão de Crédito"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddPaymentMethod(false)}
-                      disabled={saving}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddPaymentMethod} disabled={saving}>
-                      {saving ? "Salvando..." : "Adicionar"}
-                    </Button>
-                  </div>
                 </div>
               )}
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
 
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Formas de Pagamento Ativas ({activePaymentMethods.length})
-                </h4>
-                <div className="space-y-1">
-                  {activePaymentMethods.map(pm => (
-                    <div
-                      key={pm.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-background"
+      {/* Add Field Modal */}
+      <Dialog open={showAddFieldModal} onOpenChange={setShowAddFieldModal}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Adicionar campo customizado</DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6 py-4">
+            <div>
+              <p className="text-sm font-medium mb-3">Criação de um novo campo</p>
+              <p className="text-sm text-muted-foreground mb-4">Estou criando um campo para:</p>
+              
+              <div className="grid grid-cols-3 gap-3">
+                {CONTEXT_OPTIONS.map(opt => {
+                  const Icon = opt.icon;
+                  return (
+                    <button
+                      key={opt.value}
+                      type="button"
+                      onClick={() => setNewFieldContext(opt.value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-2 p-4 rounded-lg border-2 transition-colors",
+                        newFieldContext === opt.value
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground/50"
+                      )}
                     >
-                      <div className="flex items-center gap-3">
-                        <CreditCard className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{pm.name}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleTogglePaymentMethodActive(pm)}
-                        >
-                          Desativar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeletePaymentMethod(pm)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
+                      <Icon className={cn(
+                        "h-6 w-6",
+                        newFieldContext === opt.value ? "text-primary" : "text-muted-foreground"
+                      )} />
+                      <span className={cn(
+                        "text-sm font-medium",
+                        newFieldContext === opt.value ? "text-primary" : "text-foreground"
+                      )}>
+                        {opt.label}
+                      </span>
+                    </button>
+                  );
+                })}
               </div>
+            </div>
 
-              {inactivePaymentMethods.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">
-                    Formas de Pagamento Inativas ({inactivePaymentMethods.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {inactivePaymentMethods.map(pm => (
-                      <div
-                        key={pm.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 opacity-60"
-                      >
-                        <div className="flex items-center gap-3">
-                          <CreditCard className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{pm.name}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleTogglePaymentMethodActive(pm)}
-                          >
-                            Ativar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeletePaymentMethod(pm)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
+            <div className="space-y-2">
+              <Label>Nome do campo</Label>
+              <Input
+                value={newFieldLabel}
+                onChange={(e) => setNewFieldLabel(e.target.value)}
+                placeholder="Ex: Data de Nascimento"
+              />
+            </div>
+
+            <div className="space-y-2">
+              <Label>Grupo</Label>
+              <div className="flex gap-2">
+                <Select value={newFieldSection} onValueChange={setNewFieldSection}>
+                  <SelectTrigger className="flex-1">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {sections.map(section => (
+                      <SelectItem key={section} value={section}>
+                        {section}
+                      </SelectItem>
                     ))}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-
-            {/* Banks Tab */}
-            <TabsContent value="banks" className="flex-1 overflow-y-auto space-y-4 mt-4">
-              {!showAddBank && (
-                <Button
-                  variant="outline"
-                  className="w-full"
-                  onClick={() => setShowAddBank(true)}
+                  </SelectContent>
+                </Select>
+                <Button 
+                  variant="outline" 
+                  size="icon"
+                  onClick={() => setShowAddSectionModal(true)}
                 >
-                  <Plus className="h-4 w-4 mr-2" />
-                  Adicionar banco
+                  <Plus className="h-4 w-4" />
                 </Button>
-              )}
-
-              {showAddBank && (
-                <div className="border rounded-lg p-4 space-y-4 bg-muted/30">
-                  <h4 className="font-medium">Novo Banco</h4>
-                  
-                  <div className="space-y-2">
-                    <Label>Nome</Label>
-                    <Input
-                      value={newBankName}
-                      onChange={(e) => setNewBankName(e.target.value)}
-                      placeholder="Ex: Banco do Brasil, Nubank"
-                    />
-                  </div>
-
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      onClick={() => setShowAddBank(false)}
-                      disabled={saving}
-                    >
-                      Cancelar
-                    </Button>
-                    <Button onClick={handleAddBank} disabled={saving}>
-                      {saving ? "Salvando..." : "Adicionar"}
-                    </Button>
-                  </div>
-                </div>
-              )}
-
-              <div className="space-y-2">
-                <h4 className="text-sm font-medium text-muted-foreground">
-                  Bancos Ativos ({activeBanks.length})
-                </h4>
-                <div className="space-y-1">
-                  {activeBanks.map(bank => (
-                    <div
-                      key={bank.id}
-                      className="flex items-center justify-between p-3 rounded-lg border bg-background"
-                    >
-                      <div className="flex items-center gap-3">
-                        <Building2 className="h-4 w-4 text-muted-foreground" />
-                        <span className="font-medium">{bank.name}</span>
-                      </div>
-                      
-                      <div className="flex items-center gap-2">
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={() => handleToggleBankActive(bank)}
-                        >
-                          Desativar
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="text-destructive hover:text-destructive"
-                          onClick={() => setDeleteBank(bank)}
-                        >
-                          <Trash2 className="h-4 w-4" />
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                </div>
               </div>
+            </div>
 
-              {inactiveBanks.length > 0 && (
-                <div className="space-y-2">
-                  <h4 className="text-sm font-medium text-muted-foreground">
-                    Bancos Inativos ({inactiveBanks.length})
-                  </h4>
-                  <div className="space-y-1">
-                    {inactiveBanks.map(bank => (
-                      <div
-                        key={bank.id}
-                        className="flex items-center justify-between p-3 rounded-lg border bg-muted/50 opacity-60"
-                      >
-                        <div className="flex items-center gap-3">
-                          <Building2 className="h-4 w-4 text-muted-foreground" />
-                          <span className="font-medium">{bank.name}</span>
-                        </div>
-                        
-                        <div className="flex items-center gap-2">
-                          <Button
-                            variant="outline"
-                            size="sm"
-                            onClick={() => handleToggleBankActive(bank)}
-                          >
-                            Ativar
-                          </Button>
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="text-destructive hover:text-destructive"
-                            onClick={() => setDeleteBank(bank)}
-                          >
-                            <Trash2 className="h-4 w-4" />
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </TabsContent>
-          </Tabs>
+            <div className="space-y-2">
+              <Label>Tipo do campo</Label>
+              <div className="grid grid-cols-4 gap-2">
+                {FIELD_TYPES.map(type => {
+                  const Icon = type.icon;
+                  return (
+                    <button
+                      key={type.value}
+                      type="button"
+                      onClick={() => setNewFieldType(type.value)}
+                      className={cn(
+                        "flex flex-col items-center justify-center gap-1.5 p-3 rounded-lg border-2 transition-colors",
+                        newFieldType === type.value
+                          ? "border-primary bg-primary/5"
+                          : "border-border hover:border-muted-foreground/50"
+                      )}
+                    >
+                      <Icon className={cn(
+                        "h-5 w-5",
+                        newFieldType === type.value ? "text-primary" : "text-muted-foreground"
+                      )} />
+                      <span className={cn(
+                        "text-xs font-medium",
+                        newFieldType === type.value ? "text-primary" : "text-foreground"
+                      )}>
+                        {type.label}
+                      </span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+
+            {(newFieldType === "select" || newFieldType === "multiselect") && (
+              <div className="space-y-2">
+                <Label>Opções (separadas por vírgula)</Label>
+                <Input
+                  value={newFieldOptions}
+                  onChange={(e) => setNewFieldOptions(e.target.value)}
+                  placeholder="Ex: Opção 1, Opção 2, Opção 3"
+                />
+              </div>
+            )}
+          </div>
+
+          <div className="flex justify-end gap-2 pt-4 border-t">
+            <Button variant="outline" onClick={() => setShowAddFieldModal(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddField} disabled={saving}>
+              {saving ? "Adicionando..." : "Adicionar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Section Modal */}
+      <Dialog open={showAddSectionModal} onOpenChange={setShowAddSectionModal}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar grupo</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome do grupo</Label>
+              <Input
+                value={newSectionName}
+                onChange={(e) => setNewSectionName(e.target.value)}
+                placeholder="Ex: Dados Adicionais"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddSectionModal(false)}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddSection}>
+              Adicionar
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Payment Method Modal */}
+      <Dialog open={showAddPaymentMethod} onOpenChange={setShowAddPaymentMethod}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar forma de pagamento</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                value={newPaymentMethodName}
+                onChange={(e) => setNewPaymentMethodName(e.target.value)}
+                placeholder="Ex: PIX, Cartão de Crédito"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddPaymentMethod(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddPaymentMethod} disabled={saving}>
+              {saving ? "Adicionando..." : "Adicionar"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Add Bank Modal */}
+      <Dialog open={showAddBank} onOpenChange={setShowAddBank}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <DialogTitle>Adicionar banco</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Nome</Label>
+              <Input
+                value={newBankName}
+                onChange={(e) => setNewBankName(e.target.value)}
+                placeholder="Ex: Banco do Brasil, Nubank"
+              />
+            </div>
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button variant="outline" onClick={() => setShowAddBank(false)} disabled={saving}>
+              Cancelar
+            </Button>
+            <Button onClick={handleAddBank} disabled={saving}>
+              {saving ? "Adicionando..." : "Adicionar"}
+            </Button>
+          </div>
         </DialogContent>
       </Dialog>
 
@@ -906,8 +979,7 @@ export const ManageCustomFieldsDialog = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir forma de pagamento?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "{deletePaymentMethod?.name}"? 
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir "{deletePaymentMethod?.name}"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -929,8 +1001,7 @@ export const ManageCustomFieldsDialog = ({
           <AlertDialogHeader>
             <AlertDialogTitle>Excluir banco?</AlertDialogTitle>
             <AlertDialogDescription>
-              Tem certeza que deseja excluir "{deleteBank?.name}"? 
-              Esta ação não pode ser desfeita.
+              Tem certeza que deseja excluir "{deleteBank?.name}"?
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
