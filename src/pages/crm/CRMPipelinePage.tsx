@@ -35,6 +35,7 @@ import { cn } from "@/lib/utils";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 
@@ -296,9 +297,22 @@ export const CRMPipelinePage = () => {
     );
 
     try {
+      // Verificar se a etapa destino é "won"
+      const targetStage = stages.find(s => s.id === stageMoveDialog.targetStageId);
+      const isWonStage = targetStage?.final_type === "won";
+
+      // Atualizar lead com closed_at se for etapa final
+      const updateData: { stage_id: string; closed_at?: string } = {
+        stage_id: stageMoveDialog.targetStageId,
+      };
+      
+      if (isWonStage) {
+        updateData.closed_at = new Date().toISOString();
+      }
+
       const { error } = await supabase
         .from("crm_leads")
-        .update({ stage_id: stageMoveDialog.targetStageId })
+        .update(updateData)
         .eq("id", stageMoveDialog.leadId);
 
       if (error) throw error;
@@ -317,7 +331,21 @@ export const CRMPipelinePage = () => {
       
       await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
       
-      toast.success("Lead movido com sucesso");
+      // Se for etapa "won", criar projeto automaticamente
+      if (isWonStage) {
+        const projectResult = await createProjectFromWonLead(stageMoveDialog.leadId);
+        if (projectResult.success) {
+          toast.success("🎉 Lead movido para GANHO e projeto criado!");
+        } else {
+          toast.success("Lead movido para GANHO");
+          if (projectResult.error && !projectResult.error.includes("não tem")) {
+            console.warn("Projeto não criado:", projectResult.error);
+          }
+        }
+      } else {
+        toast.success("Lead movido com sucesso");
+      }
+      
       setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
     } catch (error) {
       console.error("Error moving lead:", error);

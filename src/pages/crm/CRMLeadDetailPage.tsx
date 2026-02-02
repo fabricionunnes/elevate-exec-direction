@@ -43,6 +43,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
+import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -248,7 +249,17 @@ export const CRMLeadDetailPage = () => {
 
       if (error) throw error;
 
-      toast.success("🎉 Lead marcado como GANHO!");
+      // Criar projeto automaticamente
+      const projectResult = await createProjectFromWonLead(lead.id);
+      if (projectResult.success) {
+        toast.success("🎉 Lead marcado como GANHO e projeto criado!");
+      } else {
+        toast.success("🎉 Lead marcado como GANHO!");
+        if (projectResult.error && !projectResult.error.includes("não tem")) {
+          console.warn("Projeto não criado:", projectResult.error);
+        }
+      }
+
       setWonDialogOpen(false);
       loadLead();
     } catch (error) {
