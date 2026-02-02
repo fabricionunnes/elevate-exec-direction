@@ -72,7 +72,8 @@ interface Activity {
 
 interface ChecklistItem {
   id: string;
-  text: string;
+  title: string;
+  description: string | null;
   completed: boolean;
 }
 
@@ -113,13 +114,47 @@ export const LeadActivitiesTab = ({
 }: LeadActivitiesTabProps) => {
   const [showAddActivityDialog, setShowAddActivityDialog] = useState(false);
   const [showScheduleMeetingDialog, setShowScheduleMeetingDialog] = useState(false);
-  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([
-    { id: "1", text: "Adicionar Tag com o nome ao iniciar o atendimento de um lead.", completed: false },
-    { id: "2", text: "Adiciona nome em: Negócio → SDR. quando finalizar a qualificação", completed: false },
-    { id: "3", text: "Adicionar os dados da qualificação em: Empresa → SDR (qualificação) e também em notas", completed: false },
-    { id: "4", text: "Pegar o Instagram do lead (caso não esteja disponível em contatos)", completed: false },
-  ]);
+  const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
+  const [checklistLoading, setChecklistLoading] = useState(true);
   const [qualificationExpanded, setQualificationExpanded] = useState(true);
+
+  // Load checklist items from database
+  useEffect(() => {
+    const loadChecklist = async () => {
+      if (!currentStageId) {
+        setChecklistItems([]);
+        setChecklistLoading(false);
+        return;
+      }
+
+      setChecklistLoading(true);
+      try {
+        const { data, error } = await supabase
+          .from("crm_stage_checklists")
+          .select("id, title, description")
+          .eq("stage_id", currentStageId)
+          .eq("is_active", true)
+          .order("sort_order");
+
+        if (error) throw error;
+
+        // Add completed state (stored in localStorage per lead+stage)
+        const storageKey = `checklist_${leadId}_${currentStageId}`;
+        const completedIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
+        
+        setChecklistItems((data || []).map(item => ({
+          ...item,
+          completed: completedIds.includes(item.id),
+        })));
+      } catch (error) {
+        console.error("Error loading checklist:", error);
+      } finally {
+        setChecklistLoading(false);
+      }
+    };
+
+    loadChecklist();
+  }, [currentStageId, leadId]);
 
   const getActivityIcon = (type: string) => {
     switch (type) {
@@ -161,11 +196,19 @@ export const LeadActivitiesTab = ({
   });
 
   const toggleChecklist = (id: string) => {
-    setChecklistItems(prev =>
-      prev.map(item =>
+    const storageKey = `checklist_${leadId}_${currentStageId}`;
+    
+    setChecklistItems(prev => {
+      const updated = prev.map(item =>
         item.id === id ? { ...item, completed: !item.completed } : item
-      )
-    );
+      );
+      
+      // Save to localStorage
+      const completedIds = updated.filter(i => i.completed).map(i => i.id);
+      localStorage.setItem(storageKey, JSON.stringify(completedIds));
+      
+      return updated;
+    });
   };
 
   const currentStage = stages.find(s => s.id === currentStageId);
@@ -378,30 +421,39 @@ export const LeadActivitiesTab = ({
 
           <CollapsibleContent>
             <div className="px-4 pb-4 space-y-3">
-              {checklistItems.map(item => (
-                <label
-                  key={item.id}
-                  className="flex items-start gap-3 cursor-pointer"
-                >
-                  <Checkbox
-                    checked={item.completed}
-                    onCheckedChange={() => toggleChecklist(item.id)}
-                    className="mt-0.5"
-                  />
-                  <span className={cn(
-                    "text-sm",
-                    item.completed && "line-through text-muted-foreground"
-                  )}>
-                    {item.text}
-                  </span>
-                </label>
-              ))}
-
-              <div className="pt-2 mt-3 border-t border-border">
-                <p className="text-sm text-amber-600">
-                  O preenchimento do campo SDR acontecerá somente quando finalizar a qualificação
+              {checklistLoading ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Carregando...
                 </p>
-              </div>
+              ) : checklistItems.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-4">
+                  Nenhum item de checklist configurado para esta etapa.
+                </p>
+              ) : (
+                checklistItems.map(item => (
+                  <label
+                    key={item.id}
+                    className="flex items-start gap-3 cursor-pointer"
+                  >
+                    <Checkbox
+                      checked={item.completed}
+                      onCheckedChange={() => toggleChecklist(item.id)}
+                      className="mt-0.5"
+                    />
+                    <div className={cn(
+                      "text-sm",
+                      item.completed && "line-through text-muted-foreground"
+                    )}>
+                      <span>{item.title}</span>
+                      {item.description && (
+                        <p className="text-xs text-muted-foreground mt-0.5">
+                          {item.description}
+                        </p>
+                      )}
+                    </div>
+                  </label>
+                ))
+              )}
             </div>
           </CollapsibleContent>
         </Collapsible>

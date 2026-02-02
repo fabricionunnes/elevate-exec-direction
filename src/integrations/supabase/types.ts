@@ -10648,6 +10648,47 @@ export type Database = {
           },
         ]
       }
+      crm_stage_checklists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          sort_order: number
+          stage_id: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          stage_id: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          sort_order?: number
+          stage_id?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_stage_checklists_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_stages: {
         Row: {
           auto_activity_days: number | null
