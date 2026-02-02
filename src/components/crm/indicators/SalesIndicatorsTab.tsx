@@ -32,6 +32,7 @@ import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, Calendar
 import { cn } from "@/lib/utils";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 import { ImportSalesDialog } from "@/components/crm/ImportSalesDialog";
+import { TermVisionChart } from "@/components/crm/reports/TermVisionChart";
 
 interface CloserMetrics {
   id: string;
@@ -752,6 +753,9 @@ export const SalesIndicatorsTab = () => {
           </div>
         </CardContent>
       </Card>
+
+      {/* Term Vision Chart - QTR/YTD/MAT */}
+      <TermVisionChart />
 
       {/* Charts row */}
       <div className="grid md:grid-cols-3 gap-4">
