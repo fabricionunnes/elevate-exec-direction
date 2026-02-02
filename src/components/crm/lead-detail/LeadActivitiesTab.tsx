@@ -284,23 +284,15 @@ export const LeadActivitiesTab = ({
 
         </div>
 
-        {/* Days Navigation */}
-        <div className="flex items-center gap-4 px-4 py-3 border-b border-border">
-          <span className="text-sm font-medium text-muted-foreground">Dias</span>
-          <div className="flex items-center gap-2">
-            <span className="text-sm font-medium text-primary">Próximas atividades</span>
-            <Button variant="ghost" size="icon" className="h-5 w-5">
-              <Settings className="h-3.5 w-3.5" />
-            </Button>
-          </div>
-        </div>
-
-        {/* Activities and Checklist List */}
+        {/* Checklist Items from Stage */}
         <ScrollArea className="flex-1">
-          {/* Checklist Items from Stage */}
-          {!checklistLoading && checklistItems.length > 0 && (
-            <div className="border-b border-border">
-              {checklistItems.map((item, index) => (
+          {checklistLoading ? (
+            <div className="flex items-center justify-center py-8">
+              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+            </div>
+          ) : checklistItems.length > 0 ? (
+            <div>
+              {checklistItems.map((item) => (
                 <div
                   key={item.id}
                   onClick={() => setSelectedChecklistItem(item)}
@@ -346,128 +338,11 @@ export const LeadActivitiesTab = ({
                 </div>
               ))}
             </div>
+          ) : (
+            <div className="text-center py-8 text-sm text-muted-foreground">
+              Nenhuma atividade configurada para esta etapa
+            </div>
           )}
-
-          {/* Activities Table */}
-          <div className="flex">
-            {/* Day numbers column */}
-            <div className="w-12 border-r border-border flex-shrink-0">
-              {activitiesPerDay.map(({ day, count }, index) => (
-                <div
-                  key={index}
-                  className={cn(
-                    "h-10 flex items-center justify-center text-sm font-medium",
-                    count > 0 ? "text-primary" : "text-muted-foreground"
-                  )}
-                >
-                  {index + 1}
-                </div>
-              ))}
-            </div>
-
-            {/* Activities table */}
-            <div className="flex-1">
-              <div className="grid grid-cols-4 gap-0 text-xs text-muted-foreground border-b border-border">
-                <div className="px-3 py-2">Data</div>
-                <div className="px-3 py-2">Atividade</div>
-                <div className="px-3 py-2">Ação</div>
-                <div className="px-3 py-2">Concluído</div>
-              </div>
-
-              {sortedDates.map(dateStr => (
-                <div key={dateStr}>
-                  {groupedActivities[dateStr].map(activity => {
-                    const config = activity.automation_config as AutomationConfig | null;
-                    const isWhatsAppSend = activity.is_automation && config?.mode === 'whatsapp_send';
-                    const isScheduleMeeting = activity.is_automation && config?.mode === 'schedule_meeting';
-
-                    return (
-                      <div
-                        key={activity.id}
-                        className="grid grid-cols-4 gap-0 items-center hover:bg-muted/30 transition-colors"
-                      >
-                        <div className="px-3 py-2 text-sm text-primary">
-                          {activity.scheduled_at && 
-                            format(new Date(activity.scheduled_at), "dd/MM", { locale: ptBR })
-                          }
-                        </div>
-                        <div className="px-3 py-2 flex items-center gap-2">
-                          <span className="text-muted-foreground">
-                            {getActivityIcon(activity.type)}
-                          </span>
-                          <span className="text-sm truncate">{activity.title}</span>
-                        </div>
-                        <div className="px-3 py-2">
-                          {isWhatsAppSend && activity.status !== "completed" && config && (
-                            <WhatsAppQuickSendButton
-                              activityId={activity.id}
-                              automationConfig={config}
-                              lead={{
-                                id: leadId,
-                                name: leadName,
-                                email: leadEmail,
-                                phone: leadPhone,
-                                company: leadCompany,
-                              }}
-                              stageName={stageName}
-                              pipelineName={pipelineName}
-                              onSuccess={onRefresh}
-                            />
-                          )}
-                          {isScheduleMeeting && activity.status !== "completed" && config && (
-                            <ScheduleMeetingQuickButton
-                              activityId={activity.id}
-                              automationConfig={config}
-                              leadId={leadId}
-                              leadName={leadName}
-                              leadEmail={leadEmail}
-                              onSuccess={onRefresh}
-                            />
-                          )}
-                        </div>
-                        <div className="px-3 py-2">
-                          <Checkbox
-                            checked={activity.status === "completed"}
-                            onCheckedChange={() => onActivityComplete(activity.id)}
-                            disabled={activity.status === "completed"}
-                          />
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-              ))}
-
-              {activities.length === 0 && checklistItems.length === 0 && (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  Nenhuma atividade
-                </div>
-              )}
-            </div>
-          </div>
-
-          {/* Add Activity Button */}
-          <div className="p-4 border-t border-border">
-            <DropdownMenu>
-              <DropdownMenuTrigger asChild>
-                <Button variant="ghost" className="w-full justify-start text-muted-foreground">
-                  <Plus className="h-4 w-4 mr-2" />
-                  Nova atividade
-                  <ChevronDown className="h-4 w-4 ml-auto" />
-                </Button>
-              </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-56">
-                <DropdownMenuItem onClick={() => setShowAddActivityDialog(true)}>
-                  <Phone className="h-4 w-4 mr-2" />
-                  Atividade (Ligação, Email, etc)
-                </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => setShowScheduleMeetingDialog(true)}>
-                  <Video className="h-4 w-4 mr-2" />
-                  Agendar Reunião (Google Calendar)
-                </DropdownMenuItem>
-              </DropdownMenuContent>
-            </DropdownMenu>
-          </div>
         </ScrollArea>
       </div>
 
