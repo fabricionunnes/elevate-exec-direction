@@ -38,6 +38,7 @@ interface DashboardMetrics {
   conversionRate: number;
   pipelineValue: number;
   forecast: number;
+  totalRevenue: number;
 }
 
 interface StageData {
@@ -63,6 +64,7 @@ export const CRMDashboardPage = () => {
     conversionRate: 0,
     pipelineValue: 0,
     forecast: 0,
+    totalRevenue: 0,
   });
   const [stageData, setStageData] = useState<StageData[]>([]);
   const [pipelines, setPipelines] = useState<any[]>([]);
@@ -132,14 +134,63 @@ export const CRMDashboardPage = () => {
 
         const { data: leadsData } = await leadsQuery;
 
-        // Calculate metrics
+        // Helper to parse numeric values (Supabase may return as string)
+        const parseNumeric = (val: any): number => {
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') return parseFloat(val) || 0;
+          return 0;
+        };
+
+        // Load activities for the period
+        const { data: activitiesData } = await supabase
+          .from("crm_activities")
+          .select("*, lead:crm_leads!inner(id, pipeline_id, owner_staff_id)")
+          .gte("created_at", start.toISOString())
+          .lte("created_at", end.toISOString());
+
+        // Filter activities by pipeline and owner if needed
+        let filteredActivities = activitiesData || [];
+        if (selectedPipeline !== "all") {
+          filteredActivities = filteredActivities.filter(a => a.lead?.pipeline_id === selectedPipeline);
+        }
+        if (selectedOwner !== "all" && isAdmin) {
+          filteredActivities = filteredActivities.filter(a => a.lead?.owner_staff_id === selectedOwner);
+        }
+
+        // Count activity types
+        const meetingsScheduled = filteredActivities.filter(a => 
+          a.type === "meeting" && a.scheduled_at
+        ).length;
+        
+        const meetingsHeld = filteredActivities.filter(a => 
+          a.type === "meeting" && a.status === "completed"
+        ).length;
+        
+        const proposalsSent = filteredActivities.filter(a => 
+          a.type === "proposal" || a.title?.toLowerCase().includes("proposta")
+        ).length;
+
+        // Calculate metrics - leads created in period
         const leadsInPeriod = (leadsData || []).filter(lead => {
           const createdAt = new Date(lead.created_at);
           return createdAt >= start && createdAt <= end;
         });
 
-        const wonLeads = leadsInPeriod.filter(l => l.stage?.final_type === "won");
-        const lostLeads = leadsInPeriod.filter(l => l.stage?.final_type === "lost");
+        // Leads WON in the period (by closed_at date, not created_at)
+        const wonLeadsInPeriod = (leadsData || []).filter(l => {
+          if (l.stage?.final_type !== "won") return false;
+          if (!l.closed_at) return false;
+          const closedAt = new Date(l.closed_at);
+          return closedAt >= start && closedAt <= end;
+        });
+
+        const lostLeadsInPeriod = (leadsData || []).filter(l => {
+          if (l.stage?.final_type !== "lost") return false;
+          if (!l.closed_at) return false;
+          const closedAt = new Date(l.closed_at);
+          return closedAt >= start && closedAt <= end;
+        });
+
         const activeLeads = (leadsData || []).filter(l => !l.stage?.is_final);
 
         // Stage data for funnel
@@ -150,7 +201,7 @@ export const CRMDashboardPage = () => {
             stageGroups[stageName] = { count: 0, value: 0, color: lead.stage?.color || "#6B7280" };
           }
           stageGroups[stageName].count++;
-          stageGroups[stageName].value += lead.opportunity_value || 0;
+          stageGroups[stageName].value += parseNumeric(lead.opportunity_value);
         });
 
         setStageData(
@@ -164,25 +215,29 @@ export const CRMDashboardPage = () => {
 
         // Calculate forecast
         const forecast = activeLeads.reduce((sum, lead) => {
-          return sum + (lead.opportunity_value || 0) * ((lead.probability || 0) / 100);
+          return sum + parseNumeric(lead.opportunity_value) * ((lead.probability || 0) / 100);
         }, 0);
 
         // Pipeline value
-        const pipelineValue = activeLeads.reduce((sum, lead) => sum + (lead.opportunity_value || 0), 0);
+        const pipelineValue = activeLeads.reduce((sum, lead) => sum + parseNumeric(lead.opportunity_value), 0);
+
+        // Total value from WON leads in period
+        const totalWonValue = wonLeadsInPeriod.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
 
         setMetrics({
           newLeads: leadsInPeriod.length,
           workedLeads: leadsInPeriod.filter(l => l.last_activity_at).length,
-          meetingsScheduled: 0, // Would need activities query
-          meetingsHeld: 0, // Would need activities query
-          proposalsSent: 0, // Would need activities query
-          won: wonLeads.length,
-          lost: lostLeads.length,
+          meetingsScheduled,
+          meetingsHeld,
+          proposalsSent,
+          won: wonLeadsInPeriod.length,
+          lost: lostLeadsInPeriod.length,
           conversionRate: leadsInPeriod.length > 0 
-            ? Math.round((wonLeads.length / leadsInPeriod.length) * 100) 
+            ? Math.round((wonLeadsInPeriod.length / leadsInPeriod.length) * 100) 
             : 0,
           pipelineValue,
           forecast,
+          totalRevenue: totalWonValue,
         });
 
         // Overdue leads (no activity in 7+ days)
@@ -303,8 +358,8 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
-      {/* Main Metrics */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-5 gap-4">
+      {/* Main Metrics - Row 1 */}
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -336,6 +391,48 @@ export const CRMDashboardPage = () => {
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
+              <div className="p-2 bg-indigo-100 dark:bg-indigo-900/30 rounded-lg">
+                <Calendar className="h-5 w-5 text-indigo-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{metrics.meetingsScheduled}</p>
+                <p className="text-xs text-muted-foreground">Reuniões Agendadas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-cyan-100 dark:bg-cyan-900/30 rounded-lg">
+                <Calendar className="h-5 w-5 text-cyan-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{metrics.meetingsHeld}</p>
+                <p className="text-xs text-muted-foreground">Reuniões Realizadas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-orange-100 dark:bg-orange-900/30 rounded-lg">
+                <FileText className="h-5 w-5 text-orange-600" />
+              </div>
+              <div>
+                <p className="text-2xl font-bold">{metrics.proposalsSent}</p>
+                <p className="text-xs text-muted-foreground">Propostas Enviadas</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
               <div className="p-2 bg-green-100 dark:bg-green-900/30 rounded-lg">
                 <Trophy className="h-5 w-5 text-green-600" />
               </div>
@@ -346,7 +443,10 @@ export const CRMDashboardPage = () => {
             </div>
           </CardContent>
         </Card>
+      </div>
 
+      {/* Main Metrics - Row 2: Financial */}
+      <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
         <Card>
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
@@ -355,39 +455,54 @@ export const CRMDashboardPage = () => {
               </div>
               <div>
                 <p className="text-2xl font-bold">{metrics.conversionRate}%</p>
-                <p className="text-xs text-muted-foreground">Conversão</p>
+                <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card className="col-span-2 md:col-span-1">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-slate-100 dark:bg-slate-900/30 rounded-lg">
+                <DollarSign className="h-5 w-5 text-slate-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">{formatCurrency(metrics.pipelineValue)}</p>
+                <p className="text-xs text-muted-foreground">Valor no Pipeline</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-teal-100 dark:bg-teal-900/30 rounded-lg">
+                <Target className="h-5 w-5 text-teal-600" />
+              </div>
+              <div>
+                <p className="text-lg font-bold">{formatCurrency(metrics.forecast)}</p>
+                <p className="text-xs text-muted-foreground">Forecast Ponderado</p>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-gradient-to-r from-emerald-500/10 to-green-500/5 border-emerald-500/20">
           <CardContent className="p-4">
             <div className="flex items-center gap-3">
               <div className="p-2 bg-emerald-100 dark:bg-emerald-900/30 rounded-lg">
                 <DollarSign className="h-5 w-5 text-emerald-600" />
               </div>
               <div>
-                <p className="text-lg font-bold">{formatCurrency(metrics.pipelineValue)}</p>
-                <p className="text-xs text-muted-foreground">Pipeline</p>
+                <p className="text-lg font-bold text-emerald-600">{formatCurrency(metrics.totalRevenue)}</p>
+                <p className="text-xs text-muted-foreground">Receita no Período</p>
               </div>
             </div>
           </CardContent>
         </Card>
       </div>
-
-      {/* Forecast Card */}
-      <Card className="bg-gradient-to-r from-primary/10 to-primary/5 border-primary/20">
-        <CardContent className="p-6">
-          <div className="flex items-center justify-between">
-            <div>
-              <p className="text-sm text-muted-foreground">Forecast (Valor Ponderado)</p>
-              <p className="text-3xl font-bold text-primary">{formatCurrency(metrics.forecast)}</p>
-            </div>
-            <Target className="h-12 w-12 text-primary/50" />
-          </div>
-        </CardContent>
-      </Card>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-6">
