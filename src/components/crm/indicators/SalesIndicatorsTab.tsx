@@ -399,21 +399,26 @@ export const SalesIndicatorsTab = () => {
       setDailyRevenueData(dailyData);
 
       // Calculate cumulative revenue evolution with goals
+      // First, build a map of revenue per day
+      const revenueByDay: Record<number, number> = {};
+      (salesData || []).forEach(s => {
+        const saleDay = getDate(new Date(s.sale_date));
+        revenueByDay[saleDay] = (revenueByDay[saleDay] || 0) + (s.revenue_value || 0);
+      });
+      
       const evolutionData: { day: number; meta: number; receita: number | null; super: number; hiper: number }[] = [];
       let accumulatedRevenue = 0;
+      
       for (let day = 1; day <= daysInMonth; day++) {
-        const dayRevenue = (salesData || [])
-          .filter(s => getDate(new Date(s.sale_date)) === day)
-          .reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-        
+        // Only add revenue for days that have passed (including today)
         if (day <= currentDay) {
-          accumulatedRevenue += dayRevenue;
+          accumulatedRevenue += (revenueByDay[day] || 0);
         }
         
         evolutionData.push({
           day,
           meta: (metaReceita / daysInMonth) * day,
-          receita: day <= currentDay ? accumulatedRevenue : null, // null for future days so line stops
+          receita: day <= currentDay ? accumulatedRevenue : null,
           super: (superMeta / daysInMonth) * day,
           hiper: (hiperMeta / daysInMonth) * day,
         });
