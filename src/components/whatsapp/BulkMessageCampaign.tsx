@@ -131,7 +131,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
     instance_id: "",
     delay_between_messages: 3,
     scheduled_at: "",
-    media_type: null as "image" | "video" | null,
+    media_type: null as "image" | "video" | "audio" | "document" | null,
     media_url: null as string | null,
   });
   const [saving, setSaving] = useState(false);
