@@ -67,6 +67,7 @@ import { ptBR } from "date-fns/locale";
 import Papa from "papaparse";
 import { GroupSelector } from "./GroupSelector";
 import { SavedListsManager } from "./SavedListsManager";
+import { MediaUploader } from "./MediaUploader";
 
 interface WhatsAppInstance {
   id: string;
@@ -130,6 +131,8 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
     instance_id: "",
     delay_between_messages: 3,
     scheduled_at: "",
+    media_type: null as "image" | "video" | null,
+    media_url: null as string | null,
   });
   const [saving, setSaving] = useState(false);
   
@@ -387,6 +390,9 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
           total_recipients: totalRecipients,
           created_by: createdBy,
           project_id: projectId || null,
+          media_type: newCampaign.media_type || null,
+          media_url: newCampaign.media_url || null,
+          media_caption: newCampaign.message_template.trim() || null,
         })
         .select()
         .single();
@@ -443,6 +449,8 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
         instance_id: "",
         delay_between_messages: 3,
         scheduled_at: "",
+        media_type: null,
+        media_url: null,
       });
       setImportedContacts([]);
       setSelectedGroups([]);
@@ -788,13 +796,25 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                 </Select>
               </div>
               
+              {/* Media Uploader */}
+              <MediaUploader
+                mediaType={newCampaign.media_type}
+                mediaUrl={newCampaign.media_url}
+                onMediaChange={(type, url) => 
+                  setNewCampaign({ ...newCampaign, media_type: type, media_url: url })
+                }
+              />
+              
               <div className="space-y-2">
-                <Label>Mensagem</Label>
+                <Label>{newCampaign.media_type ? "Legenda / Mensagem" : "Mensagem"}</Label>
                 <Textarea
                   value={newCampaign.message_template}
                   onChange={(e) => setNewCampaign({ ...newCampaign, message_template: e.target.value })}
-                  placeholder="Olá {{nome}}, temos uma oferta especial para você!"
-                  rows={5}
+                  placeholder={newCampaign.media_type 
+                    ? "Escreva uma legenda para a mídia (opcional)..." 
+                    : "Olá {{nome}}, temos uma oferta especial para você!"
+                  }
+                  rows={newCampaign.media_type ? 3 : 5}
                 />
                 <p className="text-xs text-muted-foreground">
                   Use variáveis: {"{{nome}}"}, {"{{empresa}}"}, ou qualquer coluna do seu CSV

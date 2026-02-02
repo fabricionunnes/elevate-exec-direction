@@ -18964,6 +18964,9 @@ export type Database = {
           failed_count: number | null
           id: string
           instance_id: string | null
+          media_caption: string | null
+          media_type: string | null
+          media_url: string | null
           message_template: string
           name: string
           project_id: string | null
@@ -18982,6 +18985,9 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id?: string | null
+          media_caption?: string | null
+          media_type?: string | null
+          media_url?: string | null
           message_template: string
           name: string
           project_id?: string | null
@@ -19000,6 +19006,9 @@ export type Database = {
           failed_count?: number | null
           id?: string
           instance_id?: string | null
+          media_caption?: string | null
+          media_type?: string | null
+          media_url?: string | null
           message_template?: string
           name?: string
           project_id?: string | null

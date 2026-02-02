@@ -19,6 +19,9 @@ interface Campaign {
   total_recipients: number;
   sent_count: number;
   failed_count: number;
+  media_type: 'image' | 'video' | null;
+  media_url: string | null;
+  media_caption: string | null;
 }
 
 interface Recipient {
@@ -63,9 +66,9 @@ function processMessage(template: string, recipient: Recipient): string {
   return message.trim();
 }
 
-// Send message via Evolution API using instance-specific credentials
+// Send text message via Evolution API using instance-specific credentials
 // Supports both individual contacts and groups (detected by @g.us suffix)
-async function sendMessage(
+async function sendTextMessage(
   instanceName: string, 
   phone: string, 
   text: string,
@@ -78,23 +81,8 @@ async function sendMessage(
       return { success: false, error: 'Credenciais da API não configuradas para esta instância' };
     }
 
-    let formattedNumber: string;
-    
-    // Check if this is a group message (JID contains @g.us)
-    if (isGroup || phone.includes('@g.us')) {
-      // Group JID - use as-is or ensure it has @g.us suffix
-      formattedNumber = phone.includes('@') ? phone : `${phone}@g.us`;
-      console.log(`[bulk-send] Sending to GROUP ${formattedNumber} via ${instanceName}`);
-    } else {
-      // Individual contact - format phone number
-      formattedNumber = phone.replace(/\D/g, '');
-      if (formattedNumber.length === 11 && formattedNumber.startsWith('0')) {
-        formattedNumber = '55' + formattedNumber.substring(1);
-      } else if (formattedNumber.length === 10 || formattedNumber.length === 11) {
-        formattedNumber = '55' + formattedNumber;
-      }
-      console.log(`[bulk-send] Sending to ${formattedNumber} via ${instanceName} using API: ${apiUrl}`);
-    }
+    const formattedNumber = formatPhoneNumber(phone, isGroup);
+    console.log(`[bulk-send] Sending TEXT to ${formattedNumber} via ${instanceName}`);
     
     const response = await fetch(`${apiUrl}/message/sendText/${instanceName}`, {
       method: 'POST',
@@ -108,50 +96,112 @@ async function sendMessage(
       }),
     });
 
-    const responseData = await response.json().catch(() => ({}));
-    
-    if (!response.ok) {
-      // Parse error message from Evolution API
-      let errorMessage = `HTTP ${response.status}`;
-      
-      if (responseData?.response?.message) {
-        const msg = responseData.response.message;
-        if (Array.isArray(msg)) {
-          errorMessage = msg[0];
-        } else if (typeof msg === 'string') {
-          errorMessage = msg;
-        }
-      } else if (responseData?.message) {
-        errorMessage = responseData.message;
-      }
-      
-      console.error(`[bulk-send] API error for ${formattedNumber}: ${errorMessage}`);
-      return { success: false, error: errorMessage };
-    }
-
-    // Check if the number exists on WhatsApp (Evolution API v2 response)
-    // Note: This check doesn't apply to groups
-    if (!isGroup && responseData?.jid && responseData?.exists === false) {
-      return { 
-        success: false, 
-        error: `Número não está no WhatsApp: ${formattedNumber}` 
-      };
-    }
-    
-    // Some error responses come with 200 status but have error info
-    if (responseData?.error || responseData?.status === 'error') {
-      return { 
-        success: false, 
-        error: responseData?.message || responseData?.error || 'Erro desconhecido' 
-      };
-    }
-
-    console.log(`[bulk-send] Successfully sent to ${formattedNumber}`);
-    return { success: true };
+    return handleEvolutionResponse(response, formattedNumber, isGroup);
   } catch (error: any) {
-    console.error('[bulk-send] Send message error:', error);
+    console.error('[bulk-send] Send text message error:', error);
     return { success: false, error: error.message || 'Erro de conexão' };
   }
+}
+
+// Send media message via Evolution API
+async function sendMediaMessage(
+  instanceName: string, 
+  phone: string, 
+  mediaType: 'image' | 'video',
+  mediaUrl: string,
+  caption: string,
+  apiUrl: string,
+  apiKey: string,
+  isGroup: boolean = false
+): Promise<{ success: boolean; error?: string }> {
+  try {
+    if (!apiUrl || !apiKey) {
+      return { success: false, error: 'Credenciais da API não configuradas para esta instância' };
+    }
+
+    const formattedNumber = formatPhoneNumber(phone, isGroup);
+    console.log(`[bulk-send] Sending ${mediaType.toUpperCase()} to ${formattedNumber} via ${instanceName}`);
+    
+    const response = await fetch(`${apiUrl}/message/sendMedia/${instanceName}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'apikey': apiKey,
+      },
+      body: JSON.stringify({
+        number: formattedNumber,
+        mediatype: mediaType,
+        media: mediaUrl,
+        caption: caption || '',
+      }),
+    });
+
+    return handleEvolutionResponse(response, formattedNumber, isGroup);
+  } catch (error: any) {
+    console.error('[bulk-send] Send media message error:', error);
+    return { success: false, error: error.message || 'Erro de conexão' };
+  }
+}
+
+// Format phone number for Evolution API
+function formatPhoneNumber(phone: string, isGroup: boolean): string {
+  if (isGroup || phone.includes('@g.us')) {
+    return phone.includes('@') ? phone : `${phone}@g.us`;
+  }
+  
+  let formattedNumber = phone.replace(/\D/g, '');
+  if (formattedNumber.length === 11 && formattedNumber.startsWith('0')) {
+    formattedNumber = '55' + formattedNumber.substring(1);
+  } else if (formattedNumber.length === 10 || formattedNumber.length === 11) {
+    formattedNumber = '55' + formattedNumber;
+  }
+  return formattedNumber;
+}
+
+// Handle Evolution API response
+async function handleEvolutionResponse(
+  response: Response, 
+  formattedNumber: string, 
+  isGroup: boolean
+): Promise<{ success: boolean; error?: string }> {
+  const responseData = await response.json().catch(() => ({}));
+  
+  if (!response.ok) {
+    let errorMessage = `HTTP ${response.status}`;
+    
+    if (responseData?.response?.message) {
+      const msg = responseData.response.message;
+      if (Array.isArray(msg)) {
+        errorMessage = msg[0];
+      } else if (typeof msg === 'string') {
+        errorMessage = msg;
+      }
+    } else if (responseData?.message) {
+      errorMessage = responseData.message;
+    }
+    
+    console.error(`[bulk-send] API error for ${formattedNumber}: ${errorMessage}`);
+    return { success: false, error: errorMessage };
+  }
+
+  // Check if the number exists on WhatsApp (Evolution API v2 response)
+  if (!isGroup && responseData?.jid && responseData?.exists === false) {
+    return { 
+      success: false, 
+      error: `Número não está no WhatsApp: ${formattedNumber}` 
+    };
+  }
+  
+  // Some error responses come with 200 status but have error info
+  if (responseData?.error || responseData?.status === 'error') {
+    return { 
+      success: false, 
+      error: responseData?.message || responseData?.error || 'Erro desconhecido' 
+    };
+  }
+
+  console.log(`[bulk-send] Successfully sent to ${formattedNumber}`);
+  return { success: true };
 }
 
 // Sleep utility
@@ -322,14 +372,31 @@ Deno.serve(async (req) => {
                         recipient.custom_vars?.is_group === 'true';
 
         // Send message with instance-specific credentials
-        const result = await sendMessage(
-          instance.instance_name, 
-          recipient.phone_number, 
-          message,
-          instanceApiUrl,
-          instanceApiKey,
-          isGroup
-        );
+        let result: { success: boolean; error?: string };
+
+        if (campaign.media_type && campaign.media_url) {
+          // Send media message
+          result = await sendMediaMessage(
+            instance.instance_name, 
+            recipient.phone_number, 
+            campaign.media_type,
+            campaign.media_url,
+            message,
+            instanceApiUrl,
+            instanceApiKey,
+            isGroup
+          );
+        } else {
+          // Send text message
+          result = await sendTextMessage(
+            instance.instance_name, 
+            recipient.phone_number, 
+            message,
+            instanceApiUrl,
+            instanceApiKey,
+            isGroup
+          );
+        }
 
         if (result.success) {
           sentCount++;
