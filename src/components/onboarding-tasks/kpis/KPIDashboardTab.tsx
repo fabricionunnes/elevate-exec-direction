@@ -21,7 +21,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, FunnelChart, Funnel, LabelList, Cell } from "recharts";
-import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek } from "date-fns";
+import { format, startOfMonth, endOfMonth, subDays, startOfWeek, endOfWeek, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink } from "lucide-react";
@@ -143,6 +143,14 @@ export const KPIDashboardTab = ({
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
   const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
+
+  const applyMonthRange = (monthsAgo: number) => {
+    const base = subMonths(new Date(), monthsAgo);
+    setDateRange({
+      start: format(startOfMonth(base), "yyyy-MM-dd"),
+      end: format(endOfMonth(base), "yyyy-MM-dd"),
+    });
+  };
 
   useEffect(() => {
     fetchData();
@@ -1256,6 +1264,28 @@ export const KPIDashboardTab = ({
                 className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
+
+            <div className="col-span-2 flex flex-wrap gap-2">
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => applyMonthRange(0)}
+              >
+                Mês atual
+              </Button>
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                className="h-8 text-xs"
+                onClick={() => applyMonthRange(1)}
+              >
+                Mês anterior
+              </Button>
+            </div>
+
             <div className="space-y-1">
               <Label className="text-xs sm:text-sm">KPI</Label>
               <Select value={selectedKpi} onValueChange={setSelectedKpi}>
