@@ -234,11 +234,30 @@ export function StageChecklistDialog({
                   items.map((item, index) => (
                     <div
                       key={item.id}
-                      className="p-3 rounded-lg border border-border flex items-start gap-2"
+                      className="p-3 rounded-lg border border-border flex items-center gap-2"
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-move mt-0.5 shrink-0" />
+                      <div className="flex flex-col gap-0.5 shrink-0">
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMoveItem(item.id, 'up')}
+                          disabled={index === 0}
+                        >
+                          <ChevronUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => handleMoveItem(item.id, 'down')}
+                          disabled={index === items.length - 1}
+                        >
+                          <ChevronDown className="h-3 w-3" />
+                        </Button>
+                      </div>
                       
-                      <div className="shrink-0 mt-0.5">
+                      <div className="shrink-0">
                         {getItemIcon(item.item_type)}
                       </div>
                       
@@ -259,27 +278,6 @@ export function StageChecklistDialog({
                             📝 {item.whatsapp_template}
                           </p>
                         )}
-                      </div>
-
-                      <div className="flex flex-col gap-1 shrink-0">
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleMoveItem(item.id, 'up')}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-4 w-4" />
-                        </Button>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleMoveItem(item.id, 'down')}
-                          disabled={index === items.length - 1}
-                        >
-                          <ChevronDown className="h-4 w-4" />
-                        </Button>
                       </div>
 
                       <Button
