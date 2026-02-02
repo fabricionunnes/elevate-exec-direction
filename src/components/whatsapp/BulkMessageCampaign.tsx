@@ -361,18 +361,9 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
 
     setSaving(true);
     try {
-      // Get current user info (staff or client)
+      // Get current user info - use auth.uid() for RLS
       const { data: { user } } = await supabase.auth.getUser();
-      let createdBy: string | null = null;
-      
-      if (!isClientMode) {
-        const { data: staff } = await supabase
-          .from("onboarding_staff")
-          .select("id")
-          .eq("user_id", user?.id)
-          .single();
-        createdBy = staff?.id || null;
-      }
+      const createdBy = user?.id || null;
 
       // Combine contacts + groups as recipients
       const totalRecipients = importedContacts.length + selectedGroups.length;
