@@ -2,24 +2,26 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import { 
-  BarChart,
-  Bar,
+  LineChart,
+  Line,
   XAxis, 
   YAxis, 
   ResponsiveContainer, 
   Tooltip, 
   Legend,
-  Cell,
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { TrendingUp, TrendingDown, Minus, Eye, Calendar, Clock } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Eye } from "lucide-react";
 
-interface MonthlyData {
+interface ChartDataPoint {
   month: string;
   monthLabel: string;
   shortLabel: string;
   revenue: number;
+  qtr: number;
+  ytd: number;
+  mat: number;
 }
 
 interface TermVisionChartProps {
@@ -28,12 +30,15 @@ interface TermVisionChartProps {
 
 export const TermVisionChart = ({ className }: TermVisionChartProps) => {
   const [loading, setLoading] = useState(true);
-  const [chartData, setChartData] = useState<MonthlyData[]>([]);
+  const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
   const [kpis, setKpis] = useState({
-    qtr: 0,      // Soma dos últimos 3 meses
-    ytd: 0,      // Soma de janeiro até mês anterior
-    mat: 0,      // Soma dos últimos 12 meses
-    currentMonth: 0,  // Mês atual
+    qtr: 0,
+    ytd: 0,
+    mat: 0,
+    currentMonth: 0,
+    qtrVsYtd: 0,
+    ytdVsMat: 0,
+    currentVsQtr: 0,
   });
 
   useEffect(() => {
@@ -45,10 +50,10 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
     try {
       const now = new Date();
       const currentYear = now.getFullYear();
-      const currentMonth = now.getMonth(); // 0-indexed (0 = Janeiro)
+      const currentMonth = now.getMonth();
       
-      // Get data for the last 12 months + current month
-      const startDate = subMonths(startOfMonth(now), 12);
+      // Get data for the last 24 months to calculate MAT properly
+      const startDate = subMonths(startOfMonth(now), 24);
       const endDate = endOfMonth(now);
       
       const { data: salesData } = await supabase
@@ -66,61 +71,72 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
         monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + value;
       });
 
-      // Build chart data for the last 12 months (excluding current month for accuracy)
-      const data: MonthlyData[] = [];
+      // Build chart data for the last 12 months
+      const data: ChartDataPoint[] = [];
       
-      for (let i = 12; i >= 1; i--) {
+      for (let i = 11; i >= 0; i--) {
         const monthDate = subMonths(now, i);
         const monthKey = format(monthDate, "yyyy-MM");
         const monthLabel = format(monthDate, "MMMM", { locale: ptBR });
         const shortLabel = format(monthDate, "MMM", { locale: ptBR }).replace(".", "");
         const revenue = monthlyRevenue[monthKey] || 0;
         
+        // Calculate rolling QTR (last 3 months including current)
+        let qtrSum = 0;
+        for (let j = 0; j < 3; j++) {
+          const qtrMonthKey = format(subMonths(monthDate, j), "yyyy-MM");
+          qtrSum += monthlyRevenue[qtrMonthKey] || 0;
+        }
+        
+        // Calculate YTD (from January to current month of that year)
+        const yearOfMonth = monthDate.getFullYear();
+        const monthOfYear = monthDate.getMonth();
+        let ytdSum = 0;
+        for (let m = 0; m <= monthOfYear; m++) {
+          const ytdMonthKey = format(new Date(yearOfMonth, m, 1), "yyyy-MM");
+          ytdSum += monthlyRevenue[ytdMonthKey] || 0;
+        }
+        
+        // Calculate rolling MAT (last 12 months including current)
+        let matSum = 0;
+        for (let j = 0; j < 12; j++) {
+          const matMonthKey = format(subMonths(monthDate, j), "yyyy-MM");
+          matSum += monthlyRevenue[matMonthKey] || 0;
+        }
+        
         data.push({
           month: monthKey,
           monthLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
           shortLabel: shortLabel.charAt(0).toUpperCase() + shortLabel.slice(1),
           revenue,
+          qtr: qtrSum,
+          ytd: ytdSum,
+          mat: matSum,
         });
       }
       
       setChartData(data);
       
-      // Calculate KPIs based on correct definitions:
-      // QTR (Curto prazo): SOMA dos últimos 3 meses passados
-      // YTD (Médio prazo): SOMA de janeiro até o mês anterior do ano corrente
-      // MAT (Longo prazo): SOMA dos últimos 12 meses
+      // Get current KPI values (from the last data point)
+      const lastDataPoint = data[data.length - 1];
+      const currentQtr = lastDataPoint?.qtr || 0;
+      const currentYtd = lastDataPoint?.ytd || 0;
+      const currentMat = lastDataPoint?.mat || 0;
+      const currentMonthRevenue = lastDataPoint?.revenue || 0;
       
-      // Current month revenue
-      const currentMonthKey = format(now, "yyyy-MM");
-      const currentMonthRevenue = monthlyRevenue[currentMonthKey] || 0;
-      
-      // QTR: Soma dos últimos 3 meses passados (não inclui mês atual)
-      let qtrSum = 0;
-      for (let i = 1; i <= 3; i++) {
-        const monthKey = format(subMonths(now, i), "yyyy-MM");
-        qtrSum += monthlyRevenue[monthKey] || 0;
-      }
-      
-      // YTD: Soma de janeiro até o mês anterior (do ano corrente)
-      let ytdSum = 0;
-      for (let m = 0; m < currentMonth; m++) { // currentMonth é 0-indexed, então < exclui o mês atual
-        const ytdMonthKey = format(new Date(currentYear, m, 1), "yyyy-MM");
-        ytdSum += monthlyRevenue[ytdMonthKey] || 0;
-      }
-      
-      // MAT: Soma dos últimos 12 meses (não inclui mês atual)
-      let matSum = 0;
-      for (let i = 1; i <= 12; i++) {
-        const monthKey = format(subMonths(now, i), "yyyy-MM");
-        matSum += monthlyRevenue[monthKey] || 0;
-      }
+      // Calculate variations
+      const qtrVsYtd = currentYtd > 0 ? ((currentQtr - currentYtd) / currentYtd) * 100 : 0;
+      const ytdVsMat = currentMat > 0 ? ((currentYtd - currentMat) / currentMat) * 100 : 0;
+      const currentVsQtr = currentQtr > 0 ? ((currentMonthRevenue - currentQtr) / currentQtr) * 100 : 0;
       
       setKpis({
-        qtr: qtrSum,
-        ytd: ytdSum,
-        mat: matSum,
+        qtr: currentQtr,
+        ytd: currentYtd,
+        mat: currentMat,
         currentMonth: currentMonthRevenue,
+        qtrVsYtd,
+        ytdVsMat,
+        currentVsQtr,
       });
       
     } catch (error) {
@@ -154,35 +170,26 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
     return value.toString();
   };
 
-  const calculateVariation = (current: number, reference: number) => {
-    if (reference === 0) return { value: 0, type: "neutral" as const };
-    const variation = ((current - reference) / reference) * 100;
-    return {
-      value: Math.abs(variation),
-      type: variation > 0 ? "positive" as const : variation < 0 ? "negative" as const : "neutral" as const,
-    };
-  };
-
   const VariationBadge = ({ 
     value, 
-    type, 
     label 
   }: { 
     value: number; 
-    type: "positive" | "negative" | "neutral"; 
     label: string;
   }) => {
-    const Icon = type === "positive" ? TrendingUp : type === "negative" ? TrendingDown : Minus;
-    const colorClass = type === "positive" 
-      ? "text-green-600" 
-      : type === "negative" 
-        ? "text-red-500" 
-        : "text-muted-foreground";
+    const isPositive = value > 0;
+    const isNeutral = Math.abs(value) < 0.1;
+    const Icon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown;
+    const colorClass = isNeutral 
+      ? "text-muted-foreground" 
+      : isPositive 
+        ? "text-green-600" 
+        : "text-red-500";
     
     return (
       <span className={`text-xs flex items-center gap-0.5 ${colorClass}`}>
         <Icon className="h-3 w-3" />
-        {value.toFixed(1)}% {label}
+        {Math.abs(value).toFixed(1)}% {label}
       </span>
     );
   };
@@ -197,75 +204,62 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
     );
   }
 
-  // Variations
-  const qtrVsYtd = calculateVariation(kpis.qtr, kpis.ytd);
-  const ytdVsMat = calculateVariation(kpis.ytd, kpis.mat);
-
-  // Colors for bars based on performance
-  const getBarColor = (revenue: number, index: number) => {
-    // Last 3 months (QTR) get purple color
-    if (index >= chartData.length - 3) {
-      return "#8B5CF6"; // Purple for QTR
-    }
-    return "#94A3B8"; // Slate for older months
-  };
-
   return (
     <Card className={className}>
       <CardHeader className="pb-2">
-        <div className="flex items-center gap-2">
-          <Eye className="h-5 w-5 text-primary" />
-          <CardTitle className="text-base sm:text-lg">Visão de Curto, Médio e Longo Prazo</CardTitle>
+        <div className="flex items-center justify-center">
+          <CardTitle className="text-base sm:text-lg font-bold">VISÃO DE CURTO, MÉDIO E LONGO PRAZO</CardTitle>
         </div>
       </CardHeader>
       <CardContent className="space-y-4">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
           {/* QTR */}
-          <div className="border rounded-lg p-3 bg-purple-500/5 border-purple-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className="h-3.5 w-3.5 text-purple-500" />
-              <p className="text-xs font-medium text-purple-600">QTR</p>
+          <div className="border rounded-lg p-3 bg-card">
+            <p className="text-xs font-medium text-muted-foreground text-center mb-1">QTR</p>
+            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.qtr)}</p>
+            <div className="flex justify-center">
+              <VariationBadge value={kpis.qtrVsYtd} label="from YTD" />
             </div>
-            <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.qtr)}</p>
-            <p className="text-[10px] text-muted-foreground">Últimos 3 meses</p>
           </div>
           
           {/* YTD */}
-          <div className="border rounded-lg p-3 bg-blue-500/5 border-blue-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <Calendar className="h-3.5 w-3.5 text-blue-500" />
-              <p className="text-xs font-medium text-blue-600">YTD</p>
+          <div className="border rounded-lg p-3 bg-card">
+            <p className="text-xs font-medium text-muted-foreground text-center mb-1">YTD</p>
+            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.ytd)}</p>
+            <div className="flex justify-center">
+              <VariationBadge value={kpis.ytdVsMat} label="from MAT" />
             </div>
-            <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.ytd)}</p>
-            <p className="text-[10px] text-muted-foreground">Jan até mês anterior</p>
           </div>
           
           {/* MAT */}
-          <div className="border rounded-lg p-3 bg-orange-500/5 border-orange-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-3.5 w-3.5 text-orange-500" />
-              <p className="text-xs font-medium text-orange-600">MAT</p>
+          <div className="border rounded-lg p-3 bg-card">
+            <p className="text-xs font-medium text-muted-foreground text-center mb-1">MAT</p>
+            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.mat)}</p>
+            <div className="flex justify-center">
+              <span className="text-xs text-muted-foreground">0.0% from MAT</span>
             </div>
-            <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.mat)}</p>
-            <p className="text-[10px] text-muted-foreground">Últimos 12 meses</p>
           </div>
           
           {/* Current Month */}
-          <div className="border rounded-lg p-3 bg-green-500/5 border-green-500/20">
-            <div className="flex items-center gap-2 mb-1">
-              <TrendingUp className="h-3.5 w-3.5 text-green-500" />
-              <p className="text-xs font-medium text-green-600">Mês Atual</p>
+          <div className="border rounded-lg p-3 bg-card">
+            <p className="text-xs font-medium text-muted-foreground text-center mb-1">RECEITA</p>
+            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.currentMonth)}</p>
+            <div className="flex justify-center">
+              <VariationBadge value={kpis.currentVsQtr} label="from QTR" />
             </div>
-            <p className="text-lg sm:text-xl font-bold">{formatCurrency(kpis.currentMonth)}</p>
-            <p className="text-[10px] text-muted-foreground">{format(new Date(), "MMMM", { locale: ptBR })}</p>
           </div>
         </div>
 
-        {/* Bar Chart - Monthly Revenue */}
-        <div className="h-[280px] sm:h-[320px]">
+        {/* Chart Title */}
+        <div className="text-center">
+          <h3 className="font-semibold text-base">RECEITA</h3>
+        </div>
+
+        {/* Line Chart */}
+        <div className="h-[320px] sm:h-[380px]">
           <ResponsiveContainer width="100%" height="100%">
-            <BarChart data={chartData} margin={{ top: 5, right: 10, left: 0, bottom: 5 }}>
+            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
               <XAxis 
                 dataKey="shortLabel" 
                 tick={{ fontSize: 10 }}
@@ -277,10 +271,18 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
               <YAxis 
                 tickFormatter={formatAxisValue}
                 tick={{ fontSize: 10 }}
-                width={45}
+                width={50}
               />
               <Tooltip 
-                formatter={(value: number) => [formatCurrency(value), "Receita"]}
+                formatter={(value: number, name: string) => {
+                  const labels: Record<string, string> = {
+                    revenue: "Receita",
+                    qtr: "QTR",
+                    ytd: "YTD",
+                    mat: "MAT"
+                  };
+                  return [formatCurrency(value), labels[name] || name];
+                }}
                 labelFormatter={(label, payload) => {
                   if (payload && payload[0]) {
                     return payload[0].payload.monthLabel;
@@ -289,43 +291,62 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
                 }}
               />
               <Legend 
-                wrapperStyle={{ fontSize: "12px" }}
+                wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
                 payload={[
-                  { value: 'Receita Mensal', type: 'square', color: '#8B5CF6' },
+                  { value: 'RECEITA', type: 'line', color: '#22C55E' },
+                  { value: 'QTR', type: 'line', color: '#8B5CF6' },
+                  { value: 'YTD', type: 'line', color: '#3B82F6' },
+                  { value: 'MAT', type: 'line', color: '#F59E0B' },
                 ]}
               />
               
-              <Bar 
+              {/* Revenue - dotted green line */}
+              <Line 
+                type="monotone"
                 dataKey="revenue" 
-                name="Receita"
-                radius={[4, 4, 0, 0]}
-              >
-                {chartData.map((entry, index) => (
-                  <Cell 
-                    key={`cell-${index}`} 
-                    fill={getBarColor(entry.revenue, index)}
-                    fillOpacity={index >= chartData.length - 3 ? 1 : 0.6}
-                  />
-                ))}
-              </Bar>
-            </BarChart>
+                name="revenue"
+                stroke="#22C55E"
+                strokeWidth={2}
+                strokeDasharray="5 5"
+                dot={{ fill: "#22C55E", strokeWidth: 0, r: 3 }}
+                label={({ x, y, value }) => (
+                  <text x={x} y={y - 10} fill="#22C55E" fontSize={9} textAnchor="middle">
+                    {formatCurrency(value)}
+                  </text>
+                )}
+              />
+              
+              {/* QTR - solid purple line */}
+              <Line 
+                type="monotone"
+                dataKey="qtr" 
+                name="qtr"
+                stroke="#8B5CF6"
+                strokeWidth={2}
+                dot={{ fill: "#8B5CF6", strokeWidth: 0, r: 2 }}
+              />
+              
+              {/* YTD - solid blue line */}
+              <Line 
+                type="monotone"
+                dataKey="ytd" 
+                name="ytd"
+                stroke="#3B82F6"
+                strokeWidth={2}
+                dot={{ fill: "#3B82F6", strokeWidth: 0, r: 2 }}
+              />
+              
+              {/* MAT - solid orange line */}
+              <Line 
+                type="monotone"
+                dataKey="mat" 
+                name="mat"
+                stroke="#F59E0B"
+                strokeWidth={2}
+                dot={{ fill: "#F59E0B", strokeWidth: 0, r: 2 }}
+              />
+            </LineChart>
           </ResponsiveContainer>
-        </div>
-
-        {/* Legend */}
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-2 text-xs text-muted-foreground border-t pt-3">
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-purple-500" />
-            <span><strong>QTR:</strong> Curto prazo (últimos 3 meses)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-blue-500" />
-            <span><strong>YTD:</strong> Médio prazo (Jan - mês anterior)</span>
-          </div>
-          <div className="flex items-center gap-2">
-            <div className="w-3 h-3 rounded bg-orange-500" />
-            <span><strong>MAT:</strong> Longo prazo (últimos 12 meses)</span>
-          </div>
         </div>
       </CardContent>
     </Card>
