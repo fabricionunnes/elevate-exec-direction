@@ -368,6 +368,14 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
       // Combine contacts + groups as recipients
       const totalRecipients = importedContacts.length + selectedGroups.length;
 
+      // Convert scheduled_at to São Paulo timezone (UTC-3) for proper storage
+      let scheduledAtISO: string | null = null;
+      if (newCampaign.scheduled_at) {
+        // datetime-local gives us "2026-02-03T14:00" - treat this as São Paulo time
+        // São Paulo is UTC-3, so we append the offset
+        scheduledAtISO = `${newCampaign.scheduled_at}:00-03:00`;
+      }
+
       // Create campaign
       const { data: campaign, error: campaignError } = await supabase
         .from("whatsapp_campaigns")
@@ -376,7 +384,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
           message_template: newCampaign.message_template.trim(),
           instance_id: newCampaign.instance_id,
           delay_between_messages: newCampaign.delay_between_messages,
-          scheduled_at: newCampaign.scheduled_at || null,
+          scheduled_at: scheduledAtISO,
           status: newCampaign.scheduled_at ? "scheduled" : "draft",
           total_recipients: totalRecipients,
           created_by: createdBy,
@@ -831,6 +839,7 @@ export const BulkMessageCampaign = ({ projectId, isClientMode = false }: BulkMes
                     value={newCampaign.scheduled_at}
                     onChange={(e) => setNewCampaign({ ...newCampaign, scheduled_at: e.target.value })}
                   />
+                  <p className="text-xs text-muted-foreground">Horário de Brasília (UTC-3)</p>
                 </div>
               </div>
             </TabsContent>
