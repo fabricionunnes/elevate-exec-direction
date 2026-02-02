@@ -62,22 +62,21 @@ const PublicTalentPoolPage = () => {
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      const validTypes = [
-        'application/pdf',
-        'application/msword',
-        'application/vnd.openxmlformats-officedocument.wordprocessingml.document',
-        'image/jpeg',
-        'image/png',
-        'image/jpg'
-      ];
+      // Check file extension instead of MIME type for better compatibility
+      const validExtensions = ['.pdf', '.doc', '.docx', '.jpg', '.jpeg', '.png'];
+      const fileName = file.name.toLowerCase();
+      const hasValidExtension = validExtensions.some(ext => fileName.endsWith(ext));
       
-      if (!validTypes.includes(file.type)) {
+      if (!hasValidExtension) {
         toast.error("Formato inválido. Envie PDF, Word ou imagem.");
         return;
       }
       
-      if (file.size > 10 * 1024 * 1024) {
-        toast.error("Arquivo muito grande. Máximo 10MB.");
+      // 10MB limit
+      const maxSize = 10 * 1024 * 1024;
+      if (file.size > maxSize) {
+        const fileSizeMB = (file.size / (1024 * 1024)).toFixed(2);
+        toast.error(`Arquivo muito grande (${fileSizeMB}MB). Máximo 10MB.`);
         return;
       }
       
