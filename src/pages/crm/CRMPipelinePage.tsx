@@ -26,12 +26,14 @@ import {
   GripVertical,
   Loader2,
   MoreHorizontal,
+  Upload,
 } from "lucide-react";
 import { format, formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
+import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
@@ -89,6 +91,7 @@ export const CRMPipelinePage = () => {
   const [filters, setFilters] = useState<CRMFilters>(defaultFilters);
   const [loading, setLoading] = useState(true);
   const [addLeadOpen, setAddLeadOpen] = useState(false);
+  const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [addLeadStageId, setAddLeadStageId] = useState<string | undefined>(undefined);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
   
@@ -445,12 +448,23 @@ export const CRMPipelinePage = () => {
           <h1 className="text-lg sm:text-xl font-bold truncate">
             {selectedOriginName || "Funil"}
           </h1>
-          <Button onClick={() => {
-            setAddLeadStageId(undefined);
-            setAddLeadOpen(true);
-          }} className="gap-2 shrink-0" size="sm">
-            <span className="hidden sm:inline">Negócio</span> <Plus className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button 
+              variant="outline" 
+              onClick={() => setImportLeadsOpen(true)} 
+              className="gap-2 shrink-0" 
+              size="sm"
+            >
+              <Upload className="h-4 w-4" />
+              <span className="hidden sm:inline">Importar</span>
+            </Button>
+            <Button onClick={() => {
+              setAddLeadStageId(undefined);
+              setAddLeadOpen(true);
+            }} className="gap-2 shrink-0" size="sm">
+              <span className="hidden sm:inline">Negócio</span> <Plus className="h-4 w-4" />
+            </Button>
+          </div>
         </div>
       </div>
 
@@ -675,6 +689,13 @@ export const CRMPipelinePage = () => {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Import Leads Dialog */}
+      <ImportLeadsDialog
+        open={importLeadsOpen}
+        onOpenChange={setImportLeadsOpen}
+        onSuccess={loadStagesAndLeads}
+      />
     </div>
   );
 };
