@@ -371,6 +371,8 @@ export const LeadCustomFieldsTab = ({
   const [sdrStaff, setSdrStaff] = useState<{ id: string; name: string; role: string }[]>([]);
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [plans, setPlans] = useState<{ id: string; name: string }[]>([]);
+  const [paymentMethods, setPaymentMethods] = useState<{ id: string; name: string }[]>([]);
+  const [banks, setBanks] = useState<{ id: string; name: string }[]>([]);
   const [isMaster, setIsMaster] = useState(false);
   const [showManageFields, setShowManageFields] = useState(false);
 
@@ -380,6 +382,7 @@ export const LeadCustomFieldsTab = ({
     if (context === "deal") {
       loadStaff();
       loadProductsAndPlans();
+      loadPaymentMethodsAndBanks();
     }
   }, [leadId, context]);
 
@@ -432,6 +435,26 @@ export const LeadCustomFieldsTab = ({
       .order("sort_order");
     
     setPlans(plansData || []);
+  };
+
+  const loadPaymentMethodsAndBanks = async () => {
+    // Load payment methods
+    const { data: pmData } = await supabase
+      .from("crm_payment_method_options")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    
+    setPaymentMethods(pmData || []);
+
+    // Load banks
+    const { data: banksData } = await supabase
+      .from("crm_bank_options")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("sort_order");
+    
+    setBanks(banksData || []);
   };
 
   const loadFields = async () => {
@@ -670,6 +693,32 @@ export const LeadCustomFieldsTab = ({
               isSaving={isSaving}
               options={plans}
               placeholder="Selecionar plano"
+            />
+          );
+        }
+        // Special handling for payment method field
+        if (field.field_name === "payment_method") {
+          return (
+            <EntitySelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              options={paymentMethods}
+              placeholder="Selecionar forma de pagamento"
+            />
+          );
+        }
+        // Special handling for bank field
+        if (field.field_name === "bank") {
+          return (
+            <EntitySelectWrapper
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+              options={banks}
+              placeholder="Selecionar banco"
             />
           );
         }
