@@ -119,7 +119,7 @@ export const SalesIndicatorsTab = () => {
   const [dailyRevenueData, setDailyRevenueData] = useState<{ day: number; [key: string]: number }[]>([]);
   
   // Revenue evolution
-  const [revenueEvolution, setRevenueEvolution] = useState<{ day: number; meta: number; receita: number; super: number; hiper: number }[]>([]);
+  const [revenueEvolution, setRevenueEvolution] = useState<{ day: number; meta: number; receita: number | null; super: number; hiper: number }[]>([]);
 
   // Vision data (QTR, YTD, MAT)
   const [visionData, setVisionData] = useState({
@@ -398,19 +398,22 @@ export const SalesIndicatorsTab = () => {
       }
       setDailyRevenueData(dailyData);
 
-      // Calculate revenue evolution with goals
-      const evolutionData: { day: number; meta: number; receita: number; super: number; hiper: number }[] = [];
+      // Calculate cumulative revenue evolution with goals
+      const evolutionData: { day: number; meta: number; receita: number | null; super: number; hiper: number }[] = [];
       let accumulatedRevenue = 0;
       for (let day = 1; day <= daysInMonth; day++) {
         const dayRevenue = (salesData || [])
           .filter(s => getDate(new Date(s.sale_date)) === day)
           .reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-        accumulatedRevenue += dayRevenue;
+        
+        if (day <= currentDay) {
+          accumulatedRevenue += dayRevenue;
+        }
         
         evolutionData.push({
           day,
           meta: (metaReceita / daysInMonth) * day,
-          receita: day <= currentDay ? accumulatedRevenue : 0,
+          receita: day <= currentDay ? accumulatedRevenue : null, // null for future days so line stops
           super: (superMeta / daysInMonth) * day,
           hiper: (hiperMeta / daysInMonth) * day,
         });
@@ -822,10 +825,10 @@ export const SalesIndicatorsTab = () => {
         </Card>
       </div>
 
-      {/* Evolution chart */}
+      {/* Evolution chart - Cumulative Revenue */}
       <Card>
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Evolução de Receita</CardTitle>
+          <CardTitle className="text-sm font-medium">Evolução de Receita (Cumulativo)</CardTitle>
         </CardHeader>
         <CardContent>
           <div className="h-[250px]">
@@ -835,8 +838,8 @@ export const SalesIndicatorsTab = () => {
                 <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
                 <Tooltip formatter={(value: number) => formatCurrency(value)} />
                 <Legend />
-                <Area type="monotone" dataKey="meta" name="Meta" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} strokeDasharray="5 5" />
-                <Area type="monotone" dataKey="receita" name="Receita" stroke="#10B981" fill="#10B981" fillOpacity={0.3} />
+                <Area type="monotone" dataKey="meta" name="Meta Acumulada" stroke="#EF4444" fill="#EF4444" fillOpacity={0.1} strokeDasharray="5 5" />
+                <Area type="monotone" dataKey="receita" name="Receita Acumulada" stroke="#10B981" fill="#10B981" fillOpacity={0.3} connectNulls={false} />
               </AreaChart>
             </ResponsiveContainer>
           </div>
