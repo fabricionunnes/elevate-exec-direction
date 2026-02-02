@@ -9,7 +9,7 @@ import { Progress } from "@/components/ui/progress";
 import { Button } from "@/components/ui/button";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar } from "@/components/ui/calendar";
-import { CalendarIcon } from "lucide-react";
+import { CalendarIcon, Upload } from "lucide-react";
 import {
   BarChart,
   Bar,
@@ -31,6 +31,7 @@ import { ptBR } from "date-fns/locale";
 import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
+import { ImportSalesDialog } from "@/components/crm/ImportSalesDialog";
 
 interface CloserMetrics {
   id: string;
@@ -75,6 +76,7 @@ export const SalesIndicatorsTab = () => {
   const [selectedCloser, setSelectedCloser] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
   
   // Date filter state
   const [dateFilter, setDateFilter] = useState<DateFilterType>("month");
@@ -476,6 +478,7 @@ export const SalesIndicatorsTab = () => {
   const metaPercent = metrics.metaReceita > 0 ? (metrics.receita / metrics.metaReceita) * 100 : 0;
 
   return (
+    <>
     <div className="p-4 space-y-6 bg-muted/30">
       {/* Header with filters */}
       <div className="flex flex-wrap items-center gap-4">
@@ -579,6 +582,10 @@ export const SalesIndicatorsTab = () => {
             ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
             : format(getDateRange().start, "MMMM yyyy", { locale: ptBR })}
         </Badge>
+        <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+          <Upload className="h-4 w-4 mr-2" />
+          Importar Vendas
+        </Button>
       </div>
 
       {/* Top ranking - closers */}
@@ -1018,5 +1025,17 @@ export const SalesIndicatorsTab = () => {
         </CardContent>
       </Card>
     </div>
+
+      {/* Import Sales Dialog */}
+      <ImportSalesDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => {
+          // Refresh data after import
+          setLoading(true);
+          window.location.reload();
+        }}
+      />
+    </>
   );
 };
