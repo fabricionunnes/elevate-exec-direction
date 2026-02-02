@@ -403,9 +403,10 @@ export const SalesIndicatorsTab = () => {
 
       // Calculate cumulative revenue evolution with goals
       // First, build a map of revenue per day
+      // Extract day directly from string to avoid timezone issues (e.g., "2026-02-02" -> 2)
       const revenueByDay: Record<number, number> = {};
       (salesData || []).forEach(s => {
-        const saleDay = getDate(new Date(s.sale_date));
+        const saleDay = parseInt(s.sale_date.split('-')[2], 10);
         revenueByDay[saleDay] = (revenueByDay[saleDay] || 0) + (s.revenue_value || 0);
       });
       
