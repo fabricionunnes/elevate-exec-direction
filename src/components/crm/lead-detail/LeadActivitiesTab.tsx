@@ -38,6 +38,7 @@ import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
+import { OwnerSelector } from "./OwnerSelector";
 
 interface Stage {
   id: string;
@@ -85,6 +86,8 @@ interface LeadActivitiesTabProps {
   currentStageId: string | null;
   stageName?: string;
   pipelineName?: string;
+  ownerId?: string | null;
+  ownerName?: string | null;
   activities: Activity[];
   onActivityComplete: (activityId: string) => void;
   onStageChange: (stageId: string) => void;
@@ -101,6 +104,8 @@ export const LeadActivitiesTab = ({
   currentStageId,
   stageName,
   pipelineName,
+  ownerId,
+  ownerName,
   activities,
   onActivityComplete,
   onStageChange,
@@ -218,9 +223,12 @@ export const LeadActivitiesTab = ({
 
           {/* Owner Avatar */}
           <div className="flex items-center gap-2 mt-2">
-            <Avatar className="h-7 w-7">
-              <AvatarFallback className="text-xs">UN</AvatarFallback>
-            </Avatar>
+            <OwnerSelector
+              leadId={leadId}
+              currentOwnerId={ownerId}
+              currentOwnerName={ownerName}
+              onOwnerChange={onRefresh}
+            />
           </div>
         </div>
 

@@ -533,6 +533,8 @@ export const CRMLeadDetailPage = () => {
             currentStageId={lead.stage_id}
             stageName={lead.stage?.name}
             pipelineName={lead.pipeline?.name}
+            ownerId={lead.owner_staff_id}
+            ownerName={lead.owner?.name}
             activities={activities}
             onActivityComplete={handleActivityComplete}
             onStageChange={handleStageChange}
