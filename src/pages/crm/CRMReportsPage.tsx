@@ -31,6 +31,7 @@ import {
   Cell,
   Legend,
 } from "recharts";
+import { TermVisionChart } from "@/components/crm/reports/TermVisionChart";
 
 interface ConversionData {
   stage: string;
@@ -393,6 +394,9 @@ export const CRMReportsPage = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Term Vision Chart - QTR/YTD/MAT */}
+      <TermVisionChart />
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-4 sm:gap-6">
