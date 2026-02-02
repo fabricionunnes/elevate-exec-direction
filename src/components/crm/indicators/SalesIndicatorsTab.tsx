@@ -28,8 +28,9 @@ import {
 } from "recharts";
 import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users } from "lucide-react";
+import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
+import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 
 interface CloserMetrics {
   id: string;
@@ -103,6 +104,15 @@ export const SalesIndicatorsTab = () => {
     agendadas: 0,
     realizadas: 0,
     noShowPercent: 0,
+  });
+
+  // Daily goal state
+  const [dailyGoal, setDailyGoal] = useState({
+    monthlyTarget: 0,
+    achieved: 0,
+    remaining: 0,
+    businessDaysLeft: 0,
+    dailyTarget: 0,
   });
 
   // Daily revenue accumulation
@@ -305,6 +315,19 @@ export const SalesIndicatorsTab = () => {
         agendadas: totalScheduled,
         realizadas: totalCompleted,
         noShowPercent,
+      });
+
+      // Calculate daily goal
+      const businessDaysLeft = getRemainingBusinessDaysInMonth(now);
+      const remaining = Math.max(0, metaReceita - totalRevenue);
+      const dailyTarget = businessDaysLeft > 0 ? remaining / businessDaysLeft : 0;
+      
+      setDailyGoal({
+        monthlyTarget: metaReceita,
+        achieved: totalRevenue,
+        remaining,
+        businessDaysLeft,
+        dailyTarget,
       });
 
       // Calculate closer metrics (use filtered staff)
@@ -662,6 +685,58 @@ export const SalesIndicatorsTab = () => {
           </CardContent>
         </Card>
       </div>
+
+      {/* Daily Goal Card */}
+      <Card className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10 border-blue-500/20">
+        <CardContent className="p-4">
+          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+            <div className="flex items-center gap-3">
+              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
+                <CalendarDays className="h-6 w-6 text-blue-600" />
+              </div>
+              <div>
+                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-400">Meta Diária</h3>
+                <p className="text-xs text-muted-foreground">
+                  {dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} útil{dailyGoal.businessDaysLeft !== 1 ? 'eis' : ''} restante{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} no mês
+                </p>
+              </div>
+            </div>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              <div className="text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Meta do Mês</p>
+                <p className="text-sm font-bold">{formatCurrency(dailyGoal.monthlyTarget)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Realizado</p>
+                <p className="text-sm font-bold text-emerald-600">{formatCurrency(dailyGoal.achieved)}</p>
+              </div>
+              <div className="text-center">
+                <p className="text-[10px] text-muted-foreground mb-0.5">Falta</p>
+                <p className="text-sm font-bold text-amber-600">{formatCurrency(dailyGoal.remaining)}</p>
+              </div>
+              <div className="text-center bg-blue-500/10 rounded-lg p-1.5">
+                <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-0.5 font-medium">Vender/Dia</p>
+                <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(dailyGoal.dailyTarget)}</p>
+              </div>
+            </div>
+          </div>
+          
+          {/* Progress bar */}
+          <div className="mt-3">
+            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
+              <span>Progresso</span>
+              <span>{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
+            </div>
+            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all"
+                style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }}
+              />
+            </div>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Charts row */}
       <div className="grid md:grid-cols-3 gap-4">
