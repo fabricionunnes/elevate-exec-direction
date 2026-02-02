@@ -33,7 +33,7 @@ import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
-import { OwnerSelector } from "./OwnerSelector";
+
 
 interface Stage {
   id: string;
@@ -282,15 +282,6 @@ export const LeadActivitiesTab = ({
             </Button>
           </div>
 
-          {/* Owner Avatar */}
-          <div className="flex items-center gap-2 mt-2">
-            <OwnerSelector
-              leadId={leadId}
-              currentOwnerId={ownerId}
-              currentOwnerName={ownerName}
-              onOwnerChange={onRefresh}
-            />
-          </div>
         </div>
 
         {/* Days Navigation */}

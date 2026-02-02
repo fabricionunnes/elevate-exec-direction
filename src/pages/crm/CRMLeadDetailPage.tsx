@@ -49,6 +49,7 @@ import {
   LeadFilesTab,
   LeadHistoryTab,
 } from "@/components/crm/lead-detail";
+import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -414,11 +415,12 @@ export const CRMLeadDetailPage = () => {
             <Button variant="ghost" size="icon">
               <Smile className="h-5 w-5" />
             </Button>
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="text-xs">
-                {lead.owner?.name?.slice(0, 2).toUpperCase() || "UN"}
-              </AvatarFallback>
-            </Avatar>
+            <OwnerSelector
+              leadId={lead.id}
+              currentOwnerId={lead.owner_staff_id}
+              currentOwnerName={lead.owner?.name}
+              onOwnerChange={loadLead}
+            />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon">
