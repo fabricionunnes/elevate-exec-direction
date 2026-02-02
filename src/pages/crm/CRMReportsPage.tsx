@@ -104,7 +104,7 @@ export const CRMReportsPage = () => {
       try {
         const { start, end } = getDateRange();
 
-        // Load all leads for the period
+        // Load all leads for the period (created in the period)
         const { data: leads } = await supabase
           .from("crm_leads")
           .select(`
@@ -115,6 +115,18 @@ export const CRMReportsPage = () => {
           `)
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString());
+
+        // Load leads won in the period (for revenue calculation - may include leads created earlier)
+        const { data: leadsWonInPeriod } = await supabase
+          .from("crm_leads")
+          .select(`
+            *,
+            stage:crm_stages(name, color, is_final, final_type),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name)
+          `)
+          .not("closed_at", "is", null)
+          .gte("closed_at", start.toISOString())
+          .lte("closed_at", end.toISOString());
 
         // Load stages
         const { data: stages } = await supabase
@@ -141,34 +153,43 @@ export const CRMReportsPage = () => {
         }));
         setConversionData(conversionArr);
 
-        // Calculate metrics
-        const wonLeads = (leads || []).filter(l => l.stage?.final_type === "won");
+        // Calculate metrics - use leads WON in period for revenue metrics
+        const wonLeadsInPeriod = (leadsWonInPeriod || []).filter(l => l.stage?.final_type === "won");
+        const wonLeadsCreatedInPeriod = (leads || []).filter(l => l.stage?.final_type === "won");
         const lostLeads = (leads || []).filter(l => l.stage?.final_type === "lost");
 
         setMetrics({
           totalLeads,
-          wonLeads: wonLeads.length,
+          wonLeads: wonLeadsInPeriod.length, // Leads won in period (regardless of creation date)
           lostLeads: lostLeads.length,
-          conversionRate: totalLeads > 0 ? Math.round((wonLeads.length / totalLeads) * 100) : 0,
+          conversionRate: totalLeads > 0 ? Math.round((wonLeadsCreatedInPeriod.length / totalLeads) * 100) : 0,
           avgCycleTime: 0, // Would need more calculation
-          totalValue: wonLeads.reduce((sum, l) => sum + (l.opportunity_value || 0), 0),
+          totalValue: wonLeadsInPeriod.reduce((sum, l) => sum + (l.opportunity_value || 0), 0), // Revenue from leads won in period
         });
 
-        // Calculate productivity by user
+        // Calculate productivity by user - use leads WON in period
         if (isAdmin) {
           const userGroups: Record<string, { name: string; leads: number; won: number; value: number }> = {};
+          
+          // Count leads created by owner
           (leads || []).forEach(lead => {
-            const ownerId = lead.owner_staff_id;
             const ownerName = lead.owner?.name || "Sem Responsável";
             if (!userGroups[ownerName]) {
               userGroups[ownerName] = { name: ownerName, leads: 0, won: 0, value: 0 };
             }
             userGroups[ownerName].leads++;
-            if (lead.stage?.final_type === "won") {
-              userGroups[ownerName].won++;
-              userGroups[ownerName].value += lead.opportunity_value || 0;
-            }
           });
+          
+          // Count wins and revenue from leads WON in the period (based on closed_at)
+          wonLeadsInPeriod.forEach(lead => {
+            const ownerName = lead.owner?.name || "Sem Responsável";
+            if (!userGroups[ownerName]) {
+              userGroups[ownerName] = { name: ownerName, leads: 0, won: 0, value: 0 };
+            }
+            userGroups[ownerName].won++;
+            userGroups[ownerName].value += lead.opportunity_value || 0;
+          });
+          
           setProductivityData(Object.values(userGroups));
         }
 
