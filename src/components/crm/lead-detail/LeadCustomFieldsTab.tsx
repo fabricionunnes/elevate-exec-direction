@@ -48,6 +48,121 @@ interface LeadCustomFieldsTabProps {
   onUpdate: () => void;
 }
 
+// Wrapper component for text field with debounced save
+const TextFieldWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+  type = "text",
+  placeholder = "Clique aqui para adicionar",
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+  type?: string;
+  placeholder?: string;
+}) => {
+  const [localValue, setLocalValue] = useState(value || "");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Only sync external value changes when not typing
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setLocalValue(value || "");
+    }
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLInputElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onSave(field, newValue);
+    }, 800);
+  }, [field, onSave]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <Input
+      type={type}
+      value={localValue}
+      onChange={handleChange}
+      placeholder={placeholder}
+      disabled={isSaving}
+    />
+  );
+};
+
+// Wrapper component for textarea field with debounced save
+const TextareaFieldWrapper = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+  placeholder = "Clique aqui para adicionar",
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+  placeholder?: string;
+}) => {
+  const [localValue, setLocalValue] = useState(value || "");
+  const debounceRef = useRef<NodeJS.Timeout | null>(null);
+
+  useEffect(() => {
+    if (!debounceRef.current) {
+      setLocalValue(value || "");
+    }
+  }, [value]);
+
+  const handleChange = useCallback((e: React.ChangeEvent<HTMLTextAreaElement>) => {
+    const newValue = e.target.value;
+    setLocalValue(newValue);
+    
+    if (debounceRef.current) {
+      clearTimeout(debounceRef.current);
+    }
+    
+    debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
+      onSave(field, newValue);
+    }, 800);
+  }, [field, onSave]);
+
+  useEffect(() => {
+    return () => {
+      if (debounceRef.current) {
+        clearTimeout(debounceRef.current);
+      }
+    };
+  }, []);
+
+  return (
+    <Textarea
+      value={localValue}
+      onChange={handleChange}
+      placeholder={placeholder}
+      className="min-h-[80px] resize-none"
+      disabled={isSaving}
+    />
+  );
+};
+
 // Wrapper component for currency field with debounced save
 const CurrencyFieldWrapper = ({
   field,
@@ -64,20 +179,22 @@ const CurrencyFieldWrapper = ({
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
-    setLocalValue(value ? parseFloat(value) : 0);
+    if (!debounceRef.current) {
+      setLocalValue(value ? parseFloat(value) : 0);
+    }
   }, [value]);
 
   const handleChange = useCallback((newValue: number) => {
     setLocalValue(newValue);
     
-    // Debounce the save
     if (debounceRef.current) {
       clearTimeout(debounceRef.current);
     }
     
     debounceRef.current = setTimeout(() => {
+      debounceRef.current = null;
       onSave(field, newValue.toString());
-    }, 500);
+    }, 800);
   }, [field, onSave]);
 
   useEffect(() => {
@@ -499,12 +616,11 @@ export const LeadCustomFieldsTab = ({
     switch (field.field_type) {
       case "textarea":
         return (
-          <Textarea
+          <TextareaFieldWrapper
+            field={field}
             value={value}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-            placeholder="Clique aqui para adicionar"
-            className="min-h-[80px] resize-none"
-            disabled={isSaving}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
           />
         );
       case "select":
@@ -600,32 +716,42 @@ export const LeadCustomFieldsTab = ({
           );
         }
         return (
-          <Input
-            type="number"
+          <TextFieldWrapper
+            field={field}
             value={value}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
+            type="number"
             placeholder="0"
-            disabled={isSaving}
           />
         );
       case "url":
         return (
-          <Input
-            type="url"
+          <TextFieldWrapper
+            field={field}
             value={value}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-            placeholder="Clique aqui para adicionar"
-            disabled={isSaving}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
+            type="url"
+          />
+        );
+      case "email":
+        return (
+          <TextFieldWrapper
+            field={field}
+            value={value}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
+            type="email"
           />
         );
       default:
         return (
-          <Input
-            type={field.field_type === "email" ? "email" : "text"}
+          <TextFieldWrapper
+            field={field}
             value={value}
-            onChange={(e) => handleFieldChange(field, e.target.value)}
-            placeholder="Clique aqui para adicionar"
-            disabled={isSaving}
+            onSave={handleFieldChange}
+            isSaving={isSaving}
           />
         );
     }
