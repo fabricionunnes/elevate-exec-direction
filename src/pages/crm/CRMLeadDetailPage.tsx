@@ -36,6 +36,8 @@ import {
   Plus,
   Smile,
   Trash2,
+  ArrowRightLeft,
+  Copy,
 } from "lucide-react";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
@@ -125,6 +127,11 @@ export const CRMLeadDetailPage = () => {
   const [lostDialogOpen, setLostDialogOpen] = useState(false);
   const [reopenDialogOpen, setReopenDialogOpen] = useState(false);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
+  const [changePipelineDialogOpen, setChangePipelineDialogOpen] = useState(false);
+  const [duplicateDialogOpen, setDuplicateDialogOpen] = useState(false);
+  const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [selectedPipelineId, setSelectedPipelineId] = useState("");
+  const [duplicating, setDuplicating] = useState(false);
   const [selectedLossReason, setSelectedLossReason] = useState("");
   const [activeTab, setActiveTab] = useState("activities");
 
@@ -207,6 +214,14 @@ export const CRMLeadDetailPage = () => {
         .eq("is_active", true)
         .order("sort_order");
       setLossReasons(reasonsData || []);
+
+      // Load all pipelines for pipeline change
+      const { data: pipelinesData } = await supabase
+        .from("crm_pipelines")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      setPipelines(pipelinesData || []);
 
     } catch (error) {
       console.error("Error loading lead:", error);
@@ -406,6 +421,117 @@ export const CRMLeadDetailPage = () => {
     }
   };
 
+  const handleChangePipeline = async () => {
+    if (!lead || !selectedPipelineId) {
+      toast.error("Selecione um funil");
+      return;
+    }
+
+    try {
+      // Get the first stage of the new pipeline
+      const { data: firstStage } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .eq("pipeline_id", selectedPipelineId)
+        .eq("is_final", false)
+        .order("sort_order")
+        .limit(1)
+        .single();
+
+      if (!firstStage) {
+        toast.error("Nenhuma etapa encontrada no funil selecionado");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ 
+          pipeline_id: selectedPipelineId,
+          stage_id: firstStage.id
+        })
+        .eq("id", lead.id);
+
+      if (error) throw error;
+
+      toast.success("Lead movido para outro funil!");
+      setChangePipelineDialogOpen(false);
+      setSelectedPipelineId("");
+      loadLead();
+    } catch (error) {
+      console.error("Error changing pipeline:", error);
+      toast.error("Erro ao mudar de funil");
+    }
+  };
+
+  const handleDuplicateLead = async () => {
+    if (!lead) return;
+
+    setDuplicating(true);
+    try {
+      // Get first stage of the pipeline
+      const { data: firstStage } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .eq("pipeline_id", lead.pipeline_id)
+        .eq("is_final", false)
+        .order("sort_order")
+        .limit(1)
+        .single();
+
+      const { data: newLead, error } = await supabase
+        .from("crm_leads")
+        .insert({
+          name: `${lead.name} (cópia)`,
+          phone: lead.phone,
+          email: lead.email,
+          document: lead.document,
+          company: lead.company,
+          role: lead.role,
+          city: lead.city,
+          state: lead.state,
+          origin: lead.origin,
+          origin_id: lead.origin_id,
+          owner_staff_id: lead.owner_staff_id,
+          pipeline_id: lead.pipeline_id,
+          stage_id: firstStage?.id || lead.stage_id,
+          opportunity_value: lead.opportunity_value,
+          probability: lead.probability,
+          segment: lead.segment,
+          employee_count: lead.employee_count,
+          main_pain: lead.main_pain,
+          urgency: lead.urgency,
+          fit_score: lead.fit_score,
+          notes: lead.notes,
+        })
+        .select("id")
+        .single();
+
+      if (error) throw error;
+
+      // Copy tags
+      if (lead.tags && lead.tags.length > 0 && newLead) {
+        const tagInserts = lead.tags.map(t => ({
+          lead_id: newLead.id,
+          tag_id: t.tag.id
+        }));
+        await supabase.from("crm_lead_tags").insert(tagInserts);
+      }
+
+      toast.success("Lead duplicado com sucesso!");
+      setDuplicateDialogOpen(false);
+      
+      // Navigate to the new lead
+      if (newLead) {
+        navigate(`/crm/leads/${newLead.id}`);
+      }
+    } catch (error) {
+      console.error("Error duplicating lead:", error);
+      toast.error("Erro ao duplicar lead");
+    } finally {
+      setDuplicating(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -528,6 +654,15 @@ export const CRMLeadDetailPage = () => {
                 >
                   <Flag className="h-4 w-4 mr-2 text-blue-500" />
                   Marcar como em Aberto
+                </DropdownMenuItem>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => setChangePipelineDialogOpen(true)}>
+                  <ArrowRightLeft className="h-4 w-4 mr-2" />
+                  Mudar de Funil
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setDuplicateDialogOpen(true)}>
+                  <Copy className="h-4 w-4 mr-2" />
+                  Duplicar Lead
                 </DropdownMenuItem>
                 {isAdmin && (
                   <>
@@ -777,6 +912,59 @@ export const CRMLeadDetailPage = () => {
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
             >
               Excluir Lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Change Pipeline Dialog */}
+      <AlertDialog open={changePipelineDialogOpen} onOpenChange={setChangePipelineDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Mudar de Funil</AlertDialogTitle>
+            <AlertDialogDescription>
+              Selecione o funil para onde deseja mover este lead. Ele será colocado na primeira etapa do novo funil.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <div className="py-4">
+            <Label>Novo Funil</Label>
+            <Select value={selectedPipelineId} onValueChange={setSelectedPipelineId}>
+              <SelectTrigger className="mt-2">
+                <SelectValue placeholder="Selecione um funil" />
+              </SelectTrigger>
+              <SelectContent>
+                {pipelines
+                  .filter(p => p.id !== lead.pipeline_id)
+                  .map(pipeline => (
+                    <SelectItem key={pipeline.id} value={pipeline.id}>
+                      {pipeline.name}
+                    </SelectItem>
+                  ))}
+              </SelectContent>
+            </Select>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setSelectedPipelineId("")}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleChangePipeline}>
+              Mover Lead
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Duplicate Dialog */}
+      <AlertDialog open={duplicateDialogOpen} onOpenChange={setDuplicateDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Duplicar Lead</AlertDialogTitle>
+            <AlertDialogDescription>
+              Uma cópia deste lead será criada com todas as informações (exceto atividades e histórico). O novo lead começará na primeira etapa do funil.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDuplicateLead} disabled={duplicating}>
+              {duplicating ? "Duplicando..." : "Duplicar Lead"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
