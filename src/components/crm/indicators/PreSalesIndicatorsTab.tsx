@@ -3,6 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
@@ -20,7 +21,8 @@ import {
 } from "recharts";
 import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar, AlertTriangle, CheckCircle, XCircle, TrendingUp } from "lucide-react";
+import { Phone, Users, Calendar, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload } from "lucide-react";
+import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
 
 interface SDRMetrics {
   id: string;
@@ -55,6 +57,7 @@ export const PreSalesIndicatorsTab = () => {
   const [selectedSDR, setSelectedSDR] = useState<string>("all");
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [importDialogOpen, setImportDialogOpen] = useState(false);
 
   // Main metrics
   const [metrics, setMetrics] = useState({
@@ -416,9 +419,15 @@ export const PreSalesIndicatorsTab = () => {
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="secondary" className="ml-auto">
-          {format(new Date(), "MMMM yyyy", { locale: ptBR })}
-        </Badge>
+        <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+            <Upload className="h-4 w-4 mr-2" />
+            Importar Pré-Vendas
+          </Button>
+          <Badge variant="secondary">
+            {format(new Date(), "MMMM yyyy", { locale: ptBR })}
+          </Badge>
+        </div>
       </div>
 
       {/* Top metrics - Métricas Pré-Vendas */}
@@ -766,6 +775,12 @@ export const PreSalesIndicatorsTab = () => {
           </Table>
         </CardContent>
       </Card>
+
+      <ImportPreSalesDialog
+        open={importDialogOpen}
+        onOpenChange={setImportDialogOpen}
+        onSuccess={() => window.location.reload()}
+      />
     </div>
   );
 };
