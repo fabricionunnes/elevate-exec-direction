@@ -29,6 +29,7 @@ interface GoalType {
   category: string | null;
   has_super_meta: boolean;
   has_hiper_meta: boolean;
+  has_ote: boolean;
   is_active: boolean;
 }
 
@@ -45,6 +46,9 @@ interface GoalValue {
   meta_value: number;
   super_meta_value: number | null;
   hiper_meta_value: number | null;
+  ote_base: number;
+  ote_variable: number;
+  ote_accelerator: number | null;
 }
 
 const CRM_ROLES = ["closer", "sdr", "social_setter", "bdr", "head_comercial"];
@@ -181,6 +185,9 @@ export const CRMGoalValuesManager = () => {
             meta_value: 0,
             super_meta_value: null,
             hiper_meta_value: null,
+            ote_base: 0,
+            ote_variable: 0,
+            ote_accelerator: null,
           });
         }
       });
@@ -206,7 +213,7 @@ export const CRMGoalValuesManager = () => {
     setSaving(true);
     try {
       const valuesToUpsert = Array.from(goalValues.values())
-        .filter(v => v.meta_value > 0 || v.super_meta_value || v.hiper_meta_value)
+        .filter(v => v.meta_value > 0 || v.super_meta_value || v.hiper_meta_value || v.ote_base > 0 || v.ote_variable > 0)
         .map((v) => ({
           staff_id: v.staff_id,
           goal_type_id: selectedGoalType,
@@ -215,6 +222,9 @@ export const CRMGoalValuesManager = () => {
           meta_value: v.meta_value,
           super_meta_value: v.super_meta_value,
           hiper_meta_value: v.hiper_meta_value,
+          ote_base: v.ote_base,
+          ote_variable: v.ote_variable,
+          ote_accelerator: v.ote_accelerator,
         }));
 
       if (valuesToUpsert.length > 0) {
@@ -360,7 +370,7 @@ export const CRMGoalValuesManager = () => {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead className="w-[200px]">Colaborador</TableHead>
+                <TableHead className="w-[180px]">Colaborador</TableHead>
                 <TableHead>Cargo</TableHead>
                 <TableHead className="text-right">Meta</TableHead>
                 {selectedGoalTypeData.has_super_meta && (
@@ -368,6 +378,13 @@ export const CRMGoalValuesManager = () => {
                 )}
                 {selectedGoalTypeData.has_hiper_meta && (
                   <TableHead className="text-right">Hiper Meta</TableHead>
+                )}
+                {selectedGoalTypeData.has_ote && (
+                  <>
+                    <TableHead className="text-right">OTE Base</TableHead>
+                    <TableHead className="text-right">OTE Variável</TableHead>
+                    <TableHead className="text-right">Acelerador</TableHead>
+                  </>
                 )}
               </TableRow>
             </TableHeader>
@@ -391,7 +408,7 @@ export const CRMGoalValuesManager = () => {
                           onChange={(e) =>
                             updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
                           }
-                          className="w-28 text-right"
+                          className="w-24 text-right"
                         />
                       </div>
                     </TableCell>
@@ -407,7 +424,7 @@ export const CRMGoalValuesManager = () => {
                             onChange={(e) =>
                               updateValue(staff.id, "super_meta_value", parseFloat(e.target.value) || 0)
                             }
-                            className="w-28 text-right"
+                            className="w-24 text-right"
                           />
                         </div>
                       </TableCell>
@@ -424,10 +441,57 @@ export const CRMGoalValuesManager = () => {
                             onChange={(e) =>
                               updateValue(staff.id, "hiper_meta_value", parseFloat(e.target.value) || 0)
                             }
-                            className="w-28 text-right"
+                            className="w-24 text-right"
                           />
                         </div>
                       </TableCell>
+                    )}
+                    {selectedGoalTypeData.has_ote && (
+                      <>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className="text-muted-foreground text-sm">R$</span>
+                            <Input
+                              type="number"
+                              value={value?.ote_base || 0}
+                              onChange={(e) =>
+                                updateValue(staff.id, "ote_base", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-24 text-right"
+                              placeholder="Fixo"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <span className="text-muted-foreground text-sm">R$</span>
+                            <Input
+                              type="number"
+                              value={value?.ote_variable || 0}
+                              onChange={(e) =>
+                                updateValue(staff.id, "ote_variable", parseFloat(e.target.value) || 0)
+                              }
+                              className="w-24 text-right"
+                              placeholder="Variável"
+                            />
+                          </div>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex items-center justify-end gap-1">
+                            <Input
+                              type="number"
+                              step="0.1"
+                              value={value?.ote_accelerator || ""}
+                              onChange={(e) =>
+                                updateValue(staff.id, "ote_accelerator", e.target.value ? parseFloat(e.target.value) : null)
+                              }
+                              className="w-20 text-right"
+                              placeholder="1.5x"
+                            />
+                            <span className="text-muted-foreground text-sm">x</span>
+                          </div>
+                        </TableCell>
+                      </>
                     )}
                   </TableRow>
                 );
