@@ -7,6 +7,8 @@ import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Progress } from "@/components/ui/progress";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar } from "@/components/ui/calendar";
 import {
   BarChart,
   Bar,
@@ -19,10 +21,12 @@ import {
   Legend,
   Cell,
 } from "recharts";
-import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate } from "date-fns";
+import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { Phone, Users, Calendar, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload } from "lucide-react";
+import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
+import { DateRange } from "react-day-picker";
+import { cn } from "@/lib/utils";
 
 interface SDRMetrics {
   id: string;
@@ -58,6 +62,11 @@ export const PreSalesIndicatorsTab = () => {
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
+  const [dateRange, setDateRange] = useState<DateRange | undefined>({
+    from: startOfMonth(new Date()),
+    to: endOfMonth(new Date()),
+  });
+  const [dateOpen, setDateOpen] = useState(false);
 
   // Main metrics
   const [metrics, setMetrics] = useState({
@@ -105,9 +114,15 @@ export const PreSalesIndicatorsTab = () => {
   });
 
   useEffect(() => {
-    loadData();
     loadPipelines();
   }, []);
+
+  // Load data when date range is complete (both from and to selected)
+  useEffect(() => {
+    if (dateRange?.from && dateRange?.to) {
+      loadData();
+    }
+  }, [dateRange?.from?.getTime(), dateRange?.to?.getTime()]);
 
   const loadPipelines = async () => {
     const { data } = await supabase
@@ -120,13 +135,15 @@ export const PreSalesIndicatorsTab = () => {
   };
 
   const loadData = async () => {
+    if (!dateRange?.from || !dateRange?.to) return;
+    
     setLoading(true);
     try {
+      const periodStart = dateRange.from;
+      const periodEnd = dateRange.to;
+      const totalDaysInPeriod = differenceInDays(periodEnd, periodStart) + 1;
       const now = new Date();
-      const monthStart = startOfMonth(now);
-      const monthEnd = endOfMonth(now);
-      const daysInMonth = getDaysInMonth(now);
-      const currentDay = getDate(now);
+      const daysElapsed = Math.min(differenceInDays(now, periodStart) + 1, totalDaysInPeriod);
 
       // Load SDR staff (only actual SDR roles with CRM access)
       // First get staff with CRM permission
@@ -157,8 +174,8 @@ export const PreSalesIndicatorsTab = () => {
       const { data: dailyActivities } = await supabase
         .from("crm_daily_activities")
         .select("*")
-        .gte("activity_date", format(monthStart, "yyyy-MM-dd"))
-        .lte("activity_date", format(monthEnd, "yyyy-MM-dd"));
+        .gte("activity_date", format(periodStart, "yyyy-MM-dd"))
+        .lte("activity_date", format(periodEnd, "yyyy-MM-dd"));
 
       // Load scheduled calls
       const { data: calls } = await supabase
@@ -168,8 +185,8 @@ export const PreSalesIndicatorsTab = () => {
           scheduled_by_staff:onboarding_staff!crm_scheduled_calls_scheduled_by_fkey(id, name),
           assigned_to_staff:onboarding_staff!crm_scheduled_calls_assigned_to_fkey(id, name)
         `)
-        .gte("scheduled_at", monthStart.toISOString())
-        .lte("scheduled_at", monthEnd.toISOString());
+        .gte("scheduled_at", periodStart.toISOString())
+        .lte("scheduled_at", periodEnd.toISOString());
 
       // Load sales
       const { data: salesData } = await supabase
@@ -182,8 +199,8 @@ export const PreSalesIndicatorsTab = () => {
           product:crm_products(id, name),
           lead:crm_leads(id, name, company)
         `)
-        .gte("sale_date", format(monthStart, "yyyy-MM-dd"))
-        .lte("sale_date", format(monthEnd, "yyyy-MM-dd"));
+        .gte("sale_date", format(periodStart, "yyyy-MM-dd"))
+        .lte("sale_date", format(periodEnd, "yyyy-MM-dd"));
 
       // Load targets
       const { data: targets } = await supabase
@@ -216,8 +233,8 @@ export const PreSalesIndicatorsTab = () => {
       const metaReunioes = meetingsTarget?.target_value || 99;
 
       // Calculate projections
-      const dailyAvgMeetings = currentDay > 0 ? totalCompleted / currentDay : 0;
-      const projectedMeetings = dailyAvgMeetings * daysInMonth;
+      const dailyAvgMeetings = daysElapsed > 0 ? totalCompleted / daysElapsed : 0;
+      const projectedMeetings = dailyAvgMeetings * totalDaysInPeriod;
 
       // Conversion rates
       const conversaoAbord = totalApproaches > 0 ? (totalConnections / totalApproaches) * 100 : 0;
@@ -288,12 +305,13 @@ export const PreSalesIndicatorsTab = () => {
 
       // Calculate daily meetings by SDR
       const dailyMeetings: { day: number; [key: string]: number }[] = [];
-      for (let day = 1; day <= currentDay; day++) {
+      for (let day = 1; day <= totalDaysInPeriod; day++) {
         const dayData: { day: number; [key: string]: number } = { day };
         sdrMetricsList.forEach(sdr => {
           const dayMeetings = (calls || []).filter(c => {
-            const callDay = getDate(new Date(c.scheduled_at));
-            return callDay === day && c.scheduled_by === sdr.id && c.status === "completed";
+            const callDate = new Date(c.scheduled_at);
+            const dayOfPeriod = differenceInDays(callDate, periodStart) + 1;
+            return dayOfPeriod === day && c.scheduled_by === sdr.id && c.status === "completed";
           }).length;
           dayData[sdr.name] = dayMeetings;
         });
@@ -305,8 +323,12 @@ export const PreSalesIndicatorsTab = () => {
       const noShowEvolution: { day: number; noShow: number; avg: number }[] = [];
       let cumulativeNoShow = 0;
       let cumulativeTotal = 0;
-      for (let day = 1; day <= currentDay; day++) {
-        const dayCalls = (calls || []).filter(c => getDate(new Date(c.scheduled_at)) === day);
+      for (let day = 1; day <= totalDaysInPeriod; day++) {
+        const dayCalls = (calls || []).filter(c => {
+          const callDate = new Date(c.scheduled_at);
+          const dayOfPeriod = differenceInDays(callDate, periodStart) + 1;
+          return dayOfPeriod === day;
+        });
         const dayNoShow = dayCalls.filter(c => c.status === "no_show").length;
         cumulativeNoShow += dayNoShow;
         cumulativeTotal += dayCalls.length;
@@ -321,8 +343,12 @@ export const PreSalesIndicatorsTab = () => {
 
       // Calculate calls vs completed by day
       const callsComparison: { day: number; agendamentos: number; reunioes: number; cancelamentos: number; reagendamentos: number }[] = [];
-      for (let day = 1; day <= currentDay; day++) {
-        const dayCalls = (calls || []).filter(c => getDate(new Date(c.scheduled_at)) === day);
+      for (let day = 1; day <= totalDaysInPeriod; day++) {
+        const dayCalls = (calls || []).filter(c => {
+          const callDate = new Date(c.scheduled_at);
+          const dayOfPeriod = differenceInDays(callDate, periodStart) + 1;
+          return dayOfPeriod === day;
+        });
         callsComparison.push({
           day,
           agendamentos: dayCalls.length,
@@ -397,6 +423,46 @@ export const PreSalesIndicatorsTab = () => {
             Bônus: 0
           </Badge>
         </div>
+        
+        {/* Date Range Filter */}
+        <Popover open={dateOpen} onOpenChange={setDateOpen}>
+          <PopoverTrigger asChild>
+            <Button
+              variant="outline"
+              size="sm"
+              className={cn(
+                "h-9 gap-2",
+                dateRange && "bg-primary/10 border-primary/30"
+              )}
+            >
+              <CalendarIcon className="h-4 w-4" />
+              {dateRange?.from ? (
+                dateRange.to ? (
+                  <>
+                    {format(dateRange.from, "dd/MM", { locale: ptBR })} -{" "}
+                    {format(dateRange.to, "dd/MM", { locale: ptBR })}
+                  </>
+                ) : (
+                  format(dateRange.from, "dd/MM/yy", { locale: ptBR })
+                )
+              ) : (
+                "Data"
+              )}
+              <ChevronDown className="h-3 w-3" />
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="range"
+              selected={dateRange}
+              onSelect={setDateRange}
+              locale={ptBR}
+              numberOfMonths={2}
+              className="pointer-events-auto"
+            />
+          </PopoverContent>
+        </Popover>
+        
         <Select value={selectedSDR} onValueChange={setSelectedSDR}>
           <SelectTrigger className="w-[180px]">
             <SelectValue placeholder="SDR / SS" />
@@ -424,9 +490,11 @@ export const PreSalesIndicatorsTab = () => {
             <Upload className="h-4 w-4 mr-2" />
             Importar Pré-Vendas
           </Button>
-          <Badge variant="secondary">
-            {format(new Date(), "MMMM yyyy", { locale: ptBR })}
-          </Badge>
+          {dateRange?.from && dateRange?.to && (
+            <Badge variant="secondary">
+              {format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
+            </Badge>
+          )}
         </div>
       </div>
 
