@@ -9734,7 +9734,7 @@ export type Database = {
             foreignKeyName: "crm_leads_product_id_fkey"
             columns: ["product_id"]
             isOneToOne: false
-            referencedRelation: "crm_products"
+            referencedRelation: "onboarding_services"
             referencedColumns: ["id"]
           },
           {

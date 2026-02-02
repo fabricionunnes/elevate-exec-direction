@@ -298,9 +298,9 @@ export const LeadCustomFieldsTab = ({
   };
 
   const loadProductsAndPlans = async () => {
-    // Load active products from crm_products
+    // Load active services from onboarding_services
     const { data: productsData } = await supabase
-      .from("crm_products")
+      .from("onboarding_services")
       .select("id, name")
       .eq("is_active", true)
       .order("name");
