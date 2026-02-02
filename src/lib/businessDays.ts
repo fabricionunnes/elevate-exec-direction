@@ -124,3 +124,23 @@ export function addBusinessDays(startDate: Date, days: number): Date {
 export function ensureBusinessDay(date: Date): Date {
   return getNextBusinessDay(date);
 }
+
+// Helper: Count business days remaining in month (excluding today)
+export function getRemainingBusinessDaysInMonth(fromDate: Date): number {
+  const year = fromDate.getFullYear();
+  const month = fromDate.getMonth();
+  const lastDayOfMonth = new Date(year, month + 1, 0);
+  
+  let count = 0;
+  const current = new Date(fromDate);
+  current.setDate(current.getDate() + 1); // Start from tomorrow
+  
+  while (current <= lastDayOfMonth) {
+    if (isBusinessDay(current)) {
+      count++;
+    }
+    current.setDate(current.getDate() + 1);
+  }
+  
+  return count;
+}
