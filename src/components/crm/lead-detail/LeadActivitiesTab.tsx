@@ -293,133 +293,149 @@ export const LeadActivitiesTab = ({
   };
 
   return (
-    <div className="flex h-full">
-      {/* Left side - Activities (narrower) */}
-      <div className="w-[350px] min-w-[300px] shrink-0 border-r border-border">
-        {/* Stage Progress Bar */}
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center gap-2 overflow-x-auto pb-2">
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <ChevronLeft className="h-4 w-4" />
-            </Button>
-            
-            <div className="flex items-center gap-2">
-              {stages.filter(s => !s.is_final).map((stage, index) => {
+    <div className="flex flex-col h-full">
+      {/* Stage Progress Bar - Full Width */}
+      <div className="p-4 border-b border-border w-full">
+        <div className="flex items-center gap-2 relative">
+          <Button variant="ghost" size="icon" className="shrink-0 z-10">
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          
+          <div className="flex-1 overflow-x-auto">
+            <div className="flex items-center min-w-max">
+              {stages.filter(s => !s.is_final).map((stage, index, arr) => {
                 const isActive = stage.id === currentStageId;
                 const isPast = index < currentStageIndex;
+                const isLast = index === arr.length - 1;
                 
                 return (
-                  <button
-                    key={stage.id}
-                    onClick={() => onStageChange(stage.id)}
-                    className={cn(
-                      "flex items-center gap-2 px-3 py-1.5 rounded-full text-xs font-medium whitespace-nowrap transition-all",
-                      isActive
-                        ? "text-white"
-                        : isPast
-                        ? "bg-muted text-muted-foreground"
-                        : "bg-muted/50 text-muted-foreground hover:bg-muted"
+                  <div key={stage.id} className="flex items-center">
+                    <button
+                      onClick={() => onStageChange(stage.id)}
+                      className="flex flex-col items-center gap-1 relative group"
+                    >
+                      <div
+                        className={cn(
+                          "flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all",
+                          isActive
+                            ? "text-white ring-4 ring-offset-2 ring-offset-background ring-primary/40"
+                            : isPast
+                            ? "bg-primary text-primary-foreground"
+                            : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/20"
+                        )}
+                        style={isActive ? { backgroundColor: stage.color } : undefined}
+                      >
+                        {index + 1}
+                      </div>
+                      <span className={cn(
+                        "text-xs font-medium whitespace-nowrap max-w-[100px] truncate",
+                        isActive 
+                          ? "text-foreground" 
+                          : isPast 
+                          ? "text-primary"
+                          : "text-muted-foreground"
+                      )}>
+                        {stage.name}
+                      </span>
+                    </button>
+                    
+                    {/* Connector line */}
+                    {!isLast && (
+                      <div className={cn(
+                        "w-12 lg:w-20 xl:w-28 h-0.5 mx-1",
+                        isPast ? "bg-primary" : "bg-muted"
+                      )} />
                     )}
-                    style={isActive ? { backgroundColor: stage.color } : undefined}
-                  >
-                    <span className={cn(
-                      "flex items-center justify-center w-5 h-5 rounded-full text-[10px]",
-                      isActive 
-                        ? "bg-white/20" 
-                        : isPast 
-                        ? "bg-primary text-primary-foreground" 
-                        : "bg-muted-foreground/20"
-                    )}>
-                      {index + 1}
-                    </span>
-                    {stage.name}
-                  </button>
+                  </div>
                 );
               })}
             </div>
-
-            <Button variant="ghost" size="icon" className="shrink-0">
-              <ChevronRight className="h-4 w-4" />
-            </Button>
           </div>
 
+          <Button variant="ghost" size="icon" className="shrink-0 z-10">
+            <ChevronRight className="h-4 w-4" />
+          </Button>
         </div>
-
-        {/* Checklist Items from Stage */}
-        <ScrollArea className="flex-1">
-          {checklistLoading ? (
-            <div className="flex items-center justify-center py-8">
-              <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
-            </div>
-          ) : (
-            <div>
-              {checklistItems.length > 0 ? (
-                checklistItems.map((item) => (
-                  <div
-                    key={item.id}
-                    onClick={() => setSelectedChecklistItem(item)}
-                    className={cn(
-                      "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
-                      selectedChecklistItem?.id === item.id
-                        ? "bg-primary/5 border-l-primary"
-                        : "hover:bg-muted/30 border-l-transparent"
-                    )}
-                  >
-                    <button
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        toggleChecklist(item.id);
-                        if (selectedChecklistItem?.id === item.id) {
-                          setSelectedChecklistItem({ ...item, completed: !item.completed });
-                        }
-                      }}
-                      className={cn(
-                        "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
-                        item.completed
-                          ? "bg-primary border-primary"
-                          : "border-muted-foreground/50 hover:border-primary"
-                      )}
-                    >
-                      {item.completed && (
-                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                        </svg>
-                      )}
-                    </button>
-                    
-                    <span className="text-muted-foreground shrink-0">
-                      {getChecklistItemIcon(item.item_type)}
-                    </span>
-                    
-                    <span className={cn(
-                      "text-sm flex-1 truncate",
-                      item.completed && "line-through text-muted-foreground"
-                    )}>
-                      {item.title}
-                    </span>
-                  </div>
-                ))
-              ) : (
-                <div className="text-center py-8 text-sm text-muted-foreground">
-                  Nenhuma atividade configurada para esta etapa
-                </div>
-              )}
-              
-              {/* Add Task Button */}
-              <button
-                onClick={() => setShowAddActivityDialog(true)}
-                className="flex items-center gap-2 px-4 py-3 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border"
-              >
-                <Plus className="h-4 w-4" />
-                <span>Adicionar tarefa</span>
-              </button>
-            </div>
-          )}
-        </ScrollArea>
       </div>
 
-      {/* Right side - Selected Checklist Item Details (wider) */}
-      <div className="flex-1 min-w-0 bg-card flex flex-col">
+      {/* Content - Two columns layout */}
+      <div className="flex flex-1 min-h-0">
+        {/* Left side - Checklist */}
+        <div className="w-[350px] min-w-[300px] shrink-0 border-r border-border">
+          <ScrollArea className="h-full">
+            {checklistLoading ? (
+              <div className="flex items-center justify-center py-8">
+                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+              </div>
+            ) : (
+              <div>
+                {checklistItems.length > 0 ? (
+                  checklistItems.map((item) => (
+                    <div
+                      key={item.id}
+                      onClick={() => setSelectedChecklistItem(item)}
+                      className={cn(
+                        "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
+                        selectedChecklistItem?.id === item.id
+                          ? "bg-primary/5 border-l-primary"
+                          : "hover:bg-muted/30 border-l-transparent"
+                      )}
+                    >
+                      <button
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          toggleChecklist(item.id);
+                          if (selectedChecklistItem?.id === item.id) {
+                            setSelectedChecklistItem({ ...item, completed: !item.completed });
+                          }
+                        }}
+                        className={cn(
+                          "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                          item.completed
+                            ? "bg-primary border-primary"
+                            : "border-muted-foreground/50 hover:border-primary"
+                        )}
+                      >
+                        {item.completed && (
+                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                      
+                      <span className="text-muted-foreground shrink-0">
+                        {getChecklistItemIcon(item.item_type)}
+                      </span>
+                      
+                      <span className={cn(
+                        "text-sm flex-1 truncate",
+                        item.completed && "line-through text-muted-foreground"
+                      )}>
+                        {item.title}
+                      </span>
+                    </div>
+                  ))
+                ) : (
+                  <div className="text-center py-8 text-sm text-muted-foreground">
+                    Nenhuma atividade configurada para esta etapa
+                  </div>
+                )}
+                
+                {/* Add Task Button */}
+                <button
+                  onClick={() => setShowAddActivityDialog(true)}
+                  className="flex items-center gap-2 px-4 py-3 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border"
+                >
+                  <Plus className="h-4 w-4" />
+                  <span>Adicionar tarefa</span>
+                </button>
+              </div>
+            )}
+          </ScrollArea>
+        </div>
+
+        {/* Right side - Selected Checklist Item Details */}
+        <div className="flex-1 min-w-0 bg-card flex flex-col">
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-border flex items-center gap-2">
@@ -527,6 +543,7 @@ export const LeadActivitiesTab = ({
             </p>
           </div>
         )}
+        </div>
       </div>
 
       {/* Dialogs */}
