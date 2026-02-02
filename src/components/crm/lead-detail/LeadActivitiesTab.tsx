@@ -351,57 +351,68 @@ export const LeadActivitiesTab = ({
             <div className="flex items-center justify-center py-8">
               <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
             </div>
-          ) : checklistItems.length > 0 ? (
+          ) : (
             <div>
-              {checklistItems.map((item) => (
-                <div
-                  key={item.id}
-                  onClick={() => setSelectedChecklistItem(item)}
-                  className={cn(
-                    "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
-                    selectedChecklistItem?.id === item.id
-                      ? "bg-primary/5 border-l-primary"
-                      : "hover:bg-muted/30 border-l-transparent"
-                  )}
-                >
-                  <button
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      toggleChecklist(item.id);
-                      if (selectedChecklistItem?.id === item.id) {
-                        setSelectedChecklistItem({ ...item, completed: !item.completed });
-                      }
-                    }}
+              {checklistItems.length > 0 ? (
+                checklistItems.map((item) => (
+                  <div
+                    key={item.id}
+                    onClick={() => setSelectedChecklistItem(item)}
                     className={cn(
-                      "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
-                      item.completed
-                        ? "bg-primary border-primary"
-                        : "border-muted-foreground/50 hover:border-primary"
+                      "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
+                      selectedChecklistItem?.id === item.id
+                        ? "bg-primary/5 border-l-primary"
+                        : "hover:bg-muted/30 border-l-transparent"
                     )}
                   >
-                    {item.completed && (
-                      <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                      </svg>
-                    )}
-                  </button>
-                  
-                  <span className="text-muted-foreground shrink-0">
-                    {getChecklistItemIcon(item.item_type)}
-                  </span>
-                  
-                  <span className={cn(
-                    "text-sm flex-1 truncate",
-                    item.completed && "line-through text-muted-foreground"
-                  )}>
-                    {item.title}
-                  </span>
+                    <button
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        toggleChecklist(item.id);
+                        if (selectedChecklistItem?.id === item.id) {
+                          setSelectedChecklistItem({ ...item, completed: !item.completed });
+                        }
+                      }}
+                      className={cn(
+                        "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                        item.completed
+                          ? "bg-primary border-primary"
+                          : "border-muted-foreground/50 hover:border-primary"
+                      )}
+                    >
+                      {item.completed && (
+                        <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                        </svg>
+                      )}
+                    </button>
+                    
+                    <span className="text-muted-foreground shrink-0">
+                      {getChecklistItemIcon(item.item_type)}
+                    </span>
+                    
+                    <span className={cn(
+                      "text-sm flex-1 truncate",
+                      item.completed && "line-through text-muted-foreground"
+                    )}>
+                      {item.title}
+                    </span>
+                  </div>
+                ))
+              ) : (
+                <div className="text-center py-8 text-sm text-muted-foreground">
+                  Nenhuma atividade configurada para esta etapa
                 </div>
-              ))}
-            </div>
-          ) : (
-            <div className="text-center py-8 text-sm text-muted-foreground">
-              Nenhuma atividade configurada para esta etapa
+              )}
+              
+              {/* Add Task Button */}
+              <button
+                onClick={() => setShowAddActivityDialog(true)}
+                className="flex items-center gap-2 px-4 py-3 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border"
+              >
+                <Plus className="h-4 w-4" />
+                <span>Adicionar tarefa</span>
+              </button>
             </div>
           )}
         </ScrollArea>
