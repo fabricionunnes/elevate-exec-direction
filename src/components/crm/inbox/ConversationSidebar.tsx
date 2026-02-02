@@ -24,7 +24,9 @@ import {
   MessageSquare,
   History,
   Flag,
-  User
+  User,
+  ArrowRightLeft,
+  Briefcase,
 } from "lucide-react";
 import { WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { supabase } from "@/integrations/supabase/client";
@@ -57,6 +59,8 @@ export function ConversationSidebar({
 }: ConversationSidebarProps) {
   const { staffId } = useCRMContext();
   const [showAddDealDialog, setShowAddDealDialog] = useState(false);
+  const [showChangePipelineDialog, setShowChangePipelineDialog] = useState(false);
+  const [selectedLeadForPipelineChange, setSelectedLeadForPipelineChange] = useState<any>(null);
   const [showEditContactDialog, setShowEditContactDialog] = useState(false);
   const [showScheduleDialog, setShowScheduleDialog] = useState(false);
   const [showTaskDialog, setShowTaskDialog] = useState(false);
@@ -65,6 +69,8 @@ export function ConversationSidebar({
   const [assignedOpen, setAssignedOpen] = useState(true);
   const [linkedLeadsOpen, setLinkedLeadsOpen] = useState(true);
   const [loading, setLoading] = useState(false);
+  const [allPipelines, setAllPipelines] = useState<{ id: string; name: string }[]>([]);
+  const [newPipelineId, setNewPipelineId] = useState("");
   
   // Linked leads based on phone
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
@@ -148,6 +154,19 @@ export function ConversationSidebar({
       setOriginGroups(data || []);
     };
     loadOriginGroups();
+  }, []);
+
+  // Load all pipelines for changing pipeline
+  useEffect(() => {
+    const loadAllPipelines = async () => {
+      const { data } = await supabase
+        .from("crm_pipelines")
+        .select("id, name")
+        .eq("is_active", true)
+        .order("name");
+      setAllPipelines(data || []);
+    };
+    loadAllPipelines();
   }, []);
 
   // Load pipelines (origins) when origin group changes
@@ -415,6 +434,52 @@ export function ConversationSidebar({
     }
   };
 
+  const handleChangePipeline = async () => {
+    if (!selectedLeadForPipelineChange || !newPipelineId) {
+      toast.error("Selecione um funil");
+      return;
+    }
+
+    setLoading(true);
+    try {
+      // Get the first stage of the new pipeline
+      const { data: firstStage } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .eq("pipeline_id", newPipelineId)
+        .eq("is_final", false)
+        .order("sort_order")
+        .limit(1)
+        .single();
+
+      if (!firstStage) {
+        toast.error("Nenhuma etapa encontrada no funil selecionado");
+        return;
+      }
+
+      const { error } = await supabase
+        .from("crm_leads")
+        .update({ 
+          pipeline_id: newPipelineId,
+          stage_id: firstStage.id
+        })
+        .eq("id", selectedLeadForPipelineChange.id);
+
+      if (error) throw error;
+
+      toast.success("Lead movido para outro funil!");
+      setShowChangePipelineDialog(false);
+      setSelectedLeadForPipelineChange(null);
+      setNewPipelineId("");
+      refetchLinkedLeads();
+    } catch (error) {
+      console.error("Error changing pipeline:", error);
+      toast.error("Erro ao mudar de funil");
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <div className="w-[320px] border-l border-border bg-card flex flex-col">
       {/* Header with Lead/Deal info */}
@@ -537,21 +602,71 @@ export function ConversationSidebar({
         />
       )}
 
-      {/* Add Deal Button */}
-      <div className="p-4 border-b border-border">
-        <Button 
-          variant="outline" 
-          className="w-full justify-between"
-          onClick={() => {
-            setShowAddDealDialog(true);
-          }}
-        >
-          <span className="flex items-center gap-2">
-            <UserPlus className="h-4 w-4" />
-            Adicionar negócio
-          </span>
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+      {/* Add Deal / Existing Deals Section */}
+      <div className="p-4 border-b border-border space-y-2">
+        {/* Show existing deals with pipeline info and change option */}
+        {linkedLeads.length > 0 ? (
+          <>
+            {linkedLeads.slice(0, 3).map((lead) => (
+              <div 
+                key={lead.id}
+                className="flex items-center justify-between p-2 rounded-lg bg-muted/50 border"
+              >
+                <div className="flex items-center gap-2 min-w-0 flex-1">
+                  <Briefcase className="h-4 w-4 text-muted-foreground shrink-0" />
+                  <div className="min-w-0">
+                    <p className="text-xs font-medium truncate">{lead.name}</p>
+                    <p className="text-[10px] text-muted-foreground truncate">
+                      {lead.pipeline?.name || "Sem funil"}
+                    </p>
+                  </div>
+                </div>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 px-2 text-xs shrink-0"
+                  onClick={() => {
+                    setSelectedLeadForPipelineChange(lead);
+                    setNewPipelineId(lead.pipeline?.id || "");
+                    setShowChangePipelineDialog(true);
+                  }}
+                  title="Mudar de funil"
+                >
+                  <ArrowRightLeft className="h-3 w-3 mr-1" />
+                  Mudar
+                </Button>
+              </div>
+            ))}
+            {linkedLeads.length > 3 && (
+              <p className="text-xs text-muted-foreground text-center">
+                +{linkedLeads.length - 3} negócio(s)
+              </p>
+            )}
+            <Button 
+              variant="outline" 
+              className="w-full justify-between mt-2"
+              onClick={() => setShowAddDealDialog(true)}
+            >
+              <span className="flex items-center gap-2">
+                <UserPlus className="h-4 w-4" />
+                Novo negócio
+              </span>
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </>
+        ) : (
+          <Button 
+            variant="outline" 
+            className="w-full justify-between"
+            onClick={() => setShowAddDealDialog(true)}
+          >
+            <span className="flex items-center gap-2">
+              <UserPlus className="h-4 w-4" />
+              Adicionar negócio
+            </span>
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        )}
       </div>
 
       {/* Contact Section */}
@@ -867,6 +982,49 @@ export function ConversationSidebar({
             <Button onClick={handleCreateTask} className="w-full" disabled={loading}>
               <ListTodo className="h-4 w-4 mr-2" />
               {loading ? "Criando..." : "Criar Tarefa"}
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Change Pipeline Dialog */}
+      <Dialog open={showChangePipelineDialog} onOpenChange={setShowChangePipelineDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle>Mudar de Funil</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            {selectedLeadForPipelineChange && (
+              <div className="p-3 bg-muted/50 rounded-lg">
+                <p className="text-sm font-medium">{selectedLeadForPipelineChange.name}</p>
+                <p className="text-xs text-muted-foreground">
+                  Funil atual: {selectedLeadForPipelineChange.pipeline?.name || "Nenhum"}
+                </p>
+              </div>
+            )}
+            <div>
+              <Label>Novo Funil *</Label>
+              <Select value={newPipelineId} onValueChange={setNewPipelineId}>
+                <SelectTrigger className="mt-2">
+                  <SelectValue placeholder="Selecione um funil" />
+                </SelectTrigger>
+                <SelectContent>
+                  {allPipelines
+                    .filter(p => p.id !== selectedLeadForPipelineChange?.pipeline?.id)
+                    .map(pipeline => (
+                      <SelectItem key={pipeline.id} value={pipeline.id}>
+                        {pipeline.name}
+                      </SelectItem>
+                    ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground mt-1">
+                O lead será movido para a primeira etapa do novo funil.
+              </p>
+            </div>
+            <Button onClick={handleChangePipeline} className="w-full" disabled={loading}>
+              <ArrowRightLeft className="h-4 w-4 mr-2" />
+              {loading ? "Movendo..." : "Mover Lead"}
             </Button>
           </div>
         </DialogContent>
