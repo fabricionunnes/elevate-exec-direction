@@ -159,13 +159,22 @@ export const CRMReportsPage = () => {
         const wonLeadsCreatedInPeriod = (leads || []).filter(l => l.stage?.final_type === "won");
         const lostLeads = (leads || []).filter(l => l.stage?.final_type === "lost");
 
+        // Parse numeric values safely (Supabase may return as string)
+        const parseNumeric = (val: any): number => {
+          if (typeof val === 'number') return val;
+          if (typeof val === 'string') return parseFloat(val) || 0;
+          return 0;
+        };
+
+        const totalValueCalc = wonLeadsInPeriod.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
+
         setMetrics({
           totalLeads,
-          wonLeads: wonLeadsInPeriod.length, // Leads won in period (regardless of creation date)
+          wonLeads: wonLeadsInPeriod.length,
           lostLeads: lostLeads.length,
           conversionRate: totalLeads > 0 ? Math.round((wonLeadsCreatedInPeriod.length / totalLeads) * 100) : 0,
-          avgCycleTime: 0, // Would need more calculation
-          totalValue: wonLeadsInPeriod.reduce((sum, l) => sum + (l.opportunity_value || 0), 0), // Revenue from leads won in period
+          avgCycleTime: 0,
+          totalValue: totalValueCalc,
         });
 
         // Calculate productivity by user - attribute wins/revenue to the lead's closer
@@ -188,7 +197,7 @@ export const CRMReportsPage = () => {
               userGroups[closerName] = { name: closerName, leads: 0, won: 0, value: 0 };
             }
             userGroups[closerName].won++;
-            userGroups[closerName].value += lead.opportunity_value || 0;
+            userGroups[closerName].value += parseNumeric(lead.opportunity_value);
           });
           
           setProductivityData(Object.values(userGroups));
@@ -232,7 +241,7 @@ export const CRMReportsPage = () => {
     };
 
     loadReports();
-  }, [period, isAdmin]);
+  }, [period, isAdmin, customDateRange]);
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("pt-BR", {
