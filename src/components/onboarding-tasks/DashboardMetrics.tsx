@@ -694,10 +694,9 @@ const DashboardMetrics = ({
       });
 
       // Get entries for this company in the period (only for the selected KPIs)
+      // Note: kpiEntries already comes filtered by dateRange from parent, so we only need to filter by company and KPI
       const companyEntries = kpiEntries.filter(e => 
         e.company_id === companyId &&
-        e.entry_date >= monthStart &&
-        e.entry_date <= monthEnd &&
         companyKpisList.some(k => k.id === e.kpi_id)
       );
 
