@@ -19,7 +19,8 @@ import {
   FileText,
   Pencil,
   X,
-  Check
+  Check,
+  Calendar
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -46,6 +47,7 @@ const ITEM_TYPES = [
   { value: 'instruction', label: 'Instrução', icon: FileText },
   { value: 'call', label: 'Ligação', icon: Phone },
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
+  { value: 'meeting', label: 'Agendamento', icon: Calendar },
 ];
 
 const AVAILABLE_VARIABLES = [
@@ -294,6 +296,7 @@ export function StageChecklistDialog({
     switch (type) {
       case 'call': return <Phone className="h-4 w-4 text-green-600" />;
       case 'whatsapp': return <MessageCircle className="h-4 w-4 text-emerald-600" />;
+      case 'meeting': return <Calendar className="h-4 w-4 text-purple-600" />;
       default: return <FileText className="h-4 w-4 text-muted-foreground" />;
     }
   };

@@ -1420,6 +1420,172 @@ Deno.serve(async (req) => {
       );
     }
 
+    // FreeBusy query to get available time slots for a specific date
+    if (action === "freebusy") {
+      const body = await req.json();
+      const { target_user_id, date, duration_minutes = 60 } = body;
+
+      if (!target_user_id || !date) {
+        return new Response(
+          JSON.stringify({ error: "Missing required fields: target_user_id, date" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get token for the target user
+      const { data: freebusyTokenData, error: freebusyTokenError } = await supabase
+        .from("user_google_tokens")
+        .select("*")
+        .eq("user_id", target_user_id)
+        .maybeSingle();
+
+      if (!freebusyTokenData || freebusyTokenError) {
+        return new Response(
+          JSON.stringify({ error: "Target user not connected to Google Calendar", needsAuth: true }),
+          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let accessToken = freebusyTokenData.access_token;
+
+      // Check if token is expired and refresh if needed
+      if (freebusyTokenData.token_expires_at && new Date(freebusyTokenData.token_expires_at) < new Date()) {
+        console.log("Token expired for freebusy, attempting refresh...");
+
+        if (!freebusyTokenData.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+        if (!googleClientId || !googleClientSecret) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: freebusyTokenData.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+
+        if (!refreshResponse.ok) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+
+        await supabase
+          .from("user_google_tokens")
+          .update({
+            access_token: accessToken,
+            token_expires_at: newExpiresAt.toISOString(),
+          })
+          .eq("user_id", target_user_id);
+
+        console.log("Token refreshed successfully for freebusy");
+      }
+
+      // Parse date and build time range (full day in São Paulo timezone)
+      const startOfDayISO = `${date}T00:00:00-03:00`;
+      const endOfDayISO = `${date}T23:59:59-03:00`;
+
+      // Query FreeBusy API
+      console.log(`Querying freebusy for user ${target_user_id} on ${date}`);
+      const freebusyResponse = await fetch("https://www.googleapis.com/calendar/v3/freeBusy", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          timeMin: startOfDayISO,
+          timeMax: endOfDayISO,
+          timeZone: "America/Sao_Paulo",
+          items: [{ id: "primary" }],
+        }),
+      });
+
+      if (!freebusyResponse.ok) {
+        const errorText = await freebusyResponse.text();
+        console.error("FreeBusy API error:", errorText);
+        return new Response(
+          JSON.stringify({ error: "Failed to query calendar availability" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const freebusyData = await freebusyResponse.json();
+      const busyPeriods = freebusyData.calendars?.primary?.busy || [];
+
+      // Generate available time slots (business hours: 08:00 - 18:00)
+      const businessStart = 8; // 08:00
+      const businessEnd = 18; // 18:00
+      const slotDuration = duration_minutes || 60;
+
+      const availableSlots: string[] = [];
+      const now = new Date();
+      const selectedDate = new Date(`${date}T00:00:00-03:00`);
+      const isToday = selectedDate.toDateString() === now.toDateString();
+
+      for (let hour = businessStart; hour < businessEnd; hour++) {
+        for (let minute = 0; minute < 60; minute += 30) {
+          const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`);
+          const slotEnd = new Date(slotStart.getTime() + slotDuration * 60 * 1000);
+
+          // Skip if slot ends after business hours
+          if (slotEnd.getHours() > businessEnd || (slotEnd.getHours() === businessEnd && slotEnd.getMinutes() > 0)) {
+            continue;
+          }
+
+          // Skip if it's today and the slot is in the past
+          if (isToday && slotStart < now) {
+            continue;
+          }
+
+          // Check if slot overlaps with any busy period
+          const isOverlapping = busyPeriods.some((busy: { start: string; end: string }) => {
+            const busyStart = new Date(busy.start);
+            const busyEnd = new Date(busy.end);
+            // Slot overlaps if it starts before busy ends AND ends after busy starts
+            return slotStart < busyEnd && slotEnd > busyStart;
+          });
+
+          if (!isOverlapping) {
+            availableSlots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+          }
+        }
+      }
+
+      console.log(`Found ${availableSlots.length} available slots for ${date}`);
+
+      return new Response(
+        JSON.stringify({ 
+          date, 
+          availableSlots, 
+          busyPeriods,
+          durationMinutes: slotDuration 
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Invalid action" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }

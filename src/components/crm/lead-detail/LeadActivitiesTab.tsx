@@ -35,6 +35,7 @@ import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
+import { ChecklistMeetingScheduler } from "./ChecklistMeetingScheduler";
 
 
 interface Stage {
@@ -277,6 +278,7 @@ export const LeadActivitiesTab = ({
     switch (type) {
       case 'call': return <Phone className="h-4 w-4 text-green-600 shrink-0" />;
       case 'whatsapp': return <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" />;
+      case 'meeting': return <Calendar className="h-4 w-4 text-purple-600 shrink-0" />;
       default: return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
     }
   };
@@ -406,7 +408,7 @@ export const LeadActivitiesTab = ({
       </div>
 
       {/* Right side - Selected Checklist Item Details */}
-      <div className="w-[350px] border-l border-border bg-card flex flex-col">
+      <div className="w-[400px] border-l border-border bg-card flex flex-col">
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
             <div className="p-4 border-b border-border flex items-center gap-2">
@@ -414,80 +416,97 @@ export const LeadActivitiesTab = ({
               <span className="font-medium text-sm">{selectedChecklistItem.title}</span>
             </div>
             
-            <div className="flex-1 p-4 overflow-auto">
-              {selectedChecklistItem.description && (
-                <p className="text-sm text-muted-foreground mb-4">
-                  {selectedChecklistItem.description}
-                </p>
-              )}
-              
-              {selectedChecklistItem.item_type === 'whatsapp' && selectedChecklistItem.whatsapp_template && (
-                <div className="bg-sky-50 dark:bg-sky-950/30 rounded-lg p-4">
-                  <p className="text-sm whitespace-pre-wrap">
-                    {processWhatsAppTemplate(selectedChecklistItem.whatsapp_template)}
-                  </p>
-                </div>
-              )}
-              
-              {selectedChecklistItem.item_type === 'call' && (
-                <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Ligue para {leadName} {leadPhone ? `no telefone ${leadPhone}` : ''}
-                  </p>
-                </div>
-              )}
-              
-              {selectedChecklistItem.item_type === 'instruction' && !selectedChecklistItem.description && (
-                <div className="bg-muted/50 rounded-lg p-4">
-                  <p className="text-sm text-muted-foreground">
-                    Execute esta tarefa conforme as instruções.
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            {selectedChecklistItem.item_type === 'whatsapp' && leadPhone && (
-              <div className="p-4 border-t border-border flex items-center gap-2">
-                <Button
-                  className="flex-1 bg-emerald-500 hover:bg-emerald-600"
-                  disabled={sendingMessage || !userInstanceId}
-                  onClick={async () => {
-                    if (!userInstanceId) {
-                      toast.error("Você não tem uma conexão WhatsApp configurada. Solicite acesso ao administrador.");
-                      return;
-                    }
-
-                    setSendingMessage(true);
-                    try {
-                      const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
-                      await sendLoggedWhatsAppText({
-                        instanceId: userInstanceId,
-                        phoneRaw: leadPhone,
-                        message,
-                        leadId,
-                        leadName,
-                        staffId: userStaffId || undefined,
-                      });
-
-                      toast.success("Mensagem enviada com sucesso!");
-                      toggleChecklist(selectedChecklistItem.id);
-                      setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
-                    } catch (error: any) {
-                      console.error("Error sending WhatsApp:", error);
-                      toast.error(error.message || "Erro ao enviar mensagem");
-                    } finally {
-                      setSendingMessage(false);
-                    }
-                  }}
-                >
-                  {sendingMessage ? (
-                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  ) : (
-                    <MessageSquare className="h-4 w-4 mr-2" />
+            {/* Meeting type - show full scheduler */}
+            {selectedChecklistItem.item_type === 'meeting' ? (
+              <ChecklistMeetingScheduler
+                leadId={leadId}
+                leadName={leadName}
+                leadEmail={leadEmail}
+                checklistItemId={selectedChecklistItem.id}
+                checklistItemTitle={selectedChecklistItem.title}
+                onScheduled={() => {
+                  toggleChecklist(selectedChecklistItem.id);
+                  setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                }}
+              />
+            ) : (
+              <>
+                <div className="flex-1 p-4 overflow-auto">
+                  {selectedChecklistItem.description && (
+                    <p className="text-sm text-muted-foreground mb-4">
+                      {selectedChecklistItem.description}
+                    </p>
                   )}
-                  {sendingMessage ? "Enviando..." : "Enviar mensagem"}
-                </Button>
-              </div>
+                  
+                  {selectedChecklistItem.item_type === 'whatsapp' && selectedChecklistItem.whatsapp_template && (
+                    <div className="bg-sky-50 dark:bg-sky-950/30 rounded-lg p-4">
+                      <p className="text-sm whitespace-pre-wrap">
+                        {processWhatsAppTemplate(selectedChecklistItem.whatsapp_template)}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedChecklistItem.item_type === 'call' && (
+                    <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">
+                        Ligue para {leadName} {leadPhone ? `no telefone ${leadPhone}` : ''}
+                      </p>
+                    </div>
+                  )}
+                  
+                  {selectedChecklistItem.item_type === 'instruction' && !selectedChecklistItem.description && (
+                    <div className="bg-muted/50 rounded-lg p-4">
+                      <p className="text-sm text-muted-foreground">
+                        Execute esta tarefa conforme as instruções.
+                      </p>
+                    </div>
+                  )}
+                </div>
+                
+                {selectedChecklistItem.item_type === 'whatsapp' && leadPhone && (
+                  <div className="p-4 border-t border-border flex items-center gap-2">
+                    <Button
+                      className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                      disabled={sendingMessage || !userInstanceId}
+                      onClick={async () => {
+                        if (!userInstanceId) {
+                          toast.error("Você não tem uma conexão WhatsApp configurada. Solicite acesso ao administrador.");
+                          return;
+                        }
+
+                        setSendingMessage(true);
+                        try {
+                          const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
+                          await sendLoggedWhatsAppText({
+                            instanceId: userInstanceId,
+                            phoneRaw: leadPhone,
+                            message,
+                            leadId,
+                            leadName,
+                            staffId: userStaffId || undefined,
+                          });
+
+                          toast.success("Mensagem enviada com sucesso!");
+                          toggleChecklist(selectedChecklistItem.id);
+                          setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                        } catch (error: any) {
+                          console.error("Error sending WhatsApp:", error);
+                          toast.error(error.message || "Erro ao enviar mensagem");
+                        } finally {
+                          setSendingMessage(false);
+                        }
+                      }}
+                    >
+                      {sendingMessage ? (
+                        <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      ) : (
+                        <MessageSquare className="h-4 w-4 mr-2" />
+                      )}
+                      {sendingMessage ? "Enviando..." : "Enviar mensagem"}
+                    </Button>
+                  </div>
+                )}
+              </>
             )}
           </div>
         ) : (
