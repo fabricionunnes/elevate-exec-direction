@@ -6,11 +6,6 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Collapsible,
-  CollapsibleContent,
-  CollapsibleTrigger,
-} from "@/components/ui/collapsible";
-import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
@@ -27,8 +22,8 @@ import {
   ChevronRight,
   ChevronDown,
   Plus,
-  HelpCircle,
   Settings,
+  Send,
 } from "lucide-react";
 import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -118,7 +113,7 @@ export const LeadActivitiesTab = ({
   const [showScheduleMeetingDialog, setShowScheduleMeetingDialog] = useState(false);
   const [checklistItems, setChecklistItems] = useState<ChecklistItem[]>([]);
   const [checklistLoading, setChecklistLoading] = useState(true);
-  const [qualificationExpanded, setQualificationExpanded] = useState(true);
+  const [selectedChecklistItem, setSelectedChecklistItem] = useState<ChecklistItem | null>(null);
 
   // Load checklist items from database
   useEffect(() => {
@@ -309,8 +304,60 @@ export const LeadActivitiesTab = ({
           </div>
         </div>
 
-        {/* Activities List by Day */}
+        {/* Activities and Checklist List */}
         <ScrollArea className="flex-1">
+          {/* Checklist Items from Stage */}
+          {!checklistLoading && checklistItems.length > 0 && (
+            <div className="border-b border-border">
+              {checklistItems.map((item, index) => (
+                <div
+                  key={item.id}
+                  onClick={() => setSelectedChecklistItem(item)}
+                  className={cn(
+                    "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
+                    selectedChecklistItem?.id === item.id
+                      ? "bg-primary/5 border-l-primary"
+                      : "hover:bg-muted/30 border-l-transparent"
+                  )}
+                >
+                  <button
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      toggleChecklist(item.id);
+                      if (selectedChecklistItem?.id === item.id) {
+                        setSelectedChecklistItem({ ...item, completed: !item.completed });
+                      }
+                    }}
+                    className={cn(
+                      "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                      item.completed
+                        ? "bg-primary border-primary"
+                        : "border-muted-foreground/50 hover:border-primary"
+                    )}
+                  >
+                    {item.completed && (
+                      <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                      </svg>
+                    )}
+                  </button>
+                  
+                  <span className="text-muted-foreground shrink-0">
+                    {getChecklistItemIcon(item.item_type)}
+                  </span>
+                  
+                  <span className={cn(
+                    "text-sm flex-1 truncate",
+                    item.completed && "line-through text-muted-foreground"
+                  )}>
+                    {item.title}
+                  </span>
+                </div>
+              ))}
+            </div>
+          )}
+
+          {/* Activities Table */}
           <div className="flex">
             {/* Day numbers column */}
             <div className="w-12 border-r border-border flex-shrink-0">
@@ -400,7 +447,7 @@ export const LeadActivitiesTab = ({
                 </div>
               ))}
 
-              {activities.length === 0 && (
+              {activities.length === 0 && checklistItems.length === 0 && (
                 <div className="text-center py-8 text-sm text-muted-foreground">
                   Nenhuma atividade
                 </div>
@@ -433,68 +480,72 @@ export const LeadActivitiesTab = ({
         </ScrollArea>
       </div>
 
-      {/* Right side - Checklist */}
-      <div className="w-[350px] border-l border-border bg-card">
-        <Collapsible open={qualificationExpanded} onOpenChange={setQualificationExpanded}>
-          <CollapsibleTrigger className="flex items-center gap-2 w-full p-4 hover:bg-muted/50 transition-colors">
-            <FileText className="h-4 w-4 text-muted-foreground" />
-            <span className="font-medium text-sm">{currentStage?.name || "Qualificação"}</span>
-            <HelpCircle className="h-4 w-4 text-muted-foreground ml-auto" />
-          </CollapsibleTrigger>
-
-          <CollapsibleContent>
-            <div className="px-4 pb-4 space-y-3">
-              {checklistLoading ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Carregando...
+      {/* Right side - Selected Checklist Item Details */}
+      <div className="w-[350px] border-l border-border bg-card flex flex-col">
+        {selectedChecklistItem ? (
+          <div className="flex flex-col h-full">
+            <div className="p-4 border-b border-border flex items-center gap-2">
+              {getChecklistItemIcon(selectedChecklistItem.item_type)}
+              <span className="font-medium text-sm">{selectedChecklistItem.title}</span>
+            </div>
+            
+            <div className="flex-1 p-4 overflow-auto">
+              {selectedChecklistItem.description && (
+                <p className="text-sm text-muted-foreground mb-4">
+                  {selectedChecklistItem.description}
                 </p>
-              ) : checklistItems.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum item de checklist configurado para esta etapa.
-                </p>
-              ) : (
-                checklistItems.map(item => (
-                  <div
-                    key={item.id}
-                    className="flex items-start gap-3"
-                  >
-                    <div className="flex items-center gap-2 mt-0.5">
-                      <div className="w-4 h-4 rounded-full border-2 border-red-400 flex items-center justify-center shrink-0">
-                        {item.completed && (
-                          <div className="w-2 h-2 rounded-full bg-red-400" />
-                        )}
-                      </div>
-                    </div>
-                    <button
-                      onClick={() => toggleChecklist(item.id)}
-                      className={cn(
-                        "flex-1 text-left",
-                        item.completed && "line-through text-muted-foreground"
-                      )}
-                    >
-                      <div className="flex items-start gap-2">
-                        {getChecklistItemIcon(item.item_type)}
-                        <div className="flex-1">
-                          <span className="text-sm">{item.title}</span>
-                          {item.description && (
-                            <p className="text-xs text-muted-foreground mt-0.5">
-                              {item.description}
-                            </p>
-                          )}
-                          {item.item_type === 'whatsapp' && item.whatsapp_template && (
-                            <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
-                              {processWhatsAppTemplate(item.whatsapp_template)}
-                            </p>
-                          )}
-                        </div>
-                      </div>
-                    </button>
-                  </div>
-                ))
+              )}
+              
+              {selectedChecklistItem.item_type === 'whatsapp' && selectedChecklistItem.whatsapp_template && (
+                <div className="bg-sky-50 dark:bg-sky-950/30 rounded-lg p-4">
+                  <p className="text-sm whitespace-pre-wrap">
+                    {processWhatsAppTemplate(selectedChecklistItem.whatsapp_template)}
+                  </p>
+                </div>
+              )}
+              
+              {selectedChecklistItem.item_type === 'call' && (
+                <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Ligue para {leadName} {leadPhone ? `no telefone ${leadPhone}` : ''}
+                  </p>
+                </div>
+              )}
+              
+              {selectedChecklistItem.item_type === 'instruction' && !selectedChecklistItem.description && (
+                <div className="bg-muted/50 rounded-lg p-4">
+                  <p className="text-sm text-muted-foreground">
+                    Execute esta tarefa conforme as instruções.
+                  </p>
+                </div>
               )}
             </div>
-          </CollapsibleContent>
-        </Collapsible>
+            
+            {selectedChecklistItem.item_type === 'whatsapp' && leadPhone && (
+              <div className="p-4 border-t border-border flex items-center gap-2">
+                <Button
+                  className="flex-1 bg-emerald-500 hover:bg-emerald-600"
+                  onClick={() => {
+                    const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
+                    const phone = leadPhone.replace(/\D/g, '');
+                    window.open(`https://wa.me/55${phone}?text=${encodeURIComponent(message)}`, '_blank');
+                    toggleChecklist(selectedChecklistItem.id);
+                    setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                  }}
+                >
+                  <MessageSquare className="h-4 w-4 mr-2" />
+                  Enviar mensagem
+                </Button>
+              </div>
+            )}
+          </div>
+        ) : (
+          <div className="flex-1 flex items-center justify-center p-4">
+            <p className="text-sm text-muted-foreground text-center">
+              Selecione uma atividade do checklist para ver os detalhes
+            </p>
+          </div>
+        )}
       </div>
 
       {/* Dialogs */}
