@@ -74,6 +74,8 @@ interface ChecklistItem {
   id: string;
   title: string;
   description: string | null;
+  item_type: string;
+  whatsapp_template: string | null;
   completed: boolean;
 }
 
@@ -131,7 +133,7 @@ export const LeadActivitiesTab = ({
       try {
         const { data, error } = await supabase
           .from("crm_stage_checklists")
-          .select("id, title, description")
+          .select("id, title, description, item_type, whatsapp_template")
           .eq("stage_id", currentStageId)
           .eq("is_active", true)
           .order("sort_order");
@@ -143,7 +145,11 @@ export const LeadActivitiesTab = ({
         const completedIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
         
         setChecklistItems((data || []).map(item => ({
-          ...item,
+          id: item.id,
+          title: item.title,
+          description: item.description,
+          item_type: item.item_type || 'instruction',
+          whatsapp_template: item.whatsapp_template,
           completed: completedIds.includes(item.id),
         })));
       } catch (error) {
@@ -212,6 +218,23 @@ export const LeadActivitiesTab = ({
   };
 
   const currentStage = stages.find(s => s.id === currentStageId);
+
+  const getChecklistItemIcon = (type: string) => {
+    switch (type) {
+      case 'call': return <Phone className="h-4 w-4 text-green-600 shrink-0" />;
+      case 'whatsapp': return <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" />;
+      default: return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
+    }
+  };
+
+  const processWhatsAppTemplate = (template: string | null) => {
+    if (!template) return '';
+    return template
+      .replace(/\{\{nome_cliente\}\}/g, leadName || '')
+      .replace(/\{\{empresa\}\}/g, leadCompany || '')
+      .replace(/\{\{email\}\}/g, leadEmail || '')
+      .replace(/\{\{telefone\}\}/g, leadPhone || '');
+  };
 
   return (
     <div className="flex h-full">
@@ -431,27 +454,42 @@ export const LeadActivitiesTab = ({
                 </p>
               ) : (
                 checklistItems.map(item => (
-                  <label
+                  <div
                     key={item.id}
-                    className="flex items-start gap-3 cursor-pointer"
+                    className="flex items-start gap-3"
                   >
-                    <Checkbox
-                      checked={item.completed}
-                      onCheckedChange={() => toggleChecklist(item.id)}
-                      className="mt-0.5"
-                    />
-                    <div className={cn(
-                      "text-sm",
-                      item.completed && "line-through text-muted-foreground"
-                    )}>
-                      <span>{item.title}</span>
-                      {item.description && (
-                        <p className="text-xs text-muted-foreground mt-0.5">
-                          {item.description}
-                        </p>
-                      )}
+                    <div className="flex items-center gap-2 mt-0.5">
+                      <div className="w-4 h-4 rounded-full border-2 border-red-400 flex items-center justify-center shrink-0">
+                        {item.completed && (
+                          <div className="w-2 h-2 rounded-full bg-red-400" />
+                        )}
+                      </div>
                     </div>
-                  </label>
+                    <button
+                      onClick={() => toggleChecklist(item.id)}
+                      className={cn(
+                        "flex-1 text-left",
+                        item.completed && "line-through text-muted-foreground"
+                      )}
+                    >
+                      <div className="flex items-start gap-2">
+                        {getChecklistItemIcon(item.item_type)}
+                        <div className="flex-1">
+                          <span className="text-sm">{item.title}</span>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-0.5">
+                              {item.description}
+                            </p>
+                          )}
+                          {item.item_type === 'whatsapp' && item.whatsapp_template && (
+                            <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
+                              {processWhatsAppTemplate(item.whatsapp_template)}
+                            </p>
+                          )}
+                        </div>
+                      </div>
+                    </button>
+                  </div>
                 ))
               )}
             </div>
