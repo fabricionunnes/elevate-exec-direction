@@ -48,9 +48,11 @@ import {
   Copy,
   Zap,
   Users,
-  TrendingUp
+  TrendingUp,
+  ListChecks
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
+import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { toast } from "sonner";
@@ -136,12 +138,14 @@ export const CRMSettingsPage = () => {
   const [editOriginOpen, setEditOriginOpen] = useState(false);
   const [editReasonOpen, setEditReasonOpen] = useState(false);
   const [stageActionsOpen, setStageActionsOpen] = useState(false);
+  const [stageChecklistOpen, setStageChecklistOpen] = useState(false);
   const [editingPipeline, setEditingPipeline] = useState<Pipeline | null>(null);
   const [editingStage, setEditingStage] = useState<Stage | null>(null);
   const [editingOriginGroup, setEditingOriginGroup] = useState<OriginGroup | null>(null);
   const [editingOrigin, setEditingOrigin] = useState<Origin | null>(null);
   const [editingReason, setEditingReason] = useState<LossReason | null>(null);
   const [actionsStage, setActionsStage] = useState<Stage | null>(null);
+  const [checklistStage, setChecklistStage] = useState<Stage | null>(null);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
@@ -1075,6 +1079,18 @@ export const CRMSettingsPage = () => {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
+                          setChecklistStage(stage);
+                          setStageChecklistOpen(true);
+                        }}
+                        title="Configurar checklist"
+                      >
+                        <ListChecks className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
                           setActionsStage(stage);
                           setStageActionsOpen(true);
                         }}
@@ -1678,6 +1694,19 @@ export const CRMSettingsPage = () => {
           }}
           stageId={actionsStage.id}
           stageName={actionsStage.name}
+        />
+      )}
+
+      {/* Stage Checklist Dialog */}
+      {checklistStage && (
+        <StageChecklistDialog
+          open={stageChecklistOpen}
+          onOpenChange={(open) => {
+            setStageChecklistOpen(open);
+            if (!open) setChecklistStage(null);
+          }}
+          stageId={checklistStage.id}
+          stageName={checklistStage.name}
         />
       )}
     </div>
