@@ -12,6 +12,7 @@ import {
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal } from "@/lib/dateUtils";
 import { TrendingUp, TrendingDown, Minus, Eye } from "lucide-react";
 
 interface ChartDataPoint {
@@ -66,7 +67,8 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
       const monthlyRevenue: Record<string, number> = {};
       
       (salesData || []).forEach(sale => {
-        const monthKey = format(new Date(sale.sale_date), "yyyy-MM");
+        const saleDate = parseDateLocal(sale.sale_date);
+        const monthKey = format(saleDate, "yyyy-MM");
         const value = parseFloat(String(sale.revenue_value || sale.billing_value || 0));
         monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + value;
       });
