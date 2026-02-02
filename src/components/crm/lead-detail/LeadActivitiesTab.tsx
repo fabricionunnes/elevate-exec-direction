@@ -34,6 +34,7 @@ import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
 import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
+import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 
 
 interface Stage {
@@ -117,6 +118,7 @@ export const LeadActivitiesTab = ({
   const [selectedChecklistItem, setSelectedChecklistItem] = useState<ChecklistItem | null>(null);
   const [sendingMessage, setSendingMessage] = useState(false);
   const [userInstanceId, setUserInstanceId] = useState<string | null>(null);
+  const [userStaffId, setUserStaffId] = useState<string | null>(null);
 
   // Fetch user's WhatsApp instance with send permission
   useEffect(() => {
@@ -134,6 +136,8 @@ export const LeadActivitiesTab = ({
           .maybeSingle();
 
         if (!staff) return;
+
+        setUserStaffId(staff.id);
 
         if (staff.role === "master") {
           // Master gets any connected instance
@@ -456,26 +460,14 @@ export const LeadActivitiesTab = ({
                     setSendingMessage(true);
                     try {
                       const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
-                      const phone = leadPhone.replace(/\D/g, '');
-                      
-                      // Ensure phone is in correct format (add country code if needed)
-                      const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
-
-                      const { data, error } = await supabase.functions.invoke('evolution-api', {
-                        body: {
-                          action: 'sendText',
-                          instanceId: userInstanceId,
-                          phone: formattedPhone,
-                          message: message,
-                        },
+                      await sendLoggedWhatsAppText({
+                        instanceId: userInstanceId,
+                        phoneRaw: leadPhone,
+                        message,
+                        leadId,
+                        leadName,
+                        staffId: userStaffId || undefined,
                       });
-
-                      if (error) throw error;
-                      
-                      // Check for Evolution API error in response
-                      if (data?.error) {
-                        throw new Error(data.error);
-                      }
 
                       toast.success("Mensagem enviada com sucesso!");
                       toggleChecklist(selectedChecklistItem.id);
