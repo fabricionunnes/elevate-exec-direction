@@ -56,7 +56,9 @@ export function ChecklistMeetingScheduler({
   const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
   const [meetingTitle, setMeetingTitle] = useState(`Reunião com ${leadName}`);
-  const [durationMinutes] = useState(60);
+  const [durationMinutes, setDurationMinutes] = useState(60);
+  const [showAvailabilityOptions, setShowAvailabilityOptions] = useState(false);
+  const [allowWeekends, setAllowWeekends] = useState(false);
 
   // Load connected staff on mount
   useEffect(() => {
@@ -345,9 +347,45 @@ export function ChecklistMeetingScheduler({
                 {selectedStaff.name}
               </p>
             )}
-            <button className="text-xs text-primary hover:underline">
+            <button 
+              onClick={() => setShowAvailabilityOptions(!showAvailabilityOptions)}
+              className="text-xs text-primary hover:underline"
+            >
               Opções de disponibilidade...
             </button>
+            
+            {showAvailabilityOptions && (
+              <div className="flex items-center gap-4 p-3 bg-muted/50 rounded-lg">
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Duração:</Label>
+                  <Select
+                    value={String(durationMinutes)}
+                    onValueChange={(value) => {
+                      setDurationMinutes(Number(value));
+                      setSelectedSlot(null);
+                    }}
+                  >
+                    <SelectTrigger className="w-[100px] h-8 text-xs">
+                      <SelectValue />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="30">30 min</SelectItem>
+                      <SelectItem value="45">45 min</SelectItem>
+                      <SelectItem value="60">60 min</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                
+                <div className="flex items-center gap-2">
+                  <Label className="text-xs text-muted-foreground">Liberar finais de semana</Label>
+                  <Switch 
+                    checked={allowWeekends} 
+                    onCheckedChange={setAllowWeekends}
+                    className="scale-75"
+                  />
+                </div>
+              </div>
+            )}
           </div>
 
           {/* Meeting title */}
@@ -374,7 +412,11 @@ export function ChecklistMeetingScheduler({
                       setSelectedDate(date);
                       setSelectedSlot(null);
                     }}
-                    disabled={(date) => isBefore(date, startOfDay(new Date()))}
+                    disabled={(date) => {
+                      const isPast = isBefore(date, startOfDay(new Date()));
+                      const isWeekend = date.getDay() === 0 || date.getDay() === 6;
+                      return isPast || (!allowWeekends && isWeekend);
+                    }}
                     locale={ptBR}
                     className="rounded-md"
                   />
