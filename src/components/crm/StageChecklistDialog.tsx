@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
@@ -67,6 +67,7 @@ export function StageChecklistDialog({
   const [newItemType, setNewItemType] = useState("instruction");
   const [newWhatsAppTemplate, setNewWhatsAppTemplate] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
+  const whatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open && stageId) {
@@ -180,7 +181,24 @@ export function StageChecklistDialog({
   };
 
   const insertVariable = (variable: string) => {
-    setNewWhatsAppTemplate(prev => prev + variable);
+    const textarea = whatsappTemplateRef.current;
+    if (!textarea) {
+      setNewWhatsAppTemplate(prev => prev + variable);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = newWhatsAppTemplate.substring(0, start) + variable + newWhatsAppTemplate.substring(end);
+    const cursorPosition = start + variable.length;
+
+    setNewWhatsAppTemplate(newText);
+
+    // Restore focus and cursor position after state update
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorPosition, cursorPosition);
+    }, 0);
   };
 
   const resetForm = () => {
@@ -357,6 +375,7 @@ export function StageChecklistDialog({
                         ))}
                       </div>
                       <Textarea
+                        ref={whatsappTemplateRef}
                         value={newWhatsAppTemplate}
                         onChange={(e) => setNewWhatsAppTemplate(e.target.value)}
                         placeholder="Olá {{nome_cliente}}, tudo bem? Aqui é da empresa..."
