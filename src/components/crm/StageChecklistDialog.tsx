@@ -16,9 +16,13 @@ import {
   ChevronDown,
   Phone,
   MessageCircle,
-  FileText
+  FileText,
+  Pencil,
+  X,
+  Check
 } from "lucide-react";
 import { toast } from "sonner";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 interface ChecklistItem {
   id: string;
@@ -57,6 +61,9 @@ export function StageChecklistDialog({
   stageId, 
   stageName 
 }: StageChecklistDialogProps) {
+  const { isMaster, currentStaff } = useStaffPermissions();
+  const isAdmin = isMaster || currentStaff?.role === 'admin';
+
   const [items, setItems] = useState<ChecklistItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -68,6 +75,14 @@ export function StageChecklistDialog({
   const [newWhatsAppTemplate, setNewWhatsAppTemplate] = useState("");
   const [showNewForm, setShowNewForm] = useState(false);
   const whatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
+
+  // Edit item form
+  const [editingItemId, setEditingItemId] = useState<string | null>(null);
+  const [editTitle, setEditTitle] = useState("");
+  const [editDescription, setEditDescription] = useState("");
+  const [editItemType, setEditItemType] = useState("instruction");
+  const [editWhatsAppTemplate, setEditWhatsAppTemplate] = useState("");
+  const editWhatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
     if (open && stageId) {
@@ -209,6 +224,72 @@ export function StageChecklistDialog({
     setShowNewForm(false);
   };
 
+  const startEditing = (item: ChecklistItem) => {
+    setEditingItemId(item.id);
+    setEditTitle(item.title);
+    setEditDescription(item.description || "");
+    setEditItemType(item.item_type);
+    setEditWhatsAppTemplate(item.whatsapp_template || "");
+  };
+
+  const cancelEditing = () => {
+    setEditingItemId(null);
+    setEditTitle("");
+    setEditDescription("");
+    setEditItemType("instruction");
+    setEditWhatsAppTemplate("");
+  };
+
+  const handleUpdateItem = async () => {
+    if (!editingItemId || !editTitle.trim()) {
+      toast.error("Título é obrigatório");
+      return;
+    }
+
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_stage_checklists")
+        .update({
+          title: editTitle,
+          description: editDescription || null,
+          item_type: editItemType,
+          whatsapp_template: editItemType === 'whatsapp' ? editWhatsAppTemplate : null,
+        })
+        .eq("id", editingItemId);
+
+      if (error) throw error;
+
+      toast.success("Item atualizado com sucesso");
+      cancelEditing();
+      loadItems();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao atualizar item");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const insertEditVariable = (variable: string) => {
+    const textarea = editWhatsappTemplateRef.current;
+    if (!textarea) {
+      setEditWhatsAppTemplate(prev => prev + variable);
+      return;
+    }
+
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = editWhatsAppTemplate.substring(0, start) + variable + editWhatsAppTemplate.substring(end);
+    const cursorPosition = start + variable.length;
+
+    setEditWhatsAppTemplate(newText);
+
+    setTimeout(() => {
+      textarea.focus();
+      textarea.setSelectionRange(cursorPosition, cursorPosition);
+    }, 0);
+  };
+
   const getItemIcon = (type: string) => {
     switch (type) {
       case 'call': return <Phone className="h-4 w-4 text-green-600" />;
@@ -250,63 +331,169 @@ export function StageChecklistDialog({
                   </p>
                 ) : (
                   items.map((item, index) => (
-                    <div
-                      key={item.id}
-                      className="p-3 rounded-lg border border-border flex items-center gap-2"
-                    >
-                      <div className="flex flex-col gap-0.5 shrink-0">
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleMoveItem(item.id, 'up')}
-                          disabled={index === 0}
-                        >
-                          <ChevronUp className="h-3 w-3" />
-                        </Button>
-                        <Button
-                          variant="outline"
-                          size="icon"
-                          className="h-6 w-6"
-                          onClick={() => handleMoveItem(item.id, 'down')}
-                          disabled={index === items.length - 1}
-                        >
-                          <ChevronDown className="h-3 w-3" />
-                        </Button>
-                      </div>
-                      
-                      <div className="shrink-0">
-                        {getItemIcon(item.item_type)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2">
-                          <span className="font-medium text-sm">{item.title}</span>
-                          <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
-                            {getItemTypeLabel(item.item_type)}
-                          </span>
-                        </div>
-                        {item.description && (
-                          <p className="text-xs text-muted-foreground mt-1">
-                            {item.description}
-                          </p>
-                        )}
-                        {item.item_type === 'whatsapp' && item.whatsapp_template && (
-                          <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
-                            📝 {item.whatsapp_template}
-                          </p>
-                        )}
-                      </div>
-
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-8 w-8 text-destructive shrink-0"
-                        onClick={() => handleDeleteItem(item.id)}
+                    editingItemId === item.id ? (
+                      // Edit mode
+                      <div
+                        key={item.id}
+                        className="p-4 rounded-lg border-2 border-primary bg-muted/30 space-y-4"
                       >
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                        <div>
+                          <Label>Tipo do Item</Label>
+                          <Select value={editItemType} onValueChange={setEditItemType}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {ITEM_TYPES.map(type => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  <div className="flex items-center gap-2">
+                                    <type.icon className="h-4 w-4" />
+                                    {type.label}
+                                  </div>
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+
+                        <div>
+                          <Label>Título do Item *</Label>
+                          <Input
+                            value={editTitle}
+                            onChange={(e) => setEditTitle(e.target.value)}
+                            placeholder="Título do item"
+                          />
+                        </div>
+
+                        <div>
+                          <Label>Descrição (opcional)</Label>
+                          <Textarea
+                            value={editDescription}
+                            onChange={(e) => setEditDescription(e.target.value)}
+                            placeholder="Detalhes adicionais..."
+                            rows={2}
+                            className="resize-none"
+                          />
+                        </div>
+
+                        {editItemType === 'whatsapp' && (
+                          <div className="space-y-2">
+                            <Label>Mensagem Padrão do WhatsApp</Label>
+                            <div className="flex flex-wrap gap-1 mb-2">
+                              {AVAILABLE_VARIABLES.map(v => (
+                                <Button
+                                  key={v.key}
+                                  type="button"
+                                  variant="outline"
+                                  size="sm"
+                                  className="text-xs h-7"
+                                  onClick={() => insertEditVariable(v.key)}
+                                >
+                                  {v.label}
+                                </Button>
+                              ))}
+                            </div>
+                            <Textarea
+                              ref={editWhatsappTemplateRef}
+                              value={editWhatsAppTemplate}
+                              onChange={(e) => setEditWhatsAppTemplate(e.target.value)}
+                              placeholder="Olá {{nome_cliente}}, tudo bem?..."
+                              rows={3}
+                              className="resize-none"
+                            />
+                          </div>
+                        )}
+
+                        <div className="flex gap-2">
+                          <Button
+                            onClick={handleUpdateItem}
+                            disabled={saving}
+                            className="flex-1"
+                          >
+                            {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                            <Check className="h-4 w-4 mr-2" />
+                            Salvar
+                          </Button>
+                          <Button
+                            variant="outline"
+                            onClick={cancelEditing}
+                          >
+                            <X className="h-4 w-4 mr-2" />
+                            Cancelar
+                          </Button>
+                        </div>
+                      </div>
+                    ) : (
+                      // View mode
+                      <div
+                        key={item.id}
+                        className="p-3 rounded-lg border border-border flex items-center gap-2"
+                      >
+                        <div className="flex flex-col gap-0.5 shrink-0">
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleMoveItem(item.id, 'up')}
+                            disabled={index === 0}
+                          >
+                            <ChevronUp className="h-3 w-3" />
+                          </Button>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            className="h-6 w-6"
+                            onClick={() => handleMoveItem(item.id, 'down')}
+                            disabled={index === items.length - 1}
+                          >
+                            <ChevronDown className="h-3 w-3" />
+                          </Button>
+                        </div>
+                        
+                        <div className="shrink-0">
+                          {getItemIcon(item.item_type)}
+                        </div>
+                        
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2">
+                            <span className="font-medium text-sm">{item.title}</span>
+                            <span className="text-xs text-muted-foreground bg-muted px-1.5 py-0.5 rounded">
+                              {getItemTypeLabel(item.item_type)}
+                            </span>
+                          </div>
+                          {item.description && (
+                            <p className="text-xs text-muted-foreground mt-1">
+                              {item.description}
+                            </p>
+                          )}
+                          {item.item_type === 'whatsapp' && item.whatsapp_template && (
+                            <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
+                              📝 {item.whatsapp_template}
+                            </p>
+                          )}
+                        </div>
+
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-8 w-8 text-muted-foreground hover:text-foreground shrink-0"
+                            onClick={() => startEditing(item)}
+                          >
+                            <Pencil className="h-4 w-4" />
+                          </Button>
+                        )}
+
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-8 w-8 text-destructive shrink-0"
+                          onClick={() => handleDeleteItem(item.id)}
+                        >
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )
                   ))
                 )}
               </div>
