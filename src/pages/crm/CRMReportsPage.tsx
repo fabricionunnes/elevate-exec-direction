@@ -174,11 +174,13 @@ export const CRMReportsPage = () => {
           return 0;
         };
 
-        const totalValueCalc = wonLeadsInPeriod.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
+        // Filter won leads with value > 0 for the sales count card
+        const wonLeadsWithValue = wonLeadsInPeriod.filter(l => parseNumeric(l.opportunity_value) > 0);
+        const totalValueCalc = wonLeadsWithValue.reduce((sum, l) => sum + parseNumeric(l.opportunity_value), 0);
 
         setMetrics({
           totalLeads,
-          wonLeads: wonLeadsInPeriod.length,
+          wonLeads: wonLeadsWithValue.length, // Only count sales with value > 0
           lostLeads: lostLeads.length,
           conversionRate: totalLeads > 0 ? Math.round((wonLeadsCreatedInPeriod.length / totalLeads) * 100) : 0,
           avgCycleTime: 0,
