@@ -57,21 +57,47 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
       const startDate = subMonths(startOfMonth(now), 24);
       const endDate = endOfMonth(now);
       
-      const { data: salesData } = await supabase
-        .from("crm_sales")
-        .select("sale_date, revenue_value, billing_value")
-        .gte("sale_date", format(startDate, "yyyy-MM-dd"))
-        .lte("sale_date", format(endDate, "yyyy-MM-dd"));
+      // Fetch all sales data - use pagination to get all records
+      let allSalesData: Array<{ sale_date: string; revenue_value: number | null; billing_value: number | null }> = [];
+      let from = 0;
+      const pageSize = 1000;
+      let hasMore = true;
+      
+      while (hasMore) {
+        const { data: salesData, error } = await supabase
+          .from("crm_sales")
+          .select("sale_date, revenue_value, billing_value")
+          .gte("sale_date", format(startDate, "yyyy-MM-dd"))
+          .lte("sale_date", format(endDate, "yyyy-MM-dd"))
+          .range(from, from + pageSize - 1);
+        
+        if (error) {
+          console.error("Error fetching sales data:", error);
+          break;
+        }
+        
+        if (salesData && salesData.length > 0) {
+          allSalesData = [...allSalesData, ...salesData];
+          from += pageSize;
+          hasMore = salesData.length === pageSize;
+        } else {
+          hasMore = false;
+        }
+      }
+      
+      console.log("Total sales records fetched:", allSalesData.length);
       
       // Group by month
       const monthlyRevenue: Record<string, number> = {};
       
-      (salesData || []).forEach(sale => {
+      allSalesData.forEach(sale => {
         const saleDate = parseDateLocal(sale.sale_date);
         const monthKey = format(saleDate, "yyyy-MM");
-        const value = parseFloat(String(sale.revenue_value || sale.billing_value || 0));
+        const value = Number(sale.revenue_value) || Number(sale.billing_value) || 0;
         monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + value;
       });
+      
+      console.log("Monthly revenue aggregated:", monthlyRevenue);
 
       // Build chart data for the last 12 months
       const data: ChartDataPoint[] = [];
