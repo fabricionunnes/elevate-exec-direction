@@ -164,6 +164,13 @@ export const KPIDashboardTab = ({
       return;
     }
 
+    // Validate date range - don't fetch if dates are empty
+    if (!dateRange.start || !dateRange.end) {
+      console.warn("[KPIDashboardTab] Invalid date range - start or end is empty");
+      setLoading(false);
+      return;
+    }
+
     try {
       // Get the month from the selected date range for monthly targets
       const selectedMonthYear = format(parseDateLocal(dateRange.start), "yyyy-MM");
@@ -1226,7 +1233,12 @@ export const KPIDashboardTab = ({
               <Input
                 type="date"
                 value={dateRange.start}
-                onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                onChange={(e) => {
+                  // Only update if value is a valid date string (not empty)
+                  if (e.target.value) {
+                    setDateRange({ ...dateRange, start: e.target.value });
+                  }
+                }}
                 className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
@@ -1235,7 +1247,12 @@ export const KPIDashboardTab = ({
               <Input
                 type="date"
                 value={dateRange.end}
-                onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                onChange={(e) => {
+                  // Only update if value is a valid date string (not empty)
+                  if (e.target.value) {
+                    setDateRange({ ...dateRange, end: e.target.value });
+                  }
+                }}
                 className="h-8 sm:h-10 text-xs sm:text-sm"
               />
             </div>
