@@ -104,6 +104,8 @@ interface Activity {
   notes: string | null;
   responsible?: { name: string } | null;
   created_at: string;
+  is_automation?: boolean;
+  automation_config?: unknown;
 }
 
 export const CRMLeadDetailPage = () => {
@@ -525,8 +527,12 @@ export const CRMLeadDetailPage = () => {
             leadId={lead.id}
             leadName={lead.name}
             leadEmail={lead.email}
+            leadPhone={lead.phone}
+            leadCompany={lead.company}
             stages={stages}
             currentStageId={lead.stage_id}
+            stageName={lead.stage?.name}
+            pipelineName={lead.pipeline?.name}
             activities={activities}
             onActivityComplete={handleActivityComplete}
             onStageChange={handleStageChange}
