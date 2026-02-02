@@ -115,21 +115,46 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       }
     }
 
-    // Verificar se já existe uma empresa com esse nome
-    const { data: existingCompany } = await supabase
-      .from("onboarding_companies")
-      .select("id")
-      .eq("name", lead.company)
-      .maybeSingle();
+    // Verificar se já existe uma empresa com esse CNPJ (documento)
+    let existingCompany = null;
+    if (lead.document && lead.document.trim()) {
+      const { data: companyByDoc } = await supabase
+        .from("onboarding_companies")
+        .select("id, tags")
+        .eq("cnpj", lead.document.trim())
+        .maybeSingle();
+      existingCompany = companyByDoc;
+    }
 
     let companyId: string;
 
     if (existingCompany) {
-      // Usar empresa existente
+      // Usar empresa existente e marcar como "Empresa Nova" para ir ao topo
       companyId = existingCompany.id;
-      console.log("Usando empresa existente:", companyId);
+      console.log("Usando empresa existente (por CNPJ):", companyId);
+      
+      // Atualizar a empresa com a tag "Empresa Nova" e atualizar dados
+      const currentTags = existingCompany.tags || [];
+      const newTags = currentTags.includes("Empresa Nova") 
+        ? currentTags 
+        : ["Empresa Nova", ...currentTags];
+      
+      await supabase
+        .from("onboarding_companies")
+        .update({
+          name: lead.company, // Atualizar nome caso tenha mudado
+          phone: lead.phone,
+          email: lead.email,
+          segment: lead.segment,
+          contract_value: lead.opportunity_value,
+          payment_method: paymentMethod,
+          status: "active",
+          contract_start_date: new Date().toISOString().split("T")[0],
+          tags: newTags,
+        })
+        .eq("id", companyId);
     } else {
-      // Criar nova empresa
+      // Criar nova empresa com tag "Empresa Nova"
       const { data: newCompany, error: companyError } = await supabase
         .from("onboarding_companies")
         .insert({
@@ -142,6 +167,7 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           payment_method: paymentMethod,
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
+          tags: ["Empresa Nova"],
         })
         .select("id")
         .single();
