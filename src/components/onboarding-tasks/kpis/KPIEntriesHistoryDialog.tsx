@@ -293,7 +293,11 @@ export const KPIEntriesHistoryDialog = ({
                 <Input
                   type="date"
                   value={dateRange.start}
-                  onChange={(e) => setDateRange({ ...dateRange, start: e.target.value })}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDateRange({ ...dateRange, start: e.target.value });
+                    }
+                  }}
                   className="w-[150px]"
                 />
               </div>
@@ -302,7 +306,11 @@ export const KPIEntriesHistoryDialog = ({
                 <Input
                   type="date"
                   value={dateRange.end}
-                  onChange={(e) => setDateRange({ ...dateRange, end: e.target.value })}
+                  onChange={(e) => {
+                    if (e.target.value) {
+                      setDateRange({ ...dateRange, end: e.target.value });
+                    }
+                  }}
                   className="w-[150px]"
                 />
               </div>
