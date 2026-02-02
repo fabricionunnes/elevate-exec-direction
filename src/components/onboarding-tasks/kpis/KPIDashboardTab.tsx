@@ -705,17 +705,25 @@ export const KPIDashboardTab = ({
   // Calculate monthly projection
   const getMonthlyProjection = () => {
     const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
-    const currentDay = now.getDate();
-    const daysInMonth = new Date(currentYear, currentMonth + 1, 0).getDate();
-    const daysRemaining = daysInMonth - currentDay;
+    
+    // Use the selected date range instead of always using current month
+    const selectedStartDate = parseDateLocal(dateRange.start);
+    const selectedEndDate = parseDateLocal(dateRange.end);
+    
+    // Calculate month parameters based on selected range
+    const selectedMonth = selectedStartDate.getMonth();
+    const selectedYear = selectedStartDate.getFullYear();
+    const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
+    
+    // For time progress: if viewing current month, use current day; otherwise use full month
+    const isCurrentMonth = now.getMonth() === selectedMonth && now.getFullYear() === selectedYear;
+    const currentDay = isCurrentMonth ? now.getDate() : daysInMonth;
+    const daysRemaining = isCurrentMonth ? daysInMonth - currentDay : 0;
     const timeProgress = currentDay / daysInMonth;
 
-    // Get entries for current month only, filtered by unit and salesperson
-    const monthStart = format(startOfMonth(now), "yyyy-MM-dd");
-    const monthEnd = format(endOfMonth(now), "yyyy-MM-dd");
-    const allMonthEntries = entries.filter(e => e.entry_date >= monthStart && e.entry_date <= monthEnd);
+    // Use the entries already filtered by dateRange from the fetch
+    // entries state already contains only entries within dateRange.start to dateRange.end
+    const allMonthEntries = entries;
     const monthEntries = allMonthEntries.filter(matchesActiveFilters);
 
     // Sum entries and targets for main goal KPIs (or fallback to monetary KPIs)
