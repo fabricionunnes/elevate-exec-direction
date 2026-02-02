@@ -109,37 +109,48 @@ export const TermVisionChart = ({ className }: TermVisionChartProps) => {
         const shortLabel = format(monthDate, "MMM", { locale: ptBR }).replace(".", "");
         const revenue = monthlyRevenue[monthKey] || 0;
         
-        // Calculate rolling QTR (last 3 months including current)
+        // Calculate rolling QTR AVERAGE (last 3 months EXCLUDING current)
+        // Ex: if current is Feb 2026, QTR = average of Nov 2025, Dec 2025, Jan 2026
         let qtrSum = 0;
-        for (let j = 0; j < 3; j++) {
+        let qtrCount = 0;
+        for (let j = 1; j <= 3; j++) {
           const qtrMonthKey = format(subMonths(monthDate, j), "yyyy-MM");
-          qtrSum += monthlyRevenue[qtrMonthKey] || 0;
+          const qtrValue = monthlyRevenue[qtrMonthKey] || 0;
+          qtrSum += qtrValue;
+          if (qtrValue > 0) qtrCount++;
         }
+        const qtrAvg = qtrCount > 0 ? qtrSum / 3 : 0;
         
-        // Calculate YTD (from January to current month of that year)
+        // Calculate YTD AVERAGE (from January to previous month of current year)
+        // Ex: if current is Feb 2026, YTD = average of Jan 2026
         const yearOfMonth = monthDate.getFullYear();
         const monthOfYear = monthDate.getMonth();
         let ytdSum = 0;
-        for (let m = 0; m <= monthOfYear; m++) {
+        let ytdMonthsCount = 0;
+        for (let m = 0; m < monthOfYear; m++) {
           const ytdMonthKey = format(new Date(yearOfMonth, m, 1), "yyyy-MM");
           ytdSum += monthlyRevenue[ytdMonthKey] || 0;
+          ytdMonthsCount++;
         }
+        const ytdAvg = ytdMonthsCount > 0 ? ytdSum / ytdMonthsCount : 0;
         
-        // Calculate rolling MAT (last 12 months including current)
+        // Calculate rolling MAT AVERAGE (last 12 months EXCLUDING current)
+        // Ex: if current is Feb 2026, MAT = average of Feb 2025 to Jan 2026
         let matSum = 0;
-        for (let j = 0; j < 12; j++) {
+        for (let j = 1; j <= 12; j++) {
           const matMonthKey = format(subMonths(monthDate, j), "yyyy-MM");
           matSum += monthlyRevenue[matMonthKey] || 0;
         }
+        const matAvg = matSum / 12;
         
         data.push({
           month: monthKey,
           monthLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
           shortLabel: shortLabel.charAt(0).toUpperCase() + shortLabel.slice(1),
           revenue,
-          qtr: qtrSum,
-          ytd: ytdSum,
-          mat: matSum,
+          qtr: qtrAvg,
+          ytd: ytdAvg,
+          mat: matAvg,
         });
       }
       
