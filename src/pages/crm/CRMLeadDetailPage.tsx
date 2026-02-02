@@ -473,24 +473,28 @@ export const CRMLeadDetailPage = () => {
                   <MoreHorizontal className="h-5 w-5" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="end">
-                {!isClosed ? (
-                  <>
-                    <DropdownMenuItem onClick={() => setWonDialogOpen(true)}>
-                      <Trophy className="h-4 w-4 mr-2 text-green-500" />
-                      Marcar como Ganho
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setLostDialogOpen(true)}>
-                      <XCircle className="h-4 w-4 mr-2 text-red-500" />
-                      Marcar como Perdido
-                    </DropdownMenuItem>
-                  </>
-                ) : (
-                  <DropdownMenuItem onClick={() => setReopenDialogOpen(true)}>
-                    <Flag className="h-4 w-4 mr-2 text-blue-500" />
-                    Reabrir Lead
-                  </DropdownMenuItem>
-                )}
+              <DropdownMenuContent align="end" className="bg-popover">
+                <DropdownMenuItem 
+                  onClick={() => setWonDialogOpen(true)}
+                  disabled={lead.stage?.final_type === 'won'}
+                >
+                  <Trophy className="h-4 w-4 mr-2 text-green-500" />
+                  Marcar como Ganho
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setLostDialogOpen(true)}
+                  disabled={lead.stage?.final_type === 'lost'}
+                >
+                  <XCircle className="h-4 w-4 mr-2 text-red-500" />
+                  Marcar como Perdido
+                </DropdownMenuItem>
+                <DropdownMenuItem 
+                  onClick={() => setReopenDialogOpen(true)}
+                  disabled={!isClosed}
+                >
+                  <Flag className="h-4 w-4 mr-2 text-blue-500" />
+                  Marcar como em Aberto
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
