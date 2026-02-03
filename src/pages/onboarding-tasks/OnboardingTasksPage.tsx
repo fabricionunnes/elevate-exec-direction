@@ -153,6 +153,9 @@ const OnboardingTasksPage = () => {
   
   // Global access control panel state
   const [showAccessControlPanel, setShowAccessControlPanel] = useState(false);
+  
+  // Bulk health score update state
+  const [updatingAllHealthScores, setUpdatingAllHealthScores] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -1414,6 +1417,355 @@ const OnboardingTasksPage = () => {
     setActiveMetricFilter(null);
   };
 
+  // Function to update all health scores for active projects
+  const handleUpdateAllHealthScores = async () => {
+    setUpdatingAllHealthScores(true);
+    try {
+      // Get all active projects (excluding simulators)
+      const activeCompanyIds = new Set(
+        companies.filter(c => c.status === "active" && !c.is_simulator).map(c => c.id)
+      );
+      
+      const projectsToUpdate = allProjects.filter(p => {
+        const companyId = p.onboarding_company_id || p.company_id;
+        return p.status === "active" && companyId && activeCompanyIds.has(companyId);
+      });
+
+      if (projectsToUpdate.length === 0) {
+        toast.info("Nenhum projeto ativo encontrado para atualizar");
+        return;
+      }
+
+      toast.loading(`Atualizando saúde de ${projectsToUpdate.length} projetos...`, { id: "health-update" });
+
+      let successCount = 0;
+      let errorCount = 0;
+
+      // Process in batches of 5 to avoid overwhelming the database
+      const batchSize = 5;
+      for (let i = 0; i < projectsToUpdate.length; i += batchSize) {
+        const batch = projectsToUpdate.slice(i, i + batchSize);
+        
+        await Promise.all(batch.map(async (project) => {
+          try {
+            // Get project and company info
+            const { data: projectData } = await supabase
+              .from("onboarding_projects")
+              .select("id, onboarding_company_id, current_nps, status")
+              .eq("id", project.id)
+              .single();
+
+            if (!projectData) return;
+
+            const companyId = projectData.onboarding_company_id;
+            const projectStatus = projectData.status;
+
+            // Check for cancellation status
+            const isCancellationStatus = [
+              "cancellation_requested", 
+              "cancellation_signaled",
+              "notice_period",
+              "sinalizou_cancelamento",
+              "cumprindo_aviso"
+            ].includes(projectStatus?.toLowerCase() || "");
+
+            // Calculate satisfaction score
+            let satisfactionScore = 50;
+            const { data: npsData } = await supabase
+              .from("onboarding_nps_responses")
+              .select("score")
+              .eq("project_id", project.id)
+              .order("created_at", { ascending: false })
+              .limit(5);
+
+            if (npsData && npsData.length > 0) {
+              const avgNps = npsData.reduce((sum, r) => sum + r.score, 0) / npsData.length;
+              satisfactionScore = Math.min(100, Math.max(0, avgNps * 10));
+            }
+
+            const { data: csatData } = await supabase
+              .from("csat_responses")
+              .select("score")
+              .eq("project_id", project.id)
+              .order("created_at", { ascending: false })
+              .limit(5);
+
+            if (csatData && csatData.length > 0) {
+              const avgCsat = csatData.reduce((sum, r) => sum + r.score, 0) / csatData.length;
+              const csatScore = avgCsat * 20;
+              satisfactionScore = (satisfactionScore + csatScore) / 2;
+            }
+
+            // Calculate goals score
+            let goalsScore = 50;
+            const { data: goalsData } = await supabase
+              .from("onboarding_monthly_goals")
+              .select("sales_target, sales_result")
+              .eq("project_id", project.id)
+              .order("year", { ascending: false })
+              .order("month", { ascending: false })
+              .limit(6);
+
+            if (goalsData && goalsData.length > 0) {
+              const goalsWithTargets = goalsData.filter(g => g.sales_target && g.sales_target > 0);
+              if (goalsWithTargets.length > 0) {
+                const avgAchievement = goalsWithTargets.reduce((sum, g) => {
+                  const achievement = ((g.sales_result || 0) / g.sales_target!) * 100;
+                  return sum + Math.min(100, achievement);
+                }, 0) / goalsWithTargets.length;
+                goalsScore = Math.min(100, avgAchievement);
+              }
+            }
+
+            // Calculate commercial score
+            let commercialScore = 50;
+            if (companyId) {
+              const { data: salesHistory } = await supabase
+                .from("company_sales_history")
+                .select("revenue, is_pre_unv")
+                .eq("company_id", companyId)
+                .order("month_year", { ascending: false })
+                .limit(24);
+
+              if (salesHistory && salesHistory.length > 0) {
+                const preUnv = salesHistory.filter(s => s.is_pre_unv);
+                const postUnv = salesHistory.filter(s => !s.is_pre_unv);
+
+                if (preUnv.length > 0 && postUnv.length > 0) {
+                  const avgPre = preUnv.reduce((sum, s) => sum + (s.revenue || 0), 0) / preUnv.length;
+                  const avgPost = postUnv.reduce((sum, s) => sum + (s.revenue || 0), 0) / postUnv.length;
+
+                  if (avgPre > 0) {
+                    const growth = ((avgPost - avgPre) / avgPre) * 100;
+                    commercialScore = Math.min(100, Math.max(0, 50 + growth));
+                  }
+                }
+              }
+            }
+
+            // Calculate engagement score
+            let engagementScore = 50;
+            const { data: tasks } = await supabase
+              .from("onboarding_tasks")
+              .select("status, due_date, completed_at")
+              .eq("project_id", project.id);
+
+            if (tasks && tasks.length > 0) {
+              const completed = tasks.filter(t => t.status === "completed").length;
+              const total = tasks.length;
+              const completionRate = (completed / total) * 100;
+              
+              const today = new Date();
+              const overdue = tasks.filter(t => 
+                t.status !== "completed" && 
+                t.due_date && 
+                new Date(t.due_date) < today
+              ).length;
+              
+              const overdueRate = (overdue / total) * 100;
+              engagementScore = Math.min(100, Math.max(0, completionRate - overdueRate));
+            }
+
+            // Calculate support score
+            let supportScore = 70;
+            const { data: tickets } = await supabase
+              .from("onboarding_tickets")
+              .select("status, created_at, updated_at")
+              .eq("project_id", project.id);
+
+            if (tickets && tickets.length > 0) {
+              const resolved = tickets.filter(t => t.status === "resolved" || t.status === "closed").length;
+              const resolutionRate = (resolved / tickets.length) * 100;
+              const openTickets = tickets.filter(t => t.status !== "resolved" && t.status !== "closed").length;
+              const openPenalty = Math.min(30, openTickets * 5);
+              supportScore = Math.min(100, Math.max(0, resolutionRate - openPenalty));
+            }
+
+            // Calculate trend score
+            let trendScore = 50;
+            const thirtyDaysAgo = new Date();
+            thirtyDaysAgo.setDate(thirtyDaysAgo.getDate() - 30);
+            
+            const { data: recentSnapshots } = await supabase
+              .from("health_score_snapshots")
+              .select("total_score, snapshot_date")
+              .eq("project_id", project.id)
+              .gte("snapshot_date", thirtyDaysAgo.toISOString().split("T")[0])
+              .order("snapshot_date", { ascending: true });
+
+            let trendDirection = "stable";
+            if (recentSnapshots && recentSnapshots.length >= 2) {
+              const firstScore = recentSnapshots[0].total_score;
+              const lastScore = recentSnapshots[recentSnapshots.length - 1].total_score;
+              const change = Number(lastScore) - Number(firstScore);
+              
+              if (change > 5) {
+                trendDirection = "rising";
+                trendScore = Math.min(100, 60 + change);
+              } else if (change < -5) {
+                trendDirection = "falling";
+                trendScore = Math.max(0, 40 + change);
+              }
+            }
+
+            // Default weights
+            const weights = {
+              satisfaction_weight: 25,
+              goals_weight: 25,
+              commercial_weight: 20,
+              engagement_weight: 15,
+              support_weight: 10,
+              trend_weight: 5,
+            };
+
+            // Calculate weighted total
+            let totalScore = Math.round(
+              (satisfactionScore * weights.satisfaction_weight / 100) +
+              (goalsScore * weights.goals_weight / 100) +
+              (commercialScore * weights.commercial_weight / 100) +
+              (engagementScore * weights.engagement_weight / 100) +
+              (supportScore * weights.support_weight / 100) +
+              (trendScore * weights.trend_weight / 100)
+            );
+
+            // Apply bonuses
+            if (goalsScore >= 80) {
+              totalScore = Math.min(100, totalScore + 10);
+            }
+
+            // Check for recent renewal
+            if (companyId) {
+              const thirtyDaysAgoRenewal = new Date();
+              thirtyDaysAgoRenewal.setDate(thirtyDaysAgoRenewal.getDate() - 30);
+              
+              const { data: companyData } = await supabase
+                .from("onboarding_companies")
+                .select("renewed_at")
+                .eq("id", companyId)
+                .single();
+              
+              if (companyData?.renewed_at) {
+                const renewedAt = new Date(companyData.renewed_at);
+                if (renewedAt >= thirtyDaysAgoRenewal) {
+                  totalScore = Math.min(100, totalScore * 2);
+                }
+              }
+            }
+
+            // Apply cancellation penalty
+            if (isCancellationStatus) {
+              totalScore = Math.max(0, totalScore - 30);
+            }
+
+            // Determine risk level
+            let riskLevel = "healthy";
+            if (isCancellationStatus) {
+              riskLevel = "critical";
+            } else if (totalScore < 40) {
+              riskLevel = "critical";
+            } else if (totalScore < 60) {
+              riskLevel = "at_risk";
+            } else if (totalScore < 80) {
+              riskLevel = "attention";
+            }
+
+            // Save score
+            const { data: existingScore } = await supabase
+              .from("client_health_scores")
+              .select("id")
+              .eq("project_id", project.id)
+              .single();
+
+            const scorePayload = {
+              project_id: project.id,
+              total_score: totalScore,
+              satisfaction_score: Math.round(satisfactionScore),
+              goals_score: Math.round(goalsScore),
+              commercial_score: Math.round(commercialScore),
+              engagement_score: Math.round(engagementScore),
+              support_score: Math.round(supportScore),
+              trend_score: Math.round(trendScore),
+              risk_level: riskLevel,
+              trend_direction: trendDirection,
+              last_calculated_at: new Date().toISOString(),
+              updated_at: new Date().toISOString(),
+            };
+
+            if (existingScore) {
+              await supabase
+                .from("client_health_scores")
+                .update(scorePayload)
+                .eq("id", existingScore.id);
+            } else {
+              await supabase
+                .from("client_health_scores")
+                .insert(scorePayload);
+            }
+
+            // Save daily snapshot
+            const today = new Date().toISOString().split("T")[0];
+            const { data: existingSnapshot } = await supabase
+              .from("health_score_snapshots")
+              .select("id")
+              .eq("project_id", project.id)
+              .eq("snapshot_date", today)
+              .single();
+
+            const snapshotPayload = {
+              project_id: project.id,
+              snapshot_date: today,
+              total_score: totalScore,
+              satisfaction_score: Math.round(satisfactionScore),
+              goals_score: Math.round(goalsScore),
+              commercial_score: Math.round(commercialScore),
+              engagement_score: Math.round(engagementScore),
+              support_score: Math.round(supportScore),
+              trend_score: Math.round(trendScore),
+              risk_level: riskLevel,
+            };
+
+            if (existingSnapshot) {
+              await supabase
+                .from("health_score_snapshots")
+                .update(snapshotPayload)
+                .eq("id", existingSnapshot.id);
+            } else {
+              await supabase
+                .from("health_score_snapshots")
+                .insert(snapshotPayload);
+            }
+
+            successCount++;
+          } catch (err) {
+            console.error(`Error updating health score for project ${project.id}:`, err);
+            errorCount++;
+          }
+        }));
+
+        // Update progress
+        toast.loading(`Atualizando saúde... ${Math.min(i + batchSize, projectsToUpdate.length)}/${projectsToUpdate.length}`, { id: "health-update" });
+      }
+
+      toast.dismiss("health-update");
+      
+      if (errorCount === 0) {
+        toast.success(`Saúde de ${successCount} projetos atualizada com sucesso!`);
+      } else {
+        toast.warning(`${successCount} atualizados, ${errorCount} erros`);
+      }
+
+      // Refresh health scores data
+      await fetchHealthScores();
+
+    } catch (error: any) {
+      console.error("Error updating all health scores:", error);
+      toast.dismiss("health-update");
+      toast.error("Erro ao atualizar saúde das empresas");
+    } finally {
+      setUpdatingAllHealthScores(false);
+    }
+  };
+
   const getStatusBadge = (status: string) => {
     switch (status) {
       case "active":
@@ -1938,7 +2290,7 @@ const OnboardingTasksPage = () => {
                           <RefreshCw className="h-4 w-4 mr-2" />
                           Operacional
                         </DropdownMenuSubTrigger>
-                        <DropdownMenuSubContent className="w-48">
+                        <DropdownMenuSubContent className="w-56">
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
                             <RefreshCw className="h-4 w-4 mr-2" />
                             Renovações
@@ -1947,6 +2299,15 @@ const OnboardingTasksPage = () => {
                             <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
                               <CalendarClock className="h-4 w-4 mr-2" />
                               Reagendar Tarefas
+                            </DropdownMenuItem>
+                          )}
+                          {isAdmin && (
+                            <DropdownMenuItem 
+                              onClick={handleUpdateAllHealthScores}
+                              disabled={updatingAllHealthScores}
+                            >
+                              <Heart className={`h-4 w-4 mr-2 ${updatingAllHealthScores ? "animate-pulse" : ""}`} />
+                              {updatingAllHealthScores ? "Atualizando..." : "Atualizar Saúde Global"}
                             </DropdownMenuItem>
                           )}
                         </DropdownMenuSubContent>
