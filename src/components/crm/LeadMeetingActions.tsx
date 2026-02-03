@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import {
   Tooltip,
@@ -41,7 +41,7 @@ const trackMeetingEvent = async (
       .limit(1);
 
     if (existing && existing.length > 0) {
-      return true; // Already tracked
+      return false; // Already tracked - return false to indicate it wasn't newly created
     }
 
     // If scheduling, update lead with scheduler info
@@ -132,6 +132,25 @@ export function LeadMeetingActions({
     new Set()
   );
 
+  // Load existing events on mount
+  useEffect(() => {
+    const loadExistingEvents = async () => {
+      const { data } = await supabase
+        .from("crm_meeting_events")
+        .select("event_type")
+        .eq("lead_id", leadId);
+
+      if (data && data.length > 0) {
+        const existingTypes = new Set<MeetingEventType>(
+          data.map((e) => e.event_type as MeetingEventType)
+        );
+        setTrackedEvents(existingTypes);
+      }
+    };
+
+    loadExistingEvents();
+  }, [leadId]);
+
   const handleTrackEvent = async (
     e: React.MouseEvent,
     eventType: MeetingEventType
@@ -139,7 +158,12 @@ export function LeadMeetingActions({
     e.preventDefault();
     e.stopPropagation();
 
-    if (loading || trackedEvents.has(eventType)) return;
+    if (loading || trackedEvents.has(eventType)) {
+      if (trackedEvents.has(eventType)) {
+        toast.info("Este evento já foi registrado para este lead");
+      }
+      return;
+    }
 
     setLoading(eventType);
 
@@ -172,7 +196,9 @@ export function LeadMeetingActions({
         toast.success(labels[eventType]);
         onEventTracked?.();
       } else {
-        toast.error("Erro ao registrar evento");
+        // Already tracked by someone else
+        setTrackedEvents((prev) => new Set(prev).add(eventType));
+        toast.info("Este evento já foi registrado para este lead");
       }
     } catch (error) {
       console.error("Error tracking event:", error);
