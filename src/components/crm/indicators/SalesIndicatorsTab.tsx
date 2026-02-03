@@ -215,6 +215,16 @@ export const SalesIndicatorsTab = () => {
         .gte("scheduled_at", filterStart.toISOString())
         .lte("scheduled_at", filterEnd.toISOString());
 
+      // Load meeting events from card buttons
+      const { data: meetingEvents } = await supabase
+        .from("crm_meeting_events")
+        .select(`
+          *,
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+        `)
+        .gte("event_date", filterStart.toISOString())
+        .lte("event_date", filterEnd.toISOString());
+
       // Load sales using date range
       const { data: salesData } = await supabase
         .from("crm_sales")
@@ -283,9 +293,21 @@ export const SalesIndicatorsTab = () => {
       const totalSales = salesData?.length || 0;
       const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
       
-      const totalScheduled = calls?.length || 0;
-      const totalCompleted = (calls || []).filter(c => c.status === "completed").length;
-      const totalNoShow = (calls || []).filter(c => c.status === "no_show").length;
+      // Calculate calls metrics (from scheduled_calls table)
+      const totalScheduledCalls = calls?.length || 0;
+      const totalCompletedCalls = (calls || []).filter(c => c.status === "completed").length;
+      const totalNoShowCalls = (calls || []).filter(c => c.status === "no_show").length;
+      
+      // Calculate meeting events metrics (from card buttons)
+      const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
+      const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
+      const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
+      
+      // Combined totals (prefer meeting events when available, fallback to scheduled calls)
+      const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
+      const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
+      const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
+      
       const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
       const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
 
@@ -338,7 +360,20 @@ export const SalesIndicatorsTab = () => {
         const closerCalls = (calls || []).filter(c => c.assigned_to === closer.id);
         const closerSales = (salesData || []).filter(s => s.closer_staff_id === closer.id);
         const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-        const closerCompleted = closerCalls.filter(c => c.status === "completed").length;
+        
+        // Meeting events credited to this closer
+        const closerMeetingEvents = (meetingEvents || []).filter(e => e.credited_staff_id === closer.id);
+        const closerEventsScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
+        const closerEventsRealized = closerMeetingEvents.filter(e => e.event_type === "realized").length;
+        
+        // Combine scheduled_calls with meeting_events (prefer events when available)
+        const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
+        const closerScheduledFromCalls = closerCalls.length;
+        
+        // Use meeting events if available, otherwise use scheduled calls
+        const closerScheduled = closerEventsScheduled > 0 ? closerEventsScheduled : closerScheduledFromCalls;
+        const closerCompleted = closerEventsRealized > 0 ? closerEventsRealized : closerCompletedFromCalls;
+        
         // Use the preloaded goals map
         const closerGoal = staffGoalsMap.get(closer.id);
         const closerMeta = closerGoal?.meta || (metaReceita / (filteredCloserStaff.length || 1));
@@ -346,7 +381,7 @@ export const SalesIndicatorsTab = () => {
         return {
           id: closer.id,
           name: closer.name,
-          callsScheduled: closerCalls.length,
+          callsScheduled: closerScheduled,
           callsCompleted: closerCompleted,
           salesQty: closerSales.length,
           revenue: closerRevenue,

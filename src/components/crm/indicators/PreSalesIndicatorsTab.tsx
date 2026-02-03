@@ -188,6 +188,16 @@ export const PreSalesIndicatorsTab = () => {
         .gte("scheduled_at", periodStart.toISOString())
         .lte("scheduled_at", periodEnd.toISOString());
 
+      // Load meeting events from card buttons
+      const { data: meetingEvents } = await supabase
+        .from("crm_meeting_events")
+        .select(`
+          *,
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+        `)
+        .gte("event_date", periodStart.toISOString())
+        .lte("event_date", periodEnd.toISOString());
+
       // Load sales
       const { data: salesData } = await supabase
         .from("crm_sales")
@@ -216,12 +226,22 @@ export const PreSalesIndicatorsTab = () => {
       const totalScheduledFromActivities = (dailyActivities || []).reduce((sum, a) => sum + (a.scheduled || 0), 0);
       const totalQualifications = (dailyActivities || []).reduce((sum, a) => sum + (a.qualifications || 0), 0);
 
-      // Calculate calls metrics
-      const totalScheduled = calls?.length || 0;
-      const totalCompleted = (calls || []).filter(c => c.status === "completed").length;
-      const totalNoShow = (calls || []).filter(c => c.status === "no_show").length;
+      // Calculate calls metrics (from scheduled_calls table)
+      const totalScheduledCalls = calls?.length || 0;
+      const totalCompletedCalls = (calls || []).filter(c => c.status === "completed").length;
+      const totalNoShowCalls = (calls || []).filter(c => c.status === "no_show").length;
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
+      
+      // Calculate meeting events metrics (from card buttons)
+      const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
+      const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
+      const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
+      
+      // Combined totals (prefer meeting events when available, fallback to scheduled calls)
+      const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
+      const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
+      const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
       
       const showUpPercent = totalScheduled > 0 ? ((totalCompleted / totalScheduled) * 100) : 0;
       const noShowPercent = totalScheduled > 0 ? ((totalNoShow / totalScheduled) * 100) : 0;
@@ -274,16 +294,31 @@ export const PreSalesIndicatorsTab = () => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
         
+        // Meeting events credited to this SDR
+        const sdrMeetingEvents = (meetingEvents || []).filter(e => e.credited_staff_id === sdr.id);
+        const sdrEventsScheduled = sdrMeetingEvents.filter(e => e.event_type === "scheduled").length;
+        const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
+        const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
+        
         const approaches = sdrActivities.reduce((sum, a) => sum + (a.approaches || 0), 0);
         const connections = sdrActivities.reduce((sum, a) => sum + (a.connections || 0), 0);
         const scheduled = sdrActivities.reduce((sum, a) => sum + (a.scheduled || 0), 0);
         const qualified = sdrActivities.reduce((sum, a) => sum + (a.qualifications || 0), 0);
         
-        const callsScheduled = sdrCalls.length;
-        const cancelled = sdrCalls.filter(c => c.status === "cancelled").length;
-        const rescheduled = sdrCalls.filter(c => c.status === "rescheduled").length;
-        const noShow = sdrCalls.filter(c => c.status === "no_show").length;
-        const meetings = sdrCalls.filter(c => c.status === "completed").length;
+        // Combine scheduled_calls with meeting_events (prefer events when available)
+        const callsScheduledFromCalls = sdrCalls.length;
+        const cancelledFromCalls = sdrCalls.filter(c => c.status === "cancelled").length;
+        const rescheduledFromCalls = sdrCalls.filter(c => c.status === "rescheduled").length;
+        const noShowFromCalls = sdrCalls.filter(c => c.status === "no_show").length;
+        const meetingsFromCalls = sdrCalls.filter(c => c.status === "completed").length;
+        
+        // Use meeting events if available, otherwise use scheduled calls
+        const callsScheduled = sdrEventsScheduled > 0 ? sdrEventsScheduled : callsScheduledFromCalls;
+        const noShow = sdrEventsNoShow > 0 ? sdrEventsNoShow : noShowFromCalls;
+        const meetings = sdrEventsRealized > 0 ? sdrEventsRealized : meetingsFromCalls;
+        const cancelled = cancelledFromCalls;
+        const rescheduled = rescheduledFromCalls;
+        
         const noShowPct = callsScheduled > 0 ? (noShow / callsScheduled) * 100 : 0;
 
         return {
