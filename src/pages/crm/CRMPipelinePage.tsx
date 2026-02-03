@@ -40,6 +40,7 @@ import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
+import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 
 interface Stage {
   id: string;
@@ -639,15 +640,14 @@ export const CRMPipelinePage = () => {
                           </div>
 
                           {/* Footer with icons */}
-                          <div className="flex items-center gap-2 mt-1.5">
+                          <div className="flex items-center gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
                             <div className="flex items-center gap-1">
-                              {lead.owner?.name && (
-                                <Avatar className="h-5 w-5">
-                                  <AvatarFallback className="text-[10px]">
-                                    {lead.owner.name.slice(0, 2).toUpperCase()}
-                                  </AvatarFallback>
-                                </Avatar>
-                              )}
+                              <OwnerSelector
+                                leadId={lead.id}
+                                currentOwnerId={lead.owner_staff_id}
+                                currentOwnerName={lead.owner?.name}
+                                onOwnerChange={loadStagesAndLeads}
+                              />
                               {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
                               {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
                               {lead.phone && (
