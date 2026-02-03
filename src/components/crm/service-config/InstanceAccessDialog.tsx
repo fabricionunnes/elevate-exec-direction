@@ -14,12 +14,14 @@ interface WhatsAppInstance {
   instance_name: string;
   display_name: string;
   status: string;
+  type: "evolution" | "official";
 }
 
 interface InstanceAccess {
   instance_id: string;
   can_view: boolean;
   can_send: boolean;
+  type: "evolution" | "official";
 }
 
 interface InstanceAccessDialogProps {
@@ -51,28 +53,74 @@ export function InstanceAccessDialog({
   const loadData = async () => {
     setLoading(true);
     try {
-      // Load all instances
-      const { data: instancesData } = await supabase
+      // Load Evolution API instances
+      const { data: evolutionData } = await supabase
         .from("whatsapp_instances")
         .select("id, instance_name, display_name, status")
         .order("display_name");
 
-      setInstances(instancesData || []);
+      // Load Official API instances
+      const { data: officialData } = await supabase
+        .from("whatsapp_official_instances")
+        .select("id, display_name, phone_number, is_active")
+        .order("display_name");
 
-      // Load current access for this staff
-      const { data: accessData } = await supabase
+      const allInstances: WhatsAppInstance[] = [];
+      
+      (evolutionData || []).forEach((i) => {
+        allInstances.push({
+          id: i.id,
+          instance_name: i.instance_name,
+          display_name: i.display_name || i.instance_name,
+          status: i.status,
+          type: "evolution",
+        });
+      });
+      
+      (officialData || []).forEach((i: any) => {
+        allInstances.push({
+          id: `official:${i.id}`,
+          instance_name: i.display_name || i.phone_number || "API Oficial",
+          display_name: i.display_name || i.phone_number || "API Oficial",
+          status: i.is_active ? "connected" : "disconnected",
+          type: "official",
+        });
+      });
+
+      setInstances(allInstances);
+
+      // Load Evolution API access
+      const { data: evolutionAccess } = await supabase
         .from("whatsapp_instance_access")
         .select("instance_id, can_view, can_send")
         .eq("staff_id", staffId);
 
+      // Load Official API access
+      const { data: officialAccess } = await supabase
+        .from("whatsapp_official_instance_access")
+        .select("instance_id, can_view, can_send")
+        .eq("staff_id", staffId);
+
       const map: Record<string, InstanceAccess> = {};
-      (accessData || []).forEach((a) => {
+      
+      (evolutionAccess || []).forEach((a) => {
         map[a.instance_id] = {
           instance_id: a.instance_id,
           can_view: a.can_view,
           can_send: a.can_send,
+          type: "evolution",
         };
       });
+      
+      (officialAccess || []).forEach((a) => {
+        map[`official:${a.instance_id}`] = {
+          instance_id: a.instance_id,
+          can_view: a.can_view,
+          can_send: a.can_send,
+          type: "official",
+        };
+      });
+      
       setAccessMap(map);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -82,7 +130,11 @@ export function InstanceAccessDialog({
     }
   };
 
-  const toggleAccess = (instanceId: string) => {
+  const toggleAccess = (instanceId: string, type: "evolution" | "official") => {
+    const realId = instanceId.startsWith("official:") 
+      ? instanceId.replace("official:", "") 
+      : instanceId;
+      
     setAccessMap((prev) => {
       const current = prev[instanceId];
       if (current) {
@@ -95,9 +147,10 @@ export function InstanceAccessDialog({
         return {
           ...prev,
           [instanceId]: {
-            instance_id: instanceId,
+            instance_id: realId,
             can_view: true,
             can_send: true,
+            type,
           },
         };
       }
@@ -107,16 +160,26 @@ export function InstanceAccessDialog({
   const handleSave = async () => {
     setSaving(true);
     try {
-      // Delete all current access for this staff
+      // Delete all current Evolution API access for this staff
       await supabase
         .from("whatsapp_instance_access")
         .delete()
         .eq("staff_id", staffId);
 
-      // Insert new access entries
+      // Delete all current Official API access for this staff
+      await supabase
+        .from("whatsapp_official_instance_access")
+        .delete()
+        .eq("staff_id", staffId);
+
+      // Separate entries by type
       const entries = Object.values(accessMap);
-      if (entries.length > 0) {
-        const toInsert = entries.map((e) => ({
+      const evolutionEntries = entries.filter((e) => e.type === "evolution");
+      const officialEntries = entries.filter((e) => e.type === "official");
+
+      // Insert Evolution API access entries
+      if (evolutionEntries.length > 0) {
+        const toInsert = evolutionEntries.map((e) => ({
           staff_id: staffId,
           instance_id: e.instance_id,
           can_view: e.can_view,
@@ -125,6 +188,22 @@ export function InstanceAccessDialog({
 
         const { error } = await supabase
           .from("whatsapp_instance_access")
+          .insert(toInsert);
+
+        if (error) throw error;
+      }
+
+      // Insert Official API access entries
+      if (officialEntries.length > 0) {
+        const toInsert = officialEntries.map((e) => ({
+          staff_id: staffId,
+          instance_id: e.instance_id,
+          can_view: e.can_view,
+          can_send: e.can_send,
+        }));
+
+        const { error } = await supabase
+          .from("whatsapp_official_instance_access")
           .insert(toInsert);
 
         if (error) throw error;
@@ -174,6 +253,7 @@ export function InstanceAccessDialog({
                 ) : (
                   instances.map((instance) => {
                     const hasAccess = !!accessMap[instance.id];
+                    const isOfficial = instance.type === "official";
                     return (
                       <div
                         key={instance.id}
@@ -182,20 +262,27 @@ export function InstanceAccessDialog({
                             ? "border-primary bg-primary/5"
                             : "border-border hover:bg-muted/50"
                         }`}
-                        onClick={() => toggleAccess(instance.id)}
+                        onClick={() => toggleAccess(instance.id, instance.type)}
                       >
                         <Checkbox
                           checked={hasAccess}
-                          onCheckedChange={() => toggleAccess(instance.id)}
+                          onCheckedChange={() => toggleAccess(instance.id, instance.type)}
                         />
                         <div className="flex items-center gap-2 flex-1">
-                          <div className="h-8 w-8 rounded-full bg-green-100 flex items-center justify-center">
-                            <MessageCircle className="h-4 w-4 text-green-600" />
+                          <div className={`h-8 w-8 rounded-full flex items-center justify-center ${
+                            isOfficial ? "bg-blue-100" : "bg-green-100"
+                          }`}>
+                            <MessageCircle className={`h-4 w-4 ${
+                              isOfficial ? "text-blue-600" : "text-green-600"
+                            }`} />
                           </div>
                           <div className="flex-1">
                             <p className="font-medium text-sm">
                               {instance.display_name || instance.instance_name}
                             </p>
+                            {isOfficial && (
+                              <p className="text-xs text-blue-600">API Oficial</p>
+                            )}
                           </div>
                           {getStatusBadge(instance.status)}
                         </div>
