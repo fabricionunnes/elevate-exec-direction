@@ -555,12 +555,18 @@ export const PreSalesIndicatorsTab = () => {
         </Card>
       </div>
 
-      {/* Agendamentos metrics row */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
+      {/* Agendamentos e Reuniões Realizadas metrics row */}
+      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
         <Card>
           <CardContent className="p-3">
             <p className="text-[10px] text-muted-foreground uppercase">Agendamentos</p>
             <p className="text-2xl font-bold text-blue-500">{metrics.agendamentos}</p>
+          </CardContent>
+        </Card>
+        <Card className="bg-green-500/10 border-green-500/30">
+          <CardContent className="p-3">
+            <p className="text-[10px] text-muted-foreground uppercase">Reuniões Realizadas</p>
+            <p className="text-2xl font-bold text-green-600">{metrics.reunioes}</p>
           </CardContent>
         </Card>
         <Card>
