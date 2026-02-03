@@ -39,6 +39,7 @@ import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
+import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
 
 interface Stage {
   id: string;
@@ -618,8 +619,27 @@ export const CRMPipelinePage = () => {
                             </div>
                           )}
 
+                          {/* Meeting Actions */}
+                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
+                            <LeadMeetingActions
+                              leadId={lead.id}
+                              pipelineId={selectedPipeline || ""}
+                              stageId={lead.stage_id}
+                              ownerStaffId={lead.owner_staff_id}
+                              onEventTracked={loadStagesAndLeads}
+                            />
+                            
+                            <div className="flex items-center gap-1">
+                              {lead.opportunity_value && (
+                                <span className="text-xs text-green-600">
+                                  {formatCurrency(lead.opportunity_value)}
+                                </span>
+                              )}
+                            </div>
+                          </div>
+
                           {/* Footer with icons */}
-                          <div className="flex items-center gap-2 mt-2 pt-2 border-t border-border">
+                          <div className="flex items-center gap-2 mt-1.5">
                             <div className="flex items-center gap-1">
                               {lead.owner?.name && (
                                 <Avatar className="h-5 w-5">
@@ -641,15 +661,9 @@ export const CRMPipelinePage = () => {
                               )}
                               {!lead.phone && <MessageSquare className="h-3 w-3 text-muted-foreground/50" />}
                             </div>
-                            
-                            {lead.opportunity_value && (
-                              <span className="text-xs text-green-600 ml-auto">
-                                {formatCurrency(lead.opportunity_value)}
-                              </span>
-                            )}
 
                             {lead.last_activity_at && (
-                              <span className="text-[10px] text-muted-foreground">
+                              <span className="text-[10px] text-muted-foreground ml-auto">
                                 {formatDistanceToNow(new Date(lead.last_activity_at), { 
                                   locale: ptBR, 
                                   addSuffix: false 
