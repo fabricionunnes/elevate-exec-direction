@@ -71,8 +71,8 @@ const trackMeetingEvent = async (
       return false;
     }
 
-    // If realized, also credit the original scheduler if different
-    if (eventType === "realized") {
+    // For realized and no_show, also credit the original scheduler (SDR) if different
+    if (eventType === "realized" || eventType === "no_show") {
       const { data: lead } = await supabase
         .from("crm_leads")
         .select("scheduled_by_staff_id")
