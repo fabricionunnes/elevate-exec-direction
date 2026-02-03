@@ -39,6 +39,7 @@ interface CRMContextType {
   staffName: string | null;
   staffId: string | null;
   isAdmin: boolean;
+  isMaster: boolean;
   selectedOrigin: string | null;
   setSelectedOrigin: (id: string | null) => void;
   selectedPipeline: string | null;
@@ -151,6 +152,7 @@ export const CRMLayout = () => {
   if (!hasAccess) return null;
 
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
+  const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
 
   const isTabActive = (href: string) => {
@@ -168,6 +170,7 @@ export const CRMLayout = () => {
       staffName,
       staffId,
       isAdmin,
+      isMaster,
       selectedOrigin,
       setSelectedOrigin,
       selectedPipeline,

@@ -37,6 +37,7 @@ interface KanbanLeadCardProps {
   isDragging: boolean;
   isSelected: boolean;
   isSelectionMode: boolean;
+  isMaster: boolean;
   onSelect: (leadId: string, selected: boolean) => void;
   onDragStart: (e: React.DragEvent, lead: Lead) => void;
   onOpenChat: (e: React.MouseEvent, lead: Lead) => void;
@@ -49,6 +50,7 @@ export const KanbanLeadCard = ({
   isDragging,
   isSelected,
   isSelectionMode,
+  isMaster,
   onSelect,
   onDragStart,
   onOpenChat,
@@ -70,8 +72,8 @@ export const KanbanLeadCard = ({
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // If in selection mode and clicking the card (not a button), toggle selection
-    if (isSelectionMode) {
+    // If in selection mode and master, clicking the card toggles selection
+    if (isSelectionMode && isMaster) {
       e.preventDefault();
       onSelect(lead.id, !isSelected);
     }
@@ -87,15 +89,17 @@ export const KanbanLeadCard = ({
     >
       {/* Selection Checkbox + Origin Tag */}
       <div className="flex items-start gap-2 mb-2">
-        <div 
-          onClick={handleCheckboxClick}
-          className="pt-0.5"
-        >
-          <Checkbox 
-            checked={isSelected}
-            className="cursor-pointer"
-          />
-        </div>
+        {isMaster && (
+          <div 
+            onClick={handleCheckboxClick}
+            className="pt-0.5"
+          >
+            <Checkbox 
+              checked={isSelected}
+              className="cursor-pointer"
+            />
+          </div>
+        )}
         <div className="flex-1">
           {lead.origin?.name && (
             <Badge variant="secondary" className="text-[10px] bg-pink-100 text-pink-700 border-0">
@@ -199,8 +203,8 @@ export const KanbanLeadCard = ({
     </div>
   );
 
-  // If in selection mode, don't wrap with Link
-  if (isSelectionMode) {
+  // If in selection mode (master only), don't wrap with Link
+  if (isSelectionMode && isMaster) {
     return (
       <div
         onClick={handleCardClick}
