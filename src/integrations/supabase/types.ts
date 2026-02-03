@@ -9632,6 +9632,8 @@ export type Database = {
           probability: number | null
           product_id: string | null
           role: string | null
+          scheduled_at: string | null
+          scheduled_by_staff_id: string | null
           sdr_staff_id: string | null
           segment: string | null
           stage_id: string | null
@@ -9670,6 +9672,8 @@ export type Database = {
           probability?: number | null
           product_id?: string | null
           role?: string | null
+          scheduled_at?: string | null
+          scheduled_by_staff_id?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
           stage_id?: string | null
@@ -9708,6 +9712,8 @@ export type Database = {
           probability?: number | null
           product_id?: string | null
           role?: string | null
+          scheduled_at?: string | null
+          scheduled_by_staff_id?: string | null
           sdr_staff_id?: string | null
           segment?: string | null
           stage_id?: string | null
@@ -9774,6 +9780,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "crm_leads_scheduled_by_staff_id_fkey"
+            columns: ["scheduled_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "crm_leads_sdr_staff_id_fkey"
             columns: ["sdr_staff_id"]
             isOneToOne: false
@@ -9812,6 +9825,78 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      crm_meeting_events: {
+        Row: {
+          created_at: string
+          credited_staff_id: string
+          event_date: string
+          event_type: string
+          id: string
+          lead_id: string
+          pipeline_id: string
+          stage_id: string | null
+          triggered_by_staff_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          credited_staff_id: string
+          event_date?: string
+          event_type: string
+          id?: string
+          lead_id: string
+          pipeline_id: string
+          stage_id?: string | null
+          triggered_by_staff_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          credited_staff_id?: string
+          event_date?: string
+          event_type?: string
+          id?: string
+          lead_id?: string
+          pipeline_id?: string
+          stage_id?: string | null
+          triggered_by_staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_meeting_events_credited_staff_id_fkey"
+            columns: ["credited_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meeting_events_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meeting_events_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meeting_events_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_meeting_events_triggered_by_staff_id_fkey"
+            columns: ["triggered_by_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_origin_groups: {
         Row: {
