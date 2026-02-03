@@ -25,12 +25,34 @@ export const LeadCardNotes = ({ leadId, notes, onNotesChange }: LeadCardNotesPro
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Get current staff for activity registration
+      const { data: userData } = await supabase.auth.getUser();
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", userData.user?.id)
+        .single();
+
+      // Update the lead notes
       const { error } = await supabase
         .from("crm_leads")
         .update({ notes: value || null })
         .eq("id", leadId);
 
       if (error) throw error;
+
+      // Register note change in activity history (only if there's content)
+      if (value && value.trim()) {
+        await supabase.from("crm_activities").insert({
+          lead_id: leadId,
+          type: "note",
+          title: "Observação adicionada",
+          description: value.trim(),
+          responsible_staff_id: staffData?.id,
+          status: "completed",
+          completed_at: new Date().toISOString(),
+        });
+      }
 
       toast.success("Observações salvas");
       setOpen(false);
