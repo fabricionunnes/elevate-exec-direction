@@ -44,12 +44,12 @@ const trackMeetingEvent = async (
       return false; // Already tracked - return false to indicate it wasn't newly created
     }
 
-    // If scheduling, update lead with scheduler info
+    // If scheduling, update lead with scheduler info (use triggeredBy as they are the one scheduling)
     if (eventType === "scheduled") {
       await supabase
         .from("crm_leads")
         .update({
-          scheduled_by_staff_id: creditedStaffId,
+          scheduled_by_staff_id: triggeredByStaffId,
           scheduled_at: new Date().toISOString(),
         })
         .eq("id", leadId);
@@ -174,8 +174,11 @@ export function LeadMeetingActions({
         return;
       }
 
-      // Credit the owner if exists, otherwise credit who triggered
-      const creditedStaffId = ownerStaffId || triggeredByStaffId;
+      // For "scheduled", credit the person who clicked (SDR registering the scheduling)
+      // For "realized" and "no_show", credit the owner (closer) - SDR will be credited inside trackMeetingEvent
+      const creditedStaffId = eventType === "scheduled" 
+        ? triggeredByStaffId 
+        : (ownerStaffId || triggeredByStaffId);
 
       const success = await trackMeetingEvent(
         leadId,
