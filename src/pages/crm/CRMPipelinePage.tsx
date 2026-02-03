@@ -1,12 +1,10 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import {
   Dialog,
   DialogContent,
@@ -16,22 +14,11 @@ import {
 } from "@/components/ui/dialog";
 import { 
   Plus, 
-  Phone, 
-  MessageSquare,
-  Mail, 
-  Building2, 
-  Clock,
-  AlertTriangle,
-  DollarSign,
-  GripVertical,
   Loader2,
   MoreHorizontal,
   Upload,
 } from "lucide-react";
-import { format, formatDistanceToNow } from "date-fns";
-import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
@@ -39,9 +26,8 @@ import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
-import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
-import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
-import { LeadCardNotes } from "@/components/crm/LeadCardNotes";
+import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
+import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 
 interface Stage {
   id: string;
@@ -100,6 +86,9 @@ export const CRMPipelinePage = () => {
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [addLeadStageId, setAddLeadStageId] = useState<string | undefined>(undefined);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  
+  // Bulk selection state
+  const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
   
   // Filter options
   const [tagOptions, setTagOptions] = useState<{ id: string; name: string; color: string }[]>([]);
@@ -475,6 +464,21 @@ export const CRMPipelinePage = () => {
 
   const stageOptions = stages.map(s => ({ id: s.id, name: s.name, color: s.color }));
 
+  // Selection handlers
+  const handleLeadSelect = (leadId: string, selected: boolean) => {
+    setSelectedLeads(prev => 
+      selected 
+        ? [...prev, leadId]
+        : prev.filter(id => id !== leadId)
+    );
+  };
+
+  const handleClearSelection = () => {
+    setSelectedLeads([]);
+  };
+
+  const isSelectionMode = selectedLeads.length > 0;
+
   if (loading && !stages.length) {
     return (
       <div className="flex-1 flex items-center justify-center">
@@ -571,115 +575,18 @@ export const CRMPipelinePage = () => {
                 {/* Lead Cards */}
                 <div className="flex-1 overflow-y-auto p-2 space-y-2">
                   {stageLeads.map(lead => (
-                    <Link
+                    <KanbanLeadCard
                       key={lead.id}
-                      to={`/crm/leads/${lead.id}`}
-                      draggable
-                      onDragStart={(e) => handleDragStart(e, lead)}
-                      className={cn(
-                        "block bg-card border border-border rounded-lg p-3 cursor-grab active:cursor-grabbing hover:border-primary/50 transition-all shadow-sm",
-                        draggedLead?.id === lead.id && "opacity-50"
-                      )}
-                    >
-                      {/* Origin Tag */}
-                      {lead.origin?.name && (
-                        <Badge variant="secondary" className="text-[10px] mb-2 bg-pink-100 text-pink-700 border-0">
-                          novo contato via {lead.origin.name}
-                        </Badge>
-                      )}
-
-                      <div className="flex items-start gap-2">
-                        <div className="flex-1 min-w-0">
-                          <div className="flex items-center gap-2">
-                            <p className="font-medium text-sm truncate">{lead.name}</p>
-                            {lead.urgency === "high" && (
-                              <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                                URGENTE
-                              </Badge>
-                            )}
-                          </div>
-
-                          {lead.company && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-                              <Building2 className="h-3 w-3" />
-                              <span className="truncate">{lead.company}</span>
-                            </div>
-                          )}
-
-                          {/* Tags */}
-                          {lead.tags && lead.tags.length > 0 && (
-                            <div className="flex flex-wrap gap-1 mt-2">
-                              {lead.tags.slice(0, 2).map(t => (
-                                <Badge
-                                  key={t.tag.id}
-                                  variant="outline"
-                                  className="text-[10px] px-1.5"
-                                  style={{ borderColor: t.tag.color, color: t.tag.color }}
-                                >
-                                  {t.tag.name}
-                                </Badge>
-                              ))}
-                            </div>
-                          )}
-
-                          {/* Meeting Actions */}
-                          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-                            <LeadMeetingActions
-                              leadId={lead.id}
-                              pipelineId={selectedPipeline || ""}
-                              stageId={lead.stage_id}
-                              ownerStaffId={lead.owner_staff_id}
-                              onEventTracked={loadStagesAndLeads}
-                            />
-                            
-                            <div className="flex items-center gap-1">
-                              {lead.opportunity_value && (
-                                <span className="text-xs text-green-600">
-                                  {formatCurrency(lead.opportunity_value)}
-                                </span>
-                              )}
-                            </div>
-                          </div>
-
-                          {/* Footer with icons */}
-                          <div className="flex items-center gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
-                            <div className="flex items-center gap-1">
-                              <OwnerSelector
-                                leadId={lead.id}
-                                currentOwnerId={lead.owner_staff_id}
-                                currentOwnerName={lead.owner?.name}
-                                onOwnerChange={loadStagesAndLeads}
-                              />
-                              <LeadCardNotes
-                                leadId={lead.id}
-                                onNotesChange={loadStagesAndLeads}
-                              />
-                              {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
-                              {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
-                              {lead.phone && (
-                                <button
-                                  onClick={(e) => handleOpenChat(e, lead)}
-                                  className="p-1 rounded hover:bg-primary/10 transition-colors group"
-                                  title="Abrir conversa no WhatsApp"
-                                >
-                                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
-                                </button>
-                              )}
-                              {!lead.phone && <MessageSquare className="h-3 w-3 text-muted-foreground/50" />}
-                            </div>
-
-                            {lead.last_activity_at && (
-                              <span className="text-[10px] text-muted-foreground ml-auto">
-                                {formatDistanceToNow(new Date(lead.last_activity_at), { 
-                                  locale: ptBR, 
-                                  addSuffix: false 
-                                })}
-                              </span>
-                            )}
-                          </div>
-                        </div>
-                      </div>
-                    </Link>
+                      lead={lead}
+                      pipelineId={selectedPipeline || ""}
+                      isDragging={draggedLead?.id === lead.id}
+                      isSelected={selectedLeads.includes(lead.id)}
+                      isSelectionMode={isSelectionMode}
+                      onSelect={handleLeadSelect}
+                      onDragStart={handleDragStart}
+                      onOpenChat={handleOpenChat}
+                      onRefresh={loadStagesAndLeads}
+                    />
                   ))}
 
                   {stageLeads.length === 0 && (
@@ -693,6 +600,16 @@ export const CRMPipelinePage = () => {
           })}
         </div>
       </div>
+
+      {/* Bulk Actions Bar */}
+      <KanbanBulkActions
+        selectedLeads={selectedLeads}
+        onClearSelection={handleClearSelection}
+        stages={stageOptions}
+        owners={ownerOptions}
+        onSuccess={loadStagesAndLeads}
+        isAdmin={isAdmin}
+      />
 
       <AddLeadDialog
         open={addLeadOpen}
