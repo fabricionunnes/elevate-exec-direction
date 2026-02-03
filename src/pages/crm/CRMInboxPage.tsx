@@ -83,6 +83,7 @@ export const CRMInboxPage = () => {
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
+  const [allowedOfficialInstanceIds, setAllowedOfficialInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -112,10 +113,15 @@ export const CRMInboxPage = () => {
     if (staffRole === "master") return true;
     // If still loading access, don't filter yet - will re-render when loaded
     if (loadingAccess) return false;
-    // Official API conversations are accessible to all CRM users (for now)
-    if (conv.official_instance_id && !conv.instance_id) return true;
+    
+    // Check Official API access
+    if (conv.official_instance_id && !conv.instance_id) {
+      return allowedOfficialInstanceIds.includes(conv.official_instance_id);
+    }
+    
     // If no instance_id and no official_instance_id, show to all (orphan conversations)
     if (!conv.instance_id && !conv.official_instance_id) return true;
+    
     // Check if user has access to this Evolution instance
     const hasAccess = allowedInstanceIds.includes(conv.instance_id!);
     return hasAccess;
@@ -145,27 +151,51 @@ export const CRMInboxPage = () => {
         
         // Master has access to all instances
         if (staffRole === "master") {
-          const { data: allInstances } = await supabase
+          // Evolution API instances
+          const { data: allEvolutionInstances } = await supabase
             .from("whatsapp_instances")
             .select("id");
-          const ids = (allInstances || []).map((i: any) => i.id);
-          console.log('[Inbox] Master - all instances:', ids.length);
-          setAllowedInstanceIds(ids);
+          const evolutionIds = (allEvolutionInstances || []).map((i: any) => i.id);
+          console.log('[Inbox] Master - all Evolution instances:', evolutionIds.length);
+          setAllowedInstanceIds(evolutionIds);
+          
+          // Official API instances
+          const { data: allOfficialInstances } = await supabase
+            .from("whatsapp_official_instances")
+            .select("id");
+          const officialIds = (allOfficialInstances || []).map((i: any) => i.id);
+          console.log('[Inbox] Master - all Official instances:', officialIds.length);
+          setAllowedOfficialInstanceIds(officialIds);
         } else {
-          // Get instances this user has explicit access to (regardless of role)
-          const { data: accessData, error } = await supabase
+          // Get Evolution API instances this user has explicit access to
+          const { data: evolutionAccessData, error: evolutionError } = await supabase
             .from("whatsapp_instance_access")
             .select("instance_id")
             .eq("staff_id", staffId)
             .eq("can_view", true);
           
-          if (error) {
-            console.error('[Inbox] Error fetching access:', error);
+          if (evolutionError) {
+            console.error('[Inbox] Error fetching Evolution access:', evolutionError);
           }
           
-          const ids = (accessData || []).map((a: any) => a.instance_id);
-          console.log('[Inbox] Non-master - allowed instances:', ids);
-          setAllowedInstanceIds(ids);
+          const evolutionIds = (evolutionAccessData || []).map((a: any) => a.instance_id);
+          console.log('[Inbox] Non-master - allowed Evolution instances:', evolutionIds);
+          setAllowedInstanceIds(evolutionIds);
+          
+          // Get Official API instances this user has explicit access to
+          const { data: officialAccessData, error: officialError } = await supabase
+            .from("whatsapp_official_instance_access")
+            .select("instance_id")
+            .eq("staff_id", staffId)
+            .eq("can_view", true);
+          
+          if (officialError) {
+            console.error('[Inbox] Error fetching Official API access:', officialError);
+          }
+          
+          const officialIds = (officialAccessData || []).map((a: any) => a.instance_id);
+          console.log('[Inbox] Non-master - allowed Official instances:', officialIds);
+          setAllowedOfficialInstanceIds(officialIds);
         }
       } catch (error) {
         console.error("Error fetching allowed instances:", error);
