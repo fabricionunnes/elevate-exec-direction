@@ -135,6 +135,31 @@ export const MonthlySalesChart = ({
   const fetchData = async () => {
     try {
       setLoading(true);
+
+      const fetchAllEntriesForKpis = async (kpiIds: string[]) => {
+        // Supabase has a default limit of 1000 rows per request; paginate to ensure we fetch everything.
+        const pageSize = 1000;
+        let from = 0;
+        const all: Array<{ entry_date: string; value: number | null; salesperson_id?: string | null; kpi_id?: string | null }> = [];
+
+        // eslint-disable-next-line no-constant-condition
+        while (true) {
+          const { data, error } = await supabase
+            .from("kpi_entries")
+            .select("entry_date,value,salesperson_id,kpi_id")
+            .eq("company_id", companyId)
+            .in("kpi_id", kpiIds)
+            .range(from, from + pageSize - 1);
+
+          if (error) throw error;
+          if (!data || data.length === 0) break;
+          all.push(...data);
+          if (data.length < pageSize) break;
+          from += pageSize;
+        }
+
+        return all;
+      };
       
       // First, find the main goal KPI for this company
       // When filters are active, look for KPIs that match the filter scope
@@ -212,22 +237,18 @@ export const MonthlySalesChart = ({
           .select("id")
           .eq("company_id", companyId)
           .eq("kpi_type", "monetary")
-          .eq("is_active", true);
+          // Some rows may have is_active = NULL in older data; treat as active.
+          .or("is_active.is.null,is_active.eq.true");
 
         const monetaryKpiIds = (allMonetaryKpis || []).map(k => k.id);
 
         if (monetaryKpiIds.length > 0) {
-          // Fetch ALL kpi_entries for monetary KPIs
-          const { data: entries } = await supabase
-            .from("kpi_entries")
-            .select("*")
-            .eq("company_id", companyId)
-            .in("kpi_id", monetaryKpiIds);
+          const entries = await fetchAllEntriesForKpis(monetaryKpiIds);
 
           if (entries && entries.length > 0) {
             // Filter entries by salesperson
             const filteredEntries = entries.filter(e => 
-              filteredSalespersonIds.has(e.salesperson_id)
+              !!e.salesperson_id && filteredSalespersonIds.has(e.salesperson_id)
             );
 
             // Aggregate by month
@@ -280,32 +301,33 @@ export const MonthlySalesChart = ({
             .select("id")
             .eq("company_id", companyId)
             .eq("kpi_type", "monetary")
-            .eq("is_active", true);
+            // Some rows may have is_active = NULL in older data; treat as active.
+            .or("is_active.is.null,is_active.eq.true");
 
           const monetaryKpiIds = (allMonetaryKpis || []).map((k) => k.id);
 
           if (monetaryKpiIds.length > 0) {
-            const { data: entries } = await supabase
-              .from("kpi_entries")
-              .select("entry_date, value")
-              .eq("company_id", companyId)
-              .in("kpi_id", monetaryKpiIds);
+            const entries = await fetchAllEntriesForKpis(monetaryKpiIds);
 
             if (entries && entries.length > 0) {
-              const monthlyAggregation: Record<string, number> = {};
+              const monthlyAggregation: Record<string, { revenue: number; count: number }> = {};
 
               entries.forEach((entry) => {
                 if (!entry.entry_date) return;
                 const monthStr = format(parseISO(entry.entry_date), "yyyy-MM-01");
-                monthlyAggregation[monthStr] = (monthlyAggregation[monthStr] || 0) + (entry.value || 0);
+                if (!monthlyAggregation[monthStr]) {
+                  monthlyAggregation[monthStr] = { revenue: 0, count: 0 };
+                }
+                monthlyAggregation[monthStr].revenue += entry.value || 0;
+                monthlyAggregation[monthStr].count += 1;
               });
 
-              data = Object.entries(monthlyAggregation).map(([month, revenue]) => ({
+              data = Object.entries(monthlyAggregation).map(([month, agg]) => ({
                 month,
                 monthLabel: format(parseISO(month), "MMM/yy", { locale: ptBR }),
-                revenue,
+                revenue: agg.revenue,
                 target: getMonthlyTarget(month),
-                salesCount: 0,
+                salesCount: agg.count,
               }));
             }
           }
