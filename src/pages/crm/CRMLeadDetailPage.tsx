@@ -46,6 +46,7 @@ import { toast } from "sonner";
 import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
+import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -118,7 +119,7 @@ interface Activity {
 export const CRMLeadDetailPage = () => {
   const { id } = useParams<{ id: string }>();
   const navigate = useNavigate();
-  const { isAdmin } = useCRMContext();
+  const { isAdmin, staffId } = useCRMContext();
   
   const [lead, setLead] = useState<Lead | null>(null);
   const [stages, setStages] = useState<Stage[]>([]);
@@ -291,6 +292,18 @@ export const CRMLeadDetailPage = () => {
 
       // Create automatic activities for this stage
       await createStageActivities(lead.id, stageId);
+      
+      // Track meeting events (scheduled/realized) for CRM metrics
+      const targetStage = stages.find(s => s.id === stageId);
+      if (staffId && lead.pipeline_id && targetStage) {
+        await trackMeetingEventOnStageChange(
+          lead.id,
+          lead.pipeline_id,
+          stageId,
+          targetStage.name,
+          staffId
+        );
+      }
 
       toast.success("Etapa atualizada");
       loadLead();

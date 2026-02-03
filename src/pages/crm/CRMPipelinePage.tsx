@@ -36,6 +36,7 @@ import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
+import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 
@@ -85,7 +86,7 @@ const defaultFilters: CRMFilters = {
 
 export const CRMPipelinePage = () => {
   const navigate = useNavigate();
-  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin } = useCRMContext();
+  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, staffId } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -330,6 +331,17 @@ export const CRMPipelinePage = () => {
       }
       
       await createStageActivities(stageMoveDialog.leadId, stageMoveDialog.targetStageId);
+      
+      // Track meeting events (scheduled/realized) for CRM metrics
+      if (staffId && selectedPipeline) {
+        await trackMeetingEventOnStageChange(
+          stageMoveDialog.leadId,
+          selectedPipeline,
+          stageMoveDialog.targetStageId,
+          stageMoveDialog.targetStageName,
+          staffId
+        );
+      }
       
       // Se for etapa "won", criar projeto automaticamente
       if (isWonStage) {
