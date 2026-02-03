@@ -19373,6 +19373,7 @@ export type Database = {
       }
       can_user_advertise: { Args: { p_profile_id: string }; Returns: Json }
       can_user_boost: { Args: { check_profile_id: string }; Returns: Json }
+      can_view_all_crm_leads: { Args: never; Returns: boolean }
       check_and_award_circle_badges: {
         Args: { p_profile_id: string }
         Returns: undefined
