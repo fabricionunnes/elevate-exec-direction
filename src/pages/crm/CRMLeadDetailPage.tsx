@@ -524,6 +524,17 @@ export const CRMLeadDetailPage = () => {
     }
 
     try {
+      // When changing pipeline we also need to ensure the lead's origin belongs
+      // to the same pipeline, otherwise it will be hidden when filtering by origin.
+      const { data: targetOrigin } = await supabase
+        .from("crm_origins")
+        .select("id")
+        .eq("is_active", true)
+        .eq("pipeline_id", selectedPipelineId)
+        .order("sort_order")
+        .limit(1)
+        .maybeSingle();
+
       // Get the first stage of the new pipeline
       const { data: firstStage } = await supabase
         .from("crm_stages")
@@ -543,7 +554,9 @@ export const CRMLeadDetailPage = () => {
         .from("crm_leads")
         .update({ 
           pipeline_id: selectedPipelineId,
-          stage_id: firstStage.id
+          stage_id: firstStage.id,
+          // Align origin with the new pipeline (best-effort)
+          origin_id: targetOrigin?.id ?? null,
         })
         .eq("id", lead.id);
 
