@@ -523,7 +523,7 @@ export const CRMPipelinePage = () => {
       />
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-auto px-2 sm:px-4 pb-4">
+      <div className="flex-1 overflow-x-scroll px-2 sm:px-4 pb-4" style={{ scrollbarGutter: 'stable' }}>
         <div className="flex gap-2 sm:gap-3 h-full min-w-max">
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
