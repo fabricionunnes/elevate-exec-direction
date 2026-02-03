@@ -287,7 +287,7 @@ export const CRMInboxPage = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation) return;
+    if (!newMessage.trim() || !selectedConversation || sending) return;
     
     const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
     const isEvolutionAPI = !!selectedConversation.instance_id;
@@ -297,6 +297,9 @@ export const CRMInboxPage = () => {
       return;
     }
 
+    const messageToSend = newMessage.trim();
+    setNewMessage(""); // Clear immediately for better UX
+
     try {
       if (isOfficialAPI) {
         // Send via Official WhatsApp API
@@ -305,7 +308,7 @@ export const CRMInboxPage = () => {
             action: 'sendText',
             instanceId: selectedConversation.official_instance_id,
             phone: selectedConversation.contact?.phone || "",
-            message: newMessage,
+            message: messageToSend,
           }
         });
         
@@ -313,9 +316,9 @@ export const CRMInboxPage = () => {
         if (data?.error) throw new Error(data.error);
         
         // Insert the message locally
-        await supabase.from('crm_whatsapp_messages').insert({
+        const { error: insertError } = await supabase.from('crm_whatsapp_messages').insert({
           conversation_id: selectedConversation.id,
-          content: newMessage,
+          content: messageToSend,
           type: 'text',
           direction: 'outbound',
           status: 'sent',
@@ -323,26 +326,34 @@ export const CRMInboxPage = () => {
           whatsapp_message_id: data?.messageId,
         });
         
+        if (insertError) {
+          console.error('Error inserting message:', insertError);
+        }
+        
         // Update conversation last message
         await supabase.from('crm_whatsapp_conversations').update({
-          last_message: newMessage.substring(0, 255),
+          last_message: messageToSend.substring(0, 255),
           last_message_at: new Date().toISOString(),
         }).eq('id', selectedConversation.id);
         
-        refetchMessages();
+        // Refetch and scroll
+        await refetchMessages();
+        scrollToBottom();
+        
+        toast.success("Mensagem enviada!");
       } else {
         // Send via Evolution API
         await sendMessage(
-          newMessage,
+          messageToSend,
           selectedConversation.instance_id!,
           selectedConversation.contact?.phone || "",
           staffId
         );
+        toast.success("Mensagem enviada!");
       }
-      setNewMessage("");
-      toast.success("Mensagem enviada!");
     } catch (error: any) {
       console.error("Error sending message:", error);
+      setNewMessage(messageToSend); // Restore message on error
       toast.error(error.message || "Erro ao enviar mensagem");
     }
   };
