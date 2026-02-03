@@ -237,6 +237,70 @@ export const OfficialWhatsAppSection = ({ onBack }: OfficialWhatsAppSectionProps
         </Button>
       </div>
 
+      {/* Setup Guide */}
+      <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20">
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2 text-amber-900 dark:text-amber-100">
+            📋 Guia de Configuração
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="space-y-3 text-sm">
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-xs font-bold">1</span>
+              <div>
+                <p className="font-medium">Acesse o Meta Developers</p>
+                <p className="text-muted-foreground text-xs">Vá em developers.facebook.com → Criar App → Tipo "Business" → Adicionar produto "WhatsApp"</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-xs font-bold">2</span>
+              <div>
+                <p className="font-medium">Copie suas credenciais</p>
+                <p className="text-muted-foreground text-xs">Em "WhatsApp → API Setup": copie o <strong>Phone Number ID</strong> e <strong>WABA ID</strong> (WhatsApp Business Account ID)</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-xs font-bold">3</span>
+              <div>
+                <p className="font-medium">Gere um Token Permanente</p>
+                <p className="text-muted-foreground text-xs">Vá em "Business Settings → System Users" → Crie um usuário → Gere um token com permissões whatsapp_business_messaging</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-xs font-bold">4</span>
+              <div>
+                <p className="font-medium">Crie a instância aqui</p>
+                <p className="text-muted-foreground text-xs">Clique em "Nova Instância" e preencha os dados copiados</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-amber-200 dark:bg-amber-800 flex items-center justify-center text-xs font-bold">5</span>
+              <div>
+                <p className="font-medium">Configure o Webhook no Meta</p>
+                <p className="text-muted-foreground text-xs">Em "WhatsApp → Configuration → Webhook": cole a URL e o Token de Verificação mostrados abaixo. Inscreva-se em: messages</p>
+              </div>
+            </div>
+            <div className="flex gap-3">
+              <span className="flex-shrink-0 w-6 h-6 rounded-full bg-green-200 dark:bg-green-800 flex items-center justify-center text-xs font-bold">✓</span>
+              <div>
+                <p className="font-medium">Verifique a conexão</p>
+                <p className="text-muted-foreground text-xs">Clique em "Verificar Conexão" na instância criada para confirmar que está funcionando</p>
+              </div>
+            </div>
+          </div>
+          <a 
+            href="https://developers.facebook.com/docs/whatsapp/cloud-api/get-started" 
+            target="_blank" 
+            rel="noopener noreferrer"
+            className="inline-flex items-center gap-1 text-xs text-amber-700 dark:text-amber-300 hover:underline"
+          >
+            <ExternalLink className="h-3 w-3" />
+            Documentação oficial do Meta
+          </a>
+        </CardContent>
+      </Card>
+
       {/* Webhook URL Info */}
       <Card className="bg-blue-50 dark:bg-blue-950/20 border-blue-200">
         <CardContent className="pt-4">
