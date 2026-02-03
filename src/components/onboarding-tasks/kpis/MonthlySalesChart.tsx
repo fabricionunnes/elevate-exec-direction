@@ -72,6 +72,18 @@ export const MonthlySalesChart = ({
   selectedSector,
   selectedSalesperson,
 }: MonthlySalesChartProps) => {
+  const normalizeFilter = (value?: string) => {
+    if (!value) return undefined;
+    const v = String(value).trim();
+    if (!v || v === "all") return undefined;
+    return v;
+  };
+
+  const unitFilter = normalizeFilter(selectedUnit);
+  const teamFilter = normalizeFilter(selectedTeam);
+  const sectorFilter = normalizeFilter(selectedSector);
+  const salespersonFilter = normalizeFilter(selectedSalesperson);
+
   const [chartData, setChartData] = useState<MonthlyDataPoint[]>([]);
   const [mainGoalKpi, setMainGoalKpi] = useState<MainGoalKpi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -103,34 +115,34 @@ export const MonthlySalesChart = ({
 
   // Get filtered salesperson IDs based on current filters
   const filteredSalespersonIds = useMemo(() => {
-    if (selectedSalesperson) {
-      return new Set([selectedSalesperson]);
+    if (salespersonFilter) {
+      return new Set([salespersonFilter]);
     }
     
     let filtered = salespeople;
     
-    if (selectedSector) {
-      filtered = filtered.filter(sp => salespersonBelongsToSector(sp, selectedSector));
+    if (sectorFilter) {
+      filtered = filtered.filter(sp => salespersonBelongsToSector(sp, sectorFilter));
     }
     
-    if (selectedTeam) {
-      filtered = filtered.filter(sp => sp.team_id === selectedTeam);
+    if (teamFilter) {
+      filtered = filtered.filter(sp => sp.team_id === teamFilter);
     }
     
-    if (selectedUnit) {
+    if (unitFilter) {
       // Filter by unit - need to check if salesperson's team is in the unit
       // For now, filter direct unit_id match
-      filtered = filtered.filter(sp => sp.unit_id === selectedUnit);
+      filtered = filtered.filter(sp => sp.unit_id === unitFilter);
     }
     
     return new Set(filtered.map(sp => sp.id));
-  }, [salespeople, selectedSalesperson, selectedSector, selectedTeam, selectedUnit, teamIdsBySectorId]);
+  }, [salespeople, salespersonFilter, sectorFilter, teamFilter, unitFilter, teamIdsBySectorId]);
 
-  const hasActiveFilters = !!(selectedSalesperson || selectedSector || selectedTeam || selectedUnit);
+  const hasActiveFilters = !!(salespersonFilter || sectorFilter || teamFilter || unitFilter);
 
   useEffect(() => {
     fetchData();
-  }, [companyId, selectedSalesperson, selectedSector, selectedTeam, selectedUnit, salespeople.length]);
+  }, [companyId, salespersonFilter, sectorFilter, teamFilter, unitFilter, salespeople.length]);
 
   const fetchData = async () => {
     try {
@@ -170,8 +182,8 @@ export const MonthlySalesChart = ({
         .eq("kpi_type", "monetary");
 
       // If team is selected, prioritize team-scoped KPI
-      if (selectedTeam) {
-        kpiQuery = kpiQuery.eq("team_id", selectedTeam);
+      if (teamFilter) {
+        kpiQuery = kpiQuery.eq("team_id", teamFilter);
       }
 
       const { data: monetaryKpis } = await kpiQuery;
