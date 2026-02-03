@@ -607,40 +607,42 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                 </p>
               </div>
 
-              <div className="space-y-3">
-                {columnMappings.map((mapping, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <p className="text-sm font-medium">{mapping.csvColumn}</p>
-                      <p className="text-xs text-muted-foreground truncate max-w-[200px]">
-                        Ex: {csvData[0]?.[mapping.csvColumn] || "-"}
-                      </p>
+              <ScrollArea className="max-h-[400px] pr-4">
+                <div className="space-y-3">
+                  {columnMappings.map((mapping, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <p className="text-sm font-medium">{mapping.csvColumn}</p>
+                        <p className="text-xs text-muted-foreground truncate max-w-[200px]">
+                          Ex: {csvData[0]?.[mapping.csvColumn] || "-"}
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <Select
+                        value={mapping.crmField}
+                        onValueChange={(value) => updateColumnMapping(mapping.csvColumn, value)}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {CRM_FIELDS.map(f => (
+                            <SelectItem key={f.value} value={f.value}>
+                              {f.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      {mapping.crmField !== "ignore" && mapping.crmField !== "stage_name" && (
+                        <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      )}
+                      {mapping.crmField === "stage_name" && (
+                        <Badge variant="secondary" className="flex-shrink-0">Etapa</Badge>
+                      )}
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <Select
-                      value={mapping.crmField}
-                      onValueChange={(value) => updateColumnMapping(mapping.csvColumn, value)}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {CRM_FIELDS.map(f => (
-                          <SelectItem key={f.value} value={f.value}>
-                            {f.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                    {mapping.crmField !== "ignore" && mapping.crmField !== "stage_name" && (
-                      <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
-                    )}
-                    {mapping.crmField === "stage_name" && (
-                      <Badge variant="secondary" className="flex-shrink-0">Etapa</Badge>
-                    )}
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep("pipeline")}>
