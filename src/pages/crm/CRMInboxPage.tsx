@@ -432,7 +432,14 @@ export const CRMInboxPage = () => {
     if (filters.status && conv.status !== filters.status) return false;
     if (filters.assignedTo && conv.assigned_to !== filters.assignedTo) return false;
     if (filters.sectorId && conv.sector_id !== filters.sectorId) return false;
-    if (filters.instanceId && conv.instance_id !== filters.instanceId) return false;
+    if (filters.instanceId) {
+      if (filters.instanceId.startsWith("official:")) {
+        const officialId = filters.instanceId.replace("official:", "");
+        if (conv.official_instance_id !== officialId) return false;
+      } else {
+        if (conv.instance_id !== filters.instanceId) return false;
+      }
+    }
     
     // Deal filters
     if (filters.hasDeal === "with" && !conv.lead_id) return false;

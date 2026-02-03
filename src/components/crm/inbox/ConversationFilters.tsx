@@ -96,6 +96,7 @@ interface Stage {
 interface Instance {
   id: string;
   instance_name: string;
+  type: "evolution" | "official";
 }
 
 export function ConversationFilters({
@@ -173,14 +174,32 @@ export function ConversationFilters({
       setStages(stagesData.map((s: any) => ({ id: s.id, name: s.name, pipeline_id: "" })));
     }
 
-    // Fetch WhatsApp instances
-    const { data: instancesData } = await supabase
+    // Fetch WhatsApp instances (Evolution API)
+    const { data: evolutionData } = await supabase
       .from("whatsapp_instances")
       .select("id, instance_name");
     
-    if (instancesData) {
-      setInstances(instancesData as Instance[]);
+    // Fetch Official API instances
+    const { data: officialData } = await supabase
+      .from("whatsapp_official_instances")
+      .select("id, display_name, phone_number");
+    
+    const allInstances: Instance[] = [];
+    
+    if (evolutionData) {
+      evolutionData.forEach((i: any) => {
+        allInstances.push({ id: i.id, instance_name: i.instance_name, type: "evolution" });
+      });
     }
+    
+    if (officialData) {
+      officialData.forEach((i: any) => {
+        const name = i.display_name || i.phone_number || "API Oficial";
+        allInstances.push({ id: `official:${i.id}`, instance_name: `📱 ${name}`, type: "official" });
+      });
+    }
+    
+    setInstances(allInstances);
   };
 
   const updateFilter = <K extends keyof ConversationFiltersData>(
