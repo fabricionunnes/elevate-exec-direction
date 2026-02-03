@@ -11,6 +11,7 @@ import { UsersPermissionsSection } from "./UsersPermissionsSection";
 import { ScheduledMessagesSection } from "./ScheduledMessagesSection";
 import { NotificationsSection } from "./NotificationsSection";
 import { InstagramSection } from "./InstagramSection";
+import { OfficialWhatsAppSection } from "./OfficialWhatsAppSection";
 
 interface ServiceConfigDialogProps {
   open: boolean;
@@ -45,6 +46,8 @@ export const ServiceConfigDialog = ({ open, onOpenChange }: ServiceConfigDialogP
         return <NotificationsSection onBack={handleBack} />;
       case "instagram":
         return <InstagramSection onBack={handleBack} />;
+      case "official-whatsapp":
+        return <OfficialWhatsAppSection onBack={handleBack} />;
       default:
         return (
           <ServiceConfigMenu

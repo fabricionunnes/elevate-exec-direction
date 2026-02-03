@@ -170,3 +170,9 @@ verify_jwt = false
 
 [functions.whatsapp-bulk-send]
 verify_jwt = false
+
+[functions.whatsapp-official-webhook]
+verify_jwt = false
+
+[functions.whatsapp-official-api]
+verify_jwt = true
