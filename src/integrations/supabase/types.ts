@@ -10965,6 +10965,7 @@ export type Database = {
           last_message: string | null
           last_message_at: string | null
           lead_id: string | null
+          official_instance_id: string | null
           sector_id: string | null
           status: string | null
           unread_count: number | null
@@ -10979,6 +10980,7 @@ export type Database = {
           last_message?: string | null
           last_message_at?: string | null
           lead_id?: string | null
+          official_instance_id?: string | null
           sector_id?: string | null
           status?: string | null
           unread_count?: number | null
@@ -10993,6 +10995,7 @@ export type Database = {
           last_message?: string | null
           last_message_at?: string | null
           lead_id?: string | null
+          official_instance_id?: string | null
           sector_id?: string | null
           status?: string | null
           unread_count?: number | null
@@ -11028,6 +11031,13 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
+            foreignKeyName: "crm_whatsapp_conversations_official_instance_id_fkey"
+            columns: ["official_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_official_instances"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "crm_whatsapp_conversations_sector_id_fkey"
             columns: ["sector_id"]
             isOneToOne: false
@@ -11050,6 +11060,7 @@ export type Database = {
           sent_by: string | null
           status: string | null
           type: string | null
+          whatsapp_message_id: string | null
         }
         Insert: {
           content?: string | null
@@ -11064,6 +11075,7 @@ export type Database = {
           sent_by?: string | null
           status?: string | null
           type?: string | null
+          whatsapp_message_id?: string | null
         }
         Update: {
           content?: string | null
@@ -11078,6 +11090,7 @@ export type Database = {
           sent_by?: string | null
           status?: string | null
           type?: string | null
+          whatsapp_message_id?: string | null
         }
         Relationships: [
           {
@@ -19316,6 +19329,51 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      whatsapp_official_instances: {
+        Row: {
+          access_token: string
+          created_at: string
+          created_by: string | null
+          display_name: string
+          id: string
+          last_error: string | null
+          phone_number: string | null
+          phone_number_id: string
+          status: string
+          updated_at: string
+          waba_id: string
+          webhook_verify_token: string
+        }
+        Insert: {
+          access_token: string
+          created_at?: string
+          created_by?: string | null
+          display_name: string
+          id?: string
+          last_error?: string | null
+          phone_number?: string | null
+          phone_number_id: string
+          status?: string
+          updated_at?: string
+          waba_id: string
+          webhook_verify_token?: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string
+          created_by?: string | null
+          display_name?: string
+          id?: string
+          last_error?: string | null
+          phone_number?: string | null
+          phone_number_id?: string
+          status?: string
+          updated_at?: string
+          waba_id?: string
+          webhook_verify_token?: string
+        }
+        Relationships: []
       }
       whatsapp_saved_lists: {
         Row: {

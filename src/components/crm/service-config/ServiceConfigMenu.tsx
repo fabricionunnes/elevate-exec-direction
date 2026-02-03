@@ -9,6 +9,7 @@ import {
   X,
   ChevronRight,
   Instagram,
+  MessageCircle,
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/utils";
@@ -26,6 +27,12 @@ const menuItems: ServiceConfigMenuItem[] = [
     icon: <Smartphone className="h-5 w-5" />,
     title: "Dispositivo",
     description: "Configure seus dispositivos, atendentes, canais e mais.",
+  },
+  {
+    id: "official-whatsapp",
+    icon: <MessageCircle className="h-5 w-5 text-green-600" />,
+    title: "WhatsApp API Oficial",
+    description: "Conecte via Meta Cloud API para envio de templates e mensagens oficiais.",
   },
   {
     id: "sectors",
