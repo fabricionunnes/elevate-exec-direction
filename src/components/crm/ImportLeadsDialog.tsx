@@ -607,8 +607,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                 </p>
               </div>
 
-              <ScrollArea className="max-h-[400px] pr-4">
-                <div className="space-y-3">
+              <ScrollArea className="h-[350px] pr-4">
+                <div className="space-y-3 pb-2">
                   {columnMappings.map((mapping, idx) => (
                     <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
                       <div className="flex-1">
