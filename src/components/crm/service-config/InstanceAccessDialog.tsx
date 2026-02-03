@@ -62,7 +62,7 @@ export function InstanceAccessDialog({
       // Load Official API instances
       const { data: officialData } = await supabase
         .from("whatsapp_official_instances")
-        .select("id, display_name, phone_number, is_active")
+        .select("id, display_name, phone_number, status")
         .order("display_name");
 
       const allInstances: WhatsAppInstance[] = [];
@@ -82,7 +82,7 @@ export function InstanceAccessDialog({
           id: `official:${i.id}`,
           instance_name: i.display_name || i.phone_number || "API Oficial",
           display_name: i.display_name || i.phone_number || "API Oficial",
-          status: i.is_active ? "connected" : "disconnected",
+          status: i.status === "active" ? "connected" : "disconnected",
           type: "official",
         });
       });
