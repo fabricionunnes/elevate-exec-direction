@@ -322,7 +322,7 @@ export const CRMInboxPage = () => {
           type: 'text',
           direction: 'outbound',
           status: 'sent',
-          sender_staff_id: staffId,
+          sent_by: staffId,
           whatsapp_message_id: data?.messageId,
         });
         
