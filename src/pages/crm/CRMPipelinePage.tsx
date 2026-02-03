@@ -17,7 +17,9 @@ import {
   Loader2,
   MoreHorizontal,
   Upload,
+  CheckSquare,
 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { AddLeadDialog } from "@/components/crm/AddLeadDialog";
 import { ImportLeadsDialog } from "@/components/crm/ImportLeadsDialog";
@@ -76,7 +78,7 @@ const defaultFilters: CRMFilters = {
 
 export const CRMPipelinePage = () => {
   const navigate = useNavigate();
-  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, staffId } = useCRMContext();
+  const { selectedOrigin, selectedPipeline, setSelectedPipeline, isAdmin, isMaster, staffId } = useCRMContext();
   const [pipelines, setPipelines] = useState<any[]>([]);
   const [stages, setStages] = useState<Stage[]>([]);
   const [leads, setLeads] = useState<Lead[]>([]);
@@ -477,6 +479,19 @@ export const CRMPipelinePage = () => {
     setSelectedLeads([]);
   };
 
+  const handleSelectAllInStage = (stageId: string) => {
+    const stageLeadIds = getLeadsByStage(stageId).map(l => l.id);
+    const allSelected = stageLeadIds.every(id => selectedLeads.includes(id));
+    
+    if (allSelected) {
+      // Deselect all from this stage
+      setSelectedLeads(prev => prev.filter(id => !stageLeadIds.includes(id)));
+    } else {
+      // Select all from this stage
+      setSelectedLeads(prev => [...new Set([...prev, ...stageLeadIds])]);
+    }
+  };
+
   const isSelectionMode = selectedLeads.length > 0;
 
   if (loading && !stages.length) {
@@ -534,6 +549,9 @@ export const CRMPipelinePage = () => {
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = getStageTotal(stage.id);
+            const stageLeadIds = stageLeads.map(l => l.id);
+            const allStageSelected = stageLeadIds.length > 0 && stageLeadIds.every(id => selectedLeads.includes(id));
+            const someStageSelected = stageLeadIds.some(id => selectedLeads.includes(id));
 
             return (
               <div
@@ -547,6 +565,15 @@ export const CRMPipelinePage = () => {
                   className="p-2 sm:p-3 flex items-center gap-2 rounded-t-lg"
                   style={{ borderTop: `3px solid ${stage.color}` }}
                 >
+                  {/* Select All Checkbox (Master only) */}
+                  {isMaster && stageLeads.length > 0 && (
+                    <Checkbox
+                      checked={allStageSelected}
+                      onCheckedChange={() => handleSelectAllInStage(stage.id)}
+                      className="cursor-pointer"
+                      title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
+                    />
+                  )}
                   <span className="font-medium text-xs sm:text-sm flex-1 truncate">{stage.name}</span>
                   <Badge variant="secondary" className="text-[10px] sm:text-xs h-4 sm:h-5">
                     {stageLeads.length}
@@ -582,6 +609,7 @@ export const CRMPipelinePage = () => {
                       isDragging={draggedLead?.id === lead.id}
                       isSelected={selectedLeads.includes(lead.id)}
                       isSelectionMode={isSelectionMode}
+                      isMaster={isMaster}
                       onSelect={handleLeadSelect}
                       onDragStart={handleDragStart}
                       onOpenChat={handleOpenChat}
@@ -601,14 +629,15 @@ export const CRMPipelinePage = () => {
         </div>
       </div>
 
-      {/* Bulk Actions Bar */}
+      {/* Bulk Actions Bar (Master only) */}
       <KanbanBulkActions
         selectedLeads={selectedLeads}
         onClearSelection={handleClearSelection}
         stages={stageOptions}
         owners={ownerOptions}
         onSuccess={loadStagesAndLeads}
-        isAdmin={isAdmin}
+        isMaster={isMaster}
+        currentPipelineId={selectedPipeline || undefined}
       />
 
       <AddLeadDialog
