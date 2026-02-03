@@ -193,23 +193,37 @@ export const trackMeetingEventOnStageChange = async (
   newStageName: string,
   triggeredByStaffId: string
 ): Promise<void> => {
+  console.log("[MeetingTracker] Stage change detected:", {
+    leadId,
+    pipelineId,
+    newStageId,
+    newStageName,
+    triggeredByStaffId,
+    isScheduled: isScheduledStage(newStageName),
+    isRealized: isRealizedStage(newStageName)
+  });
+
   // Check if entering a "scheduled" stage
   if (isScheduledStage(newStageName)) {
-    await trackScheduledEvent({
+    console.log("[MeetingTracker] Tracking scheduled event...");
+    const result = await trackScheduledEvent({
       leadId,
       pipelineId,
       stageId: newStageId,
       triggeredByStaffId
     });
+    console.log("[MeetingTracker] Scheduled event result:", result);
   }
   
   // Check if entering a "realized" stage
   if (isRealizedStage(newStageName)) {
-    await trackRealizedEvent({
+    console.log("[MeetingTracker] Tracking realized event...");
+    const result = await trackRealizedEvent({
       leadId,
       pipelineId,
       stageId: newStageId,
       triggeredByStaffId
     });
+    console.log("[MeetingTracker] Realized event result:", result);
   }
 };
