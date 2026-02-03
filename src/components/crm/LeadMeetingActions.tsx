@@ -71,29 +71,8 @@ const trackMeetingEvent = async (
       return false;
     }
 
-    // For realized and no_show, also credit the original scheduler (SDR) if different
-    if (eventType === "realized" || eventType === "no_show") {
-      const { data: lead } = await supabase
-        .from("crm_leads")
-        .select("scheduled_by_staff_id")
-        .eq("id", leadId)
-        .single();
-
-      if (
-        lead?.scheduled_by_staff_id &&
-        lead.scheduled_by_staff_id !== creditedStaffId
-      ) {
-        await supabase.from("crm_meeting_events").insert({
-          lead_id: leadId,
-          pipeline_id: pipelineId,
-          event_type: eventType,
-          credited_staff_id: lead.scheduled_by_staff_id,
-          triggered_by_staff_id: triggeredByStaffId,
-          stage_id: stageId,
-          event_date: new Date().toISOString(),
-        });
-      }
-    }
+    // NOTE: Double-credit logic removed to avoid duplicate counting
+    // Each event should only be credited once to the lead owner
 
     return true;
   } catch (error) {
