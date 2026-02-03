@@ -128,6 +128,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [isCS, setIsCS] = useState(false);
+  const [isConsultant, setIsConsultant] = useState(false);
   const [calendarConnected, setCalendarConnected] = useState(false);
   const [projectConsultantUserId, setProjectConsultantUserId] = useState<string | null>(null);
   const [companyName, setCompanyName] = useState<string | null>(null);
@@ -346,6 +347,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
       setCurrentStaffId(data.id);
       setIsAdmin(data.role === "admin" || data.role === "master");
       setIsCS(data.role === "cs");
+      setIsConsultant(data.role === "consultant");
       return { staffId: data.id, role: data.role };
     }
 
@@ -946,7 +948,7 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
             Reuniões
           </h3>
           <div className="flex items-center gap-2">
-            {(isAdmin || isCS) && (
+            {(isAdmin || isCS || isConsultant) && (
               <Button 
                 size="sm" 
                 onClick={() => setShowScheduleDialog(true)}
