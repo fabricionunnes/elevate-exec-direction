@@ -9,63 +9,57 @@ import {
 } from "@/components/ui/popover";
 import { StickyNote, Check, Loader2 } from "lucide-react";
 import { toast } from "sonner";
-import { cn } from "@/lib/utils";
 
 interface LeadCardNotesProps {
   leadId: string;
-  notes: string | null;
   onNotesChange?: () => void;
 }
 
-export const LeadCardNotes = ({ leadId, notes, onNotesChange }: LeadCardNotesProps) => {
+export const LeadCardNotes = ({ leadId, onNotesChange }: LeadCardNotesProps) => {
   const [open, setOpen] = useState(false);
-  const [value, setValue] = useState(notes || "");
+  const [value, setValue] = useState("");
   const [saving, setSaving] = useState(false);
 
   const handleSave = async () => {
+    if (!value.trim()) {
+      toast.error("Digite o conteúdo da nota");
+      return;
+    }
+
     setSaving(true);
     try {
       // Get current staff for activity registration
       const { data: userData } = await supabase.auth.getUser();
       const { data: staffData } = await supabase
         .from("onboarding_staff")
-        .select("id")
+        .select("id, name")
         .eq("user_id", userData.user?.id)
         .single();
 
-      // Update the lead notes
-      const { error } = await supabase
-        .from("crm_leads")
-        .update({ notes: value || null })
-        .eq("id", leadId);
+      // Register note in activity history (permanent, not editable)
+      const { error } = await supabase.from("crm_activities").insert({
+        lead_id: leadId,
+        type: "note",
+        title: `Nota de ${staffData?.name || "Usuário"}`,
+        description: value.trim(),
+        responsible_staff_id: staffData?.id,
+        status: "completed",
+        completed_at: new Date().toISOString(),
+      });
 
       if (error) throw error;
 
-      // Register note change in activity history (only if there's content)
-      if (value && value.trim()) {
-        await supabase.from("crm_activities").insert({
-          lead_id: leadId,
-          type: "note",
-          title: "Observação adicionada",
-          description: value.trim(),
-          responsible_staff_id: staffData?.id,
-          status: "completed",
-          completed_at: new Date().toISOString(),
-        });
-      }
-
-      toast.success("Observações salvas");
+      toast.success("Nota adicionada ao histórico!");
+      setValue("");
       setOpen(false);
       onNotesChange?.();
     } catch (error) {
-      console.error("Error saving notes:", error);
-      toast.error("Erro ao salvar observações");
+      console.error("Error saving note:", error);
+      toast.error("Erro ao salvar nota");
     } finally {
       setSaving(false);
     }
   };
-
-  const hasNotes = !!notes && notes.trim().length > 0;
 
   return (
     <Popover open={open} onOpenChange={setOpen}>
@@ -75,18 +69,12 @@ export const LeadCardNotes = ({ leadId, notes, onNotesChange }: LeadCardNotesPro
             e.preventDefault();
             e.stopPropagation();
             setOpen(true);
-            setValue(notes || "");
+            setValue("");
           }}
-          className={cn(
-            "p-1 rounded hover:bg-primary/10 transition-colors group",
-            hasNotes && "text-amber-600"
-          )}
-          title={hasNotes ? "Ver observações" : "Adicionar observação"}
+          className="p-1 rounded hover:bg-primary/10 transition-colors group"
+          title="Adicionar nota ao histórico"
         >
-          <StickyNote className={cn(
-            "h-3.5 w-3.5",
-            hasNotes ? "text-amber-600" : "text-muted-foreground group-hover:text-primary"
-          )} />
+          <StickyNote className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
         </button>
       </PopoverTrigger>
       <PopoverContent 
@@ -97,15 +85,18 @@ export const LeadCardNotes = ({ leadId, notes, onNotesChange }: LeadCardNotesPro
         <div className="space-y-3">
           <div className="flex items-center gap-2">
             <StickyNote className="h-4 w-4 text-amber-600" />
-            <span className="text-sm font-medium">Observações</span>
+            <span className="text-sm font-medium">Adicionar Nota</span>
           </div>
           <Textarea
-            placeholder="Digite suas observações sobre este lead..."
+            placeholder="Digite sua observação sobre este lead..."
             value={value}
             onChange={(e) => setValue(e.target.value)}
             className="min-h-[100px] text-sm resize-none"
             onClick={(e) => e.stopPropagation()}
           />
+          <p className="text-xs text-muted-foreground">
+            Esta nota será salva permanentemente no histórico.
+          </p>
           <div className="flex justify-end">
             <Button 
               size="sm" 
@@ -114,7 +105,7 @@ export const LeadCardNotes = ({ leadId, notes, onNotesChange }: LeadCardNotesPro
                 e.stopPropagation();
                 handleSave();
               }}
-              disabled={saving}
+              disabled={saving || !value.trim()}
             >
               {saving ? (
                 <Loader2 className="h-4 w-4 animate-spin" />

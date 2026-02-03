@@ -26,6 +26,7 @@ import {
   MessageSquare, 
   Mail,
   Calendar,
+  StickyNote,
   Flag,
   ChevronLeft,
   ChevronRight,
@@ -39,6 +40,7 @@ import {
   ArrowRightLeft,
   Copy,
 } from "lucide-react";
+import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -138,6 +140,7 @@ export const CRMLeadDetailPage = () => {
   const [duplicating, setDuplicating] = useState(false);
   const [selectedLossReason, setSelectedLossReason] = useState("");
   const [activeTab, setActiveTab] = useState("activities");
+  const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
@@ -719,8 +722,13 @@ export const CRMLeadDetailPage = () => {
               <Button variant="ghost" size="icon">
                 <Calendar className="h-4 w-4" />
               </Button>
-              <Button variant="ghost" size="icon">
-                <Flag className="h-4 w-4" />
+              <Button 
+                variant="ghost" 
+                size="icon"
+                onClick={() => setAddNoteDialogOpen(true)}
+                title="Adicionar nota ao histórico"
+              >
+                <StickyNote className="h-4 w-4" />
               </Button>
             </div>
           </div>
@@ -1078,6 +1086,14 @@ export const CRMLeadDetailPage = () => {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Add Note Dialog */}
+      <AddLeadNoteDialog
+        open={addNoteDialogOpen}
+        onOpenChange={setAddNoteDialogOpen}
+        leadId={lead.id}
+        onSuccess={loadLead}
+      />
     </div>
   );
 };

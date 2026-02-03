@@ -652,7 +652,6 @@ export const CRMPipelinePage = () => {
                               />
                               <LeadCardNotes
                                 leadId={lead.id}
-                                notes={lead.notes}
                                 onNotesChange={loadStagesAndLeads}
                               />
                               {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
