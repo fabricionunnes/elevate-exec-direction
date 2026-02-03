@@ -262,14 +262,54 @@ export const MonthlySalesChart = ({
 
         if (error) throw error;
 
-        // Build chart data from history
-        data = (history || []).map((entry) => ({
-          month: entry.month_year,
-          monthLabel: format(parseISO(entry.month_year), "MMM/yy", { locale: ptBR }),
-          revenue: entry.revenue || 0,
-          target: getMonthlyTarget(entry.month_year),
-          salesCount: entry.sales_count || 0,
-        }));
+        if (history && history.length > 0) {
+          // Build chart data from history
+          data = history.map((entry) => ({
+            month: entry.month_year,
+            monthLabel: format(parseISO(entry.month_year), "MMM/yy", { locale: ptBR }),
+            revenue: entry.revenue || 0,
+            target: getMonthlyTarget(entry.month_year),
+            salesCount: entry.sales_count || 0,
+          }));
+        } else {
+          // Fallback: if the company has not filled `company_sales_history` yet,
+          // build month-by-month revenue from the monetary KPI entries so the chart
+          // still shows ALL months with data.
+          const { data: allMonetaryKpis } = await supabase
+            .from("company_kpis")
+            .select("id")
+            .eq("company_id", companyId)
+            .eq("kpi_type", "monetary")
+            .eq("is_active", true);
+
+          const monetaryKpiIds = (allMonetaryKpis || []).map((k) => k.id);
+
+          if (monetaryKpiIds.length > 0) {
+            const { data: entries } = await supabase
+              .from("kpi_entries")
+              .select("entry_date, value")
+              .eq("company_id", companyId)
+              .in("kpi_id", monetaryKpiIds);
+
+            if (entries && entries.length > 0) {
+              const monthlyAggregation: Record<string, number> = {};
+
+              entries.forEach((entry) => {
+                if (!entry.entry_date) return;
+                const monthStr = format(parseISO(entry.entry_date), "yyyy-MM-01");
+                monthlyAggregation[monthStr] = (monthlyAggregation[monthStr] || 0) + (entry.value || 0);
+              });
+
+              data = Object.entries(monthlyAggregation).map(([month, revenue]) => ({
+                month,
+                monthLabel: format(parseISO(month), "MMM/yy", { locale: ptBR }),
+                revenue,
+                target: getMonthlyTarget(month),
+                salesCount: 0,
+              }));
+            }
+          }
+        }
 
         // Also fetch current month data from main goal KPI entries
         const currentMonthStart = format(startOfMonth(new Date()), "yyyy-MM-dd");
