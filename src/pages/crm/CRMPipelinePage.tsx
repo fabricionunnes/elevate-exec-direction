@@ -41,6 +41,7 @@ import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { LeadMeetingActions } from "@/components/crm/LeadMeetingActions";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
+import { LeadCardNotes } from "@/components/crm/LeadCardNotes";
 
 interface Stage {
   id: string;
@@ -67,6 +68,7 @@ interface Lead {
   last_activity_at: string | null;
   next_activity_at: string | null;
   urgency: string | null;
+  notes: string | null;
   created_at: string;
   origin?: { name: string } | null;
   owner?: { name: string } | null;
@@ -647,6 +649,11 @@ export const CRMPipelinePage = () => {
                                 currentOwnerId={lead.owner_staff_id}
                                 currentOwnerName={lead.owner?.name}
                                 onOwnerChange={loadStagesAndLeads}
+                              />
+                              <LeadCardNotes
+                                leadId={lead.id}
+                                notes={lead.notes}
+                                onNotesChange={loadStagesAndLeads}
                               />
                               {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
                               {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
