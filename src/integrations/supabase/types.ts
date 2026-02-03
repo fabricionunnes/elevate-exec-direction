@@ -19330,6 +19330,51 @@ export type Database = {
           },
         ]
       }
+      whatsapp_official_instance_access: {
+        Row: {
+          can_send: boolean
+          can_view: boolean
+          created_at: string
+          id: string
+          instance_id: string
+          staff_id: string
+          updated_at: string
+        }
+        Insert: {
+          can_send?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          instance_id: string
+          staff_id: string
+          updated_at?: string
+        }
+        Update: {
+          can_send?: boolean
+          can_view?: boolean
+          created_at?: string
+          id?: string
+          instance_id?: string
+          staff_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whatsapp_official_instance_access_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_official_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "whatsapp_official_instance_access_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       whatsapp_official_instances: {
         Row: {
           access_token: string

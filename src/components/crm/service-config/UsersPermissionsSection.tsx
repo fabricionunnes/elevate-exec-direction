@@ -64,8 +64,8 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
 
       setStaff(staffData || []);
 
-      // Load device assignments from whatsapp_instance_access
-      const { data: accessData } = await supabase
+      // Load device assignments from whatsapp_instance_access (Evolution API)
+      const { data: evolutionAccess } = await supabase
         .from("whatsapp_instance_access")
         .select(`
           staff_id,
@@ -76,8 +76,22 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
         `)
         .eq("can_view", true);
 
+      // Load device assignments from whatsapp_official_instance_access (Official API)
+      const { data: officialAccess } = await supabase
+        .from("whatsapp_official_instance_access")
+        .select(`
+          staff_id,
+          instance_id,
+          can_view,
+          can_send,
+          instance:whatsapp_official_instances(display_name, phone_number)
+        `)
+        .eq("can_view", true);
+
       const deviceMap: Record<string, StaffDevice[]> = {};
-      (accessData || []).forEach((d: any) => {
+      
+      // Add Evolution API instances
+      (evolutionAccess || []).forEach((d: any) => {
         if (!deviceMap[d.staff_id]) deviceMap[d.staff_id] = [];
         if (d.instance) {
           deviceMap[d.staff_id].push({
@@ -88,6 +102,20 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
           });
         }
       });
+      
+      // Add Official API instances
+      (officialAccess || []).forEach((d: any) => {
+        if (!deviceMap[d.staff_id]) deviceMap[d.staff_id] = [];
+        if (d.instance) {
+          deviceMap[d.staff_id].push({
+            staff_id: d.staff_id,
+            instance_id: d.instance_id,
+            instance_name: d.instance.display_name || d.instance.phone_number || "API Oficial",
+            instance_type: "whatsapp_official",
+          });
+        }
+      });
+      
       setStaffDevices(deviceMap);
     } catch (error) {
       console.error("Error loading data:", error);
@@ -185,16 +213,23 @@ export const UsersPermissionsSection = ({ onBack }: UsersPermissionsSectionProps
                 {(staffDevices[member.id] || []).length > 0 ? (
                   <div className="flex items-center gap-2">
                     <div className="flex flex-wrap gap-1">
-                      {staffDevices[member.id].map((d) => (
-                        <div
-                          key={d.instance_id}
-                          className="flex items-center gap-1 px-2 py-1 rounded bg-green-100 text-green-700 text-xs"
-                          title={d.instance_name}
-                        >
-                          <MessageCircle className="h-3 w-3" />
-                          <span className="max-w-[80px] truncate">{d.instance_name}</span>
-                        </div>
-                      ))}
+                      {staffDevices[member.id].map((d) => {
+                        const isOfficial = d.instance_type === "whatsapp_official";
+                        return (
+                          <div
+                            key={d.instance_id}
+                            className={`flex items-center gap-1 px-2 py-1 rounded text-xs ${
+                              isOfficial 
+                                ? "bg-blue-100 text-blue-700" 
+                                : "bg-green-100 text-green-700"
+                            }`}
+                            title={d.instance_name}
+                          >
+                            <MessageCircle className="h-3 w-3" />
+                            <span className="max-w-[80px] truncate">{d.instance_name}</span>
+                          </div>
+                        );
+                      })}
                     </div>
                     <Button
                       variant="ghost"
