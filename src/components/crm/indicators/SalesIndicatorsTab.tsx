@@ -793,30 +793,30 @@ export const SalesIndicatorsTab = () => {
       {/* Term Vision Chart - QTR/YTD/MAT */}
       <TermVisionChart />
 
-      {/* Charts row */}
-      <div className="grid md:grid-cols-3 gap-4">
-        {/* Reuniões */}
+      {/* Agendamentos e Calls Row - Cards individuais */}
+      <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Reuniões</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="grid grid-cols-3 gap-2 text-center">
-              <div>
-                <p className="text-2xl font-bold text-blue-500">{callsMetrics.agendadas}</p>
-                <p className="text-[10px] text-muted-foreground">Agendadas</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-green-500">{callsMetrics.realizadas}</p>
-                <p className="text-[10px] text-muted-foreground">Realizadas</p>
-              </div>
-              <div>
-                <p className="text-2xl font-bold text-red-500">{callsMetrics.noShowPercent.toFixed(0)}%</p>
-                <p className="text-[10px] text-muted-foreground">No Show</p>
-              </div>
-            </div>
+          <CardContent className="p-4">
+            <p className="text-[10px] text-muted-foreground uppercase mb-1">Agendamentos</p>
+            <p className="text-3xl font-bold text-blue-500">{callsMetrics.agendadas}</p>
           </CardContent>
         </Card>
+        <Card className="bg-green-500/10 border-green-500/30">
+          <CardContent className="p-4">
+            <p className="text-[10px] text-muted-foreground uppercase mb-1">Reuniões Realizadas</p>
+            <p className="text-3xl font-bold text-green-600">{callsMetrics.realizadas}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <p className="text-[10px] text-muted-foreground uppercase mb-1">% No Show</p>
+            <p className="text-3xl font-bold text-red-500">{callsMetrics.noShowPercent.toFixed(0)}%</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Charts row */}
+      <div className="grid md:grid-cols-2 gap-4">
 
         {/* Receita por produto */}
         <Card>
