@@ -112,10 +112,12 @@ export const CRMInboxPage = () => {
     if (staffRole === "master") return true;
     // If still loading access, don't filter yet - will re-render when loaded
     if (loadingAccess) return false;
-    // If no instance_id, show to all (orphan conversations)
-    if (!conv.instance_id) return true;
-    // Check if user has access to this instance
-    const hasAccess = allowedInstanceIds.includes(conv.instance_id);
+    // Official API conversations are accessible to all CRM users (for now)
+    if (conv.official_instance_id && !conv.instance_id) return true;
+    // If no instance_id and no official_instance_id, show to all (orphan conversations)
+    if (!conv.instance_id && !conv.official_instance_id) return true;
+    // Check if user has access to this Evolution instance
+    const hasAccess = allowedInstanceIds.includes(conv.instance_id!);
     return hasAccess;
   });
 
@@ -285,38 +287,89 @@ export const CRMInboxPage = () => {
   };
 
   const handleSendMessage = async () => {
-    if (!newMessage.trim() || !selectedConversation || !selectedConversation.instance_id) {
-      if (!selectedConversation?.instance_id) {
-        toast.error("Conversa sem dispositivo associado");
-      }
-      return;
-    }
-
-    try {
-      await sendMessage(
-        newMessage,
-        selectedConversation.instance_id,
-        selectedConversation.contact?.phone || "",
-        staffId
-      );
-      setNewMessage("");
-      toast.success("Mensagem enviada!");
-    } catch (error) {
-      toast.error("Erro ao enviar mensagem");
-    }
-  };
-
-  const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
-    if (!selectedConversation || !selectedConversation.instance_id) {
+    if (!newMessage.trim() || !selectedConversation) return;
+    
+    const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
+    const isEvolutionAPI = !!selectedConversation.instance_id;
+    
+    if (!isOfficialAPI && !isEvolutionAPI) {
       toast.error("Conversa sem dispositivo associado");
       return;
     }
 
     try {
+      if (isOfficialAPI) {
+        // Send via Official WhatsApp API
+        const { data, error } = await supabase.functions.invoke('whatsapp-official-api', {
+          body: {
+            action: 'sendText',
+            instanceId: selectedConversation.official_instance_id,
+            phone: selectedConversation.contact?.phone || "",
+            message: newMessage,
+          }
+        });
+        
+        if (error) throw error;
+        if (data?.error) throw new Error(data.error);
+        
+        // Insert the message locally
+        await supabase.from('crm_whatsapp_messages').insert({
+          conversation_id: selectedConversation.id,
+          content: newMessage,
+          type: 'text',
+          direction: 'outbound',
+          status: 'sent',
+          sender_staff_id: staffId,
+          whatsapp_message_id: data?.messageId,
+        });
+        
+        // Update conversation last message
+        await supabase.from('crm_whatsapp_conversations').update({
+          last_message: newMessage.substring(0, 255),
+          last_message_at: new Date().toISOString(),
+        }).eq('id', selectedConversation.id);
+        
+        refetchMessages();
+      } else {
+        // Send via Evolution API
+        await sendMessage(
+          newMessage,
+          selectedConversation.instance_id!,
+          selectedConversation.contact?.phone || "",
+          staffId
+        );
+      }
+      setNewMessage("");
+      toast.success("Mensagem enviada!");
+    } catch (error: any) {
+      console.error("Error sending message:", error);
+      toast.error(error.message || "Erro ao enviar mensagem");
+    }
+  };
+
+  const handleSendMedia = async (file: File, type: "image" | "video" | "audio" | "document") => {
+    if (!selectedConversation) return;
+    
+    const isOfficialAPI = !!selectedConversation.official_instance_id && !selectedConversation.instance_id;
+    const isEvolutionAPI = !!selectedConversation.instance_id;
+    
+    if (!isOfficialAPI && !isEvolutionAPI) {
+      toast.error("Conversa sem dispositivo associado");
+      return;
+    }
+
+    try {
+      if (isOfficialAPI) {
+        // For now, official API media needs to be handled separately
+        toast.error("Envio de mídia ainda não suportado para API Oficial");
+        return;
+      }
+      
+      // Send via Evolution API
       await sendMedia(
         file,
         type,
-        selectedConversation.instance_id,
+        selectedConversation.instance_id!,
         selectedConversation.contact?.phone || "",
         staffId
       );
@@ -576,6 +629,11 @@ export const CRMInboxPage = () => {
                         {conv.instance.display_name || conv.instance.instance_name}
                       </Badge>
                     )}
+                    {conv.official_instance && !conv.instance && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-blue-500/10 text-blue-600 border-blue-500/30">
+                        📱 {conv.official_instance.display_name || 'API Oficial'}
+                      </Badge>
+                    )}
                     <p className="text-xs text-muted-foreground truncate">
                       {conv.last_message || "Sem mensagens"}
                     </p>
@@ -627,6 +685,11 @@ export const CRMInboxPage = () => {
                   {selectedConversation.instance && (
                     <Badge variant="outline" className="h-4 px-1.5 text-[10px] bg-green-500/10 text-green-600 border-green-500/30 shrink-0">
                       {selectedConversation.instance.display_name || selectedConversation.instance.instance_name}
+                    </Badge>
+                  )}
+                  {selectedConversation.official_instance && !selectedConversation.instance && (
+                    <Badge variant="outline" className="h-4 px-1.5 text-[10px] bg-blue-500/10 text-blue-600 border-blue-500/30 shrink-0">
+                      📱 {selectedConversation.official_instance.display_name || 'API Oficial'}
                     </Badge>
                   )}
                 </div>
