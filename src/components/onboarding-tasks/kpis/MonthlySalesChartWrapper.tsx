@@ -83,31 +83,44 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
     );
   }
 
-  // Detect if we have separate Faturamento and Receita KPIs
-  const isFaturamento = (name: string) => /faturamento/i.test(name);
-  const isReceita = (name: string) => /receita|dinheiro.*(entrou|recebido)/i.test(name);
+  // Detect Faturamento and Receita KPIs
+  const isFaturamento = (name: string) => /faturamento|vendas?|pedido|contrato/i.test(name) && !/receit|dinheiro|caixa|recebid/i.test(name);
+  const isReceita = (name: string) => /receita|dinheiro|caixa|recebid/i.test(name);
 
-  const faturamentoKpi = monetaryKpis.find(k => isFaturamento(k.name));
-  const receitaKpi = monetaryKpis.find(k => isReceita(k.name));
+  // Group KPIs by type
+  const faturamentoKpis = monetaryKpis.filter(k => isFaturamento(k.name));
+  const receitaKpis = monetaryKpis.filter(k => isReceita(k.name));
+  
+  // KPIs that don't match either pattern - treat as faturamento
+  const otherKpis = monetaryKpis.filter(k => !isFaturamento(k.name) && !isReceita(k.name));
+  const allFaturamentoKpis = [...faturamentoKpis, ...otherKpis];
 
-  const hasBothTypes = faturamentoKpi && receitaKpi && faturamentoKpi.id !== receitaKpi.id;
+  const hasBothTypes = allFaturamentoKpis.length > 0 && receitaKpis.length > 0;
+
+  console.log("MonthlySalesChartWrapper - Monetary KPIs:", monetaryKpis.map(k => ({ id: k.id, name: k.name })));
+  console.log("MonthlySalesChartWrapper - Faturamento KPIs:", allFaturamentoKpis.map(k => k.name));
+  console.log("MonthlySalesChartWrapper - Receita KPIs:", receitaKpis.map(k => k.name));
+  console.log("MonthlySalesChartWrapper - Has both types:", hasBothTypes);
 
   if (hasBothTypes) {
     // Render two separate charts
+    const mainFaturamento = allFaturamentoKpis.find(k => k.is_main_goal) || allFaturamentoKpis[0];
+    const mainReceita = receitaKpis.find(k => k.is_main_goal) || receitaKpis[0];
+    
     return (
       <div className="space-y-4">
         <SingleMonthlySalesChart
           companyId={companyId}
-          kpiId={faturamentoKpi.id}
-          kpiName={faturamentoKpi.name}
-          kpiTargetValue={faturamentoKpi.target_value}
+          kpiIds={allFaturamentoKpis.map(k => k.id)}
+          kpiName={mainFaturamento.name}
+          kpiTargetValue={mainFaturamento.target_value}
           {...rest}
         />
         <SingleMonthlySalesChart
           companyId={companyId}
-          kpiId={receitaKpi.id}
-          kpiName={receitaKpi.name}
-          kpiTargetValue={receitaKpi.target_value}
+          kpiIds={receitaKpis.map(k => k.id)}
+          kpiName={mainReceita.name}
+          kpiTargetValue={mainReceita.target_value}
           {...rest}
         />
       </div>
@@ -115,12 +128,13 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
   }
 
   // Single chart for all monetary KPIs combined
+  const mainKpi = monetaryKpis.find(k => k.is_main_goal) || monetaryKpis[0];
   return (
     <SingleMonthlySalesChart
       companyId={companyId}
       kpiIds={monetaryKpis.map(k => k.id)}
-      kpiName={monetaryKpis[0]?.name || "Vendas"}
-      kpiTargetValue={monetaryKpis[0]?.target_value || 0}
+      kpiName={mainKpi?.name || "Vendas"}
+      kpiTargetValue={mainKpi?.target_value || 0}
       {...rest}
     />
   );
