@@ -174,11 +174,9 @@ export function LeadMeetingActions({
         return;
       }
 
-      // For "scheduled", credit the person who clicked (SDR registering the scheduling)
-      // For "realized" and "no_show", credit the owner (closer) - SDR will be credited inside trackMeetingEvent
-      const creditedStaffId = eventType === "scheduled" 
-        ? triggeredByStaffId 
-        : (ownerStaffId || triggeredByStaffId);
+      // Always credit the owner (closer) for scheduled and realized events
+      // The owner is the person responsible for the lead's meetings
+      const creditedStaffId = ownerStaffId || triggeredByStaffId;
 
       const success = await trackMeetingEvent(
         leadId,
