@@ -167,17 +167,27 @@ function buildEnhancedPrompt(
   format: string,
   includeLogo: boolean
 ): string {
-  // Determine aspect ratio based on format
-  let aspectRatio = "1:1"; // Default for feed posts
+  // Determine aspect ratio and dimensions based on format
+  // Instagram Feed: 1080x1350 (4:5 aspect ratio)
+  // Stories/Reels: 1080x1920 (9:16 aspect ratio)
+  // Cover: 1920x1080 (16:9 aspect ratio)
+  let aspectRatio = "4:5"; // Default for feed posts (1080x1350)
+  let dimensions = "1080x1350";
   if (format === "story" || format === "reel") {
     aspectRatio = "9:16";
+    dimensions = "1080x1920";
   } else if (format === "cover") {
     aspectRatio = "16:9";
+    dimensions = "1920x1080";
+  } else if (format === "carousel") {
+    aspectRatio = "4:5";
+    dimensions = "1080x1350";
   }
 
   let prompt = `Create a professional social media image for Instagram.
 
-Format: ${format || "feed post"} (${aspectRatio} aspect ratio)
+Format: ${format || "feed post"}
+Dimensions: ${dimensions} pixels (${aspectRatio} aspect ratio)
 
 Visual Request: ${basePrompt}
 
