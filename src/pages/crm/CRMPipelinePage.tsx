@@ -544,8 +544,8 @@ export const CRMPipelinePage = () => {
       />
 
       {/* Kanban Board */}
-      <div className="flex-1 overflow-x-scroll px-2 sm:px-4 pb-4" style={{ scrollbarGutter: 'stable' }}>
-        <div className="flex gap-2 sm:gap-3 h-full min-w-max">
+      <div className="flex-1 overflow-x-auto overflow-y-hidden px-2 sm:px-4 pb-4 [&::-webkit-scrollbar]:h-3 [&::-webkit-scrollbar-track]:bg-muted/50 [&::-webkit-scrollbar-thumb]:bg-muted-foreground/30 [&::-webkit-scrollbar-thumb]:rounded-full hover:[&::-webkit-scrollbar-thumb]:bg-muted-foreground/50">
+        <div className="flex gap-2 sm:gap-3 h-full min-w-max pb-2">
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = getStageTotal(stage.id);
