@@ -100,9 +100,20 @@ export default function SocialBriefingPublicPage() {
   const [notFound, setNotFound] = useState(false);
   const [submitted, setSubmitted] = useState(false);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Evita reset do que foi digitado quando fazemos refresh (ex: após upload)
+  const hasInitializedFormRef = useRef(false);
 
   useEffect(() => {
     if (token) {
+      // Reset quando muda o token/link
+      hasInitializedFormRef.current = false;
+      setFormData({});
+      setUploads([]);
+      setBriefing(null);
+      setProjectInfo(null);
+      setNotFound(false);
+      setSubmitted(false);
+      setLoading(true);
       loadData();
     }
   }, [token]);
@@ -133,7 +144,11 @@ export default function SocialBriefingPublicPage() {
       QUESTIONS.forEach(q => {
         initialData[q.key] = (briefingData as any)[q.key] || "";
       });
-      setFormData(initialData);
+      // Só inicializa a primeira vez; nas próximas recargas preserva o estado local do formulário
+      if (!hasInitializedFormRef.current) {
+        setFormData(initialData);
+        hasInitializedFormRef.current = true;
+      }
 
       // Load project info
       const { data: projectData } = await supabase

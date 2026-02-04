@@ -95,8 +95,16 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
   const [formData, setFormData] = useState<Record<string, string>>({});
   const [uploadingType, setUploadingType] = useState<string | null>(null);
   const fileInputRefs = useRef<Record<string, HTMLInputElement | null>>({});
+  // Evita sobrescrever o que o usuário já digitou quando fazemos refresh (ex: após upload)
+  const hasInitializedFormRef = useRef(false);
 
   useEffect(() => {
+    // Reset ao trocar de projeto
+    hasInitializedFormRef.current = false;
+    setFormData({});
+    setUploads([]);
+    setBriefing(null);
+    setLoading(true);
     loadData();
   }, [projectId]);
 
@@ -117,7 +125,11 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
         QUESTIONS.forEach(q => {
           initialData[q.key] = (briefingData as any)[q.key] || "";
         });
-        setFormData(initialData);
+        // Só inicializa a primeira vez; nas próximas recargas preserva o que já foi digitado localmente
+        if (!hasInitializedFormRef.current) {
+          setFormData(initialData);
+          hasInitializedFormRef.current = true;
+        }
 
         // Load uploads
         const { data: uploadsData } = await supabase
@@ -136,6 +148,14 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
 
         if (createError) throw createError;
         setBriefing(newBriefing as BriefingForm);
+        if (!hasInitializedFormRef.current) {
+          const emptyData: Record<string, string> = {};
+          QUESTIONS.forEach(q => {
+            emptyData[q.key] = "";
+          });
+          setFormData(emptyData);
+          hasInitializedFormRef.current = true;
+        }
       }
     } catch (error) {
       console.error("Error loading briefing:", error);
