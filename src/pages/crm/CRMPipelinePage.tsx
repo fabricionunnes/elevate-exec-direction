@@ -31,6 +31,7 @@ import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { useDragScroll } from "@/hooks/useDragScroll";
 
 interface Stage {
   id: string;
@@ -89,6 +90,9 @@ export const CRMPipelinePage = () => {
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [addLeadStageId, setAddLeadStageId] = useState<string | undefined>(undefined);
   const [draggedLead, setDraggedLead] = useState<Lead | null>(null);
+  
+  // Drag scroll for horizontal kanban
+  const { ref: dragScrollRef, isDragging: isDraggingScroll, bind: dragScrollBind } = useDragScroll();
   
   // Bulk selection state
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
@@ -552,7 +556,12 @@ export const CRMPipelinePage = () => {
           type="always"
           className="relative h-full w-full"
         >
-          <ScrollAreaPrimitive.Viewport className="h-full w-full [&>div]:h-full">
+          <ScrollAreaPrimitive.Viewport 
+            ref={dragScrollRef}
+            className="h-full w-full [&>div]:h-full"
+            style={{ cursor: isDraggingScroll ? 'grabbing' : 'grab' }}
+            {...dragScrollBind}
+          >
             <div className="h-full px-2 sm:px-4 pb-4">
               <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
                 {stages.map(stage => {
