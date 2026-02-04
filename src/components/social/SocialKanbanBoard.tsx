@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus } from "lucide-react";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -88,6 +88,7 @@ interface ContentCard {
   suggested_time: string | null;
   is_locked: boolean;
   sort_order: number;
+  briefing_aligned?: boolean;
 }
 
 interface SocialKanbanBoardProps {
@@ -389,6 +390,14 @@ export const SocialKanbanBoard = ({
                       <p className="text-sm font-medium line-clamp-2 mb-2">
                         {card.theme}
                       </p>
+
+                      {/* Briefing Aligned Indicator */}
+                      {card.briefing_aligned && (
+                        <div className="flex items-center gap-1 text-xs text-primary mb-2">
+                          <CheckCircle className="h-3 w-3" />
+                          <span>Alinhado ao briefing</span>
+                        </div>
+                      )}
 
                       {/* Schedule & Checklist Progress */}
                       <div className="flex items-center justify-between gap-2">

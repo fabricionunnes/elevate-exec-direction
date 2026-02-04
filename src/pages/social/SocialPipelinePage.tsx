@@ -38,6 +38,7 @@ interface ContentCard {
   created_at: string;
   created_by: string | null;
   assigned_to: string | null;
+  briefing_aligned: boolean;
 }
 
 interface ContextType {
