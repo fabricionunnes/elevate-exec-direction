@@ -517,6 +517,7 @@ export const LeadCustomFieldsTab = ({
       installments: "installments",
       due_day: "due_day",
       payment_method: "payment_method",
+      address: "address",
     };
 
     const key = mapping[fieldName];
@@ -562,6 +563,7 @@ export const LeadCustomFieldsTab = ({
         installments: "installments",
         due_day: "due_day",
         payment_method: "payment_method",
+        address: "address",
       };
 
       const dbField = fieldMapping[field.field_name];
