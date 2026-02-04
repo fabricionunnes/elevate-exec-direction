@@ -511,6 +511,12 @@ export const LeadCustomFieldsTab = ({
       product_id: "product_id",
       plan_id: "plan_id",
       document: "document",
+      // New closing fields
+      trade_name: "trade_name",
+      zipcode: "zipcode",
+      installments: "installments",
+      due_day: "due_day",
+      payment_method: "payment_method",
     };
 
     const key = mapping[fieldName];
@@ -550,6 +556,12 @@ export const LeadCustomFieldsTab = ({
         product_id: "product_id",
         plan_id: "plan_id",
         document: "document",
+        // New closing fields
+        trade_name: "trade_name",
+        zipcode: "zipcode",
+        installments: "installments",
+        due_day: "due_day",
+        payment_method: "payment_method",
       };
 
       const dbField = fieldMapping[field.field_name];
@@ -558,7 +570,7 @@ export const LeadCustomFieldsTab = ({
       setSaving(field.id);
       try {
         const updateData: Record<string, any> = {};
-        if (field.field_type === "number") {
+        if (field.field_type === "number" || field.field_name === "due_day") {
           updateData[dbField] = value ? parseFloat(value) : null;
         } else if (["closer_staff_id", "sdr_staff_id", "product_id", "plan_id"].includes(field.field_name)) {
           updateData[dbField] = value || null;
@@ -720,6 +732,30 @@ export const LeadCustomFieldsTab = ({
               options={banks}
               placeholder="Selecionar banco"
             />
+          );
+        }
+        // Special handling for due_day field
+        if (field.field_name === "due_day") {
+          return (
+            <Select
+              value={value || "none"}
+              onValueChange={(v) => handleFieldChange(field, v === "none" ? "" : v)}
+              disabled={isSaving}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecionar dia">
+                  {value ? `Dia ${value}` : "Selecionar dia"}
+                </SelectValue>
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                  <SelectItem key={day} value={day.toString()}>
+                    Dia {day}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
           );
         }
         return (

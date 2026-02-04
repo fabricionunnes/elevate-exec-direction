@@ -464,6 +464,64 @@ serve(async (req) => {
         );
       }
 
+      case 'sendGroupText': {
+        // Send text message to a WhatsApp group
+        const { instanceId, groupId, message } = body;
+        
+        if (!instanceId || !groupId || !message) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId, groupId, and message are required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Get instance name AND custom API credentials from database
+        const supabaseService = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        // Use instance-specific API credentials if available
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+
+        console.log(`[evolution-api] sendGroupText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
+        console.log(`[evolution-api] sendGroupText to group: ${groupId}`);
+
+        // Ensure groupId has the correct format (should end with @g.us)
+        const formattedGroupId = groupId.includes('@g.us') ? groupId : `${groupId}@g.us`;
+
+        const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
+          method: 'POST',
+          headers: apiHeaders,
+          body: JSON.stringify({
+            number: formattedGroupId,
+            text: message,
+          }),
+        });
+
+        const data = await response.json();
+        console.log('[evolution-api] sendGroupText response:', JSON.stringify(data).substring(0, 500));
+
+        return new Response(
+          JSON.stringify(data),
+          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
       case 'connect':
       case 'qr-code': {
         // Generate and return QR/pairing payload for WhatsApp connection.
