@@ -11,7 +11,7 @@ import { Separator } from "@/components/ui/separator";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Save, CheckCircle, Upload, FileText, Image as ImageIcon, 
-  X, AlertCircle, Clock, Send
+  X, AlertCircle, Clock, Send, Link, Copy
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -21,6 +21,7 @@ interface SocialBriefingTabProps {
 
 interface BriefingForm {
   id: string;
+  access_token: string | null;
   company_since: string | null;
   mission_purpose: string | null;
   founding_story: string | null;
@@ -293,6 +294,20 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
     return Math.round(((filledFields + filledUploads) / totalRequired) * 100);
   };
 
+  const getPublicLink = () => {
+    if (!briefing?.access_token) return null;
+    const baseUrl = window.location.origin;
+    return `${baseUrl}?public=social-briefing&token=${briefing.access_token}`;
+  };
+
+  const handleCopyLink = () => {
+    const link = getPublicLink();
+    if (link) {
+      navigator.clipboard.writeText(link);
+      toast.success("Link copiado para a área de transferência!");
+    }
+  };
+
   const isLocked = briefing?.status === "approved" || briefing?.status === "locked";
 
   if (loading) {
@@ -308,27 +323,40 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
       {/* Header */}
       <div className="p-6 border-b bg-gradient-to-r from-primary/5 to-primary/10">
         <div className="max-w-4xl mx-auto">
-          <div className="flex items-start justify-between mb-4">
-            <div>
+          <div className="flex items-start justify-between gap-4 mb-4">
+            <div className="flex-1">
               <h2 className="text-2xl font-bold">Briefing | Social Media</h2>
               <p className="text-muted-foreground mt-1 max-w-xl">
                 Seja bem-vindo(a)! Vamos começar a transformar sua presença digital.
                 Preencha com atenção: esse briefing nos ajuda a entender seu negócio, suas dores e seus objetivos.
               </p>
             </div>
-            {briefing?.status && (
-              <Badge 
-                variant={briefing.status === "approved" ? "default" : briefing.status === "pending_review" ? "secondary" : "outline"}
-                className="capitalize"
-              >
-                {briefing.status === "draft" && <Clock className="h-3 w-3 mr-1" />}
-                {briefing.status === "pending_review" && <AlertCircle className="h-3 w-3 mr-1" />}
-                {briefing.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
-                {briefing.status === "draft" ? "Rascunho" : 
-                 briefing.status === "pending_review" ? "Em Revisão" : 
-                 briefing.status === "approved" ? "Aprovado" : briefing.status}
-              </Badge>
-            )}
+            <div className="flex items-center gap-2 flex-shrink-0">
+              {briefing?.access_token && (
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={handleCopyLink}
+                  className="gap-2"
+                >
+                  <Link className="h-4 w-4" />
+                  Copiar Link do Cliente
+                </Button>
+              )}
+              {briefing?.status && (
+                <Badge 
+                  variant={briefing.status === "approved" ? "default" : briefing.status === "pending_review" ? "secondary" : "outline"}
+                  className="capitalize"
+                >
+                  {briefing.status === "draft" && <Clock className="h-3 w-3 mr-1" />}
+                  {briefing.status === "pending_review" && <AlertCircle className="h-3 w-3 mr-1" />}
+                  {briefing.status === "approved" && <CheckCircle className="h-3 w-3 mr-1" />}
+                  {briefing.status === "draft" ? "Rascunho" : 
+                   briefing.status === "pending_review" ? "Em Revisão" : 
+                   briefing.status === "approved" ? "Aprovado" : briefing.status}
+                </Badge>
+              )}
+            </div>
           </div>
 
           {/* Progress */}

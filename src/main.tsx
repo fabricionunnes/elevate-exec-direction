@@ -26,6 +26,7 @@ const publicRoutes = [
   "/cultura",
   "/banco-talentos",
   "/job-application",
+  "/social-briefing",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
@@ -99,6 +100,12 @@ if (publicParam) {
   } else if (publicParam === "vagas") {
     // expects job=...
     forceHashRoute("/job-application", window.location.search);
+  } else if (publicParam === "social-briefing") {
+    // expects token=...
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/social-briefing/${encodeURIComponent(token)}`, "");
+    }
   }
 } else {
   // Path-based public links

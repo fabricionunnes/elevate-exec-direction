@@ -18567,6 +18567,7 @@ export type Database = {
       }
       social_briefing_forms: {
         Row: {
+          access_token: string | null
           additional_info: string | null
           approved_at: string | null
           approved_by: string | null
@@ -18637,6 +18638,7 @@ export type Database = {
           words_to_use: string[] | null
         }
         Insert: {
+          access_token?: string | null
           additional_info?: string | null
           approved_at?: string | null
           approved_by?: string | null
@@ -18707,6 +18709,7 @@ export type Database = {
           words_to_use?: string[] | null
         }
         Update: {
+          access_token?: string | null
           additional_info?: string | null
           approved_at?: string | null
           approved_by?: string | null
