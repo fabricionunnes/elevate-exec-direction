@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useOutletContext } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Link2, Building2, Lightbulb, FileText } from "lucide-react";
+import { Link2, Building2, Lightbulb, FileText, Sparkles } from "lucide-react";
 import { SocialIntegrationsTab } from "@/components/social/strategy/SocialIntegrationsTab";
 import { SocialCompanyInfoTab } from "@/components/social/strategy/SocialCompanyInfoTab";
 import { SocialInspirationTab } from "@/components/social/strategy/SocialInspirationTab";
 import { SocialBriefingTab } from "@/components/social/strategy/SocialBriefingTab";
+import { SocialAITab } from "@/components/social/strategy/SocialAITab";
 
 interface ContextType {
   project: { id: string; product_name: string | null; company_name: string | null };
@@ -56,7 +57,14 @@ export const SocialStrategyPage = () => {
               className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
             >
               <FileText className="h-4 w-4" />
-              Briefing | Social Media
+              Briefing
+            </TabsTrigger>
+            <TabsTrigger 
+              value="ai" 
+              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+            >
+              <Sparkles className="h-4 w-4" />
+              IA Criativa
             </TabsTrigger>
           </TabsList>
         </div>
@@ -76,6 +84,10 @@ export const SocialStrategyPage = () => {
           
           <TabsContent value="briefing" className="h-full m-0">
             <SocialBriefingTab projectId={project.id} />
+          </TabsContent>
+          
+          <TabsContent value="ai" className="h-full m-0">
+            <SocialAITab projectId={project.id} boardId={boardId} />
           </TabsContent>
         </div>
       </Tabs>

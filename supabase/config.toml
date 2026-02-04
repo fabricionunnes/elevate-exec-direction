@@ -176,3 +176,39 @@ verify_jwt = false
 
 [functions.whatsapp-official-api]
 verify_jwt = true
+
+[functions.social-generate-company-profile]
+verify_jwt = true
+
+[functions.social-send-approval]
+verify_jwt = true
+
+[functions.social-get-approval]
+verify_jwt = false
+
+[functions.social-submit-approval]
+verify_jwt = false
+
+[functions.social-ai-suggestions]
+verify_jwt = true
+
+[functions.social-ai-generate-image]
+verify_jwt = true
+
+[functions.academy-generate-quiz]
+verify_jwt = true
+
+[functions.culture-manual-ai]
+verify_jwt = false
+
+[functions.analyze-resume]
+verify_jwt = true
+
+[functions.generate-crm-briefing]
+verify_jwt = true
+
+[functions.generate-meeting-presentation]
+verify_jwt = true
+
+[functions.client-virtual-board]
+verify_jwt = true
