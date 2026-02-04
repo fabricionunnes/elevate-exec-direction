@@ -243,11 +243,11 @@ export const SocialCardDetailSheet = ({
 
       const isVideo = file.type.startsWith("video/");
       
-      // Update local state
+      // Update local state FIRST so UI updates immediately
       setCreativeUrl(publicUrl);
       setCreativeType(isVideo ? "video" : "image");
 
-      // Auto-save to database immediately after upload
+      // Auto-save to database
       const { error: updateError } = await supabase
         .from("social_content_cards")
         .update({
@@ -258,8 +258,8 @@ export const SocialCardDetailSheet = ({
 
       if (updateError) throw updateError;
 
-      toast.success("Arquivo enviado e salvo!");
-      onUpdate();
+      toast.success("Arquivo enviado!");
+      // Don't call onUpdate() here - it would reload and close/refresh the sheet
     } catch (error) {
       console.error("Error uploading file:", error);
       toast.error("Erro ao enviar arquivo");
@@ -268,6 +268,35 @@ export const SocialCardDetailSheet = ({
       if (fileInputRef.current) {
         fileInputRef.current.value = "";
       }
+    }
+  };
+
+  const handleRemoveCreative = async () => {
+    if (!card) return;
+
+    setUploading(true);
+    try {
+      // Update database to remove creative
+      const { error } = await supabase
+        .from("social_content_cards")
+        .update({
+          creative_url: null,
+          creative_type: null,
+        })
+        .eq("id", card.id);
+
+      if (error) throw error;
+
+      // Update local state
+      setCreativeUrl("");
+      setCreativeType(null);
+
+      toast.success("Mídia removida!");
+    } catch (error) {
+      console.error("Error removing creative:", error);
+      toast.error("Erro ao remover mídia");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -518,15 +547,24 @@ export const SocialCardDetailSheet = ({
                         className="w-full h-full object-cover"
                       />
                     )}
-                    <Button
-                      size="sm"
-                      variant="secondary"
-                      className="absolute bottom-2 right-2"
-                      onClick={() => fileInputRef.current?.click()}
-                      disabled={card.is_locked || uploading}
-                    >
-                      {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Trocar"}
-                    </Button>
+                    <div className="absolute bottom-2 right-2 flex gap-2">
+                      <Button
+                        size="sm"
+                        variant="secondary"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={card.is_locked || uploading}
+                      >
+                        {uploading ? <Loader2 className="h-4 w-4 animate-spin" /> : "Trocar"}
+                      </Button>
+                      <Button
+                        size="sm"
+                        variant="destructive"
+                        onClick={handleRemoveCreative}
+                        disabled={card.is_locked || uploading}
+                      >
+                        <Trash2 className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
                 ) : (
                   <div
