@@ -394,25 +394,61 @@ export const CRMSettingsPage = () => {
       // 2. Get stages from original pipeline
       const originalStages = stages.filter(s => s.pipeline_id === pipeline.id);
 
-      // 3. Create stages for new pipeline
+      // 3. Create stages for new pipeline and map old IDs to new IDs
       if (originalStages.length > 0) {
-        const newStages = originalStages.map(stage => ({
-          pipeline_id: newPipeline.id,
-          name: stage.name,
-          sort_order: stage.sort_order,
-          is_final: stage.is_final,
-          final_type: stage.final_type,
-          color: stage.color,
-        }));
+        const stageIdMapping: Record<string, string> = {};
 
-        const { error: stagesError } = await supabase
-          .from("crm_stages")
-          .insert(newStages);
+        // Insert stages one by one to get the new IDs
+        for (const stage of originalStages) {
+          const { data: newStage, error: stageError } = await supabase
+            .from("crm_stages")
+            .insert({
+              pipeline_id: newPipeline.id,
+              name: stage.name,
+              sort_order: stage.sort_order,
+              is_final: stage.is_final,
+              final_type: stage.final_type,
+              color: stage.color,
+            })
+            .select()
+            .single();
 
-        if (stagesError) throw stagesError;
+          if (stageError) throw stageError;
+          stageIdMapping[stage.id] = newStage.id;
+        }
+
+        // 4. Copy stage actions (automations) for each stage
+        const { data: originalActions, error: actionsError } = await supabase
+          .from("crm_stage_actions")
+          .select("*")
+          .in("stage_id", originalStages.map(s => s.id));
+
+        if (actionsError) throw actionsError;
+
+        if (originalActions && originalActions.length > 0) {
+          const newActions = originalActions.map(action => ({
+            stage_id: stageIdMapping[action.stage_id],
+            activity_type: action.activity_type,
+            activity_title: action.activity_title,
+            activity_description: action.activity_description,
+            days_offset: action.days_offset,
+            is_required: action.is_required,
+            sort_order: action.sort_order,
+            action_mode: action.action_mode,
+            whatsapp_template: action.whatsapp_template,
+            meeting_staff_id: action.meeting_staff_id,
+            meeting_duration_minutes: action.meeting_duration_minutes,
+          }));
+
+          const { error: insertActionsError } = await supabase
+            .from("crm_stage_actions")
+            .insert(newActions);
+
+          if (insertActionsError) throw insertActionsError;
+        }
       }
 
-      toast.success(`Pipeline "${pipeline.name}" duplicado com sucesso`);
+      toast.success(`Pipeline "${pipeline.name}" duplicado com todas as etapas e automações`);
       loadData();
     } catch (error: any) {
       toast.error(error.message || "Erro ao duplicar pipeline");
