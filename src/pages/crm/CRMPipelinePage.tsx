@@ -565,7 +565,7 @@ export const CRMPipelinePage = () => {
                   return (
                     <div
                       key={stage.id}
-                      className="w-[260px] sm:w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
+                      className="w-[260px] sm:w-[280px] h-full flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
                       onDragOver={handleDragOver}
                       onDrop={(e) => handleDrop(e, stage.id)}
                     >
