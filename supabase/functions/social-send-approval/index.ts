@@ -1,0 +1,147 @@
+import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+};
+
+serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const { cardId, projectId } = await req.json();
+
+    if (!cardId || !projectId) {
+      return new Response(
+        JSON.stringify({ error: "cardId e projectId são obrigatórios" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+    const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+    const supabase = createClient(supabaseUrl, supabaseKey);
+
+    // Get WhatsApp settings for the project
+    const { data: settings, error: settingsError } = await supabase
+      .from("social_whatsapp_settings")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("is_active", true)
+      .single();
+
+    if (settingsError || !settings?.client_phone || !settings?.whatsapp_instance_id) {
+      console.log("WhatsApp settings not configured");
+      return new Response(
+        JSON.stringify({ success: false, message: "Configurações de WhatsApp não encontradas" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Get the card details
+    const { data: card, error: cardError } = await supabase
+      .from("social_content_cards")
+      .select("*")
+      .eq("id", cardId)
+      .single();
+
+    if (cardError || !card) {
+      throw new Error("Card não encontrado");
+    }
+
+    // Get WhatsApp instance details
+    const { data: instance, error: instanceError } = await supabase
+      .from("whatsapp_instances")
+      .select("api_url, api_key, instance_name")
+      .eq("id", settings.whatsapp_instance_id)
+      .single();
+
+    if (instanceError || !instance?.api_url || !instance?.api_key) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Instância WhatsApp não configurada" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Create approval link
+    const { data: approvalLink, error: linkError } = await supabase
+      .from("social_approval_links")
+      .insert({
+        card_id: cardId,
+        status: "pending",
+        sent_at: new Date().toISOString(),
+        sent_via: "whatsapp",
+      })
+      .select("access_token")
+      .single();
+
+    if (linkError || !approvalLink) {
+      throw new Error("Erro ao criar link de aprovação");
+    }
+
+    // Build approval URL
+    const baseUrl = Deno.env.get("SITE_URL") || `${supabaseUrl.replace('.supabase.co', '')}.lovable.app`;
+    const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
+
+    // Format phone number
+    let phone = settings.client_phone.replace(/\D/g, "");
+    if (!phone.startsWith("55")) {
+      phone = "55" + phone;
+    }
+
+    // Build message
+    const contentTypes: Record<string, string> = { feed: "Feed", reels: "Reels", stories: "Stories" };
+    const message = `Olá${settings.client_name ? ` ${settings.client_name}` : ""}! 👋
+
+Temos um novo conteúdo para sua aprovação:
+
+📱 *${contentTypes[card.content_type] || card.content_type}*
+📝 *Tema:* ${card.theme}
+
+Clique no link abaixo para visualizar e aprovar ou solicitar ajustes:
+
+🔗 ${approvalUrl}
+
+Aguardamos seu feedback! ✨`;
+
+    // Send via Evolution API
+    const sendResponse = await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: instance.api_key,
+      },
+      body: JSON.stringify({
+        number: phone,
+        text: message,
+      }),
+    });
+
+    if (!sendResponse.ok) {
+      const errorText = await sendResponse.text();
+      console.error("Error sending WhatsApp:", errorText);
+      throw new Error("Erro ao enviar WhatsApp");
+    }
+
+    // Log history
+    await supabase.from("social_content_history").insert({
+      card_id: cardId,
+      action: "sent_for_approval",
+      details: { phone, approval_link_id: approvalLink.access_token },
+    });
+
+    return new Response(
+      JSON.stringify({ success: true, message: "Link enviado com sucesso!" }),
+      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  } catch (error) {
+    console.error("Error:", error);
+    return new Response(
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro desconhecido" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
