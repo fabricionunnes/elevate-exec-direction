@@ -22,11 +22,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle 
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { CardChecklistProgress } from "./CardChecklistProgress";
 
 interface Stage {
   id: string;
@@ -317,14 +318,44 @@ export const SocialCardDetailSheet = ({
           <SheetTitle className="text-left">{theme || "Novo Conteúdo"}</SheetTitle>
         </SheetHeader>
 
-        <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid grid-cols-3 w-full">
+        <Tabs defaultValue="checklist" className="flex-1 flex flex-col overflow-hidden">
+          <TabsList className="grid grid-cols-4 w-full">
+            <TabsTrigger value="checklist" className="gap-1">
+              <ListChecks className="h-3 w-3" />
+              Checklist
+            </TabsTrigger>
             <TabsTrigger value="content">Conteúdo</TabsTrigger>
             <TabsTrigger value="feedback">Feedbacks</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
 
           <ScrollArea className="flex-1 mt-4">
+            {/* Checklist Tab */}
+            <TabsContent value="checklist" className="mt-0 pr-4">
+              <CardChecklistProgress
+                cardId={card.id}
+                stageId={card.stage_id}
+                stages={stages}
+                onAutoAdvance={async (nextStageId) => {
+                  // Move card to next stage
+                  try {
+                    const { error } = await supabase
+                      .from("social_content_cards")
+                      .update({ stage_id: nextStageId })
+                      .eq("id", card.id);
+
+                    if (error) throw error;
+                    
+                    onOpenChange(false);
+                    onUpdate();
+                  } catch (error) {
+                    console.error("Error auto-advancing card:", error);
+                    toast.error("Erro ao avançar card");
+                  }
+                }}
+              />
+            </TabsContent>
+
             <TabsContent value="content" className="mt-0 space-y-4 pr-4">
               {/* Creative Upload */}
               <div className="space-y-2">

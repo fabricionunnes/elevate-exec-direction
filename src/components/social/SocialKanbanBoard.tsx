@@ -6,6 +6,8 @@ import { Image, Video, Film, Calendar, Clock } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
+import { StageChecklistManager } from "./StageChecklistManager";
+import { CardChecklistBadge } from "./CardChecklistBadge";
 
 interface Stage {
   id: string;
@@ -110,7 +112,7 @@ export const SocialKanbanBoard = ({
               onDrop={(e) => handleDrop(e, stage.id)}
             >
               {/* Stage Header */}
-              <div className="p-3 border-b border-border/50">
+              <div className="p-3 border-b border-border/50 group">
                 <div className="flex items-center gap-2">
                   <div
                     className="h-3 w-3 rounded-full"
@@ -119,6 +121,7 @@ export const SocialKanbanBoard = ({
                   <h3 className="font-medium text-sm truncate flex-1">
                     {stage.name}
                   </h3>
+                  <StageChecklistManager stageId={stage.id} stageName={stage.name} />
                   <Badge variant="secondary" className="text-xs">
                     {stageCards.length}
                   </Badge>
@@ -185,25 +188,28 @@ export const SocialKanbanBoard = ({
                         {card.theme}
                       </p>
 
-                      {/* Schedule */}
-                      {(card.suggested_date || card.suggested_time) && (
-                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                          {card.suggested_date && (
-                            <span className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3" />
-                              {format(new Date(card.suggested_date), "dd/MM", {
-                                locale: ptBR,
-                              })}
-                            </span>
-                          )}
-                          {card.suggested_time && (
-                            <span className="flex items-center gap-1">
-                              <Clock className="h-3 w-3" />
-                              {card.suggested_time.slice(0, 5)}
-                            </span>
-                          )}
-                        </div>
-                      )}
+                      {/* Schedule & Checklist Progress */}
+                      <div className="flex items-center justify-between gap-2">
+                        {(card.suggested_date || card.suggested_time) && (
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            {card.suggested_date && (
+                              <span className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3" />
+                                {format(new Date(card.suggested_date), "dd/MM", {
+                                  locale: ptBR,
+                                })}
+                              </span>
+                            )}
+                            {card.suggested_time && (
+                              <span className="flex items-center gap-1">
+                                <Clock className="h-3 w-3" />
+                                {card.suggested_time.slice(0, 5)}
+                              </span>
+                            )}
+                          </div>
+                        )}
+                        <CardChecklistBadge cardId={card.id} stageId={card.stage_id} />
+                      </div>
                     </Card>
                   ))}
 
