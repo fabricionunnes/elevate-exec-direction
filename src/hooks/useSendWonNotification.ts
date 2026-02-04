@@ -19,6 +19,7 @@ interface LeadData {
   installments: string | null;
   due_day: number | null;
   payment_method: string | null;
+  address: string | null;
   closed_at: string | null;
   closer_staff_id: string | null;
   sdr_staff_id: string | null;
@@ -90,8 +91,22 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       return { success: false, error: "Lead não encontrado" };
     }
 
+    // 2.1 Load payment method name if payment_method is an ID
+    let paymentMethodName = lead.payment_method;
+    if (lead.payment_method) {
+      const { data: pmData } = await supabase
+        .from("crm_payment_method_options")
+        .select("name")
+        .eq("id", lead.payment_method)
+        .single();
+      
+      if (pmData?.name) {
+        paymentMethodName = pmData.name;
+      }
+    }
+
     // 3. Format the message
-    const message = formatWonMessage(lead);
+    const message = formatWonMessage(lead, paymentMethodName);
 
     // 4. Send message via evolution-api
     const { data: response, error: sendError } = await supabase.functions.invoke("evolution-api", {
@@ -158,7 +173,7 @@ function formatCNPJ(document: string | null): string {
   return document;
 }
 
-function formatWonMessage(lead: any): string {
+function formatWonMessage(lead: any, paymentMethodName: string | null): string {
   const closedAt = lead.closed_at ? new Date(lead.closed_at) : new Date();
   const formattedDate = format(closedAt, "dd/MM/yyyy", { locale: ptBR });
 
@@ -199,8 +214,8 @@ function formatWonMessage(lead: any): string {
     lines.push(`📆 *Vencimento:* Dia ${lead.due_day}`);
   }
 
-  if (lead.payment_method) {
-    lines.push(`💳 *Forma:* ${lead.payment_method}`);
+  if (paymentMethodName) {
+    lines.push(`💳 *Forma:* ${paymentMethodName}`);
   }
 
   lines.push("");
@@ -211,20 +226,25 @@ function formatWonMessage(lead: any): string {
 
   lines.push("");
   lines.push("📍 *ENDEREÇO*");
+  
+  if (lead.address) {
+    lines.push(`🏠 *Rua:* ${lead.address}`);
+  }
+  
   lines.push(`🏙️ *Cidade:* ${lead.city || "Não informado"}`);
   lines.push(`🗺️ *Estado:* ${lead.state || "Não informado"}`);
   lines.push(`📮 *CEP:* ${formatCEP(lead.zipcode)}`);
+
+  lines.push("");
+  lines.push("🚀 *Parabéns à equipe!*");
 
   if (lead.notes) {
     lines.push("");
     lines.push("📝 *BRIEFING*");
     // Truncate if too long
-    const briefing = lead.notes.length > 200 ? lead.notes.substring(0, 200) + "..." : lead.notes;
+    const briefing = lead.notes.length > 500 ? lead.notes.substring(0, 500) + "..." : lead.notes;
     lines.push(briefing);
   }
-
-  lines.push("");
-  lines.push("🚀 *Parabéns à equipe!*");
 
   return lines.join("\n");
 }

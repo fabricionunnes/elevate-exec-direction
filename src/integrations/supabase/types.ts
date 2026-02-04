@@ -9603,6 +9603,7 @@ export type Database = {
       }
       crm_leads: {
         Row: {
+          address: string | null
           city: string | null
           closed_at: string | null
           closer_staff_id: string | null
@@ -9648,6 +9649,7 @@ export type Database = {
           zipcode: string | null
         }
         Insert: {
+          address?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
@@ -9693,6 +9695,7 @@ export type Database = {
           zipcode?: string | null
         }
         Update: {
+          address?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
