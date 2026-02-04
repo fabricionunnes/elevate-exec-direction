@@ -81,7 +81,7 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy, Briefcase } from "lucide-react";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy, Briefcase, Instagram } from "lucide-react";
 import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
@@ -1168,6 +1168,18 @@ const OnboardingProjectPage = () => {
                     Pontuação
                   </Button>
                 </>
+              )}
+              {/* UNV Social Button - only show if project uses UNV Social service */}
+              {(project.product_id === 'f8236aa9-73ab-449a-adc4-0779c052141a' || project.product_id === 'social') && (
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  className="h-7 px-2 text-xs bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-pink-500/30 hover:border-pink-500/50"
+                  onClick={() => navigate(`/social/${projectId}`)}
+                >
+                  <Instagram className="h-3 w-3 mr-1 text-pink-500" />
+                  UNV Social
+                </Button>
               )}
               {/* CRM Button */}
               {project.crm_link ? (
