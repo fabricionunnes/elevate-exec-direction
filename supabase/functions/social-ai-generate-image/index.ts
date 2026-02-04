@@ -45,14 +45,18 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .single();
 
-    // Load logo if available - filter by project_id for correct logo
-    const { data: uploads } = await supabase
-      .from("social_briefing_uploads")
-      .select("*")
-      .eq("project_id", projectId)
-      .eq("file_type", "logo");
-
-    const logoUrl = uploads?.[0]?.file_url;
+    // Load logo if available - use briefing_id from the briefing form
+    let logoUrl: string | null = null;
+    if (briefing?.id) {
+      const { data: uploads } = await supabase
+        .from("social_briefing_uploads")
+        .select("*")
+        .eq("briefing_id", briefing.id)
+        .eq("file_type", "logo");
+      
+      logoUrl = uploads?.[0]?.file_url || null;
+      console.log("Found logo for briefing:", briefing.id, "URL:", logoUrl);
+    }
 
     // Build enhanced prompt with brand context
     let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, includeLogoPref && logoUrl);
