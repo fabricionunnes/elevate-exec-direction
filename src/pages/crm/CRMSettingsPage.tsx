@@ -49,12 +49,14 @@ import {
   Zap,
   Users,
   TrendingUp,
-  ListChecks
+  ListChecks,
+  Bell
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
+import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -751,6 +753,10 @@ export const CRMSettingsPage = () => {
           <TabsTrigger value="goals" className="gap-2">
             <TrendingUp className="h-4 w-4" />
             Metas
+          </TabsTrigger>
+          <TabsTrigger value="notifications" className="gap-2">
+            <Bell className="h-4 w-4" />
+            Notificações
           </TabsTrigger>
         </TabsList>
 
@@ -1699,6 +1705,11 @@ export const CRMSettingsPage = () => {
         {/* Goals Tab */}
         <TabsContent value="goals" className="mt-6">
           <CRMGoalsTab />
+        </TabsContent>
+
+        {/* Notifications Tab */}
+        <TabsContent value="notifications" className="mt-6">
+          <WonNotificationSettings />
         </TabsContent>
       </Tabs>
 

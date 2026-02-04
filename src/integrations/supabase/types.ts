@@ -9610,12 +9610,14 @@ export type Database = {
           created_at: string
           created_by: string | null
           document: string | null
+          due_day: number | null
           email: string | null
           employee_count: string | null
           entered_pipeline_at: string | null
           estimated_revenue: string | null
           fit_score: number | null
           id: string
+          installments: string | null
           last_activity_at: string | null
           loss_reason_id: string | null
           main_pain: string | null
@@ -9626,6 +9628,7 @@ export type Database = {
           origin: string | null
           origin_id: string | null
           owner_staff_id: string | null
+          payment_method: string | null
           phone: string | null
           pipeline_id: string | null
           plan_id: string | null
@@ -9639,8 +9642,10 @@ export type Database = {
           stage_id: string | null
           state: string | null
           team: string | null
+          trade_name: string | null
           updated_at: string
           urgency: string | null
+          zipcode: string | null
         }
         Insert: {
           city?: string | null
@@ -9650,12 +9655,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document?: string | null
+          due_day?: number | null
           email?: string | null
           employee_count?: string | null
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
           fit_score?: number | null
           id?: string
+          installments?: string | null
           last_activity_at?: string | null
           loss_reason_id?: string | null
           main_pain?: string | null
@@ -9666,6 +9673,7 @@ export type Database = {
           origin?: string | null
           origin_id?: string | null
           owner_staff_id?: string | null
+          payment_method?: string | null
           phone?: string | null
           pipeline_id?: string | null
           plan_id?: string | null
@@ -9679,8 +9687,10 @@ export type Database = {
           stage_id?: string | null
           state?: string | null
           team?: string | null
+          trade_name?: string | null
           updated_at?: string
           urgency?: string | null
+          zipcode?: string | null
         }
         Update: {
           city?: string | null
@@ -9690,12 +9700,14 @@ export type Database = {
           created_at?: string
           created_by?: string | null
           document?: string | null
+          due_day?: number | null
           email?: string | null
           employee_count?: string | null
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
           fit_score?: number | null
           id?: string
+          installments?: string | null
           last_activity_at?: string | null
           loss_reason_id?: string | null
           main_pain?: string | null
@@ -9706,6 +9718,7 @@ export type Database = {
           origin?: string | null
           origin_id?: string | null
           owner_staff_id?: string | null
+          payment_method?: string | null
           phone?: string | null
           pipeline_id?: string | null
           plan_id?: string | null
@@ -9719,8 +9732,10 @@ export type Database = {
           stage_id?: string | null
           state?: string | null
           team?: string | null
+          trade_name?: string | null
           updated_at?: string
           urgency?: string | null
+          zipcode?: string | null
         }
         Relationships: [
           {

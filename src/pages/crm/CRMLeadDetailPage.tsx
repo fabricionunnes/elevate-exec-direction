@@ -49,6 +49,7 @@ import { useCRMContext } from "./CRMLayout";
 import { createStageActivities } from "@/hooks/useStageActions";
 import { createProjectFromWonLead } from "@/hooks/useCreateProjectOnWon";
 import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
+import { sendWonLeadNotification } from "@/hooks/useSendWonNotification";
 import {
   LeadActivitiesTab,
   LeadCustomFieldsTab,
@@ -408,6 +409,19 @@ export const CRMLeadDetailPage = () => {
           console.warn("Projeto não criado:", projectResult.error);
         }
       }
+
+      // Enviar notificação para o grupo de WhatsApp (não bloqueia o fluxo principal)
+      sendWonLeadNotification(lead.id)
+        .then((result) => {
+          if (result.success) {
+            toast.success("📱 Notificação enviada para o grupo!");
+          } else if (result.error && result.error !== "Notificações desativadas" && result.error !== "Configuração incompleta") {
+            console.warn("Erro ao enviar notificação:", result.error);
+          }
+        })
+        .catch((e) => {
+          console.warn("Erro ao enviar notificação:", e);
+        });
 
       setWonDialogOpen(false);
       loadLead();
