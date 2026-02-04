@@ -39,6 +39,7 @@ import {
   Trash2,
   ArrowRightLeft,
   Copy,
+  FileSignature,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -57,6 +58,7 @@ import {
   LeadHistoryTab,
 } from "@/components/crm/lead-detail";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
+import { SendContractButton } from "@/components/crm/SendContractButton";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -744,6 +746,11 @@ export const CRMLeadDetailPage = () => {
               >
                 <StickyNote className="h-4 w-4" />
               </Button>
+              <SendContractButton
+                leadId={lead.id}
+                variant="full"
+                onSuccess={loadLead}
+              />
             </div>
           </div>
 

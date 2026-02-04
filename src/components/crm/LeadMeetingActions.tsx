@@ -6,10 +6,11 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calendar, CheckCircle, XCircle, Loader2 } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Loader2, FileSignature } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { SendContractButton } from "./SendContractButton";
 
 export type MeetingEventType = "scheduled" | "realized" | "no_show";
 
@@ -20,6 +21,7 @@ interface LeadMeetingActionsProps {
   ownerStaffId: string | null;
   onEventTracked?: () => void;
   variant?: "icons" | "compact";
+  showContractButton?: boolean;
   className?: string;
 }
 
@@ -104,6 +106,7 @@ export function LeadMeetingActions({
   ownerStaffId,
   onEventTracked,
   variant = "icons",
+  showContractButton = true,
   className,
 }: LeadMeetingActionsProps) {
   const [loading, setLoading] = useState<MeetingEventType | null>(null);
@@ -245,6 +248,14 @@ export function LeadMeetingActions({
             <XCircle className="h-3 w-3" />
           )}
         </Button>
+        {showContractButton && (
+          <SendContractButton
+            leadId={leadId}
+            variant="icon"
+            className="h-6 w-6"
+            onSuccess={onEventTracked}
+          />
+        )}
       </div>
     );
   }
@@ -329,6 +340,14 @@ export function LeadMeetingActions({
             No Show
           </TooltipContent>
         </Tooltip>
+
+        {showContractButton && (
+          <SendContractButton
+            leadId={leadId}
+            variant="icon"
+            onSuccess={onEventTracked}
+          />
+        )}
       </div>
     </TooltipProvider>
   );
