@@ -228,6 +228,7 @@ export const SocialPipelinePage = () => {
           cards={cards}
           onCardMove={handleCardMove}
           onCardClick={handleCardClick}
+          onStageUpdate={loadData}
         />
       </div>
 
