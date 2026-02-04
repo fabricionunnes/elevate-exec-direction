@@ -29,6 +29,7 @@ import { trackMeetingEventOnStageChange } from "@/hooks/useMeetingEventTracker";
 import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
+import { KanbanStageColumn } from "@/components/crm/KanbanStageColumn";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { useDragScroll } from "@/hooks/useDragScroll";
@@ -566,86 +567,29 @@ export const CRMPipelinePage = () => {
               <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
                 {stages.map(stage => {
                   const stageLeads = getLeadsByStage(stage.id);
-                  const stageTotal = getStageTotal(stage.id);
-                  const stageLeadIds = stageLeads.map(l => l.id);
-                  const allStageSelected = stageLeadIds.length > 0 && stageLeadIds.every(id => selectedLeads.includes(id));
-                  const someStageSelected = stageLeadIds.some(id => selectedLeads.includes(id));
 
                   return (
-                    <div
+                    <KanbanStageColumn
                       key={stage.id}
-                      className="w-[260px] sm:w-[280px] h-full flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
+                      stage={stage}
+                      leads={stageLeads}
+                      pipelineId={selectedPipeline || ""}
+                      selectedLeads={selectedLeads}
+                      isSelectionMode={isSelectionMode}
+                      isMaster={isMaster}
+                      draggedLeadId={draggedLead?.id || null}
+                      onSelectLead={handleLeadSelect}
+                      onSelectAllInStage={handleSelectAllInStage}
                       onDragOver={handleDragOver}
-                      onDrop={(e) => handleDrop(e, stage.id)}
-                    >
-                      {/* Stage Header */}
-                      <div 
-                        className="p-2 sm:p-3 flex items-center gap-2 rounded-t-lg"
-                        style={{ borderTop: `3px solid ${stage.color}` }}
-                      >
-                        {/* Select All Checkbox (Master only) */}
-                        {isMaster && stageLeads.length > 0 && (
-                          <Checkbox
-                            checked={allStageSelected}
-                            onCheckedChange={() => handleSelectAllInStage(stage.id)}
-                            className="cursor-pointer"
-                            title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
-                          />
-                        )}
-                        <span className="font-medium text-xs sm:text-sm flex-1 truncate">{stage.name}</span>
-                        <Badge variant="secondary" className="text-[10px] sm:text-xs h-4 sm:h-5">
-                          {stageLeads.length}
-                        </Badge>
-                        {stageTotal > 0 && (
-                          <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
-                            {formatCurrency(stageTotal)}
-                          </span>
-                        )}
-                        <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-6 sm:w-6">
-                          <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                        </Button>
-                      </div>
-
-                      {/* Add Deal Button */}
-                      <div className="px-2 py-1.5">
-                        <button 
-                          onClick={() => {
-                            setAddLeadStageId(stage.id);
-                            setAddLeadOpen(true);
-                          }}
-                          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
-                        >
-                          + Adicionar negócio
-                        </button>
-                      </div>
-
-                      {/* Lead Cards with vertical scroll */}
-                      <div className="flex-1 min-h-0 overflow-y-scroll px-2 pb-2">
-                        <div className="space-y-2">
-                          {stageLeads.map(lead => (
-                            <KanbanLeadCard
-                              key={lead.id}
-                              lead={lead}
-                              pipelineId={selectedPipeline || ""}
-                              isDragging={draggedLead?.id === lead.id}
-                              isSelected={selectedLeads.includes(lead.id)}
-                              isSelectionMode={isSelectionMode}
-                              isMaster={isMaster}
-                              onSelect={handleLeadSelect}
-                              onDragStart={handleDragStart}
-                              onOpenChat={handleOpenChat}
-                              onRefresh={loadStagesAndLeads}
-                            />
-                          ))}
-
-                          {stageLeads.length === 0 && (
-                            <div className="text-center py-6 text-xs text-muted-foreground">
-                              Arraste leads para cá
-                            </div>
-                          )}
-                        </div>
-                      </div>
-                    </div>
+                      onDrop={handleDrop}
+                      onDragStart={handleDragStart}
+                      onOpenChat={handleOpenChat}
+                      onRefresh={loadStagesAndLeads}
+                      onAddLead={(stageId) => {
+                        setAddLeadStageId(stageId);
+                        setAddLeadOpen(true);
+                      }}
+                    />
                   );
                 })}
               </div>
