@@ -230,10 +230,24 @@ export const SocialCardDetailSheet = ({
         .getPublicUrl(fileName);
 
       const isVideo = file.type.startsWith("video/");
+      
+      // Update local state
       setCreativeUrl(publicUrl);
       setCreativeType(isVideo ? "video" : "image");
 
-      toast.success("Arquivo enviado!");
+      // Auto-save to database immediately after upload
+      const { error: updateError } = await supabase
+        .from("social_content_cards")
+        .update({
+          creative_url: publicUrl,
+          creative_type: isVideo ? "video" : "image",
+        })
+        .eq("id", card.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Arquivo enviado e salvo!");
+      onUpdate();
     } catch (error) {
       console.error("Error uploading file:", error);
       toast.error("Erro ao enviar arquivo");
