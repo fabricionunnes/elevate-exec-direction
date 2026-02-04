@@ -1,4 +1,4 @@
-import { DragEvent, useState } from "react";
+import { DragEvent, useState, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -8,6 +8,61 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { StageChecklistManager } from "./StageChecklistManager";
 import { CardChecklistBadge } from "./CardChecklistBadge";
+
+// Hook for drag-to-scroll functionality
+const useDragToScroll = () => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const isMouseDown = useRef(false);
+  const startX = useRef(0);
+  const scrollLeft = useRef(0);
+
+  const handleMouseDown = useCallback((e: React.MouseEvent) => {
+    // Only activate on middle mouse button or when clicking on empty space
+    if (e.button === 1 || (e.target as HTMLElement).closest('[data-kanban-scrollable]')) {
+      isMouseDown.current = true;
+      startX.current = e.pageX - (containerRef.current?.offsetLeft || 0);
+      scrollLeft.current = containerRef.current?.scrollLeft || 0;
+      if (containerRef.current) {
+        containerRef.current.style.cursor = 'grabbing';
+        containerRef.current.style.userSelect = 'none';
+      }
+    }
+  }, []);
+
+  const handleMouseUp = useCallback(() => {
+    isMouseDown.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+      containerRef.current.style.removeProperty('user-select');
+    }
+  }, []);
+
+  const handleMouseMove = useCallback((e: React.MouseEvent) => {
+    if (!isMouseDown.current || !containerRef.current) return;
+    e.preventDefault();
+    const x = e.pageX - containerRef.current.offsetLeft;
+    const walk = (x - startX.current) * 1.5; // Scroll speed multiplier
+    containerRef.current.scrollLeft = scrollLeft.current - walk;
+  }, []);
+
+  const handleMouseLeave = useCallback(() => {
+    isMouseDown.current = false;
+    if (containerRef.current) {
+      containerRef.current.style.cursor = 'grab';
+      containerRef.current.style.removeProperty('user-select');
+    }
+  }, []);
+
+  return {
+    containerRef,
+    handlers: {
+      onMouseDown: handleMouseDown,
+      onMouseUp: handleMouseUp,
+      onMouseMove: handleMouseMove,
+      onMouseLeave: handleMouseLeave,
+    },
+  };
+};
 
 interface Stage {
   id: string;
@@ -64,6 +119,7 @@ export const SocialKanbanBoard = ({
 }: SocialKanbanBoardProps) => {
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
+  const { containerRef, handlers: scrollHandlers } = useDragToScroll();
 
   const handleDragStart = (e: DragEvent, cardId: string) => {
     e.dataTransfer.setData("cardId", cardId);
@@ -94,7 +150,13 @@ export const SocialKanbanBoard = ({
   };
 
   return (
-    <ScrollArea className="h-full w-full">
+    <div
+      ref={containerRef}
+      data-kanban-scrollable
+      className="h-full w-full overflow-x-auto cursor-grab"
+      style={{ scrollBehavior: 'auto' }}
+      {...scrollHandlers}
+    >
       <div className="flex gap-4 p-4 min-w-max">
         {stages.map((stage) => {
           const stageCards = cards.filter((c) => c.stage_id === stage.id);
@@ -244,7 +306,6 @@ export const SocialKanbanBoard = ({
           );
         })}
       </div>
-      <ScrollBar orientation="horizontal" />
-    </ScrollArea>
+    </div>
   );
 };
