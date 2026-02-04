@@ -3,7 +3,18 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle } from "lucide-react";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -200,6 +211,28 @@ export const SocialKanbanBoard = ({
     }
   };
 
+  const handleDeleteStage = async (stageId: string, stageCardsCount: number) => {
+    if (stageCardsCount > 0) {
+      toast.error("Mova ou exclua os cards antes de remover esta etapa");
+      return;
+    }
+
+    try {
+      const { error } = await supabase
+        .from("social_content_stages")
+        .delete()
+        .eq("id", stageId);
+
+      if (error) throw error;
+
+      toast.success("Etapa excluída!");
+      onStageUpdate?.();
+    } catch (error) {
+      console.error("Error deleting stage:", error);
+      toast.error("Erro ao excluir etapa");
+    }
+  };
+
   const handleDragStart = (e: DragEvent, cardId: string) => {
     e.dataTransfer.setData("cardId", cardId);
     setDraggedCardId(cardId);
@@ -295,6 +328,36 @@ export const SocialKanbanBoard = ({
                       >
                         <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
                       </button>
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <button
+                            className="p-1 hover:bg-destructive/10 rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                          >
+                            <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                          </button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Excluir etapa "{stage.name}"?</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              {stageCards.length > 0 
+                                ? `Esta etapa possui ${stageCards.length} card(s). Mova ou exclua os cards antes de remover a etapa.`
+                                : "Esta ação não pode ser desfeita. A etapa será removida permanentemente."
+                              }
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => handleDeleteStage(stage.id, stageCards.length)}
+                              disabled={stageCards.length > 0}
+                              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                            >
+                              Excluir
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
                     </>
                   )}
                   <StageChecklistManager stageId={stage.id} stageName={stage.name} />
