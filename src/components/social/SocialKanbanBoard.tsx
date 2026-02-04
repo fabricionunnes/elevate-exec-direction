@@ -145,10 +145,7 @@ export const SocialKanbanBoard = ({
                       )}
                     >
                       {/* Creative Preview Thumbnail */}
-                      <div className={cn(
-                        "mb-2 rounded-md overflow-hidden bg-muted relative",
-                        card.content_type === "feed" ? "aspect-square" : "aspect-[9/16] max-h-32"
-                      )}>
+                      <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-square">
                         {card.creative_url ? (
                           card.creative_type === "video" ? (
                             <>
@@ -157,11 +154,12 @@ export const SocialKanbanBoard = ({
                                 className="w-full h-full object-cover"
                                 muted
                                 preload="metadata"
+                                poster=""
                               />
                               {/* Video indicator overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
-                                <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
-                                  <Film className="h-4 w-4 text-gray-800" />
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
+                                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                  <Film className="h-5 w-5 text-gray-800" />
                                 </div>
                               </div>
                             </>
@@ -170,15 +168,17 @@ export const SocialKanbanBoard = ({
                               src={card.creative_url}
                               alt={card.theme}
                               className="w-full h-full object-cover"
+                              loading="lazy"
                             />
                           )
                         ) : (
-                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-1">
                             {card.content_type === "reels" || card.content_type === "stories" ? (
-                              <Film className="h-8 w-8" />
+                              <Film className="h-10 w-10 opacity-50" />
                             ) : (
-                              <Image className="h-8 w-8" />
+                              <Image className="h-10 w-10 opacity-50" />
                             )}
+                            <span className="text-xs opacity-50">Sem mídia</span>
                           </div>
                         )}
                       </div>
