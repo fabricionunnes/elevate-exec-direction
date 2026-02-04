@@ -18467,6 +18467,498 @@ export type Database = {
           },
         ]
       }
+      social_approval_links: {
+        Row: {
+          access_token: string
+          card_id: string
+          created_at: string | null
+          expires_at: string | null
+          id: string
+          responded_at: string | null
+          sent_at: string | null
+          sent_via: string | null
+          status: Database["public"]["Enums"]["social_approval_status"] | null
+        }
+        Insert: {
+          access_token?: string
+          card_id: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          responded_at?: string | null
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: Database["public"]["Enums"]["social_approval_status"] | null
+        }
+        Update: {
+          access_token?: string
+          card_id?: string
+          created_at?: string | null
+          expires_at?: string | null
+          id?: string
+          responded_at?: string | null
+          sent_at?: string | null
+          sent_via?: string | null
+          status?: Database["public"]["Enums"]["social_approval_status"] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_approval_links_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_client_feedback: {
+        Row: {
+          adjustment_notes: string | null
+          approval_link_id: string | null
+          card_id: string
+          client_ip: string | null
+          client_name: string | null
+          created_at: string | null
+          feedback_type: string
+          id: string
+        }
+        Insert: {
+          adjustment_notes?: string | null
+          approval_link_id?: string | null
+          card_id: string
+          client_ip?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          feedback_type: string
+          id?: string
+        }
+        Update: {
+          adjustment_notes?: string | null
+          approval_link_id?: string | null
+          card_id?: string
+          client_ip?: string | null
+          client_name?: string | null
+          created_at?: string | null
+          feedback_type?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_client_feedback_approval_link_id_fkey"
+            columns: ["approval_link_id"]
+            isOneToOne: false
+            referencedRelation: "social_approval_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_client_feedback_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_boards: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_boards_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_cards: {
+        Row: {
+          assigned_to: string | null
+          board_id: string
+          content_type: Database["public"]["Enums"]["social_content_type"]
+          copy_text: string | null
+          created_at: string | null
+          created_by: string | null
+          creative_type: string | null
+          creative_url: string | null
+          cta: string | null
+          final_caption: string | null
+          hashtags: string | null
+          id: string
+          instagram_post_id: string | null
+          instagram_post_url: string | null
+          is_locked: boolean | null
+          objective:
+            | Database["public"]["Enums"]["social_content_objective"]
+            | null
+          published_at: string | null
+          scheduled_at: string | null
+          sort_order: number | null
+          stage_id: string
+          suggested_date: string | null
+          suggested_time: string | null
+          theme: string
+          updated_at: string | null
+        }
+        Insert: {
+          assigned_to?: string | null
+          board_id: string
+          content_type?: Database["public"]["Enums"]["social_content_type"]
+          copy_text?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creative_type?: string | null
+          creative_url?: string | null
+          cta?: string | null
+          final_caption?: string | null
+          hashtags?: string | null
+          id?: string
+          instagram_post_id?: string | null
+          instagram_post_url?: string | null
+          is_locked?: boolean | null
+          objective?:
+            | Database["public"]["Enums"]["social_content_objective"]
+            | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          sort_order?: number | null
+          stage_id: string
+          suggested_date?: string | null
+          suggested_time?: string | null
+          theme: string
+          updated_at?: string | null
+        }
+        Update: {
+          assigned_to?: string | null
+          board_id?: string
+          content_type?: Database["public"]["Enums"]["social_content_type"]
+          copy_text?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          creative_type?: string | null
+          creative_url?: string | null
+          cta?: string | null
+          final_caption?: string | null
+          hashtags?: string | null
+          id?: string
+          instagram_post_id?: string | null
+          instagram_post_url?: string | null
+          is_locked?: boolean | null
+          objective?:
+            | Database["public"]["Enums"]["social_content_objective"]
+            | null
+          published_at?: string | null
+          scheduled_at?: string | null
+          sort_order?: number | null
+          stage_id?: string
+          suggested_date?: string | null
+          suggested_time?: string | null
+          theme?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_cards_assigned_to_fkey"
+            columns: ["assigned_to"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_cards_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_cards_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_cards_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_history: {
+        Row: {
+          action: string
+          card_id: string
+          details: Json | null
+          from_stage_id: string | null
+          id: string
+          performed_at: string | null
+          performed_by: string | null
+          to_stage_id: string | null
+        }
+        Insert: {
+          action: string
+          card_id: string
+          details?: Json | null
+          from_stage_id?: string | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          to_stage_id?: string | null
+        }
+        Update: {
+          action?: string
+          card_id?: string
+          details?: Json | null
+          from_stage_id?: string | null
+          id?: string
+          performed_at?: string | null
+          performed_by?: string | null
+          to_stage_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_history_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_history_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_history_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_history_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_content_stages: {
+        Row: {
+          board_id: string
+          color: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          sort_order: number
+          stage_type: Database["public"]["Enums"]["social_stage_type"]
+        }
+        Insert: {
+          board_id: string
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          sort_order: number
+          stage_type: Database["public"]["Enums"]["social_stage_type"]
+        }
+        Update: {
+          board_id?: string
+          color?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          sort_order?: number
+          stage_type?: Database["public"]["Enums"]["social_stage_type"]
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_stages_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_boards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_instagram_accounts: {
+        Row: {
+          access_token: string | null
+          connected_at: string | null
+          connected_by: string | null
+          created_at: string | null
+          id: string
+          instagram_user_id: string | null
+          instagram_username: string | null
+          is_connected: boolean | null
+          page_id: string | null
+          project_id: string
+          token_expires_at: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string | null
+          id?: string
+          instagram_user_id?: string | null
+          instagram_username?: string | null
+          is_connected?: boolean | null
+          page_id?: string | null
+          project_id: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          access_token?: string | null
+          connected_at?: string | null
+          connected_by?: string | null
+          created_at?: string | null
+          id?: string
+          instagram_user_id?: string | null
+          instagram_username?: string | null
+          is_connected?: boolean | null
+          page_id?: string | null
+          project_id?: string
+          token_expires_at?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_instagram_accounts_connected_by_fkey"
+            columns: ["connected_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_instagram_accounts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_publish_logs: {
+        Row: {
+          action: string
+          card_id: string
+          created_at: string | null
+          error_message: string | null
+          id: string
+          instagram_account_id: string | null
+          instagram_response: Json | null
+        }
+        Insert: {
+          action: string
+          card_id: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          instagram_account_id?: string | null
+          instagram_response?: Json | null
+        }
+        Update: {
+          action?: string
+          card_id?: string
+          created_at?: string | null
+          error_message?: string | null
+          id?: string
+          instagram_account_id?: string | null
+          instagram_response?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_publish_logs_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_publish_logs_instagram_account_id_fkey"
+            columns: ["instagram_account_id"]
+            isOneToOne: false
+            referencedRelation: "social_instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_whatsapp_settings: {
+        Row: {
+          client_name: string | null
+          client_phone: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          project_id: string
+          updated_at: string | null
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id: string
+          updated_at?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          client_name?: string | null
+          client_phone?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id?: string
+          updated_at?: string | null
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_whatsapp_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_menu_permissions: {
         Row: {
           created_at: string
@@ -19517,6 +20009,10 @@ export type Database = {
         Args: { check_company_id: string }
         Returns: boolean
       }
+      create_social_default_stages: {
+        Args: { p_board_id: string }
+        Returns: undefined
+      }
       get_ads_credits_balance: {
         Args: { p_profile_id: string }
         Returns: number
@@ -19774,6 +20270,19 @@ export type Database = {
         | "provocativo"
         | "inspirador"
       progress_status: "on_track" | "attention" | "off_track" | "completed"
+      social_approval_status: "pending" | "approved" | "adjustment_requested"
+      social_content_objective: "engagement" | "authority" | "conversion"
+      social_content_type: "feed" | "reels" | "stories"
+      social_stage_type:
+        | "idea"
+        | "script"
+        | "design"
+        | "internal_review"
+        | "client_approval"
+        | "adjustments"
+        | "approved"
+        | "scheduled"
+        | "published"
     }
     CompositeTypes: {
       [_ in never]: never
@@ -19999,6 +20508,20 @@ export const Constants = {
         "inspirador",
       ],
       progress_status: ["on_track", "attention", "off_track", "completed"],
+      social_approval_status: ["pending", "approved", "adjustment_requested"],
+      social_content_objective: ["engagement", "authority", "conversion"],
+      social_content_type: ["feed", "reels", "stories"],
+      social_stage_type: [
+        "idea",
+        "script",
+        "design",
+        "internal_review",
+        "client_approval",
+        "adjustments",
+        "approved",
+        "scheduled",
+        "published",
+      ],
     },
   },
 } as const
