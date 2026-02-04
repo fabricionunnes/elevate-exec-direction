@@ -164,6 +164,7 @@ export const CRMLayout = () => {
 
   const isInboxRoute = location.pathname.includes("/crm/inbox");
   const isPipelineRoute = location.pathname.includes("/crm/pipeline");
+  const lockViewportHeight = isInboxRoute || isPipelineRoute;
 
   return (
     <CRMContext.Provider value={{
@@ -181,7 +182,7 @@ export const CRMLayout = () => {
         className={cn(
           "bg-background flex flex-col",
           // Inbox must not allow body/page scroll; keep scroll inside the inbox panes.
-          isInboxRoute ? "h-dvh overflow-hidden" : "min-h-screen",
+          lockViewportHeight ? "h-dvh overflow-hidden" : "min-h-screen",
         )}
       >
         {/* Top Header */}
@@ -381,7 +382,7 @@ export const CRMLayout = () => {
           {/* Main Content - use overflow-hidden for inbox page to contain scroll internally */}
           <main className={cn(
             "flex-1 min-h-0",
-             (isInboxRoute || isPipelineRoute) ? "overflow-hidden" : "overflow-auto"
+             lockViewportHeight ? "overflow-hidden" : "overflow-auto"
           )}>
             <Outlet context={{ staffRole, isAdmin, staffId }} />
           </main>
