@@ -67,6 +67,13 @@ export function CandidateResumesManager({
 
   const handleView = async (fileUrl: string) => {
     try {
+      // Check if fileUrl is already a full URL (from public bucket)
+      if (fileUrl.startsWith("http://") || fileUrl.startsWith("https://")) {
+        window.open(fileUrl, "_blank");
+        return;
+      }
+
+      // Otherwise, create a signed URL for the file path
       const { data, error } = await supabase.storage
         .from("resumes")
         .createSignedUrl(fileUrl, 3600);
