@@ -57,6 +57,7 @@ import {
   LeadCustomFieldsTab,
   LeadFilesTab,
   LeadHistoryTab,
+  LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
@@ -907,6 +908,12 @@ export const CRMLeadDetailPage = () => {
             Arquivos
           </TabsTrigger>
           <TabsTrigger
+            value="transcription"
+            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
+          >
+            Transcrição
+          </TabsTrigger>
+          <TabsTrigger
             value="history"
             className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
           >
@@ -963,6 +970,15 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="files" className="flex-1 mt-0 overflow-hidden">
           <LeadFilesTab leadId={lead.id} />
+        </TabsContent>
+
+        <TabsContent value="transcription" className="flex-1 mt-0 overflow-hidden">
+          <LeadTranscriptionTab
+            leadId={lead.id}
+            leadName={lead.name}
+            companyName={lead.company}
+            onBriefingGenerated={loadLead}
+          />
         </TabsContent>
 
         <TabsContent value="history" className="flex-1 mt-0 overflow-hidden">
