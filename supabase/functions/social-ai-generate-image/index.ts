@@ -211,10 +211,12 @@ function buildEnhancedPrompt(
     dimensions = "1080x1350";
   }
 
-  let prompt = `Create a professional social media image for Instagram.
+  let prompt = `CRITICAL: Generate an image with EXACT dimensions ${dimensions} pixels and ${aspectRatio} aspect ratio.
 
-Format: ${format || "feed post"}
-Dimensions: ${dimensions} pixels (${aspectRatio} aspect ratio)
+This is for Instagram ${format || "feed post"}.
+The image MUST be portrait orientation (taller than wide) with exact ${aspectRatio} ratio.
+Width: ${dimensions.split("x")[0]} pixels
+Height: ${dimensions.split("x")[1]} pixels
 
 Visual Request: ${basePrompt}
 
