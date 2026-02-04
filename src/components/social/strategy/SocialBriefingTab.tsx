@@ -14,6 +14,7 @@ import {
   X, AlertCircle, Clock, Send, Link, Copy
 } from "lucide-react";
 import { toast } from "sonner";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface SocialBriefingTabProps {
   projectId: string;
@@ -296,7 +297,7 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
 
   const getPublicLink = () => {
     if (!briefing?.access_token) return null;
-    const baseUrl = window.location.origin;
+    const baseUrl = getPublicBaseUrl();
     return `${baseUrl}?public=social-briefing&token=${briefing.access_token}`;
   };
 
