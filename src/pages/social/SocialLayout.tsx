@@ -2,7 +2,7 @@ import { Outlet, useParams, useNavigate, Link } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2 } from "lucide-react";
+import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2, BookOpen } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -93,6 +93,7 @@ export const SocialLayout = () => {
 
   const navItems = [
     { to: `/social/${projectId}`, label: "Pipeline", icon: LayoutGrid, end: true },
+    { to: `/social/${projectId}/strategy`, label: "Base Estratégica", icon: BookOpen },
     { to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings },
   ];
 

@@ -18511,6 +18511,353 @@ export type Database = {
           },
         ]
       }
+      social_audit_logs: {
+        Row: {
+          action: string
+          changes: Json | null
+          entity_id: string
+          entity_type: string
+          id: string
+          ip_address: string | null
+          performed_at: string
+          performed_by: string | null
+          project_id: string
+          user_agent: string | null
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          entity_id: string
+          entity_type: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          project_id: string
+          user_agent?: string | null
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          ip_address?: string | null
+          performed_at?: string
+          performed_by?: string | null
+          project_id?: string
+          user_agent?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_audit_logs_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_audit_logs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_briefing_forms: {
+        Row: {
+          additional_info: string | null
+          approved_at: string | null
+          approved_by: string | null
+          audience_age_range: string | null
+          audience_gender: string | null
+          audience_interests: string[] | null
+          audience_location: string | null
+          audience_objections: string[] | null
+          audience_pain_points: string[] | null
+          brand_differentials: string | null
+          brand_perception: string | null
+          brand_personality: string[] | null
+          business_description: string | null
+          company_since: string | null
+          competitor_strengths: string | null
+          competitor_weaknesses: string | null
+          completed_at: string | null
+          completed_by: string | null
+          content_pillars: string[] | null
+          content_types_used: string[] | null
+          created_at: string
+          created_by: string | null
+          cta_preferences: string[] | null
+          current_posting_frequency: string | null
+          customer_concerns: string | null
+          customer_experience: string | null
+          customer_goals: string | null
+          direct_competitors: string | null
+          exclusive_products: string | null
+          facebook_access: string | null
+          flagship_products: string | null
+          founding_story: string | null
+          growth_goals: string | null
+          has_behind_scenes_access: boolean | null
+          has_product_photos: boolean | null
+          has_team_photos: boolean | null
+          id: string
+          ideal_customer: string | null
+          instagram_access: string | null
+          instagram_followers: number | null
+          instagram_handle: string | null
+          is_complete: boolean | null
+          main_competitors: Json | null
+          main_products_services: string | null
+          mission_purpose: string | null
+          non_negotiables: string | null
+          other_social_channels: Json | null
+          preferred_content_formats: string[] | null
+          primary_objective: string | null
+          products_services: string | null
+          profile_gaps: string | null
+          project_id: string
+          reference_profiles: string | null
+          sales_goals: string | null
+          secondary_objectives: string[] | null
+          social_media_objectives: string | null
+          status: string | null
+          submitted_at: string | null
+          target_audience: string | null
+          tone_of_voice: string | null
+          topics_to_avoid: string[] | null
+          topics_to_cover: string[] | null
+          unique_differentiator: string | null
+          updated_at: string
+          visual_references: string | null
+          what_not_to_communicate: string | null
+          words_to_avoid: string[] | null
+          words_to_use: string[] | null
+        }
+        Insert: {
+          additional_info?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audience_age_range?: string | null
+          audience_gender?: string | null
+          audience_interests?: string[] | null
+          audience_location?: string | null
+          audience_objections?: string[] | null
+          audience_pain_points?: string[] | null
+          brand_differentials?: string | null
+          brand_perception?: string | null
+          brand_personality?: string[] | null
+          business_description?: string | null
+          company_since?: string | null
+          competitor_strengths?: string | null
+          competitor_weaknesses?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          content_pillars?: string[] | null
+          content_types_used?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          cta_preferences?: string[] | null
+          current_posting_frequency?: string | null
+          customer_concerns?: string | null
+          customer_experience?: string | null
+          customer_goals?: string | null
+          direct_competitors?: string | null
+          exclusive_products?: string | null
+          facebook_access?: string | null
+          flagship_products?: string | null
+          founding_story?: string | null
+          growth_goals?: string | null
+          has_behind_scenes_access?: boolean | null
+          has_product_photos?: boolean | null
+          has_team_photos?: boolean | null
+          id?: string
+          ideal_customer?: string | null
+          instagram_access?: string | null
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          is_complete?: boolean | null
+          main_competitors?: Json | null
+          main_products_services?: string | null
+          mission_purpose?: string | null
+          non_negotiables?: string | null
+          other_social_channels?: Json | null
+          preferred_content_formats?: string[] | null
+          primary_objective?: string | null
+          products_services?: string | null
+          profile_gaps?: string | null
+          project_id: string
+          reference_profiles?: string | null
+          sales_goals?: string | null
+          secondary_objectives?: string[] | null
+          social_media_objectives?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          target_audience?: string | null
+          tone_of_voice?: string | null
+          topics_to_avoid?: string[] | null
+          topics_to_cover?: string[] | null
+          unique_differentiator?: string | null
+          updated_at?: string
+          visual_references?: string | null
+          what_not_to_communicate?: string | null
+          words_to_avoid?: string[] | null
+          words_to_use?: string[] | null
+        }
+        Update: {
+          additional_info?: string | null
+          approved_at?: string | null
+          approved_by?: string | null
+          audience_age_range?: string | null
+          audience_gender?: string | null
+          audience_interests?: string[] | null
+          audience_location?: string | null
+          audience_objections?: string[] | null
+          audience_pain_points?: string[] | null
+          brand_differentials?: string | null
+          brand_perception?: string | null
+          brand_personality?: string[] | null
+          business_description?: string | null
+          company_since?: string | null
+          competitor_strengths?: string | null
+          competitor_weaknesses?: string | null
+          completed_at?: string | null
+          completed_by?: string | null
+          content_pillars?: string[] | null
+          content_types_used?: string[] | null
+          created_at?: string
+          created_by?: string | null
+          cta_preferences?: string[] | null
+          current_posting_frequency?: string | null
+          customer_concerns?: string | null
+          customer_experience?: string | null
+          customer_goals?: string | null
+          direct_competitors?: string | null
+          exclusive_products?: string | null
+          facebook_access?: string | null
+          flagship_products?: string | null
+          founding_story?: string | null
+          growth_goals?: string | null
+          has_behind_scenes_access?: boolean | null
+          has_product_photos?: boolean | null
+          has_team_photos?: boolean | null
+          id?: string
+          ideal_customer?: string | null
+          instagram_access?: string | null
+          instagram_followers?: number | null
+          instagram_handle?: string | null
+          is_complete?: boolean | null
+          main_competitors?: Json | null
+          main_products_services?: string | null
+          mission_purpose?: string | null
+          non_negotiables?: string | null
+          other_social_channels?: Json | null
+          preferred_content_formats?: string[] | null
+          primary_objective?: string | null
+          products_services?: string | null
+          profile_gaps?: string | null
+          project_id?: string
+          reference_profiles?: string | null
+          sales_goals?: string | null
+          secondary_objectives?: string[] | null
+          social_media_objectives?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          target_audience?: string | null
+          tone_of_voice?: string | null
+          topics_to_avoid?: string[] | null
+          topics_to_cover?: string[] | null
+          unique_differentiator?: string | null
+          updated_at?: string
+          visual_references?: string | null
+          what_not_to_communicate?: string | null
+          words_to_avoid?: string[] | null
+          words_to_use?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_briefing_forms_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_briefing_forms_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_briefing_forms_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_briefing_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_briefing_uploads: {
+        Row: {
+          briefing_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string
+          file_url: string
+          id: string
+          mime_type: string | null
+          uploaded_by: string | null
+        }
+        Insert: {
+          briefing_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type: string
+          file_url: string
+          id?: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Update: {
+          briefing_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string
+          file_url?: string
+          id?: string
+          mime_type?: string | null
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_briefing_uploads_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_briefing_uploads_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_card_checklist_progress: {
         Row: {
           card_id: string
@@ -18611,6 +18958,66 @@ export type Database = {
           },
         ]
       }
+      social_company_profiles: {
+        Row: {
+          ai_generated_at: string | null
+          ai_generated_summary: string | null
+          brand_identity: string | null
+          briefing_id: string | null
+          communication_rules: string | null
+          created_at: string
+          id: string
+          official_hashtags: string[] | null
+          positioning: string | null
+          project_id: string
+          tone_of_voice: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_generated_at?: string | null
+          ai_generated_summary?: string | null
+          brand_identity?: string | null
+          briefing_id?: string | null
+          communication_rules?: string | null
+          created_at?: string
+          id?: string
+          official_hashtags?: string[] | null
+          positioning?: string | null
+          project_id: string
+          tone_of_voice?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_generated_at?: string | null
+          ai_generated_summary?: string | null
+          brand_identity?: string | null
+          briefing_id?: string | null
+          communication_rules?: string | null
+          created_at?: string
+          id?: string
+          official_hashtags?: string[] | null
+          positioning?: string | null
+          project_id?: string
+          tone_of_voice?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_company_profiles_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_company_profiles_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_content_boards: {
         Row: {
           created_at: string | null
@@ -18650,6 +19057,7 @@ export type Database = {
         Row: {
           assigned_to: string | null
           board_id: string
+          briefing_aligned: boolean | null
           content_type: Database["public"]["Enums"]["social_content_type"]
           copy_text: string | null
           created_at: string | null
@@ -18678,6 +19086,7 @@ export type Database = {
         Insert: {
           assigned_to?: string | null
           board_id: string
+          briefing_aligned?: boolean | null
           content_type?: Database["public"]["Enums"]["social_content_type"]
           copy_text?: string | null
           created_at?: string | null
@@ -18706,6 +19115,7 @@ export type Database = {
         Update: {
           assigned_to?: string | null
           board_id?: string
+          briefing_aligned?: boolean | null
           content_type?: Database["public"]["Enums"]["social_content_type"]
           copy_text?: string | null
           created_at?: string | null
@@ -18865,6 +19275,240 @@ export type Database = {
           },
         ]
       }
+      social_content_suggestions: {
+        Row: {
+          ai_confidence_score: number | null
+          based_on_persona_id: string | null
+          based_on_pillar: string | null
+          briefing_id: string | null
+          content_format: string
+          converted_to_card_id: string | null
+          copy_idea: string | null
+          created_at: string
+          creative_idea: string | null
+          generated_by: string | null
+          hashtag_suggestions: string[] | null
+          id: string
+          objective: string
+          project_id: string
+          status: string | null
+          suggested_cta: string | null
+          theme: string | null
+          title: string
+        }
+        Insert: {
+          ai_confidence_score?: number | null
+          based_on_persona_id?: string | null
+          based_on_pillar?: string | null
+          briefing_id?: string | null
+          content_format: string
+          converted_to_card_id?: string | null
+          copy_idea?: string | null
+          created_at?: string
+          creative_idea?: string | null
+          generated_by?: string | null
+          hashtag_suggestions?: string[] | null
+          id?: string
+          objective: string
+          project_id: string
+          status?: string | null
+          suggested_cta?: string | null
+          theme?: string | null
+          title: string
+        }
+        Update: {
+          ai_confidence_score?: number | null
+          based_on_persona_id?: string | null
+          based_on_pillar?: string | null
+          briefing_id?: string | null
+          content_format?: string
+          converted_to_card_id?: string | null
+          copy_idea?: string | null
+          created_at?: string
+          creative_idea?: string | null
+          generated_by?: string | null
+          hashtag_suggestions?: string[] | null
+          id?: string
+          objective?: string
+          project_id?: string
+          status?: string | null
+          suggested_cta?: string | null
+          theme?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_content_suggestions_based_on_persona_id_fkey"
+            columns: ["based_on_persona_id"]
+            isOneToOne: false
+            referencedRelation: "social_personas"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_suggestions_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_suggestions_converted_to_card_id_fkey"
+            columns: ["converted_to_card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_content_suggestions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_generated_images: {
+        Row: {
+          aspect_ratio: string | null
+          brand_colors: string[] | null
+          brand_elements: string[] | null
+          created_at: string
+          emotion: string | null
+          generated_by: string | null
+          generation_time_ms: number | null
+          id: string
+          image_style: string | null
+          image_url: string
+          is_favorite: boolean | null
+          model_used: string | null
+          negative_prompt: string | null
+          project_id: string
+          prompt: string
+          scenario: string | null
+          used_in_card_id: string | null
+        }
+        Insert: {
+          aspect_ratio?: string | null
+          brand_colors?: string[] | null
+          brand_elements?: string[] | null
+          created_at?: string
+          emotion?: string | null
+          generated_by?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          image_style?: string | null
+          image_url: string
+          is_favorite?: boolean | null
+          model_used?: string | null
+          negative_prompt?: string | null
+          project_id: string
+          prompt: string
+          scenario?: string | null
+          used_in_card_id?: string | null
+        }
+        Update: {
+          aspect_ratio?: string | null
+          brand_colors?: string[] | null
+          brand_elements?: string[] | null
+          created_at?: string
+          emotion?: string | null
+          generated_by?: string | null
+          generation_time_ms?: number | null
+          id?: string
+          image_style?: string | null
+          image_url?: string
+          is_favorite?: boolean | null
+          model_used?: string | null
+          negative_prompt?: string | null
+          project_id?: string
+          prompt?: string
+          scenario?: string | null
+          used_in_card_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_generated_images_generated_by_fkey"
+            columns: ["generated_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_generated_images_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_generated_images_used_in_card_id_fkey"
+            columns: ["used_in_card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_inspiration_library: {
+        Row: {
+          added_by: string | null
+          content_type: string
+          created_at: string
+          description: string | null
+          file_url: string | null
+          id: string
+          is_favorite: boolean | null
+          project_id: string
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string | null
+          url: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          content_type: string
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          project_id: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          content_type?: string
+          created_at?: string
+          description?: string | null
+          file_url?: string | null
+          id?: string
+          is_favorite?: boolean | null
+          project_id?: string
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string | null
+          url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_inspiration_library_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_inspiration_library_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_instagram_accounts: {
         Row: {
           access_token: string | null
@@ -18925,6 +19569,185 @@ export type Database = {
           },
         ]
       }
+      social_integrations: {
+        Row: {
+          access_token: string | null
+          account_id: string | null
+          account_name: string | null
+          created_at: string
+          error_message: string | null
+          id: string
+          last_sync_at: string | null
+          metadata: Json | null
+          platform: string
+          project_id: string
+          refresh_token: string | null
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          metadata?: Json | null
+          platform: string
+          project_id: string
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          account_id?: string | null
+          account_name?: string | null
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          last_sync_at?: string | null
+          metadata?: Json | null
+          platform?: string
+          project_id?: string
+          refresh_token?: string | null
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_integrations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_personas: {
+        Row: {
+          age: number | null
+          avatar_url: string | null
+          briefing_id: string | null
+          content_consumption_habits: string | null
+          created_at: string
+          daily_routine: string | null
+          desires: string[] | null
+          education: string | null
+          fears: string[] | null
+          gender: string | null
+          generated_by: string | null
+          goals: string[] | null
+          hobbies: string[] | null
+          id: string
+          ideal_content_types: string[] | null
+          ideal_language: string | null
+          income_level: string | null
+          is_active: boolean | null
+          is_primary: boolean | null
+          lifestyle: string | null
+          location: string | null
+          motivations: string[] | null
+          name: string
+          objections: string[] | null
+          pain_points: string[] | null
+          peak_activity_times: string[] | null
+          preferred_platforms: string[] | null
+          profession: string | null
+          project_id: string
+          sort_order: number | null
+          updated_at: string
+          values: string[] | null
+        }
+        Insert: {
+          age?: number | null
+          avatar_url?: string | null
+          briefing_id?: string | null
+          content_consumption_habits?: string | null
+          created_at?: string
+          daily_routine?: string | null
+          desires?: string[] | null
+          education?: string | null
+          fears?: string[] | null
+          gender?: string | null
+          generated_by?: string | null
+          goals?: string[] | null
+          hobbies?: string[] | null
+          id?: string
+          ideal_content_types?: string[] | null
+          ideal_language?: string | null
+          income_level?: string | null
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          lifestyle?: string | null
+          location?: string | null
+          motivations?: string[] | null
+          name: string
+          objections?: string[] | null
+          pain_points?: string[] | null
+          peak_activity_times?: string[] | null
+          preferred_platforms?: string[] | null
+          profession?: string | null
+          project_id: string
+          sort_order?: number | null
+          updated_at?: string
+          values?: string[] | null
+        }
+        Update: {
+          age?: number | null
+          avatar_url?: string | null
+          briefing_id?: string | null
+          content_consumption_habits?: string | null
+          created_at?: string
+          daily_routine?: string | null
+          desires?: string[] | null
+          education?: string | null
+          fears?: string[] | null
+          gender?: string | null
+          generated_by?: string | null
+          goals?: string[] | null
+          hobbies?: string[] | null
+          id?: string
+          ideal_content_types?: string[] | null
+          ideal_language?: string | null
+          income_level?: string | null
+          is_active?: boolean | null
+          is_primary?: boolean | null
+          lifestyle?: string | null
+          location?: string | null
+          motivations?: string[] | null
+          name?: string
+          objections?: string[] | null
+          pain_points?: string[] | null
+          peak_activity_times?: string[] | null
+          preferred_platforms?: string[] | null
+          profession?: string | null
+          project_id?: string
+          sort_order?: number | null
+          updated_at?: string
+          values?: string[] | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_personas_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_personas_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_publish_logs: {
         Row: {
           action: string
@@ -18970,6 +19793,75 @@ export type Database = {
           },
         ]
       }
+      social_research_inspirations: {
+        Row: {
+          added_by: string | null
+          created_at: string
+          id: string
+          is_favorite: boolean | null
+          media_urls: string[] | null
+          notes: string | null
+          project_id: string
+          source_platform: string | null
+          source_url: string | null
+          tags: string[] | null
+          thumbnail_url: string | null
+          title: string
+          type: string
+          what_to_adapt: string | null
+          what_works: string | null
+        }
+        Insert: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          is_favorite?: boolean | null
+          media_urls?: string[] | null
+          notes?: string | null
+          project_id: string
+          source_platform?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title: string
+          type: string
+          what_to_adapt?: string | null
+          what_works?: string | null
+        }
+        Update: {
+          added_by?: string | null
+          created_at?: string
+          id?: string
+          is_favorite?: boolean | null
+          media_urls?: string[] | null
+          notes?: string | null
+          project_id?: string
+          source_platform?: string | null
+          source_url?: string | null
+          tags?: string[] | null
+          thumbnail_url?: string | null
+          title?: string
+          type?: string
+          what_to_adapt?: string | null
+          what_works?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_research_inspirations_added_by_fkey"
+            columns: ["added_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_research_inspirations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_stage_checklists: {
         Row: {
           created_at: string
@@ -19004,6 +19896,241 @@ export type Database = {
             columns: ["stage_id"]
             isOneToOne: false
             referencedRelation: "social_content_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_stories_guidelines: {
+        Row: {
+          best_posting_times: string[] | null
+          briefing_id: string | null
+          created_at: string
+          do_list: string[] | null
+          dont_list: string[] | null
+          engagement_techniques: string[] | null
+          generated_by: string | null
+          id: string
+          ideal_frequency: string | null
+          ideal_language: string | null
+          is_approved: boolean | null
+          practical_examples: Json | null
+          project_id: string
+          stories_objective: string | null
+          story_types: Json | null
+          suggested_ctas: string[] | null
+          updated_at: string
+        }
+        Insert: {
+          best_posting_times?: string[] | null
+          briefing_id?: string | null
+          created_at?: string
+          do_list?: string[] | null
+          dont_list?: string[] | null
+          engagement_techniques?: string[] | null
+          generated_by?: string | null
+          id?: string
+          ideal_frequency?: string | null
+          ideal_language?: string | null
+          is_approved?: boolean | null
+          practical_examples?: Json | null
+          project_id: string
+          stories_objective?: string | null
+          story_types?: Json | null
+          suggested_ctas?: string[] | null
+          updated_at?: string
+        }
+        Update: {
+          best_posting_times?: string[] | null
+          briefing_id?: string | null
+          created_at?: string
+          do_list?: string[] | null
+          dont_list?: string[] | null
+          engagement_techniques?: string[] | null
+          generated_by?: string | null
+          id?: string
+          ideal_frequency?: string | null
+          ideal_language?: string | null
+          is_approved?: boolean | null
+          practical_examples?: Json | null
+          project_id?: string
+          stories_objective?: string | null
+          story_types?: Json | null
+          suggested_ctas?: string[] | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_stories_guidelines_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_stories_guidelines_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_strategy_analysis: {
+        Row: {
+          approved_at: string | null
+          approved_by: string | null
+          briefing_id: string | null
+          communication_guidelines: string | null
+          competitor_analysis: Json | null
+          consolidated_briefing: string | null
+          created_at: string
+          differentiation_strategy: string | null
+          generated_by: string | null
+          generation_prompt: string | null
+          id: string
+          is_approved: boolean | null
+          market_opportunities: string[] | null
+          market_threats: string[] | null
+          model_used: string | null
+          positioning_statement: string | null
+          project_id: string
+          swot_opportunities: string[] | null
+          swot_strengths: string[] | null
+          swot_threats: string[] | null
+          swot_weaknesses: string[] | null
+          unique_value_proposition: string | null
+          updated_at: string
+          where_not_to_compete: string | null
+        }
+        Insert: {
+          approved_at?: string | null
+          approved_by?: string | null
+          briefing_id?: string | null
+          communication_guidelines?: string | null
+          competitor_analysis?: Json | null
+          consolidated_briefing?: string | null
+          created_at?: string
+          differentiation_strategy?: string | null
+          generated_by?: string | null
+          generation_prompt?: string | null
+          id?: string
+          is_approved?: boolean | null
+          market_opportunities?: string[] | null
+          market_threats?: string[] | null
+          model_used?: string | null
+          positioning_statement?: string | null
+          project_id: string
+          swot_opportunities?: string[] | null
+          swot_strengths?: string[] | null
+          swot_threats?: string[] | null
+          swot_weaknesses?: string[] | null
+          unique_value_proposition?: string | null
+          updated_at?: string
+          where_not_to_compete?: string | null
+        }
+        Update: {
+          approved_at?: string | null
+          approved_by?: string | null
+          briefing_id?: string | null
+          communication_guidelines?: string | null
+          competitor_analysis?: Json | null
+          consolidated_briefing?: string | null
+          created_at?: string
+          differentiation_strategy?: string | null
+          generated_by?: string | null
+          generation_prompt?: string | null
+          id?: string
+          is_approved?: boolean | null
+          market_opportunities?: string[] | null
+          market_threats?: string[] | null
+          model_used?: string | null
+          positioning_statement?: string | null
+          project_id?: string
+          swot_opportunities?: string[] | null
+          swot_strengths?: string[] | null
+          swot_threats?: string[] | null
+          swot_weaknesses?: string[] | null
+          unique_value_proposition?: string | null
+          updated_at?: string
+          where_not_to_compete?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_strategy_analysis_approved_by_fkey"
+            columns: ["approved_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_strategy_analysis_briefing_id_fkey"
+            columns: ["briefing_id"]
+            isOneToOne: false
+            referencedRelation: "social_briefing_forms"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_strategy_analysis_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_strategy_audit_log: {
+        Row: {
+          action: string
+          changes: Json | null
+          created_at: string
+          entity_id: string
+          entity_type: string
+          id: string
+          new_values: Json | null
+          performed_by: string | null
+          performed_by_name: string | null
+          previous_values: Json | null
+          project_id: string
+        }
+        Insert: {
+          action: string
+          changes?: Json | null
+          created_at?: string
+          entity_id: string
+          entity_type: string
+          id?: string
+          new_values?: Json | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          previous_values?: Json | null
+          project_id: string
+        }
+        Update: {
+          action?: string
+          changes?: Json | null
+          created_at?: string
+          entity_id?: string
+          entity_type?: string
+          id?: string
+          new_values?: Json | null
+          performed_by?: string | null
+          performed_by_name?: string | null
+          previous_values?: Json | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_strategy_audit_log_performed_by_fkey"
+            columns: ["performed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_strategy_audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
