@@ -31,6 +31,7 @@ import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
+import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Stage {
   id: string;
@@ -608,30 +609,32 @@ export const CRMPipelinePage = () => {
                         + Adicionar negócio
                       </button>
 
-                      {/* Lead Cards */}
-                      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
-                        {stageLeads.map(lead => (
-                          <KanbanLeadCard
-                            key={lead.id}
-                            lead={lead}
-                            pipelineId={selectedPipeline || ""}
-                            isDragging={draggedLead?.id === lead.id}
-                            isSelected={selectedLeads.includes(lead.id)}
-                            isSelectionMode={isSelectionMode}
-                            isMaster={isMaster}
-                            onSelect={handleLeadSelect}
-                            onDragStart={handleDragStart}
-                            onOpenChat={handleOpenChat}
-                            onRefresh={loadStagesAndLeads}
-                          />
-                        ))}
+                      {/* Lead Cards with vertical scroll */}
+                      <ScrollArea className="flex-1 min-h-0">
+                        <div className="p-2 space-y-2">
+                          {stageLeads.map(lead => (
+                            <KanbanLeadCard
+                              key={lead.id}
+                              lead={lead}
+                              pipelineId={selectedPipeline || ""}
+                              isDragging={draggedLead?.id === lead.id}
+                              isSelected={selectedLeads.includes(lead.id)}
+                              isSelectionMode={isSelectionMode}
+                              isMaster={isMaster}
+                              onSelect={handleLeadSelect}
+                              onDragStart={handleDragStart}
+                              onOpenChat={handleOpenChat}
+                              onRefresh={loadStagesAndLeads}
+                            />
+                          ))}
 
-                        {stageLeads.length === 0 && (
-                          <div className="text-center py-6 text-xs text-muted-foreground">
-                            Arraste leads para cá
-                          </div>
-                        )}
-                      </div>
+                          {stageLeads.length === 0 && (
+                            <div className="text-center py-6 text-xs text-muted-foreground">
+                              Arraste leads para cá
+                            </div>
+                          )}
+                        </div>
+                      </ScrollArea>
                     </div>
                   );
                 })}
