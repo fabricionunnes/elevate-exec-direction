@@ -60,6 +60,7 @@ const navTabs = [
   { title: "Contatos", href: "/crm/leads" },
   { title: "Atividades", href: "/crm/activities" },
   { title: "Atendimento", href: "/crm/inbox", badge: true },
+  { title: "Contratos", href: "/contratos" },
 ];
 
 export const CRMLayout = () => {
