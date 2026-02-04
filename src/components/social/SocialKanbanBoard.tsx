@@ -323,13 +323,17 @@ export const SocialKanbanBoard = ({
                       <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-square">
                         {card.creative_url ? (
                           card.creative_type === "video" ? (
-                            <>
+                            <div className="relative w-full h-full">
                               <video
                                 src={card.creative_url}
                                 className="w-full h-full object-cover"
                                 muted
+                                playsInline
                                 preload="metadata"
-                                poster=""
+                                onLoadedMetadata={(e) => {
+                                  const video = e.currentTarget;
+                                  video.currentTime = 0.1;
+                                }}
                               />
                               {/* Video indicator overlay */}
                               <div className="absolute inset-0 flex items-center justify-center bg-black/30">
@@ -337,13 +341,16 @@ export const SocialKanbanBoard = ({
                                   <Film className="h-5 w-5 text-gray-800" />
                                 </div>
                               </div>
-                            </>
+                            </div>
                           ) : (
                             <img
                               src={card.creative_url}
                               alt={card.theme}
                               className="w-full h-full object-cover"
-                              loading="lazy"
+                              loading="eager"
+                              onError={(e) => {
+                                console.error("Image load error for card:", card.id);
+                              }}
                             />
                           )
                         ) : (
