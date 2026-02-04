@@ -105,8 +105,33 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       }
     }
 
+    // 2.2 Load briefing from custom fields if not in notes
+    let briefingText = lead.notes;
+    if (!briefingText) {
+      // Try to get briefing from custom field
+      const { data: briefingField } = await supabase
+        .from("crm_custom_fields")
+        .select("id")
+        .eq("field_name", "briefing")
+        .eq("context", "deal")
+        .single();
+
+      if (briefingField?.id) {
+        const { data: briefingValue } = await supabase
+          .from("crm_custom_field_values")
+          .select("value")
+          .eq("lead_id", leadId)
+          .eq("field_id", briefingField.id)
+          .single();
+
+        if (briefingValue?.value) {
+          briefingText = briefingValue.value;
+        }
+      }
+    }
+
     // 3. Format the message
-    const message = formatWonMessage(lead, paymentMethodName);
+    const message = formatWonMessage(lead, paymentMethodName, briefingText);
 
     // 4. Send message via evolution-api
     const { data: response, error: sendError } = await supabase.functions.invoke("evolution-api", {
@@ -173,7 +198,7 @@ function formatCNPJ(document: string | null): string {
   return document;
 }
 
-function formatWonMessage(lead: any, paymentMethodName: string | null): string {
+function formatWonMessage(lead: any, paymentMethodName: string | null, briefingText: string | null): string {
   const closedAt = lead.closed_at ? new Date(lead.closed_at) : new Date();
   const formattedDate = format(closedAt, "dd/MM/yyyy", { locale: ptBR });
 
@@ -238,11 +263,11 @@ function formatWonMessage(lead: any, paymentMethodName: string | null): string {
   lines.push("");
   lines.push("🚀 *Parabéns à equipe!*");
 
-  if (lead.notes) {
+  if (briefingText) {
     lines.push("");
     lines.push("📝 *BRIEFING*");
     // Truncate if too long
-    const briefing = lead.notes.length > 500 ? lead.notes.substring(0, 500) + "..." : lead.notes;
+    const briefing = briefingText.length > 500 ? briefingText.substring(0, 500) + "..." : briefingText;
     lines.push(briefing);
   }
 
