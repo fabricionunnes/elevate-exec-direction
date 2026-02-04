@@ -144,24 +144,44 @@ export const SocialKanbanBoard = ({
                         card.is_locked && "opacity-75"
                       )}
                     >
-                      {/* Creative Preview */}
-                      {card.creative_url && (
-                        <div className="mb-2 rounded-md overflow-hidden bg-muted aspect-video">
-                          {card.creative_type === "video" ? (
-                            <video
-                              src={card.creative_url}
-                              className="w-full h-full object-cover"
-                              muted
-                            />
+                      {/* Creative Preview Thumbnail */}
+                      <div className={cn(
+                        "mb-2 rounded-md overflow-hidden bg-muted relative",
+                        card.content_type === "feed" ? "aspect-square" : "aspect-[9/16] max-h-32"
+                      )}>
+                        {card.creative_url ? (
+                          card.creative_type === "video" ? (
+                            <>
+                              <video
+                                src={card.creative_url}
+                                className="w-full h-full object-cover"
+                                muted
+                                preload="metadata"
+                              />
+                              {/* Video indicator overlay */}
+                              <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                                <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center">
+                                  <Film className="h-4 w-4 text-gray-800" />
+                                </div>
+                              </div>
+                            </>
                           ) : (
                             <img
                               src={card.creative_url}
                               alt={card.theme}
                               className="w-full h-full object-cover"
                             />
-                          )}
-                        </div>
-                      )}
+                          )
+                        ) : (
+                          <div className="w-full h-full flex items-center justify-center text-muted-foreground">
+                            {card.content_type === "reels" || card.content_type === "stories" ? (
+                              <Film className="h-8 w-8" />
+                            ) : (
+                              <Image className="h-8 w-8" />
+                            )}
+                          </div>
+                        )}
+                      </div>
 
                       {/* Content Type & Objective */}
                       <div className="flex items-center gap-1.5 mb-2 flex-wrap">
