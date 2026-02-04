@@ -93,7 +93,7 @@ export const SocialLayout = () => {
 
   const navItems = [
     { to: `/social/${projectId}`, label: "Pipeline", icon: LayoutGrid, end: true },
-    { to: `/social/${projectId}/strategy`, label: "Base Estratégica", icon: Settings },
+    { to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings },
   ];
 
   return (
