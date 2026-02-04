@@ -547,12 +547,12 @@ export const CRMPipelinePage = () => {
       </div>
 
       {/* Kanban Board (barra horizontal sempre visível, sem rolagem vertical da página) */}
-      <div className="flex-1 min-h-0">
+      <div className="flex-1 min-h-0 overflow-hidden">
         <ScrollAreaPrimitive.Root
           type="always"
-          className="relative h-full w-full overflow-hidden"
+          className="relative h-full w-full"
         >
-          <ScrollAreaPrimitive.Viewport className="h-full w-full">
+          <ScrollAreaPrimitive.Viewport className="h-full w-full [&>div]:h-full">
             <div className="h-full px-2 sm:px-4 pb-4">
               <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
                 {stages.map(stage => {
