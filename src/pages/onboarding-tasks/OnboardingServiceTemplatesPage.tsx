@@ -102,7 +102,7 @@ export default function OnboardingServiceTemplatesPage() {
       .eq('is_active', true)
       .single();
 
-    if (!staffData || staffData.role !== 'admin') {
+    if (!staffData || (staffData.role !== 'admin' && staffData.role !== 'master')) {
       toast.error('Acesso negado. Apenas administradores.');
       navigate('/onboarding-tasks');
       return;
