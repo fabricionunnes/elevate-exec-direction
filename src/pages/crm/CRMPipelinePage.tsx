@@ -30,6 +30,7 @@ import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
+import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 
 interface Stage {
   id: string;
@@ -543,36 +544,9 @@ export const CRMPipelinePage = () => {
         entityName={selectedOriginName || "Negócio"}
       />
 
-      {/* Kanban Board - scrollbar sempre visível */}
-      <style>{`
-        .crm-kanban-container::-webkit-scrollbar {
-          height: 12px;
-          display: block !important;
-        }
-        .crm-kanban-container::-webkit-scrollbar-track {
-          background: hsl(var(--muted) / 0.5);
-          border-radius: 6px;
-          margin: 0 8px;
-        }
-        .crm-kanban-container::-webkit-scrollbar-thumb {
-          background: hsl(var(--muted-foreground) / 0.4);
-          border-radius: 6px;
-          border: 2px solid transparent;
-          background-clip: content-box;
-        }
-        .crm-kanban-container::-webkit-scrollbar-thumb:hover {
-          background: hsl(var(--muted-foreground) / 0.6);
-          background-clip: content-box;
-        }
-      `}</style>
-      <div 
-        className="crm-kanban-container flex-1 overflow-x-scroll overflow-y-hidden px-2 sm:px-4 pb-2"
-        style={{
-          scrollbarWidth: 'thin',
-          scrollbarColor: 'hsl(var(--muted-foreground) / 0.4) hsl(var(--muted) / 0.5)',
-        }}
-      >
-        <div className="flex gap-2 sm:gap-3 h-full min-w-max pb-1">
+      {/* Kanban Board (scroll horizontal sempre visível) */}
+      <ScrollArea className="flex-1 w-full px-2 sm:px-4 pb-3">
+        <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
           {stages.map(stage => {
             const stageLeads = getLeadsByStage(stage.id);
             const stageTotal = getStageTotal(stage.id);
@@ -654,7 +628,8 @@ export const CRMPipelinePage = () => {
             );
           })}
         </div>
-      </div>
+        <ScrollBar orientation="horizontal" />
+      </ScrollArea>
 
       {/* Bulk Actions Bar (Master only) */}
       <KanbanBulkActions
