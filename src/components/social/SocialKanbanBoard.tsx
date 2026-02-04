@@ -321,13 +321,13 @@ export const SocialKanbanBoard = ({
                       )}
                     >
                       {/* Creative Preview Thumbnail */}
-                      <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-square">
+                      <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-[4/5]">
                         {card.creative_url ? (
                           card.creative_type === "video" ? (
-                            <div className="relative w-full h-full">
+                            <div className="relative w-full h-full bg-black/5">
                               <video
                                 src={card.creative_url}
-                                className="w-full h-full object-cover"
+                                className="w-full h-full object-contain"
                                 muted
                                 playsInline
                                 preload="metadata"
@@ -337,9 +337,9 @@ export const SocialKanbanBoard = ({
                                 }}
                               />
                               {/* Video indicator overlay */}
-                              <div className="absolute inset-0 flex items-center justify-center bg-black/30">
-                                <div className="w-10 h-10 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                                  <Film className="h-5 w-5 text-gray-800" />
+                              <div className="absolute bottom-2 right-2">
+                                <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                  <Film className="h-4 w-4 text-gray-800" />
                                 </div>
                               </div>
                             </div>
@@ -347,7 +347,7 @@ export const SocialKanbanBoard = ({
                             <img
                               src={card.creative_url}
                               alt={card.theme}
-                              className="w-full h-full object-cover"
+                              className="w-full h-full object-contain bg-black/5"
                               loading="eager"
                               onError={(e) => {
                                 console.error("Image load error for card:", card.id);
