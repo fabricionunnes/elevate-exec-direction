@@ -217,23 +217,36 @@ export const SocialApprovalPage = () => {
             </div>
             <CardTitle className="text-lg mt-2">{card.theme}</CardTitle>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {/* Creative Preview */}
+        <CardContent className="space-y-4">
+            {/* Creative Preview with Watermark */}
             {card.creative_url && (
-              <div className="rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 aspect-square">
-                {card.creative_type === "video" ? (
-                  <video
-                    src={card.creative_url}
-                    controls
-                    className="w-full h-full object-cover"
-                  />
-                ) : (
-                  <img
-                    src={card.creative_url}
-                    alt="Preview"
-                    className="w-full h-full object-cover"
-                  />
-                )}
+              <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+                {/* Aspect ratio based on content type */}
+                <div className={card.content_type === "feed" ? "aspect-square" : "aspect-[9/16]"}>
+                  {card.creative_type === "video" ? (
+                    <video
+                      src={card.creative_url}
+                      controls
+                      playsInline
+                      className="w-full h-full object-contain bg-black"
+                    />
+                  ) : (
+                    <img
+                      src={card.creative_url}
+                      alt="Preview"
+                      className="w-full h-full object-contain"
+                    />
+                  )}
+                </div>
+                {/* Watermark overlay */}
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                  <div 
+                    className="text-4xl sm:text-5xl font-bold text-white/30 rotate-[-30deg] select-none"
+                    style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.3)" }}
+                  >
+                    RASCUNHO
+                  </div>
+                </div>
               </div>
             )}
 
