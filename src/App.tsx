@@ -162,7 +162,7 @@ import {
 } from "./pages/crm";
 
 // UNV Social Pages
-import { SocialLayout as SocialLayoutPage, SocialPipelinePage as SocialPipelinePageComponent, SocialSettingsPage as SocialSettingsPageComponent, SocialApprovalPage as SocialApprovalPageComponent } from "./pages/social";
+import { SocialLayout as SocialLayoutPage, SocialPipelinePage as SocialPipelinePageComponent, SocialSettingsPage as SocialSettingsPageComponent, SocialApprovalPage as SocialApprovalPageComponent, SocialStrategyLayout as SocialStrategyLayoutComponent } from "./pages/social";
 
 // Customer Points Pages
 import CustomerPointsLayout from "./pages/customer-points/CustomerPointsLayout";
@@ -337,6 +337,7 @@ const App = () => (
             <Route path="/social/:projectId" element={<SocialLayoutPage />}>
               <Route index element={<SocialPipelinePageComponent />} />
               <Route path="settings" element={<SocialSettingsPageComponent />} />
+              <Route path="strategy" element={<SocialStrategyLayoutComponent />} />
             </Route>
             <Route path="/social/approval" element={<SocialApprovalPageComponent />} />
             
