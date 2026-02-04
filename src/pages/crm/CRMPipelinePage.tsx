@@ -599,19 +599,21 @@ export const CRMPipelinePage = () => {
                       </div>
 
                       {/* Add Deal Button */}
-                      <button 
-                        onClick={() => {
-                          setAddLeadStageId(stage.id);
-                          setAddLeadOpen(true);
-                        }}
-                        className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
-                      >
-                        + Adicionar negócio
-                      </button>
+                      <div className="px-2 py-1.5">
+                        <button 
+                          onClick={() => {
+                            setAddLeadStageId(stage.id);
+                            setAddLeadOpen(true);
+                          }}
+                          className="w-full py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
+                        >
+                          + Adicionar negócio
+                        </button>
+                      </div>
 
                       {/* Lead Cards with vertical scroll */}
-                      <ScrollArea className="flex-1 min-h-0">
-                        <div className="p-2 space-y-2">
+                      <ScrollArea className="flex-1 min-h-0 px-2 pb-2">
+                        <div className="space-y-2 pr-2">
                           {stageLeads.map(lead => (
                             <KanbanLeadCard
                               key={lead.id}
