@@ -45,10 +45,11 @@ serve(async (req) => {
       .eq("project_id", projectId)
       .single();
 
-    // Load logo if available
+    // Load logo if available - filter by project_id for correct logo
     const { data: uploads } = await supabase
       .from("social_briefing_uploads")
       .select("*")
+      .eq("project_id", projectId)
       .eq("file_type", "logo");
 
     const logoUrl = uploads?.[0]?.file_url;
@@ -57,6 +58,28 @@ serve(async (req) => {
     let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, includeLogoPref && logoUrl);
 
     console.log("Generating image with prompt:", enhancedPrompt);
+    console.log("Logo URL for inclusion:", includeLogoPref && logoUrl ? logoUrl : "none");
+
+    // Build the message content - include logo image if requested
+    let messageContent: any;
+    
+    if (includeLogoPref && logoUrl) {
+      // Multimodal message with logo image reference
+      messageContent = [
+        {
+          type: "text",
+          text: enhancedPrompt
+        },
+        {
+          type: "image_url",
+          image_url: {
+            url: logoUrl
+          }
+        }
+      ];
+    } else {
+      messageContent = enhancedPrompt;
+    }
 
     // Call Lovable AI for image generation
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -70,7 +93,7 @@ serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: enhancedPrompt
+            content: messageContent
           }
         ],
         modalities: ["image", "text"]
@@ -212,12 +235,20 @@ Style guidelines:
 `;
 
   if (includeLogo) {
-    prompt += `- Include subtle brand logo watermark in corner\n`;
+    prompt += `
+LOGO INCLUSION INSTRUCTIONS:
+- I am providing the brand logo image as a reference
+- You MUST incorporate this exact logo into the generated image
+- Place the logo in a subtle but visible position (corner or appropriate area)
+- The logo should be proportionally sized (not too large, not too small)
+- Maintain the logo's original colors and proportions
+- The logo should blend naturally with the overall design
+`;
   }
 
   prompt += `
 IMPORTANT:
-- Do NOT include any text or typography in the image
+- Do NOT include any other text or typography in the image (except the provided logo if requested)
 - Create a visually striking image that works as a background for text overlays
 - Ultra high resolution, professional quality
 `;
