@@ -3,7 +3,8 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Image, Video, Film, Calendar, Clock, Pencil, Check, X } from "lucide-react";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus } from "lucide-react";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -92,6 +93,7 @@ interface ContentCard {
 interface SocialKanbanBoardProps {
   stages: Stage[];
   cards: ContentCard[];
+  boardId: string;
   onCardMove: (cardId: string, newStageId: string) => void;
   onCardClick: (card: ContentCard) => void;
   onStageUpdate?: () => void;
@@ -118,6 +120,7 @@ const objectiveColors: Record<string, string> = {
 export const SocialKanbanBoard = ({
   stages,
   cards,
+  boardId,
   onCardMove,
   onCardClick,
   onStageUpdate,
@@ -127,6 +130,10 @@ export const SocialKanbanBoard = ({
   const { containerRef, handlers: scrollHandlers } = useDragToScroll();
   const [editingStageId, setEditingStageId] = useState<string | null>(null);
   const [editingStageName, setEditingStageName] = useState("");
+  const [isAddingStage, setIsAddingStage] = useState(false);
+  const [newStageName, setNewStageName] = useState("");
+  const [newStageColor, setNewStageColor] = useState("#6366f1");
+  const [savingStage, setSavingStage] = useState(false);
 
   const handleStartEditStage = (stage: Stage) => {
     setEditingStageId(stage.id);
@@ -156,6 +163,39 @@ export const SocialKanbanBoard = ({
     } catch (error) {
       console.error("Error updating stage:", error);
       toast.error("Erro ao atualizar etapa");
+    }
+  };
+
+  const handleAddStage = async () => {
+    if (!newStageName.trim()) return;
+
+    setSavingStage(true);
+    try {
+      const maxSortOrder = stages.length > 0 ? Math.max(...stages.map(s => s.sort_order)) : -1;
+
+      const { error } = await supabase
+        .from("social_content_stages")
+        .insert({
+          board_id: boardId,
+          name: newStageName.trim(),
+          stage_type: "custom" as const,
+          color: newStageColor,
+          sort_order: maxSortOrder + 1,
+          is_active: true,
+        });
+
+      if (error) throw error;
+
+      toast.success("Nova etapa criada!");
+      setIsAddingStage(false);
+      setNewStageName("");
+      setNewStageColor("#6366f1");
+      onStageUpdate?.();
+    } catch (error) {
+      console.error("Error adding stage:", error);
+      toast.error("Erro ao criar etapa");
+    } finally {
+      setSavingStage(false);
     }
   };
 
@@ -378,6 +418,73 @@ export const SocialKanbanBoard = ({
             </div>
           );
         })}
+
+        {/* Add New Stage */}
+        <div className="w-72 flex-shrink-0">
+          {isAddingStage ? (
+            <div className="rounded-xl bg-muted/50 p-3 space-y-3">
+              <Input
+                value={newStageName}
+                onChange={(e) => setNewStageName(e.target.value)}
+                placeholder="Nome da etapa"
+                className="h-8 text-sm"
+                autoFocus
+                onKeyDown={(e) => {
+                  if (e.key === "Enter") handleAddStage();
+                  if (e.key === "Escape") {
+                    setIsAddingStage(false);
+                    setNewStageName("");
+                  }
+                }}
+              />
+              <div className="flex items-center gap-2">
+                <label className="text-xs text-muted-foreground">Cor:</label>
+                <input
+                  type="color"
+                  value={newStageColor}
+                  onChange={(e) => setNewStageColor(e.target.value)}
+                  className="w-8 h-8 rounded cursor-pointer border-0"
+                />
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  size="sm"
+                  className="flex-1 h-8"
+                  onClick={handleAddStage}
+                  disabled={savingStage || !newStageName.trim()}
+                >
+                  {savingStage ? (
+                    <span className="animate-spin">⏳</span>
+                  ) : (
+                    <>
+                      <Check className="h-3 w-3 mr-1" />
+                      Criar
+                    </>
+                  )}
+                </Button>
+                <Button
+                  size="sm"
+                  variant="ghost"
+                  className="h-8"
+                  onClick={() => {
+                    setIsAddingStage(false);
+                    setNewStageName("");
+                  }}
+                >
+                  <X className="h-3 w-3" />
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() => setIsAddingStage(true)}
+              className="w-full h-12 rounded-xl border-2 border-dashed border-muted-foreground/30 hover:border-primary/50 hover:bg-muted/30 transition-colors flex items-center justify-center gap-2 text-muted-foreground hover:text-primary"
+            >
+              <Plus className="h-4 w-4" />
+              <span className="text-sm font-medium">Nova Etapa</span>
+            </button>
+          )}
+        </div>
       </div>
     </div>
   );
