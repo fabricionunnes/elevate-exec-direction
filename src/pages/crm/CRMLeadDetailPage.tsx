@@ -40,6 +40,7 @@ import {
   ArrowRightLeft,
   Copy,
   FileSignature,
+  FileText,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -758,6 +759,14 @@ export const CRMLeadDetailPage = () => {
           <div className="flex items-center gap-2">
             <Button variant="ghost" size="icon">
               <Smile className="h-5 w-5" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              onClick={() => navigate(`/contratos?lead_id=${lead.id}`)}
+              title="Ver contratos enviados"
+            >
+              <FileText className="h-5 w-5" />
             </Button>
             <OwnerSelector
               leadId={lead.id}
