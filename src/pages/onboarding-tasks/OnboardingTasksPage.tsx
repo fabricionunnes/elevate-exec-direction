@@ -107,6 +107,7 @@ const OnboardingTasksPage = () => {
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
+  const [hasCRMPermission, setHasCRMPermission] = useState<boolean>(false);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -511,6 +512,20 @@ const OnboardingTasksPage = () => {
           // For consultants, auto-filter to their own projects
           if (normalizedRole === "consultant") {
             setFilterConsultant(staffMember.id);
+          }
+
+          // Check CRM permission - master has automatic access, others need explicit permission
+          if (normalizedRole === "master") {
+            setHasCRMPermission(true);
+          } else {
+            const { data: crmPermission } = await supabase
+              .from("staff_menu_permissions")
+              .select("id")
+              .eq("staff_id", staffMember.id)
+              .eq("menu_key", "crm")
+              .maybeSingle();
+            
+            setHasCRMPermission(!!crmPermission);
           }
         }
       }
@@ -1791,8 +1806,8 @@ const OnboardingTasksPage = () => {
   const isConsultant = currentUserRole === "consultant";
   const canCreateCompany = isAdmin || isCS;
   const canAccessAnalytics = isAdmin || isCS || isConsultant;
-  const CRM_ROLES = ["admin", "master", "head_comercial", "closer", "sdr"];
-  const canAccessCRM = currentUserRole ? CRM_ROLES.includes(currentUserRole) : false;
+  // CRM access: master has automatic access, others need explicit permission in staff_menu_permissions
+  const canAccessCRM = hasCRMPermission;
 
   if (loading) {
     return (
