@@ -18511,6 +18511,55 @@ export type Database = {
           },
         ]
       }
+      social_card_checklist_progress: {
+        Row: {
+          card_id: string
+          checklist_item_id: string
+          completed_at: string | null
+          completed_by: string | null
+          created_at: string
+          id: string
+        }
+        Insert: {
+          card_id: string
+          checklist_item_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+        }
+        Update: {
+          card_id?: string
+          checklist_item_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          created_at?: string
+          id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_card_checklist_progress_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_card_checklist_progress_checklist_item_id_fkey"
+            columns: ["checklist_item_id"]
+            isOneToOne: false
+            referencedRelation: "social_stage_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_card_checklist_progress_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_client_feedback: {
         Row: {
           adjustment_notes: string | null
@@ -18914,6 +18963,44 @@ export type Database = {
             columns: ["instagram_account_id"]
             isOneToOne: false
             referencedRelation: "social_instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_stage_checklists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          sort_order: number | null
+          stage_id: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          stage_id: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          stage_id?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_stage_checklists_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_stages"
             referencedColumns: ["id"]
           },
         ]
