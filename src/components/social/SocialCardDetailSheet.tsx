@@ -18,11 +18,22 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -95,6 +106,7 @@ export const SocialCardDetailSheet = ({
   onUpdate,
 }: SocialCardDetailSheetProps) => {
   const [saving, setSaving] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
@@ -302,6 +314,51 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const handleDelete = async () => {
+    if (!card) return;
+    
+    setDeleting(true);
+    try {
+      // Delete related records first (cascade might not handle all)
+      await supabase
+        .from("social_content_history")
+        .delete()
+        .eq("card_id", card.id);
+
+      await supabase
+        .from("social_client_feedback")
+        .delete()
+        .eq("card_id", card.id);
+
+      await supabase
+        .from("social_approval_links")
+        .delete()
+        .eq("card_id", card.id);
+
+      await supabase
+        .from("social_card_checklist_progress")
+        .delete()
+        .eq("card_id", card.id);
+
+      // Delete the card itself
+      const { error } = await supabase
+        .from("social_content_cards")
+        .delete()
+        .eq("id", card.id);
+
+      if (error) throw error;
+
+      toast.success("Conteúdo excluído com sucesso!");
+      onOpenChange(false);
+      onUpdate();
+    } catch (error) {
+      console.error("Error deleting card:", error);
+      toast.error("Erro ao excluir conteúdo");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
   if (!card) return null;
 
   const currentStage = stages.find((s) => s.id === card.stage_id);
@@ -320,14 +377,49 @@ export const SocialCardDetailSheet = ({
     <Sheet open={open} onOpenChange={onOpenChange}>
       <SheetContent className="w-full sm:max-w-xl overflow-hidden flex flex-col">
         <SheetHeader className="pb-2">
-          <div className="flex items-center gap-2">
-            {currentStage && (
-              <Badge
-                style={{ backgroundColor: currentStage.color, color: "#fff" }}
-              >
-                {currentStage.name}
-              </Badge>
-            )}
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {currentStage && (
+                <Badge
+                  style={{ backgroundColor: currentStage.color, color: "#fff" }}
+                >
+                  {currentStage.name}
+                </Badge>
+              )}
+            </div>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10"
+                  disabled={deleting}
+                >
+                  {deleting ? (
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                  ) : (
+                    <Trash2 className="h-4 w-4" />
+                  )}
+                </Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Excluir conteúdo?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    Esta ação não pode ser desfeita. O conteúdo "{theme}" e todo seu histórico serão permanentemente excluídos.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                  <AlertDialogAction
+                    onClick={handleDelete}
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    Excluir
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </div>
           <SheetTitle className="text-left">{theme || "Novo Conteúdo"}</SheetTitle>
         </SheetHeader>
