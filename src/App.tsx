@@ -111,6 +111,7 @@ import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
 import PublicJobApplicationPage from "./pages/hr-recruitment/PublicJobApplicationPage";
 import PublicTalentPoolPage from "./pages/hr-recruitment/PublicTalentPoolPage";
 import CultureFormPage from "./pages/hr-recruitment/CultureFormPage";
+import SocialBriefingPublicPage from "./pages/public/SocialBriefingPublicPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
@@ -304,6 +305,7 @@ const App = () => (
             <Route path="/hr-disc/:token" element={<HrCandidateDiscPage />} />
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
+            <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
