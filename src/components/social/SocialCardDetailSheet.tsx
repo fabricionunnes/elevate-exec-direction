@@ -379,13 +379,50 @@ export const SocialCardDetailSheet = ({
         <SheetHeader className="pb-2">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-2">
-              {currentStage && (
-                <Badge
-                  style={{ backgroundColor: currentStage.color, color: "#fff" }}
+              {/* Stage Selector */}
+              <Select
+                value={card.stage_id}
+                onValueChange={async (newStageId) => {
+                  try {
+                    const { error } = await supabase
+                      .from("social_content_cards")
+                      .update({ stage_id: newStageId })
+                      .eq("id", card.id);
+
+                    if (error) throw error;
+
+                    const newStage = stages.find((s) => s.id === newStageId);
+                    toast.success(`Movido para "${newStage?.name}"`);
+                    onUpdate();
+                  } catch (error) {
+                    console.error("Error moving card:", error);
+                    toast.error("Erro ao mover conteúdo");
+                  }
+                }}
+              >
+                <SelectTrigger 
+                  className="h-7 text-xs font-medium border-0 px-2"
+                  style={{ 
+                    backgroundColor: currentStage?.color || "#666", 
+                    color: "#fff" 
+                  }}
                 >
-                  {currentStage.name}
-                </Badge>
-              )}
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {stages.map((stage) => (
+                    <SelectItem key={stage.id} value={stage.id}>
+                      <div className="flex items-center gap-2">
+                        <div
+                          className="w-2 h-2 rounded-full"
+                          style={{ backgroundColor: stage.color }}
+                        />
+                        {stage.name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <AlertDialog>
               <AlertDialogTrigger asChild>
