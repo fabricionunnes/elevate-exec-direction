@@ -2,7 +2,10 @@ import { DragEvent, useState, useRef, useCallback } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
-import { Image, Video, Film, Calendar, Clock } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -91,6 +94,7 @@ interface SocialKanbanBoardProps {
   cards: ContentCard[];
   onCardMove: (cardId: string, newStageId: string) => void;
   onCardClick: (card: ContentCard) => void;
+  onStageUpdate?: () => void;
 }
 
 const contentTypeIcons: Record<string, React.ReactNode> = {
@@ -116,10 +120,44 @@ export const SocialKanbanBoard = ({
   cards,
   onCardMove,
   onCardClick,
+  onStageUpdate,
 }: SocialKanbanBoardProps) => {
   const [draggedCardId, setDraggedCardId] = useState<string | null>(null);
   const [dragOverStageId, setDragOverStageId] = useState<string | null>(null);
   const { containerRef, handlers: scrollHandlers } = useDragToScroll();
+  const [editingStageId, setEditingStageId] = useState<string | null>(null);
+  const [editingStageName, setEditingStageName] = useState("");
+
+  const handleStartEditStage = (stage: Stage) => {
+    setEditingStageId(stage.id);
+    setEditingStageName(stage.name);
+  };
+
+  const handleCancelEditStage = () => {
+    setEditingStageId(null);
+    setEditingStageName("");
+  };
+
+  const handleSaveStage = async (stageId: string) => {
+    if (!editingStageName.trim()) return;
+
+    try {
+      const { error } = await supabase
+        .from("social_content_stages")
+        .update({ name: editingStageName.trim() })
+        .eq("id", stageId);
+
+      if (error) throw error;
+
+      toast.success("Etapa atualizada!");
+      setEditingStageId(null);
+      setEditingStageName("");
+      onStageUpdate?.();
+    } catch (error) {
+      console.error("Error updating stage:", error);
+      toast.error("Erro ao atualizar etapa");
+    }
+  };
 
   const handleDragStart = (e: DragEvent, cardId: string) => {
     e.dataTransfer.setData("cardId", cardId);
@@ -177,12 +215,47 @@ export const SocialKanbanBoard = ({
               <div className="p-3 border-b border-border/50 group">
                 <div className="flex items-center gap-2">
                   <div
-                    className="h-3 w-3 rounded-full"
+                    className="h-3 w-3 rounded-full flex-shrink-0"
                     style={{ backgroundColor: stage.color }}
                   />
-                  <h3 className="font-medium text-sm truncate flex-1">
-                    {stage.name}
-                  </h3>
+                  {editingStageId === stage.id ? (
+                    <div className="flex items-center gap-1 flex-1">
+                      <Input
+                        value={editingStageName}
+                        onChange={(e) => setEditingStageName(e.target.value)}
+                        className="h-7 text-sm"
+                        autoFocus
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleSaveStage(stage.id);
+                          if (e.key === "Escape") handleCancelEditStage();
+                        }}
+                      />
+                      <button
+                        onClick={() => handleSaveStage(stage.id)}
+                        className="p-1 hover:bg-muted rounded"
+                      >
+                        <Check className="h-4 w-4 text-green-500" />
+                      </button>
+                      <button
+                        onClick={handleCancelEditStage}
+                        className="p-1 hover:bg-muted rounded"
+                      >
+                        <X className="h-4 w-4 text-muted-foreground" />
+                      </button>
+                    </div>
+                  ) : (
+                    <>
+                      <h3 className="font-medium text-sm truncate flex-1">
+                        {stage.name}
+                      </h3>
+                      <button
+                        onClick={() => handleStartEditStage(stage)}
+                        className="p-1 hover:bg-muted rounded opacity-0 group-hover:opacity-100 transition-opacity"
+                      >
+                        <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                      </button>
+                    </>
+                  )}
                   <StageChecklistManager stageId={stage.id} stageName={stage.name} />
                   <Badge variant="secondary" className="text-xs">
                     {stageCards.length}
