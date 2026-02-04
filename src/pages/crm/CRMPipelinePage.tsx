@@ -30,7 +30,7 @@ import { CRMFiltersBar, CRMFilters } from "@/components/crm/CRMFiltersBar";
 import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
-import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
+import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 
 interface Stage {
   id: string;
@@ -504,9 +504,9 @@ export const CRMPipelinePage = () => {
   }
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full min-h-0 flex flex-col">
       {/* Origin Header */}
-      <div className="px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
+      <div className="shrink-0 px-3 sm:px-4 pt-3 sm:pt-4 pb-2">
         <p className="text-xs text-muted-foreground uppercase tracking-wide">Negócios da origem</p>
         <div className="flex items-center justify-between gap-2">
           <h1 className="text-lg sm:text-xl font-bold truncate">
@@ -533,103 +533,122 @@ export const CRMPipelinePage = () => {
       </div>
 
       {/* Filters Bar */}
-      <CRMFiltersBar
-        filters={filters}
-        onFiltersChange={setFilters}
-        tagOptions={tagOptions}
-        ownerOptions={ownerOptions}
-        stageOptions={stageOptions}
-        originOptions={originOptions}
-        totalCount={filteredLeads.length}
-        entityName={selectedOriginName || "Negócio"}
-      />
+      <div className="shrink-0">
+        <CRMFiltersBar
+          filters={filters}
+          onFiltersChange={setFilters}
+          tagOptions={tagOptions}
+          ownerOptions={ownerOptions}
+          stageOptions={stageOptions}
+          originOptions={originOptions}
+          totalCount={filteredLeads.length}
+          entityName={selectedOriginName || "Negócio"}
+        />
+      </div>
 
-      {/* Kanban Board (scroll horizontal sempre visível) */}
-      <ScrollArea className="flex-1 w-full px-2 sm:px-4 pb-3">
-        <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
-          {stages.map(stage => {
-            const stageLeads = getLeadsByStage(stage.id);
-            const stageTotal = getStageTotal(stage.id);
-            const stageLeadIds = stageLeads.map(l => l.id);
-            const allStageSelected = stageLeadIds.length > 0 && stageLeadIds.every(id => selectedLeads.includes(id));
-            const someStageSelected = stageLeadIds.some(id => selectedLeads.includes(id));
+      {/* Kanban Board (barra horizontal sempre visível, sem rolagem vertical da página) */}
+      <div className="flex-1 min-h-0">
+        <ScrollAreaPrimitive.Root
+          type="always"
+          className="relative h-full w-full overflow-hidden"
+        >
+          <ScrollAreaPrimitive.Viewport className="h-full w-full">
+            <div className="h-full px-2 sm:px-4 pb-4">
+              <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
+                {stages.map(stage => {
+                  const stageLeads = getLeadsByStage(stage.id);
+                  const stageTotal = getStageTotal(stage.id);
+                  const stageLeadIds = stageLeads.map(l => l.id);
+                  const allStageSelected = stageLeadIds.length > 0 && stageLeadIds.every(id => selectedLeads.includes(id));
+                  const someStageSelected = stageLeadIds.some(id => selectedLeads.includes(id));
 
-            return (
-              <div
-                key={stage.id}
-                className="w-[260px] sm:w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
-                onDragOver={handleDragOver}
-                onDrop={(e) => handleDrop(e, stage.id)}
-              >
-                {/* Stage Header */}
-                <div 
-                  className="p-2 sm:p-3 flex items-center gap-2 rounded-t-lg"
-                  style={{ borderTop: `3px solid ${stage.color}` }}
-                >
-                  {/* Select All Checkbox (Master only) */}
-                  {isMaster && stageLeads.length > 0 && (
-                    <Checkbox
-                      checked={allStageSelected}
-                      onCheckedChange={() => handleSelectAllInStage(stage.id)}
-                      className="cursor-pointer"
-                      title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
-                    />
-                  )}
-                  <span className="font-medium text-xs sm:text-sm flex-1 truncate">{stage.name}</span>
-                  <Badge variant="secondary" className="text-[10px] sm:text-xs h-4 sm:h-5">
-                    {stageLeads.length}
-                  </Badge>
-                  {stageTotal > 0 && (
-                    <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
-                      {formatCurrency(stageTotal)}
-                    </span>
-                  )}
-                  <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-6 sm:w-6">
-                    <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
-                  </Button>
-                </div>
+                  return (
+                    <div
+                      key={stage.id}
+                      className="w-[260px] sm:w-[280px] flex-shrink-0 flex flex-col bg-muted/30 rounded-lg"
+                      onDragOver={handleDragOver}
+                      onDrop={(e) => handleDrop(e, stage.id)}
+                    >
+                      {/* Stage Header */}
+                      <div 
+                        className="p-2 sm:p-3 flex items-center gap-2 rounded-t-lg"
+                        style={{ borderTop: `3px solid ${stage.color}` }}
+                      >
+                        {/* Select All Checkbox (Master only) */}
+                        {isMaster && stageLeads.length > 0 && (
+                          <Checkbox
+                            checked={allStageSelected}
+                            onCheckedChange={() => handleSelectAllInStage(stage.id)}
+                            className="cursor-pointer"
+                            title={allStageSelected ? "Desmarcar todos" : "Selecionar todos"}
+                          />
+                        )}
+                        <span className="font-medium text-xs sm:text-sm flex-1 truncate">{stage.name}</span>
+                        <Badge variant="secondary" className="text-[10px] sm:text-xs h-4 sm:h-5">
+                          {stageLeads.length}
+                        </Badge>
+                        {stageTotal > 0 && (
+                          <span className="text-[10px] sm:text-xs text-muted-foreground hidden sm:inline">
+                            {formatCurrency(stageTotal)}
+                          </span>
+                        )}
+                        <Button variant="ghost" size="icon" className="h-5 w-5 sm:h-6 sm:w-6">
+                          <MoreHorizontal className="h-3 w-3 sm:h-4 sm:w-4" />
+                        </Button>
+                      </div>
 
-                {/* Add Deal Button */}
-                <button 
-                  onClick={() => {
-                    setAddLeadStageId(stage.id);
-                    setAddLeadOpen(true);
-                  }}
-                  className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
-                >
-                  + Adicionar negócio
-                </button>
+                      {/* Add Deal Button */}
+                      <button 
+                        onClick={() => {
+                          setAddLeadStageId(stage.id);
+                          setAddLeadOpen(true);
+                        }}
+                        className="mx-2 py-2 text-sm text-muted-foreground hover:text-foreground border border-dashed border-border rounded-md hover:border-primary/50 transition-colors"
+                      >
+                        + Adicionar negócio
+                      </button>
 
-                {/* Lead Cards */}
-                <div className="flex-1 overflow-y-auto p-2 space-y-2">
-                  {stageLeads.map(lead => (
-                    <KanbanLeadCard
-                      key={lead.id}
-                      lead={lead}
-                      pipelineId={selectedPipeline || ""}
-                      isDragging={draggedLead?.id === lead.id}
-                      isSelected={selectedLeads.includes(lead.id)}
-                      isSelectionMode={isSelectionMode}
-                      isMaster={isMaster}
-                      onSelect={handleLeadSelect}
-                      onDragStart={handleDragStart}
-                      onOpenChat={handleOpenChat}
-                      onRefresh={loadStagesAndLeads}
-                    />
-                  ))}
+                      {/* Lead Cards */}
+                      <div className="flex-1 min-h-0 overflow-y-auto p-2 space-y-2">
+                        {stageLeads.map(lead => (
+                          <KanbanLeadCard
+                            key={lead.id}
+                            lead={lead}
+                            pipelineId={selectedPipeline || ""}
+                            isDragging={draggedLead?.id === lead.id}
+                            isSelected={selectedLeads.includes(lead.id)}
+                            isSelectionMode={isSelectionMode}
+                            isMaster={isMaster}
+                            onSelect={handleLeadSelect}
+                            onDragStart={handleDragStart}
+                            onOpenChat={handleOpenChat}
+                            onRefresh={loadStagesAndLeads}
+                          />
+                        ))}
 
-                  {stageLeads.length === 0 && (
-                    <div className="text-center py-6 text-xs text-muted-foreground">
-                      Arraste leads para cá
+                        {stageLeads.length === 0 && (
+                          <div className="text-center py-6 text-xs text-muted-foreground">
+                            Arraste leads para cá
+                          </div>
+                        )}
+                      </div>
                     </div>
-                  )}
-                </div>
+                  );
+                })}
               </div>
-            );
-          })}
-        </div>
-        <ScrollBar orientation="horizontal" />
-      </ScrollArea>
+            </div>
+          </ScrollAreaPrimitive.Viewport>
+
+          <ScrollAreaPrimitive.Scrollbar
+            orientation="horizontal"
+            className="sticky bottom-0 left-0 right-0 z-20 flex h-3 touch-none select-none border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60"
+          >
+            <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-border" />
+          </ScrollAreaPrimitive.Scrollbar>
+
+          <ScrollAreaPrimitive.Corner />
+        </ScrollAreaPrimitive.Root>
+      </div>
 
       {/* Bulk Actions Bar (Master only) */}
       <KanbanBulkActions
