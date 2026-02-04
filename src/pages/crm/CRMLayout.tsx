@@ -163,6 +163,7 @@ export const CRMLayout = () => {
   };
 
   const isInboxRoute = location.pathname.includes("/crm/inbox");
+  const isPipelineRoute = location.pathname.includes("/crm/pipeline");
 
   return (
     <CRMContext.Provider value={{
@@ -380,7 +381,7 @@ export const CRMLayout = () => {
           {/* Main Content - use overflow-hidden for inbox page to contain scroll internally */}
           <main className={cn(
             "flex-1 min-h-0",
-            isInboxRoute ? "overflow-hidden" : "overflow-auto"
+             (isInboxRoute || isPipelineRoute) ? "overflow-hidden" : "overflow-auto"
           )}>
             <Outlet context={{ staffRole, isAdmin, staffId }} />
           </main>
