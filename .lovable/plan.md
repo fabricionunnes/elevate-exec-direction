@@ -1,269 +1,176 @@
 
-# Plano de Implementação: Ligações VoIP com Twilio
+# Notificação de Vendas Ganhas no Grupo de WhatsApp
 
 ## Resumo
-Implementar um sistema de ligações telefônicas integrado ao CRM usando Twilio Voice SDK. Os usuários poderão fazer ligações diretamente do navegador ao abrir um lead, com as chamadas sendo gravadas automaticamente e transcritas via AssemblyAI (já integrado ao projeto).
+
+Implementar uma funcionalidade que envia automaticamente uma mensagem para um grupo de WhatsApp quando um lead é marcado como "Ganho" no CRM, contendo todas as informações solicitadas.
 
 ---
 
-## Arquitetura da Solução
+## Análise dos Campos Disponíveis
 
-```text
-┌─────────────────────────────────────────────────────────────────────┐
-│                         FRONTEND (React)                            │
-├─────────────────────────────────────────────────────────────────────┤
-│  LeadActivitiesTab.tsx                                              │
-│    └── CallDialer (novo componente)                                 │
-│         ├── Discador com keypad DTMF                                │
-│         ├── Controles: Ligar / Desligar / Mudo                      │
-│         └── Status da chamada em tempo real                         │
-├─────────────────────────────────────────────────────────────────────┤
-│  Twilio Voice SDK (@twilio/voice-sdk)                               │
-│    └── Device.connect() → WebRTC para áudio                         │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                       EDGE FUNCTIONS (Deno)                         │
-├─────────────────────────────────────────────────────────────────────┤
-│  1. twilio-token                                                    │
-│     └── Gera Access Token para o Device                             │
-│                                                                     │
-│  2. twilio-voice                                                    │
-│     └── TwiML para iniciar chamada (atende webhook)                 │
-│                                                                     │
-│  3. twilio-webhook                                                  │
-│     └── Recebe status updates (call completed, recording ready)     │
-│     └── Salva gravação e dispara transcrição                        │
-└───────────────────────────────┬─────────────────────────────────────┘
-                                │
-                                ▼
-┌─────────────────────────────────────────────────────────────────────┐
-│                         DATABASE                                    │
-├─────────────────────────────────────────────────────────────────────┤
-│  crm_calls (nova tabela)                                            │
-│    ├── id, lead_id, staff_id                                        │
-│    ├── twilio_call_sid, from_number, to_number                      │
-│    ├── status, duration, direction                                  │
-│    ├── recording_url, recording_sid                                 │
-│    ├── transcription (text)                                         │
-│    ├── started_at, ended_at                                         │
-│    └── created_at, updated_at                                       │
-└─────────────────────────────────────────────────────────────────────┘
-```
+### Campos JÁ existentes no sistema:
 
----
+| Campo Solicitado | Origem | Status |
+|------------------|--------|--------|
+| Data | `closed_at` do lead | ✅ Disponível |
+| SDR | `sdr_staff_id` → `onboarding_staff.name` | ✅ Disponível |
+| Closer | `closer_staff_id` → `onboarding_staff.name` | ✅ Disponível |
+| Qual serviço? | `product_id` → `onboarding_services.name` | ✅ Disponível |
+| Nome da empresa | `company` do lead | ✅ Disponível |
+| CNPJ | `document` do lead | ✅ Disponível |
+| Segmento | `segment` do lead | ✅ Disponível |
+| Plano | `plan_id` → `crm_plans.name` | ✅ Disponível |
+| Valor | `opportunity_value` do lead | ✅ Disponível |
+| Nome (contato) | `name` do lead | ✅ Disponível |
+| Telefone | `phone` do lead | ✅ Disponível |
+| E-mail | `email` do lead | ✅ Disponível |
+| Cidade | `city` do lead | ✅ Disponível |
+| Estado | `state` do lead | ✅ Disponível |
+| Briefing | `notes` do lead (pode ser usado) | ✅ Disponível |
 
-## Pré-requisitos (Secrets Twilio)
+### Campos que PRECISAM ser adicionados:
 
-Você precisará configurar 4 secrets no projeto:
-
-| Secret | Descrição |
-|--------|-----------|
-| `TWILIO_ACCOUNT_SID` | Account SID da sua conta Twilio |
-| `TWILIO_AUTH_TOKEN` | Auth Token da sua conta Twilio |
-| `TWILIO_PHONE_NUMBER` | Número Twilio para fazer/receber chamadas (ex: +15551234567) |
-| `TWILIO_TWIML_APP_SID` | SID do TwiML App (configura webhooks) |
-
-> **Configuração no Console Twilio:**
-> 1. Crie um TwiML App em Console → Voice → TwiML Apps
-> 2. Configure o Voice Request URL para: `https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1/twilio-voice`
+| Campo Solicitado | Solução |
+|------------------|---------|
+| Nome Fantasia | Novo campo `trade_name` na tabela `crm_leads` |
+| CEP | Novo campo `zipcode` na tabela `crm_leads` |
+| Quantidade de Parcelas | Novo campo `installments` na tabela `crm_leads` |
+| Data de vencimento | Novo campo `due_day` na tabela `crm_leads` (dia do mês) |
+| Forma de pagamento | Novo campo `payment_method` na tabela `crm_leads` |
 
 ---
 
 ## Etapas de Implementação
 
-### 1. Configurar Secrets Twilio
-- Solicitar ao usuário os 4 secrets necessários via ferramenta `add_secret`
-- Validar que todos estão configurados antes de prosseguir
+### 1. Alterações no Banco de Dados
 
-### 2. Criar Tabela `crm_calls`
+Adicionar novos campos na tabela `crm_leads`:
+
 ```sql
-CREATE TABLE crm_calls (
-  id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
-  lead_id UUID REFERENCES crm_leads(id) ON DELETE CASCADE,
-  staff_id UUID REFERENCES onboarding_staff(id),
-  
-  -- Twilio identifiers
-  twilio_call_sid TEXT UNIQUE,
-  from_number TEXT NOT NULL,
-  to_number TEXT NOT NULL,
-  
-  -- Call details
-  direction TEXT DEFAULT 'outbound', -- outbound, inbound
-  status TEXT DEFAULT 'initiated', -- initiated, ringing, in-progress, completed, busy, no-answer, failed
-  duration INTEGER, -- seconds
-  
-  -- Recording
-  recording_url TEXT,
-  recording_sid TEXT,
-  transcription TEXT,
-  transcription_status TEXT, -- pending, processing, completed, failed
-  
-  -- Timestamps
-  started_at TIMESTAMPTZ,
-  ended_at TIMESTAMPTZ,
-  created_at TIMESTAMPTZ DEFAULT now(),
-  updated_at TIMESTAMPTZ DEFAULT now()
-);
-
--- RLS policies
-ALTER TABLE crm_calls ENABLE ROW LEVEL SECURITY;
-
-CREATE POLICY "Staff can view own calls" ON crm_calls
-  FOR SELECT USING (
-    staff_id = public.get_current_staff_id() 
-    OR public.is_crm_admin()
-  );
-
-CREATE POLICY "Staff can insert own calls" ON crm_calls
-  FOR INSERT WITH CHECK (staff_id = public.get_current_staff_id());
-
-CREATE POLICY "Webhook can update calls" ON crm_calls
-  FOR UPDATE USING (true);
-
--- Realtime para updates de status
-ALTER PUBLICATION supabase_realtime ADD TABLE crm_calls;
+ALTER TABLE crm_leads 
+ADD COLUMN trade_name TEXT,                    -- Nome Fantasia
+ADD COLUMN zipcode TEXT,                       -- CEP
+ADD COLUMN installments TEXT,                  -- Ex: "1+3" (entrada + parcelas)
+ADD COLUMN due_day INTEGER,                    -- Dia do vencimento (1-31)
+ADD COLUMN payment_method TEXT;                -- PIX, Boleto, Cartão, etc.
 ```
 
-### 3. Criar Edge Function `twilio-token`
-Gera o Access Token JWT para o Twilio Voice SDK no frontend:
+Criar nova configuração na tabela `crm_settings` com as chaves:
+- `won_notification_enabled` (boolean)
+- `won_notification_instance_id` (UUID da instância WhatsApp)
+- `won_notification_group_jid` (ID do grupo no formato `120363XXX@g.us`)
 
-```typescript
-// Principais funcionalidades:
-- Validar usuário autenticado
-- Criar Capability Token com:
-  - OutgoingClientScope (para fazer chamadas)
-  - IncomingClientScope (opcional, para receber)
-- Retornar token + identity
-```
+### 2. Interface de Edição do Lead
 
-### 4. Criar Edge Function `twilio-voice`
-Webhook que gera o TwiML para iniciar a chamada:
+Modificar a aba "Negócio" ou criar uma seção "Dados do Fechamento" na página de detalhes do lead para incluir:
 
-```typescript
-// Quando Twilio chama este endpoint:
-- Extrair o número de destino (To)
-- Gerar TwiML com <Dial> e <Number>
-- Habilitar gravação com record="true"
-- Configurar statusCallback para receber eventos
-```
+- Nome Fantasia (texto)
+- CEP (texto com máscara)
+- Parcelas (ex: "Entrada + 3x")
+- Dia de Vencimento (select 1-31)
+- Forma de Pagamento (select: PIX, Boleto, Cartão de Crédito, Cartão de Débito, Transferência)
+- Campo de Briefing (textarea - usar o campo `notes` existente)
 
-### 5. Criar Edge Function `twilio-webhook`
-Recebe callbacks de status e gravações:
+### 3. Interface de Configuração
 
-```typescript
-// Eventos tratados:
-- call-status: Atualiza status da chamada (ringing, in-progress, completed)
-- recording-completed: Salva URL da gravação, dispara transcrição
-- Usar transcribe-assemblyai existente para transcrever
-```
+Nova aba **"Notificações"** nas Configurações do CRM com:
 
-### 6. Instalar Dependência `@twilio/voice-sdk`
-Adicionar ao projeto para permitir chamadas via WebRTC no navegador.
+- Toggle para ativar/desativar notificações de venda
+- Seletor de instância WhatsApp (das instâncias conectadas)
+- Botão para selecionar grupo (usando componente `GroupSelector` existente)
+- Preview do grupo selecionado
 
-### 7. Criar Componente `TwilioCallDialer`
-Novo componente React com:
+### 4. Disparo Automático
 
-- **Estado do Device:** Conectando, Pronto, Em chamada, Desconectado
-- **Botão "Ligar":** Inicia a chamada via `device.connect()`
-- **Keypad DTMF:** Para navegar em URAs
-- **Controles:** Mudo, Encerrar chamada
-- **Timer:** Mostra duração da chamada em tempo real
-- **Indicador de status:** Chamando, Em progresso, Finalizada
+Modificar a função `handleMarkWon` em `CRMLeadDetailPage.tsx` para:
 
-### 8. Integrar Discador na Página do Lead
-Modificar `LeadActivitiesTab.tsx`:
-
-- Quando checklist item for tipo `call`, exibir o discador completo
-- Botão de telefone no header do lead também abre discador
-- Após encerrar a chamada, marcar item do checklist como concluído
-
-### 9. Criar Aba "Ligações" no Lead
-Ou integrar na aba Histórico:
-
-- Lista de todas as ligações feitas para o lead
-- Player de áudio para ouvir gravação
-- Transcrição expansível
-- Status e duração de cada chamada
+1. Verificar se notificações estão ativas
+2. Buscar todos os dados do lead + relacionamentos (SDR, Closer, Produto, Plano)
+3. Formatar a mensagem no formato solicitado
+4. Enviar via `evolution-api` usando action `sendGroupText`
+5. Registrar log de sucesso/falha (sem bloquear a marcação como ganho)
 
 ---
 
-## Fluxo de uma Ligação
+## Formato da Mensagem
 
-1. **Usuário clica em "Ligar"** no lead
-2. **Frontend solicita token** via `twilio-token`
-3. **Device.connect()** inicia chamada WebRTC
-4. **Twilio chama** `twilio-voice` para obter TwiML
-5. **Chamada é conectada** ao número do lead
-6. **Durante a chamada:** status updates via websocket
-7. **Ao encerrar:** `twilio-webhook` recebe callback
-8. **Gravação processada:** URL salva no banco
-9. **Transcrição automática:** Usa `transcribe-assemblyai` existente
-10. **UI atualizada** em tempo real via Supabase Realtime
+```text
+🎉 *NOVA VENDA FECHADA!* 🎉
 
----
+📅 *Data:* 04/02/2026
+👥 *SDR:* João Silva
+👔 *Closer:* Maria Santos
 
-## Arquivos a Serem Criados/Modificados
+📋 *DADOS DO NEGÓCIO*
+🏢 *Serviço:* UNV Core
+🏪 *Empresa:* Empresa LTDA
+📝 *Nome Fantasia:* Loja do João
+📄 *CNPJ:* 12.345.678/0001-90
+🏷️ *Segmento:* Varejo
+📦 *Plano:* Anual
 
-| Arquivo | Ação |
-|---------|------|
-| `supabase/functions/twilio-token/index.ts` | Criar |
-| `supabase/functions/twilio-voice/index.ts` | Criar |
-| `supabase/functions/twilio-webhook/index.ts` | Criar |
-| `supabase/config.toml` | Adicionar funções |
-| `src/components/crm/lead-detail/TwilioCallDialer.tsx` | Criar |
-| `src/components/crm/lead-detail/CallHistoryList.tsx` | Criar |
-| `src/components/crm/lead-detail/LeadActivitiesTab.tsx` | Modificar |
-| `src/hooks/useTwilioDevice.ts` | Criar (gerencia Device SDK) |
-| `package.json` | Adicionar @twilio/voice-sdk |
-| Migration SQL | Criar tabela crm_calls |
+💰 *FINANCEIRO*
+💵 *Valor:* R$ 15.000,00
+🔢 *Parcelas:* Entrada + 3x
+📆 *Vencimento:* Dia 10
+💳 *Forma:* PIX
 
----
+👤 *CONTATO*
+📛 *Nome:* José da Silva
+📱 *Telefone:* (11) 99999-9999
+✉️ *E-mail:* jose@empresa.com
 
-## Seção Técnica
+📍 *ENDEREÇO*
+🏙️ *Cidade:* São Paulo
+🗺️ *Estado:* SP
+📮 *CEP:* 01234-567
 
-### Twilio Voice SDK - Inicialização
-```typescript
-import { Device } from '@twilio/voice-sdk';
+📝 *BRIEFING*
+Cliente interessado em automação comercial...
 
-const device = new Device(token, {
-  edge: 'ashburn', // ou 'sao-paulo' se disponível
-  codecPreferences: ['opus', 'pcmu'],
-});
-
-device.on('ready', () => console.log('Device ready'));
-device.on('connect', (call) => console.log('Connected'));
-device.on('disconnect', () => console.log('Call ended'));
-
-// Para fazer chamada
-const call = await device.connect({
-  params: { To: '+5511999998888', LeadId: 'uuid...' }
-});
+🚀 *Parabéns à equipe!*
 ```
 
-### TwiML Response para Chamada
-```xml
-<?xml version="1.0" encoding="UTF-8"?>
-<Response>
-  <Dial callerId="+15551234567" record="record-from-answer-dual">
-    <Number statusCallbackEvent="initiated ringing answered completed" 
-            statusCallback="https://xxx.supabase.co/functions/v1/twilio-webhook">
-      +5511999998888
-    </Number>
-  </Dial>
-</Response>
-```
+---
 
-### Segurança
-- Todas as edge functions validam JWT do usuário
-- Webhook do Twilio valida signature para evitar spoofing
-- RLS garante que usuários só veem suas próprias chamadas
-- Gravações são privadas e acessíveis apenas via URL assinada
+## Arquivos a Modificar/Criar
+
+| Arquivo | Alteração |
+|---------|-----------|
+| `src/pages/crm/CRMSettingsPage.tsx` | Nova aba "Notificações" com configuração do grupo |
+| `src/pages/crm/CRMLeadDetailPage.tsx` | Adicionar envio de mensagem após marcar como ganho |
+| `src/components/crm/lead-detail/LeadCustomFieldsTab.tsx` | Adicionar campos de fechamento (CEP, Parcelas, etc.) |
+| Migração SQL | Novos campos na tabela `crm_leads` |
 
 ---
 
-## Estimativa de Complexidade
-- **Alta:** Envolve SDK externo, WebRTC, webhooks e integração de áudio
-- **Tempo estimado:** 2-3 sessões de implementação
-- **Dependência externa:** Conta Twilio configurada com número ativo
+## Fluxo de Funcionamento
+
+```text
+Usuário marca lead como Ganho
+           ↓
+Sistema verifica crm_settings
+(won_notification_enabled = true?)
+           ↓
+     Sim → Busca dados completos do lead
+           + SDR, Closer, Produto, Plano
+           ↓
+     Formata mensagem com template fixo
+           ↓
+     Envia via evolution-api/sendGroupText
+           ↓
+     Toast de confirmação (sucesso/erro)
+     (não bloqueia o fluxo principal)
+```
+
+---
+
+## Considerações Importantes
+
+1. **Instância Conectada**: O grupo precisa pertencer a uma instância do WhatsApp que esteja conectada
+2. **Permissões**: O número conectado precisa estar no grupo e ter permissão para enviar mensagens
+3. **Falhas Silenciosas**: Se o envio falhar, não deve bloquear a marcação do lead como ganho
+4. **Campos Opcionais**: Se algum campo estiver vazio, a linha correspondente será omitida ou exibirá "Não informado"
+5. **Formatação**: Valores monetários formatados com R$ e separadores de milhar
+
