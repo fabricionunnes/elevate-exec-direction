@@ -31,7 +31,6 @@ import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
 import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
-import { ScrollArea } from "@/components/ui/scroll-area";
 
 interface Stage {
   id: string;
@@ -612,8 +611,8 @@ export const CRMPipelinePage = () => {
                       </div>
 
                       {/* Lead Cards with vertical scroll */}
-                      <ScrollArea className="flex-1 min-h-0 px-2 pb-2">
-                        <div className="space-y-2 pr-2">
+                      <div className="flex-1 min-h-0 overflow-y-auto px-2 pb-2">
+                        <div className="space-y-2">
                           {stageLeads.map(lead => (
                             <KanbanLeadCard
                               key={lead.id}
@@ -636,7 +635,7 @@ export const CRMPipelinePage = () => {
                             </div>
                           )}
                         </div>
-                      </ScrollArea>
+                      </div>
                     </div>
                   );
                 })}
