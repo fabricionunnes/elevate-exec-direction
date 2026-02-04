@@ -107,6 +107,38 @@ export function useSendLeadContract() {
         }
       }
 
+      // Get payment method name and convert to contract format
+      let contractPaymentMethod = "pix"; // default
+      if (lead.payment_method) {
+        // Check if it's a UUID (from crm_payment_method_options) or a direct value
+        const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(lead.payment_method);
+        
+        if (isUUID) {
+          const { data: paymentMethodData } = await supabase
+            .from("crm_payment_method_options")
+            .select("name")
+            .eq("id", lead.payment_method)
+            .single();
+          
+          if (paymentMethodData?.name) {
+            // Convert to contract format (pix, card, boleto)
+            const methodName = paymentMethodData.name.toLowerCase();
+            if (methodName.includes("pix")) {
+              contractPaymentMethod = "pix";
+            } else if (methodName.includes("cartão") || methodName.includes("cartao") || methodName.includes("crédito") || methodName.includes("credito") || methodName.includes("débito") || methodName.includes("debito")) {
+              contractPaymentMethod = "card";
+            } else if (methodName.includes("boleto")) {
+              contractPaymentMethod = "boleto";
+            } else {
+              contractPaymentMethod = "pix"; // fallback
+            }
+          }
+        } else {
+          // It's already a direct value like "pix", "card", "boleto"
+          contractPaymentMethod = lead.payment_method;
+        }
+      }
+
       // Build full address
       const fullAddress = [
         lead.address,
@@ -157,7 +189,7 @@ export function useSendLeadContract() {
           product_id: lead.product_id,
           product_name: productName,
           contract_value: lead.opportunity_value,
-          payment_method: lead.payment_method || "pix",
+          payment_method: contractPaymentMethod,
           installments: lead.installments ? parseInt(lead.installments) : 1,
           is_recurring: false,
           start_date: new Date().toISOString().slice(0, 10),

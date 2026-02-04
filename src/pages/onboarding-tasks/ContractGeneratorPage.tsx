@@ -869,7 +869,16 @@ export default function ContractGeneratorPage() {
       pix: "PIX",
       boleto: "Boleto",
     };
-    return labels[method] || method;
+    // Check if it's a known payment method
+    if (labels[method]) {
+      return labels[method];
+    }
+    // Check if it's a UUID (invalid/legacy data) - show "Não informado"
+    const isUUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i.test(method);
+    if (isUUID) {
+      return "Não informado";
+    }
+    return method || "Não informado";
   };
 
   return (
@@ -1379,9 +1388,19 @@ export default function ContractGeneratorPage() {
               </div>
               
               {!selectedContract.pdf_url && (
-                <p className="text-xs text-muted-foreground text-center">
-                  Este contrato foi gerado antes do armazenamento de PDFs.
-                </p>
+                <div className="text-center space-y-2">
+                  <p className="text-xs text-muted-foreground">
+                    Este contrato precisa ser editado para gerar o PDF.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleEditContract}
+                  >
+                    <Pencil className="h-4 w-4 mr-2" />
+                    Editar e Gerar PDF
+                  </Button>
+                </div>
               )}
 
               {/* ZapSign Integration Section */}
