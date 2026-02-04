@@ -3,7 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { Progress } from "@/components/ui/progress";
-import { Loader2, CheckCircle2 } from "lucide-react";
+import { Textarea } from "@/components/ui/textarea";
+import { Button } from "@/components/ui/button";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Loader2, CheckCircle2, MessageSquare, X, Check } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
@@ -18,6 +25,7 @@ interface ProgressItem {
   id: string;
   checklist_item_id: string;
   completed_at: string | null;
+  notes: string | null;
 }
 
 interface CardChecklistProgressProps {
@@ -38,6 +46,8 @@ export const CardChecklistProgress = ({
   const [loading, setLoading] = useState(true);
   const [updating, setUpdating] = useState<string | null>(null);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const [editingNoteId, setEditingNoteId] = useState<string | null>(null);
+  const [noteText, setNoteText] = useState("");
 
   useEffect(() => {
     loadData();
@@ -76,7 +86,7 @@ export const CardChecklistProgress = ({
       // Load progress for this card
       const { data: progressData, error: progressError } = await supabase
         .from("social_card_checklist_progress")
-        .select("id, checklist_item_id, completed_at")
+        .select("id, checklist_item_id, completed_at, notes")
         .eq("card_id", cardId);
 
       if (progressError) throw progressError;
@@ -157,6 +167,38 @@ export const CardChecklistProgress = ({
     }
   };
 
+  const getItemProgress = (itemId: string) => {
+    return progress.find((p) => p.checklist_item_id === itemId);
+  };
+
+  const handleOpenNoteEditor = (itemId: string) => {
+    const itemProgress = getItemProgress(itemId);
+    setEditingNoteId(itemId);
+    setNoteText(itemProgress?.notes || "");
+  };
+
+  const handleSaveNote = async (itemId: string) => {
+    const itemProgress = getItemProgress(itemId);
+    if (!itemProgress) return;
+
+    try {
+      const { error } = await supabase
+        .from("social_card_checklist_progress")
+        .update({ notes: noteText.trim() || null })
+        .eq("id", itemProgress.id);
+
+      if (error) throw error;
+
+      toast.success("Observação salva!");
+      setEditingNoteId(null);
+      setNoteText("");
+      await loadData();
+    } catch (error) {
+      console.error("Error saving note:", error);
+      toast.error("Erro ao salvar observação");
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-4">
@@ -185,40 +227,111 @@ export const CardChecklistProgress = ({
         {checklistItems.map((item) => {
           const completed = isItemCompleted(item.id);
           const isUpdating = updating === item.id;
+          const itemProgress = getItemProgress(item.id);
+          const hasNote = itemProgress?.notes;
 
           return (
             <div
               key={item.id}
               className={cn(
-                "flex items-start gap-2 p-2 rounded-md transition-colors",
+                "p-2 rounded-md transition-colors",
                 completed ? "bg-green-500/10" : "bg-muted/50"
               )}
             >
-              {isUpdating ? (
-                <Loader2 className="h-4 w-4 animate-spin mt-0.5" />
-              ) : (
-                <Checkbox
-                  id={`checklist-${item.id}`}
-                  checked={completed}
-                  onCheckedChange={() => handleToggle(item.id)}
-                  className="mt-0.5"
-                />
-              )}
-              <div className="flex-1 min-w-0">
-                <Label
-                  htmlFor={`checklist-${item.id}`}
-                  className={cn(
-                    "text-sm cursor-pointer",
-                    completed && "line-through text-muted-foreground"
-                  )}
-                >
-                  {item.title}
-                </Label>
-                {item.description && (
-                  <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+              <div className="flex items-start gap-2">
+                {isUpdating ? (
+                  <Loader2 className="h-4 w-4 animate-spin mt-0.5" />
+                ) : (
+                  <Checkbox
+                    id={`checklist-${item.id}`}
+                    checked={completed}
+                    onCheckedChange={() => handleToggle(item.id)}
+                    className="mt-0.5"
+                  />
                 )}
+                <div className="flex-1 min-w-0">
+                  <Label
+                    htmlFor={`checklist-${item.id}`}
+                    className={cn(
+                      "text-sm cursor-pointer",
+                      completed && "line-through text-muted-foreground"
+                    )}
+                  >
+                    {item.title}
+                  </Label>
+                  {item.description && (
+                    <p className="text-xs text-muted-foreground mt-0.5">{item.description}</p>
+                  )}
+                </div>
+                <div className="flex items-center gap-1">
+                  {completed && (
+                    <Popover 
+                      open={editingNoteId === item.id} 
+                      onOpenChange={(open) => {
+                        if (open) {
+                          handleOpenNoteEditor(item.id);
+                        } else {
+                          setEditingNoteId(null);
+                          setNoteText("");
+                        }
+                      }}
+                    >
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className={cn(
+                            "h-6 w-6",
+                            hasNote ? "text-primary" : "text-muted-foreground"
+                          )}
+                        >
+                          <MessageSquare className="h-3.5 w-3.5" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-72 p-3" align="end">
+                        <div className="space-y-2">
+                          <p className="text-sm font-medium">Observação</p>
+                          <Textarea
+                            value={noteText}
+                            onChange={(e) => setNoteText(e.target.value)}
+                            placeholder="Adicione uma observação..."
+                            rows={3}
+                            className="text-sm resize-none"
+                          />
+                          <div className="flex justify-end gap-2">
+                            <Button
+                              size="sm"
+                              variant="ghost"
+                              className="h-7"
+                              onClick={() => {
+                                setEditingNoteId(null);
+                                setNoteText("");
+                              }}
+                            >
+                              <X className="h-3 w-3 mr-1" />
+                              Cancelar
+                            </Button>
+                            <Button
+                              size="sm"
+                              className="h-7"
+                              onClick={() => handleSaveNote(item.id)}
+                            >
+                              <Check className="h-3 w-3 mr-1" />
+                              Salvar
+                            </Button>
+                          </div>
+                        </div>
+                      </PopoverContent>
+                    </Popover>
+                  )}
+                  {completed && <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />}
+                </div>
               </div>
-              {completed && <CheckCircle2 className="h-4 w-4 text-green-500 flex-shrink-0" />}
+              {hasNote && (
+                <p className="text-xs text-muted-foreground mt-1.5 ml-6 italic border-l-2 border-muted pl-2">
+                  {itemProgress.notes}
+                </p>
+              )}
             </div>
           );
         })}

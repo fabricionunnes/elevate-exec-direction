@@ -18519,6 +18519,7 @@ export type Database = {
           completed_by: string | null
           created_at: string
           id: string
+          notes: string | null
         }
         Insert: {
           card_id: string
@@ -18527,6 +18528,7 @@ export type Database = {
           completed_by?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
         }
         Update: {
           card_id?: string
@@ -18535,6 +18537,7 @@ export type Database = {
           completed_by?: string | null
           created_at?: string
           id?: string
+          notes?: string | null
         }
         Relationships: [
           {
