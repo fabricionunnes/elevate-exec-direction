@@ -396,22 +396,22 @@ export const LeadCustomFieldsTab = ({
   };
 
   const loadStaff = async () => {
-    // Load closers
+    // Load closers + admins/masters with CRM access
     const { data: closers } = await supabase
       .from("onboarding_staff")
       .select("id, name, role")
       .eq("is_active", true)
-      .eq("role", "closer")
+      .in("role", ["closer", "admin", "master"])
       .order("name");
     
     setCloserStaff(closers || []);
 
-    // Load SDRs, Social Setters, and BDRs
+    // Load SDRs, Social Setters, BDRs + admins/masters with CRM access
     const { data: sdrs } = await supabase
       .from("onboarding_staff")
       .select("id, name, role")
       .eq("is_active", true)
-      .in("role", ["sdr", "social_setter", "bdr"])
+      .in("role", ["sdr", "social_setter", "bdr", "admin", "master"])
       .order("name");
     
     setSdrStaff(sdrs || []);
