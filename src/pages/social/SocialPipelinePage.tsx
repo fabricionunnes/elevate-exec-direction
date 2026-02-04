@@ -226,6 +226,7 @@ export const SocialPipelinePage = () => {
         <SocialKanbanBoard
           stages={stages}
           cards={cards}
+          boardId={boardId}
           onCardMove={handleCardMove}
           onCardClick={handleCardClick}
           onStageUpdate={loadData}
