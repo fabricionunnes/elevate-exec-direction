@@ -82,8 +82,8 @@ serve(async (req) => {
       throw new Error("Erro ao criar link de aprovação");
     }
 
-    // Build approval URL
-    const baseUrl = Deno.env.get("SITE_URL") || `${supabaseUrl.replace('.supabase.co', '')}.lovable.app`;
+    // Build approval URL - use the published domain
+    const baseUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
     const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
 
     // Format phone number
