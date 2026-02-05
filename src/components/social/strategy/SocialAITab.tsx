@@ -427,7 +427,7 @@ CTA: ${suggestion.cta}`;
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          <SelectItem value="feed_post">Feed Post (1:1)</SelectItem>
+                          <SelectItem value="feed_post">Feed Post (4:5)</SelectItem>
                           <SelectItem value="story">Stories / Reels (9:16)</SelectItem>
                           <SelectItem value="cover">Capa / Banner (16:9)</SelectItem>
                         </SelectContent>
@@ -493,7 +493,7 @@ CTA: ${suggestion.cta}`;
                       </div>
                       <CardContent className="p-3">
                         <Badge variant="secondary" className="mb-2 text-xs">
-                          {imageFormat === "feed_post" ? "1:1" : imageFormat === "story" ? "9:16" : "16:9"}
+                          {imageFormat === "feed_post" ? "4:5" : imageFormat === "story" ? "9:16" : "16:9"}
                         </Badge>
                         <p className="text-sm text-muted-foreground line-clamp-2">{image.prompt}</p>
                       </CardContent>
