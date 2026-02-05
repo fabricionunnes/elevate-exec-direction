@@ -6,6 +6,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
 import { Badge } from "@/components/ui/badge";
+import { Switch } from "@/components/ui/switch";
 import {
   Mic,
   MicOff,
@@ -14,6 +15,7 @@ import {
   Volume2,
   Check,
   AlertCircle,
+  Monitor,
 } from "lucide-react";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -44,6 +46,7 @@ export function RealtimeTranscription({
   const [recordingTime, setRecordingTime] = useState(0);
   const [audioLevel, setAudioLevel] = useState(0);
   const [permissionGranted, setPermissionGranted] = useState<boolean | null>(null);
+  const [captureSystemAudio, setCaptureSystemAudio] = useState(false);
   
   const mediaRecorderRef = useRef<MediaRecorder | null>(null);
   const audioChunksRef = useRef<Blob[]>([]);
@@ -75,17 +78,89 @@ export function RealtimeTranscription({
 
   const startRecording = useCallback(async () => {
     try {
-      const stream = await navigator.mediaDevices.getUserMedia({ 
-        audio: {
-          echoCancellation: true,
-          noiseSuppression: true,
-          autoGainControl: true,
+      let combinedStream: MediaStream;
+
+      if (captureSystemAudio) {
+        // Try to capture system audio via screen share
+        try {
+          const displayStream = await navigator.mediaDevices.getDisplayMedia({
+            video: true, // Required for getDisplayMedia
+            audio: {
+              echoCancellation: false,
+              noiseSuppression: false,
+              autoGainControl: false,
+            },
+          });
+
+          // Get microphone audio as well
+          const micStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
+
+          // Stop the video track - we only need audio
+          displayStream.getVideoTracks().forEach(track => track.stop());
+
+          // Check if system audio was captured
+          const systemAudioTracks = displayStream.getAudioTracks();
+          
+          if (systemAudioTracks.length === 0) {
+            toast.warning("Áudio do sistema não disponível. Usando apenas microfone.");
+            combinedStream = micStream;
+          } else {
+            // Combine both audio streams using AudioContext
+            const audioContext = new AudioContext();
+            const destination = audioContext.createMediaStreamDestination();
+
+            // Add system audio
+            const systemSource = audioContext.createMediaStreamSource(
+              new MediaStream(systemAudioTracks)
+            );
+            systemSource.connect(destination);
+
+            // Add microphone audio
+            const micSource = audioContext.createMediaStreamSource(micStream);
+            micSource.connect(destination);
+
+            combinedStream = destination.stream;
+            
+            // Store references for cleanup
+            audioContextRef.current = audioContext;
+            
+            toast.success("Capturando áudio do sistema + microfone");
+          }
+        } catch (displayError) {
+          console.warn("Could not capture system audio:", displayError);
+          toast.warning("Não foi possível capturar áudio do sistema. Usando apenas microfone.");
+          
+          // Fallback to microphone only
+          combinedStream = await navigator.mediaDevices.getUserMedia({
+            audio: {
+              echoCancellation: true,
+              noiseSuppression: true,
+              autoGainControl: true,
+            },
+          });
         }
-      });
+      } else {
+        // Microphone only
+        combinedStream = await navigator.mediaDevices.getUserMedia({
+          audio: {
+            echoCancellation: true,
+            noiseSuppression: true,
+            autoGainControl: true,
+          },
+        });
+      }
 
       // Setup audio analysis for visual feedback
-      audioContextRef.current = new AudioContext();
-      const source = audioContextRef.current.createMediaStreamSource(stream);
+      if (!audioContextRef.current) {
+        audioContextRef.current = new AudioContext();
+      }
+      const source = audioContextRef.current.createMediaStreamSource(combinedStream);
       analyserRef.current = audioContextRef.current.createAnalyser();
       analyserRef.current.fftSize = 256;
       source.connect(analyserRef.current);
@@ -101,7 +176,7 @@ export function RealtimeTranscription({
       };
 
       // Setup MediaRecorder
-      const mediaRecorder = new MediaRecorder(stream, {
+      const mediaRecorder = new MediaRecorder(combinedStream, {
         mimeType: MediaRecorder.isTypeSupported("audio/webm;codecs=opus")
           ? "audio/webm;codecs=opus"
           : "audio/webm",
@@ -127,13 +202,15 @@ export function RealtimeTranscription({
       // Start audio level updates
       requestAnimationFrame(updateLevel);
 
-      toast.success("Gravação iniciada");
+      if (!captureSystemAudio) {
+        toast.success("Gravação iniciada");
+      }
     } catch (error) {
       console.error("Error starting recording:", error);
-      toast.error("Erro ao iniciar gravação. Verifique as permissões do microfone.");
+      toast.error("Erro ao iniciar gravação. Verifique as permissões.");
       setPermissionGranted(false);
     }
-  }, [isRecording]);
+  }, [isRecording, captureSystemAudio]);
 
   const stopRecording = useCallback(async () => {
     if (!mediaRecorderRef.current) return;
@@ -350,6 +427,25 @@ export function RealtimeTranscription({
             placeholder="Ex: Reunião de Alinhamento - Cliente XYZ"
             value={title}
             onChange={(e) => setTitle(e.target.value)}
+            disabled={isRecording || isProcessing}
+          />
+        </div>
+
+        {/* System Audio Toggle */}
+        <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/50">
+          <div className="space-y-0.5">
+            <Label htmlFor="capture-system-audio" className="flex items-center gap-2">
+              <Monitor className="h-4 w-4" />
+              Capturar áudio do computador
+            </Label>
+            <p className="text-xs text-muted-foreground">
+              Grava o áudio do sistema (reuniões online, vídeos, etc.) junto com o microfone
+            </p>
+          </div>
+          <Switch
+            id="capture-system-audio"
+            checked={captureSystemAudio}
+            onCheckedChange={setCaptureSystemAudio}
             disabled={isRecording || isProcessing}
           />
         </div>
