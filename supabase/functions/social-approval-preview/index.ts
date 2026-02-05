@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
       ? imageUrl // Videos sometimes work as og:image, WhatsApp may show first frame
       : imageUrl;
 
-    const appUrl = `https://elevate-exec-direction.lovable.app/social/approval?token=${token}`;
+    const appUrl = `https://elevate-exec-direction.lovable.app/#/social/approval?token=${token}`;
 
     // Return HTML with OG meta tags that redirects to the actual app
     const html = `<!DOCTYPE html>
@@ -141,7 +141,7 @@ Deno.serve(async (req) => {
 });
 
 function redirectToApp(token: string): Response {
-  const appUrl = `https://elevate-exec-direction.lovable.app/social/approval?token=${token}`;
+  const appUrl = `https://elevate-exec-direction.lovable.app/#/social/approval?token=${token}`;
   return new Response(null, {
     status: 302,
     headers: { Location: appUrl },
