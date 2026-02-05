@@ -1,76 +1,71 @@
 
-Contexto (o que eu já consegui confirmar)
-- O app está gerando a URL de autorização assim (via função `social-instagram-auth`):
-  - `client_id=585124554636683`
-  - `redirect_uri=https://elevate-exec-direction.lovable.app`
-  - `state` contém `{"projectId":"...","flow":"social"}`
-- Você já cadastrou estas Redirect URIs e está com Strict Mode ON:
-  - https://elevate-exec-direction.lovable.app
-  - https://elevate-exec-direction.lovable.app/
-  - https://elevate-exec-direction.lovable.app/social/instagram-callback
-- Mesmo assim, a Meta segue exibindo “URL blocked / redirect URI”.
+Objetivo
+- Resolver o erro “URL bloqueada / O redirecionamento falhou porque o URI usado não está na lista…” que ainda aparece mesmo com o redirect URI raiz cadastrado.
 
-Hipóteses mais prováveis para “URL blocked” com Strict Mode ON (mesmo com URIs cadastradas)
-1) Você cadastrou as URIs no lugar certo, mas faltou cadastrar o domínio em “App Domains” (Configurações > Básico).
-   - Em modo estrito, a Meta pode validar também se o domínio do `redirect_uri` está listado em “App Domains”.
-2) A plataforma “Website” (ou equivalente) não está adicionada/ativada no app (Configurações > Básico > Adicionar Plataforma).
-   - Em alguns setups, sem Website + Site URL, o login acusa URL bloqueada.
-3) Você está editando um app da Meta diferente daquele do `client_id` usado no link (585124554636683).
-   - Parece óbvio, mas é uma causa comum: o link usa um App ID, mas você cadastrou as URIs em outro app.
-4) Diferença sutil de URL normalizada no Strict Mode.
-   - Apesar de você ter cadastrado com e sem “/”, a Meta pode estar comparando com alguma variação (ex.: com `www`, ou com subdomínio diferente, ou normalização interna).
+O que eu confirmei do lado do app (código/back-end)
+- A função que gera o link de autorização está enviando exatamente:
+  - `redirect_uri=https://elevate-exec-direction.lovable.app/` (com barra no final)
+- Logs do back-end confirmam a mesma URL.
+- Portanto, o erro não é “o app está mandando a URL errada”; é o provedor ainda não aceitando esse redirect por alguma configuração adicional.
 
-O que farei em seguida (implementação + validação) — sequência recomendada
-A) Checklist guiado de configuração no painel da Meta (sem mexer no código ainda)
-1. Confirmar que você está no app correto:
-   - Verificar se o “App ID” no painel da Meta é exatamente: 585124554636683
-2. Configurações > Básico:
-   - Em “App Domains”, adicionar exatamente:
-     - elevate-exec-direction.lovable.app
-   - Salvar
-3. Ainda em Básico (ou “Adicionar Plataforma”):
-   - Adicionar plataforma “Website”
-   - Definir “Site URL” como:
-     - https://elevate-exec-direction.lovable.app/
-   - Salvar
-4. Facebook Login > Settings:
-   - Manter Strict Mode ON (ok)
-   - Conferir se “Client OAuth Login” está ON (se existir essa opção)
-   - Em “Valid OAuth Redirect URIs”, manter pelo menos:
-     - https://elevate-exec-direction.lovable.app
-     - https://elevate-exec-direction.lovable.app/
-   - Salvar
-5. Testar de novo o “Conectar” após salvar tudo.
+O que o seu print indica (causa mais provável)
+- A mensagem do pop-up diz explicitamente para verificar se **“login do OAuth do cliente da Web”** está ativado e para adicionar domínios.
+- No painel “Login do Facebook para Empresas” existem chaves diferentes, e não basta só “Client OAuth Login = ON”.
+- Normalmente faltam (ou estão OFF):
+  1) “Login do OAuth na Web” (Web OAuth Login)
+  2) “Domínios permitidos para o SDK do JavaScript” (Allowed Domains for JS SDK)
 
-B) Se ainda falhar: ajuste pequeno no código para eliminar qualquer mismatch de barra final (robustez)
-1. Atualizar a função `supabase/functions/social-instagram-auth/index.ts` para normalizar o redirect_uri:
-   - Garantir que `redirect_uri` sempre seja a versão com barra no final:
+Plano (passo a passo no painel da Meta)
+1) No menu lateral, abra:
+   - “Login do Facebook para Empresas” → “Configurações” (essa mesma tela do print)
+
+2) Na seção “Configurações de OAuth do cliente”, ajustar estes toggles:
+   - “Login no OAuth do cliente” → manter **Sim/ON**
+   - “Login do OAuth na Web” → colocar **Sim/ON**  (este é o que a mensagem do erro pede)
+   - Manter “Usar modo estrito para URIs de redirecionamento” → **Sim/ON** (ok)
+
+3) Na seção “URIs de redirecionamento do OAuth válidos”
+   - Deixar (ou adicionar) exatamente:
      - `https://elevate-exec-direction.lovable.app/`
-   - Usar essa mesma string:
-     - na URL de autorização (dialog/oauth)
-     - na troca de código (oauth/access_token)
-2. Adicionar log explícito na função:
-   - Logar o `redirect_uri` final usado, para confirmar 100% a string enviada.
-3. (Opcional) Exibir no frontend (temporariamente) o domínio de redirect que está sendo usado, para você comparar com o painel.
+   - Dica: garanta que não tenha espaços antes/depois e que esteja como HTTPS.
 
-C) Testes end-to-end (o que validar)
-1. Na aba Integrações (UNV Social) clicar “Conectar Instagram”
-2. Confirmar que a página da Meta NÃO mostra mais “URL blocked”
-3. Completar autorização com uma conta que tenha Instagram Business/Creator e Página vinculada
-4. Confirmar que:
-   - abre /social/instagram-callback
-   - aparece sucesso
-   - volta e marca “Conectado” com @username
+4) Na seção “Domínios permitidos para o SDK do JavaScript”
+   - Adicionar (um por linha, sem https, sem barras):
+     - `elevate-exec-direction.lovable.app`
+   - Se o painel aceitar apenas domínio “nu”, use exatamente esse formato.
 
-D) Se mesmo após A+B persistir: coleta objetiva para fechar diagnóstico
-- Capturar 2 informações (sem suposições):
-  1) Print do erro completo (linha que mostra o `redirect_uri` que a Meta reclama)
-  2) Confirmar o App ID do app onde você cadastrou as URIs (tem que bater com 585124554636683)
-- Com isso eu consigo dizer exatamente se é app errado, domínio não permitido, ou mismatch de URL.
+5) Salvar
+   - Clique em “Salvar alterações” (canto inferior direito)
 
-Arquivos que eu alteraria na etapa B (se necessário)
-- `supabase/functions/social-instagram-auth/index.ts` (normalizar `redirect_uri` com barra final + logs)
-- (Nenhum outro arquivo é obrigatório para esse ajuste; o roteamento do callback já está correto pelo `flow: "social"`)
+6) Teste end-to-end no app
+   - Voltar no UNV Social → Integrações → “Conectar Instagram”
+   - Confirmar que o pop-up da Meta não mostra mais “URL bloqueada”
 
-Observação importante (para evitar confusão)
-- Você NÃO precisa cadastrar `.../social/instagram-callback` como redirect no provedor se o nosso fluxo usa HashRouter com handler na raiz. O mais confiável é cadastrar só a raiz do domínio (com e sem /), e manter o handler cuidando do redirecionamento interno.
+Se ainda falhar (plano de diagnóstico rápido e objetivo)
+A) Confirmar o que a Meta considera como “URI usado”
+- No pop-up de erro, normalmente dá para ver o domínio/URI que ela rejeitou (às vezes aparece no texto ou na URL da barra do navegador).
+- Vamos comparar com o que o app realmente está enviando (que já medi via back-end).
+
+B) Se houver discrepância
+- Possibilidades:
+  - Você está abrindo o fluxo a partir de um domínio diferente (ex.: preview) em vez do publicado
+  - Existe outra parte do frontend gerando link OAuth sem passar pela função (um link “antigo” no código)
+- Aí eu implemento um ajuste no frontend para:
+  - Exibir (temporariamente) o “authUrl” gerado na tela, para você comparar
+  - Registrar no console qual authUrl está sendo aberto, para eliminar qualquer dúvida
+
+Critério de sucesso
+- A janela da Meta deve abrir o consentimento sem “URL bloqueada” e, ao finalizar, redirecionar para a raiz do app (que depois roteia internamente para o callback do Social).
+
+Notas importantes (para evitar armadilhas comuns)
+- “Valid OAuth Redirect URIs” aceita URL completa (com https).
+- “Domínios permitidos para o SDK do JavaScript” normalmente exige apenas domínio (sem protocolo), e é uma validação separada.
+- Em “Login para Empresas”, “Client OAuth Login ON” não substitui “Login do OAuth na Web ON”; ambos podem ser necessários.
+
+O que preciso de você (para executar este plano com precisão)
+- Após fazer os passos 2–5, se ainda aparecer erro:
+  1) Mande um print mostrando:
+     - “Login do OAuth na Web” = Sim/ON
+     - “Domínios permitidos para o SDK do JavaScript” preenchido
+     - “URIs de redirecionamento do OAuth válidos” com a URL raiz
+  2) Mande também a URL completa que aparece na barra do navegador quando o pop-up mostra “URL bloqueada” (se estiver visível).
