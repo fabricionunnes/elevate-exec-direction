@@ -4,8 +4,12 @@ import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight, Mic, List } from "lucide-react";
 import { toast } from "sonner";
+import { useCrmTranscriptions } from "@/hooks/useCrmTranscriptions";
+import { TranscriptionsList } from "@/components/crm/transcriptions/TranscriptionsList";
+import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeTranscription";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
@@ -25,6 +29,11 @@ export const LeadTranscriptionTab = ({
   const [isGenerating, setIsGenerating] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [activeTab, setActiveTab] = useState("list");
+
+  const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions({
+    leadId,
+  });
 
   const handleGenerateBriefing = async () => {
     if (!transcription.trim()) {
@@ -127,110 +136,151 @@ export const LeadTranscriptionTab = ({
 
   return (
     <div className="p-4 space-y-6 overflow-auto h-full">
-      {/* Input Section */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2 text-lg">
-            <FileText className="h-5 w-5 text-primary" />
-            Transcrição da Reunião
-          </CardTitle>
-          <CardDescription>
-            Cole a transcrição completa da reunião para gerar um briefing automaticamente
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="transcription">Transcrição</Label>
-            <Textarea
-              id="transcription"
-              placeholder="Cole aqui a transcrição da reunião..."
-              value={transcription}
-              onChange={(e) => setTranscription(e.target.value)}
-              className="min-h-[200px] resize-none font-mono text-sm"
-            />
-            <p className="text-xs text-muted-foreground">
-              {transcription.length > 0 
-                ? `${transcription.split(/\s+/).filter(Boolean).length} palavras` 
-                : "Dica: Você pode usar ferramentas como Otter.ai, Google Meet ou Zoom para gerar transcrições automáticas"}
-            </p>
-          </div>
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="list" className="gap-2">
+            <List className="h-4 w-4" />
+            Transcrições ({transcriptions.length})
+          </TabsTrigger>
+          <TabsTrigger value="record" className="gap-2">
+            <Mic className="h-4 w-4" />
+            Gravar
+          </TabsTrigger>
+          <TabsTrigger value="briefing" className="gap-2">
+            <Sparkles className="h-4 w-4" />
+            Gerar Briefing
+          </TabsTrigger>
+        </TabsList>
 
-          <Button
-            onClick={handleGenerateBriefing}
-            disabled={isGenerating || !transcription.trim()}
-            className="w-full"
-          >
-            {isGenerating ? (
-              <>
-                <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                Gerando briefing...
-              </>
-            ) : (
-              <>
-                <Sparkles className="h-4 w-4 mr-2" />
-                Gerar Briefing com IA
-              </>
-            )}
-          </Button>
-        </CardContent>
-      </Card>
+        {/* Transcriptions List */}
+        <TabsContent value="list" className="mt-4">
+          <TranscriptionsList
+            transcriptions={transcriptions}
+            loading={loading}
+            showLeadLink={false}
+            onDelete={deleteTranscription}
+          />
+        </TabsContent>
 
-      {/* Generated Briefing Section */}
-      {generatedBriefing && (
-        <Card className="border-primary/20 bg-primary/5">
-          <CardHeader>
-            <div className="flex items-center justify-between">
+        {/* Record New */}
+        <TabsContent value="record" className="mt-4">
+          <RealtimeTranscription
+            leadId={leadId}
+            onTranscriptionSaved={() => {
+              refetch();
+              setActiveTab("list");
+            }}
+          />
+        </TabsContent>
+
+        {/* Generate Briefing */}
+        <TabsContent value="briefing" className="mt-4 space-y-4">
+          {/* Input Section */}
+          <Card>
+            <CardHeader>
               <CardTitle className="flex items-center gap-2 text-lg">
-                <Sparkles className="h-5 w-5 text-primary" />
-                Briefing Gerado
+                <FileText className="h-5 w-5 text-primary" />
+                Transcrição da Reunião
               </CardTitle>
+              <CardDescription>
+                Cole a transcrição completa da reunião para gerar um briefing automaticamente
+              </CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="transcription">Transcrição</Label>
+                <Textarea
+                  id="transcription"
+                  placeholder="Cole aqui a transcrição da reunião..."
+                  value={transcription}
+                  onChange={(e) => setTranscription(e.target.value)}
+                  className="min-h-[200px] resize-none font-mono text-sm"
+                />
+                <p className="text-xs text-muted-foreground">
+                  {transcription.length > 0 
+                    ? `${transcription.split(/\s+/).filter(Boolean).length} palavras` 
+                    : "Dica: Você pode usar ferramentas como Tactiq, Otter.ai ou Google Meet para gerar transcrições"}
+                </p>
+              </div>
+
               <Button
-                variant="ghost"
-                size="sm"
-                onClick={handleCopyBriefing}
-                className="h-8"
+                onClick={handleGenerateBriefing}
+                disabled={isGenerating || !transcription.trim()}
+                className="w-full"
               >
-                {copied ? (
-                  <Check className="h-4 w-4 text-green-500" />
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando briefing...
+                  </>
                 ) : (
-                  <Copy className="h-4 w-4" />
+                  <>
+                    <Sparkles className="h-4 w-4 mr-2" />
+                    Gerar Briefing com IA
+                  </>
                 )}
               </Button>
-            </div>
-            <CardDescription>
-              Revise o briefing antes de salvar no campo de negócio
-            </CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="space-y-2">
-              <Textarea
-                value={generatedBriefing}
-                onChange={(e) => setGeneratedBriefing(e.target.value)}
-                className="min-h-[250px] resize-none"
-              />
-            </div>
+            </CardContent>
+          </Card>
 
-            <Button
-              onClick={handleSaveBriefing}
-              disabled={isSaving}
-              className="w-full"
-              variant="default"
-            >
-              {isSaving ? (
-                <>
-                  <Loader2 className="h-4 w-4 mr-2 animate-spin" />
-                  Salvando...
-                </>
-              ) : (
-                <>
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                  Salvar no Briefing do Negócio
-                </>
-              )}
-            </Button>
-          </CardContent>
-        </Card>
-      )}
+          {/* Generated Briefing Section */}
+          {generatedBriefing && (
+            <Card className="border-primary/20 bg-primary/5">
+              <CardHeader>
+                <div className="flex items-center justify-between">
+                  <CardTitle className="flex items-center gap-2 text-lg">
+                    <Sparkles className="h-5 w-5 text-primary" />
+                    Briefing Gerado
+                  </CardTitle>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={handleCopyBriefing}
+                    className="h-8"
+                  >
+                    {copied ? (
+                      <Check className="h-4 w-4 text-green-500" />
+                    ) : (
+                      <Copy className="h-4 w-4" />
+                    )}
+                  </Button>
+                </div>
+                <CardDescription>
+                  Revise o briefing antes de salvar no campo de negócio
+                </CardDescription>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <div className="space-y-2">
+                  <Textarea
+                    value={generatedBriefing}
+                    onChange={(e) => setGeneratedBriefing(e.target.value)}
+                    className="min-h-[250px] resize-none"
+                  />
+                </div>
+
+                <Button
+                  onClick={handleSaveBriefing}
+                  disabled={isSaving}
+                  className="w-full"
+                  variant="default"
+                >
+                  {isSaving ? (
+                    <>
+                      <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                      Salvando...
+                    </>
+                  ) : (
+                    <>
+                      <ArrowRight className="h-4 w-4 mr-2" />
+                      Salvar no Briefing do Negócio
+                    </>
+                  )}
+                </Button>
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+      </Tabs>
     </div>
   );
 };

@@ -160,6 +160,7 @@ import {
   CRMReportsPage,
   CRMSettingsPage,
   CRMInboxPage,
+  CRMTranscriptionsPage,
 } from "./pages/crm";
 
 // UNV Social Pages
@@ -331,6 +332,7 @@ const App = () => (
               <Route path="leads/:id" element={<CRMLeadDetailPage />} />
               <Route path="activities" element={<CRMActivitiesPage />} />
               <Route path="inbox" element={<CRMInboxPage />} />
+              <Route path="transcriptions" element={<CRMTranscriptionsPage />} />
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
             </Route>
