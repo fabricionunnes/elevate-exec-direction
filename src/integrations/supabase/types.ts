@@ -19691,6 +19691,7 @@ export type Database = {
           connected_at: string | null
           connected_by: string | null
           created_at: string | null
+          facebook_page_id: string | null
           id: string
           instagram_user_id: string | null
           instagram_username: string | null
@@ -19705,6 +19706,7 @@ export type Database = {
           connected_at?: string | null
           connected_by?: string | null
           created_at?: string | null
+          facebook_page_id?: string | null
           id?: string
           instagram_user_id?: string | null
           instagram_username?: string | null
@@ -19719,6 +19721,7 @@ export type Database = {
           connected_at?: string | null
           connected_by?: string | null
           created_at?: string | null
+          facebook_page_id?: string | null
           id?: string
           instagram_user_id?: string | null
           instagram_username?: string | null
