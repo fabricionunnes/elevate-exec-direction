@@ -1,4 +1,5 @@
 import { createClient } from "npm:@supabase/supabase-js@2";
+import { createCanvas, loadImage as canvasLoadImage } from "https://deno.land/x/canvas@v1.4.2/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -21,6 +22,67 @@ async function fetchWithTimeout(
     });
   } finally {
     clearTimeout(id);
+  }
+}
+
+// Overlay the logo programmatically onto the generated image
+async function applyLogoOverlay(
+  imageBuffer: Uint8Array,
+  logoUrl: string,
+  targetW: number,
+  targetH: number
+): Promise<Uint8Array> {
+  try {
+    console.log("Applying logo overlay from:", logoUrl);
+    
+    // Load the generated image
+    const baseImage = await canvasLoadImage(imageBuffer);
+    
+    // Fetch and load the logo
+    const logoResponse = await fetch(logoUrl);
+    if (!logoResponse.ok) {
+      console.error("Failed to fetch logo:", logoResponse.status);
+      return imageBuffer; // Return original if logo fetch fails
+    }
+    const logoBuffer = new Uint8Array(await logoResponse.arrayBuffer());
+    const logoImage = await canvasLoadImage(logoBuffer);
+    
+    // Create canvas with target dimensions
+    const canvas = createCanvas(targetW, targetH);
+    const ctx = canvas.getContext("2d");
+    
+    // Draw the base image (fit to canvas)
+    ctx.drawImage(baseImage, 0, 0, targetW, targetH);
+    
+    // Calculate logo size (max 15% of image width, positioned in bottom-right safe zone)
+    const maxLogoWidth = targetW * 0.15;
+    const logoAspect = logoImage.width() / logoImage.height();
+    let logoW = Math.min(logoImage.width(), maxLogoWidth);
+    let logoH = logoW / logoAspect;
+    
+    // If logo is too tall, resize by height instead
+    const maxLogoHeight = targetH * 0.1;
+    if (logoH > maxLogoHeight) {
+      logoH = maxLogoHeight;
+      logoW = logoH * logoAspect;
+    }
+    
+    // Position: bottom-right corner with padding (safe zone)
+    const padding = targetW * 0.05; // 5% padding
+    const logoX = targetW - logoW - padding;
+    const logoY = targetH - logoH - padding;
+    
+    // Draw the logo
+    ctx.drawImage(logoImage, logoX, logoY, logoW, logoH);
+    
+    // Export as PNG buffer
+    const resultBuffer = canvas.toBuffer("image/png");
+    console.log("Logo overlay applied successfully");
+    
+    return new Uint8Array(resultBuffer);
+  } catch (error) {
+    console.error("Error applying logo overlay:", error);
+    return imageBuffer; // Return original if overlay fails
   }
 }
 
@@ -81,23 +143,20 @@ Deno.serve(async (req) => {
     }
 
     // Build enhanced prompt with brand context
-    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, includeLogoPref && logoUrl, referenceImageUrl);
+    // NOTE: We do NOT pass the logo to the AI - logos are applied via programmatic overlay
+    // This ensures the EXACT logo is used, not an AI-interpreted version
+    const shouldApplyLogoOverlay = includeLogoPref && logoUrl;
+    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, false, referenceImageUrl);
 
     console.log("Generating image with prompt:", enhancedPrompt);
-    console.log("Logo URL for inclusion:", includeLogoPref && logoUrl ? logoUrl : "none");
+    console.log("Logo will be applied via overlay:", shouldApplyLogoOverlay ? logoUrl : "none");
     console.log("Reference image URL:", referenceImageUrl || "none");
     console.log("Carousel count:", carouselCount || 1);
     console.log("Carousel connected:", carouselConnected || false);
 
-    // Build the message content - include logo image if requested
+    // Build the message content - only include reference image, NOT the logo
+    // Logo is applied programmatically AFTER generation for pixel-perfect accuracy
     const messageImages: { type: string; image_url: { url: string } }[] = [];
-    
-    if (includeLogoPref && logoUrl) {
-      messageImages.push({
-        type: "image_url",
-        image_url: { url: logoUrl }
-      });
-    }
     
     if (referenceImageUrl) {
       messageImages.push({
@@ -121,8 +180,9 @@ Deno.serve(async (req) => {
         if (carouselConnected) {
           // For connected carousel, generate panoramic slices
           // Reference image only on first slide for connected carousels
+          // NOTE: Do NOT pass logo to AI - it will be applied via overlay
           const useRefImage = i === 0 ? referenceImageUrl : null;
-          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, includeLogoPref && logoUrl, useRefImage);
+          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, false, useRefImage);
         } else {
           // For separate images, add variation instruction
           // Reference image only on first slide
@@ -134,11 +194,8 @@ Deno.serve(async (req) => {
           }
         }
 
-        // Only include reference image on the first slide
+        // Only include reference image on the first slide - NOT the logo (logo applied via overlay)
         const slideImages: { type: string; image_url: { url: string } }[] = [];
-        if (includeLogoPref && logoUrl) {
-          slideImages.push({ type: "image_url", image_url: { url: logoUrl } });
-        }
         if (i === 0 && referenceImageUrl) {
           slideImages.push({ type: "image_url", image_url: { url: referenceImageUrl } });
         }
@@ -187,7 +244,12 @@ Deno.serve(async (req) => {
         if (imageData) {
           const base64Data = imageData.split(",")[1];
           const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-          const imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
+          let imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
+          
+          // Apply logo overlay if requested (using the ACTUAL logo, not AI-generated)
+          if (shouldApplyLogoOverlay && logoUrl) {
+            imageBuffer = await applyLogoOverlay(imageBuffer, logoUrl, targetW, targetH);
+          }
           
           const fileName = `${projectId}/ai-generated/carousel-${Date.now()}-${i + 1}.png`;
           
@@ -311,7 +373,12 @@ Deno.serve(async (req) => {
     const base64Data = imageData.split(",")[1];
     const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
     const { width: targetW, height: targetH } = getTargetDimensions(format);
-    const imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
+    let imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
+    
+    // Apply logo overlay if requested (using the ACTUAL logo, not AI-generated)
+    if (shouldApplyLogoOverlay && logoUrl) {
+      imageBuffer = await applyLogoOverlay(imageBuffer, logoUrl, targetW, targetH);
+    }
     
     const fileName = `${projectId}/ai-generated/${Date.now()}.png`;
     
