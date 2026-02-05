@@ -6,6 +6,24 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+async function fetchWithTimeout(
+  input: RequestInfo | URL,
+  init: RequestInit,
+  timeoutMs: number
+): Promise<Response> {
+  const controller = new AbortController();
+  const id = setTimeout(() => controller.abort(), timeoutMs);
+
+  try {
+    return await fetch(input, {
+      ...init,
+      signal: controller.signal,
+    });
+  } finally {
+    clearTimeout(id);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
@@ -130,7 +148,7 @@ Deno.serve(async (req) => {
           : carouselPrompt;
 
         // Use PRO model for higher quality
-        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
             Authorization: `Bearer ${lovableApiKey}`,
@@ -139,9 +157,9 @@ Deno.serve(async (req) => {
           body: JSON.stringify({
             model: "google/gemini-3-pro-image-preview",
             messages: [{ role: "user", content: carouselMessageContent }],
-            modalities: ["image", "text"]
+            modalities: ["image", "text"],
           }),
-        });
+        }, 60000);
 
         if (!aiResponse.ok) {
           const errorText = await aiResponse.text();
@@ -218,7 +236,7 @@ Deno.serve(async (req) => {
     }
 
     // Call Lovable AI for image generation - using PRO model for higher quality
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+    const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         Authorization: `Bearer ${lovableApiKey}`,
@@ -229,12 +247,12 @@ Deno.serve(async (req) => {
         messages: [
           {
             role: "user",
-            content: messageContent
-          }
+            content: messageContent,
+          },
         ],
-        modalities: ["image", "text"]
+        modalities: ["image", "text"],
       }),
-    });
+    }, 60000);
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
@@ -339,6 +357,17 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error generating image:", error);
+
+    // Surface timeout as a clear error (avoids generic "Load failed" on the client)
+    if (error instanceof Error && error.name === "AbortError") {
+      return new Response(
+        JSON.stringify({
+          error: "Tempo limite ao gerar a imagem. Tente novamente (ou simplifique o prompt).",
+        }),
+        { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const errorMessage = error instanceof Error ? error.message : "Internal error";
     return new Response(
       JSON.stringify({ error: errorMessage }),
