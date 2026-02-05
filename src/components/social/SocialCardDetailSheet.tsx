@@ -42,6 +42,7 @@ import { CardChecklistProgress } from "./CardChecklistProgress";
 import { CardTagSelector } from "./CardTagSelector";
 import { CardAttachments } from "./CardAttachments";
 import { CardColorPicker } from "./CardColorPicker";
+import { CardSubtasks } from "./CardSubtasks";
 
 interface Stage {
   id: string;
@@ -645,7 +646,19 @@ export const SocialCardDetailSheet = ({
 
           <ScrollArea className="flex-1 mt-4">
             {/* Checklist Tab */}
-            <TabsContent value="checklist" className="mt-0 pr-4">
+            <TabsContent value="checklist" className="mt-0 pr-4 space-y-6">
+              {/* Subtasks section for task cards */}
+              {card.card_type === "task" && (
+                <div className="space-y-3">
+                  <Label className="flex items-center gap-2">
+                    <ListChecks className="h-4 w-4" />
+                    Subtarefas
+                  </Label>
+                  <CardSubtasks cardId={card.id} disabled={card.is_locked} />
+                </div>
+              )}
+              
+              {/* Stage checklist */}
               <CardChecklistProgress
                 cardId={card.id}
                 stageId={card.stage_id}
