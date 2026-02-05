@@ -126,6 +126,7 @@ serve(async (req) => {
           ? [{ type: "text", text: carouselPrompt }, ...slideImages]
           : carouselPrompt;
 
+        // Use PRO model for higher quality
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
           method: "POST",
           headers: {
@@ -133,7 +134,7 @@ serve(async (req) => {
             "Content-Type": "application/json",
           },
           body: JSON.stringify({
-            model: "google/gemini-2.5-flash-image",
+            model: "google/gemini-3-pro-image-preview",
             messages: [{ role: "user", content: carouselMessageContent }],
             modalities: ["image", "text"]
           }),
@@ -213,7 +214,7 @@ serve(async (req) => {
       );
     }
 
-    // Call Lovable AI for image generation
+    // Call Lovable AI for image generation - using PRO model for higher quality
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -221,7 +222,7 @@ serve(async (req) => {
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-2.5-flash-image",
+        model: "google/gemini-3-pro-image-preview",
         messages: [
           {
             role: "user",
@@ -371,6 +372,38 @@ async function resizeAndCropToExact(
   return await cropped.encode();
 }
 
+// Extract brand colors from profile/briefing
+function extractBrandColors(profile: any, briefing: any): string {
+  const colors: string[] = [];
+  
+  // Try to get colors from profile
+  if (profile?.brand_colors) {
+    if (Array.isArray(profile.brand_colors)) {
+      colors.push(...profile.brand_colors);
+    } else if (typeof profile.brand_colors === 'string') {
+      colors.push(profile.brand_colors);
+    }
+  }
+  
+  // Try to get from brand_identity if it mentions colors
+  if (profile?.brand_identity && typeof profile.brand_identity === 'string') {
+    const colorMatches = profile.brand_identity.match(/#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgb\([^)]+\)|rgba\([^)]+\)/g);
+    if (colorMatches) colors.push(...colorMatches);
+  }
+  
+  // Check briefing for color info
+  if (briefing?.brand_perception && typeof briefing.brand_perception === 'string') {
+    const colorMatches = briefing.brand_perception.match(/#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgb\([^)]+\)|rgba\([^)]+\)/g);
+    if (colorMatches) colors.push(...colorMatches);
+  }
+  
+  if (colors.length > 0) {
+    return colors.slice(0, 5).join(", ");
+  }
+  
+  return "";
+}
+
 function buildEnhancedPrompt(
   basePrompt: string, 
   briefing: any, 
@@ -396,7 +429,10 @@ function buildEnhancedPrompt(
     dimensions = "1080x1350";
   }
 
-  let prompt = `CRITICAL: Generate an image with EXACT dimensions ${dimensions} pixels and ${aspectRatio} aspect ratio.
+  // Extract brand colors
+  const brandColors = extractBrandColors(profile, briefing);
+
+  let prompt = `CRITICAL: Generate a HIGH-QUALITY professional image with EXACT dimensions ${dimensions} pixels and ${aspectRatio} aspect ratio.
 
 This is for Instagram ${format || "feed post"}.
 The image MUST be portrait orientation (taller than wide) with exact ${aspectRatio} ratio.
@@ -416,67 +452,101 @@ Visual Request: ${basePrompt}
     prompt += `Brand personality: ${briefing.brand_perception}\n`;
   }
 
-  // Add style guidelines with HIGH QUALITY emphasis
-  prompt += `
-IMAGE QUALITY REQUIREMENTS (CRITICAL):
-- Generate in the HIGHEST possible resolution and quality
-- Ultra-sharp details, no blur or artifacts
-- Professional-grade photography/design quality
-- Rich colors with proper contrast and saturation
-- Clean edges and precise details
+  // Add brand colors if available
+  if (brandColors) {
+    prompt += `
+BRAND COLOR PALETTE (MUST USE):
+- Use these exact brand colors: ${brandColors}
+- The design should primarily use these colors
+- Maintain color harmony with the brand palette
+`;
+  }
 
-Style guidelines:
-- Modern, clean, professional design
-- Visually stunning and eye-catching
-- Suitable for premium social media marketing
-- Clear focal point and excellent composition
-- Studio-quality lighting and shadows
+  // Add style guidelines with MAXIMUM QUALITY emphasis
+  prompt += `
+============================================
+IMAGE QUALITY REQUIREMENTS (ABSOLUTELY CRITICAL):
+============================================
+- Generate at the MAXIMUM possible resolution and quality
+- ULTRA-SHARP details - no blur, no pixelation, no artifacts
+- PROFESSIONAL studio-grade photography/design quality
+- Rich, vibrant colors with proper contrast and saturation
+- CLEAN, CRISP edges and precise details
+- NO compression artifacts, NO noise, NO grain
+- Render ALL elements with PERFECT clarity
+- Text (if any) must be CRYSTAL CLEAR and razor-sharp - NO pixelation or blur on text
+- 8K-level detail quality
+- Professional lighting with realistic shadows and highlights
+
+============================================
+SAFE ZONE - LOGO & ELEMENT POSITIONING (CRITICAL):
+============================================
+- The image will be cropped from a square to ${aspectRatio} format
+- Keep ALL important elements in the ABSOLUTE CENTER 50% of the image
+- Leave AT LEAST 25% padding from ALL edges (top, bottom, left, right)
+- NEVER place logos, text, faces, or important elements anywhere near the edges
+- The logo (if included) MUST be positioned in the EXACT CENTER or in the CENTER of the safe zone
+- NO important elements should be cut off when cropped
 `;
 
   if (includeLogo) {
     prompt += `
-LOGO INCLUSION INSTRUCTIONS:
+============================================
+LOGO INCLUSION INSTRUCTIONS (CRITICAL):
+============================================
 - I am providing the brand logo image as a reference
-- You MUST incorporate this exact logo into the generated image
-- Place the logo in a subtle but visible position (corner or appropriate area)
-- The logo should be proportionally sized (not too large, not too small)
-- Maintain the logo's original colors and proportions
-- The logo should blend naturally with the overall design
+- You MUST incorporate this EXACT logo into the generated image
+- POSITION THE LOGO IN THE CENTER OF THE IMAGE - not in corners!
+- The logo must be FULLY VISIBLE and COMPLETE - no cropping
+- The logo should be clearly visible and proportionally sized
+- Maintain the logo's original colors, proportions, and details EXACTLY
+- The logo must remain SHARP and HIGH QUALITY - no blur or pixelation
+- Integrate the logo naturally without distorting it
+- The logo is the brand identity - it MUST be perfect
 `;
   }
 
   if (referenceImageUrl) {
     prompt += `
+============================================
 REFERENCE IMAGE INSTRUCTIONS:
+============================================
 - I am providing a reference image that MUST be incorporated into this design
 - The subject from the reference image should appear prominently in the generated image
+- Position the reference subject in the CENTER SAFE ZONE
 - Maintain the key visual features and recognizable elements of the reference subject
 - Integrate the reference subject naturally into the overall composition
 - The reference subject should be the focal point or a key element of the image
 `;
   }
 
-prompt += `
-SAFE ZONE - AVOID CROPPING (CRITICAL):
-- The image will be cropped from a square to ${aspectRatio} format
-- Keep ALL important elements (text, subjects, logos) in the CENTER 70% of the image
-- Leave generous margins on all edges - at least 15% padding from each edge
-- NEVER place text or important elements near the top, bottom, left, or right edges
-- Any text should be SHORT and centered in the safe zone
-- If you include text, make sure it is COMPLETE and fully visible within the safe zone
-
-CRITICAL LANGUAGE REQUIREMENTS:
-- If ANY text appears in the image, it MUST be in 100% correct Brazilian Portuguese
+  prompt += `
+============================================
+LANGUAGE & TEXT REQUIREMENTS (ABSOLUTELY CRITICAL):
+============================================
+- If ANY text appears in the image, it MUST be in 100% CORRECT Brazilian Portuguese
+- VERIFY EVERY WORD for correct spelling before generating
+- Common words that MUST be spelled correctly:
+  * "crescimento" (NOT "cresiemento" or "crecimento")
+  * "estrutura" (NOT "estructura")
+  * "negócio" (NOT "negocio" without accent)
+  * "você" (NOT "voce" without accent)
+  * "é" (NOT "e" without accent when it's the verb)
+  * "não" (NOT "nao" without tilde)
 - Double-check all spelling, grammar, and accents before generating
 - Common Portuguese accents that MUST be correct: á, é, í, ó, ú, ã, õ, ê, â, ç
 - Do NOT generate text with spelling errors, wrong accents, or grammatical mistakes
-- If unsure about spelling, prefer NOT including text rather than including incorrect text
+- If UNSURE about any spelling, DO NOT include text - leave space for text overlay later
+- TRIPLE CHECK any Portuguese text for correctness
 
-IMPORTANT:
-- PREFER creating images WITHOUT text - let the design speak for itself
-- Only include text if absolutely essential to the visual concept
+============================================
+FINAL INSTRUCTIONS:
+============================================
+- STRONGLY PREFER creating images WITHOUT text - let the design speak for itself
+- If text is absolutely essential, keep it to 1-3 words maximum, CENTERED and LARGE
 - Create a visually striking image that works as a background for text overlays added later
-- Ultra high resolution, professional quality
+- MAXIMUM resolution, PROFESSIONAL quality, STUDIO-GRADE output
+- Every pixel must be perfect
 `;
 
   return prompt;
@@ -497,7 +567,10 @@ function buildConnectedCarouselPrompt(
   const startX = (imageNumber - 1) * sliceWidth;
   const endX = imageNumber * sliceWidth;
 
-  let prompt = `CRITICAL: Generate a PANORAMIC IMAGE that represents slice ${imageNumber} of ${totalImages} of a continuous scene.
+  // Extract brand colors
+  const brandColors = extractBrandColors(profile, briefing);
+
+  let prompt = `CRITICAL: Generate a HIGH-QUALITY PANORAMIC IMAGE that represents slice ${imageNumber} of ${totalImages} of a continuous scene.
 
 This is for an Instagram CONNECTED CAROUSEL - where images flow seamlessly from one to the next.
 
@@ -523,53 +596,75 @@ Visual Request: ${basePrompt}
     prompt += `Brand personality: ${briefing.brand_perception}\n`;
   }
 
+  // Add brand colors if available
+  if (brandColors) {
+    prompt += `
+BRAND COLOR PALETTE (MUST USE):
+- Use these exact brand colors: ${brandColors}
+- The design should primarily use these colors
+`;
+  }
+
   prompt += `
-IMAGE QUALITY REQUIREMENTS (CRITICAL):
-- Generate in the HIGHEST possible resolution and quality
-- Ultra-sharp details, no blur or artifacts
-- Professional-grade photography/design quality
+============================================
+IMAGE QUALITY REQUIREMENTS (ABSOLUTELY CRITICAL):
+============================================
+- Generate at the MAXIMUM possible resolution and quality
+- ULTRA-SHARP details - no blur, no pixelation, no artifacts
+- PROFESSIONAL studio-grade photography/design quality
+- Rich, vibrant colors with proper contrast
+- CLEAN, CRISP edges and precise details
+- NO compression artifacts, NO noise
+- 8K-level detail quality
 
+============================================
 SAFE ZONE - AVOID CROPPING:
-- Keep ALL important elements in the CENTER 70% of the image
-- Leave generous margins on all edges
+============================================
+- Keep ALL important elements in the CENTER 50% of the image
+- Leave AT LEAST 25% padding from ALL edges
 - NEVER place text or important elements near the edges
-
-Style guidelines:
-- Modern, clean, professional design
-- Visually stunning and eye-catching
-- Suitable for premium social media marketing
-- Clear focal point with natural continuation to adjacent slices
 `;
 
   if (includeLogo && imageNumber === totalImages) {
     prompt += `
+============================================
 LOGO INCLUSION (LAST SLIDE ONLY):
-- Include the brand logo in a subtle position on this final slice
-- The logo should be proportionally sized and blend naturally
+============================================
+- Include the brand logo in the CENTER of this final slice
+- The logo should be clearly visible and proportionally sized
+- Maintain the logo's original colors and proportions EXACTLY
+- The logo must be FULLY VISIBLE - no cropping
 `;
   }
 
   if (referenceImageUrl) {
     prompt += `
+============================================
 REFERENCE IMAGE INSTRUCTIONS:
+============================================
 - I am providing a reference image that should be incorporated into this design
-- The reference subject should appear naturally in the scene
+- The reference subject should appear naturally in the scene, positioned in the safe zone
 - Maintain the subject's key features while integrating into the overall composition
 `;
   }
 
-prompt += `
-CRITICAL LANGUAGE REQUIREMENTS:
-- If ANY text appears in the image, it MUST be in 100% correct Brazilian Portuguese
-- Double-check all spelling, grammar, and accents (á, é, í, ó, ú, ã, õ, ê, â, ç)
-- Do NOT generate text with spelling errors or wrong accents
-- If unsure about spelling, prefer NOT including text
+  prompt += `
+============================================
+LANGUAGE REQUIREMENTS (CRITICAL):
+============================================
+- If ANY text appears, it MUST be in 100% CORRECT Brazilian Portuguese
+- VERIFY EVERY WORD for correct spelling
+- "crescimento" NOT "cresiemento"
+- If unsure about spelling, DO NOT include text
+- Double-check all accents: á, é, í, ó, ú, ã, õ, ê, â, ç
 
-IMPORTANT:
-- PREFER creating images WITHOUT text - let the design speak for itself
+============================================
+FINAL INSTRUCTIONS:
+============================================
+- PREFER creating images WITHOUT text
 - Only include text if absolutely essential, and keep it SHORT and CENTERED
 - Create a visually striking slice that connects seamlessly with adjacent slices
-- Ultra high resolution, professional quality
+- MAXIMUM resolution, PROFESSIONAL quality
 `;
 
   return prompt;
