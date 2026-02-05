@@ -18554,10 +18554,49 @@ export type Database = {
           },
         ]
       }
+      social_approval_contacts: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          name: string | null
+          phone: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          phone: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          name?: string | null
+          phone?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_approval_contacts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_approval_links: {
         Row: {
           access_token: string
           card_id: string
+          contact_id: string | null
           created_at: string | null
           expires_at: string | null
           id: string
@@ -18569,6 +18608,7 @@ export type Database = {
         Insert: {
           access_token?: string
           card_id: string
+          contact_id?: string | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
@@ -18580,6 +18620,7 @@ export type Database = {
         Update: {
           access_token?: string
           card_id?: string
+          contact_id?: string | null
           created_at?: string | null
           expires_at?: string | null
           id?: string
@@ -18594,6 +18635,13 @@ export type Database = {
             columns: ["card_id"]
             isOneToOne: false
             referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_approval_links_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "social_approval_contacts"
             referencedColumns: ["id"]
           },
         ]
@@ -19195,6 +19243,7 @@ export type Database = {
           is_active: boolean | null
           name: string
           project_id: string
+          required_approvals: number
           updated_at: string | null
         }
         Insert: {
@@ -19203,6 +19252,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           project_id: string
+          required_approvals?: number
           updated_at?: string | null
         }
         Update: {
@@ -19211,6 +19261,7 @@ export type Database = {
           is_active?: boolean | null
           name?: string
           project_id?: string
+          required_approvals?: number
           updated_at?: string | null
         }
         Relationships: [
@@ -19225,6 +19276,7 @@ export type Database = {
       }
       social_content_cards: {
         Row: {
+          approval_count: number
           assigned_to: string | null
           board_id: string
           briefing_aligned: boolean | null
@@ -19256,6 +19308,7 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          approval_count?: number
           assigned_to?: string | null
           board_id: string
           briefing_aligned?: boolean | null
@@ -19287,6 +19340,7 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          approval_count?: number
           assigned_to?: string | null
           board_id?: string
           briefing_aligned?: boolean | null

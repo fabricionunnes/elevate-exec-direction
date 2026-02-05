@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Instagram, MessageSquare, Check, X, ExternalLink, Lock } from "lucide-react";
+import { Loader2, Save, Instagram, MessageSquare, Check, ExternalLink, Lock, Plus, Trash2, Users } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
@@ -28,8 +28,16 @@ interface InstagramAccount {
   is_connected: boolean;
 }
 
+interface ApprovalContact {
+  id: string;
+  phone: string;
+  name: string;
+  is_active: boolean;
+  isNew?: boolean;
+}
+
 export const SocialSettingsPage = () => {
-  const { project } = useOutletContext<ContextType>();
+  const { project, boardId } = useOutletContext<ContextType>();
   const { isMaster, loading: permissionsLoading } = useStaffPermissions();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
@@ -37,8 +45,10 @@ export const SocialSettingsPage = () => {
   // WhatsApp settings
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [selectedInstance, setSelectedInstance] = useState<string>("");
-  const [clientPhone, setClientPhone] = useState("");
-  const [clientName, setClientName] = useState("");
+  
+  // Approval contacts
+  const [approvalContacts, setApprovalContacts] = useState<ApprovalContact[]>([]);
+  const [requiredApprovals, setRequiredApprovals] = useState<number>(1);
   
   // Instagram account
   const [instagramAccount, setInstagramAccount] = useState<InstagramAccount | null>(null);
@@ -46,7 +56,7 @@ export const SocialSettingsPage = () => {
 
   useEffect(() => {
     loadSettings();
-  }, [project.id]);
+  }, [project.id, boardId]);
 
   const loadSettings = async () => {
     setLoading(true);
@@ -73,8 +83,34 @@ export const SocialSettingsPage = () => {
 
       if (whatsappSettings) {
         setSelectedInstance(whatsappSettings.whatsapp_instance_id || "");
-        setClientPhone(whatsappSettings.client_phone || "");
-        setClientName(whatsappSettings.client_name || "");
+      }
+
+      // Load approval contacts
+      const { data: contactsData } = await supabase
+        .from("social_approval_contacts")
+        .select("*")
+        .eq("project_id", project.id)
+        .eq("is_active", true)
+        .order("created_at");
+
+      setApprovalContacts((contactsData || []).map(c => ({
+        id: c.id,
+        phone: c.phone,
+        name: c.name || "",
+        is_active: c.is_active,
+      })));
+
+      // Load board settings for required approvals
+      if (boardId) {
+        const { data: boardData } = await supabase
+          .from("social_content_boards")
+          .select("required_approvals")
+          .eq("id", boardId)
+          .single();
+
+        if (boardData) {
+          setRequiredApprovals(boardData.required_approvals || 1);
+        }
       }
 
       // Load Instagram account
@@ -92,23 +128,89 @@ export const SocialSettingsPage = () => {
     }
   };
 
-  const handleSaveWhatsApp = async () => {
+  const handleAddContact = () => {
+    setApprovalContacts(prev => [
+      ...prev,
+      { id: `new-${Date.now()}`, phone: "", name: "", is_active: true, isNew: true }
+    ]);
+  };
+
+  const handleRemoveContact = async (index: number) => {
+    const contact = approvalContacts[index];
+    
+    if (!contact.isNew) {
+      // Delete from database
+      try {
+        await supabase
+          .from("social_approval_contacts")
+          .delete()
+          .eq("id", contact.id);
+      } catch (error) {
+        console.error("Error deleting contact:", error);
+        toast.error("Erro ao remover contato");
+        return;
+      }
+    }
+    
+    setApprovalContacts(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const handleContactChange = (index: number, field: "phone" | "name", value: string) => {
+    setApprovalContacts(prev => prev.map((c, i) => 
+      i === index ? { ...c, [field]: value } : c
+    ));
+  };
+
+  const handleSaveSettings = async () => {
     setSaving(true);
     try {
-      const { error } = await supabase
+      // Save WhatsApp instance
+      const { error: whatsappError } = await supabase
         .from("social_whatsapp_settings")
         .upsert({
           project_id: project.id,
           whatsapp_instance_id: selectedInstance || null,
-          client_phone: clientPhone || null,
-          client_name: clientName || null,
           is_active: true,
         }, { onConflict: "project_id" });
 
-      if (error) throw error;
-      toast.success("Configurações de WhatsApp salvas!");
+      if (whatsappError) throw whatsappError;
+
+      // Save approval contacts
+      for (const contact of approvalContacts) {
+        if (!contact.phone) continue;
+        
+        if (contact.isNew) {
+          await supabase
+            .from("social_approval_contacts")
+            .insert({
+              project_id: project.id,
+              phone: contact.phone,
+              name: contact.name || null,
+              is_active: true,
+            });
+        } else {
+          await supabase
+            .from("social_approval_contacts")
+            .update({
+              phone: contact.phone,
+              name: contact.name || null,
+            })
+            .eq("id", contact.id);
+        }
+      }
+
+      // Save required approvals to board
+      if (boardId) {
+        await supabase
+          .from("social_content_boards")
+          .update({ required_approvals: requiredApprovals })
+          .eq("id", boardId);
+      }
+
+      toast.success("Configurações salvas!");
+      loadSettings(); // Reload to get updated IDs
     } catch (error) {
-      console.error("Error saving WhatsApp settings:", error);
+      console.error("Error saving settings:", error);
       toast.error("Erro ao salvar configurações");
     } finally {
       setSaving(false);
@@ -118,7 +220,6 @@ export const SocialSettingsPage = () => {
   const handleConnectInstagram = async () => {
     setConnectingInstagram(true);
     try {
-      // Get the Instagram OAuth URL
       const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
         body: { projectId: project.id, action: "get_auth_url" },
       });
@@ -126,7 +227,6 @@ export const SocialSettingsPage = () => {
       if (error) throw error;
 
       if (data?.authUrl) {
-        // Open in new window
         const popup = window.open(data.authUrl, "instagram_auth", "width=600,height=700");
         if (!popup) {
           toast.error("Popup bloqueado. Permita popups para continuar.");
@@ -164,6 +264,8 @@ export const SocialSettingsPage = () => {
       </div>
     );
   }
+
+  const activeContactCount = approvalContacts.filter(c => c.phone).length;
 
   return (
     <div className="p-6 max-w-3xl mx-auto space-y-6">
@@ -231,7 +333,8 @@ export const SocialSettingsPage = () => {
             Configure o envio automático de links de aprovação
           </CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
+        <CardContent className="space-y-6">
+          {/* WhatsApp Instance */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
               Instância WhatsApp
@@ -259,35 +362,87 @@ export const SocialSettingsPage = () => {
                 ))}
               </SelectContent>
             </Select>
-            {!isMaster && selectedInstance && (
-              <p className="text-xs text-muted-foreground">
-                Instância configurada: {instances.find(i => i.id === selectedInstance)?.name || "Nenhuma"}
-              </p>
+          </div>
+
+          {/* Approval Contacts */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <Label className="flex items-center gap-2">
+                <Users className="h-4 w-4" />
+                Contatos para Aprovação
+              </Label>
+              <Button variant="outline" size="sm" onClick={handleAddContact} className="gap-1">
+                <Plus className="h-3 w-3" />
+                Adicionar
+              </Button>
+            </div>
+            
+            {approvalContacts.length === 0 ? (
+              <div className="text-center py-4 text-sm text-muted-foreground border-2 border-dashed rounded-lg">
+                Nenhum contato cadastrado. Adicione telefones para receber links de aprovação.
+              </div>
+            ) : (
+              <div className="space-y-3">
+                {approvalContacts.map((contact, index) => (
+                  <div key={contact.id} className="flex items-start gap-2 p-3 border rounded-lg bg-muted/30">
+                    <div className="flex-1 grid grid-cols-2 gap-2">
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Nome</Label>
+                        <Input
+                          placeholder="Nome do contato"
+                          value={contact.name}
+                          onChange={(e) => handleContactChange(index, "name", e.target.value)}
+                        />
+                      </div>
+                      <div className="space-y-1">
+                        <Label className="text-xs text-muted-foreground">Telefone</Label>
+                        <PhoneInput
+                          value={contact.phone}
+                          onChange={(value) => handleContactChange(index, "phone", value)}
+                          placeholder="(00) 00000-0000"
+                        />
+                      </div>
+                    </div>
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="text-destructive hover:text-destructive mt-5"
+                      onClick={() => handleRemoveContact(index)}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                ))}
+              </div>
             )}
           </div>
 
+          {/* Required Approvals */}
           <div className="space-y-2">
-            <Label>Nome do Cliente</Label>
-            <Input
-              placeholder="Nome para personalizar mensagens"
-              value={clientName}
-              onChange={(e) => setClientName(e.target.value)}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label>Telefone do Cliente</Label>
-            <PhoneInput
-              value={clientPhone}
-              onChange={setClientPhone}
-              placeholder="(00) 00000-0000"
-            />
+            <Label>Aprovações Necessárias</Label>
+            <Select 
+              value={requiredApprovals.toString()} 
+              onValueChange={(v) => setRequiredApprovals(parseInt(v))}
+            >
+              <SelectTrigger>
+                <SelectValue />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="1">1 aprovação</SelectItem>
+                <SelectItem value="2" disabled={activeContactCount < 2}>
+                  2 aprovações {activeContactCount < 2 && "(adicione mais contatos)"}
+                </SelectItem>
+                <SelectItem value="3" disabled={activeContactCount < 3}>
+                  3 aprovações {activeContactCount < 3 && "(adicione mais contatos)"}
+                </SelectItem>
+              </SelectContent>
+            </Select>
             <p className="text-xs text-muted-foreground">
-              Número para enviar os links de aprovação
+              Quantas pessoas precisam aprovar antes de publicar
             </p>
           </div>
 
-          <Button onClick={handleSaveWhatsApp} disabled={saving} className="w-full gap-2">
+          <Button onClick={handleSaveSettings} disabled={saving} className="w-full gap-2">
             {saving ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
