@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -18,7 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Image, Film, Video, LayoutGrid, Square, CircleDashed } from "lucide-react";
+import { Loader2, Image, Film, Video, LayoutGrid, Square, CircleDashed, Paperclip, X, FileText, FileImage, File } from "lucide-react";
 import { toast } from "sonner";
 import { CardTypeSelector, SocialCardType } from "./CardTypeSelector";
 import { CardColorPicker } from "./CardColorPicker";
@@ -48,6 +48,7 @@ export const SocialCardDialog = ({
 }: SocialCardDialogProps) => {
   const [saving, setSaving] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Card type
   const [cardType, setCardType] = useState<SocialCardType>("content");
@@ -62,6 +63,9 @@ export const SocialCardDialog = ({
   const [contentType, setContentType] = useState<string>("estatico");
   const [objective, setObjective] = useState<string>("engagement");
   const [suggestedTime, setSuggestedTime] = useState("");
+  
+  // Attachments for info cards
+  const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
   useEffect(() => {
     loadCurrentStaff();
@@ -146,6 +150,35 @@ export const SocialCardDialog = ({
 
       if (error) throw error;
 
+      // Upload pending attachments for info cards
+      if (cardType === "info" && pendingFiles.length > 0) {
+        for (const file of pendingFiles) {
+          const fileName = `${card.id}/attachments/${Date.now()}-${file.name}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("social-content")
+            .upload(fileName, file);
+
+          if (uploadError) {
+            console.error("Error uploading attachment:", uploadError);
+            continue;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from("social-content")
+            .getPublicUrl(fileName);
+
+          await supabase.from("social_card_attachments").insert({
+            card_id: card.id,
+            file_name: file.name,
+            file_url: publicUrl,
+            file_type: file.type,
+            file_size: file.size,
+            uploaded_by: currentStaffId,
+          });
+        }
+      }
+
       // Log history
       await supabase.from("social_content_history").insert({
         card_id: card.id,
@@ -180,6 +213,27 @@ export const SocialCardDialog = ({
     setSuggestedDate("");
     setSuggestedTime("");
     setCardColor(null);
+    setPendingFiles([]);
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (files) {
+      setPendingFiles(prev => [...prev, ...Array.from(files)]);
+    }
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
+    }
+  };
+
+  const removeFile = (index: number) => {
+    setPendingFiles(prev => prev.filter((_, i) => i !== index));
+  };
+
+  const getFileIcon = (fileType: string) => {
+    if (fileType.startsWith("image/")) return FileImage;
+    if (fileType.includes("pdf") || fileType.includes("document")) return FileText;
+    return File;
   };
 
   return (
@@ -309,6 +363,58 @@ export const SocialCardDialog = ({
                     value={suggestedTime}
                     onChange={(e) => setSuggestedTime(e.target.value)}
                   />
+                </div>
+              )}
+            </div>
+          )}
+
+          {/* Attachments - for info cards */}
+          {cardType === "info" && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Paperclip className="h-4 w-4" />
+                Anexos
+              </Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                multiple
+                className="hidden"
+                onChange={handleFileSelect}
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => fileInputRef.current?.click()}
+                className="w-full gap-2"
+              >
+                <Paperclip className="h-4 w-4" />
+                Adicionar arquivos
+              </Button>
+              {pendingFiles.length > 0 && (
+                <div className="space-y-1 mt-2">
+                  {pendingFiles.map((file, index) => {
+                    const FileIcon = getFileIcon(file.type);
+                    return (
+                      <div
+                        key={index}
+                        className="flex items-center gap-2 p-2 rounded-md bg-muted/50 text-sm"
+                      >
+                        <FileIcon className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                        <span className="flex-1 truncate">{file.name}</span>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          onClick={() => removeFile(index)}
+                        >
+                          <X className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    );
+                  })}
                 </div>
               )}
             </div>
