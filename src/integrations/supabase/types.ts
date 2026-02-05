@@ -19692,11 +19692,13 @@ export type Database = {
           connected_by: string | null
           created_at: string | null
           facebook_page_id: string | null
+          followers_count: number | null
           id: string
           instagram_user_id: string | null
           instagram_username: string | null
           is_connected: boolean | null
           page_id: string | null
+          profile_picture_url: string | null
           project_id: string
           token_expires_at: string | null
           updated_at: string | null
@@ -19707,11 +19709,13 @@ export type Database = {
           connected_by?: string | null
           created_at?: string | null
           facebook_page_id?: string | null
+          followers_count?: number | null
           id?: string
           instagram_user_id?: string | null
           instagram_username?: string | null
           is_connected?: boolean | null
           page_id?: string | null
+          profile_picture_url?: string | null
           project_id: string
           token_expires_at?: string | null
           updated_at?: string | null
@@ -19722,11 +19726,13 @@ export type Database = {
           connected_by?: string | null
           created_at?: string | null
           facebook_page_id?: string | null
+          followers_count?: number | null
           id?: string
           instagram_user_id?: string | null
           instagram_username?: string | null
           is_connected?: boolean | null
           page_id?: string | null
+          profile_picture_url?: string | null
           project_id?: string
           token_expires_at?: string | null
           updated_at?: string | null
