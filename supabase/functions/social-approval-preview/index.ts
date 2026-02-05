@@ -8,6 +8,22 @@ Deno.serve(async (req) => {
     return new Response("Token inválido", { status: 400 });
   }
 
+  // Human browsers should be redirected immediately; only crawlers need the OG HTML.
+  const ua = (req.headers.get("user-agent") || "").toLowerCase();
+  const isCrawler =
+    ua.includes("whatsapp") ||
+    ua.includes("facebookexternalhit") ||
+    ua.includes("meta") ||
+    ua.includes("twitterbot") ||
+    ua.includes("telegrambot") ||
+    ua.includes("discordbot") ||
+    ua.includes("slackbot") ||
+    ua.includes("linkedinbot");
+
+  if (!isCrawler) {
+    return redirectToApp(token);
+  }
+
   const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
   const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
   const supabase = createClient(supabaseUrl, supabaseKey);
@@ -113,11 +129,10 @@ Deno.serve(async (req) => {
 
     return new Response(html, {
       status: 200,
-      headers: new Headers({
-        "Content-Type": "text/html; charset=utf-8",
-        "Cache-Control": "no-cache, no-store, must-revalidate",
-        "X-Content-Type-Options": "nosniff",
-      }),
+      headers: {
+        "content-type": "text/html",
+        "cache-control": "no-cache, no-store, must-revalidate",
+      },
     });
   } catch (error) {
     console.error("Error:", error);
