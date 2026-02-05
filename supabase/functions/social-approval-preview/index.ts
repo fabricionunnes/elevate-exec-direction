@@ -112,10 +112,12 @@ Deno.serve(async (req) => {
 </html>`;
 
     return new Response(html, {
-      headers: {
+      status: 200,
+      headers: new Headers({
         "Content-Type": "text/html; charset=utf-8",
         "Cache-Control": "no-cache, no-store, must-revalidate",
-      },
+        "X-Content-Type-Options": "nosniff",
+      }),
     });
   } catch (error) {
     console.error("Error:", error);
