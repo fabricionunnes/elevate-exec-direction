@@ -162,6 +162,11 @@ export const SocialPipelinePage = () => {
       if (newStage?.stage_type === "client_approval") {
         await triggerApprovalNotification(cardId);
       }
+
+      // Check if moved to "scheduled" stage - trigger Instagram publish
+      if (newStage?.stage_type === "scheduled") {
+        await triggerInstagramPublish(cardId, card);
+      }
     } catch (error) {
       console.error("Error moving card:", error);
       toast.error("Erro ao mover card");
@@ -169,6 +174,43 @@ export const SocialPipelinePage = () => {
       setCards((prev) =>
         prev.map((c) => (c.id === cardId ? { ...c, stage_id: oldStageId } : c))
       );
+    }
+  };
+
+  const triggerInstagramPublish = async (cardId: string, card: ContentCard) => {
+    // Check if card has media
+    if (!card.creative_url) {
+      toast.info("Card sem mídia - publicação manual necessária");
+      return;
+    }
+
+    // Check if has scheduled date in the future
+    if (card.scheduled_at) {
+      const scheduledDate = new Date(card.scheduled_at);
+      if (scheduledDate > new Date()) {
+        toast.info(`Agendado para ${scheduledDate.toLocaleString("pt-BR")}`);
+        return;
+      }
+    }
+
+    // Publish immediately
+    toast.loading("Publicando no Instagram...", { id: "instagram-publish" });
+    
+    try {
+      const { data, error } = await supabase.functions.invoke("social-instagram-publish", {
+        body: { cardId, projectId: project.id },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Publicado no Instagram com sucesso!", { id: "instagram-publish" });
+      } else if (data?.error) {
+        toast.error(data.error, { id: "instagram-publish" });
+      }
+    } catch (error) {
+      console.error("Error publishing to Instagram:", error);
+      toast.error("Erro ao publicar no Instagram", { id: "instagram-publish" });
     }
   };
 
