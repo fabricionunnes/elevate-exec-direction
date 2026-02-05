@@ -1,45 +1,114 @@
 
-# Plano: Resolver Incompatibilidade de App ID no Instagram OAuth
+# Plano: Publicação Direta no Instagram
 
-## Diagnóstico Confirmado
-O erro "URL bloqueada" ocorre porque:
-- **O código está usando o App ID `585124554636683`**
-- **O painel da Meta onde você configurou os redirect URIs tem um App ID diferente**
+## Resumo
 
-Ou seja: as configurações estão corretas, mas em apps diferentes.
+Com a conexão do Instagram funcionando, vamos implementar a funcionalidade de **agendar e publicar conteúdos diretamente no Instagram** a partir do Kanban do UNV Social. O sistema utilizará a API do Instagram Graph para enviar fotos e vídeos automaticamente.
 
-## Solução
-Existem duas opções para resolver:
+---
 
-### Opção A: Configurar o App correto na Meta (Recomendado)
-1. No painel da Meta, localize o app com ID `585124554636683`
-2. Nesse app específico, adicione:
-   - **Valid OAuth Redirect URIs**: `https://elevate-exec-direction.lovable.app/`
-   - **Allowed Domains for JS SDK**: `elevate-exec-direction.lovable.app`
-3. Ative **"Login do OAuth na Web"** = ON
+## Como Vai Funcionar
 
-### Opção B: Atualizar o App ID no código
-Se você prefere usar o outro app (o que já está configurado):
-1. Obtenha o **App ID** e **App Secret** do app que você configurou
-2. Atualize os secrets no backend:
-   - `FACEBOOK_APP_ID` → novo App ID
-   - `FACEBOOK_APP_SECRET` → novo App Secret
+### Fluxo do Usuário
+
+1. **Criar conteúdo no Kanban** - O usuário cria um card com imagem/vídeo, legenda e hashtags
+2. **Aprovar com cliente** - O conteúdo passa pelo fluxo de aprovação existente
+3. **Mover para "Aprovado"** - Após aprovação, o card vai para a etapa aprovado
+4. **Agendar ou Publicar** - O usuário pode:
+   - **Publicar Agora**: Posta imediatamente no Instagram
+   - **Agendar**: Define data/hora para publicação automática (requer Creator Studio ou solução de polling)
+
+### Botão na Interface
+
+Quando um card estiver na etapa **"Aprovado"**, aparecerá um botão "Publicar no Instagram" no painel de detalhes do card.
+
+---
+
+## Etapas de Implementação
+
+### 1. Edge Function para Publicação (`social-instagram-publish`)
+Criar uma nova função que:
+- Recebe o ID do card
+- Busca os dados do card (imagem, legenda, hashtags)
+- Busca o token de acesso da conta Instagram conectada
+- Faz o upload da mídia para o Instagram (Container API)
+- Publica o conteúdo
+- Registra o resultado em `social_publish_logs`
+- Atualiza o card com `instagram_post_id` e `instagram_post_url`
+
+### 2. Atualizar Interface do Card
+Adicionar botão "Publicar no Instagram" no `SocialCardDetailSheet.tsx` quando:
+- O card está na etapa "Aprovado" (stage_type = "approved")
+- A conta Instagram está conectada ao projeto
+- O card tem mídia (`creative_url`)
+
+### 3. Publicação Agendada (Opcional)
+Para agendamento automático, há duas opções:
+- **Opção A**: Usar o Creator Studio da Meta (recomendado para produção)
+- **Opção B**: Criar um cron job com Supabase pg_cron que verifica periodicamente cards com `scheduled_at` no passado
+
+---
 
 ## Detalhes Técnicos
 
-### Arquivos envolvidos (se escolher Opção B):
-- **Secrets do backend**: `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET`
-- Os arquivos de código (`supabase/functions/social-instagram-auth/index.ts`) lêem esses valores de variáveis de ambiente, então basta atualizar os secrets
+### Edge Function: `social-instagram-publish`
 
-### Como atualizar secrets:
-- Os secrets `FACEBOOK_APP_ID` e `FACEBOOK_APP_SECRET` precisam ser atualizados no painel de backend do projeto
+```text
+POST /functions/v1/social-instagram-publish
+Body: { cardId: string, projectId: string }
 
-## Próximos Passos
-1. Identifique qual dos dois apps você quer usar
-2. Se **Opção A**: configure o app `585124554636683` na Meta
-3. Se **Opção B**: me informe o novo App ID e vou solicitar a atualização dos secrets
-4. Teste a conexão do Instagram novamente
+Fluxo:
+1. Buscar card e conta Instagram
+2. Validar que mídia existe
+3. Criar container de mídia (POST /media)
+4. Aguardar processamento
+5. Publicar container (POST /media_publish)
+6. Salvar resposta em social_publish_logs
+7. Atualizar card com URL do post
+8. Mover card para etapa "Publicado"
+```
 
-## Critério de Sucesso
-- A janela de autorização da Meta abre sem erro "URL bloqueada"
-- Após autorizar, o Instagram é conectado com sucesso ao projeto
+### Estrutura da API do Instagram
+
+```text
+┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
+│  1. Criar       │     │  2. Verificar    │     │  3. Publicar    │
+│  Container      │ ──> │  Status          │ ──> │  Container      │
+│  POST /{id}/    │     │  GET /{container}│     │  POST /{id}/    │
+│  media          │     │  ?fields=status  │     │  media_publish  │
+└─────────────────┘     └──────────────────┘     └─────────────────┘
+```
+
+### Botão na UI
+
+Localização: `SocialCardDetailSheet.tsx` na seção de ações, próximo ao botão "Salvar"
+
+---
+
+## Limitações da API do Instagram
+
+| Tipo | Suportado | Notas |
+|------|-----------|-------|
+| Imagem única | ✅ Sim | JPEG recomendado |
+| Vídeo (Reels) | ✅ Sim | MP4, até 90s |
+| Carrossel | ✅ Sim | 2-10 itens |
+| Stories | ❌ Não | Não suportado pela API |
+
+---
+
+## Arquivos a Serem Modificados
+
+1. **Novo**: `supabase/functions/social-instagram-publish/index.ts`
+2. **Editar**: `src/components/social/SocialCardDetailSheet.tsx` - adicionar botão de publicação
+3. **Editar**: `supabase/config.toml` - registrar nova função
+
+---
+
+## Resultado Final
+
+Após a implementação, o usuário poderá:
+- ✅ Aprovar conteúdo com o cliente
+- ✅ Clicar em "Publicar no Instagram" 
+- ✅ Ver o post aparecer automaticamente no Instagram
+- ✅ Acessar o link direto do post publicado
+- ✅ Visualizar histórico de publicações com logs de sucesso/erro
