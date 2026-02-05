@@ -131,6 +131,13 @@ export function useWhatsAppMessages(conversationId: string | null) {
             fetchMessages();
           }, 500);
         }
+        // Handle channel errors by attempting to refetch
+        if (status === 'CHANNEL_ERROR') {
+          console.warn('Realtime channel error, refetching messages...');
+          setTimeout(() => {
+            fetchMessages();
+          }, 1000);
+        }
       });
 
     return () => {
@@ -231,6 +238,9 @@ export function useWhatsAppMessages(conversationId: string | null) {
           last_message_at: new Date().toISOString(),
         })
         .eq('id', conversationId);
+
+      // Force refetch to ensure message appears even if realtime is broken
+      await fetchMessages();
 
     } catch (err) {
       console.error('Error sending message:', err);
@@ -367,6 +377,9 @@ export function useWhatsAppMessages(conversationId: string | null) {
           last_message_at: new Date().toISOString(),
         })
         .eq('id', conversationId);
+
+      // Force refetch to ensure message appears even if realtime is broken
+      await fetchMessages();
 
     } catch (err) {
       console.error('Error sending media:', err);
