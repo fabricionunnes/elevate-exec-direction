@@ -61,6 +61,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   // Suggestions state
   const [contentType, setContentType] = useState("all");
   const [quantity, setQuantity] = useState("5");
+  const [customTopic, setCustomTopic] = useState("");
   const [suggestions, setSuggestions] = useState<Suggestion[]>([]);
   const [loadingSuggestions, setLoadingSuggestions] = useState(false);
   
@@ -142,7 +143,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         body: { 
           projectId, 
           contentType: contentType === "all" ? "all" : contentType,
-          quantity: parseInt(quantity)
+          quantity: parseInt(quantity),
+          customTopic: customTopic.trim() || undefined
         }
       });
 
@@ -339,7 +341,20 @@ CTA: ${suggestion.cta}`;
             <div className="p-6 space-y-6 h-full overflow-auto">
               {/* Generator Form */}
               <Card>
-                <CardContent className="p-4">
+                <CardContent className="p-4 space-y-4">
+                  {/* Topic Input */}
+                  <div className="space-y-2">
+                    <Label>Tema específico (opcional)</Label>
+                    <Input
+                      placeholder="Ex: Dia das Mães, Dicas de organização, Black Friday..."
+                      value={customTopic}
+                      onChange={(e) => setCustomTopic(e.target.value)}
+                    />
+                    <p className="text-xs text-muted-foreground">
+                      Deixe em branco para a IA sugerir temas baseados no briefing
+                    </p>
+                  </div>
+                  
                   <div className="flex flex-wrap items-end gap-4">
                     <div className="flex-1 min-w-[200px] space-y-2">
                       <Label>Tipo de Conteúdo</Label>

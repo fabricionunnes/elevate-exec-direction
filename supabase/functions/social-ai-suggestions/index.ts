@@ -28,8 +28,8 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { projectId, contentType, quantity } = await req.json();
-    console.log("social-ai-suggestions: Params received:", { projectId, contentType, quantity });
+    const { projectId, contentType, quantity, customTopic } = await req.json();
+    console.log("social-ai-suggestions: Params received:", { projectId, contentType, quantity, customTopic });
 
     if (!projectId) {
       return new Response(
@@ -70,9 +70,15 @@ Deno.serve(async (req) => {
     const context = buildContext(briefing, profile, companyName);
 
     // Build prompt for AI with tool calling for structured output
+    const topicInstruction = customTopic 
+      ? `FOCO OBRIGATÓRIO: Todas as ${quantity || 5} sugestões devem ser sobre o tema "${customTopic}". Crie variações criativas dentro deste tema.`
+      : `Crie ideias variadas baseadas no contexto da marca.`;
+
     const systemPrompt = `Você é um estrategista de social media especializado em criar ideias de conteúdo para Instagram.
 
-Com base no contexto da marca fornecido, gere ${quantity || 5} ideias de conteúdo para ${contentType === "all" ? "diferentes formatos (Feed, Reels e Stories)" : contentType}.
+${topicInstruction}
+
+Gere ${quantity || 5} ideias de conteúdo para ${contentType === "all" ? "diferentes formatos (Feed, Reels e Stories)" : contentType}.
 
 Para cada sugestão, forneça:
 1. Formato: feed_post | carousel | reel | story
@@ -223,7 +229,8 @@ IMPORTANTE:
       entity_type: "ai_suggestions",
       entity_id: projectId,
       action: "generate",
-      changes: { 
+      changes: {
+        custom_topic: customTopic || null,
         content_type: contentType,
         quantity: quantity,
         suggestions_count: suggestions.length
