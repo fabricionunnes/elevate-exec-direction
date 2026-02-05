@@ -62,6 +62,7 @@ export const SocialCardDialog = ({
   // Content-specific fields
   const [contentType, setContentType] = useState<string>("estatico");
   const [objective, setObjective] = useState<string>("engagement");
+  const [customObjective, setCustomObjective] = useState<string>("");
   const [suggestedTime, setSuggestedTime] = useState("");
   
   // Attachments for info cards
@@ -119,10 +120,11 @@ export const SocialCardDialog = ({
       let insertData: any = baseData;
 
       if (cardType === "content") {
+        const effectiveObjective = getEffectiveObjective();
         insertData = {
           ...baseData,
           content_type: contentType,
-          objective: objective as "engagement" | "authority" | "conversion",
+          objective: effectiveObjective,
           suggested_date: suggestedDate || null,
           suggested_time: suggestedTime || null,
         };
@@ -209,11 +211,19 @@ export const SocialCardDialog = ({
     setContentType("estatico");
     setTheme("");
     setObjective("engagement");
+    setCustomObjective("");
     setCopyText("");
     setSuggestedDate("");
     setSuggestedTime("");
     setCardColor(null);
     setPendingFiles([]);
+  };
+
+  const getEffectiveObjective = () => {
+    if (objective === "other" && customObjective.trim()) {
+      return customObjective.trim();
+    }
+    return objective;
   };
 
   const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -314,7 +324,10 @@ export const SocialCardDialog = ({
           {cardType === "content" && (
             <div className="space-y-2">
               <Label>Objetivo</Label>
-              <Select value={objective} onValueChange={setObjective}>
+              <Select value={objective} onValueChange={(val) => {
+                setObjective(val);
+                if (val !== "other") setCustomObjective("");
+              }}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -322,8 +335,20 @@ export const SocialCardDialog = ({
                   <SelectItem value="engagement">Engajamento</SelectItem>
                   <SelectItem value="authority">Autoridade</SelectItem>
                   <SelectItem value="conversion">Conversão</SelectItem>
+                  <SelectItem value="educational">Educativo</SelectItem>
+                  <SelectItem value="social_proof">Prova Social</SelectItem>
+                  <SelectItem value="relationship">Relacionamento</SelectItem>
+                  <SelectItem value="other">Outro...</SelectItem>
                 </SelectContent>
               </Select>
+              {objective === "other" && (
+                <Input
+                  placeholder="Digite o objetivo..."
+                  value={customObjective}
+                  onChange={(e) => setCustomObjective(e.target.value)}
+                  className="mt-2"
+                />
+              )}
             </div>
           )}
 
