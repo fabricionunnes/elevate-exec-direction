@@ -3,7 +3,8 @@ import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 serve(async (req) => {
@@ -84,7 +85,9 @@ serve(async (req) => {
       .eq("board_id", link.card.board_id);
 
     // Move card to appropriate stage
-    let targetStageType = action === "approved" ? "approved" : "adjustments";
+    // When approved → move to "scheduled" (Programado no Instagram)
+    // When adjustment requested → move to "adjustments"
+    let targetStageType = action === "approved" ? "scheduled" : "adjustments";
     const targetStage = stages?.find((s: any) => s.stage_type === targetStageType);
 
     if (targetStage) {
@@ -102,7 +105,7 @@ serve(async (req) => {
         action: action,
         from_stage_id: link.card.stage_id,
         to_stage_id: targetStage.id,
-        details: action === "adjustment_requested" ? { notes: notes?.trim() } : null,
+        details: action === "adjustment_requested" ? { notes: notes?.trim() } : { auto_scheduled: true },
       });
     }
 
