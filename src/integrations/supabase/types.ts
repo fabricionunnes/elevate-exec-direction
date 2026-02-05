@@ -19104,6 +19104,7 @@ export type Database = {
           created_at: string
           id: string
           is_completed: boolean
+          parent_subtask_id: string | null
           sort_order: number
           title: string
         }
@@ -19114,6 +19115,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          parent_subtask_id?: string | null
           sort_order?: number
           title: string
         }
@@ -19124,6 +19126,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_completed?: boolean
+          parent_subtask_id?: string | null
           sort_order?: number
           title?: string
         }
@@ -19140,6 +19143,13 @@ export type Database = {
             columns: ["completed_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_card_subtasks_parent_subtask_id_fkey"
+            columns: ["parent_subtask_id"]
+            isOneToOne: false
+            referencedRelation: "social_card_subtasks"
             referencedColumns: ["id"]
           },
         ]
