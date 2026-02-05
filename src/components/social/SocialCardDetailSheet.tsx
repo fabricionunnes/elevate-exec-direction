@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -113,9 +113,11 @@ export const SocialCardDetailSheet = ({
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
   const [uploading, setUploading] = useState(false);
+  const [publishing, setPublishing] = useState(false);
   const [history, setHistory] = useState<HistoryItem[]>([]);
   const [feedback, setFeedback] = useState<FeedbackItem[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [instagramConnected, setInstagramConnected] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
 
   // Editable fields
@@ -138,8 +140,25 @@ export const SocialCardDetailSheet = ({
       loadCardData();
       loadHistory();
       loadFeedback();
+      checkInstagramConnection();
     }
   }, [card, open]);
+
+  const checkInstagramConnection = async () => {
+    try {
+      const { data } = await supabase
+        .from("social_instagram_accounts")
+        .select("id")
+        .eq("project_id", projectId)
+        .eq("is_connected", true)
+        .maybeSingle();
+
+      setInstagramConnected(!!data);
+    } catch (error) {
+      console.error("Error checking Instagram connection:", error);
+      setInstagramConnected(false);
+    }
+  };
 
   const loadCardData = () => {
     if (!card) return;
@@ -420,6 +439,32 @@ export const SocialCardDetailSheet = ({
       toast.error("Erro ao enviar para aprovação");
     } finally {
       setSaving(false);
+    }
+  };
+
+  const handlePublishToInstagram = async () => {
+    if (!card) return;
+
+    setPublishing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-instagram-publish", {
+        body: { cardId: card.id, projectId },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success("Publicado no Instagram com sucesso!");
+        onOpenChange(false);
+        onUpdate();
+      } else {
+        throw new Error(data?.error || "Erro ao publicar");
+      }
+    } catch (error) {
+      console.error("Error publishing to Instagram:", error);
+      toast.error(error instanceof Error ? error.message : "Erro ao publicar no Instagram");
+    } finally {
+      setPublishing(false);
     }
   };
 
@@ -854,29 +899,64 @@ export const SocialCardDetailSheet = ({
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2 pt-4">
-                <Button
-                  onClick={handleSave}
-                  disabled={saving || card.is_locked}
-                  className="flex-1"
-                >
-                  {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-                  Salvar
-                </Button>
-                {currentStage?.stage_type !== "client_approval" &&
-                  currentStage?.stage_type !== "approved" &&
-                  currentStage?.stage_type !== "scheduled" &&
-                  currentStage?.stage_type !== "published" && (
+              <div className="flex flex-col gap-2 pt-4">
+                <div className="flex gap-2">
+                  <Button
+                    onClick={handleSave}
+                    disabled={saving || card.is_locked}
+                    className="flex-1"
+                  >
+                    {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+                    Salvar
+                  </Button>
+                  {currentStage?.stage_type !== "client_approval" &&
+                    currentStage?.stage_type !== "approved" &&
+                    currentStage?.stage_type !== "scheduled" &&
+                    currentStage?.stage_type !== "published" && (
+                      <Button
+                        variant="secondary"
+                        onClick={handleSendForApproval}
+                        disabled={saving}
+                        className="gap-2"
+                      >
+                        <Send className="h-4 w-4" />
+                        Enviar para Aprovação
+                      </Button>
+                    )}
+                </div>
+
+                {/* Instagram Publish Button - Show when approved and has media */}
+                {currentStage?.stage_type === "approved" && 
+                  creativeUrl && 
+                  instagramConnected && 
+                  !card.instagram_post_url && (
                     <Button
-                      variant="secondary"
-                      onClick={handleSendForApproval}
-                      disabled={saving}
-                      className="gap-2"
+                      onClick={handlePublishToInstagram}
+                      disabled={publishing}
+                      className="w-full gap-2 bg-gradient-to-r from-purple-600 to-pink-600 hover:from-purple-700 hover:to-pink-700 text-white"
                     >
-                      <Send className="h-4 w-4" />
-                      Enviar para Aprovação
+                      {publishing ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                      ) : (
+                        <Instagram className="h-4 w-4" />
+                      )}
+                      {publishing ? "Publicando..." : "Publicar no Instagram"}
                     </Button>
                   )}
+
+                {/* Already published - show link */}
+                {card.instagram_post_url && (
+                  <a
+                    href={card.instagram_post_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="flex items-center justify-center gap-2 w-full py-2 px-4 bg-muted rounded-lg text-sm hover:bg-muted/80 transition-colors"
+                  >
+                    <Instagram className="h-4 w-4 text-pink-500" />
+                    <span>Ver publicação no Instagram</span>
+                    <ExternalLink className="h-3 w-3" />
+                  </a>
+                )}
               </div>
             </TabsContent>
 
