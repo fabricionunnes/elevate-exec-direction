@@ -6,9 +6,10 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Loader2, Save, Instagram, MessageSquare, Check, X, ExternalLink } from "lucide-react";
+import { Loader2, Save, Instagram, MessageSquare, Check, X, ExternalLink, Lock } from "lucide-react";
 import { toast } from "sonner";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 
 interface ContextType {
   project: { id: string; product_name: string | null; company_name: string | null };
@@ -29,6 +30,7 @@ interface InstagramAccount {
 
 export const SocialSettingsPage = () => {
   const { project } = useOutletContext<ContextType>();
+  const { isMaster, loading: permissionsLoading } = useStaffPermissions();
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   
@@ -155,7 +157,7 @@ export const SocialSettingsPage = () => {
     }
   };
 
-  if (loading) {
+  if (loading || permissionsLoading) {
     return (
       <div className="h-full flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -231,9 +233,21 @@ export const SocialSettingsPage = () => {
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="space-y-2">
-            <Label>Instância WhatsApp</Label>
-            <Select value={selectedInstance} onValueChange={setSelectedInstance}>
-              <SelectTrigger>
+            <Label className="flex items-center gap-2">
+              Instância WhatsApp
+              {!isMaster && (
+                <span className="inline-flex items-center gap-1 text-xs text-muted-foreground">
+                  <Lock className="h-3 w-3" />
+                  Somente Master
+                </span>
+              )}
+            </Label>
+            <Select 
+              value={selectedInstance} 
+              onValueChange={setSelectedInstance}
+              disabled={!isMaster}
+            >
+              <SelectTrigger className={!isMaster ? "bg-muted cursor-not-allowed" : ""}>
                 <SelectValue placeholder="Selecione uma instância" />
               </SelectTrigger>
               <SelectContent>
@@ -245,6 +259,11 @@ export const SocialSettingsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+            {!isMaster && selectedInstance && (
+              <p className="text-xs text-muted-foreground">
+                Instância configurada: {instances.find(i => i.id === selectedInstance)?.name || "Nenhuma"}
+              </p>
+            )}
           </div>
 
           <div className="space-y-2">
