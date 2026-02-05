@@ -99,14 +99,31 @@ serve(async (req) => {
         
         if (carouselConnected) {
           // For connected carousel, generate panoramic slices
-          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, includeLogoPref && logoUrl, referenceImageUrl);
+          // Reference image only on first slide for connected carousels
+          const useRefImage = i === 0 ? referenceImageUrl : null;
+          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, includeLogoPref && logoUrl, useRefImage);
         } else {
           // For separate images, add variation instruction
-          carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style.`;
+          // Reference image only on first slide
+          const isFirstSlide = i === 0;
+          if (isFirstSlide && referenceImageUrl) {
+            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. This is the MAIN image featuring the reference subject prominently.`;
+          } else {
+            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style. Do NOT include the reference subject in this image - focus on complementary visuals.`;
+          }
         }
 
-        const carouselMessageContent: any = messageImages.length > 0 
-          ? [{ type: "text", text: carouselPrompt }, ...messageImages]
+        // Only include reference image on the first slide
+        const slideImages: { type: string; image_url: { url: string } }[] = [];
+        if (includeLogoPref && logoUrl) {
+          slideImages.push({ type: "image_url", image_url: { url: logoUrl } });
+        }
+        if (i === 0 && referenceImageUrl) {
+          slideImages.push({ type: "image_url", image_url: { url: referenceImageUrl } });
+        }
+
+        const carouselMessageContent: any = slideImages.length > 0 
+          ? [{ type: "text", text: carouselPrompt }, ...slideImages]
           : carouselPrompt;
 
         const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
@@ -399,13 +416,21 @@ Visual Request: ${basePrompt}
     prompt += `Brand personality: ${briefing.brand_perception}\n`;
   }
 
-  // Add style guidelines
+  // Add style guidelines with HIGH QUALITY emphasis
   prompt += `
+IMAGE QUALITY REQUIREMENTS (CRITICAL):
+- Generate in the HIGHEST possible resolution and quality
+- Ultra-sharp details, no blur or artifacts
+- Professional-grade photography/design quality
+- Rich colors with proper contrast and saturation
+- Clean edges and precise details
+
 Style guidelines:
 - Modern, clean, professional design
-- High quality, visually appealing
-- Suitable for social media marketing
-- Clear focal point and good composition
+- Visually stunning and eye-catching
+- Suitable for premium social media marketing
+- Clear focal point and excellent composition
+- Studio-quality lighting and shadows
 `;
 
   if (includeLogo) {
