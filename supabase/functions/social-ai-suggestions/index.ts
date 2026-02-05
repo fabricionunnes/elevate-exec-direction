@@ -11,6 +11,7 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
+  console.log("social-ai-suggestions: Function invoked");
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -18,12 +19,17 @@ Deno.serve(async (req) => {
     const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
 
     if (!lovableApiKey) {
-      throw new Error("LOVABLE_API_KEY is not configured");
+      console.error("LOVABLE_API_KEY is not configured");
+      return new Response(
+        JSON.stringify({ error: "Chave de API não configurada. Entre em contato com o suporte." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
     const { projectId, contentType, quantity } = await req.json();
+    console.log("social-ai-suggestions: Params received:", { projectId, contentType, quantity });
 
     if (!projectId) {
       return new Response(
@@ -58,11 +64,12 @@ Deno.serve(async (req) => {
       .single();
 
     const companyName = (project?.company as any)?.name || project?.product_name || "Empresa";
+    console.log("social-ai-suggestions: Company name:", companyName);
 
     // Build context from all available data
     const context = buildContext(briefing, profile, companyName);
 
-    // Build prompt for AI
+    // Build prompt for AI with tool calling for structured output
     const systemPrompt = `Você é um estrategista de social media especializado em criar ideias de conteúdo para Instagram.
 
 Com base no contexto da marca fornecido, gere ${quantity || 5} ideias de conteúdo para ${contentType === "all" ? "diferentes formatos (Feed, Reels e Stories)" : contentType}.
@@ -82,24 +89,46 @@ IMPORTANTE:
 - Evite os temas/palavras que a marca não quer comunicar
 - Alinhe com os objetivos de social media da marca
 - Seja criativo e diferenciado
+- Use a tool return_suggestions para retornar as sugestões`;
 
-Responda APENAS com JSON válido no formato:
-{
-  "suggestions": [
-    {
-      "format": "feed_post",
-      "title": "...",
-      "theme": "...",
-      "objective": "...",
-      "description": "...",
-      "copy": "...",
-      "visual_description": "...",
-      "cta": "..."
-    }
-  ]
-}`;
+    const tools = [
+      {
+        type: "function",
+        function: {
+          name: "return_suggestions",
+          description: "Retorna as sugestões de conteúdo geradas",
+          parameters: {
+            type: "object",
+            properties: {
+              suggestions: {
+                type: "array",
+                items: {
+                  type: "object",
+                  properties: {
+                    format: { type: "string", enum: ["feed_post", "carousel", "reel", "story"] },
+                    title: { type: "string" },
+                    theme: { type: "string" },
+                    objective: { type: "string" },
+                    description: { type: "string" },
+                    copy: { type: "string" },
+                    visual_description: { type: "string" },
+                    cta: { type: "string" }
+                  },
+                  required: ["format", "title", "theme", "objective", "description", "copy", "visual_description", "cta"],
+                  additionalProperties: false
+                }
+              }
+            },
+            required: ["suggestions"],
+            additionalProperties: false
+          }
+        }
+      }
+    ];
 
-    // Call Lovable AI
+    console.log("social-ai-suggestions: Calling Lovable AI");
+
+    // Call Lovable AI with tool calling
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
@@ -112,12 +141,14 @@ Responda APENAS com JSON válido no formato:
           { role: "system", content: systemPrompt },
           { role: "user", content: context }
         ],
+        tools,
+        tool_choice: { type: "function", function: { name: "return_suggestions" } }
       }),
     });
 
     if (!aiResponse.ok) {
       const errorText = await aiResponse.text();
-      console.error("AI API error:", errorText);
+      console.error("AI API error:", aiResponse.status, errorText);
       
       if (aiResponse.status === 429) {
         return new Response(
@@ -132,30 +163,58 @@ Responda APENAS com JSON válido no formato:
         );
       }
       
-      throw new Error("Failed to generate suggestions");
+      return new Response(
+        JSON.stringify({ error: "Erro ao gerar sugestões. Tente novamente." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     const aiData = await aiResponse.json();
-    const generatedText = aiData.choices?.[0]?.message?.content;
+    console.log("social-ai-suggestions: AI response received");
 
-    if (!generatedText) {
-      throw new Error("No content generated");
+    // Extract suggestions from tool call response
+    let suggestions: any[] = [];
+    
+    const toolCalls = aiData.choices?.[0]?.message?.tool_calls;
+    if (toolCalls && toolCalls.length > 0) {
+      const toolCall = toolCalls[0];
+      if (toolCall.function?.name === "return_suggestions") {
+        try {
+          const args = JSON.parse(toolCall.function.arguments);
+          suggestions = args.suggestions || [];
+          console.log("social-ai-suggestions: Extracted", suggestions.length, "suggestions from tool call");
+        } catch (e) {
+          console.error("Failed to parse tool call arguments:", e);
+        }
+      }
     }
 
-    // Parse the JSON response
-    let suggestions;
-    try {
-      // Extract JSON from potential markdown code blocks
-      let jsonText = generatedText;
-      if (jsonText.includes("```json")) {
-        jsonText = jsonText.split("```json")[1].split("```")[0];
-      } else if (jsonText.includes("```")) {
-        jsonText = jsonText.split("```")[1].split("```")[0];
+    // Fallback: try to parse from content if no tool calls
+    if (suggestions.length === 0) {
+      const generatedText = aiData.choices?.[0]?.message?.content;
+      if (generatedText) {
+        console.log("social-ai-suggestions: Trying to parse from content");
+        try {
+          let jsonText = generatedText;
+          if (jsonText.includes("```json")) {
+            jsonText = jsonText.split("```json")[1].split("```")[0];
+          } else if (jsonText.includes("```")) {
+            jsonText = jsonText.split("```")[1].split("```")[0];
+          }
+          const parsed = JSON.parse(jsonText.trim());
+          suggestions = parsed.suggestions || [];
+        } catch (e) {
+          console.error("Failed to parse content as JSON:", e);
+        }
       }
-      suggestions = JSON.parse(jsonText.trim());
-    } catch {
-      console.error("Failed to parse AI response:", generatedText);
-      throw new Error("Invalid response format from AI");
+    }
+
+    if (suggestions.length === 0) {
+      console.error("No suggestions could be extracted from AI response");
+      return new Response(
+        JSON.stringify({ error: "Não foi possível gerar sugestões. Tente novamente." }),
+        { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Log for audit
@@ -167,14 +226,16 @@ Responda APENAS com JSON válido no formato:
       changes: { 
         content_type: contentType,
         quantity: quantity,
-        suggestions_count: suggestions.suggestions?.length || 0
+        suggestions_count: suggestions.length
       },
     });
+
+    console.log("social-ai-suggestions: Returning", suggestions.length, "suggestions");
 
     return new Response(
       JSON.stringify({ 
         success: true, 
-        suggestions: suggestions.suggestions || [],
+        suggestions,
         context_used: {
           has_briefing: !!briefing,
           has_profile: !!profile,
@@ -187,7 +248,7 @@ Responda APENAS com JSON válido no formato:
     console.error("Error generating suggestions:", error);
     const errorMessage = error instanceof Error ? error.message : "Internal error";
     return new Response(
-      JSON.stringify({ error: errorMessage }),
+      JSON.stringify({ error: "Erro interno ao gerar sugestões: " + errorMessage }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
