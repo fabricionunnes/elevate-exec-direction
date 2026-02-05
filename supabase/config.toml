@@ -186,6 +186,9 @@ verify_jwt = true
 [functions.social-send-approval]
 verify_jwt = false
 
+[functions.social-approval-preview]
+verify_jwt = false
+
 [functions.social-get-approval]
 verify_jwt = false
 
