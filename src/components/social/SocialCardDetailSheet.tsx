@@ -415,7 +415,7 @@ export const SocialCardDetailSheet = ({
 
   const handleSendForApproval = async () => {
     if (!card) return;
-    
+
     // Find client_approval stage
     const approvalStage = stages.find((s) => s.stage_type === "client_approval");
     if (!approvalStage) {
@@ -425,25 +425,34 @@ export const SocialCardDetailSheet = ({
 
     setSaving(true);
     try {
-      // Move to approval stage
-      const { error } = await supabase
-        .from("social_content_cards")
-        .update({ stage_id: approvalStage.id })
-        .eq("id", card.id);
-
-      if (error) throw error;
-
-      // Trigger approval notification
+      // Trigger approval notification first
       const { data, error: funcError } = await supabase.functions.invoke("social-send-approval", {
         body: { cardId: card.id, projectId },
       });
 
-      if (funcError) throw funcError;
+      if (funcError) {
+        // Better UX for auth/session issues
+        const status = (funcError as any)?.status;
+        if (status === 401) {
+          toast.error("Sua sessão expirou. Faça login novamente.");
+          return;
+        }
+        throw funcError;
+      }
 
       if (data?.success) {
+        // Move to approval stage only if it was actually sent
+        const { error } = await supabase
+          .from("social_content_cards")
+          .update({ stage_id: approvalStage.id })
+          .eq("id", card.id);
+
+        if (error) throw error;
+
         toast.success("Enviado para aprovação do cliente!");
       } else {
-        toast.info(data?.message || "Movido para aprovação");
+        toast.info(data?.message || "Não foi possível enviar o link de aprovação");
+        return;
       }
 
       onOpenChange(false);
