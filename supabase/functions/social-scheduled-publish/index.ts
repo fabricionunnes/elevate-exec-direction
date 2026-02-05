@@ -131,23 +131,24 @@ Deno.serve(async (req) => {
       console.log(`[Cron] Publishing card ${card.id} (attempt ${(card.publish_attempts || 0) + 1}/${MAX_ATTEMPTS})`);
 
       try {
-        // Call the existing publish function
-        const publishResponse = await fetch(`${supabaseUrl}/functions/v1/social-instagram-publish`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            "Authorization": `Bearer ${supabaseKey}`,
-          },
-          body: JSON.stringify({
-            cardId: card.id,
-            projectId: board.project_id,
-          }),
-        });
+        // Call the existing publish function via Supabase client (avoids URL/route NOT_FOUND issues)
+        const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
+          "social-instagram-publish",
+          {
+            body: {
+              cardId: card.id,
+              projectId: board.project_id,
+            },
+          }
+        );
 
-        const publishResult = await publishResponse.json();
-        console.log(`[Cron] Card ${card.id} publish result:`, publishResult);
+        if (publishInvokeError) {
+          console.error(`[Cron] Card ${card.id} publish invoke error:`, publishInvokeError);
+        }
 
-        if (publishResult.success) {
+        console.log(`[Cron] Card ${card.id} publish result:`, publishResult ?? publishInvokeError);
+
+        if ((publishResult as { success?: boolean } | null)?.success) {
           succeeded++;
           // Clear error on success
           await supabase
@@ -156,7 +157,10 @@ Deno.serve(async (req) => {
             .eq("id", card.id);
         } else {
           failed++;
-          const errorMsg = publishResult.error || "Unknown error";
+          const errorMsg =
+            (publishResult as { error?: string } | null)?.error ||
+            (publishInvokeError as { message?: string } | null)?.message ||
+            "Unknown error";
           
           // Check if max attempts reached
           const newAttempts = (card.publish_attempts || 0) + 1;
