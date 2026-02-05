@@ -1,15 +1,16 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 type CreateStaffUserBody = {
   email: string;
   password: string;
   name: string;
-  role: "admin" | "cs" | "consultant";
+  role: string;
   phone?: string | null;
 };
 
@@ -60,17 +61,25 @@ Deno.serve(async (req) => {
     auth: { autoRefreshToken: false, persistSession: false },
   });
 
-  // Only onboarding admins can create/delete staff users
+  // Only admins and masters can create/delete staff users
   const { data: callerStaff, error: callerStaffError } = await supabaseAdmin
     .from("onboarding_staff")
-    .select("id")
+    .select("id, role")
     .eq("user_id", callerUserId)
-    .eq("role", "admin")
     .eq("is_active", true)
     .maybeSingle();
 
   if (callerStaffError || !callerStaff) {
-    return new Response(JSON.stringify({ error: "Forbidden" }), {
+    return new Response(JSON.stringify({ error: "Forbidden - not a staff member" }), {
+      status: 403,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  // Allow admin and master roles
+  const allowedRoles = ["admin", "master"];
+  if (!allowedRoles.includes(callerStaff.role)) {
+    return new Response(JSON.stringify({ error: "Forbidden - insufficient permissions" }), {
       status: 403,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -222,8 +231,9 @@ Deno.serve(async (req) => {
       });
     }
 
+    console.log(`Creating/updating staff user: ${email}, role: ${role}`);
+
     // Find existing auth user by email (fast path: list users and find email)
-    // NOTE: For small internal user bases this is OK.
     const { data: usersList, error: listError } = await supabaseAdmin.auth.admin.listUsers({
       page: 1,
       perPage: 1000,
@@ -250,6 +260,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      console.log(`Updated existing auth user: ${userId}`);
     } else {
       const { data: created, error: createAuthError } = await supabaseAdmin.auth.admin.createUser({
         email,
@@ -263,6 +274,7 @@ Deno.serve(async (req) => {
         });
       }
       userId = created.user.id;
+      console.log(`Created new auth user: ${userId}`);
     }
 
     // Atualizar ou criar staff por email (sem depender de constraint única)
@@ -294,6 +306,7 @@ Deno.serve(async (req) => {
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
+      console.log(`Updated existing staff: ${staffId}`);
     } else {
       const { data: inserted, error: insertStaffError } = await supabaseAdmin
         .from("onboarding_staff")
@@ -308,6 +321,7 @@ Deno.serve(async (req) => {
         });
       }
       staffId = inserted.id;
+      console.log(`Created new staff: ${staffId}`);
     }
 
     return new Response(JSON.stringify({ success: true, user_id: userId, staff_id: staffId }), {
@@ -315,6 +329,7 @@ Deno.serve(async (req) => {
     });
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown error";
+    console.error("Error creating staff user:", error);
     return new Response(JSON.stringify({ error: message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
