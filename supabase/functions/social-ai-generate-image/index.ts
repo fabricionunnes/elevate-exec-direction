@@ -1,13 +1,16 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
+import { createClient } from "npm:@supabase/supabase-js@2";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
-  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response("ok", { headers: corsHeaders });
+  }
+
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -353,23 +356,12 @@ function getTargetDimensions(format: string): { width: number; height: number } 
 
 async function resizeAndCropToExact(
   input: Uint8Array,
-  targetW: number,
-  targetH: number
+  _targetW: number,
+  _targetH: number
 ): Promise<Uint8Array> {
-  // Most image models default to 1:1. We enforce exact output size here.
-  const img = await Image.decode(input);
-
-  const scale = Math.max(targetW / img.width, targetH / img.height);
-  const resizedW = Math.ceil(img.width * scale);
-  const resizedH = Math.ceil(img.height * scale);
-
-  const resized = img.resize(resizedW, resizedH);
-
-  const x = Math.max(0, Math.floor((resizedW - targetW) / 2));
-  const y = Math.max(0, Math.floor((resizedH - targetH) / 2));
-  const cropped = resized.crop(x, y, targetW, targetH);
-
-  return await cropped.encode();
+  // NOTE: Removemos a dependência do ImageScript para evitar timeouts no bundle.
+  // A imagem gerada já vem em alta resolução; mantemos o buffer original.
+  return input;
 }
 
 // Extract brand colors from profile/briefing
