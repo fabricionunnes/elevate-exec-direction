@@ -425,12 +425,12 @@ export const SocialKanbanBoard = ({
 
                           {/* Creative Preview Thumbnail - ONLY for content cards WITH media */}
                           {isContentCard && card.creative_url && (
-                            <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-[4/5]">
+                            <div className="mb-2 rounded-md overflow-hidden bg-muted/50 relative">
                               {card.creative_type === "video" ? (
-                                <div className="relative w-full h-full bg-black/5">
+                                <div className="relative w-full bg-black/5">
                                   <video
                                     src={card.creative_url}
-                                    className="w-full h-full object-contain"
+                                    className="w-full h-auto max-h-80 object-contain mx-auto"
                                     muted
                                     playsInline
                                     preload="metadata"
@@ -450,7 +450,7 @@ export const SocialKanbanBoard = ({
                                 <img
                                   src={card.creative_url}
                                   alt={card.theme}
-                                  className="w-full h-full object-contain bg-black/5"
+                                  className="w-full h-auto max-h-80 object-contain mx-auto bg-black/5"
                                   loading="eager"
                                   onError={(e) => {
                                     console.error("Image load error for card:", card.id);
