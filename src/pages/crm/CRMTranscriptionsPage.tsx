@@ -16,8 +16,10 @@ import { FileText, Search, Settings, Plus, Mic, ExternalLink, Copy, Check } from
 import { toast } from "sonner";
 import { useCrmTranscriptions } from "@/hooks/useCrmTranscriptions";
 import { TranscriptionsList, RealtimeTranscription } from "@/components/crm/transcriptions";
+import { useCRMContext } from "./CRMLayout";
 
 export const CRMTranscriptionsPage = () => {
+  const { isAdmin, isMaster } = useCRMContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
@@ -25,6 +27,8 @@ export const CRMTranscriptionsPage = () => {
   const [copiedWebhook, setCopiedWebhook] = useState(false);
 
   const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions();
+  
+  const canDelete = isAdmin || isMaster;
 
   // Webhook URL for Tactiq integration
   const webhookUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/tactiq-webhook`;
@@ -197,6 +201,7 @@ export const CRMTranscriptionsPage = () => {
             loading={loading}
             showLeadLink={true}
             onDelete={deleteTranscription}
+            canDelete={canDelete}
           />
         </TabsContent>
       </Tabs>

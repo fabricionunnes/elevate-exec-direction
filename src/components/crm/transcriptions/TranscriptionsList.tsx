@@ -33,6 +33,7 @@ import {
   Copy,
   Check,
   Loader2,
+  Sparkles,
 } from "lucide-react";
 import { toast } from "sonner";
 import { CrmTranscription } from "@/hooks/useCrmTranscriptions";
@@ -43,6 +44,7 @@ interface TranscriptionsListProps {
   loading: boolean;
   showLeadLink?: boolean;
   onDelete?: (id: string) => void;
+  canDelete?: boolean;
 }
 
 export function TranscriptionsList({
@@ -50,6 +52,7 @@ export function TranscriptionsList({
   loading,
   showLeadLink = true,
   onDelete,
+  canDelete = false,
 }: TranscriptionsListProps) {
   const [selectedTranscription, setSelectedTranscription] = useState<CrmTranscription | null>(null);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -144,6 +147,12 @@ export function TranscriptionsList({
                           Processando
                         </Badge>
                       )}
+                      {transcription.ai_analysis && (
+                        <Badge variant="outline" className="shrink-0 text-primary border-primary/30">
+                          <Sparkles className="h-3 w-3 mr-1" />
+                          Com Briefing
+                        </Badge>
+                      )}
                     </CardTitle>
                     <CardDescription className="flex items-center gap-3 mt-1 flex-wrap">
                       {transcription.recorded_at && (
@@ -176,7 +185,7 @@ export function TranscriptionsList({
                     >
                       <Eye className="h-4 w-4" />
                     </Button>
-                    {onDelete && (
+                    {canDelete && onDelete && (
                       <Button
                         variant="ghost"
                         size="sm"
