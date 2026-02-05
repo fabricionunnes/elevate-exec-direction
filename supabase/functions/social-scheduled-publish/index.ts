@@ -139,6 +139,9 @@ Deno.serve(async (req) => {
               cardId: card.id,
               projectId: board.project_id,
             },
+            headers: {
+              Authorization: `Bearer ${supabaseKey}`,
+            },
           }
         );
 
