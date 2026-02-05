@@ -42,6 +42,7 @@ import AdminSetupPage from "./pages/AdminSetupPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
 import InstagramOAuthCallback from "./pages/InstagramOAuthCallback";
+import SocialInstagramCallback from "./pages/social/SocialInstagramCallback";
 
 // Portal pages
 import PortalLandingPage from "./pages/portal/PortalLandingPage";
@@ -244,6 +245,7 @@ const App = () => (
             
             {/* OAuth Callbacks */}
             <Route path="/auth/instagram/callback" element={<InstagramOAuthCallback />} />
+            <Route path="/social/instagram-callback" element={<SocialInstagramCallback />} />
             
             {/* Onboarding CS */}
             <Route path="/onboarding" element={<OnboardingPage />} />
