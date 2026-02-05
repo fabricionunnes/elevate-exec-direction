@@ -10,7 +10,12 @@ const FACEBOOK_APP_ID = Deno.env.get("FACEBOOK_APP_ID");
 const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
-const SITE_URL = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+
+// Normalize SITE_URL to always have trailing slash for Meta Strict Mode compatibility
+const rawSiteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+const SITE_URL = rawSiteUrl.endsWith("/") ? rawSiteUrl : `${rawSiteUrl}/`;
+
+console.log("Social Instagram Auth - Configured redirect_uri:", SITE_URL);
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
