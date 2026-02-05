@@ -1,114 +1,64 @@
 
-# Plano: Publicação Direta no Instagram
+# Plano: Corrigir Autenticação entre Edge Functions
 
-## Resumo
+## Problema Detectado
+O cron job (`social-scheduled-publish`) está tentando publicar o post agendado para 16:46, mas recebe erro **401 Unauthorized** porque a função `social-instagram-publish` exige autenticação e o token não está sendo passado corretamente.
 
-Com a conexão do Instagram funcionando, vamos implementar a funcionalidade de **agendar e publicar conteúdos diretamente no Instagram** a partir do Kanban do UNV Social. O sistema utilizará a API do Instagram Graph para enviar fotos e vídeos automaticamente.
+Logs mostram:
+- Card detectado corretamente: `1a0ec5cc-5cb4-4739-a0c9-024d71aff423`
+- Horário: `scheduled_at=2026-02-05T19:46:00+00:00` (16:46 no horário de São Paulo)
+- Erro: `status: 401, statusText: "Unauthorized"`
+- Já está na **tentativa 2 de 3**
 
----
+## Solução
 
-## Como Vai Funcionar
+Passar explicitamente o header `Authorization` com a Service Role Key na chamada `functions.invoke()`.
 
-### Fluxo do Usuário
+## Alterações Técnicas
 
-1. **Criar conteúdo no Kanban** - O usuário cria um card com imagem/vídeo, legenda e hashtags
-2. **Aprovar com cliente** - O conteúdo passa pelo fluxo de aprovação existente
-3. **Mover para "Aprovado"** - Após aprovação, o card vai para a etapa aprovado
-4. **Agendar ou Publicar** - O usuário pode:
-   - **Publicar Agora**: Posta imediatamente no Instagram
-   - **Agendar**: Define data/hora para publicação automática (requer Creator Studio ou solução de polling)
+### Arquivo: `supabase/functions/social-scheduled-publish/index.ts`
 
-### Botão na Interface
+Modificar a chamada `invoke()` para incluir o header de autorização:
 
-Quando um card estiver na etapa **"Aprovado"**, aparecerá um botão "Publicar no Instagram" no painel de detalhes do card.
+```typescript
+// ANTES (linha 135-143):
+const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
+  "social-instagram-publish",
+  {
+    body: {
+      cardId: card.id,
+      projectId: board.project_id,
+    },
+  }
+);
 
----
-
-## Etapas de Implementação
-
-### 1. Edge Function para Publicação (`social-instagram-publish`)
-Criar uma nova função que:
-- Recebe o ID do card
-- Busca os dados do card (imagem, legenda, hashtags)
-- Busca o token de acesso da conta Instagram conectada
-- Faz o upload da mídia para o Instagram (Container API)
-- Publica o conteúdo
-- Registra o resultado em `social_publish_logs`
-- Atualiza o card com `instagram_post_id` e `instagram_post_url`
-
-### 2. Atualizar Interface do Card
-Adicionar botão "Publicar no Instagram" no `SocialCardDetailSheet.tsx` quando:
-- O card está na etapa "Aprovado" (stage_type = "approved")
-- A conta Instagram está conectada ao projeto
-- O card tem mídia (`creative_url`)
-
-### 3. Publicação Agendada (Opcional)
-Para agendamento automático, há duas opções:
-- **Opção A**: Usar o Creator Studio da Meta (recomendado para produção)
-- **Opção B**: Criar um cron job com Supabase pg_cron que verifica periodicamente cards com `scheduled_at` no passado
-
----
-
-## Detalhes Técnicos
-
-### Edge Function: `social-instagram-publish`
-
-```text
-POST /functions/v1/social-instagram-publish
-Body: { cardId: string, projectId: string }
-
-Fluxo:
-1. Buscar card e conta Instagram
-2. Validar que mídia existe
-3. Criar container de mídia (POST /media)
-4. Aguardar processamento
-5. Publicar container (POST /media_publish)
-6. Salvar resposta em social_publish_logs
-7. Atualizar card com URL do post
-8. Mover card para etapa "Publicado"
+// DEPOIS:
+const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
+  "social-instagram-publish",
+  {
+    body: {
+      cardId: card.id,
+      projectId: board.project_id,
+    },
+    headers: {
+      Authorization: `Bearer ${supabaseKey}`,
+    },
+  }
+);
 ```
 
-### Estrutura da API do Instagram
+## Ação Imediata
 
-```text
-┌─────────────────┐     ┌──────────────────┐     ┌─────────────────┐
-│  1. Criar       │     │  2. Verificar    │     │  3. Publicar    │
-│  Container      │ ──> │  Status          │ ──> │  Container      │
-│  POST /{id}/    │     │  GET /{container}│     │  POST /{id}/    │
-│  media          │     │  ?fields=status  │     │  media_publish  │
-└─────────────────┘     └──────────────────┘     └─────────────────┘
+Após o deploy, também vou resetar o contador de tentativas do card atual para que ele tente novamente:
+
+```sql
+UPDATE social_content_cards 
+SET publish_attempts = 0, publish_error = NULL 
+WHERE id = '1a0ec5cc-5cb4-4739-a0c9-024d71aff423';
 ```
 
-### Botão na UI
+## Resultado Esperado
 
-Localização: `SocialCardDetailSheet.tsx` na seção de ações, próximo ao botão "Salvar"
-
----
-
-## Limitações da API do Instagram
-
-| Tipo | Suportado | Notas |
-|------|-----------|-------|
-| Imagem única | ✅ Sim | JPEG recomendado |
-| Vídeo (Reels) | ✅ Sim | MP4, até 90s |
-| Carrossel | ✅ Sim | 2-10 itens |
-| Stories | ❌ Não | Não suportado pela API |
-
----
-
-## Arquivos a Serem Modificados
-
-1. **Novo**: `supabase/functions/social-instagram-publish/index.ts`
-2. **Editar**: `src/components/social/SocialCardDetailSheet.tsx` - adicionar botão de publicação
-3. **Editar**: `supabase/config.toml` - registrar nova função
-
----
-
-## Resultado Final
-
-Após a implementação, o usuário poderá:
-- ✅ Aprovar conteúdo com o cliente
-- ✅ Clicar em "Publicar no Instagram" 
-- ✅ Ver o post aparecer automaticamente no Instagram
-- ✅ Acessar o link direto do post publicado
-- ✅ Visualizar histórico de publicações com logs de sucesso/erro
+1. A função `social-scheduled-publish` passará o Service Role Key corretamente
+2. A função `social-instagram-publish` reconhecerá como chamada autorizada (linha 42-52)
+3. O post será publicado automaticamente no próximo ciclo do cron (dentro de 1 minuto)
