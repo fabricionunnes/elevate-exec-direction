@@ -18,8 +18,10 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Image, Film, Video } from "lucide-react";
+import { Loader2, Image, Film, Video, LayoutGrid, Square, CircleDashed } from "lucide-react";
 import { toast } from "sonner";
+import { CardTypeSelector, SocialCardType } from "./CardTypeSelector";
+import { CardColorPicker } from "./CardColorPicker";
 
 interface Stage {
   id: string;
@@ -47,17 +49,29 @@ export const SocialCardDialog = ({
   const [saving, setSaving] = useState(false);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
   
-  // Form fields
-  const [contentType, setContentType] = useState<string>("feed");
+  // Card type
+  const [cardType, setCardType] = useState<SocialCardType>("content");
+  
+  // Common fields
   const [theme, setTheme] = useState("");
-  const [objective, setObjective] = useState<string>("engagement");
   const [copyText, setCopyText] = useState("");
+  const [cardColor, setCardColor] = useState<string | null>(null);
   const [suggestedDate, setSuggestedDate] = useState("");
+  
+  // Content-specific fields
+  const [contentType, setContentType] = useState<string>("estatico");
+  const [objective, setObjective] = useState<string>("engagement");
   const [suggestedTime, setSuggestedTime] = useState("");
 
   useEffect(() => {
     loadCurrentStaff();
   }, []);
+
+  useEffect(() => {
+    if (!open) {
+      resetForm();
+    }
+  }, [open]);
 
   const loadCurrentStaff = async () => {
     const { data: { user } } = await supabase.auth.getUser();
@@ -76,7 +90,7 @@ export const SocialCardDialog = ({
 
   const handleSubmit = async () => {
     if (!theme.trim()) {
-      toast.error("Informe o tema do conteúdo");
+      toast.error("Informe o título");
       return;
     }
 
@@ -88,19 +102,45 @@ export const SocialCardDialog = ({
         throw new Error("Nenhuma etapa encontrada");
       }
 
-      const { data: card, error } = await supabase
-        .from("social_content_cards")
-        .insert([{
-          board_id: boardId,
-          stage_id: firstStage.id,
-          content_type: contentType as "feed" | "reels" | "stories",
-          theme: theme.trim(),
+      const baseData = {
+        board_id: boardId,
+        stage_id: firstStage.id,
+        theme: theme.trim(),
+        copy_text: copyText.trim() || null,
+        card_color: cardColor,
+        created_by: currentStaffId,
+        card_type: cardType,
+      };
+
+      let insertData: any = baseData;
+
+      if (cardType === "content") {
+        insertData = {
+          ...baseData,
+          content_type: contentType,
           objective: objective as "engagement" | "authority" | "conversion",
-          copy_text: copyText.trim() || null,
           suggested_date: suggestedDate || null,
           suggested_time: suggestedTime || null,
-          created_by: currentStaffId,
-        }])
+        };
+      } else if (cardType === "task") {
+        insertData = {
+          ...baseData,
+          content_type: "estatico", // default for task cards
+          objective: "engagement", // default
+          suggested_date: suggestedDate || null,
+        };
+      } else {
+        // info card
+        insertData = {
+          ...baseData,
+          content_type: "estatico", // default for info cards
+          objective: "engagement", // default
+        };
+      }
+
+      const { data: card, error } = await supabase
+        .from("social_content_cards")
+        .insert([insertData])
         .select("id")
         .single();
 
@@ -114,118 +154,170 @@ export const SocialCardDialog = ({
         performed_by: currentStaffId,
       });
 
-      toast.success("Conteúdo criado com sucesso!");
+      toast.success(
+        cardType === "content" 
+          ? "Conteúdo criado!" 
+          : cardType === "task" 
+          ? "Tarefa criada!" 
+          : "Informação criada!"
+      );
       resetForm();
       onSuccess();
     } catch (error) {
       console.error("Error creating card:", error);
-      toast.error("Erro ao criar conteúdo");
+      toast.error("Erro ao criar");
     } finally {
       setSaving(false);
     }
   };
 
   const resetForm = () => {
-    setContentType("feed");
+    setCardType("content");
+    setContentType("estatico");
     setTheme("");
     setObjective("engagement");
     setCopyText("");
     setSuggestedDate("");
     setSuggestedTime("");
+    setCardColor(null);
   };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-md max-h-[90vh] overflow-y-auto">
         <DialogHeader>
-          <DialogTitle>Novo Conteúdo</DialogTitle>
+          <DialogTitle>Novo Card</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
-          {/* Content Type */}
+          {/* Card Type Selector */}
           <div className="space-y-2">
-            <Label>Tipo de Conteúdo *</Label>
-            <Select value={contentType} onValueChange={setContentType}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="feed">
-                  <div className="flex items-center gap-2">
-                    <Image className="h-4 w-4" />
-                    Feed
-                  </div>
-                </SelectItem>
-                <SelectItem value="reels">
-                  <div className="flex items-center gap-2">
-                    <Film className="h-4 w-4" />
-                    Reels
-                  </div>
-                </SelectItem>
-                <SelectItem value="stories">
-                  <div className="flex items-center gap-2">
-                    <Video className="h-4 w-4" />
-                    Stories
-                  </div>
-                </SelectItem>
-              </SelectContent>
-            </Select>
+            <Label>Tipo de Card</Label>
+            <CardTypeSelector value={cardType} onChange={setCardType} />
           </div>
 
-          {/* Theme */}
+          {/* Title (Theme) - common to all */}
           <div className="space-y-2">
-            <Label>Tema do Post *</Label>
+            <Label>Título *</Label>
             <Input
-              placeholder="Ex: Dicas de produtividade, Bastidores do escritório..."
+              placeholder={
+                cardType === "content"
+                  ? "Ex: Dicas de produtividade, Bastidores do escritório..."
+                  : cardType === "task"
+                  ? "Ex: Criação de conteúdo do mês"
+                  : "Ex: Informações e Acessos"
+              }
               value={theme}
               onChange={(e) => setTheme(e.target.value)}
             />
           </div>
 
-          {/* Objective */}
-          <div className="space-y-2">
-            <Label>Objetivo</Label>
-            <Select value={objective} onValueChange={setObjective}>
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="engagement">Engajamento</SelectItem>
-                <SelectItem value="authority">Autoridade</SelectItem>
-                <SelectItem value="conversion">Conversão</SelectItem>
-              </SelectContent>
-            </Select>
-          </div>
+          {/* Content Type - only for content cards */}
+          {cardType === "content" && (
+            <div className="space-y-2">
+              <Label>Tipo de Conteúdo</Label>
+              <Select value={contentType} onValueChange={setContentType}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="estatico">
+                    <div className="flex items-center gap-2">
+                      <Square className="h-4 w-4" />
+                      Estático
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="carrossel">
+                    <div className="flex items-center gap-2">
+                      <LayoutGrid className="h-4 w-4" />
+                      Carrossel
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="reels">
+                    <div className="flex items-center gap-2">
+                      <Film className="h-4 w-4" />
+                      Reels
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="stories">
+                    <div className="flex items-center gap-2">
+                      <Video className="h-4 w-4" />
+                      Stories
+                    </div>
+                  </SelectItem>
+                  <SelectItem value="outro">
+                    <div className="flex items-center gap-2">
+                      <CircleDashed className="h-4 w-4" />
+                      Outro
+                    </div>
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
 
-          {/* Copy/Script */}
+          {/* Objective - only for content cards */}
+          {cardType === "content" && (
+            <div className="space-y-2">
+              <Label>Objetivo</Label>
+              <Select value={objective} onValueChange={setObjective}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="engagement">Engajamento</SelectItem>
+                  <SelectItem value="authority">Autoridade</SelectItem>
+                  <SelectItem value="conversion">Conversão</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {/* Description/Copy - common to all */}
           <div className="space-y-2">
-            <Label>Roteiro / Copy (opcional)</Label>
+            <Label>
+              {cardType === "content" ? "Roteiro / Copy" : "Descrição"} (opcional)
+            </Label>
             <Textarea
-              placeholder="Descrição do conteúdo ou roteiro..."
+              placeholder={
+                cardType === "content"
+                  ? "Descrição do conteúdo ou roteiro..."
+                  : "Adicione uma descrição..."
+              }
               value={copyText}
               onChange={(e) => setCopyText(e.target.value)}
               rows={3}
             />
           </div>
 
-          {/* Schedule */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-2">
-              <Label>Data sugerida</Label>
-              <Input
-                type="date"
-                value={suggestedDate}
-                onChange={(e) => setSuggestedDate(e.target.value)}
-              />
+          {/* Date - for content and task */}
+          {(cardType === "content" || cardType === "task") && (
+            <div className={cardType === "content" ? "grid grid-cols-2 gap-4" : ""}>
+              <div className="space-y-2">
+                <Label>{cardType === "task" ? "Data de finalização" : "Data sugerida"}</Label>
+                <Input
+                  type="date"
+                  value={suggestedDate}
+                  onChange={(e) => setSuggestedDate(e.target.value)}
+                />
+              </div>
+              {cardType === "content" && (
+                <div className="space-y-2">
+                  <Label>Horário</Label>
+                  <Input
+                    type="time"
+                    value={suggestedTime}
+                    onChange={(e) => setSuggestedTime(e.target.value)}
+                  />
+                </div>
+              )}
             </div>
-            <div className="space-y-2">
-              <Label>Horário</Label>
-              <Input
-                type="time"
-                value={suggestedTime}
-                onChange={(e) => setSuggestedTime(e.target.value)}
-              />
-            </div>
+          )}
+
+          {/* Card Color */}
+          <div className="space-y-2">
+            <Label>Cor do card</Label>
+            <CardColorPicker value={cardColor} onChange={setCardColor} />
           </div>
         </div>
 
@@ -240,7 +332,7 @@ export const SocialCardDialog = ({
                 Criando...
               </>
             ) : (
-              "Criar Conteúdo"
+              "Criar"
             )}
           </Button>
         </DialogFooter>

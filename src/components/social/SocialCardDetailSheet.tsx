@@ -33,12 +33,15 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CardChecklistProgress } from "./CardChecklistProgress";
+import { CardTagSelector } from "./CardTagSelector";
+import { CardAttachments } from "./CardAttachments";
+import { CardColorPicker } from "./CardColorPicker";
 
 interface Stage {
   id: string;
@@ -68,6 +71,8 @@ interface ContentCard {
   is_locked: boolean;
   sort_order: number;
   created_at: string;
+  card_type?: "content" | "task" | "info";
+  card_color?: string | null;
 }
 
 interface HistoryItem {
@@ -115,7 +120,7 @@ export const SocialCardDetailSheet = ({
 
   // Editable fields
   const [theme, setTheme] = useState("");
-  const [contentType, setContentType] = useState("feed");
+  const [contentType, setContentType] = useState("estatico");
   const [objective, setObjective] = useState("engagement");
   const [copyText, setCopyText] = useState("");
   const [finalCaption, setFinalCaption] = useState("");
@@ -126,6 +131,7 @@ export const SocialCardDetailSheet = ({
   const [creativeUrl, setCreativeUrl] = useState("");
   const [creativeType, setCreativeType] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
+  const [cardColor, setCardColor] = useState<string | null>(null);
 
   useEffect(() => {
     if (card && open) {
@@ -138,7 +144,7 @@ export const SocialCardDetailSheet = ({
   const loadCardData = () => {
     if (!card) return;
     setTheme(card.theme || "");
-    setContentType(card.content_type);
+    setContentType(card.content_type || "estatico");
     setObjective(card.objective);
     setCopyText(card.copy_text || "");
     setFinalCaption(card.final_caption || "");
@@ -148,6 +154,7 @@ export const SocialCardDetailSheet = ({
     setSuggestedTime(card.suggested_time || "");
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
+    setCardColor(card.card_color || null);
   };
 
   const loadHistory = async () => {
@@ -270,7 +277,7 @@ export const SocialCardDetailSheet = ({
         .from("social_content_cards")
         .update({
           theme,
-          content_type: contentType as "feed" | "reels" | "stories",
+          content_type: contentType as "estatico" | "carrossel" | "feed" | "reels" | "stories" | "outro",
           objective: objective as "engagement" | "authority" | "conversion",
           copy_text: copyText || null,
           final_caption: finalCaption || null,
@@ -280,6 +287,7 @@ export const SocialCardDetailSheet = ({
           suggested_time: suggestedTime || null,
           creative_url: creativeUrl || null,
           creative_type: creativeType,
+          card_color: cardColor,
         })
         .eq("id", card.id);
 
@@ -563,12 +571,16 @@ export const SocialCardDetailSheet = ({
         </SheetHeader>
 
         <Tabs defaultValue="checklist" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid grid-cols-4 w-full">
+          <TabsList className="grid grid-cols-5 w-full">
             <TabsTrigger value="checklist" className="gap-1">
               <ListChecks className="h-3 w-3" />
               Checklist
             </TabsTrigger>
             <TabsTrigger value="content">Conteúdo</TabsTrigger>
+            <TabsTrigger value="attachments" className="gap-1">
+              <Paperclip className="h-3 w-3" />
+              Anexos
+            </TabsTrigger>
             <TabsTrigger value="feedback">Feedbacks</TabsTrigger>
             <TabsTrigger value="history">Histórico</TabsTrigger>
           </TabsList>
@@ -680,9 +692,14 @@ export const SocialCardDetailSheet = ({
                       <SelectValue />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="feed">
+                      <SelectItem value="estatico">
                         <span className="flex items-center gap-2">
-                          <Image className="h-4 w-4" /> Feed
+                          <Square className="h-4 w-4" /> Estático
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="carrossel">
+                        <span className="flex items-center gap-2">
+                          <LayoutGrid className="h-4 w-4" /> Carrossel
                         </span>
                       </SelectItem>
                       <SelectItem value="reels">
@@ -693,6 +710,16 @@ export const SocialCardDetailSheet = ({
                       <SelectItem value="stories">
                         <span className="flex items-center gap-2">
                           <Video className="h-4 w-4" /> Stories
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="outro">
+                        <span className="flex items-center gap-2">
+                          <CircleDashed className="h-4 w-4" /> Outro
+                        </span>
+                      </SelectItem>
+                      <SelectItem value="feed">
+                        <span className="flex items-center gap-2">
+                          <Image className="h-4 w-4" /> Feed (legado)
                         </span>
                       </SelectItem>
                     </SelectContent>
@@ -810,6 +837,22 @@ export const SocialCardDetailSheet = ({
                 </div>
               </div>
 
+              {/* Card Color */}
+              <div className="space-y-2">
+                <Label>Cor do Card</Label>
+                <CardColorPicker 
+                  value={cardColor} 
+                  onChange={setCardColor} 
+                  disabled={card.is_locked}
+                />
+              </div>
+
+              {/* Tags */}
+              <div className="space-y-2">
+                <Label>Etiquetas de Status</Label>
+                <CardTagSelector cardId={card.id} disabled={card.is_locked} />
+              </div>
+
               {/* Actions */}
               <div className="flex gap-2 pt-4">
                 <Button
@@ -835,6 +878,11 @@ export const SocialCardDetailSheet = ({
                     </Button>
                   )}
               </div>
+            </TabsContent>
+
+            {/* Attachments Tab */}
+            <TabsContent value="attachments" className="mt-0 pr-4">
+              <CardAttachments cardId={card.id} disabled={card.is_locked} />
             </TabsContent>
 
             <TabsContent value="feedback" className="mt-0 pr-4">

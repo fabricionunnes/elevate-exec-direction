@@ -3,7 +3,7 @@ import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle, Trash2 } from "lucide-react";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle, Trash2, ListChecks, Info, Paperclip } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -23,6 +23,8 @@ import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { StageChecklistManager } from "./StageChecklistManager";
 import { CardChecklistBadge } from "./CardChecklistBadge";
+import { CardTagsDisplay } from "./CardTagSelector";
+import { AttachmentCountBadge } from "./CardAttachments";
 
 // Hook for drag-to-scroll functionality
 const useDragToScroll = () => {
@@ -100,6 +102,9 @@ interface ContentCard {
   is_locked: boolean;
   sort_order: number;
   briefing_aligned?: boolean;
+  card_type?: "content" | "task" | "info";
+  card_color?: string | null;
+  copy_text?: string | null;
 }
 
 interface SocialKanbanBoardProps {
@@ -113,14 +118,20 @@ interface SocialKanbanBoardProps {
 
 const contentTypeIcons: Record<string, React.ReactNode> = {
   feed: <Image className="h-3.5 w-3.5" />,
+  estatico: <Image className="h-3.5 w-3.5" />,
+  carrossel: <Image className="h-3.5 w-3.5" />,
   reels: <Film className="h-3.5 w-3.5" />,
   stories: <Video className="h-3.5 w-3.5" />,
+  outro: <Image className="h-3.5 w-3.5" />,
 };
 
 const contentTypeLabels: Record<string, string> = {
   feed: "Feed",
+  estatico: "Estático",
+  carrossel: "Carrossel",
   reels: "Reels",
   stories: "Stories",
+  outro: "Outro",
 };
 
 const objectiveColors: Record<string, string> = {
@@ -370,122 +381,158 @@ export const SocialKanbanBoard = ({
               {/* Cards Container */}
               <ScrollArea className="h-[calc(100vh-220px)]">
                 <div className="p-2 space-y-2">
-                  {stageCards.map((card) => (
-                    <Card
-                      key={card.id}
-                      draggable={!card.is_locked}
-                      onDragStart={(e) => handleDragStart(e, card.id)}
-                      onDragEnd={handleDragEnd}
-                      onClick={() => onCardClick(card)}
-                      className={cn(
-                        "p-3 cursor-pointer hover:shadow-md transition-shadow",
-                        draggedCardId === card.id && "opacity-50",
-                        card.is_locked && "opacity-75"
-                      )}
-                    >
-                      {/* Creative Preview Thumbnail */}
-                      <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-[4/5]">
-                        {card.creative_url ? (
-                          card.creative_type === "video" ? (
-                            <div className="relative w-full h-full bg-black/5">
-                              <video
-                                src={card.creative_url}
-                                className="w-full h-full object-contain"
-                                muted
-                                playsInline
-                                preload="metadata"
-                                onLoadedMetadata={(e) => {
-                                  const video = e.currentTarget;
-                                  video.currentTime = 0.1;
-                                }}
-                              />
-                              {/* Video indicator overlay */}
-                              <div className="absolute bottom-2 right-2">
-                                <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
-                                  <Film className="h-4 w-4 text-gray-800" />
-                                </div>
-                              </div>
+                  {stageCards.map((card) => {
+                    const cardType = card.card_type || "content";
+                    const isContentCard = cardType === "content";
+                    const isTaskCard = cardType === "task";
+                    const isInfoCard = cardType === "info";
+
+                    return (
+                      <Card
+                        key={card.id}
+                        draggable={!card.is_locked}
+                        onDragStart={(e) => handleDragStart(e, card.id)}
+                        onDragEnd={handleDragEnd}
+                        onClick={() => onCardClick(card)}
+                        className={cn(
+                          "cursor-pointer hover:shadow-md transition-shadow overflow-hidden",
+                          draggedCardId === card.id && "opacity-50",
+                          card.is_locked && "opacity-75"
+                        )}
+                        style={{
+                          borderLeftWidth: card.card_color ? "4px" : undefined,
+                          borderLeftColor: card.card_color || undefined,
+                        }}
+                      >
+                        <div className="p-3">
+                          {/* Type Badge for Task/Info cards */}
+                          {!isContentCard && (
+                            <div className="flex items-center gap-1 mb-2">
+                              {isTaskCard && (
+                                <Badge variant="outline" className="text-xs gap-1 bg-amber-50 dark:bg-amber-950/30 text-amber-700 dark:text-amber-300 border-amber-200 dark:border-amber-800">
+                                  <ListChecks className="h-3 w-3" />
+                                  Tarefa
+                                </Badge>
+                              )}
+                              {isInfoCard && (
+                                <Badge variant="outline" className="text-xs gap-1 bg-blue-50 dark:bg-blue-950/30 text-blue-700 dark:text-blue-300 border-blue-200 dark:border-blue-800">
+                                  <Info className="h-3 w-3" />
+                                  Informação
+                                </Badge>
+                              )}
                             </div>
-                          ) : (
-                            <img
-                              src={card.creative_url}
-                              alt={card.theme}
-                              className="w-full h-full object-contain bg-black/5"
-                              loading="eager"
-                              onError={(e) => {
-                                console.error("Image load error for card:", card.id);
-                              }}
-                            />
-                          )
-                        ) : (
-                          <div className="w-full h-full flex flex-col items-center justify-center text-muted-foreground gap-1">
-                            {card.content_type === "reels" || card.content_type === "stories" ? (
-                              <Film className="h-10 w-10 opacity-50" />
-                            ) : (
-                              <Image className="h-10 w-10 opacity-50" />
-                            )}
-                            <span className="text-xs opacity-50">Sem mídia</span>
-                          </div>
-                        )}
-                      </div>
-
-                      {/* Content Type & Objective */}
-                      <div className="flex items-center gap-1.5 mb-2 flex-wrap">
-                        <Badge variant="outline" className="text-xs gap-1">
-                          {contentTypeIcons[card.content_type]}
-                          {contentTypeLabels[card.content_type]}
-                        </Badge>
-                        <Badge
-                          className={cn(
-                            "text-xs",
-                            objectiveColors[card.objective] || ""
                           )}
-                        >
-                          {card.objective === "engagement"
-                            ? "Engajamento"
-                            : card.objective === "authority"
-                            ? "Autoridade"
-                            : "Conversão"}
-                        </Badge>
-                      </div>
 
-                      {/* Theme */}
-                      <p className="text-sm font-medium line-clamp-2 mb-2">
-                        {card.theme}
-                      </p>
+                          {/* Creative Preview Thumbnail - ONLY for content cards WITH media */}
+                          {isContentCard && card.creative_url && (
+                            <div className="mb-2 rounded-md overflow-hidden bg-muted relative aspect-[4/5]">
+                              {card.creative_type === "video" ? (
+                                <div className="relative w-full h-full bg-black/5">
+                                  <video
+                                    src={card.creative_url}
+                                    className="w-full h-full object-contain"
+                                    muted
+                                    playsInline
+                                    preload="metadata"
+                                    onLoadedMetadata={(e) => {
+                                      const video = e.currentTarget;
+                                      video.currentTime = 0.1;
+                                    }}
+                                  />
+                                  {/* Video indicator overlay */}
+                                  <div className="absolute bottom-2 right-2">
+                                    <div className="w-8 h-8 rounded-full bg-white/90 flex items-center justify-center shadow-lg">
+                                      <Film className="h-4 w-4 text-gray-800" />
+                                    </div>
+                                  </div>
+                                </div>
+                              ) : (
+                                <img
+                                  src={card.creative_url}
+                                  alt={card.theme}
+                                  className="w-full h-full object-contain bg-black/5"
+                                  loading="eager"
+                                  onError={(e) => {
+                                    console.error("Image load error for card:", card.id);
+                                  }}
+                                />
+                              )}
+                            </div>
+                          )}
 
-                      {/* Briefing Aligned Indicator */}
-                      {card.briefing_aligned && (
-                        <div className="flex items-center gap-1 text-xs text-primary mb-2">
-                          <CheckCircle className="h-3 w-3" />
-                          <span>Alinhado ao briefing</span>
-                        </div>
-                      )}
+                          {/* Content Type & Objective - only for content cards */}
+                          {isContentCard && (
+                            <div className="flex items-center gap-1.5 mb-2 flex-wrap">
+                              <Badge variant="outline" className="text-xs gap-1">
+                                {contentTypeIcons[card.content_type]}
+                                {contentTypeLabels[card.content_type] || card.content_type}
+                              </Badge>
+                              <Badge
+                                className={cn(
+                                  "text-xs",
+                                  objectiveColors[card.objective] || ""
+                                )}
+                              >
+                                {card.objective === "engagement"
+                                  ? "Engajamento"
+                                  : card.objective === "authority"
+                                  ? "Autoridade"
+                                  : "Conversão"}
+                              </Badge>
+                            </div>
+                          )}
 
-                      {/* Schedule & Checklist Progress */}
-                      <div className="flex items-center justify-between gap-2">
-                        {(card.suggested_date || card.suggested_time) && (
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                            {card.suggested_date && (
-                              <span className="flex items-center gap-1">
-                                <Calendar className="h-3 w-3" />
-                                {format(new Date(card.suggested_date), "dd/MM", {
-                                  locale: ptBR,
-                                })}
-                              </span>
-                            )}
-                            {card.suggested_time && (
-                              <span className="flex items-center gap-1">
-                                <Clock className="h-3 w-3" />
-                                {card.suggested_time.slice(0, 5)}
-                              </span>
-                            )}
+                          {/* Theme */}
+                          <p className="text-sm font-medium line-clamp-2 mb-2">
+                            {card.theme}
+                          </p>
+
+                          {/* Description preview for info cards */}
+                          {isInfoCard && card.copy_text && (
+                            <p className="text-xs text-muted-foreground line-clamp-2 mb-2">
+                              {card.copy_text}
+                            </p>
+                          )}
+
+                          {/* Status Tags */}
+                          <CardTagsDisplay cardId={card.id} />
+
+                          {/* Briefing Aligned Indicator */}
+                          {card.briefing_aligned && (
+                            <div className="flex items-center gap-1 text-xs text-primary mt-2">
+                              <CheckCircle className="h-3 w-3" />
+                              <span>Alinhado ao briefing</span>
+                            </div>
+                          )}
+
+                          {/* Schedule, Checklist Progress & Attachments */}
+                          <div className="flex items-center justify-between gap-2 mt-2">
+                            <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                              {card.suggested_date && (
+                                <span className="flex items-center gap-1">
+                                  <Calendar className="h-3 w-3" />
+                                  {format(new Date(card.suggested_date), "dd/MM", {
+                                    locale: ptBR,
+                                  })}
+                                </span>
+                              )}
+                              {card.suggested_time && (
+                                <span className="flex items-center gap-1">
+                                  <Clock className="h-3 w-3" />
+                                  {card.suggested_time.slice(0, 5)}
+                                </span>
+                              )}
+                              {/* Attachments count for task/info cards */}
+                              {(isTaskCard || isInfoCard) && (
+                                <AttachmentCountBadge cardId={card.id} />
+                              )}
+                            </div>
+                            <CardChecklistBadge cardId={card.id} stageId={card.stage_id} />
                           </div>
-                        )}
-                        <CardChecklistBadge cardId={card.id} stageId={card.stage_id} />
-                      </div>
-                    </Card>
-                  ))}
+                        </div>
+                      </Card>
+                    );
+                  })}
 
                   {stageCards.length === 0 && (
                     <div className="text-center py-8 text-muted-foreground text-sm">

@@ -18948,6 +18948,54 @@ export type Database = {
           },
         ]
       }
+      social_card_attachments: {
+        Row: {
+          card_id: string
+          created_at: string
+          file_name: string
+          file_size: number | null
+          file_type: string | null
+          file_url: string
+          id: string
+          uploaded_by: string | null
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          file_name: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          file_name?: string
+          file_size?: number | null
+          file_type?: string | null
+          file_url?: string
+          id?: string
+          uploaded_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_card_attachments_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_card_attachments_uploaded_by_fkey"
+            columns: ["uploaded_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_card_checklist_progress: {
         Row: {
           card_id: string
@@ -18996,6 +19044,38 @@ export type Database = {
             columns: ["completed_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_card_tags: {
+        Row: {
+          card_id: string
+          created_at: string
+          id: string
+          tag_type: string
+          tag_value: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string
+          id?: string
+          tag_type: string
+          tag_value: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string
+          id?: string
+          tag_type?: string
+          tag_value?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_card_tags_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
             referencedColumns: ["id"]
           },
         ]
@@ -19148,6 +19228,8 @@ export type Database = {
           assigned_to: string | null
           board_id: string
           briefing_aligned: boolean | null
+          card_color: string | null
+          card_type: Database["public"]["Enums"]["social_card_type"]
           content_type: Database["public"]["Enums"]["social_content_type"]
           copy_text: string | null
           created_at: string | null
@@ -19177,6 +19259,8 @@ export type Database = {
           assigned_to?: string | null
           board_id: string
           briefing_aligned?: boolean | null
+          card_color?: string | null
+          card_type?: Database["public"]["Enums"]["social_card_type"]
           content_type?: Database["public"]["Enums"]["social_content_type"]
           copy_text?: string | null
           created_at?: string | null
@@ -19206,6 +19290,8 @@ export type Database = {
           assigned_to?: string | null
           board_id?: string
           briefing_aligned?: boolean | null
+          card_color?: string | null
+          card_type?: Database["public"]["Enums"]["social_card_type"]
           content_type?: Database["public"]["Enums"]["social_content_type"]
           copy_text?: string | null
           created_at?: string | null
@@ -19958,6 +20044,9 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean | null
+          is_recurring: boolean | null
+          recurrence_day: number | null
+          recurrence_type: string | null
           sort_order: number | null
           stage_id: string
           title: string
@@ -19967,6 +20056,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_recurring?: boolean | null
+          recurrence_day?: number | null
+          recurrence_type?: string | null
           sort_order?: number | null
           stage_id: string
           title: string
@@ -19976,6 +20068,9 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean | null
+          is_recurring?: boolean | null
+          recurrence_day?: number | null
+          recurrence_type?: string | null
           sort_order?: number | null
           stage_id?: string
           title?: string
@@ -20230,9 +20325,12 @@ export type Database = {
           client_name: string | null
           client_phone: string | null
           created_at: string | null
+          group_jid: string | null
+          group_name: string | null
           id: string
           is_active: boolean | null
           project_id: string
+          send_to_group: boolean | null
           updated_at: string | null
           whatsapp_instance_id: string | null
         }
@@ -20240,9 +20338,12 @@ export type Database = {
           client_name?: string | null
           client_phone?: string | null
           created_at?: string | null
+          group_jid?: string | null
+          group_name?: string | null
           id?: string
           is_active?: boolean | null
           project_id: string
+          send_to_group?: boolean | null
           updated_at?: string | null
           whatsapp_instance_id?: string | null
         }
@@ -20250,9 +20351,12 @@ export type Database = {
           client_name?: string | null
           client_phone?: string | null
           created_at?: string | null
+          group_jid?: string | null
+          group_name?: string | null
           id?: string
           is_active?: boolean | null
           project_id?: string
+          send_to_group?: boolean | null
           updated_at?: string | null
           whatsapp_instance_id?: string | null
         }
@@ -21578,8 +21682,15 @@ export type Database = {
         | "inspirador"
       progress_status: "on_track" | "attention" | "off_track" | "completed"
       social_approval_status: "pending" | "approved" | "adjustment_requested"
+      social_card_type: "content" | "task" | "info"
       social_content_objective: "engagement" | "authority" | "conversion"
-      social_content_type: "feed" | "reels" | "stories"
+      social_content_type:
+        | "feed"
+        | "reels"
+        | "stories"
+        | "estatico"
+        | "carrossel"
+        | "outro"
       social_stage_type:
         | "idea"
         | "script"
@@ -21817,8 +21928,16 @@ export const Constants = {
       ],
       progress_status: ["on_track", "attention", "off_track", "completed"],
       social_approval_status: ["pending", "approved", "adjustment_requested"],
+      social_card_type: ["content", "task", "info"],
       social_content_objective: ["engagement", "authority", "conversion"],
-      social_content_type: ["feed", "reels", "stories"],
+      social_content_type: [
+        "feed",
+        "reels",
+        "stories",
+        "estatico",
+        "carrossel",
+        "outro",
+      ],
       social_stage_type: [
         "idea",
         "script",

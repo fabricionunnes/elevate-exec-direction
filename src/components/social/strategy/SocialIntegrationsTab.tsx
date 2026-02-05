@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Instagram, Facebook, MessageSquare, Briefcase, Loader2, Check, X, AlertCircle, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
+import { WhatsAppGroupSettings } from "./WhatsAppGroupSettings";
 
 interface SocialIntegrationsTabProps {
   projectId: string;
@@ -209,6 +210,9 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
           );
         })}
       </div>
+
+      {/* WhatsApp Group Settings */}
+      <WhatsAppGroupSettings projectId={projectId} />
 
       <Card className="bg-muted/50">
         <CardContent className="p-4">
