@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-
   try {
     const { cardId, projectId } = await req.json();
 
@@ -42,11 +41,19 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Check if we have either a phone or a group configured
-    const sendToGroup = settings.send_to_group && settings.group_jid;
-    const hasPhoneTarget = settings.client_phone;
+    // Get approval contacts
+    const { data: approvalContacts } = await supabase
+      .from("social_approval_contacts")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("is_active", true);
 
-    if (!sendToGroup && !hasPhoneTarget) {
+    // Check if we have targets (phone contacts or group)
+    const sendToGroup = settings.send_to_group && settings.group_jid;
+    const hasContacts = approvalContacts && approvalContacts.length > 0;
+    const hasLegacyPhone = settings.client_phone;
+
+    if (!sendToGroup && !hasContacts && !hasLegacyPhone) {
       return new Response(
         JSON.stringify({ success: false, message: "Nenhum destinatário configurado (telefone ou grupo)" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -78,43 +85,9 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Create approval link
-    const { data: approvalLink, error: linkError } = await supabase
-      .from("social_approval_links")
-      .insert({
-        card_id: cardId,
-        status: "pending",
-        sent_at: new Date().toISOString(),
-        sent_via: "whatsapp",
-      })
-      .select("access_token")
-      .single();
-
-    if (linkError || !approvalLink) {
-      throw new Error("Erro ao criar link de aprovação");
-    }
-
     // Build approval URL - use the published domain
     const baseUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
-    const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
 
-    // Determine target (phone or group)
-    let targetNumber: string;
-    let isGroup = false;
-
-    if (sendToGroup) {
-      targetNumber = settings.group_jid;
-      isGroup = true;
-    } else {
-      // Format phone number
-      let phone = settings.client_phone.replace(/\D/g, "");
-      if (!phone.startsWith("55")) {
-        phone = "55" + phone;
-      }
-      targetNumber = phone;
-    }
-
-    // Build message
     const contentTypes: Record<string, string> = { 
       feed: "Feed", 
       estatico: "Estático",
@@ -124,11 +97,83 @@ Deno.serve(async (req) => {
       outro: "Outro"
     };
 
-    const recipientName = isGroup 
-      ? (settings.group_name || "Grupo") 
-      : (settings.client_name ? ` ${settings.client_name}` : "");
+    // Collect all targets to send to
+    interface SendTarget {
+      phone: string;
+      name: string;
+      isGroup: boolean;
+      contactId?: string;
+    }
+    const targets: SendTarget[] = [];
 
-    const message = `Olá${isGroup ? "" : recipientName}! 👋
+    // Add group if configured
+    if (sendToGroup) {
+      targets.push({
+        phone: settings.group_jid,
+        name: settings.group_name || "Grupo",
+        isGroup: true,
+      });
+    }
+
+    // Add individual contacts from new table
+    if (hasContacts) {
+      for (const contact of approvalContacts!) {
+        let phone = contact.phone.replace(/\D/g, "");
+        if (!phone.startsWith("55")) {
+          phone = "55" + phone;
+        }
+        targets.push({
+          phone,
+          name: contact.name || "",
+          isGroup: false,
+          contactId: contact.id,
+        });
+      }
+    }
+
+    // Fallback to legacy client_phone if no new contacts
+    if (!hasContacts && hasLegacyPhone && !sendToGroup) {
+      let phone = settings.client_phone.replace(/\D/g, "");
+      if (!phone.startsWith("55")) {
+        phone = "55" + phone;
+      }
+      targets.push({
+        phone,
+        name: settings.client_name || "",
+        isGroup: false,
+      });
+    }
+
+    let successCount = 0;
+    const sentToContactIds: string[] = [];
+
+    for (const target of targets) {
+      try {
+        // Create individual approval link for each contact
+        const { data: approvalLink, error: linkError } = await supabase
+          .from("social_approval_links")
+          .insert({
+            card_id: cardId,
+            status: "pending",
+            sent_at: new Date().toISOString(),
+            sent_via: "whatsapp",
+            contact_id: target.contactId || null,
+          })
+          .select("access_token")
+          .single();
+
+        if (linkError || !approvalLink) {
+          console.error("Error creating approval link:", linkError);
+          continue;
+        }
+
+        const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
+
+        const recipientName = target.isGroup 
+          ? "" 
+          : (target.name ? ` ${target.name}` : "");
+
+        const message = `Olá${recipientName}! 👋
 
 Temos um novo conteúdo para sua aprovação:
 
@@ -141,23 +186,31 @@ Clique no link abaixo para visualizar e aprovar ou solicitar ajustes:
 
 Aguardamos seu feedback! ✨`;
 
-    // Send via Evolution API
-    const sendResponse = await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: instance.api_key,
-      },
-      body: JSON.stringify({
-        number: targetNumber,
-        text: message,
-      }),
-    });
+        // Send via Evolution API
+        const sendResponse = await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            apikey: instance.api_key,
+          },
+          body: JSON.stringify({
+            number: target.phone,
+            text: message,
+          }),
+        });
 
-    if (!sendResponse.ok) {
-      const errorText = await sendResponse.text();
-      console.error("Error sending WhatsApp:", errorText);
-      throw new Error("Erro ao enviar WhatsApp");
+        if (sendResponse.ok) {
+          successCount++;
+          if (target.contactId) {
+            sentToContactIds.push(target.contactId);
+          }
+        } else {
+          const errorText = await sendResponse.text();
+          console.error(`Error sending to ${target.phone}:`, errorText);
+        }
+      } catch (err) {
+        console.error(`Error sending to ${target.phone}:`, err);
+      }
     }
 
     // Log history
@@ -165,15 +218,22 @@ Aguardamos seu feedback! ✨`;
       card_id: cardId,
       action: "sent_for_approval",
       details: { 
-        target: targetNumber, 
-        is_group: isGroup,
-        approval_link_id: approvalLink.access_token 
+        targets_count: targets.length,
+        success_count: successCount,
+        sent_to_contact_ids: sentToContactIds,
       },
     });
 
-    const successMessage = isGroup 
-      ? `Link enviado para o grupo "${settings.group_name || "WhatsApp"}"!`
-      : "Link enviado com sucesso!";
+    if (successCount === 0) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Não foi possível enviar para nenhum destinatário" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const successMessage = successCount === 1 
+      ? "Link de aprovação enviado!"
+      : `Links de aprovação enviados para ${successCount} contatos!`;
 
     return new Response(
       JSON.stringify({ success: true, message: successMessage }),

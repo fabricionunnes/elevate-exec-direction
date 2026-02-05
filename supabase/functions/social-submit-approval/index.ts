@@ -11,7 +11,6 @@ Deno.serve(async (req) => {
     return new Response("ok", { headers: corsHeaders });
   }
 
-
   try {
     const { token, action, notes } = await req.json();
 
@@ -78,96 +77,141 @@ Deno.serve(async (req) => {
       adjustment_notes: notes?.trim() || null,
     });
 
+    // Get board settings (required_approvals)
+    const { data: board } = await supabase
+      .from("social_content_boards")
+      .select("id, project_id, required_approvals")
+      .eq("id", link.card.board_id)
+      .single();
+
+    const requiredApprovals = board?.required_approvals || 1;
+
     // Get stages for the board
     const { data: stages } = await supabase
       .from("social_content_stages")
       .select("id, stage_type")
       .eq("board_id", link.card.board_id);
 
-    // Move card to appropriate stage
-    // When approved → move to "scheduled" (Programado no Instagram)
-    // When adjustment requested → move to "adjustments"
-    let targetStageType = action === "approved" ? "scheduled" : "adjustments";
-    const targetStage = stages?.find((s: any) => s.stage_type === targetStageType);
-
-    if (targetStage) {
-      // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
-      let scheduledAt: string | null = null;
-      let shouldPublishNow = false;
+    if (action === "adjustment_requested") {
+      // Move to adjustments stage immediately
+      const adjustmentsStage = stages?.find((s: any) => s.stage_type === "adjustments");
       
-      if (action === "approved") {
-        if (link.card.suggested_date) {
-          const timeStr = link.card.suggested_time || "09:00";
-          scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
-          
-          // Check if scheduled time is in the past or now
-          const scheduledDate = new Date(scheduledAt);
-          if (scheduledDate <= new Date()) {
-            shouldPublishNow = true;
-          }
-        } else {
-          // No date set - publish immediately
-          shouldPublishNow = true;
-        }
-      }
+      if (adjustmentsStage) {
+        await supabase
+          .from("social_content_cards")
+          .update({
+            stage_id: adjustmentsStage.id,
+            approval_count: 0, // Reset approval count
+          })
+          .eq("id", link.card_id);
 
-      const updateData: Record<string, unknown> = {
-        stage_id: targetStage.id,
-        is_locked: action === "approved",
-      };
+        // Log history
+        await supabase.from("social_content_history").insert({
+          card_id: link.card_id,
+          action: "adjustment_requested",
+          from_stage_id: link.card.stage_id,
+          to_stage_id: adjustmentsStage.id,
+          details: { notes: notes?.trim() },
+        });
+      }
+    } else {
+      // Approved - increment approval count and check if we have enough
+      const newApprovalCount = (link.card.approval_count || 0) + 1;
       
-      // Only set scheduled_at if it's an approval with a date
-      if (scheduledAt) {
-        updateData.scheduled_at = scheduledAt;
-      }
-
       await supabase
         .from("social_content_cards")
-        .update(updateData)
+        .update({ approval_count: newApprovalCount })
         .eq("id", link.card_id);
 
-      // Log history
-      await supabase.from("social_content_history").insert({
-        card_id: link.card_id,
-        action: action,
-        from_stage_id: link.card.stage_id,
-        to_stage_id: targetStage.id,
-        details: action === "adjustment_requested" ? { notes: notes?.trim() } : { auto_scheduled: true, shouldPublishNow },
-      });
+      console.log(`Card ${link.card_id}: ${newApprovalCount}/${requiredApprovals} approvals`);
 
-      // If approved and should publish now, trigger Instagram publishing
-      if (action === "approved" && shouldPublishNow && link.card.creative_url) {
-        console.log("Triggering immediate Instagram publish for card:", link.card_id);
+      // Check if we have enough approvals
+      if (newApprovalCount >= requiredApprovals) {
+        // Move to scheduled stage
+        const scheduledStage = stages?.find((s: any) => s.stage_type === "scheduled");
         
-        // Get project_id from the board
-        const { data: board } = await supabase
-          .from("social_content_boards")
-          .select("project_id")
-          .eq("id", link.card.board_id)
-          .single();
-        
-        if (board?.project_id) {
-          // Call the publish function directly using fetch (service-to-service)
-          try {
-            const publishResponse = await fetch(`${supabaseUrl}/functions/v1/social-instagram-publish`, {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                "Authorization": `Bearer ${supabaseKey}`,
-              },
-              body: JSON.stringify({
-                cardId: link.card_id,
-                projectId: board.project_id,
-              }),
-            });
+        if (scheduledStage) {
+          // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
+          let scheduledAt: string | null = null;
+          let shouldPublishNow = false;
+          
+          if (link.card.suggested_date) {
+            const timeStr = link.card.suggested_time || "09:00";
+            scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
             
-            const publishResult = await publishResponse.json();
-            console.log("Publish result:", publishResult);
-          } catch (publishError) {
-            console.error("Error calling publish function:", publishError);
-            // Don't fail the approval if publish fails - it can be retried
+            // Check if scheduled time is in the past or now
+            const scheduledDate = new Date(scheduledAt);
+            if (scheduledDate <= new Date()) {
+              shouldPublishNow = true;
+            }
+          } else {
+            // No date set - publish immediately
+            shouldPublishNow = true;
+          }
+
+          const updateData: Record<string, unknown> = {
+            stage_id: scheduledStage.id,
+            is_locked: true,
+          };
+          
+          if (scheduledAt) {
+            updateData.scheduled_at = scheduledAt;
+          }
+
+          await supabase
+            .from("social_content_cards")
+            .update(updateData)
+            .eq("id", link.card_id);
+
+          // Log history
+          await supabase.from("social_content_history").insert({
+            card_id: link.card_id,
+            action: "approved",
+            from_stage_id: link.card.stage_id,
+            to_stage_id: scheduledStage.id,
+            details: { 
+              auto_scheduled: true, 
+              shouldPublishNow,
+              approval_count: newApprovalCount,
+              required_approvals: requiredApprovals,
+            },
+          });
+
+          // If should publish now, trigger Instagram publishing
+          if (shouldPublishNow && link.card.creative_url && board?.project_id) {
+            console.log("Triggering immediate Instagram publish for card:", link.card_id);
+            
+            try {
+              const publishResponse = await fetch(`${supabaseUrl}/functions/v1/social-instagram-publish`, {
+                method: "POST",
+                headers: {
+                  "Content-Type": "application/json",
+                  "Authorization": `Bearer ${supabaseKey}`,
+                },
+                body: JSON.stringify({
+                  cardId: link.card_id,
+                  projectId: board.project_id,
+                }),
+              });
+              
+              const publishResult = await publishResponse.json();
+              console.log("Publish result:", publishResult);
+            } catch (publishError) {
+              console.error("Error calling publish function:", publishError);
+            }
           }
         }
+      } else {
+        // Not enough approvals yet - just log
+        await supabase.from("social_content_history").insert({
+          card_id: link.card_id,
+          action: "partial_approval",
+          details: { 
+            approval_count: newApprovalCount,
+            required_approvals: requiredApprovals,
+            remaining: requiredApprovals - newApprovalCount,
+          },
+        });
       }
     }
 
