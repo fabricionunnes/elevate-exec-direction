@@ -143,8 +143,10 @@ Deno.serve(async (req) => {
           let shouldPublishNow = false;
 
           if (link.card.suggested_date) {
-            const timeStr = link.card.suggested_time || "09:00";
-            scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
+            const timeStr = link.card.suggested_time || "09:00:00";
+            // Ensure time format is HH:MM:SS (add seconds if missing)
+            const normalizedTime = timeStr.length === 5 ? `${timeStr}:00` : timeStr.substring(0, 8);
+            scheduledAt = `${link.card.suggested_date}T${normalizedTime}-03:00`;
 
             // Check if scheduled time is in the past or now
             const scheduledDate = new Date(scheduledAt);
