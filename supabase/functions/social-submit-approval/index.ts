@@ -12,27 +12,33 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const { token, action, notes } = await req.json();
+    const url = new URL(req.url);
+    const body = await readJsonBodySafe(req);
+
+    // Allow fallback to query params so clients that can't POST JSON still work.
+    const token = body?.token || url.searchParams.get("token") || url.searchParams.get("access_token");
+    const action = body?.action || url.searchParams.get("action");
+    const notes = body?.notes ?? url.searchParams.get("notes");
 
     if (!token || !action) {
-      return new Response(
-        JSON.stringify({ error: "Token e action são obrigatórios" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Token e action são obrigatórios" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (!["approved", "adjustment_requested"].includes(action)) {
-      return new Response(
-        JSON.stringify({ error: "Ação inválida" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (!['approved', 'adjustment_requested'].includes(action)) {
+      return new Response(JSON.stringify({ error: "Ação inválida" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
-    if (action === "adjustment_requested" && !notes?.trim()) {
-      return new Response(
-        JSON.stringify({ error: "Descrição do ajuste é obrigatória" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+    if (action === "adjustment_requested" && !notes?.toString().trim()) {
+      return new Response(JSON.stringify({ error: "Descrição do ajuste é obrigatória" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
@@ -47,17 +53,17 @@ Deno.serve(async (req) => {
       .single();
 
     if (linkError || !link) {
-      return new Response(
-        JSON.stringify({ error: "Link inválido" }),
-        { status: 404, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Link inválido" }), {
+        status: 404,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     if (link.status !== "pending") {
-      return new Response(
-        JSON.stringify({ error: "Este link já foi utilizado" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
+      return new Response(JSON.stringify({ error: "Este link já foi utilizado" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
     }
 
     // Update link status
@@ -74,7 +80,7 @@ Deno.serve(async (req) => {
       card_id: link.card_id,
       approval_link_id: link.id,
       feedback_type: action,
-      adjustment_notes: notes?.trim() || null,
+      adjustment_notes: notes?.toString().trim() || null,
     });
 
     // Get board settings (required_approvals)
@@ -95,7 +101,7 @@ Deno.serve(async (req) => {
     if (action === "adjustment_requested") {
       // Move to adjustments stage immediately
       const adjustmentsStage = stages?.find((s: any) => s.stage_type === "adjustments");
-      
+
       if (adjustmentsStage) {
         await supabase
           .from("social_content_cards")
@@ -111,13 +117,13 @@ Deno.serve(async (req) => {
           action: "adjustment_requested",
           from_stage_id: link.card.stage_id,
           to_stage_id: adjustmentsStage.id,
-          details: { notes: notes?.trim() },
+          details: { notes: notes?.toString().trim() },
         });
       }
     } else {
       // Approved - increment approval count and check if we have enough
       const newApprovalCount = (link.card.approval_count || 0) + 1;
-      
+
       await supabase
         .from("social_content_cards")
         .update({ approval_count: newApprovalCount })
@@ -129,16 +135,16 @@ Deno.serve(async (req) => {
       if (newApprovalCount >= requiredApprovals) {
         // Move to scheduled stage
         const scheduledStage = stages?.find((s: any) => s.stage_type === "scheduled");
-        
+
         if (scheduledStage) {
           // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
           let scheduledAt: string | null = null;
           let shouldPublishNow = false;
-          
+
           if (link.card.suggested_date) {
             const timeStr = link.card.suggested_time || "09:00";
             scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
-            
+
             // Check if scheduled time is in the past or now
             const scheduledDate = new Date(scheduledAt);
             if (scheduledDate <= new Date()) {
@@ -153,7 +159,7 @@ Deno.serve(async (req) => {
             stage_id: scheduledStage.id,
             is_locked: true,
           };
-          
+
           if (scheduledAt) {
             updateData.scheduled_at = scheduledAt;
           }
@@ -169,8 +175,8 @@ Deno.serve(async (req) => {
             action: "approved",
             from_stage_id: link.card.stage_id,
             to_stage_id: scheduledStage.id,
-            details: { 
-              auto_scheduled: true, 
+            details: {
+              auto_scheduled: true,
               shouldPublishNow,
               approval_count: newApprovalCount,
               required_approvals: requiredApprovals,
@@ -180,7 +186,7 @@ Deno.serve(async (req) => {
           // If should publish now, trigger Instagram publishing
           if (shouldPublishNow && link.card.creative_url && board?.project_id) {
             console.log("Triggering immediate Instagram publish for card:", link.card_id);
-            
+
             try {
               const publishResponse = await fetch(`${supabaseUrl}/functions/v1/social-instagram-publish`, {
                 method: "POST",
@@ -193,7 +199,7 @@ Deno.serve(async (req) => {
                   projectId: board.project_id,
                 }),
               });
-              
+
               const publishResult = await publishResponse.json();
               console.log("Publish result:", publishResult);
             } catch (publishError) {
@@ -206,7 +212,7 @@ Deno.serve(async (req) => {
         await supabase.from("social_content_history").insert({
           card_id: link.card_id,
           action: "partial_approval",
-          details: { 
+          details: {
             approval_count: newApprovalCount,
             required_approvals: requiredApprovals,
             remaining: requiredApprovals - newApprovalCount,
@@ -215,15 +221,30 @@ Deno.serve(async (req) => {
       }
     }
 
-    return new Response(
-      JSON.stringify({ success: true }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ success: true }), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   } catch (error) {
     console.error("Error:", error);
-    return new Response(
-      JSON.stringify({ error: "Erro ao processar aprovação" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-    );
+    return new Response(JSON.stringify({ error: "Erro ao processar aprovação" }), {
+      status: 500,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
   }
 });
+
+async function readJsonBodySafe(req: Request): Promise<any | null> {
+  const contentType = req.headers.get("content-type") || "";
+  if (!contentType.toLowerCase().includes("application/json")) return null;
+
+  const contentLength = req.headers.get("content-length");
+  if (contentLength === "0") return null;
+
+  try {
+    const text = await req.text();
+    if (!text?.trim()) return null;
+    return JSON.parse(text);
+  } catch {
+    return null;
+  }
+}
