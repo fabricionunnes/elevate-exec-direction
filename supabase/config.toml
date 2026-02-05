@@ -215,3 +215,6 @@ verify_jwt = true
 
 [functions.client-virtual-board]
 verify_jwt = true
+
+[functions.social-instagram-publish]
+verify_jwt = true
