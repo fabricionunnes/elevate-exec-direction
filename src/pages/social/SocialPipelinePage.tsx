@@ -220,7 +220,14 @@ export const SocialPipelinePage = () => {
         body: { cardId, projectId: project.id },
       });
 
-      if (error) throw error;
+      if (error) {
+        const status = (error as any)?.status;
+        if (status === 401) {
+          toast.error("Sessão expirada. Faça login novamente para enviar aprovação.");
+          return;
+        }
+        throw error;
+      }
 
       if (data?.success) {
         toast.success("Link de aprovação enviado para o cliente!");
