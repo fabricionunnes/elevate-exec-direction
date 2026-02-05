@@ -99,7 +99,12 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
 
     setUploadingReference(true);
     try {
-      const fileName = `${projectId}/reference/${Date.now()}-${file.name}`;
+      // Sanitize filename: remove accents, special chars, and spaces
+      const sanitizedName = file.name
+        .normalize("NFD")
+        .replace(/[\u0300-\u036f]/g, "") // Remove accents
+        .replace(/[^a-zA-Z0-9.-]/g, "_"); // Replace special chars with underscore
+      const fileName = `${projectId}/reference/${Date.now()}-${sanitizedName}`;
       const { error: uploadError } = await supabase.storage
         .from("social-briefing")
         .upload(fileName, file, {
