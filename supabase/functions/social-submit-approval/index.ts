@@ -135,6 +135,7 @@ Deno.serve(async (req) => {
       if (newApprovalCount >= requiredApprovals) {
         // Move to scheduled stage
         const scheduledStage = stages?.find((s: any) => s.stage_type === "scheduled");
+        console.log("scheduledStage found:", scheduledStage?.id, scheduledStage?.name);
 
         if (scheduledStage) {
           // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
@@ -164,13 +165,21 @@ Deno.serve(async (req) => {
             updateData.scheduled_at = scheduledAt;
           }
 
-          await supabase
+          console.log("Moving card to scheduled stage with data:", JSON.stringify(updateData));
+
+          const { error: updateError } = await supabase
             .from("social_content_cards")
             .update(updateData)
             .eq("id", link.card_id);
 
+          if (updateError) {
+            console.error("Error moving card to scheduled:", updateError);
+          } else {
+            console.log("Card moved to scheduled successfully");
+          }
+
           // Log history
-          await supabase.from("social_content_history").insert({
+          const { error: historyError } = await supabase.from("social_content_history").insert({
             card_id: link.card_id,
             action: "approved",
             from_stage_id: link.card.stage_id,
@@ -182,6 +191,10 @@ Deno.serve(async (req) => {
               required_approvals: requiredApprovals,
             },
           });
+
+          if (historyError) {
+            console.error("Error inserting history:", historyError);
+          }
 
           // If should publish now, trigger Instagram publishing
           if (shouldPublishNow && link.card.creative_url && board?.project_id) {
