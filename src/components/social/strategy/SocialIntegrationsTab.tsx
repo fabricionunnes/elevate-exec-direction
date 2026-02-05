@@ -20,6 +20,12 @@ interface Integration {
   error_message: string | null;
 }
 
+interface InstagramAccount {
+  id: string;
+  instagram_username: string | null;
+  is_connected: boolean;
+}
+
 const PLATFORMS = [
   { 
     id: "instagram", 
@@ -66,22 +72,45 @@ const getStatusBadge = (status: string) => {
 
 export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps) => {
   const [integrations, setIntegrations] = useState<Integration[]>([]);
+  const [instagramAccount, setInstagramAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
 
   useEffect(() => {
     loadIntegrations();
+
+    // Listen for Instagram connection from popup
+    const handleMessage = (event: MessageEvent) => {
+      if (event.data?.type === "instagram-connected" && event.data?.projectId === projectId) {
+        loadIntegrations();
+        toast.success("Instagram conectado com sucesso!");
+      }
+    };
+
+    window.addEventListener("message", handleMessage);
+    return () => window.removeEventListener("message", handleMessage);
   }, [projectId]);
 
   const loadIntegrations = async () => {
     try {
-      const { data, error } = await supabase
-        .from("social_integrations")
-        .select("*")
-        .eq("project_id", projectId);
+      const [integrationsRes, instagramRes] = await Promise.all([
+        supabase
+          .from("social_integrations")
+          .select("*")
+          .eq("project_id", projectId),
+        supabase
+          .from("social_instagram_accounts")
+          .select("id, instagram_username, is_connected")
+          .eq("project_id", projectId)
+          .maybeSingle()
+      ]);
 
-      if (error) throw error;
-      setIntegrations(data || []);
+      if (integrationsRes.error) throw integrationsRes.error;
+      setIntegrations(integrationsRes.data || []);
+
+      if (!instagramRes.error) {
+        setInstagramAccount(instagramRes.data);
+      }
     } catch (error) {
       console.error("Error loading integrations:", error);
     } finally {
@@ -90,19 +119,70 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
   };
 
   const getIntegrationStatus = (platformId: string) => {
+    if (platformId === "instagram" && instagramAccount?.is_connected) {
+      return "connected";
+    }
     const integration = integrations.find(i => i.platform === platformId);
     return integration?.status || "disconnected";
   };
 
   const getIntegrationAccount = (platformId: string) => {
+    if (platformId === "instagram" && instagramAccount?.instagram_username) {
+      return `@${instagramAccount.instagram_username}`;
+    }
     const integration = integrations.find(i => i.platform === platformId);
     return integration?.account_name;
   };
 
+  const handleConnectInstagram = async () => {
+    setConnecting("instagram");
+    try {
+      const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
+        body: { projectId, action: "get_auth_url" },
+      });
+
+      if (error) throw error;
+
+      if (data?.authUrl) {
+        // Open in new window
+        const popup = window.open(data.authUrl, "instagram_auth", "width=600,height=700");
+        if (!popup) {
+          toast.error("Popup bloqueado. Permita popups para continuar.");
+        }
+      }
+    } catch (error) {
+      console.error("Error connecting Instagram:", error);
+      toast.error("Erro ao iniciar conexão com Instagram");
+    } finally {
+      setConnecting(null);
+    }
+  };
+
+  const handleDisconnectInstagram = async () => {
+    try {
+      const { error } = await supabase.functions.invoke("social-instagram-auth", {
+        body: { projectId, action: "disconnect" },
+      });
+
+      if (error) throw error;
+      
+      setInstagramAccount(null);
+      toast.success("Instagram desconectado");
+      loadIntegrations();
+    } catch (error) {
+      console.error("Error disconnecting Instagram:", error);
+      toast.error("Erro ao desconectar Instagram");
+    }
+  };
+
   const handleConnect = async (platformId: string) => {
+    if (platformId === "instagram") {
+      await handleConnectInstagram();
+      return;
+    }
+
     setConnecting(platformId);
     try {
-      // Create or update integration record
       const { error } = await supabase
         .from("social_integrations")
         .upsert({
@@ -145,6 +225,7 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
           const status = getIntegrationStatus(platform.id);
           const accountName = getIntegrationAccount(platform.id);
           const Icon = platform.icon;
+          const isInstagram = platform.id === "instagram";
 
           return (
             <Card key={platform.id} className="relative overflow-hidden">
@@ -167,8 +248,12 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
                 {status === "connected" && accountName ? (
                   <div className="flex items-center justify-between">
                     <span className="text-sm font-medium">{accountName}</span>
-                    <Button variant="outline" size="sm">
-                      Gerenciar
+                    <Button 
+                      variant="outline" 
+                      size="sm"
+                      onClick={isInstagram ? handleDisconnectInstagram : undefined}
+                    >
+                      {isInstagram ? "Desconectar" : "Gerenciar"}
                     </Button>
                   </div>
                 ) : status === "error" ? (
