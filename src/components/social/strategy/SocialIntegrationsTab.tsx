@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Instagram, Facebook, MessageSquare, Briefcase, Loader2, Check, X, AlertCircle, ExternalLink } from "lucide-react";
+import { Instagram, Facebook, MessageSquare, Briefcase, Loader2, Check, X, AlertCircle, ExternalLink, Copy } from "lucide-react";
 import { toast } from "sonner";
 import { WhatsAppGroupSettings } from "./WhatsAppGroupSettings";
+import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Input } from "@/components/ui/input";
 
 interface SocialIntegrationsTabProps {
   projectId: string;
@@ -75,6 +77,7 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
   const [instagramAccount, setInstagramAccount] = useState<InstagramAccount | null>(null);
   const [loading, setLoading] = useState(true);
   const [connecting, setConnecting] = useState<string | null>(null);
+  const [popupBlockedUrl, setPopupBlockedUrl] = useState<string | null>(null);
 
   useEffect(() => {
     loadIntegrations();
@@ -144,10 +147,11 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
       if (error) throw error;
 
       if (data?.authUrl) {
-        // Open in new window
+        // Try to open in new window
         const popup = window.open(data.authUrl, "instagram_auth", "width=600,height=700");
-        if (!popup) {
-          toast.error("Popup bloqueado. Permita popups para continuar.");
+        if (!popup || popup.closed || typeof popup.closed === "undefined") {
+          // Popup was blocked - show fallback dialog
+          setPopupBlockedUrl(data.authUrl);
         }
       }
     } catch (error) {
@@ -155,6 +159,13 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
       toast.error("Erro ao iniciar conexão com Instagram");
     } finally {
       setConnecting(null);
+    }
+  };
+
+  const handleCopyAuthUrl = async () => {
+    if (popupBlockedUrl) {
+      await navigator.clipboard.writeText(popupBlockedUrl);
+      toast.success("Link copiado! Cole em uma nova aba para continuar.");
     }
   };
 
@@ -307,6 +318,39 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
           </p>
         </CardContent>
       </Card>
+
+      {/* Popup Blocked Fallback Dialog */}
+      <Dialog open={!!popupBlockedUrl} onOpenChange={(open) => !open && setPopupBlockedUrl(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Popup bloqueado</DialogTitle>
+            <DialogDescription>
+              Seu navegador bloqueou a janela de autorização. Copie o link abaixo e cole em uma nova aba para continuar.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="flex gap-2">
+            <Input 
+              value={popupBlockedUrl || ""} 
+              readOnly 
+              className="text-xs"
+            />
+            <Button onClick={handleCopyAuthUrl} size="icon" variant="outline">
+              <Copy className="h-4 w-4" />
+            </Button>
+          </div>
+          <Button 
+            variant="default" 
+            className="w-full"
+            onClick={() => {
+              window.open(popupBlockedUrl!, "_blank");
+              setPopupBlockedUrl(null);
+            }}
+          >
+            <ExternalLink className="h-4 w-4 mr-2" />
+            Abrir em nova aba
+          </Button>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
