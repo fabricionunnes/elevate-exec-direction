@@ -1,6 +1,13 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2.87.1";
 
+// Helper function to validate UUID format
+function isValidUUID(str: string | null | undefined): boolean {
+  if (!str || typeof str !== 'string') return false;
+  const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+  return uuidRegex.test(str);
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
@@ -46,13 +53,19 @@ serve(async (req) => {
       // Custom fields for linking
       lead_id,
       leadId,
+      lead_name,
+      leadName,
       project_id,
       projectId,
       meeting_event_id,
       meetingEventId,
     } = body;
 
-    // Normalize the data
+    // Validate and extract lead_id - only use if it's a valid UUID
+    const rawLeadId = lead_id || leadId || null;
+    const rawLeadName = lead_name || leadName || null;
+
+    // Normalize the data - validate UUID before using lead_id
     const normalizedData = {
       source_meeting_id: meeting_id || meetingId || null,
       source_meeting_url: meeting_url || meetingUrl || null,
@@ -63,10 +76,13 @@ serve(async (req) => {
       speakers: Array.isArray(speakers) ? speakers : [],
       duration_seconds: duration_seconds || durationSeconds || (duration ? Math.floor(duration * 60) : null),
       recorded_at: recorded_at || recordedAt || date || new Date().toISOString(),
-      lead_id: lead_id || leadId || null,
+      lead_id: isValidUUID(rawLeadId) ? rawLeadId : null,
+      lead_name_hint: !isValidUUID(rawLeadId) && rawLeadId ? rawLeadId : rawLeadName, // Use invalid UUID as name hint
       project_id: project_id || projectId || null,
       meeting_event_id: meeting_event_id || meetingEventId || null,
     };
+
+    console.log(`Lead ID validation: raw="${rawLeadId}", isValid=${isValidUUID(rawLeadId)}, nameHint="${normalizedData.lead_name_hint}"`);
 
     // Validate required fields
     if (!normalizedData.transcription_text) {
@@ -87,6 +103,38 @@ serve(async (req) => {
     let linkedLeadId = normalizedData.lead_id;
     let linkedMeetingEventId = normalizedData.meeting_event_id;
     let linkedProjectId = normalizedData.project_id;
+
+    // If lead_id is not set but we have a name hint, try to find the lead by name
+    if (!linkedLeadId && normalizedData.lead_name_hint) {
+      console.log(`Attempting to find lead by name hint: "${normalizedData.lead_name_hint}"`);
+      const { data: leadByName } = await supabase
+        .from("crm_leads")
+        .select("id, pipeline_id")
+        .ilike("name", `%${normalizedData.lead_name_hint}%`)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (leadByName) {
+        linkedLeadId = leadByName.id;
+        console.log(`Found lead by name hint: ${leadByName.id}`);
+        
+        // Also get project_id from this lead's pipeline
+        if (leadByName.pipeline_id && !linkedProjectId) {
+          const { data: pipeline } = await supabase
+            .from("crm_pipelines")
+            .select("project_id")
+            .eq("id", leadByName.pipeline_id)
+            .single();
+
+          if (pipeline?.project_id) {
+            linkedProjectId = pipeline.project_id;
+          }
+        }
+      } else {
+        console.log(`No lead found matching name hint: "${normalizedData.lead_name_hint}"`);
+      }
+    }
 
     if (normalizedData.source_meeting_url && !linkedLeadId) {
       // Try to find a meeting event with this URL
