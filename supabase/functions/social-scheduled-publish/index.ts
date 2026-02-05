@@ -131,19 +131,22 @@ Deno.serve(async (req) => {
       console.log(`[Cron] Publishing card ${card.id} (attempt ${(card.publish_attempts || 0) + 1}/${MAX_ATTEMPTS})`);
 
       try {
-        // Call the existing publish function via Supabase client (avoids URL/route NOT_FOUND issues)
-        const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
-          "social-instagram-publish",
-          {
-            body: {
-              cardId: card.id,
-              projectId: board.project_id,
-            },
-            headers: {
-              Authorization: `Bearer ${supabaseKey}`,
-            },
-          }
-        );
+        // Call the publish function via direct HTTP to ensure Authorization header is passed
+        const publishUrl = `${supabaseUrl}/functions/v1/social-instagram-publish`;
+        const publishResponse = await fetch(publishUrl, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${supabaseKey}`,
+          },
+          body: JSON.stringify({
+            cardId: card.id,
+            projectId: board.project_id,
+          }),
+        });
+
+        const publishResult = await publishResponse.json();
+        const publishInvokeError = publishResponse.ok ? null : publishResult;
 
         if (publishInvokeError) {
           console.error(`[Cron] Card ${card.id} publish invoke error:`, publishInvokeError);
