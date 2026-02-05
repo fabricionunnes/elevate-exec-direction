@@ -81,15 +81,17 @@ export function RealtimeTranscription({
       let combinedStream: MediaStream;
 
       if (captureSystemAudio) {
+        // Show instruction toast before requesting permission
+        toast.info(
+          "Selecione a aba/janela e MARQUE 'Compartilhar áudio da aba' ou 'Compartilhar áudio do sistema'",
+          { duration: 5000 }
+        );
+
         // Try to capture system audio via screen share
         try {
           const displayStream = await navigator.mediaDevices.getDisplayMedia({
             video: true, // Required for getDisplayMedia
-            audio: {
-              echoCancellation: false,
-              noiseSuppression: false,
-              autoGainControl: false,
-            },
+            audio: true, // Request audio - user must enable it
           });
 
           // Get microphone audio as well
@@ -108,7 +110,10 @@ export function RealtimeTranscription({
           const systemAudioTracks = displayStream.getAudioTracks();
           
           if (systemAudioTracks.length === 0) {
-            toast.warning("Áudio do sistema não disponível. Usando apenas microfone.");
+            toast.warning(
+              "Áudio do sistema NÃO foi compartilhado. Certifique-se de marcar 'Compartilhar áudio' na próxima vez. Usando apenas microfone.",
+              { duration: 6000 }
+            );
             combinedStream = micStream;
           } else {
             // Combine both audio streams using AudioContext
@@ -130,10 +135,20 @@ export function RealtimeTranscription({
             // Store references for cleanup
             audioContextRef.current = audioContext;
             
-            toast.success("Capturando áudio do sistema + microfone");
+            toast.success("✅ Capturando áudio do sistema + microfone!", { duration: 3000 });
           }
-        } catch (displayError) {
+        } catch (displayError: any) {
           console.warn("Could not capture system audio:", displayError);
+          
+          // Check if user cancelled the dialog
+          if (displayError.name === "NotAllowedError") {
+            toast.error(
+              "Captura cancelada ou negada. Tente novamente e selecione uma aba/janela.",
+              { duration: 4000 }
+            );
+            return; // Don't proceed with recording
+          }
+          
           toast.warning("Não foi possível capturar áudio do sistema. Usando apenas microfone.");
           
           // Fallback to microphone only
@@ -439,7 +454,9 @@ export function RealtimeTranscription({
               Capturar áudio do computador
             </Label>
             <p className="text-xs text-muted-foreground">
-              Grava o áudio do sistema (reuniões online, vídeos, etc.) junto com o microfone
+              Grava o áudio do sistema (reuniões online, vídeos, etc.) junto com o microfone.
+              <br />
+              <strong className="text-foreground/70">Importante:</strong> Ao iniciar, selecione uma aba e marque "Compartilhar áudio".
             </p>
           </div>
           <Switch
