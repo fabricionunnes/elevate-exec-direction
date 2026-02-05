@@ -797,6 +797,9 @@ export const SocialCardDetailSheet = ({
                       <SelectItem value="engagement">Engajamento</SelectItem>
                       <SelectItem value="authority">Autoridade</SelectItem>
                       <SelectItem value="conversion">Conversão</SelectItem>
+                      <SelectItem value="educational">Educativo</SelectItem>
+                      <SelectItem value="social_proof">Prova Social</SelectItem>
+                      <SelectItem value="relationship">Relacionamento</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
