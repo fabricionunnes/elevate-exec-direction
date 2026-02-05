@@ -93,9 +93,22 @@ Deno.serve(async (req) => {
     if (targetStage) {
       // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
       let scheduledAt: string | null = null;
-      if (action === "approved" && link.card.suggested_date) {
-        const timeStr = link.card.suggested_time || "09:00";
-        scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
+      let shouldPublishNow = false;
+      
+      if (action === "approved") {
+        if (link.card.suggested_date) {
+          const timeStr = link.card.suggested_time || "09:00";
+          scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
+          
+          // Check if scheduled time is in the past or now
+          const scheduledDate = new Date(scheduledAt);
+          if (scheduledDate <= new Date()) {
+            shouldPublishNow = true;
+          }
+        } else {
+          // No date set - publish immediately
+          shouldPublishNow = true;
+        }
       }
 
       const updateData: Record<string, unknown> = {
@@ -119,8 +132,43 @@ Deno.serve(async (req) => {
         action: action,
         from_stage_id: link.card.stage_id,
         to_stage_id: targetStage.id,
-        details: action === "adjustment_requested" ? { notes: notes?.trim() } : { auto_scheduled: true },
+        details: action === "adjustment_requested" ? { notes: notes?.trim() } : { auto_scheduled: true, shouldPublishNow },
       });
+
+      // If approved and should publish now, trigger Instagram publishing
+      if (action === "approved" && shouldPublishNow && link.card.creative_url) {
+        console.log("Triggering immediate Instagram publish for card:", link.card_id);
+        
+        // Get project_id from the board
+        const { data: board } = await supabase
+          .from("social_content_boards")
+          .select("project_id")
+          .eq("id", link.card.board_id)
+          .single();
+        
+        if (board?.project_id) {
+          // Call the publish function directly using fetch (service-to-service)
+          try {
+            const publishResponse = await fetch(`${supabaseUrl}/functions/v1/social-instagram-publish`, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                "Authorization": `Bearer ${supabaseKey}`,
+              },
+              body: JSON.stringify({
+                cardId: link.card_id,
+                projectId: board.project_id,
+              }),
+            });
+            
+            const publishResult = await publishResponse.json();
+            console.log("Publish result:", publishResult);
+          } catch (publishError) {
+            console.error("Error calling publish function:", publishError);
+            // Don't fail the approval if publish fails - it can be retried
+          }
+        }
+      }
     }
 
     return new Response(
