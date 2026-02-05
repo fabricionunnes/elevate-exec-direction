@@ -218,9 +218,13 @@ export const SocialApprovalPage = () => {
             <CardTitle className="text-lg mt-2">{card.theme}</CardTitle>
           </CardHeader>
         <CardContent className="space-y-4">
-            {/* Creative Preview with Watermark */}
+            {/* Creative Preview with Watermark - Protected against saving */}
             {card.creative_url && (
-              <div className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800">
+              <div 
+                className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 select-none"
+                onContextMenu={(e) => e.preventDefault()}
+                onDragStart={(e) => e.preventDefault()}
+              >
                 {/* Aspect ratio based on content type */}
                 <div className={card.content_type === "feed" ? "aspect-square" : "aspect-[9/16]"}>
                   {card.creative_type === "video" ? (
@@ -228,18 +232,31 @@ export const SocialApprovalPage = () => {
                       src={card.creative_url}
                       controls
                       playsInline
-                      className="w-full h-full object-contain bg-black"
+                      controlsList="nodownload"
+                      disablePictureInPicture
+                      className="w-full h-full object-contain bg-black pointer-events-auto"
+                      onContextMenu={(e) => e.preventDefault()}
                     />
                   ) : (
                     <img
                       src={card.creative_url}
                       alt="Preview"
-                      className="w-full h-full object-contain"
+                      className="w-full h-full object-contain pointer-events-none"
+                      draggable={false}
+                      onContextMenu={(e) => e.preventDefault()}
+                      onDragStart={(e) => e.preventDefault()}
                     />
                   )}
                 </div>
+                {/* Transparent overlay to block all interactions with the image */}
+                <div 
+                  className="absolute inset-0 z-10"
+                  onContextMenu={(e) => e.preventDefault()}
+                  onDragStart={(e) => e.preventDefault()}
+                  style={{ touchAction: "none" }}
+                />
                 {/* Watermark overlay */}
-                <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
                   <div 
                     className="text-4xl sm:text-5xl font-bold text-white/30 rotate-[-30deg] select-none"
                     style={{ textShadow: "2px 2px 4px rgba(0,0,0,0.3)" }}
