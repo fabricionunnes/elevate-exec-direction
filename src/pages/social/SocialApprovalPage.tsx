@@ -248,12 +248,10 @@ export const SocialApprovalPage = () => {
                     />
                   )}
                 </div>
-                {/* Transparent overlay to block all interactions with the image */}
+                {/* Transparent overlay to block context menu and drag, but allow scroll */}
                 <div 
-                  className="absolute inset-0 z-10"
+                  className="absolute inset-0 z-10 pointer-events-none"
                   onContextMenu={(e) => e.preventDefault()}
-                  onDragStart={(e) => e.preventDefault()}
-                  style={{ touchAction: "none" }}
                 />
                 {/* Watermark overlay */}
                 <div className="absolute inset-0 flex items-center justify-center pointer-events-none z-20">
