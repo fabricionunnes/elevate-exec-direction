@@ -40,12 +40,17 @@ export function OAuthRedirectHandler() {
           // Try to decode state to check the provider
           const decodedState = JSON.parse(atob(state));
           
-          // Check if it's an Instagram/Facebook OAuth callback
+          // Check if it's a Social module OAuth callback (UNV Social)
+          if (decodedState.flow === "social") {
+            const callbackUrl = `/social/instagram-callback${queryString}`;
+            window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
+            navigate(callbackUrl, { replace: true });
+            return;
+          }
+          
+          // Check if it's a CRM Instagram/Facebook OAuth callback
           if (decodedState.redirectUri || decodedState.staffId) {
-            // Preserve the query params and navigate to callback page
             const callbackUrl = `/auth/instagram/callback${queryString}`;
-            
-            // Clean the URL first, then navigate
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
             navigate(callbackUrl, { replace: true });
             return;

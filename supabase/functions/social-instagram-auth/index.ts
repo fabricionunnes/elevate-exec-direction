@@ -49,8 +49,8 @@ serve(async (req) => {
         "business_management"
       ].join(",");
 
-      const redirectUri = `${SITE_URL}/#/social/instagram-callback`;
-      const state = JSON.stringify({ projectId, redirectUri });
+      // Mark this as "social" flow to differentiate from CRM OAuth
+      const state = JSON.stringify({ projectId, flow: "social" });
       const encodedState = btoa(state);
 
       const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
