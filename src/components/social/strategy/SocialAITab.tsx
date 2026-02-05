@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -14,7 +14,7 @@ import { Switch } from "@/components/ui/switch";
 import { 
   Loader2, Sparkles, Wand2, Image as ImageIcon, Plus, 
   Download, Copy, CheckCircle, RefreshCw, FileText, Video,
-  LayoutGrid, Send, Lightbulb, Palette
+  LayoutGrid, Send, Lightbulb, Palette, Upload, X, Link2
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -38,6 +38,7 @@ interface GeneratedImage {
   url: string;
   prompt: string;
   format: string;
+  carouselImages?: string[];
 }
 
 const FORMAT_ICONS: Record<string, typeof FileText> = {
@@ -70,8 +71,64 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   const [generatedImages, setGeneratedImages] = useState<GeneratedImage[]>([]);
   const [loadingImage, setLoadingImage] = useState(false);
   
+  // Carousel options
+  const [carouselCount, setCarouselCount] = useState("3");
+  const [carouselConnected, setCarouselConnected] = useState(false);
+  
+  // Reference image upload
+  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  const [uploadingReference, setUploadingReference] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  
   // Card creation state
   const [creatingCard, setCreatingCard] = useState<string | null>(null);
+
+  const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (!file.type.startsWith("image/")) {
+      toast.error("Por favor, selecione uma imagem");
+      return;
+    }
+
+    if (file.size > 5 * 1024 * 1024) {
+      toast.error("Imagem muito grande (máx 5MB)");
+      return;
+    }
+
+    setUploadingReference(true);
+    try {
+      const fileName = `${projectId}/reference/${Date.now()}-${file.name}`;
+      const { error: uploadError } = await supabase.storage
+        .from("social-briefing")
+        .upload(fileName, file, {
+          contentType: file.type,
+          upsert: false
+        });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("social-briefing")
+        .getPublicUrl(fileName);
+
+      setReferenceImage(publicUrl);
+      toast.success("Imagem de referência carregada!");
+    } catch (error) {
+      console.error("Error uploading reference:", error);
+      toast.error("Erro ao carregar imagem");
+    } finally {
+      setUploadingReference(false);
+      if (fileInputRef.current) {
+        fileInputRef.current.value = "";
+      }
+    }
+  };
+
+  const removeReferenceImage = () => {
+    setReferenceImage(null);
+  };
 
   const handleGenerateSuggestions = async () => {
     setLoadingSuggestions(true);
@@ -109,12 +166,18 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
 
     setLoadingImage(true);
     try {
+      const isCarousel = imageFormat === "carousel";
+      const imagesCount = isCarousel ? parseInt(carouselCount) : 1;
+      
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
         body: { 
           projectId, 
           prompt: imagePrompt,
           format: imageFormat,
-          includeLogoPref: includeLogo
+          includeLogoPref: includeLogo,
+          carouselCount: isCarousel ? imagesCount : undefined,
+          carouselConnected: isCarousel ? carouselConnected : undefined,
+          referenceImageUrl: referenceImage || undefined
         }
       });
 
@@ -125,7 +188,17 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         return;
       }
 
-      if (data.image_url) {
+      if (data.images && data.images.length > 0) {
+        setGeneratedImages(prev => [{
+          url: data.images[0],
+          prompt: imagePrompt,
+          format: imageFormat,
+          carouselImages: data.images
+        }, ...prev]);
+        toast.success(`${data.images.length} imagens do carrossel geradas!`);
+        setImagePrompt("");
+        setReferenceImage(null);
+      } else if (data.image_url) {
         setGeneratedImages(prev => [{
           url: data.image_url,
           prompt: imagePrompt,
@@ -133,6 +206,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         }, ...prev]);
         toast.success("Imagem gerada com sucesso!");
         setImagePrompt("");
+        setReferenceImage(null);
       }
     } catch (error) {
       console.error("Error generating image:", error);
@@ -419,6 +493,62 @@ CTA: ${suggestion.cta}`;
                     />
                   </div>
 
+                  {/* Reference Image Upload */}
+                  <div className="space-y-2">
+                    <Label className="flex items-center gap-2">
+                      <Upload className="h-4 w-4" />
+                      Imagem de Referência (opcional)
+                    </Label>
+                    <p className="text-xs text-muted-foreground">
+                      Envie uma foto de produto, pessoa ou elemento que deve aparecer na imagem gerada.
+                    </p>
+                    
+                    <input
+                      ref={fileInputRef}
+                      type="file"
+                      accept="image/*"
+                      className="hidden"
+                      onChange={handleReferenceUpload}
+                    />
+                    
+                    {referenceImage ? (
+                      <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
+                        <img 
+                          src={referenceImage} 
+                          alt="Referência" 
+                          className="h-16 w-16 object-cover rounded"
+                        />
+                        <div className="flex-1 min-w-0">
+                          <p className="text-sm font-medium truncate">Imagem carregada</p>
+                          <p className="text-xs text-muted-foreground">Esta imagem será incorporada na geração</p>
+                        </div>
+                        <Button
+                          type="button"
+                          variant="ghost"
+                          size="icon"
+                          onClick={removeReferenceImage}
+                        >
+                          <X className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    ) : (
+                      <Button
+                        type="button"
+                        variant="outline"
+                        className="w-full gap-2"
+                        onClick={() => fileInputRef.current?.click()}
+                        disabled={uploadingReference}
+                      >
+                        {uploadingReference ? (
+                          <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                          <Upload className="h-4 w-4" />
+                        )}
+                        {uploadingReference ? "Enviando..." : "Enviar imagem de referência"}
+                      </Button>
+                    )}
+                  </div>
+
                   <div className="flex flex-wrap items-end gap-4">
                     <div className="flex-1 min-w-[200px] space-y-2">
                       <Label>Formato</Label>
@@ -428,11 +558,44 @@ CTA: ${suggestion.cta}`;
                         </SelectTrigger>
                         <SelectContent>
                           <SelectItem value="feed_post">Feed Post (4:5)</SelectItem>
+                          <SelectItem value="carousel">Carrossel (4:5)</SelectItem>
                           <SelectItem value="story">Stories / Reels (9:16)</SelectItem>
                           <SelectItem value="cover">Capa / Banner (16:9)</SelectItem>
                         </SelectContent>
                       </Select>
                     </div>
+                    
+                    {imageFormat === "carousel" && (
+                      <>
+                        <div className="w-32 space-y-2">
+                          <Label>Qtd. Imagens</Label>
+                          <Select value={carouselCount} onValueChange={setCarouselCount}>
+                            <SelectTrigger>
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              <SelectItem value="2">2 imagens</SelectItem>
+                              <SelectItem value="3">3 imagens</SelectItem>
+                              <SelectItem value="4">4 imagens</SelectItem>
+                              <SelectItem value="5">5 imagens</SelectItem>
+                              <SelectItem value="6">6 imagens</SelectItem>
+                            </SelectContent>
+                          </Select>
+                        </div>
+                        
+                        <div className="flex items-center gap-2 pb-1">
+                          <Switch 
+                            id="carousel-connected" 
+                            checked={carouselConnected}
+                            onCheckedChange={setCarouselConnected}
+                          />
+                          <Label htmlFor="carousel-connected" className="text-sm cursor-pointer flex items-center gap-1.5">
+                            <Link2 className="h-4 w-4" />
+                            Conectado
+                          </Label>
+                        </div>
+                      </>
+                    )}
                     
                     <div className="flex items-center gap-2">
                       <Switch 
@@ -455,9 +618,16 @@ CTA: ${suggestion.cta}`;
                       ) : (
                         <Wand2 className="h-4 w-4" />
                       )}
-                      Gerar Imagem
+                      {imageFormat === "carousel" ? `Gerar ${carouselCount} Imagens` : "Gerar Imagem"}
                     </Button>
                   </div>
+
+                  {imageFormat === "carousel" && carouselConnected && (
+                    <div className="p-3 bg-primary/10 rounded-lg text-sm">
+                      <strong>Carrossel Conectado:</strong> A IA vai gerar uma imagem panorâmica que será dividida em {carouselCount} partes, 
+                      criando um efeito de continuidade ao deslizar no Instagram.
+                    </div>
+                  )}
                 </CardContent>
               </Card>
 
@@ -477,23 +647,61 @@ CTA: ${suggestion.cta}`;
                 <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
                   {generatedImages.map((image, index) => (
                     <Card key={index} className="overflow-hidden group">
-                      <div className="aspect-square relative bg-muted">
-                        <img 
-                          src={image.url} 
-                          alt={image.prompt}
-                          className="w-full h-full object-contain"
-                        />
-                        <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                          <Button size="icon" variant="secondary" asChild>
-                            <a href={image.url} target="_blank" rel="noopener noreferrer" download>
-                              <Download className="h-4 w-4" />
-                            </a>
-                          </Button>
+                      {image.carouselImages && image.carouselImages.length > 1 ? (
+                        <div className="relative">
+                          <div className="flex overflow-x-auto snap-x snap-mandatory">
+                            {image.carouselImages.map((imgUrl, imgIndex) => (
+                              <div 
+                                key={imgIndex} 
+                                className="flex-shrink-0 w-full aspect-[4/5] snap-center relative bg-muted"
+                              >
+                                <img 
+                                  src={imgUrl} 
+                                  alt={`${image.prompt} - ${imgIndex + 1}`}
+                                  className="w-full h-full object-contain"
+                                />
+                                <div className="absolute bottom-2 right-2 bg-black/60 text-white text-xs px-2 py-1 rounded">
+                                  {imgIndex + 1}/{image.carouselImages!.length}
+                                </div>
+                              </div>
+                            ))}
+                          </div>
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2 pointer-events-none group-hover:pointer-events-auto">
+                            {image.carouselImages.map((imgUrl, imgIndex) => (
+                              <Button key={imgIndex} size="icon" variant="secondary" asChild>
+                                <a href={imgUrl} target="_blank" rel="noopener noreferrer" download>
+                                  <Download className="h-4 w-4" />
+                                </a>
+                              </Button>
+                            ))}
+                          </div>
                         </div>
-                      </div>
+                      ) : (
+                        <div className="aspect-[4/5] relative bg-muted">
+                          <img 
+                            src={image.url} 
+                            alt={image.prompt}
+                            className="w-full h-full object-contain"
+                          />
+                          <div className="absolute inset-0 bg-black/60 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                            <Button size="icon" variant="secondary" asChild>
+                              <a href={image.url} target="_blank" rel="noopener noreferrer" download>
+                                <Download className="h-4 w-4" />
+                              </a>
+                            </Button>
+                          </div>
+                        </div>
+                      )}
                       <CardContent className="p-3">
                         <Badge variant="secondary" className="mb-2 text-xs">
-                          {imageFormat === "feed_post" ? "4:5" : imageFormat === "story" ? "9:16" : "16:9"}
+                          {image.format === "carousel" 
+                            ? `Carrossel (${image.carouselImages?.length || 1}x)` 
+                            : image.format === "feed_post" 
+                              ? "4:5" 
+                              : image.format === "story" 
+                                ? "9:16" 
+                                : "16:9"
+                          }
                         </Badge>
                         <p className="text-sm text-muted-foreground line-clamp-2">{image.prompt}</p>
                       </CardContent>

@@ -22,7 +22,7 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { projectId, prompt, format, includeLogoPref } = await req.json();
+    const { projectId, prompt, format, includeLogoPref, carouselCount, carouselConnected, referenceImageUrl } = await req.json();
 
     if (!projectId || !prompt) {
       return new Response(
@@ -59,30 +59,138 @@ serve(async (req) => {
     }
 
     // Build enhanced prompt with brand context
-    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, includeLogoPref && logoUrl);
+    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, includeLogoPref && logoUrl, referenceImageUrl);
 
     console.log("Generating image with prompt:", enhancedPrompt);
     console.log("Logo URL for inclusion:", includeLogoPref && logoUrl ? logoUrl : "none");
+    console.log("Reference image URL:", referenceImageUrl || "none");
+    console.log("Carousel count:", carouselCount || 1);
+    console.log("Carousel connected:", carouselConnected || false);
 
     // Build the message content - include logo image if requested
-    let messageContent: any;
+    const messageImages: { type: string; image_url: { url: string } }[] = [];
     
     if (includeLogoPref && logoUrl) {
-      // Multimodal message with logo image reference
-      messageContent = [
-        {
-          type: "text",
-          text: enhancedPrompt
-        },
-        {
-          type: "image_url",
-          image_url: {
-            url: logoUrl
+      messageImages.push({
+        type: "image_url",
+        image_url: { url: logoUrl }
+      });
+    }
+    
+    if (referenceImageUrl) {
+      messageImages.push({
+        type: "image_url",
+        image_url: { url: referenceImageUrl }
+      });
+    }
+
+    const messageContent: any = messageImages.length > 0 
+      ? [{ type: "text", text: enhancedPrompt }, ...messageImages]
+      : enhancedPrompt;
+
+    // Handle carousel generation
+    if (format === "carousel" && carouselCount && carouselCount > 1) {
+      const images: string[] = [];
+      
+      for (let i = 0; i < carouselCount; i++) {
+        let carouselPrompt = enhancedPrompt;
+        
+        if (carouselConnected) {
+          // For connected carousel, generate panoramic slices
+          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, includeLogoPref && logoUrl, referenceImageUrl);
+        } else {
+          // For separate images, add variation instruction
+          carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style.`;
+        }
+
+        const carouselMessageContent: any = messageImages.length > 0 
+          ? [{ type: "text", text: carouselPrompt }, ...messageImages]
+          : carouselPrompt;
+
+        const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-2.5-flash-image",
+            messages: [{ role: "user", content: carouselMessageContent }],
+            modalities: ["image", "text"]
+          }),
+        });
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error(`AI API error for carousel image ${i + 1}:`, errorText);
+          
+          if (aiResponse.status === 429) {
+            return new Response(
+              JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
+              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          if (aiResponse.status === 402) {
+            return new Response(
+              JSON.stringify({ error: "Créditos de IA insuficientes." }),
+              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+          
+          continue; // Skip this image and try next
+        }
+
+        const aiData = await aiResponse.json();
+        const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+        if (imageData) {
+          const base64Data = imageData.split(",")[1];
+          const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+          
+          const fileName = `${projectId}/ai-generated/carousel-${Date.now()}-${i + 1}.png`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("social-briefing")
+            .upload(fileName, imageBuffer, {
+              contentType: "image/png",
+              upsert: false
+            });
+
+          if (!uploadError) {
+            const { data: { publicUrl } } = supabase.storage
+              .from("social-briefing")
+              .getPublicUrl(fileName);
+            images.push(publicUrl);
           }
         }
-      ];
-    } else {
-      messageContent = enhancedPrompt;
+      }
+
+      if (images.length === 0) {
+        throw new Error("Failed to generate any carousel images");
+      }
+
+      // Log for audit
+      await supabase.from("social_audit_logs").insert({
+        project_id: projectId,
+        entity_type: "ai_image",
+        entity_id: projectId,
+        action: "generate_carousel",
+        changes: { 
+          prompt: prompt,
+          format: format,
+          carousel_count: carouselCount,
+          connected: carouselConnected,
+          image_urls: images
+        },
+      });
+
+      return new Response(
+        JSON.stringify({ 
+          success: true, 
+          images: images
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     // Call Lovable AI for image generation
@@ -192,7 +300,8 @@ function buildEnhancedPrompt(
   briefing: any, 
   profile: any, 
   format: string,
-  includeLogo: boolean
+  includeLogo: boolean,
+  referenceImageUrl: string | null = null
 ): string {
   // Determine aspect ratio and dimensions based on format
   // Instagram Feed: 1080x1350 (4:5 aspect ratio)
@@ -252,10 +361,97 @@ LOGO INCLUSION INSTRUCTIONS:
 `;
   }
 
+  if (referenceImageUrl) {
+    prompt += `
+REFERENCE IMAGE INSTRUCTIONS:
+- I am providing a reference image that MUST be incorporated into this design
+- The subject from the reference image should appear prominently in the generated image
+- Maintain the key visual features and recognizable elements of the reference subject
+- Integrate the reference subject naturally into the overall composition
+- The reference subject should be the focal point or a key element of the image
+`;
+  }
+
   prompt += `
 IMPORTANT:
 - Do NOT include any other text or typography in the image (except the provided logo if requested)
 - Create a visually striking image that works as a background for text overlays
+- Ultra high resolution, professional quality
+`;
+
+  return prompt;
+}
+
+function buildConnectedCarouselPrompt(
+  basePrompt: string,
+  briefing: any,
+  profile: any,
+  imageNumber: number,
+  totalImages: number,
+  includeLogo: boolean,
+  referenceImageUrl: string | null
+): string {
+  // For connected carousel, we need a panoramic image that can be sliced
+  const totalWidth = 1080 * totalImages;
+  const sliceWidth = 1080;
+  const startX = (imageNumber - 1) * sliceWidth;
+  const endX = imageNumber * sliceWidth;
+
+  let prompt = `CRITICAL: Generate a PANORAMIC IMAGE that represents slice ${imageNumber} of ${totalImages} of a continuous scene.
+
+This is for an Instagram CONNECTED CAROUSEL - where images flow seamlessly from one to the next.
+
+EXACT DIMENSIONS: 1080x1350 pixels (4:5 aspect ratio)
+
+CONTINUITY INSTRUCTIONS:
+- This is slice ${imageNumber} of ${totalImages} in a horizontal panorama
+- The scene should feel like it continues from the previous slice (if not the first)
+- The scene should continue naturally to the next slice (if not the last)
+${imageNumber === 1 ? "- This is the FIRST slice - start the scene here" : ""}
+${imageNumber === totalImages ? "- This is the LAST slice - conclude the scene here" : ""}
+- Imagine the full panorama is ${totalWidth}px wide, this slice shows pixels ${startX}-${endX}
+
+Visual Request: ${basePrompt}
+
+`;
+
+  if (profile?.tone_of_voice) {
+    prompt += `Brand tone: ${profile.tone_of_voice}\n`;
+  }
+
+  if (briefing?.brand_perception) {
+    prompt += `Brand personality: ${briefing.brand_perception}\n`;
+  }
+
+  prompt += `
+Style guidelines:
+- Modern, clean, professional design
+- High quality, visually appealing
+- Suitable for social media marketing
+- Clear focal point with natural continuation to adjacent slices
+`;
+
+  if (includeLogo && imageNumber === totalImages) {
+    prompt += `
+LOGO INCLUSION (LAST SLIDE ONLY):
+- Include the brand logo in a subtle position on this final slice
+- The logo should be proportionally sized and blend naturally
+`;
+  }
+
+  if (referenceImageUrl) {
+    prompt += `
+REFERENCE IMAGE INSTRUCTIONS:
+- I am providing a reference image that should be incorporated into this design
+- The reference subject should appear naturally in the scene
+- Maintain the subject's key features while integrating into the overall composition
+`;
+  }
+
+  prompt += `
+IMPORTANT:
+- Do NOT include any text or typography
+- Create a visually striking slice that connects seamlessly with adjacent slices
 - Ultra high resolution, professional quality
 `;
 
