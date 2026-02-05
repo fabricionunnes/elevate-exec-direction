@@ -101,15 +101,17 @@ export const SocialCardDialog = ({
 
     setSaving(true);
     try {
-      // Get the first stage (Ideia/Planejamento)
-      const firstStage = stages.find((s) => s.stage_type === "idea") || stages[0];
-      if (!firstStage) {
+      // Get the development stage (Em desenvolvimento) for content cards
+      const targetStage = cardType === "content" 
+        ? stages.find((s) => s.stage_type === "development") || stages[0]
+        : stages.find((s) => s.stage_type === "idea") || stages[0];
+      if (!targetStage) {
         throw new Error("Nenhuma etapa encontrada");
       }
 
       const baseData = {
         board_id: boardId,
-        stage_id: firstStage.id,
+        stage_id: targetStage.id,
         theme: theme.trim(),
         copy_text: copyText.trim() || null,
         card_color: cardColor,
@@ -185,7 +187,7 @@ export const SocialCardDialog = ({
       await supabase.from("social_content_history").insert({
         card_id: card.id,
         action: "created",
-        to_stage_id: firstStage.id,
+        to_stage_id: targetStage.id,
         performed_by: currentStaffId,
       });
 
