@@ -107,6 +107,9 @@ export const CRMInboxPage = () => {
     status: filterStatus !== "all" ? filterStatus : undefined,
   });
 
+  // Debug log
+  console.log('[Inbox] allConversations:', allConversations.length, 'staffRole:', staffRole, 'loadingAccess:', loadingAccess, 'allowedInstanceIds:', allowedInstanceIds.length, 'allowedOfficialInstanceIds:', allowedOfficialInstanceIds.length);
+  
   // Filter conversations based on user's instance access
   const conversations = allConversations.filter((conv) => {
     // Master has access to all
@@ -604,7 +607,7 @@ export const CRMInboxPage = () => {
             <div className="flex items-center justify-center py-8">
               <RefreshCw className="h-5 w-5 animate-spin text-muted-foreground" />
             </div>
-          ) : allowedInstanceIds.length === 0 && staffRole !== "master" ? (
+          ) : allowedInstanceIds.length === 0 && allowedOfficialInstanceIds.length === 0 && staffRole !== "master" ? (
             <div className="text-center py-8 px-4">
               <MessageSquare className="h-8 w-8 mx-auto text-muted-foreground/50 mb-2" />
               <p className="text-sm text-muted-foreground font-medium">
