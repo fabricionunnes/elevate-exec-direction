@@ -91,12 +91,26 @@ Deno.serve(async (req) => {
     const targetStage = stages?.find((s: any) => s.stage_type === targetStageType);
 
     if (targetStage) {
+      // Calculate scheduled_at from suggested_date + suggested_time with São Paulo timezone (UTC-3)
+      let scheduledAt: string | null = null;
+      if (action === "approved" && link.card.suggested_date) {
+        const timeStr = link.card.suggested_time || "09:00";
+        scheduledAt = `${link.card.suggested_date}T${timeStr}:00-03:00`;
+      }
+
+      const updateData: Record<string, unknown> = {
+        stage_id: targetStage.id,
+        is_locked: action === "approved",
+      };
+      
+      // Only set scheduled_at if it's an approval with a date
+      if (scheduledAt) {
+        updateData.scheduled_at = scheduledAt;
+      }
+
       await supabase
         .from("social_content_cards")
-        .update({
-          stage_id: targetStage.id,
-          is_locked: action === "approved",
-        })
+        .update(updateData)
         .eq("id", link.card_id);
 
       // Log history

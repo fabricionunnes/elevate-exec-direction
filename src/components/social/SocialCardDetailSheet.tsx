@@ -288,10 +288,22 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  // Combine suggested_date + suggested_time into scheduled_at with São Paulo timezone (UTC-3)
+  const calculateScheduledAt = (date: string, time: string): string | null => {
+    if (!date) return null;
+    // Default time to 09:00 if not provided
+    const timeStr = time || "09:00";
+    // Create ISO string with São Paulo timezone offset (-03:00)
+    return `${date}T${timeStr}:00-03:00`;
+  };
+
   const handleSave = async () => {
     if (!card) return;
     setSaving(true);
     try {
+      // Calculate scheduled_at from suggested_date + suggested_time
+      const scheduledAt = calculateScheduledAt(suggestedDate, suggestedTime);
+
       const { error } = await supabase
         .from("social_content_cards")
         .update({
@@ -304,6 +316,7 @@ export const SocialCardDetailSheet = ({
           cta: cta || null,
           suggested_date: suggestedDate || null,
           suggested_time: suggestedTime || null,
+          scheduled_at: scheduledAt,
           creative_url: creativeUrl || null,
           creative_type: creativeType,
           card_color: cardColor,
