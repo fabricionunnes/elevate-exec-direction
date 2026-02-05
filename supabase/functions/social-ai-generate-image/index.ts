@@ -1,5 +1,6 @@
 import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { Image } from "https://deno.land/x/imagescript@1.2.15/mod.ts";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
@@ -91,6 +92,7 @@ serve(async (req) => {
     // Handle carousel generation
     if (format === "carousel" && carouselCount && carouselCount > 1) {
       const images: string[] = [];
+      const { width: targetW, height: targetH } = getTargetDimensions(format);
       
       for (let i = 0; i < carouselCount; i++) {
         let carouselPrompt = enhancedPrompt;
@@ -145,7 +147,8 @@ serve(async (req) => {
 
         if (imageData) {
           const base64Data = imageData.split(",")[1];
-          const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+          const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+          const imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
           
           const fileName = `${projectId}/ai-generated/carousel-${Date.now()}-${i + 1}.png`;
           
@@ -267,7 +270,9 @@ serve(async (req) => {
 
     // Upload the generated image to Supabase Storage
     const base64Data = imageData.split(",")[1];
-    const imageBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
+    const { width: targetW, height: targetH } = getTargetDimensions(format);
+    const imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
     
     const fileName = `${projectId}/ai-generated/${Date.now()}.png`;
     
@@ -304,6 +309,8 @@ serve(async (req) => {
       JSON.stringify({ 
         success: true, 
         image_url: publicUrl,
+        // Keep returning the original base64 for backwards compatibility.
+        // The stored/public image URL is guaranteed to be the correct dimensions.
         image_base64: imageData,
         message: textContent
       }),
@@ -318,6 +325,34 @@ serve(async (req) => {
     );
   }
 });
+
+function getTargetDimensions(format: string): { width: number; height: number } {
+  if (format === "story" || format === "reel") return { width: 1080, height: 1920 };
+  if (format === "cover") return { width: 1920, height: 1080 };
+  // feed + carousel default
+  return { width: 1080, height: 1350 };
+}
+
+async function resizeAndCropToExact(
+  input: Uint8Array,
+  targetW: number,
+  targetH: number
+): Promise<Uint8Array> {
+  // Most image models default to 1:1. We enforce exact output size here.
+  const img = await Image.decode(input);
+
+  const scale = Math.max(targetW / img.width, targetH / img.height);
+  const resizedW = Math.ceil(img.width * scale);
+  const resizedH = Math.ceil(img.height * scale);
+
+  const resized = img.resize(resizedW, resizedH);
+
+  const x = Math.max(0, Math.floor((resizedW - targetW) / 2));
+  const y = Math.max(0, Math.floor((resizedH - targetH) / 2));
+  const cropped = resized.crop(x, y, targetW, targetH);
+
+  return await cropped.encode();
+}
 
 function buildEnhancedPrompt(
   basePrompt: string, 
