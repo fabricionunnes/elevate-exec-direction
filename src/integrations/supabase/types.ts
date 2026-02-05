@@ -19353,9 +19353,12 @@ export type Database = {
           instagram_post_id: string | null
           instagram_post_url: string | null
           is_locked: boolean | null
+          last_publish_attempt_at: string | null
           objective:
             | Database["public"]["Enums"]["social_content_objective"]
             | null
+          publish_attempts: number | null
+          publish_error: string | null
           published_at: string | null
           scheduled_at: string | null
           sort_order: number | null
@@ -19385,9 +19388,12 @@ export type Database = {
           instagram_post_id?: string | null
           instagram_post_url?: string | null
           is_locked?: boolean | null
+          last_publish_attempt_at?: string | null
           objective?:
             | Database["public"]["Enums"]["social_content_objective"]
             | null
+          publish_attempts?: number | null
+          publish_error?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           sort_order?: number | null
@@ -19417,9 +19423,12 @@ export type Database = {
           instagram_post_id?: string | null
           instagram_post_url?: string | null
           is_locked?: boolean | null
+          last_publish_attempt_at?: string | null
           objective?:
             | Database["public"]["Enums"]["social_content_objective"]
             | null
+          publish_attempts?: number | null
+          publish_error?: string | null
           published_at?: string | null
           scheduled_at?: string | null
           sort_order?: number | null
