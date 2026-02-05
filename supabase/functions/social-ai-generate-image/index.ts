@@ -465,6 +465,24 @@ BRAND COLOR PALETTE (MUST USE):
   // Add style guidelines with MAXIMUM QUALITY emphasis
   prompt += `
 ============================================
+PHYSICAL REALISM REQUIREMENTS (ABSOLUTELY CRITICAL):
+============================================
+- The image MUST be 100% PHYSICALLY REALISTIC and POSSIBLE in the real world
+- ALL people, objects, and scenes must follow real-world physics and spatial logic
+- People must be positioned in REALISTIC places:
+  * People sit on CHAIRS at the sides of tables, NEVER on top of tables or in the middle
+  * People stand on the FLOOR, not floating or in impossible positions
+  * Hands, arms, and body parts must be anatomically correct and natural
+- Perspective and depth must be correct:
+  * Objects closer to the camera should be larger
+  * Correct vanishing points and horizon lines
+  * Realistic shadows matching light sources
+- NO surreal, impossible, or physically incorrect compositions
+- The scene should look like a HIGH-END PROFESSIONAL PHOTOGRAPH
+- If showing a meeting room: people sit AROUND the table on chairs, NOT on the table
+- If showing an office: furniture is in logical positions, people interact naturally
+
+============================================
 IMAGE QUALITY REQUIREMENTS (ABSOLUTELY CRITICAL):
 ============================================
 - Generate at the MAXIMUM possible resolution and quality
@@ -606,6 +624,19 @@ BRAND COLOR PALETTE (MUST USE):
   }
 
   prompt += `
+============================================
+PHYSICAL REALISM REQUIREMENTS (ABSOLUTELY CRITICAL):
+============================================
+- The image MUST be 100% PHYSICALLY REALISTIC and POSSIBLE in the real world
+- ALL people, objects, and scenes must follow real-world physics and spatial logic
+- People must be positioned in REALISTIC places:
+  * People sit on CHAIRS at the sides of tables, NEVER on top of tables or in the middle
+  * People stand on the FLOOR, not floating or in impossible positions
+  * Hands, arms, and body parts must be anatomically correct and natural
+- Perspective and depth must be correct
+- NO surreal, impossible, or physically incorrect compositions
+- The scene should look like a HIGH-END PROFESSIONAL PHOTOGRAPH
+
 ============================================
 IMAGE QUALITY REQUIREMENTS (ABSOLUTELY CRITICAL):
 ============================================
