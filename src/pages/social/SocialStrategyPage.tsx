@@ -15,7 +15,7 @@ interface ContextType {
 
 export const SocialStrategyPage = () => {
   const { project, boardId } = useOutletContext<ContextType>();
-  const [activeTab, setActiveTab] = useState("integrations");
+  const [activeTab, setActiveTab] = useState("company-info");
 
   return (
     <div className="h-full flex flex-col">
@@ -31,13 +31,6 @@ export const SocialStrategyPage = () => {
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
         <div className="border-b bg-card px-4">
           <TabsList className="h-12 bg-transparent gap-2">
-            <TabsTrigger 
-              value="integrations" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
-            >
-              <Link2 className="h-4 w-4" />
-              Integrações
-            </TabsTrigger>
             <TabsTrigger 
               value="company-info" 
               className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
@@ -65,6 +58,13 @@ export const SocialStrategyPage = () => {
             >
               <Sparkles className="h-4 w-4" />
               IA Criativa
+            </TabsTrigger>
+            <TabsTrigger 
+              value="integrations" 
+              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+            >
+              <Link2 className="h-4 w-4" />
+              Integrações
             </TabsTrigger>
           </TabsList>
         </div>
