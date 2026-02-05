@@ -39,6 +39,8 @@ interface ContentCard {
   created_by: string | null;
   assigned_to: string | null;
   briefing_aligned: boolean;
+  card_type: "content" | "task" | "info";
+  card_color: string | null;
 }
 
 interface ContextType {

@@ -33,10 +33,21 @@ serve(async (req) => {
       .eq("is_active", true)
       .single();
 
-    if (settingsError || !settings?.client_phone || !settings?.whatsapp_instance_id) {
+    if (settingsError || !settings?.whatsapp_instance_id) {
       console.log("WhatsApp settings not configured");
       return new Response(
         JSON.stringify({ success: false, message: "Configurações de WhatsApp não encontradas" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Check if we have either a phone or a group configured
+    const sendToGroup = settings.send_to_group && settings.group_jid;
+    const hasPhoneTarget = settings.client_phone;
+
+    if (!sendToGroup && !hasPhoneTarget) {
+      return new Response(
+        JSON.stringify({ success: false, message: "Nenhum destinatário configurado (telefone ou grupo)" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -86,15 +97,37 @@ serve(async (req) => {
     const baseUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
     const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
 
-    // Format phone number
-    let phone = settings.client_phone.replace(/\D/g, "");
-    if (!phone.startsWith("55")) {
-      phone = "55" + phone;
+    // Determine target (phone or group)
+    let targetNumber: string;
+    let isGroup = false;
+
+    if (sendToGroup) {
+      targetNumber = settings.group_jid;
+      isGroup = true;
+    } else {
+      // Format phone number
+      let phone = settings.client_phone.replace(/\D/g, "");
+      if (!phone.startsWith("55")) {
+        phone = "55" + phone;
+      }
+      targetNumber = phone;
     }
 
     // Build message
-    const contentTypes: Record<string, string> = { feed: "Feed", reels: "Reels", stories: "Stories" };
-    const message = `Olá${settings.client_name ? ` ${settings.client_name}` : ""}! 👋
+    const contentTypes: Record<string, string> = { 
+      feed: "Feed", 
+      estatico: "Estático",
+      carrossel: "Carrossel",
+      reels: "Reels", 
+      stories: "Stories",
+      outro: "Outro"
+    };
+
+    const recipientName = isGroup 
+      ? (settings.group_name || "Grupo") 
+      : (settings.client_name ? ` ${settings.client_name}` : "");
+
+    const message = `Olá${isGroup ? "" : recipientName}! 👋
 
 Temos um novo conteúdo para sua aprovação:
 
@@ -115,7 +148,7 @@ Aguardamos seu feedback! ✨`;
         apikey: instance.api_key,
       },
       body: JSON.stringify({
-        number: phone,
+        number: targetNumber,
         text: message,
       }),
     });
@@ -130,11 +163,19 @@ Aguardamos seu feedback! ✨`;
     await supabase.from("social_content_history").insert({
       card_id: cardId,
       action: "sent_for_approval",
-      details: { phone, approval_link_id: approvalLink.access_token },
+      details: { 
+        target: targetNumber, 
+        is_group: isGroup,
+        approval_link_id: approvalLink.access_token 
+      },
     });
 
+    const successMessage = isGroup 
+      ? `Link enviado para o grupo "${settings.group_name || "WhatsApp"}"!`
+      : "Link enviado com sucesso!";
+
     return new Response(
-      JSON.stringify({ success: true, message: "Link enviado com sucesso!" }),
+      JSON.stringify({ success: true, message: successMessage }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
