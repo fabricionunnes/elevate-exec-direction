@@ -396,7 +396,14 @@ REFERENCE IMAGE INSTRUCTIONS:
 `;
   }
 
-  prompt += `
+prompt += `
+CRITICAL LANGUAGE REQUIREMENTS:
+- If ANY text appears in the image, it MUST be in 100% correct Brazilian Portuguese
+- Double-check all spelling, grammar, and accents before generating
+- Common Portuguese accents that MUST be correct: á, é, í, ó, ú, ã, õ, ê, â, ç
+- Do NOT generate text with spelling errors, wrong accents, or grammatical mistakes
+- If unsure about spelling, prefer NOT including text rather than including incorrect text
+
 IMPORTANT:
 - Do NOT include any other text or typography in the image (except the provided logo if requested)
 - Create a visually striking image that works as a background for text overlays
@@ -472,7 +479,13 @@ REFERENCE IMAGE INSTRUCTIONS:
 `;
   }
 
-  prompt += `
+prompt += `
+CRITICAL LANGUAGE REQUIREMENTS:
+- If ANY text appears in the image, it MUST be in 100% correct Brazilian Portuguese
+- Double-check all spelling, grammar, and accents (á, é, í, ó, ú, ã, õ, ê, â, ç)
+- Do NOT generate text with spelling errors or wrong accents
+- If unsure about spelling, prefer NOT including text
+
 IMPORTANT:
 - Do NOT include any text or typography
 - Create a visually striking slice that connects seamlessly with adjacent slices
