@@ -10,6 +10,7 @@ import { toast } from "sonner";
 import { useCrmTranscriptions } from "@/hooks/useCrmTranscriptions";
 import { TranscriptionsList } from "@/components/crm/transcriptions/TranscriptionsList";
 import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeTranscription";
+import { useCRMContext } from "@/pages/crm/CRMLayout";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
@@ -24,6 +25,7 @@ export const LeadTranscriptionTab = ({
   companyName,
   onBriefingGenerated,
 }: LeadTranscriptionTabProps) => {
+  const { isAdmin, isMaster } = useCRMContext();
   const [transcription, setTranscription] = useState("");
   const [generatedBriefing, setGeneratedBriefing] = useState("");
   const [isGenerating, setIsGenerating] = useState(false);
@@ -34,6 +36,8 @@ export const LeadTranscriptionTab = ({
   const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions({
     leadId,
   });
+
+  const canDelete = isAdmin || isMaster;
 
   const handleGenerateBriefing = async () => {
     if (!transcription.trim()) {
@@ -159,6 +163,7 @@ export const LeadTranscriptionTab = ({
             loading={loading}
             showLeadLink={false}
             onDelete={deleteTranscription}
+            canDelete={canDelete}
           />
         </TabsContent>
 
@@ -166,6 +171,8 @@ export const LeadTranscriptionTab = ({
         <TabsContent value="record" className="mt-4">
           <RealtimeTranscription
             leadId={leadId}
+            leadName={leadName}
+            companyName={companyName}
             onTranscriptionSaved={() => {
               refetch();
               setActiveTab("list");

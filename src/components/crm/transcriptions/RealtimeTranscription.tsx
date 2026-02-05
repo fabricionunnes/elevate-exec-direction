@@ -22,6 +22,8 @@ interface RealtimeTranscriptionProps {
   leadId?: string;
   meetingEventId?: string;
   projectId?: string;
+  leadName?: string;
+  companyName?: string | null;
   onTranscriptionSaved?: () => void;
 }
 
@@ -29,11 +31,14 @@ export function RealtimeTranscription({
   leadId,
   meetingEventId,
   projectId,
+  leadName,
+  companyName,
   onTranscriptionSaved,
 }: RealtimeTranscriptionProps) {
   const [isRecording, setIsRecording] = useState(false);
   const [isProcessing, setIsProcessing] = useState(false);
   const [isSaving, setIsSaving] = useState(false);
+  const [isGeneratingBriefing, setIsGeneratingBriefing] = useState(false);
   const [title, setTitle] = useState("");
   const [transcription, setTranscription] = useState("");
   const [recordingTime, setRecordingTime] = useState(0);
@@ -220,7 +225,7 @@ export function RealtimeTranscription({
     try {
       const { data: session } = await supabase.auth.getSession();
 
-      const { error } = await supabase.from("crm_transcriptions").insert({
+      const { data: newTranscription, error } = await supabase.from("crm_transcriptions").insert({
         lead_id: leadId || null,
         meeting_event_id: meetingEventId || null,
         project_id: projectId || null,
@@ -232,11 +237,45 @@ export function RealtimeTranscription({
         status: "completed",
         recorded_at: new Date().toISOString(),
         created_by: session?.session?.user?.id,
-      });
+      }).select().single();
 
       if (error) throw error;
 
       toast.success("Transcrição salva!");
+
+      // Auto-generate briefing
+      if (newTranscription) {
+        setIsGeneratingBriefing(true);
+        toast.info("Gerando briefing automaticamente...");
+
+        try {
+          const { data: briefingData, error: briefingError } = await supabase.functions.invoke(
+            "generate-crm-briefing",
+            {
+              body: {
+                transcription: transcription.trim(),
+                leadName: leadName || title.trim(),
+                companyName: companyName || null,
+              },
+            }
+          );
+
+          if (!briefingError && briefingData?.briefing) {
+            await supabase
+              .from("crm_transcriptions")
+              .update({ ai_analysis: briefingData.briefing })
+              .eq("id", newTranscription.id);
+            
+            toast.success("Briefing gerado e salvo automaticamente!");
+          }
+        } catch (briefingErr) {
+          console.error("Error generating auto-briefing:", briefingErr);
+          toast.warning("Briefing não foi gerado, mas a transcrição foi salva.");
+        } finally {
+          setIsGeneratingBriefing(false);
+        }
+      }
+
       setTitle("");
       setTranscription("");
       setRecordingTime(0);
@@ -247,7 +286,7 @@ export function RealtimeTranscription({
     } finally {
       setIsSaving(false);
     }
-  }, [transcription, title, leadId, meetingEventId, projectId, recordingTime, onTranscriptionSaved]);
+  }, [transcription, title, leadId, meetingEventId, projectId, recordingTime, leadName, companyName, onTranscriptionSaved]);
 
   const formatTime = (seconds: number) => {
     const mins = Math.floor(seconds / 60);
@@ -375,9 +414,14 @@ export function RealtimeTranscription({
               </span>
               <Button
                 onClick={handleSaveTranscription}
-                disabled={isSaving || !title.trim()}
+                disabled={isSaving || isGeneratingBriefing || !title.trim()}
               >
-                {isSaving ? (
+                {isGeneratingBriefing ? (
+                  <>
+                    <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                    Gerando Briefing...
+                  </>
+                ) : isSaving ? (
                   <>
                     <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                     Salvando...
@@ -385,7 +429,7 @@ export function RealtimeTranscription({
                 ) : (
                   <>
                     <Check className="h-4 w-4 mr-2" />
-                    Salvar Transcrição
+                    Salvar e Gerar Briefing
                   </>
                 )}
               </Button>

@@ -147,6 +147,9 @@ export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) 
     duration_seconds?: number | null;
     status?: string;
     recorded_at?: string | null;
+    auto_generate_briefing?: boolean;
+    leadName?: string;
+    companyName?: string | null;
   }) => {
     try {
       const { data: session } = await supabase.auth.getSession();
@@ -170,6 +173,33 @@ export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) 
         .single();
 
       if (error) throw error;
+
+      // Auto-generate briefing if requested
+      if (data.auto_generate_briefing && data.transcription_text && newTranscription) {
+        try {
+          const { data: briefingData, error: briefingError } = await supabase.functions.invoke(
+            "generate-crm-briefing",
+            {
+              body: {
+                transcription: data.transcription_text,
+                leadName: data.leadName || data.title,
+                companyName: data.companyName || null,
+              },
+            }
+          );
+
+          if (!briefingError && briefingData?.briefing) {
+            // Update the transcription with the generated briefing
+            await supabase
+              .from("crm_transcriptions")
+              .update({ ai_analysis: briefingData.briefing })
+              .eq("id", newTranscription.id);
+          }
+        } catch (briefingErr) {
+          console.error("Error generating auto-briefing:", briefingErr);
+          // Don't fail the main operation if briefing fails
+        }
+      }
 
       await fetchTranscriptions();
       toast.success("Transcrição salva com sucesso");
