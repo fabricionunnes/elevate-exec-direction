@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, DragEvent } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -125,6 +125,7 @@ export const SocialCardDetailSheet = ({
   const [suggestedTime, setSuggestedTime] = useState("");
   const [creativeUrl, setCreativeUrl] = useState("");
   const [creativeType, setCreativeType] = useState<string | null>(null);
+  const [isDraggingFile, setIsDraggingFile] = useState(false);
 
   useEffect(() => {
     if (card && open) {
@@ -187,6 +188,77 @@ export const SocialCardDetailSheet = ({
       setFeedback(data || []);
     } catch (error) {
       console.error("Error loading feedback:", error);
+    }
+  };
+
+  const handleDragOver = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    if (e.dataTransfer.types.includes("Files")) {
+      setIsDraggingFile(true);
+    }
+  };
+
+  const handleDragLeave = (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+  };
+
+  const handleFileDrop = async (e: DragEvent<HTMLDivElement>) => {
+    e.preventDefault();
+    e.stopPropagation();
+    setIsDraggingFile(false);
+
+    if (!card || card.is_locked || uploading) return;
+
+    const files = e.dataTransfer.files;
+    if (files.length === 0) return;
+
+    const file = files[0];
+    
+    // Check if it's an image or video
+    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
+      toast.error("Apenas imagens e vídeos são permitidos");
+      return;
+    }
+
+    setUploading(true);
+    try {
+      const fileExt = file.name.split(".").pop();
+      const fileName = `${card.id}/${Date.now()}.${fileExt}`;
+
+      const { error: uploadError } = await supabase.storage
+        .from("social-content")
+        .upload(fileName, file, { upsert: true });
+
+      if (uploadError) throw uploadError;
+
+      const { data: { publicUrl } } = supabase.storage
+        .from("social-content")
+        .getPublicUrl(fileName);
+
+      const isVideo = file.type.startsWith("video/");
+      
+      setCreativeUrl(publicUrl);
+      setCreativeType(isVideo ? "video" : "image");
+
+      const { error: updateError } = await supabase
+        .from("social_content_cards")
+        .update({
+          creative_url: publicUrl,
+          creative_type: isVideo ? "video" : "image",
+        })
+        .eq("id", card.id);
+
+      if (updateError) throw updateError;
+
+      toast.success("Arquivo enviado!");
+    } catch (error) {
+      console.error("Error uploading file:", error);
+      toast.error("Erro ao enviar arquivo");
+    } finally {
+      setUploading(false);
     }
   };
 
@@ -533,7 +605,12 @@ export const SocialCardDetailSheet = ({
               <div className="space-y-2">
                 <Label>Criativo</Label>
                 {creativeUrl ? (
-                  <div className="relative rounded-lg overflow-hidden bg-muted aspect-video">
+                  <div 
+                    className={`relative rounded-lg overflow-hidden bg-muted aspect-video ${isDraggingFile ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleFileDrop}
+                  >
                     {creativeType === "video" ? (
                       <video
                         src={creativeUrl}
@@ -568,12 +645,15 @@ export const SocialCardDetailSheet = ({
                   </div>
                 ) : (
                   <div
-                    className="border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors"
+                    className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors ${isDraggingFile ? 'border-primary bg-primary/10' : ''}`}
                     onClick={() => fileInputRef.current?.click()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleFileDrop}
                   >
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      {uploading ? "Enviando..." : "Clique para enviar imagem ou vídeo"}
+                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : "Clique ou arraste para enviar imagem ou vídeo"}
                     </p>
                   </div>
                 )}
