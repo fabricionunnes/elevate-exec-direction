@@ -638,13 +638,13 @@ export const SocialCardDetailSheet = ({
           <SheetTitle className="text-left">{theme || "Novo Conteúdo"}</SheetTitle>
         </SheetHeader>
 
-        <Tabs defaultValue="checklist" className="flex-1 flex flex-col overflow-hidden">
+        <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
           <TabsList className="grid grid-cols-5 w-full">
+            <TabsTrigger value="content">Conteúdo</TabsTrigger>
             <TabsTrigger value="checklist" className="gap-1">
               <ListChecks className="h-3 w-3" />
               Checklist
             </TabsTrigger>
-            <TabsTrigger value="content">Conteúdo</TabsTrigger>
             <TabsTrigger value="attachments" className="gap-1">
               <Paperclip className="h-3 w-3" />
               Anexos
