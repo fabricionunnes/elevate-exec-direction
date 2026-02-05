@@ -219,10 +219,10 @@ serve(async (req) => {
   }
 
   try {
-    const { audioUrl, staffId } = await req.json();
+    const { audioUrl, audio_base64, staffId, language_code } = await req.json();
     
-    if (!audioUrl) {
-      throw new Error('audioUrl is required');
+    if (!audioUrl && !audio_base64) {
+      throw new Error('audioUrl or audio_base64 is required');
     }
 
     const ASSEMBLYAI_API_KEY = Deno.env.get('ASSEMBLYAI_API_KEY');
@@ -230,84 +230,115 @@ serve(async (req) => {
       throw new Error('ASSEMBLYAI_API_KEY not configured');
     }
 
-    const supabase = createClient(
-      Deno.env.get('SUPABASE_URL')!,
-      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-    );
+    let finalAudioUrl = audioUrl || '';
 
-    let finalAudioUrl = audioUrl;
-
-    // Check if it's a Google Drive link
-    const driveMatch = audioUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
-    const driveOpenMatch = audioUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
-    const fileId = driveMatch?.[1] || driveOpenMatch?.[1];
-
-    if (fileId && staffId) {
-      console.log('Google Drive file detected, ID:', fileId);
+    // If base64 audio is provided, upload it to AssemblyAI first
+    if (audio_base64) {
+      console.log('Uploading base64 audio to AssemblyAI...');
       
-      // Get staff's user_id first
-      const { data: staff } = await supabase
-        .from('onboarding_staff')
-        .select('user_id')
-        .eq('id', staffId)
-        .single();
-
-      if (!staff?.user_id) {
-        throw new Error('Staff não encontrado.');
+      // Decode base64 to binary
+      const binaryString = atob(audio_base64);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
       }
 
-      // Get Google tokens from user_google_tokens table
-      const { data: tokenData } = await supabase
-        .from('user_google_tokens')
-        .select('access_token, refresh_token, token_expires_at')
-        .eq('user_id', staff.user_id)
-        .single();
+      const uploadResponse = await fetch('https://api.assemblyai.com/v2/upload', {
+        method: 'POST',
+        headers: {
+          'Authorization': ASSEMBLYAI_API_KEY,
+          'Content-Type': 'application/octet-stream',
+        },
+        body: bytes,
+      });
 
-      if (tokenData) {
-        let accessToken = tokenData.access_token;
+      if (!uploadResponse.ok) {
+        const errorText = await uploadResponse.text();
+        console.error('AssemblyAI upload error:', uploadResponse.status, errorText);
+        throw new Error(`Falha ao fazer upload do áudio: ${errorText}`);
+      }
 
-        // Check if token is expired
-        const expiresAt = new Date(tokenData.token_expires_at).getTime();
-        if (expiresAt < Date.now()) {
-          console.log('Token expired, refreshing...');
-          accessToken = await refreshGoogleToken(supabase, staff.user_id, tokenData.refresh_token);
+      const uploadData = await uploadResponse.json();
+      finalAudioUrl = uploadData.upload_url;
+      console.log('Audio uploaded successfully');
+    } else if (audioUrl) {
+      // Check if it's a Google Drive link (only if audioUrl was provided)
+      const driveMatch = audioUrl.match(/drive\.google\.com\/file\/d\/([^/]+)/);
+      const driveOpenMatch = audioUrl.match(/drive\.google\.com\/open\?id=([^&]+)/);
+      const fileId = driveMatch?.[1] || driveOpenMatch?.[1];
+
+      if (fileId && staffId) {
+        console.log('Google Drive file detected, ID:', fileId);
+        
+        const supabase = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+        
+        // Get staff's user_id first
+        const { data: staff } = await supabase
+          .from('onboarding_staff')
+          .select('user_id')
+          .eq('id', staffId)
+          .single();
+
+        if (!staff?.user_id) {
+          throw new Error('Staff não encontrado.');
         }
 
-        if (accessToken) {
-          try {
-            const driveUrl = await getGoogleDriveDownloadUrl(fileId, accessToken);
-            
-            if (driveUrl.startsWith('UPLOAD_NEEDED:')) {
-              // Parse file size from the URL if available
-              const parts = driveUrl.split(':');
-              const extractedFileId = parts[1];
-              const fileSize = parts[2] ? parseInt(parts[2], 10) : undefined;
+        // Get Google tokens from user_google_tokens table
+        const { data: tokenData } = await supabase
+          .from('user_google_tokens')
+          .select('access_token, refresh_token, token_expires_at')
+          .eq('user_id', staff.user_id)
+          .single();
+
+        if (tokenData) {
+          let accessToken = tokenData.access_token;
+
+          // Check if token is expired
+          const expiresAt = new Date(tokenData.token_expires_at).getTime();
+          if (expiresAt < Date.now()) {
+            console.log('Token expired, refreshing...');
+            accessToken = await refreshGoogleToken(supabase, staff.user_id, tokenData.refresh_token);
+          }
+
+          if (accessToken) {
+            try {
+              const driveUrl = await getGoogleDriveDownloadUrl(fileId, accessToken);
               
-              // Need to download and re-upload to AssemblyAI
-              finalAudioUrl = await uploadToAssemblyAI(extractedFileId, accessToken, ASSEMBLYAI_API_KEY, fileSize);
-            } else {
-              finalAudioUrl = driveUrl;
+              if (driveUrl.startsWith('UPLOAD_NEEDED:')) {
+                // Parse file size from the URL if available
+                const parts = driveUrl.split(':');
+                const extractedFileId = parts[1];
+                const fileSize = parts[2] ? parseInt(parts[2], 10) : undefined;
+                
+                // Need to download and re-upload to AssemblyAI
+                finalAudioUrl = await uploadToAssemblyAI(extractedFileId, accessToken, ASSEMBLYAI_API_KEY, fileSize);
+              } else {
+                finalAudioUrl = driveUrl;
+              }
+            } catch (driveError) {
+              console.error('Google Drive access error:', driveError);
+              // Re-throw with original message if it's already a user-friendly message
+              if (driveError instanceof Error && (
+                driveError.message.includes('Acesso negado') ||
+                driveError.message.includes('não encontrado') ||
+                driveError.message.includes('Sessão do Google') ||
+                driveError.message.includes('muito grande') ||
+                driveError.message.includes('cannotDownloadFile') ||
+                driveError.message.includes('bloqueou o download')
+              )) {
+                throw driveError;
+              }
+              throw new Error('Não foi possível acessar o arquivo no Google Drive. Verifique as permissões do arquivo.');
             }
-          } catch (driveError) {
-            console.error('Google Drive access error:', driveError);
-            // Re-throw with original message if it's already a user-friendly message
-            if (driveError instanceof Error && (
-              driveError.message.includes('Acesso negado') ||
-              driveError.message.includes('não encontrado') ||
-              driveError.message.includes('Sessão do Google') ||
-              driveError.message.includes('muito grande') ||
-              driveError.message.includes('cannotDownloadFile') ||
-              driveError.message.includes('bloqueou o download')
-            )) {
-              throw driveError;
-            }
-            throw new Error('Não foi possível acessar o arquivo no Google Drive. Verifique as permissões do arquivo.');
+          } else {
+            throw new Error('Sessão do Google expirada. Reconecte o Google Calendar nas configurações.');
           }
         } else {
-          throw new Error('Sessão do Google expirada. Reconecte o Google Calendar nas configurações.');
+          throw new Error('Google não conectado. Conecte o Google Calendar nas configurações para acessar arquivos do Drive.');
         }
-      } else {
-        throw new Error('Google não conectado. Conecte o Google Calendar nas configurações para acessar arquivos do Drive.');
       }
     }
 
@@ -322,7 +353,7 @@ serve(async (req) => {
       },
       body: JSON.stringify({
         audio_url: finalAudioUrl,
-        language_code: 'pt',
+        language_code: language_code || 'pt',
         speaker_labels: true,
       }),
     });
