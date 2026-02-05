@@ -1,8 +1,7 @@
-import { serve } from "https://deno.land/std@0.168.0/http/server.ts";
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-01-14-v6-route-prefixes";
+const EVOLUTION_API_FUNC_VERSION = "2026-02-05-v7";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
@@ -27,7 +26,7 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
 
   // Handle CORS preflight requests
@@ -72,9 +71,8 @@ serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const token = authHeader.replace('Bearer ', '');
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
+    const { data: { user }, error: userError } = await supabase.auth.getUser();
+    if (userError || !user) {
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
