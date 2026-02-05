@@ -167,7 +167,8 @@ Deno.serve(async (req) => {
           continue;
         }
 
-        const approvalUrl = `${baseUrl}/#/social/approval?token=${approvalLink.access_token}`;
+        // Use the edge function URL for OG preview, it will redirect to the app
+        const approvalUrl = `${Deno.env.get("SUPABASE_URL")}/functions/v1/social-approval-preview?token=${approvalLink.access_token}`;
 
         const recipientName = target.isGroup 
           ? "" 
