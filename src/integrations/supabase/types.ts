@@ -10935,6 +10935,93 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_transcriptions: {
+        Row: {
+          ai_analysis: string | null
+          created_at: string
+          created_by: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          highlights: Json | null
+          id: string
+          language: string | null
+          lead_id: string | null
+          meeting_event_id: string | null
+          project_id: string | null
+          recorded_at: string | null
+          source: string
+          source_meeting_id: string | null
+          source_meeting_url: string | null
+          speakers: Json | null
+          status: string
+          summary: string | null
+          title: string
+          transcription_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          highlights?: Json | null
+          id?: string
+          language?: string | null
+          lead_id?: string | null
+          meeting_event_id?: string | null
+          project_id?: string | null
+          recorded_at?: string | null
+          source?: string
+          source_meeting_id?: string | null
+          source_meeting_url?: string | null
+          speakers?: Json | null
+          status?: string
+          summary?: string | null
+          title: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          highlights?: Json | null
+          id?: string
+          language?: string | null
+          lead_id?: string | null
+          meeting_event_id?: string | null
+          project_id?: string | null
+          recorded_at?: string | null
+          source?: string
+          source_meeting_id?: string | null
+          source_meeting_url?: string | null
+          speakers?: Json | null
+          status?: string
+          summary?: string | null
+          title?: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_transcriptions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_transcriptions_meeting_event_id_fkey"
+            columns: ["meeting_event_id"]
+            isOneToOne: false
+            referencedRelation: "crm_meeting_events"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_whatsapp_contacts: {
         Row: {
           created_at: string | null

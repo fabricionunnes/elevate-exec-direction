@@ -60,6 +60,7 @@ const navTabs = [
   { title: "Contatos", href: "/crm/leads" },
   { title: "Atividades", href: "/crm/activities" },
   { title: "Atendimento", href: "/crm/inbox", badge: true },
+  { title: "Transcrições", href: "/crm/transcriptions" },
   { title: "Contratos", href: "/contratos" },
 ];
 
