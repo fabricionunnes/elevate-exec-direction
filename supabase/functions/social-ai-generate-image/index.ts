@@ -457,6 +457,14 @@ REFERENCE IMAGE INSTRUCTIONS:
   }
 
 prompt += `
+SAFE ZONE - AVOID CROPPING (CRITICAL):
+- The image will be cropped from a square to ${aspectRatio} format
+- Keep ALL important elements (text, subjects, logos) in the CENTER 70% of the image
+- Leave generous margins on all edges - at least 15% padding from each edge
+- NEVER place text or important elements near the top, bottom, left, or right edges
+- Any text should be SHORT and centered in the safe zone
+- If you include text, make sure it is COMPLETE and fully visible within the safe zone
+
 CRITICAL LANGUAGE REQUIREMENTS:
 - If ANY text appears in the image, it MUST be in 100% correct Brazilian Portuguese
 - Double-check all spelling, grammar, and accents before generating
@@ -465,8 +473,9 @@ CRITICAL LANGUAGE REQUIREMENTS:
 - If unsure about spelling, prefer NOT including text rather than including incorrect text
 
 IMPORTANT:
-- Do NOT include any other text or typography in the image (except the provided logo if requested)
-- Create a visually striking image that works as a background for text overlays
+- PREFER creating images WITHOUT text - let the design speak for itself
+- Only include text if absolutely essential to the visual concept
+- Create a visually striking image that works as a background for text overlays added later
 - Ultra high resolution, professional quality
 `;
 
@@ -515,10 +524,20 @@ Visual Request: ${basePrompt}
   }
 
   prompt += `
+IMAGE QUALITY REQUIREMENTS (CRITICAL):
+- Generate in the HIGHEST possible resolution and quality
+- Ultra-sharp details, no blur or artifacts
+- Professional-grade photography/design quality
+
+SAFE ZONE - AVOID CROPPING:
+- Keep ALL important elements in the CENTER 70% of the image
+- Leave generous margins on all edges
+- NEVER place text or important elements near the edges
+
 Style guidelines:
 - Modern, clean, professional design
-- High quality, visually appealing
-- Suitable for social media marketing
+- Visually stunning and eye-catching
+- Suitable for premium social media marketing
 - Clear focal point with natural continuation to adjacent slices
 `;
 
@@ -547,7 +566,8 @@ CRITICAL LANGUAGE REQUIREMENTS:
 - If unsure about spelling, prefer NOT including text
 
 IMPORTANT:
-- Do NOT include any text or typography
+- PREFER creating images WITHOUT text - let the design speak for itself
+- Only include text if absolutely essential, and keep it SHORT and CENTERED
 - Create a visually striking slice that connects seamlessly with adjacent slices
 - Ultra high resolution, professional quality
 `;
