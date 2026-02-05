@@ -233,12 +233,36 @@ serve(async (req) => {
     }
 
     const aiData = await aiResponse.json();
+    console.log("AI Response structure:", JSON.stringify({
+      hasChoices: !!aiData.choices,
+      choicesLength: aiData.choices?.length,
+      hasMessage: !!aiData.choices?.[0]?.message,
+      hasImages: !!aiData.choices?.[0]?.message?.images,
+      imagesLength: aiData.choices?.[0]?.message?.images?.length,
+      finishReason: aiData.choices?.[0]?.finish_reason,
+      nativeFinishReason: aiData.choices?.[0]?.native_finish_reason
+    }));
+    
     const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
     const textContent = aiData.choices?.[0]?.message?.content;
 
     if (!imageData) {
+      // Check if the model refused to generate due to content policy
+      const finishReason = aiData.choices?.[0]?.finish_reason;
+      const nativeReason = aiData.choices?.[0]?.native_finish_reason;
       console.error("No image generated, response:", JSON.stringify(aiData));
-      throw new Error("No image generated");
+      
+      if (finishReason === "stop" && !aiData.choices?.[0]?.message?.images) {
+        return new Response(
+          JSON.stringify({ 
+            error: "O modelo não conseguiu gerar a imagem. Tente reformular o prompt ou usar termos diferentes.",
+            details: textContent || "Sem detalhes adicionais"
+          }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      
+      throw new Error("Falha ao gerar imagem. Tente novamente.");
     }
 
     // Upload the generated image to Supabase Storage

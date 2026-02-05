@@ -144,7 +144,10 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
       if (error) throw error;
       
       if (data.error) {
-        toast.error(data.error);
+        toast.error(data.error, {
+          description: data.details || undefined,
+          duration: 5000
+        });
         return;
       }
 
@@ -210,7 +213,9 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
       }
     } catch (error) {
       console.error("Error generating image:", error);
-      toast.error("Erro ao gerar imagem");
+      toast.error("Erro ao gerar imagem", {
+        description: "Tente novamente ou reformule o prompt"
+      });
     } finally {
       setLoadingImage(false);
     }
