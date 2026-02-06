@@ -175,19 +175,22 @@ Deno.serve(async (req) => {
     }
 
     // 6. Wait for container to be ready (poll status)
+    // Videos/Reels can take longer to process, so we allow a longer window.
     let status = "IN_PROGRESS";
     let attempts = 0;
-    const maxAttempts = 30; // 30 attempts * 2s = 60s max wait
+    const pollIntervalMs = 2000;
+    const maxWaitMs = isVideo ? 150_000 : 60_000; // 150s for video, 60s for images
+    const maxAttempts = Math.ceil(maxWaitMs / pollIntervalMs);
 
     while (status === "IN_PROGRESS" && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, 2000));
+      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
       attempts++;
 
       const statusResponse = await fetch(
         `${GRAPH_API_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`
       );
       const statusData = await statusResponse.json();
-      console.log(`Container status (attempt ${attempts}):`, statusData);
+      console.log(`Container status (attempt ${attempts}/${maxAttempts}):`, statusData);
 
       if (statusData.error) {
         throw new Error(statusData.error.message || "Failed to check container status");
@@ -201,7 +204,7 @@ Deno.serve(async (req) => {
     }
 
     if (status === "IN_PROGRESS") {
-      throw new Error("Media processing timed out");
+      throw new Error(`Media processing timed out after ${Math.round(maxWaitMs / 1000)}s`);
     }
 
     // 7. Publish the container
