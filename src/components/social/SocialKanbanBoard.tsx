@@ -1,9 +1,9 @@
-import { DragEvent, useState, useRef, useCallback } from "react";
+import { DragEvent, useState, useRef, useCallback, useMemo } from "react";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
 import { Input } from "@/components/ui/input";
-import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle, Trash2, ListChecks, Info, Paperclip } from "lucide-react";
+import { Image, Video, Film, Calendar, Clock, Pencil, Check, X, Plus, CheckCircle, Trash2, ListChecks, Info, Paperclip, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -15,6 +15,13 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -25,6 +32,8 @@ import { StageChecklistManager } from "./StageChecklistManager";
 import { CardChecklistBadge } from "./CardChecklistBadge";
 import { CardTagsDisplay } from "./CardTagSelector";
 import { AttachmentCountBadge } from "./CardAttachments";
+
+type SortOption = "manual" | "date_asc" | "date_desc" | "type" | "created_asc" | "created_desc";
 
 // Hook for drag-to-scroll functionality
 const useDragToScroll = () => {
@@ -105,6 +114,7 @@ interface ContentCard {
   card_type?: "content" | "task" | "info";
   card_color?: string | null;
   copy_text?: string | null;
+  created_at?: string;
 }
 
 interface SocialKanbanBoardProps {
@@ -157,6 +167,69 @@ export const SocialKanbanBoard = ({
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#6366f1");
   const [savingStage, setSavingStage] = useState(false);
+  const [sortOption, setSortOption] = useState<SortOption>("manual");
+
+  // Function to sort cards based on selected option
+  const sortCards = useCallback((cardsToSort: ContentCard[]): ContentCard[] => {
+    const sorted = [...cardsToSort];
+    
+    switch (sortOption) {
+      case "date_asc":
+        return sorted.sort((a, b) => {
+          if (!a.suggested_date && !b.suggested_date) return 0;
+          if (!a.suggested_date) return 1;
+          if (!b.suggested_date) return -1;
+          return new Date(a.suggested_date).getTime() - new Date(b.suggested_date).getTime();
+        });
+      case "date_desc":
+        return sorted.sort((a, b) => {
+          if (!a.suggested_date && !b.suggested_date) return 0;
+          if (!a.suggested_date) return 1;
+          if (!b.suggested_date) return -1;
+          return new Date(b.suggested_date).getTime() - new Date(a.suggested_date).getTime();
+        });
+      case "type":
+        return sorted.sort((a, b) => {
+          const typeA = a.card_type || "content";
+          const typeB = b.card_type || "content";
+          if (typeA === typeB) {
+            // Secondary sort by content_type for content cards
+            return (a.content_type || "").localeCompare(b.content_type || "");
+          }
+          // Order: task, content, info
+          const typeOrder = { task: 0, content: 1, info: 2 };
+          return (typeOrder[typeA] || 1) - (typeOrder[typeB] || 1);
+        });
+      case "created_asc":
+        return sorted.sort((a, b) => {
+          if (!a.created_at && !b.created_at) return 0;
+          if (!a.created_at) return 1;
+          if (!b.created_at) return -1;
+          return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
+        });
+      case "created_desc":
+        return sorted.sort((a, b) => {
+          if (!a.created_at && !b.created_at) return 0;
+          if (!a.created_at) return 1;
+          if (!b.created_at) return -1;
+          return new Date(b.created_at).getTime() - new Date(a.created_at).getTime();
+        });
+      case "manual":
+      default:
+        return sorted.sort((a, b) => a.sort_order - b.sort_order);
+    }
+  }, [sortOption]);
+
+  const getSortLabel = () => {
+    switch (sortOption) {
+      case "date_asc": return "Data ↑";
+      case "date_desc": return "Data ↓";
+      case "type": return "Tipo";
+      case "created_asc": return "Criação ↑";
+      case "created_desc": return "Criação ↓";
+      default: return "Manual";
+    }
+  };
 
   const handleStartEditStage = (stage: Stage) => {
     setEditingStageId(stage.id);
@@ -276,13 +349,54 @@ export const SocialKanbanBoard = ({
     <div
       ref={containerRef}
       data-kanban-scrollable
-      className="h-full w-full overflow-x-auto cursor-grab"
+      className="h-full w-full overflow-x-auto cursor-grab relative"
       style={{ scrollBehavior: 'auto' }}
       {...scrollHandlers}
     >
-      <div className="flex gap-4 p-4 min-w-max">
+      {/* Sort Controls - Fixed position */}
+      <div className="sticky left-0 top-0 z-20 p-2 pb-0 bg-background/80 backdrop-blur-sm border-b border-border/30 mb-2">
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" size="sm" className="gap-2 h-8">
+              <ArrowUpDown className="h-3.5 w-3.5" />
+              Ordenar: {getSortLabel()}
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="start">
+            <DropdownMenuItem onClick={() => setSortOption("manual")} className={sortOption === "manual" ? "bg-accent" : ""}>
+              <ArrowUpDown className="h-4 w-4 mr-2" />
+              Manual
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSortOption("date_asc")} className={sortOption === "date_asc" ? "bg-accent" : ""}>
+              <ArrowUp className="h-4 w-4 mr-2" />
+              Data (Mais antiga)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("date_desc")} className={sortOption === "date_desc" ? "bg-accent" : ""}>
+              <ArrowDown className="h-4 w-4 mr-2" />
+              Data (Mais recente)
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSortOption("type")} className={sortOption === "type" ? "bg-accent" : ""}>
+              <ListChecks className="h-4 w-4 mr-2" />
+              Tipo de Card
+            </DropdownMenuItem>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => setSortOption("created_asc")} className={sortOption === "created_asc" ? "bg-accent" : ""}>
+              <ArrowUp className="h-4 w-4 mr-2" />
+              Criação (Mais antigo)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => setSortOption("created_desc")} className={sortOption === "created_desc" ? "bg-accent" : ""}>
+              <ArrowDown className="h-4 w-4 mr-2" />
+              Criação (Mais recente)
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
+      </div>
+
+      <div className="flex gap-4 px-4 pb-4 min-w-max">
         {stages.map((stage) => {
-          const stageCards = cards.filter((c) => c.stage_id === stage.id);
+          const stageCards = sortCards(cards.filter((c) => c.stage_id === stage.id));
           const isOver = dragOverStageId === stage.id;
 
           return (
