@@ -69,32 +69,45 @@ export const CardAttachments = ({ cardId, disabled }: CardAttachmentsProps) => {
     if (!files || files.length === 0) return;
 
     setUploading(true);
-    try {
-      for (const file of Array.from(files)) {
-        const fileExt = file.name.split(".").pop();
-        const fileName = `${cardId}/attachments/${Date.now()}-${file.name}`;
+    
+    // Get current staff id once before loop
+    const { data: { user } } = await supabase.auth.getUser();
+    let staffId = null;
+    if (user) {
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .single();
+      staffId = staff?.id;
+    }
+    
+    let successCount = 0;
+    let errorCount = 0;
+    
+    for (const file of Array.from(files)) {
+      try {
+        // Generate unique file path with UUID to avoid conflicts
+        const uniqueId = crypto.randomUUID();
+        const safeFileName = file.name.replace(/[^a-zA-Z0-9._-]/g, '_');
+        const fileName = `${cardId}/attachments/${uniqueId}-${safeFileName}`;
 
         const { error: uploadError } = await supabase.storage
           .from("social-content")
-          .upload(fileName, file);
+          .upload(fileName, file, {
+            cacheControl: '3600',
+            upsert: false,
+          });
 
-        if (uploadError) throw uploadError;
+        if (uploadError) {
+          console.error("Upload error for file:", file.name, uploadError);
+          errorCount++;
+          continue;
+        }
 
         const { data: { publicUrl } } = supabase.storage
           .from("social-content")
           .getPublicUrl(fileName);
-
-        // Get current staff id
-        const { data: { user } } = await supabase.auth.getUser();
-        let staffId = null;
-        if (user) {
-          const { data: staff } = await supabase
-            .from("onboarding_staff")
-            .select("id")
-            .eq("user_id", user.id)
-            .single();
-          staffId = staff?.id;
-        }
 
         const { data: attachment, error: insertError } = await supabase
           .from("social_card_attachments")
@@ -109,19 +122,30 @@ export const CardAttachments = ({ cardId, disabled }: CardAttachmentsProps) => {
           .select()
           .single();
 
-        if (insertError) throw insertError;
+        if (insertError) {
+          console.error("Database insert error for file:", file.name, insertError);
+          errorCount++;
+          continue;
+        }
+        
         setAttachments((prev) => [attachment, ...prev]);
+        successCount++;
+      } catch (error) {
+        console.error("Error uploading file:", file.name, error);
+        errorCount++;
       }
-
-      toast.success("Arquivo(s) anexado(s)!");
-    } catch (error) {
-      console.error("Error uploading:", error);
-      toast.error("Erro ao anexar arquivo");
-    } finally {
-      setUploading(false);
-      if (fileInputRef.current) {
-        fileInputRef.current.value = "";
-      }
+    }
+    
+    if (successCount > 0) {
+      toast.success(`${successCount} arquivo(s) anexado(s)!`);
+    }
+    if (errorCount > 0) {
+      toast.error(`${errorCount} arquivo(s) falharam ao anexar`);
+    }
+    
+    setUploading(false);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = "";
     }
   };
 
