@@ -167,11 +167,23 @@ export const SocialKanbanBoard = ({
   const [newStageName, setNewStageName] = useState("");
   const [newStageColor, setNewStageColor] = useState("#6366f1");
   const [savingStage, setSavingStage] = useState(false);
-  const [sortOption, setSortOption] = useState<SortOption>("manual");
+  // State to track sort option per stage
+  const [stageSortOptions, setStageSortOptions] = useState<Record<string, SortOption>>({});
 
-  // Function to sort cards based on selected option
-  const sortCards = useCallback((cardsToSort: ContentCard[]): ContentCard[] => {
+  // Function to get sort option for a specific stage
+  const getStageSortOption = (stageId: string): SortOption => {
+    return stageSortOptions[stageId] || "manual";
+  };
+
+  // Function to set sort option for a specific stage
+  const setStageSortOption = (stageId: string, option: SortOption) => {
+    setStageSortOptions(prev => ({ ...prev, [stageId]: option }));
+  };
+
+  // Function to sort cards based on selected option for a specific stage
+  const sortCards = useCallback((cardsToSort: ContentCard[], stageId: string): ContentCard[] => {
     const sorted = [...cardsToSort];
+    const sortOption = stageSortOptions[stageId] || "manual";
     
     switch (sortOption) {
       case "date_asc":
@@ -193,10 +205,8 @@ export const SocialKanbanBoard = ({
           const typeA = a.card_type || "content";
           const typeB = b.card_type || "content";
           if (typeA === typeB) {
-            // Secondary sort by content_type for content cards
             return (a.content_type || "").localeCompare(b.content_type || "");
           }
-          // Order: task, content, info
           const typeOrder = { task: 0, content: 1, info: 2 };
           return (typeOrder[typeA] || 1) - (typeOrder[typeB] || 1);
         });
@@ -218,9 +228,10 @@ export const SocialKanbanBoard = ({
       default:
         return sorted.sort((a, b) => a.sort_order - b.sort_order);
     }
-  }, [sortOption]);
+  }, [stageSortOptions]);
 
-  const getSortLabel = () => {
+  const getSortLabel = (stageId: string) => {
+    const sortOption = stageSortOptions[stageId] || "manual";
     switch (sortOption) {
       case "date_asc": return "Data ↑";
       case "date_desc": return "Data ↓";
@@ -349,55 +360,15 @@ export const SocialKanbanBoard = ({
     <div
       ref={containerRef}
       data-kanban-scrollable
-      className="h-full w-full overflow-x-auto cursor-grab relative"
+      className="h-full w-full overflow-x-auto cursor-grab"
       style={{ scrollBehavior: 'auto' }}
       {...scrollHandlers}
     >
-      {/* Sort Controls - Fixed position */}
-      <div className="sticky left-0 top-0 z-20 p-2 pb-0 bg-background/80 backdrop-blur-sm border-b border-border/30 mb-2">
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" size="sm" className="gap-2 h-8">
-              <ArrowUpDown className="h-3.5 w-3.5" />
-              Ordenar: {getSortLabel()}
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="start">
-            <DropdownMenuItem onClick={() => setSortOption("manual")} className={sortOption === "manual" ? "bg-accent" : ""}>
-              <ArrowUpDown className="h-4 w-4 mr-2" />
-              Manual
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSortOption("date_asc")} className={sortOption === "date_asc" ? "bg-accent" : ""}>
-              <ArrowUp className="h-4 w-4 mr-2" />
-              Data (Mais antiga)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("date_desc")} className={sortOption === "date_desc" ? "bg-accent" : ""}>
-              <ArrowDown className="h-4 w-4 mr-2" />
-              Data (Mais recente)
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSortOption("type")} className={sortOption === "type" ? "bg-accent" : ""}>
-              <ListChecks className="h-4 w-4 mr-2" />
-              Tipo de Card
-            </DropdownMenuItem>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => setSortOption("created_asc")} className={sortOption === "created_asc" ? "bg-accent" : ""}>
-              <ArrowUp className="h-4 w-4 mr-2" />
-              Criação (Mais antigo)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => setSortOption("created_desc")} className={sortOption === "created_desc" ? "bg-accent" : ""}>
-              <ArrowDown className="h-4 w-4 mr-2" />
-              Criação (Mais recente)
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
-      </div>
-
-      <div className="flex gap-4 px-4 pb-4 min-w-max">
+      <div className="flex gap-4 p-4 min-w-max">
         {stages.map((stage) => {
-          const stageCards = sortCards(cards.filter((c) => c.stage_id === stage.id));
+          const stageCards = sortCards(cards.filter((c) => c.stage_id === stage.id), stage.id);
           const isOver = dragOverStageId === stage.id;
+          const currentSortOption = getStageSortOption(stage.id);
 
           return (
             <div
@@ -489,6 +460,65 @@ export const SocialKanbanBoard = ({
                   <Badge variant="secondary" className="text-xs">
                     {stageCards.length}
                   </Badge>
+                </div>
+                
+                {/* Sort Button per Stage */}
+                <div className="mt-2">
+                  <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                      <Button variant="ghost" size="sm" className="gap-1.5 h-7 text-xs w-full justify-start px-2 text-muted-foreground hover:text-foreground">
+                        <ArrowUpDown className="h-3 w-3" />
+                        {getSortLabel(stage.id)}
+                      </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="start" className="w-48">
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "manual")} 
+                        className={currentSortOption === "manual" ? "bg-accent" : ""}
+                      >
+                        <ArrowUpDown className="h-4 w-4 mr-2" />
+                        Manual
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "date_asc")} 
+                        className={currentSortOption === "date_asc" ? "bg-accent" : ""}
+                      >
+                        <ArrowUp className="h-4 w-4 mr-2" />
+                        Data (Mais antiga)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "date_desc")} 
+                        className={currentSortOption === "date_desc" ? "bg-accent" : ""}
+                      >
+                        <ArrowDown className="h-4 w-4 mr-2" />
+                        Data (Mais recente)
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "type")} 
+                        className={currentSortOption === "type" ? "bg-accent" : ""}
+                      >
+                        <ListChecks className="h-4 w-4 mr-2" />
+                        Tipo de Card
+                      </DropdownMenuItem>
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "created_asc")} 
+                        className={currentSortOption === "created_asc" ? "bg-accent" : ""}
+                      >
+                        <ArrowUp className="h-4 w-4 mr-2" />
+                        Criação (Mais antigo)
+                      </DropdownMenuItem>
+                      <DropdownMenuItem 
+                        onClick={() => setStageSortOption(stage.id, "created_desc")} 
+                        className={currentSortOption === "created_desc" ? "bg-accent" : ""}
+                      >
+                        <ArrowDown className="h-4 w-4 mr-2" />
+                        Criação (Mais recente)
+                      </DropdownMenuItem>
+                    </DropdownMenuContent>
+                  </DropdownMenu>
                 </div>
               </div>
 
