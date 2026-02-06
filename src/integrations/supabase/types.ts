@@ -19102,6 +19102,7 @@ export type Database = {
           completed_at: string | null
           completed_by: string | null
           created_at: string
+          due_date: string | null
           id: string
           is_completed: boolean
           parent_subtask_id: string | null
@@ -19113,6 +19114,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          due_date?: string | null
           id?: string
           is_completed?: boolean
           parent_subtask_id?: string | null
@@ -19124,6 +19126,7 @@ export type Database = {
           completed_at?: string | null
           completed_by?: string | null
           created_at?: string
+          due_date?: string | null
           id?: string
           is_completed?: boolean
           parent_subtask_id?: string | null
