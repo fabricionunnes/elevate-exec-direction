@@ -1,12 +1,22 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Plus, Trash2, Loader2, ChevronRight, ChevronDown } from "lucide-react";
+import { Plus, Trash2, Loader2, ChevronRight, ChevronDown, GripVertical, ArrowUpDown, Calendar } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 interface Subtask {
   id: string;
@@ -14,6 +24,8 @@ interface Subtask {
   is_completed: boolean;
   sort_order: number;
   parent_subtask_id: string | null;
+  due_date: string | null;
+  created_at: string;
   children?: Subtask[];
 }
 
@@ -21,6 +33,8 @@ interface CardSubtasksProps {
   cardId: string;
   disabled?: boolean;
 }
+
+type SortOption = "manual" | "name" | "due_date" | "created_at";
 
 export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
   const [subtasks, setSubtasks] = useState<Subtask[]>([]);
@@ -31,6 +45,9 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
   const [expandedSubtasks, setExpandedSubtasks] = useState<Set<string>>(new Set());
   const [addingToParent, setAddingToParent] = useState<string | null>(null);
   const [newChildTitle, setNewChildTitle] = useState("");
+  const [sortOption, setSortOption] = useState<SortOption>("manual");
+  const [draggedItem, setDraggedItem] = useState<string | null>(null);
+  const [dragOverItem, setDragOverItem] = useState<string | null>(null);
 
   useEffect(() => {
     loadSubtasks();
@@ -95,6 +112,38 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
 
     return rootSubtasks;
   };
+
+  const sortSubtasks = useCallback((items: Subtask[]): Subtask[] => {
+    const sorted = [...items];
+    
+    switch (sortOption) {
+      case "name":
+        sorted.sort((a, b) => a.title.localeCompare(b.title, 'pt-BR'));
+        break;
+      case "due_date":
+        sorted.sort((a, b) => {
+          if (!a.due_date && !b.due_date) return 0;
+          if (!a.due_date) return 1;
+          if (!b.due_date) return -1;
+          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+        });
+        break;
+      case "created_at":
+        sorted.sort((a, b) => new Date(a.created_at).getTime() - new Date(b.created_at).getTime());
+        break;
+      default:
+        // manual - keep sort_order
+        sorted.sort((a, b) => a.sort_order - b.sort_order);
+    }
+
+    // Sort children recursively
+    return sorted.map(item => ({
+      ...item,
+      children: item.children ? sortSubtasks(item.children) : []
+    }));
+  }, [sortOption]);
+
+  const displayedSubtasks = sortSubtasks(subtasks);
 
   const handleAddSubtask = async (parentId: string | null = null) => {
     const title = parentId ? newChildTitle : newTitle;
@@ -174,6 +223,23 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
     }
   };
 
+  const handleUpdateDueDate = async (subtaskId: string, date: Date | undefined) => {
+    try {
+      const { error } = await supabase
+        .from("social_card_subtasks")
+        .update({
+          due_date: date ? date.toISOString() : null,
+        })
+        .eq("id", subtaskId);
+
+      if (error) throw error;
+      loadSubtasks();
+    } catch (error) {
+      console.error("Error updating due date:", error);
+      toast.error("Erro ao atualizar data");
+    }
+  };
+
   const toggleExpand = (id: string) => {
     setExpandedSubtasks(prev => {
       const next = new Set(prev);
@@ -184,6 +250,88 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
       }
       return next;
     });
+  };
+
+  // Drag and Drop handlers
+  const handleDragStart = (e: React.DragEvent, subtaskId: string) => {
+    if (disabled || sortOption !== "manual") return;
+    setDraggedItem(subtaskId);
+    e.dataTransfer.effectAllowed = "move";
+    e.dataTransfer.setData("text/plain", subtaskId);
+  };
+
+  const handleDragOver = (e: React.DragEvent, subtaskId: string) => {
+    if (disabled || sortOption !== "manual") return;
+    e.preventDefault();
+    if (subtaskId !== draggedItem) {
+      setDragOverItem(subtaskId);
+    }
+  };
+
+  const handleDragLeave = () => {
+    setDragOverItem(null);
+  };
+
+  const handleDrop = async (e: React.DragEvent, targetSubtaskId: string) => {
+    e.preventDefault();
+    if (disabled || sortOption !== "manual" || !draggedItem || draggedItem === targetSubtaskId) {
+      setDraggedItem(null);
+      setDragOverItem(null);
+      return;
+    }
+
+    try {
+      // Find both subtasks in the flat list
+      const flatList = flattenSubtasks(subtasks);
+      const draggedIndex = flatList.findIndex(s => s.id === draggedItem);
+      const targetIndex = flatList.findIndex(s => s.id === targetSubtaskId);
+
+      if (draggedIndex === -1 || targetIndex === -1) return;
+
+      // Calculate new sort orders
+      const updatedList = [...flatList];
+      const [movedItem] = updatedList.splice(draggedIndex, 1);
+      updatedList.splice(targetIndex, 0, movedItem);
+
+      // Update sort_order for all items that share the same parent
+      const parentId = movedItem.parent_subtask_id;
+      const siblingItems = updatedList.filter(s => s.parent_subtask_id === parentId);
+      
+      for (let i = 0; i < siblingItems.length; i++) {
+        await supabase
+          .from("social_card_subtasks")
+          .update({ sort_order: i + 1 })
+          .eq("id", siblingItems[i].id);
+      }
+
+      loadSubtasks();
+      toast.success("Ordem atualizada");
+    } catch (error) {
+      console.error("Error reordering:", error);
+      toast.error("Erro ao reordenar");
+    } finally {
+      setDraggedItem(null);
+      setDragOverItem(null);
+    }
+  };
+
+  const handleDragEnd = () => {
+    setDraggedItem(null);
+    setDragOverItem(null);
+  };
+
+  const flattenSubtasks = (items: Subtask[]): Subtask[] => {
+    const result: Subtask[] = [];
+    const flatten = (list: Subtask[]) => {
+      for (const item of list) {
+        result.push(item);
+        if (item.children && item.children.length > 0) {
+          flatten(item.children);
+        }
+      }
+    };
+    flatten(items);
+    return result;
   };
 
   const countAllSubtasks = (items: Subtask[]): { completed: number; total: number } => {
@@ -206,20 +354,44 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
 
   const { completed: completedCount, total: totalCount } = countAllSubtasks(subtasks);
 
+  const getSortLabel = () => {
+    switch (sortOption) {
+      case "name": return "Nome";
+      case "due_date": return "Data de entrega";
+      case "created_at": return "Data de criação";
+      default: return "Manual";
+    }
+  };
+
   const renderSubtask = (subtask: Subtask, depth: number = 0) => {
     const hasChildren = subtask.children && subtask.children.length > 0;
     const isExpanded = expandedSubtasks.has(subtask.id);
     const isAddingChild = addingToParent === subtask.id;
+    const isDragging = draggedItem === subtask.id;
+    const isDragOver = dragOverItem === subtask.id;
 
     return (
       <div key={subtask.id}>
         <div
           className={cn(
             "flex items-center gap-2 p-2 rounded-md group hover:bg-muted/50 transition-colors",
-            subtask.is_completed && "opacity-60"
+            subtask.is_completed && "opacity-60",
+            isDragging && "opacity-50 bg-muted",
+            isDragOver && "border-t-2 border-primary"
           )}
           style={{ paddingLeft: `${8 + depth * 16}px` }}
+          draggable={!disabled && sortOption === "manual"}
+          onDragStart={(e) => handleDragStart(e, subtask.id)}
+          onDragOver={(e) => handleDragOver(e, subtask.id)}
+          onDragLeave={handleDragLeave}
+          onDrop={(e) => handleDrop(e, subtask.id)}
+          onDragEnd={handleDragEnd}
         >
+          {/* Drag handle */}
+          {!disabled && sortOption === "manual" && (
+            <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab opacity-0 group-hover:opacity-100 transition-opacity" />
+          )}
+
           {/* Expand/collapse button or spacer */}
           {hasChildren ? (
             <Button
@@ -250,8 +422,42 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
             {subtask.title}
           </span>
 
+          {/* Due date badge */}
+          {subtask.due_date && (
+            <span className={cn(
+              "text-xs px-1.5 py-0.5 rounded",
+              new Date(subtask.due_date) < new Date() && !subtask.is_completed
+                ? "bg-destructive/10 text-destructive"
+                : "bg-muted text-muted-foreground"
+            )}>
+              {format(new Date(subtask.due_date), "dd/MM", { locale: ptBR })}
+            </span>
+          )}
+
           {!disabled && (
             <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+              {/* Date picker */}
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-6 w-6"
+                    title="Definir data de entrega"
+                  >
+                    <Calendar className="h-3.5 w-3.5 text-muted-foreground hover:text-foreground" />
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0" align="end">
+                  <CalendarComponent
+                    mode="single"
+                    selected={subtask.due_date ? new Date(subtask.due_date) : undefined}
+                    onSelect={(date) => handleUpdateDueDate(subtask.id, date)}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+
               <Button
                 variant="ghost"
                 size="icon"
@@ -345,22 +551,53 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
 
   return (
     <div className="space-y-3">
+      {/* Header with sort options */}
+      <div className="flex items-center justify-between">
+        {totalCount > 0 && (
+          <span className="text-sm text-muted-foreground">
+            {completedCount}/{totalCount} concluídas
+          </span>
+        )}
+        
+        {totalCount > 0 && !disabled && (
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-7 text-xs gap-1">
+                <ArrowUpDown className="h-3 w-3" />
+                Ordenar: {getSortLabel()}
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end">
+              <DropdownMenuItem onClick={() => setSortOption("manual")}>
+                Manual (arrastar)
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("name")}>
+                Por nome
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("due_date")}>
+                Por data de entrega
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => setSortOption("created_at")}>
+                Por data de criação
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        )}
+      </div>
+
       {/* Progress indicator */}
       {totalCount > 0 && (
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
-          <span>{completedCount}/{totalCount} concluídas</span>
-          <div className="flex-1 h-1.5 bg-muted rounded-full overflow-hidden">
-            <div
-              className="h-full bg-primary transition-all"
-              style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
-            />
-          </div>
+        <div className="h-1.5 bg-muted rounded-full overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all"
+            style={{ width: `${totalCount > 0 ? (completedCount / totalCount) * 100 : 0}%` }}
+          />
         </div>
       )}
 
       {/* Subtask list */}
       <div className="space-y-0.5">
-        {subtasks.map((subtask) => renderSubtask(subtask))}
+        {displayedSubtasks.map((subtask) => renderSubtask(subtask))}
       </div>
 
       {/* Add new root subtask */}
