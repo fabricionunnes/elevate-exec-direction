@@ -142,9 +142,15 @@ export const SocialPipelinePage = () => {
     );
 
     try {
+      // When moving to "scheduled" stage, also set is_locked = true to enable auto-publish
+      const updateData: Record<string, unknown> = { stage_id: newStageId };
+      if (newStage?.stage_type === "scheduled") {
+        updateData.is_locked = true;
+      }
+
       const { error } = await supabase
         .from("social_content_cards")
-        .update({ stage_id: newStageId })
+        .update(updateData)
         .eq("id", cardId);
 
       if (error) throw error;
