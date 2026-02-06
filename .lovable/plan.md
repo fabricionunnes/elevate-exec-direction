@@ -1,64 +1,163 @@
 
-# Plano: Corrigir Autenticação entre Edge Functions
+# Plano: Sistema de Template de Etapas para UNV Social
 
-## Problema Detectado
-O cron job (`social-scheduled-publish`) está tentando publicar o post agendado para 16:46, mas recebe erro **401 Unauthorized** porque a função `social-instagram-publish` exige autenticação e o token não está sendo passado corretamente.
+## Resumo
 
-Logs mostram:
-- Card detectado corretamente: `1a0ec5cc-5cb4-4739-a0c9-024d71aff423`
-- Horário: `scheduled_at=2026-02-05T19:46:00+00:00` (16:46 no horário de São Paulo)
-- Erro: `status: 401, statusText: "Unauthorized"`
-- Já está na **tentativa 2 de 3**
+Criar um sistema de **templates de estrutura** para o UNV Social que:
+1. Use o projeto Maria Edna (`c90efc9f-5e18-4d44-8454-c22f153c8155`) como modelo padrão
+2. Replique a estrutura (etapas e checklists) para todos os projetos UNV Social existentes
+3. Garanta que novos projetos UNV Social usem automaticamente esse template
 
-## Solução
+---
 
-Passar explicitamente o header `Authorization` com a Service Role Key na chamada `functions.invoke()`.
+## Estrutura do Template Maria Edna (Modelo)
 
-## Alterações Técnicas
+| Etapa | Cor | Checklists |
+|-------|-----|------------|
+| Entrada do cliente | #9CA3AF | Criar grupo no WhatsApp, Enviar formulário de Briefing, Fazer reunião de onboarding |
+| Ideias | #60A5FA | - |
+| Desenvolvimento & Ajustes | #A78BFA | - |
+| Revisão Interna | #FBBF24 | - |
+| Aprovação do Cliente | #F97316 | - |
+| Ajustes Solicitados | #EF4444 | - |
+| Aprovado | #10B981 | - |
+| Programado | #3B82F6 | - |
+| Publicado | #059669 | - |
 
-### Arquivo: `supabase/functions/social-scheduled-publish/index.ts`
+---
 
-Modificar a chamada `invoke()` para incluir o header de autorização:
+## Implementação
 
-```typescript
-// ANTES (linha 135-143):
-const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
-  "social-instagram-publish",
-  {
-    body: {
-      cardId: card.id,
-      projectId: board.project_id,
-    },
-  }
-);
+### Parte 1: Atualizar a função de criação de etapas padrão
 
-// DEPOIS:
-const { data: publishResult, error: publishInvokeError } = await supabase.functions.invoke(
-  "social-instagram-publish",
-  {
-    body: {
-      cardId: card.id,
-      projectId: board.project_id,
-    },
-    headers: {
-      Authorization: `Bearer ${supabaseKey}`,
-    },
-  }
-);
+Modificar a função `create_social_default_stages` no banco de dados para usar a estrutura do template Maria Edna:
+
+```text
+┌─────────────────────────────────────────────────────────────┐
+│ ANTES (Estrutura Atual)                                     │
+│ - Integração (com 6 checklists)                             │
+│ - Informações da empresa (com 4 checklists)                 │
+│ - Pesquisas e inspirações                                   │
+│ - Em desenvolvimento                                         │
+│ - ...                                                        │
+├─────────────────────────────────────────────────────────────┤
+│ DEPOIS (Template Maria Edna)                                │
+│ - Entrada do cliente (com 3 checklists)                     │
+│ - Ideias                                                     │
+│ - Desenvolvimento & Ajustes                                  │
+│ - Revisão Interna                                            │
+│ - ...                                                        │
+└─────────────────────────────────────────────────────────────┘
 ```
 
-## Ação Imediata
+### Parte 2: Script de migração para projetos existentes
 
-Após o deploy, também vou resetar o contador de tentativas do card atual para que ele tente novamente:
+Criar um script SQL para replicar a estrutura nos 6 projetos UNV Social existentes que **ainda não têm board** ou têm estrutura diferente:
+
+| Projeto ID | Status Atual |
+|------------|--------------|
+| `58b0cbd2...` | Tem board com estrutura antiga |
+| `05a92e85...` | Tem board vazio |
+| `c90efc9f...` | **MODELO** - não alterar |
+| `fd8ce8e1...` | Sem board |
+| `529feac3...` | Sem board |
+| `5e081f94...` | Sem board |
+| `1a827a50...` | Sem board |
+
+**Lógica:**
+1. Para projetos sem board: criar board e usar o template
+2. Para projetos com board existente: substituir etapas (mantendo cards existentes se houver)
+
+### Parte 3: Garantir que novos projetos usem o template
+
+O código em `SocialLayout.tsx` já chama `create_social_default_stages` quando um novo board é criado. Após atualizar a função, todos os novos projetos usarão automaticamente o template Maria Edna.
+
+---
+
+## Riscos e Considerações
+
+**Dados existentes:**
+- Projetos que já têm cards nas etapas antigas podem perder a associação
+- Recomendo manter os cards e re-associar às novas etapas correspondentes
+
+**Ação recomendada:**
+- Verificar se há cards nos boards existentes antes de migrar
+- Criar mapeamento de etapas antigas → novas
+
+---
+
+## Detalhes Técnicos
+
+### Migração SQL
 
 ```sql
-UPDATE social_content_cards 
-SET publish_attempts = 0, publish_error = NULL 
-WHERE id = '1a0ec5cc-5cb4-4739-a0c9-024d71aff423';
+-- 1. Atualizar função create_social_default_stages
+CREATE OR REPLACE FUNCTION public.create_social_default_stages(p_board_id uuid)
+RETURNS void
+LANGUAGE plpgsql
+SECURITY DEFINER
+AS $$
+DECLARE
+  v_stage_id uuid;
+BEGIN
+  -- 1. Entrada do cliente
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'idea', 'Entrada do cliente', '#9CA3AF', 1)
+  RETURNING id INTO v_stage_id;
+  
+  INSERT INTO social_stage_checklists (stage_id, title, sort_order) VALUES
+    (v_stage_id, 'Criar grupo no WhatsApp', 0),
+    (v_stage_id, 'Enviar o formulário de Briefing', 1),
+    (v_stage_id, 'Fazer reunião de onboarding', 2);
+
+  -- 2. Ideias
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'script', 'Ideias', '#60A5FA', 2);
+
+  -- 3. Desenvolvimento & Ajustes
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'design', 'Desenvolvimento & Ajustes', '#A78BFA', 3);
+
+  -- 4. Revisão Interna
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'internal_review', 'Revisão Interna', '#FBBF24', 4);
+
+  -- 5. Aprovação do Cliente
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'client_approval', 'Aprovação do Cliente', '#F97316', 5);
+
+  -- 6. Ajustes Solicitados
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'adjustments', 'Ajustes Solicitados', '#EF4444', 6);
+
+  -- 7. Aprovado
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'approved', 'Aprovado', '#10B981', 7);
+
+  -- 8. Programado
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'scheduled', 'Programado', '#3B82F6', 8);
+
+  -- 9. Publicado
+  INSERT INTO social_content_stages (board_id, stage_type, name, color, sort_order)
+  VALUES (p_board_id, 'published', 'Publicado', '#059669', 9);
+END;
+$$;
+
+-- 2. Criar boards para projetos sem board e aplicar template
+-- 3. Limpar e recriar estrutura para projetos com board antigo
 ```
+
+### Arquivos a Modificar
+
+1. **Nova migração SQL** - Atualizar `create_social_default_stages` e migrar projetos existentes
+2. **Nenhuma mudança no frontend** - O código já usa a função corretamente
+
+---
 
 ## Resultado Esperado
 
-1. A função `social-scheduled-publish` passará o Service Role Key corretamente
-2. A função `social-instagram-publish` reconhecerá como chamada autorizada (linha 42-52)
-3. O post será publicado automaticamente no próximo ciclo do cron (dentro de 1 minuto)
+Após a implementação:
+- Todos os 7 projetos UNV Social terão a mesma estrutura de etapas
+- Novos projetos UNV Social receberão automaticamente o template Maria Edna
+- A estrutura será consistente em toda a plataforma
