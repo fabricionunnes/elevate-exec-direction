@@ -1,4 +1,4 @@
-import { createClient } from "npm:@supabase/supabase-js@2";
+import { createClient } from "@supabase/supabase-js";
 import { createCanvas, loadImage as canvasLoadImage } from "https://deno.land/x/canvas@v1.4.2/mod.ts";
 
 const corsHeaders = {

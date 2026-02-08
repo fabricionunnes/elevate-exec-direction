@@ -1,4 +1,4 @@
-import { createClient } from "https://esm.sh/@supabase/supabase-js@2.49.1";
+import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
 const EVOLUTION_API_FUNC_VERSION = "2026-02-05-v7";
