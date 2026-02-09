@@ -21816,7 +21816,14 @@ export type Database = {
       progress_status: "on_track" | "attention" | "off_track" | "completed"
       social_approval_status: "pending" | "approved" | "adjustment_requested"
       social_card_type: "content" | "task" | "info"
-      social_content_objective: "engagement" | "authority" | "conversion"
+      social_content_objective:
+        | "engagement"
+        | "authority"
+        | "conversion"
+        | "educational"
+        | "social_proof"
+        | "relationship"
+        | "other"
       social_content_type:
         | "feed"
         | "reels"
@@ -22062,7 +22069,15 @@ export const Constants = {
       progress_status: ["on_track", "attention", "off_track", "completed"],
       social_approval_status: ["pending", "approved", "adjustment_requested"],
       social_card_type: ["content", "task", "info"],
-      social_content_objective: ["engagement", "authority", "conversion"],
+      social_content_objective: [
+        "engagement",
+        "authority",
+        "conversion",
+        "educational",
+        "social_proof",
+        "relationship",
+        "other",
+      ],
       social_content_type: [
         "feed",
         "reels",
