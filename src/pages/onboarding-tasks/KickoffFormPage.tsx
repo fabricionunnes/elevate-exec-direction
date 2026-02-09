@@ -263,9 +263,22 @@ const KickoffFormPage = () => {
     ));
   };
 
+  const validateSalesHistory = (): boolean => {
+    const requiredMonths = salesHistory.slice(0, 4);
+    const missing = requiredMonths.filter(e => !e.revenue || e.revenue <= 0);
+    if (missing.length > 0) {
+      toast.error(`Preencha o faturamento dos últimos 4 meses obrigatórios (${missing.length} faltando)`);
+      return false;
+    }
+    return true;
+  };
+
   const handleSubmit = async () => {
     if (!companyId) return;
-    
+    if (!validateSalesHistory()) {
+      setCurrentStep(5);
+      return;
+    }
     setSaving(true);
     try {
       // Save company data
@@ -340,6 +353,9 @@ const KickoffFormPage = () => {
   };
 
   const nextStep = () => {
+    if (currentStep === 5 && !validateSalesHistory()) {
+      return;
+    }
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -793,10 +809,10 @@ const KickoffFormPage = () => {
                 <TrendingUp className="h-5 w-5 text-amber-600 flex-shrink-0 mt-0.5" />
                 <div>
                   <p className="text-sm font-medium text-amber-800 dark:text-amber-200">
-                    Por que preencher o histórico? (opcional)
+                    Histórico de vendas
                   </p>
                   <p className="text-sm text-amber-700 dark:text-amber-300 mt-1">
-                    Ao compartilhar seu histórico de vendas, nossa equipe consegue acompanhar melhor sua evolução e entregar resultados mais personalizados nos próximos meses. Isso nos ajuda a entender o ponto de partida e celebrar cada conquista com você!
+                    Os <strong>4 últimos meses são obrigatórios</strong>. Ao compartilhar seu histórico, nossa equipe consegue acompanhar melhor sua evolução e entregar resultados mais personalizados. Os demais meses são opcionais.
                   </p>
                 </div>
               </div>
@@ -812,40 +828,47 @@ const KickoffFormPage = () => {
                   </tr>
                 </thead>
                 <tbody>
-                  {salesHistory.map((entry, index) => (
-                    <tr key={entry.month_year} className="border-b hover:bg-muted/30">
-                      <td className="p-3 font-medium capitalize">
-                        {formatMonthLabel(entry.month_year)}
-                      </td>
-                      <td className="p-3">
-                        <Input
-                          type="number"
-                          value={entry.revenue || ""}
-                          onChange={(e) => updateSalesHistory(index, "revenue", parseFloat(e.target.value) || 0)}
-                          placeholder="0,00"
-                          className="text-right"
-                          min={0}
-                          step={0.01}
-                        />
-                      </td>
-                      <td className="p-3">
-                        <Input
-                          type="number"
-                          value={entry.sales_count || ""}
-                          onChange={(e) => updateSalesHistory(index, "sales_count", parseInt(e.target.value) || null)}
-                          placeholder="Opcional"
-                          className="text-right"
-                          min={0}
-                        />
-                      </td>
-                    </tr>
-                  ))}
+                  {salesHistory.map((entry, index) => {
+                    const isRequired = index < 4;
+                    const isMissing = isRequired && (!entry.revenue || entry.revenue <= 0);
+                    return (
+                      <tr key={entry.month_year} className={`border-b hover:bg-muted/30 ${isMissing ? 'bg-red-50 dark:bg-red-900/10' : ''}`}>
+                        <td className="p-3 font-medium capitalize">
+                          {formatMonthLabel(entry.month_year)}
+                          {isRequired && (
+                            <span className="text-destructive ml-1">*</span>
+                          )}
+                        </td>
+                        <td className="p-3">
+                          <Input
+                            type="number"
+                            value={entry.revenue || ""}
+                            onChange={(e) => updateSalesHistory(index, "revenue", parseFloat(e.target.value) || 0)}
+                            placeholder={isRequired ? "Obrigatório" : "0,00"}
+                            className={`text-right ${isMissing ? 'border-destructive' : ''}`}
+                            min={0}
+                            step={0.01}
+                          />
+                        </td>
+                        <td className="p-3">
+                          <Input
+                            type="number"
+                            value={entry.sales_count || ""}
+                            onChange={(e) => updateSalesHistory(index, "sales_count", parseInt(e.target.value) || null)}
+                            placeholder="Opcional"
+                            className="text-right"
+                            min={0}
+                          />
+                        </td>
+                      </tr>
+                    );
+                  })}
                 </tbody>
               </table>
             </div>
 
             <p className="text-xs text-muted-foreground text-center">
-              Preencha apenas os meses que tiver informação. Campos vazios serão ignorados.
+              * Os 4 últimos meses são obrigatórios. Os demais são opcionais.
             </p>
           </div>
         );
