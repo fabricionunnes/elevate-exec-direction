@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Loader2, Check, Edit2, Instagram, Calendar, Clock, Hash, MessageSquare, AlertCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal } from "@/lib/dateUtils";
 import confetti from "canvas-confetti";
 
 interface ApprovalData {
@@ -297,7 +298,7 @@ export const SocialApprovalPage = () => {
                 {card.suggested_date && (
                   <div className="flex items-center gap-1">
                     <Calendar className="h-4 w-4" />
-                    {format(new Date(card.suggested_date), "dd 'de' MMMM", { locale: ptBR })}
+                    {format(parseDateLocal(card.suggested_date), "dd 'de' MMMM", { locale: ptBR })}
                   </div>
                 )}
                 {card.suggested_time && (
