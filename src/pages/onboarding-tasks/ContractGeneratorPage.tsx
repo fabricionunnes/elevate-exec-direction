@@ -214,12 +214,62 @@ export default function ContractGeneratorPage() {
         .limit(50);
 
       if (error) throw error;
-      setSavedContracts(data || []);
+      const contracts = data || [];
+      setSavedContracts(contracts);
+
+      // Batch-check ZapSign status for contracts that were sent
+      const contractsWithZapSign = contracts.filter(c => c.zapsign_document_token);
+      if (contractsWithZapSign.length > 0) {
+        refreshZapSignStatuses(contractsWithZapSign);
+      }
     } catch (error) {
       console.error("Erro ao carregar contratos:", error);
       toast.error("Erro ao carregar histórico de contratos");
     } finally {
       setLoadingHistory(false);
+    }
+  };
+
+  const refreshZapSignStatuses = async (contracts: SavedContract[]) => {
+    const batchSize = 5;
+    for (let i = 0; i < contracts.length; i += batchSize) {
+      const batch = contracts.slice(i, i + batchSize);
+      const results = await Promise.allSettled(
+        batch.map(async (contract) => {
+          try {
+            const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
+              body: { documentToken: contract.zapsign_document_token },
+            });
+            if (error || !data?.signers) return null;
+
+            const signersChanged = JSON.stringify(data.signers.map((s: any) => s.status)) !== 
+              JSON.stringify((contract.zapsign_signers as any[] || []).map((s: any) => s.status));
+            
+            if (signersChanged) {
+              await supabase
+                .from("generated_contracts")
+                .update({ zapsign_signers: data.signers })
+                .eq("id", contract.id);
+            }
+
+            return { id: contract.id, signers: data.signers };
+          } catch {
+            return null;
+          }
+        })
+      );
+
+      const updates = results
+        .filter((r): r is PromiseFulfilledResult<{ id: string; signers: any[] } | null> => r.status === "fulfilled")
+        .map(r => r.value)
+        .filter(Boolean) as { id: string; signers: any[] }[];
+
+      if (updates.length > 0) {
+        setSavedContracts(prev => prev.map(c => {
+          const update = updates.find(u => u.id === c.id);
+          return update ? { ...c, zapsign_signers: update.signers } : c;
+        }));
+      }
     }
   };
 
