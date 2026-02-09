@@ -1,4 +1,5 @@
 import { DragEvent, useState, useRef, useCallback, useMemo } from "react";
+import { parseDateLocal } from "@/lib/dateUtils";
 import { Badge } from "@/components/ui/badge";
 import { Card } from "@/components/ui/card";
 import { ScrollArea, ScrollBar } from "@/components/ui/scroll-area";
@@ -655,7 +656,7 @@ export const SocialKanbanBoard = ({
                               {card.suggested_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {format(new Date(card.suggested_date), "dd/MM", {
+                                  {format(parseDateLocal(card.suggested_date), "dd/MM", {
                                     locale: ptBR,
                                   })}
                                 </span>
