@@ -1055,6 +1055,7 @@ export default function ContractGeneratorPage() {
                 <SelectContent>
                   <SelectItem value="all">Todos os status</SelectItem>
                   <SelectItem value="signed">✅ Assinados</SelectItem>
+                  <SelectItem value="in_progress">🔄 Em andamento</SelectItem>
                   <SelectItem value="pending">⏳ Pendentes</SelectItem>
                   <SelectItem value="not_sent">Não enviados</SelectItem>
                 </SelectContent>
@@ -1089,10 +1090,15 @@ export default function ContractGeneratorPage() {
                     matchesSignStatus = !!contract.zapsign_sent_at && 
                       Array.isArray(contract.zapsign_signers) && 
                       (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed");
+                  } else if (historyFilterSignStatus === "in_progress") {
+                    matchesSignStatus = !!contract.zapsign_sent_at && 
+                      Array.isArray(contract.zapsign_signers) && 
+                      (contract.zapsign_signers as any[]).some((s: any) => s.status === "signed") &&
+                      !(contract.zapsign_signers as any[]).every((s: any) => s.status === "signed");
                   } else if (historyFilterSignStatus === "pending") {
                     matchesSignStatus = !!contract.zapsign_sent_at && 
-                      !(Array.isArray(contract.zapsign_signers) && 
-                        (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed"));
+                      Array.isArray(contract.zapsign_signers) && 
+                      !(contract.zapsign_signers as any[]).some((s: any) => s.status === "signed");
                   } else if (historyFilterSignStatus === "not_sent") {
                     matchesSignStatus = !contract.zapsign_sent_at;
                   }
@@ -1142,24 +1148,21 @@ export default function ContractGeneratorPage() {
                                     Recorrente
                                   </Badge>
                                 )}
-                                {contract.zapsign_sent_at && (
-                                  <Badge 
-                                    variant="outline" 
-                                    className={`text-xs ${
-                                      contract.zapsign_signers && 
-                                      Array.isArray(contract.zapsign_signers) && 
-                                      (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed")
-                                        ? "border-green-500 text-green-700 bg-green-50"
-                                        : "border-yellow-500 text-yellow-700 bg-yellow-50"
-                                    }`}
-                                  >
-                                    {contract.zapsign_signers && 
-                                     Array.isArray(contract.zapsign_signers) && 
-                                     (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed")
-                                      ? "✅ Assinado"
-                                      : "⏳ Pendente"}
-                                  </Badge>
-                                )}
+                                {contract.zapsign_sent_at && (() => {
+                                  const signers = Array.isArray(contract.zapsign_signers) ? contract.zapsign_signers as any[] : [];
+                                  const allSigned = signers.length > 0 && signers.every((s: any) => s.status === "signed");
+                                  const someSigned = signers.some((s: any) => s.status === "signed");
+                                  
+                                  if (allSigned) return (
+                                    <Badge variant="outline" className="text-xs border-green-500 text-green-700 bg-green-50">✅ Assinado</Badge>
+                                  );
+                                  if (someSigned) return (
+                                    <Badge variant="outline" className="text-xs border-blue-500 text-blue-700 bg-blue-50">🔄 Em andamento</Badge>
+                                  );
+                                  return (
+                                    <Badge variant="outline" className="text-xs border-yellow-500 text-yellow-700 bg-yellow-50">⏳ Pendente</Badge>
+                                  );
+                                })()}
                               </div>
                             </div>
                             <p className="text-xs text-muted-foreground">
