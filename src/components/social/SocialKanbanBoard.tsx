@@ -192,14 +192,14 @@ export const SocialKanbanBoard = ({
           if (!a.suggested_date && !b.suggested_date) return 0;
           if (!a.suggested_date) return 1;
           if (!b.suggested_date) return -1;
-          return new Date(a.suggested_date).getTime() - new Date(b.suggested_date).getTime();
+          return parseDateLocal(a.suggested_date).getTime() - parseDateLocal(b.suggested_date).getTime();
         });
       case "date_desc":
         return sorted.sort((a, b) => {
           if (!a.suggested_date && !b.suggested_date) return 0;
           if (!a.suggested_date) return 1;
           if (!b.suggested_date) return -1;
-          return new Date(b.suggested_date).getTime() - new Date(a.suggested_date).getTime();
+          return parseDateLocal(b.suggested_date).getTime() - parseDateLocal(a.suggested_date).getTime();
         });
       case "type":
         return sorted.sort((a, b) => {
