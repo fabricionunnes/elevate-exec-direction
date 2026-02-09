@@ -38,6 +38,10 @@ import {
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal, toDateString } from "@/lib/dateUtils";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { CardChecklistProgress } from "./CardChecklistProgress";
 import { CardTagSelector } from "./CardTagSelector";
 import { CardAttachments } from "./CardAttachments";
@@ -899,12 +903,32 @@ export const SocialCardDetailSheet = ({
                     <Calendar className="h-4 w-4" />
                     Data
                   </Label>
-                  <Input
-                    type="date"
-                    value={suggestedDate}
-                    onChange={(e) => setSuggestedDate(e.target.value)}
-                    disabled={card.is_locked}
-                  />
+                  <Popover>
+                    <PopoverTrigger asChild>
+                      <Button
+                        variant="outline"
+                        disabled={card.is_locked}
+                        className={cn(
+                          "w-full justify-start text-left font-normal",
+                          !suggestedDate && "text-muted-foreground"
+                        )}
+                      >
+                        <Calendar className="mr-2 h-4 w-4" />
+                        {suggestedDate
+                          ? format(parseDateLocal(suggestedDate), "dd/MM/yyyy", { locale: ptBR })
+                          : "Selecionar data"}
+                      </Button>
+                    </PopoverTrigger>
+                    <PopoverContent className="w-auto p-0" align="start">
+                      <CalendarComponent
+                        mode="single"
+                        selected={suggestedDate ? parseDateLocal(suggestedDate) : undefined}
+                        onSelect={(date) => setSuggestedDate(date ? toDateString(date) : "")}
+                        locale={ptBR}
+                        className="pointer-events-auto"
+                      />
+                    </PopoverContent>
+                  </Popover>
                 </div>
                 <div className="space-y-2">
                   <Label className="flex items-center gap-2">

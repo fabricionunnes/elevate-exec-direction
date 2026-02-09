@@ -18,8 +18,14 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Loader2, Image, Film, Video, LayoutGrid, Square, CircleDashed, Paperclip, X, FileText, FileImage, File } from "lucide-react";
+import { Loader2, Image, Film, Video, LayoutGrid, Square, CircleDashed, Paperclip, X, FileText, FileImage, File, Calendar } from "lucide-react";
 import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { parseDateLocal, toDateString } from "@/lib/dateUtils";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { cn } from "@/lib/utils";
 import { CardTypeSelector, SocialCardType } from "./CardTypeSelector";
 import { CardColorPicker } from "./CardColorPicker";
 
@@ -376,11 +382,31 @@ export const SocialCardDialog = ({
             <div className={cardType === "content" ? "grid grid-cols-2 gap-4" : ""}>
               <div className="space-y-2">
                 <Label>{cardType === "task" ? "Data de finalização" : "Data sugerida"}</Label>
-                <Input
-                  type="date"
-                  value={suggestedDate}
-                  onChange={(e) => setSuggestedDate(e.target.value)}
-                />
+                <Popover>
+                  <PopoverTrigger asChild>
+                    <Button
+                      variant="outline"
+                      className={cn(
+                        "w-full justify-start text-left font-normal",
+                        !suggestedDate && "text-muted-foreground"
+                      )}
+                    >
+                      <Calendar className="mr-2 h-4 w-4" />
+                      {suggestedDate
+                        ? format(parseDateLocal(suggestedDate), "dd/MM/yyyy", { locale: ptBR })
+                        : "Selecionar data"}
+                    </Button>
+                  </PopoverTrigger>
+                  <PopoverContent className="w-auto p-0" align="start">
+                    <CalendarComponent
+                      mode="single"
+                      selected={suggestedDate ? parseDateLocal(suggestedDate) : undefined}
+                      onSelect={(date) => setSuggestedDate(date ? toDateString(date) : "")}
+                      locale={ptBR}
+                      className="pointer-events-auto"
+                    />
+                  </PopoverContent>
+                </Popover>
               </div>
               {cardType === "content" && (
                 <div className="space-y-2">
