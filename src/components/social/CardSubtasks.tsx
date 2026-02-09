@@ -126,7 +126,7 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
           if (!a.due_date && !b.due_date) return 0;
           if (!a.due_date) return 1;
           if (!b.due_date) return -1;
-          return new Date(a.due_date).getTime() - new Date(b.due_date).getTime();
+          return parseDateLocal(a.due_date).getTime() - parseDateLocal(b.due_date).getTime();
         });
         break;
       case "created_at":
@@ -431,7 +431,7 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
           {subtask.due_date && (
             <span className={cn(
               "text-xs px-1.5 py-0.5 rounded",
-              new Date(subtask.due_date) < new Date() && !subtask.is_completed
+              parseDateLocal(subtask.due_date) < new Date() && !subtask.is_completed
                 ? "bg-destructive/10 text-destructive"
                 : "bg-muted text-muted-foreground"
             )}>
