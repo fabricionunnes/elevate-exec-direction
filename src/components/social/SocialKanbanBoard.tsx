@@ -656,7 +656,7 @@ export const SocialKanbanBoard = ({
                               {card.suggested_date && (
                                 <span className="flex items-center gap-1">
                                   <Calendar className="h-3 w-3" />
-                                  {format(parseDateLocal(card.suggested_date), "dd/MM", {
+                                  {format(parseDateLocal(card.suggested_date), "dd/MM/yyyy", {
                                     locale: ptBR,
                                   })}
                                 </span>
