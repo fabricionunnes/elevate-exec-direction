@@ -162,8 +162,9 @@ export default function ContractGeneratorPage() {
   // History filter and pagination states
   const [historySearchClient, setHistorySearchClient] = useState("");
   const [historyFilterService, setHistoryFilterService] = useState<string>("all");
+  const [historyFilterSignStatus, setHistoryFilterSignStatus] = useState<string>("all");
   const [historyCurrentPage, setHistoryCurrentPage] = useState(1);
-  const contractsPerPage = 10;
+  const contractsPerPage = 12;
 
   const fetchContractById = async (id: string): Promise<SavedContract | null> => {
     try {
@@ -1035,17 +1036,27 @@ export default function ContractGeneratorPage() {
                 />
               </div>
               <Select value={historyFilterService} onValueChange={setHistoryFilterService}>
-                <SelectTrigger className="w-full sm:w-[200px]">
+                <SelectTrigger className="w-full sm:w-[180px]">
                   <SelectValue placeholder="Filtrar por serviço" />
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os serviços</SelectItem>
-                  {/* Get unique product names from saved contracts */}
                   {Array.from(new Set(savedContracts.map(c => c.product_name))).sort().map((productName) => (
                     <SelectItem key={productName} value={productName}>
                       {productName}
                     </SelectItem>
                   ))}
+                </SelectContent>
+              </Select>
+              <Select value={historyFilterSignStatus} onValueChange={setHistoryFilterSignStatus}>
+                <SelectTrigger className="w-full sm:w-[180px]">
+                  <SelectValue placeholder="Status assinatura" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todos os status</SelectItem>
+                  <SelectItem value="signed">✅ Assinados</SelectItem>
+                  <SelectItem value="pending">⏳ Pendentes</SelectItem>
+                  <SelectItem value="not_sent">Não enviados</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -1072,7 +1083,21 @@ export default function ContractGeneratorPage() {
                     contract.client_name.toLowerCase().includes(historySearchClient.toLowerCase());
                   const matchesService = historyFilterService === "all" || 
                     contract.product_name === historyFilterService;
-                  return matchesClient && matchesService;
+                  
+                  let matchesSignStatus = true;
+                  if (historyFilterSignStatus === "signed") {
+                    matchesSignStatus = !!contract.zapsign_sent_at && 
+                      Array.isArray(contract.zapsign_signers) && 
+                      (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed");
+                  } else if (historyFilterSignStatus === "pending") {
+                    matchesSignStatus = !!contract.zapsign_sent_at && 
+                      !(Array.isArray(contract.zapsign_signers) && 
+                        (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed"));
+                  } else if (historyFilterSignStatus === "not_sent") {
+                    matchesSignStatus = !contract.zapsign_sent_at;
+                  }
+                  
+                  return matchesClient && matchesService && matchesSignStatus;
                 });
                 
                 // Pagination logic
