@@ -17,6 +17,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { parseDateLocal } from "@/lib/dateUtils";
 
 interface Subtask {
   id: string;
@@ -225,10 +226,14 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
 
   const handleUpdateDueDate = async (subtaskId: string, date: Date | undefined) => {
     try {
+      // Store as date-only string (YYYY-MM-DD) to avoid timezone issues
+      const dueDateStr = date
+        ? `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`
+        : null;
       const { error } = await supabase
         .from("social_card_subtasks")
         .update({
-          due_date: date ? date.toISOString() : null,
+          due_date: dueDateStr,
         })
         .eq("id", subtaskId);
 
@@ -430,7 +435,7 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
                 ? "bg-destructive/10 text-destructive"
                 : "bg-muted text-muted-foreground"
             )}>
-              {format(new Date(subtask.due_date), "dd/MM", { locale: ptBR })}
+              {format(parseDateLocal(subtask.due_date), "dd/MM/yyyy", { locale: ptBR })}
             </span>
           )}
 
@@ -451,7 +456,7 @@ export function CardSubtasks({ cardId, disabled }: CardSubtasksProps) {
                 <PopoverContent className="w-auto p-0" align="end">
                   <CalendarComponent
                     mode="single"
-                    selected={subtask.due_date ? new Date(subtask.due_date) : undefined}
+                    selected={subtask.due_date ? parseDateLocal(subtask.due_date) : undefined}
                     onSelect={(date) => handleUpdateDueDate(subtask.id, date)}
                     locale={ptBR}
                   />
