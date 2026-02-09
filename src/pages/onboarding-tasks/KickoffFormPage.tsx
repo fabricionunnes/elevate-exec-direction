@@ -3,6 +3,7 @@ import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -840,14 +841,11 @@ const KickoffFormPage = () => {
                           )}
                         </td>
                         <td className="p-3">
-                          <Input
-                            type="number"
-                            value={entry.revenue || ""}
-                            onChange={(e) => updateSalesHistory(index, "revenue", parseFloat(e.target.value) || 0)}
+                          <CurrencyInput
+                            value={entry.revenue || undefined}
+                            onChange={(val) => updateSalesHistory(index, "revenue", val)}
                             placeholder={isRequired ? "Obrigatório" : "0,00"}
                             className={`text-right ${isMissing ? 'border-destructive' : ''}`}
-                            min={0}
-                            step={0.01}
                           />
                         </td>
                         <td className="p-3">
