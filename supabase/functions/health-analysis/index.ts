@@ -23,7 +23,7 @@ REGRAS:
 - Sempre considere o contexto do briefing quando disponível
 - Formate a resposta em Markdown`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

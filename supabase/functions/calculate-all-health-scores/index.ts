@@ -23,7 +23,7 @@ const DEFAULT_WEIGHTS: HealthScoreWeights = {
   trend_weight: 5,
 };
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

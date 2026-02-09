@@ -48,7 +48,7 @@ IMPORTANTE:
 - Mantenha tom positivo e construtivo
 - Se alguma área não tiver dados, mencione que não há dados suficientes para análise`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

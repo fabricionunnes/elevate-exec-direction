@@ -245,7 +245,7 @@ Responda em JSON:
   throw new Error('Failed to parse simulation results');
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response(null, { headers: corsHeaders });
   }

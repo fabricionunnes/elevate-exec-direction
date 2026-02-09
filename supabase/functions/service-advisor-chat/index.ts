@@ -79,7 +79,7 @@ Siga esta ordem EXATA de perguntas, UMA DE CADA VEZ:
 - SEMPRE personalize usando o nome quando souber
 - Seja amigável mas profissional`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
