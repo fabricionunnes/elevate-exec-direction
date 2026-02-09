@@ -1056,7 +1056,7 @@ export default function ContractGeneratorPage() {
                               <CardTitle className="text-base font-medium line-clamp-1">
                                 {contract.client_name}
                               </CardTitle>
-                              <div className="flex gap-1">
+                              <div className="flex gap-1 flex-wrap">
                                 {contract.pdf_url && (
                                   <Badge variant="default" className="text-xs bg-green-600">
                                     PDF
@@ -1065,6 +1065,24 @@ export default function ContractGeneratorPage() {
                                 {contract.is_recurring && (
                                   <Badge variant="secondary" className="text-xs">
                                     Recorrente
+                                  </Badge>
+                                )}
+                                {contract.zapsign_sent_at && (
+                                  <Badge 
+                                    variant="outline" 
+                                    className={`text-xs ${
+                                      contract.zapsign_signers && 
+                                      Array.isArray(contract.zapsign_signers) && 
+                                      (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed")
+                                        ? "border-green-500 text-green-700 bg-green-50"
+                                        : "border-yellow-500 text-yellow-700 bg-yellow-50"
+                                    }`}
+                                  >
+                                    {contract.zapsign_signers && 
+                                     Array.isArray(contract.zapsign_signers) && 
+                                     (contract.zapsign_signers as any[]).every((s: any) => s.status === "signed")
+                                      ? "✅ Assinado"
+                                      : "⏳ Pendente"}
                                   </Badge>
                                 )}
                               </div>
