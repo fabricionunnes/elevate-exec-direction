@@ -12,7 +12,7 @@ interface MentorRequest {
   sessionType?: "profile_analysis" | "growth_plan" | "content_strategy" | "reputation_boost" | "general";
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

@@ -7,7 +7,7 @@ const corsHeaders = {
 
 const GRAPH_API_URL = 'https://graph.facebook.com/v18.0';
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === 'OPTIONS') {
     return new Response('ok', { headers: corsHeaders });
   }

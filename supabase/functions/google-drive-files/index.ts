@@ -86,7 +86,7 @@ async function getValidAccessToken(supabase: any, projectId: string): Promise<st
   return tokenData.access_token;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

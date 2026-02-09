@@ -181,7 +181,7 @@ Encerre o manual com uma mensagem pessoal e inspiradora da liderança.`,
   return prompts[sectionKey] || `Crie conteúdo para a seção: ${sectionKey}`;
 }
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

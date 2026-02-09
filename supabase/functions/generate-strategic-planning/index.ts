@@ -121,7 +121,7 @@ Criar calendário de treinamentos
 
 13. Implementar sistema de parcerias para geração de leads`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }

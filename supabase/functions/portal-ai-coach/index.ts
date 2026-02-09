@@ -79,7 +79,7 @@ Se identificar gap de execução, sugira:
 7. Tom objetivo: "Isso não fecha" / "Falta estrutura para essa meta"
 8. Responda em português brasileiro, tom direto e profissional`;
 
-serve(async (req) => {
+Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
