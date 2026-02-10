@@ -692,45 +692,67 @@ export const GenerateStrategicPlanningDialog = ({
 
     setCreatingTask(true);
     try {
-      const { data: project, error: projectError } = await supabase
-        .from("onboarding_projects")
-        .select("product_id")
-        .eq("id", projectId)
-        .single();
+      // Get current max sort_order
+      const { data: existingTasks } = await supabase
+        .from("onboarding_tasks")
+        .select("sort_order")
+        .eq("project_id", projectId)
+        .order("sort_order", { ascending: false })
+        .limit(1);
 
-      if (projectError) throw projectError;
-
-      // Project found, proceed to create task
-
-      // Build updated content with edited cronograma
-      const cronogramaText = editableCronograma.map((action, i) => {
-        let text = `${i + 1}. ${action.title}`;
-        if (action.subactions.length > 0) {
-          text += "\n" + action.subactions.map(sub => `   • ${sub}`).join("\n");
-        }
-        return text;
-      }).join("\n\n");
+      let sortOrder = (existingTasks?.[0]?.sort_order || 0) + 1;
 
       const parsedForTask = parseContent(content);
-      const fullContent = `RESUMO DA EMPRESA\n\n${parsedForTask.resumo.trim()}\n\nANÁLISE SWOT\n\nFORÇAS:\n${parsedForTask.swot.forcas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFRAQUEZAS:\n${parsedForTask.swot.fraquezas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOPORTUNIDADES:\n${parsedForTask.swot.oportunidades.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nAMEAÇAS:\n${parsedForTask.swot.ameacas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nCRONOGRAMA DE AÇÕES\n\n${cronogramaText}`;
 
-      const { error: taskError } = await supabase.from("onboarding_tasks").insert({
+      // Build summary content for the main planning task
+      const summaryContent = `RESUMO DA EMPRESA\n\n${parsedForTask.resumo.trim()}\n\nANÁLISE SWOT\n\nFORÇAS:\n${parsedForTask.swot.forcas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFRAQUEZAS:\n${parsedForTask.swot.fraquezas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOPORTUNIDADES:\n${parsedForTask.swot.oportunidades.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nAMEAÇAS:\n${parsedForTask.swot.ameacas.map((f, i) => `${i + 1}. ${f}`).join("\n")}`;
+
+      // 1. Create the main "Planejamento Estratégico" task (completed, with SWOT + resumo)
+      const { error: mainError } = await supabase.from("onboarding_tasks").insert({
         project_id: projectId,
-        title: "Planejamento Estratégico",
-        description: fullContent,
-        status: "pending",
+        title: `Planejamento Estratégico - ${companyData.name}`,
+        description: summaryContent,
+        status: "completed",
         priority: "high",
         tags: ["Planejamento"],
+        sort_order: sortOrder,
+        completed_at: new Date().toISOString(),
       });
 
-      if (taskError) throw taskError;
+      if (mainError) throw mainError;
+
+      // 2. Create one task per cronograma action
+      if (editableCronograma.length > 0) {
+        const actionTasks = editableCronograma.map((action, i) => {
+          const description = action.subactions.length > 0
+            ? action.subactions.map(sub => `• ${sub}`).join("\n")
+            : null;
+
+          return {
+            project_id: projectId,
+            title: action.title.substring(0, 255),
+            description,
+            status: "pending" as const,
+            priority: (i < 4 ? "high" : i < 8 ? "medium" : "low") as "high" | "medium" | "low",
+            tags: ["Plano de Ação"],
+            sort_order: sortOrder + 1 + i,
+            is_internal: false,
+          };
+        });
+
+        const { error: actionsError } = await supabase
+          .from("onboarding_tasks")
+          .insert(actionTasks);
+
+        if (actionsError) throw actionsError;
+      }
 
       setTaskCreated(true);
-      toast.success("Tarefa 'Planejamento Estratégico' criada com sucesso!");
+      toast.success(`${editableCronograma.length + 1} tarefas criadas com sucesso!`);
       onTaskCreated?.();
     } catch (error: any) {
-      console.error("Error creating task:", error);
-      toast.error("Erro ao criar tarefa");
+      console.error("Error creating tasks:", error);
+      toast.error("Erro ao criar tarefas");
     } finally {
       setCreatingTask(false);
     }
@@ -1070,7 +1092,7 @@ export const GenerateStrategicPlanningDialog = ({
                 ) : (
                   <>
                     <Check className="h-4 w-4 mr-2" />
-                    Criar Tarefa na Jornada
+                    Criar {editableCronograma.length + 1} Tarefas na Jornada
                   </>
                 )}
               </Button>
@@ -1078,7 +1100,7 @@ export const GenerateStrategicPlanningDialog = ({
             {taskCreated && (
               <span className="flex items-center gap-2 text-sm text-green-600">
                 <Check className="h-4 w-4" />
-                Tarefa criada!
+                Tarefas criadas!
               </span>
             )}
             <Button variant="ghost" size="sm" onClick={handleGenerate} disabled={generating}>
