@@ -700,65 +700,7 @@ export const GenerateStrategicPlanningDialog = ({
 
       if (projectError) throw projectError;
 
-      let productId = project.product_id;
-
-      const uuidRegex = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
-      if (productId && !uuidRegex.test(productId)) {
-        const { data: service, error: serviceError } = await supabase
-          .from("onboarding_services")
-          .select("id")
-          .ilike("name", productId)
-          .maybeSingle();
-
-        if (serviceError) {
-          console.error("Error fetching service by name:", serviceError);
-        } else if (service) {
-          productId = service.id;
-        }
-      }
-
-      if (!productId) {
-        toast.error("Produto não encontrado para o projeto");
-        return;
-      }
-
-      let phaseId: string | null = null;
-
-      const { data: existingPhases, error: phasesError } = await supabase
-        .from("onboarding_service_phases")
-        .select("id, name")
-        .eq("service_id", productId)
-        .ilike("name", "%planejamento%")
-        .limit(1);
-
-      if (phasesError) throw phasesError;
-
-      if (existingPhases && existingPhases.length > 0) {
-        phaseId = existingPhases[0].id;
-      } else {
-        const { data: maxOrderData } = await supabase
-          .from("onboarding_service_phases")
-          .select("sort_order")
-          .eq("service_id", productId)
-          .order("sort_order", { ascending: false })
-          .limit(1);
-
-        const nextOrder = (maxOrderData?.[0]?.sort_order || 0) + 1;
-
-        const { data: newPhase, error: createPhaseError } = await supabase
-          .from("onboarding_service_phases")
-          .insert({
-            service_id: productId,
-            name: "Planejamento Estratégico",
-            description: "Fase de planejamento estratégico comercial",
-            sort_order: nextOrder,
-          })
-          .select()
-          .single();
-
-        if (createPhaseError) throw createPhaseError;
-        phaseId = newPhase.id;
-      }
+      // Project found, proceed to create task
 
       // Build updated content with edited cronograma
       const cronogramaText = editableCronograma.map((action, i) => {
@@ -774,11 +716,11 @@ export const GenerateStrategicPlanningDialog = ({
 
       const { error: taskError } = await supabase.from("onboarding_tasks").insert({
         project_id: projectId,
-        phase_id: phaseId,
         title: "Planejamento Estratégico",
         description: fullContent,
         status: "pending",
         priority: "high",
+        tags: ["Planejamento"],
       });
 
       if (taskError) throw taskError;
