@@ -19,8 +19,20 @@ import {
   RefreshCw,
   Building2,
   User,
-  UserX
+  UserX,
+  Trash2
 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -176,6 +188,24 @@ export default function HotseatAdminPage() {
   const openResponseDialog = (response: HotseatResponse) => {
     setSelectedResponse(response);
     setIsDialogOpen(true);
+  };
+
+  const canDelete = currentUserRole === 'admin' || currentUserRole === 'master';
+
+  const deleteResponse = async (e: React.MouseEvent, responseId: string) => {
+    e.stopPropagation();
+    try {
+      const { error } = await supabase
+        .from("hotseat_responses")
+        .delete()
+        .eq("id", responseId);
+      if (error) throw error;
+      toast.success("Resposta excluída com sucesso");
+      fetchResponses();
+    } catch (error) {
+      console.error("Error deleting response:", error);
+      toast.error("Erro ao excluir resposta");
+    }
   };
 
   const handleResponseUpdated = () => {
@@ -365,6 +395,37 @@ export default function HotseatAdminPage() {
                           <span className="text-xs text-muted-foreground">
                             {format(new Date(response.scheduled_at), "dd/MM 'às' HH:mm", { locale: ptBR })}
                           </span>
+                        )}
+                        {canDelete && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button
+                                variant="ghost"
+                                size="icon"
+                                className="h-7 w-7 text-destructive hover:text-destructive"
+                                onClick={(e) => e.stopPropagation()}
+                              >
+                                <Trash2 className="h-4 w-4" />
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Excluir resposta</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  Tem certeza que deseja excluir a resposta de {response.respondent_name}? Esta ação não pode ser desfeita.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction
+                                  onClick={(e) => deleteResponse(e, response.id)}
+                                  className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                >
+                                  Excluir
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </div>
