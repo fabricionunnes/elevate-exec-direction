@@ -106,52 +106,38 @@ REGRAS:
 8. Se valoriza liderança, inclua trilha de gestão
 9. Responda APENAS com o JSON, sem texto adicional`;
 
-    // Call Gemini via Lovable AI proxy
-    const aiResponse = await fetch("https://czmyjgdixwhpfasfugkm.supabase.co/functions/v1/proxy-ai", {
+    // Call Lovable AI Gateway
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      return new Response(JSON.stringify({ error: "LOVABLE_API_KEY not configured" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
-      headers: { "Content-Type": "application/json", "Authorization": `Bearer ${supabaseKey}` },
+      headers: {
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
+        "Content-Type": "application/json",
+      },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
         messages: [{ role: "user", content: prompt }],
       }),
     });
 
-    // Fallback: direct Gemini call
-    let planData;
     if (!aiResponse.ok) {
-      // Try using the GEMINI_API_KEY secret
-      const geminiKey = Deno.env.get("GEMINI_API_KEY");
-      if (!geminiKey) {
-        return new Response(JSON.stringify({ error: "AI service unavailable" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-
-      const geminiRes = await fetch(
-        `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.0-flash:generateContent?key=${geminiKey}`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            contents: [{ parts: [{ text: prompt }] }],
-            generationConfig: { temperature: 0.7 },
-          }),
-        }
-      );
-      const geminiData = await geminiRes.json();
-      const text = geminiData.candidates?.[0]?.content?.parts?.[0]?.text || "";
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return new Response(JSON.stringify({ error: "Failed to parse AI response" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      planData = JSON.parse(jsonMatch[0]);
-    } else {
-      const aiData = await aiResponse.json();
-      const text = typeof aiData === "string" ? aiData : (aiData.choices?.[0]?.message?.content || aiData.content || JSON.stringify(aiData));
-      const jsonMatch = text.match(/\{[\s\S]*\}/);
-      if (!jsonMatch) {
-        return new Response(JSON.stringify({ error: "Failed to parse AI response" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
-      }
-      planData = JSON.parse(jsonMatch[0]);
+      const errText = await aiResponse.text();
+      console.error("AI gateway error:", aiResponse.status, errText);
+      return new Response(JSON.stringify({ error: "AI service error", status: aiResponse.status }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
+
+    const aiData = await aiResponse.json();
+    const text = aiData.choices?.[0]?.message?.content || "";
+    const jsonMatch = text.match(/\{[\s\S]*\}/);
+    let planData;
+    if (!jsonMatch) {
+      return new Response(JSON.stringify({ error: "Failed to parse AI response" }), { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } });
+    }
+    planData = JSON.parse(jsonMatch[0]);
 
     // Create version
     const existingVersions = await supabase
