@@ -62,7 +62,7 @@ export function HotseatSummaryDisplay({ summary, companiesMentioned }: Props) {
       )}
 
       {/* Main Summary Content */}
-      <ScrollArea className="max-h-[500px]">
+      <ScrollArea className="max-h-[70vh]">
         <div className="space-y-4">
           {/* Parse and display structured content */}
           <div className="rounded-xl border bg-gradient-to-br from-slate-50 to-white p-5 shadow-sm">
