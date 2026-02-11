@@ -52,6 +52,12 @@ Deno.serve(async (req) => {
 
     const staffId = staff?.id || null;
 
+    // Fetch all hotseat responses with linked projects to cross-reference
+    const { data: hotseatResponses } = await supabase
+      .from("hotseat_responses")
+      .select("respondent_name, company_name, linked_company_id, linked_project_id")
+      .not("linked_project_id", "is", null);
+
     // For each company, find the matching project and generate tasks
     const results: { company: string; projectId: string | null; tasksCreated: number; error?: string }[] = [];
 
@@ -63,46 +69,76 @@ Deno.serve(async (req) => {
 
       if (!companyName) continue;
 
-      // Try to find matching company in onboarding_companies
-      const { data: matchedCompanies } = await supabase
-        .from("onboarding_companies")
-        .select("id, name, consultant_id, cs_id")
-        .ilike("name", `%${companyName.split("(")[0].trim().split(" ").slice(0, 2).join(" ")}%`)
-        .eq("status", "active")
-        .limit(5);
+      let projectId: string | null = null;
+      let responsibleStaffId: string | null = null;
 
-      let matchedCompany = matchedCompanies?.[0] || null;
+      // Strategy 1: Match via hotseat_responses (most reliable)
+      if (hotseatResponses?.length) {
+        const companyLower = companyName.toLowerCase();
+        const match = hotseatResponses.find(r => {
+          const respCompany = (r.company_name || "").toLowerCase();
+          const respName = (r.respondent_name || "").toLowerCase();
+          // Check if response company name is in the AI company name or vice versa
+          return companyLower.includes(respCompany) || respCompany.includes(companyLower.split("(")[0].trim()) ||
+            // Check respondent name match (e.g. "Dr. Webbson Kennedy (Clínica)" matches respondent "Webbson Kennedy")
+            companyLower.includes(respName.split(" ").slice(0, 2).join(" ").toLowerCase()) ||
+            // Check name in parentheses
+            (companyName.includes("(") && respCompany.includes(companyName.match(/\(([^)]+)\)/)?.[1]?.toLowerCase() || "___"));
+        });
 
-      // If no match by first words, try broader search
-      if (!matchedCompany && companyName.includes("(")) {
-        const nameInParens = companyName.match(/\(([^)]+)\)/)?.[1];
-        if (nameInParens) {
-          const { data: fallback } = await supabase
-            .from("onboarding_companies")
-            .select("id, name, consultant_id, cs_id")
-            .ilike("name", `%${nameInParens.trim()}%`)
-            .eq("status", "active")
-            .limit(3);
-          matchedCompany = fallback?.[0] || null;
+        if (match?.linked_project_id) {
+          projectId = match.linked_project_id;
+
+          // Get consultant/cs from the company
+          if (match.linked_company_id) {
+            const { data: comp } = await supabase
+              .from("onboarding_companies")
+              .select("consultant_id, cs_id")
+              .eq("id", match.linked_company_id)
+              .maybeSingle();
+            responsibleStaffId = comp?.consultant_id || comp?.cs_id || null;
+          }
         }
       }
 
-      if (!matchedCompany) {
-        results.push({ company: companyName, projectId: null, tasksCreated: 0, error: "Empresa não encontrada" });
-        continue;
+      // Strategy 2: Fallback to name search in onboarding_companies
+      if (!projectId) {
+        const { data: matchedCompanies } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, consultant_id, cs_id")
+          .ilike("name", `%${companyName.split("(")[0].trim().split(" ").slice(0, 2).join(" ")}%`)
+          .eq("status", "active")
+          .limit(5);
+
+        let matchedCompany = matchedCompanies?.[0] || null;
+
+        if (!matchedCompany && companyName.includes("(")) {
+          const nameInParens = companyName.match(/\(([^)]+)\)/)?.[1];
+          if (nameInParens) {
+            const { data: fallback } = await supabase
+              .from("onboarding_companies")
+              .select("id, name, consultant_id, cs_id")
+              .ilike("name", `%${nameInParens.trim()}%`)
+              .eq("status", "active")
+              .limit(3);
+            matchedCompany = fallback?.[0] || null;
+          }
+        }
+
+        if (matchedCompany) {
+          responsibleStaffId = matchedCompany.consultant_id || matchedCompany.cs_id || null;
+          const { data: projects } = await supabase
+            .from("onboarding_projects")
+            .select("id")
+            .eq("onboarding_company_id", matchedCompany.id)
+            .eq("status", "active")
+            .limit(1);
+          projectId = projects?.[0]?.id || null;
+        }
       }
 
-      // Find active project for this company
-      const { data: projects } = await supabase
-        .from("onboarding_projects")
-        .select("id")
-        .eq("onboarding_company_id", matchedCompany.id)
-        .eq("status", "active")
-        .limit(1);
-
-      const projectId = projects?.[0]?.id;
       if (!projectId) {
-        results.push({ company: companyName, projectId: null, tasksCreated: 0, error: "Projeto ativo não encontrado" });
+        results.push({ company: companyName, projectId: null, tasksCreated: 0, error: "Empresa não encontrada" });
         continue;
       }
 
@@ -164,8 +200,8 @@ NÃO inclua explicações, apenas o JSON array.`
         }));
       }
 
-      // Determine responsible staff (consultant or CS of the company)
-      const responsibleStaffId = matchedCompany.consultant_id || matchedCompany.cs_id || staffId;
+      // Use responsible staff found earlier, or fallback to current user
+      const finalStaffId = responsibleStaffId || staffId;
 
       // Calculate due date (5 business days from now)
       const { data: dueDateResult } = await supabase.rpc("get_next_business_day", {
@@ -182,7 +218,7 @@ NÃO inclua explicações, apenas o JSON array.`
         description: task.description || `Tarefa gerada a partir do Hotseat`,
         status: "pending",
         priority: task.priority || "high",
-        responsible_staff_id: responsibleStaffId,
+        responsible_staff_id: finalStaffId,
         due_date: dueDate,
         sort_order: idx,
         tags: ["hotseat"],
