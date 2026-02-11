@@ -112,6 +112,7 @@ import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
 import PublicJobApplicationPage from "./pages/hr-recruitment/PublicJobApplicationPage";
 import PublicTalentPoolPage from "./pages/hr-recruitment/PublicTalentPoolPage";
 import CultureFormPage from "./pages/hr-recruitment/CultureFormPage";
+import PublicCareerPlanFormPage from "./pages/hr-recruitment/PublicCareerPlanFormPage";
 import SocialBriefingPublicPage from "./pages/public/SocialBriefingPublicPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
@@ -310,6 +311,7 @@ const App = () => (
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
+            <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}

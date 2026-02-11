@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Switch } from "@/components/ui/switch";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Loader2, Send, Sparkles } from "lucide-react";
+import { Loader2, Send, Sparkles, Copy, ExternalLink } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { GROWTH_PREFERENCES, VALUES_MOST, RAISE_POLICIES, EVALUATION_FREQUENCIES, GOAL_TYPE_OPTIONS } from "./types";
@@ -107,10 +107,25 @@ export function CareerFormSection({ projectId, canEdit, forms, onRefresh, onGene
       )}
 
       {!showForm ? (
-        <Button onClick={() => setShowForm(true)} disabled={!canEdit} className="gap-2">
-          <Send className="h-4 w-4" />
-          Novo Formulário Estratégico
-        </Button>
+        <div className="flex gap-3 flex-wrap">
+          <Button onClick={() => setShowForm(true)} disabled={!canEdit} className="gap-2">
+            <Send className="h-4 w-4" />
+            Novo Formulário Estratégico
+          </Button>
+          <Button
+            variant="outline"
+            className="gap-2"
+            onClick={() => {
+              const domain = "unvholdings.com.br";
+              const publicUrl = `https://${domain}/?public=career-plan&project=${projectId}`;
+              navigator.clipboard.writeText(publicUrl);
+              toast.success("Link público copiado!");
+            }}
+          >
+            <Copy className="h-4 w-4" />
+            Copiar Link Público
+          </Button>
+        </div>
       ) : (
         <Card>
           <CardHeader>
