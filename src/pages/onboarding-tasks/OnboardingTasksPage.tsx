@@ -693,16 +693,6 @@ const OnboardingTasksPage = () => {
       return new Set(baseProjects.map((p) => p.id));
     }
 
-    // If tasks are directly linked to a consultant, include their projects too
-    const responsibleProjectIds =
-      filterConsultant === "all"
-        ? new Set<string>()
-        : new Set(
-            allTasks
-              .filter((t) => t.responsible_staff_id === filterConsultant)
-              .map((t) => t.project_id)
-          );
-
     // If consultant is responsible for the company, ALL company tasks/projects are theirs
     const companyPortfolioProjectIds =
       filterConsultant === "all"
@@ -723,7 +713,6 @@ const OnboardingTasksPage = () => {
       filterConsultant === "all"
         ? null
         : new Set<string>([
-            ...responsibleProjectIds,
             ...companyPortfolioProjectIds,
             ...projectPortfolioProjectIds,
           ]);
