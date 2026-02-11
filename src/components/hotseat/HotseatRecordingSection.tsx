@@ -23,7 +23,8 @@ import {
   Trash2,
   Edit3,
   Save,
-  X
+  X,
+  ListTodo
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -78,6 +79,7 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
   const [editingTranscriptId, setEditingTranscriptId] = useState<string | null>(null);
   const [editTranscriptText, setEditTranscriptText] = useState("");
   const [savingTranscript, setSavingTranscript] = useState(false);
+  const [generatingTasksId, setGeneratingTasksId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchRecordings();
@@ -341,6 +343,42 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
     }
   };
 
+  const handleGenerateHotseatTasks = async (recording: HotseatRecording) => {
+    const companies = Array.isArray(recording.companies_mentioned) ? recording.companies_mentioned : [];
+    if (companies.length === 0) {
+      toast.error("Nenhuma empresa identificada no resumo");
+      return;
+    }
+
+    setGeneratingTasksId(recording.id);
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-hotseat-tasks", {
+        body: { recordingId: recording.id, companies },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        const successCount = data.results?.filter((r: any) => r.tasksCreated > 0).length || 0;
+        const failedResults = data.results?.filter((r: any) => r.error) || [];
+        
+        toast.success(`${data.totalTasks} tarefas criadas para ${successCount} empresa(s)!`);
+        
+        if (failedResults.length > 0) {
+          const failedNames = failedResults.map((r: any) => r.company).join(", ");
+          toast.warning(`Empresas não encontradas: ${failedNames}`, { duration: 8000 });
+        }
+      } else {
+        throw new Error(data?.error || "Erro desconhecido");
+      }
+    } catch (error) {
+      console.error("Error generating hotseat tasks:", error);
+      toast.error("Erro ao gerar tarefas");
+    } finally {
+      setGeneratingTasksId(null);
+    }
+  };
+
   const getStatusBadge = (status: string, errorMessage: string | null) => {
     switch (status) {
       case "pending":
@@ -588,6 +626,29 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                         summary={recording.summary} 
                         companiesMentioned={recording.companies_mentioned}
                       />
+                    )}
+
+                    {/* Generate tasks from summary */}
+                    {recording.summary && recording.companies_mentioned && Array.isArray(recording.companies_mentioned) && recording.companies_mentioned.length > 0 && (
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleGenerateHotseatTasks(recording)}
+                        disabled={generatingTasksId === recording.id}
+                        className="w-full gap-2"
+                      >
+                        {generatingTasksId === recording.id ? (
+                          <>
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                            Gerando tarefas na jornada...
+                          </>
+                        ) : (
+                          <>
+                            <ListTodo className="h-4 w-4" />
+                            Gerar Tarefas na Jornada dos Clientes
+                          </>
+                        )}
+                      </Button>
                     )}
 
                     {/* Editable transcript section */}
