@@ -374,9 +374,6 @@ export function CareerPDFSection({ tracks, activeVersion, readOnly }: CareerPDFS
               {activeVersion.is_published && (
                 <Badge className="bg-green-500">Publicado</Badge>
               )}
-              {activeVersion.generated_by_ai && (
-                <Badge variant="outline">Gerado por IA</Badge>
-              )}
             </div>
           </div>
 
