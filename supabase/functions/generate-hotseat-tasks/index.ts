@@ -72,8 +72,28 @@ Deno.serve(async (req) => {
       let projectId: string | null = null;
       let responsibleStaffId: string | null = null;
 
+      // Strategy 0: Manual override from UI linking
+      if (company.override_company_id) {
+        const { data: overrideCompany } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, consultant_id, cs_id")
+          .eq("id", company.override_company_id)
+          .maybeSingle();
+
+        if (overrideCompany) {
+          responsibleStaffId = overrideCompany.consultant_id || overrideCompany.cs_id || null;
+          const { data: projects } = await supabase
+            .from("onboarding_projects")
+            .select("id")
+            .eq("onboarding_company_id", overrideCompany.id)
+            .eq("status", "active")
+            .limit(1);
+          projectId = projects?.[0]?.id || null;
+        }
+      }
+
       // Strategy 1: Match via hotseat_responses (most reliable)
-      if (hotseatResponses?.length) {
+      if (!projectId && hotseatResponses?.length) {
         const companyLower = companyName.toLowerCase();
         const match = hotseatResponses.find(r => {
           const respCompany = (r.company_name || "").toLowerCase();

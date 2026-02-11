@@ -29,6 +29,7 @@ import {
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { HotseatSummaryDisplay } from "./HotseatSummaryDisplay";
+import { HotseatManualLinking } from "./HotseatManualLinking";
 import {
   Collapsible,
   CollapsibleContent,
@@ -80,6 +81,7 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
   const [editTranscriptText, setEditTranscriptText] = useState("");
   const [savingTranscript, setSavingTranscript] = useState(false);
   const [generatingTasksId, setGeneratingTasksId] = useState<string | null>(null);
+  const [taskResults, setTaskResults] = useState<Record<string, { failed: { company: string; companyData: any }[] }>>({});
 
   useEffect(() => {
     fetchRecordings();
@@ -362,11 +364,21 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
         const successCount = data.results?.filter((r: any) => r.tasksCreated > 0).length || 0;
         const failedResults = data.results?.filter((r: any) => r.error) || [];
         
-        toast.success(`${data.totalTasks} tarefas criadas para ${successCount} empresa(s)!`);
+        if (successCount > 0) {
+          toast.success(`${data.totalTasks} tarefas criadas para ${successCount} empresa(s)!`);
+        }
         
         if (failedResults.length > 0) {
-          const failedNames = failedResults.map((r: any) => r.company).join(", ");
-          toast.warning(`Empresas não encontradas: ${failedNames}`, { duration: 8000 });
+          // Store failed companies with their original data for manual linking
+          const failedWithData = failedResults.map((r: any) => ({
+            company: r.company,
+            companyData: companies.find((c: any) => c.name === r.company) || { name: r.company },
+          }));
+          setTaskResults(prev => ({ ...prev, [recording.id]: { failed: failedWithData } }));
+          toast.warning(`${failedResults.length} empresa(s) não encontrada(s). Vincule manualmente abaixo.`, { duration: 6000 });
+        } else {
+          // Clear any previous failures for this recording
+          setTaskResults(prev => { const n = { ...prev }; delete n[recording.id]; return n; });
         }
       } else {
         throw new Error(data?.error || "Erro desconhecido");
@@ -649,6 +661,17 @@ export function HotseatRecordingSection({ currentStaffId }: Props) {
                           </>
                         )}
                       </Button>
+                    )}
+
+                    {/* Manual linking for failed companies */}
+                    {taskResults[recording.id]?.failed?.length > 0 && (
+                      <HotseatManualLinking
+                        recordingId={recording.id}
+                        failedCompanies={taskResults[recording.id].failed}
+                        onTasksCreated={() => {
+                          setTaskResults(prev => { const n = { ...prev }; delete n[recording.id]; return n; });
+                        }}
+                      />
                     )}
 
                     {/* Editable transcript section */}
