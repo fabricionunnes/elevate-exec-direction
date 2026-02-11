@@ -224,3 +224,6 @@ verify_jwt = false
 
 [functions.social-scheduled-publish]
 verify_jwt = false
+
+[functions.generate-career-plan]
+verify_jwt = false

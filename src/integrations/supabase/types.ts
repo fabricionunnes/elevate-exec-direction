@@ -1403,6 +1403,463 @@ export type Database = {
           },
         ]
       }
+      career_audit_log: {
+        Row: {
+          action: string
+          action_details: Json | null
+          id: string
+          performed_at: string | null
+          performed_by_staff_id: string | null
+          performed_by_user_id: string | null
+          project_id: string
+          version_id: string | null
+        }
+        Insert: {
+          action: string
+          action_details?: Json | null
+          id?: string
+          performed_at?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          project_id: string
+          version_id?: string | null
+        }
+        Update: {
+          action?: string
+          action_details?: Json | null
+          id?: string
+          performed_at?: string | null
+          performed_by_staff_id?: string | null
+          performed_by_user_id?: string | null
+          project_id?: string
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_audit_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_audit_log_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "career_plan_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_criteria: {
+        Row: {
+          created_at: string | null
+          criteria_type: string | null
+          description: string | null
+          id: string
+          min_score: number | null
+          name: string
+          role_id: string
+          sort_order: number | null
+          weight: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          criteria_type?: string | null
+          description?: string | null
+          id?: string
+          min_score?: number | null
+          name: string
+          role_id: string
+          sort_order?: number | null
+          weight?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          criteria_type?: string | null
+          description?: string | null
+          id?: string
+          min_score?: number | null
+          name?: string
+          role_id?: string
+          sort_order?: number | null
+          weight?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_criteria_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "career_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_evaluations: {
+        Row: {
+          created_at: string | null
+          criteria_scores: Json | null
+          current_role_id: string | null
+          employee_email: string | null
+          employee_name: string
+          evaluation_date: string | null
+          evaluator_name: string | null
+          goals_achieved: Json | null
+          id: string
+          notes: string | null
+          overall_score: number | null
+          project_id: string
+          status: string | null
+          time_in_role_months: number | null
+          updated_at: string | null
+          version_id: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          criteria_scores?: Json | null
+          current_role_id?: string | null
+          employee_email?: string | null
+          employee_name: string
+          evaluation_date?: string | null
+          evaluator_name?: string | null
+          goals_achieved?: Json | null
+          id?: string
+          notes?: string | null
+          overall_score?: number | null
+          project_id: string
+          status?: string | null
+          time_in_role_months?: number | null
+          updated_at?: string | null
+          version_id?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          criteria_scores?: Json | null
+          current_role_id?: string | null
+          employee_email?: string | null
+          employee_name?: string
+          evaluation_date?: string | null
+          evaluator_name?: string | null
+          goals_achieved?: Json | null
+          id?: string
+          notes?: string | null
+          overall_score?: number | null
+          project_id?: string
+          status?: string | null
+          time_in_role_months?: number | null
+          updated_at?: string | null
+          version_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_evaluations_current_role_id_fkey"
+            columns: ["current_role_id"]
+            isOneToOne: false
+            referencedRelation: "career_roles"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_evaluations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "career_evaluations_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "career_plan_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_goals: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          goal_type: string | null
+          id: string
+          measurement_unit: string | null
+          role_id: string
+          sort_order: number | null
+          target_value: string | null
+          title: string
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          goal_type?: string | null
+          id?: string
+          measurement_unit?: string | null
+          role_id: string
+          sort_order?: number | null
+          target_value?: string | null
+          title: string
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          goal_type?: string | null
+          id?: string
+          measurement_unit?: string | null
+          role_id?: string
+          sort_order?: number | null
+          target_value?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_goals_role_id_fkey"
+            columns: ["role_id"]
+            isOneToOne: false
+            referencedRelation: "career_roles"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_plan_forms: {
+        Row: {
+          additional_notes: string | null
+          benefits_by_level: string | null
+          company_culture_type: string | null
+          company_segment: string | null
+          created_at: string | null
+          current_career_plan_details: string | null
+          current_evaluation_criteria: string | null
+          current_role_structure: string | null
+          employee_count: string | null
+          evaluation_frequency: string | null
+          goal_types: string[] | null
+          growth_preference: string | null
+          has_career_plan: boolean | null
+          id: string
+          is_complete: boolean | null
+          project_id: string
+          raise_policy: string | null
+          respondent_email: string | null
+          respondent_name: string | null
+          respondent_role: string | null
+          salary_ranges: string | null
+          submitted_at: string | null
+          uses_goals: boolean | null
+          values_most: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          benefits_by_level?: string | null
+          company_culture_type?: string | null
+          company_segment?: string | null
+          created_at?: string | null
+          current_career_plan_details?: string | null
+          current_evaluation_criteria?: string | null
+          current_role_structure?: string | null
+          employee_count?: string | null
+          evaluation_frequency?: string | null
+          goal_types?: string[] | null
+          growth_preference?: string | null
+          has_career_plan?: boolean | null
+          id?: string
+          is_complete?: boolean | null
+          project_id: string
+          raise_policy?: string | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          respondent_role?: string | null
+          salary_ranges?: string | null
+          submitted_at?: string | null
+          uses_goals?: boolean | null
+          values_most?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          benefits_by_level?: string | null
+          company_culture_type?: string | null
+          company_segment?: string | null
+          created_at?: string | null
+          current_career_plan_details?: string | null
+          current_evaluation_criteria?: string | null
+          current_role_structure?: string | null
+          employee_count?: string | null
+          evaluation_frequency?: string | null
+          goal_types?: string[] | null
+          growth_preference?: string | null
+          has_career_plan?: boolean | null
+          id?: string
+          is_complete?: boolean | null
+          project_id?: string
+          raise_policy?: string | null
+          respondent_email?: string | null
+          respondent_name?: string | null
+          respondent_role?: string | null
+          salary_ranges?: string | null
+          submitted_at?: string | null
+          uses_goals?: boolean | null
+          values_most?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_plan_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_plan_versions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          generated_by_ai: boolean | null
+          id: string
+          is_active: boolean | null
+          is_published: boolean | null
+          notes: string | null
+          project_id: string
+          published_at: string | null
+          published_by: string | null
+          version_name: string | null
+          version_number: number
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          notes?: string | null
+          project_id: string
+          published_at?: string | null
+          published_by?: string | null
+          version_name?: string | null
+          version_number?: number
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          is_active?: boolean | null
+          is_published?: boolean | null
+          notes?: string | null
+          project_id?: string
+          published_at?: string | null
+          published_by?: string | null
+          version_name?: string | null
+          version_number?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_plan_versions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_roles: {
+        Row: {
+          benefits: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_entry_level: boolean | null
+          level_order: number
+          max_time_months: number | null
+          min_time_months: number | null
+          name: string
+          salary_base: number | null
+          salary_max: number | null
+          salary_min: number | null
+          track_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          benefits?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_entry_level?: boolean | null
+          level_order?: number
+          max_time_months?: number | null
+          min_time_months?: number | null
+          name: string
+          salary_base?: number | null
+          salary_max?: number | null
+          salary_min?: number | null
+          track_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          benefits?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_entry_level?: boolean | null
+          level_order?: number
+          max_time_months?: number | null
+          min_time_months?: number | null
+          name?: string
+          salary_base?: number | null
+          salary_max?: number | null
+          salary_min?: number | null
+          track_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_roles_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "career_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      career_tracks: {
+        Row: {
+          created_at: string | null
+          department: string | null
+          description: string | null
+          id: string
+          name: string
+          sort_order: number | null
+          track_type: string
+          version_id: string
+        }
+        Insert: {
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          name: string
+          sort_order?: number | null
+          track_type?: string
+          version_id: string
+        }
+        Update: {
+          created_at?: string | null
+          department?: string | null
+          description?: string | null
+          id?: string
+          name?: string
+          sort_order?: number | null
+          track_type?: string
+          version_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "career_tracks_version_id_fkey"
+            columns: ["version_id"]
+            isOneToOne: false
+            referencedRelation: "career_plan_versions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       ceo_agenda: {
         Row: {
           attendees: string[] | null
