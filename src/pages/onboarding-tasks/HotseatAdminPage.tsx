@@ -6,6 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { 
   ArrowLeft, 
@@ -20,7 +24,11 @@ import {
   Building2,
   User,
   UserX,
-  Trash2
+  Trash2,
+  CalendarIcon,
+  ChevronLeft,
+  ChevronRight,
+  Filter
 } from "lucide-react";
 import {
   AlertDialog,
@@ -63,6 +71,12 @@ export default function HotseatAdminPage() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
+
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
 
   useEffect(() => {
     checkAccess();
@@ -142,12 +156,16 @@ export default function HotseatAdminPage() {
   };
 
   const filteredResponses = responses
-    .filter((r) =>
-      r.respondent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.company_name.toLowerCase().includes(searchTerm.toLowerCase())
-    )
+    .filter((r) => {
+      const matchesSearch = r.respondent_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        r.company_name.toLowerCase().includes(searchTerm.toLowerCase());
+      const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+      const createdDate = new Date(r.created_at);
+      const matchesDateFrom = !dateFrom || createdDate >= new Date(dateFrom.setHours(0, 0, 0, 0));
+      const matchesDateTo = !dateTo || createdDate <= new Date(new Date(dateTo).setHours(23, 59, 59, 999));
+      return matchesSearch && matchesStatus && matchesDateFrom && matchesDateTo;
+    })
     .sort((a, b) => {
-      // Status priority: pending first, then scheduled, then others
       const statusOrder: Record<string, number> = {
         pending: 0,
         scheduled: 1,
@@ -163,7 +181,6 @@ export default function HotseatAdminPage() {
         return aOrder - bOrder;
       }
       
-      // For scheduled items, sort by scheduled_at (earliest first)
       if (a.status === "scheduled" && b.status === "scheduled") {
         if (a.scheduled_at && b.scheduled_at) {
           return new Date(a.scheduled_at).getTime() - new Date(b.scheduled_at).getTime();
@@ -172,14 +189,23 @@ export default function HotseatAdminPage() {
         if (b.scheduled_at) return 1;
       }
       
-      // For pending items, sort by created_at (oldest first - FIFO)
       if (a.status === "pending" && b.status === "pending") {
         return new Date(a.created_at).getTime() - new Date(b.created_at).getTime();
       }
       
-      // For other statuses, sort by updated_at (most recent first)
       return new Date(b.updated_at).getTime() - new Date(a.updated_at).getTime();
     });
+
+  const totalPages = Math.ceil(filteredResponses.length / ITEMS_PER_PAGE);
+  const paginatedResponses = filteredResponses.slice(
+    (currentPage - 1) * ITEMS_PER_PAGE,
+    currentPage * ITEMS_PER_PAGE
+  );
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, statusFilter, dateFrom, dateTo]);
 
   const pendingCount = responses.filter(r => r.status === "pending").length;
   const scheduledCount = responses.filter(r => r.status === "scheduled").length;
@@ -336,9 +362,9 @@ export default function HotseatAdminPage() {
           </Card>
         </div>
 
-        {/* Search */}
-        <div className="mb-4">
-          <div className="relative max-w-md">
+        {/* Filters */}
+        <div className="mb-4 flex flex-wrap gap-3 items-end">
+          <div className="relative flex-1 min-w-[200px] max-w-md">
             <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input
               placeholder="Buscar por nome ou empresa..."
@@ -347,22 +373,66 @@ export default function HotseatAdminPage() {
               className="pl-10"
             />
           </div>
+          <Select value={statusFilter} onValueChange={setStatusFilter}>
+            <SelectTrigger className="w-[180px]">
+              <Filter className="h-4 w-4 mr-2 text-muted-foreground" />
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os status</SelectItem>
+              <SelectItem value="pending">Pendente</SelectItem>
+              <SelectItem value="scheduled">Agendado</SelectItem>
+              <SelectItem value="completed">Concluído</SelectItem>
+              <SelectItem value="cancelled">Cancelado</SelectItem>
+              <SelectItem value="no_show">Não Compareceu</SelectItem>
+            </SelectContent>
+          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className={cn("w-[150px] justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="start">
+              <CalendarComponent mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+            </PopoverContent>
+          </Popover>
+          {(statusFilter !== "all" || dateFrom || dateTo) && (
+            <Button variant="ghost" size="sm" onClick={() => { setStatusFilter("all"); setDateFrom(undefined); setDateTo(undefined); }}>
+              Limpar filtros
+            </Button>
+          )}
         </div>
 
         {/* Responses List */}
         <Card>
           <CardHeader>
-            <CardTitle className="text-lg">Respostas do Hotseat</CardTitle>
+            <div className="flex items-center justify-between">
+              <CardTitle className="text-lg">Respostas do Hotseat</CardTitle>
+              <span className="text-sm text-muted-foreground">{filteredResponses.length} resultado(s)</span>
+            </div>
           </CardHeader>
           <CardContent>
-            {filteredResponses.length === 0 ? (
+            {paginatedResponses.length === 0 ? (
               <div className="text-center py-12 text-muted-foreground">
                 <Flame className="h-12 w-12 mx-auto mb-4 opacity-20" />
                 <p>Nenhuma resposta encontrada</p>
               </div>
             ) : (
               <div className="space-y-3">
-                {filteredResponses.map((response) => (
+                {paginatedResponses.map((response) => (
                   <div
                     key={response.id}
                     onClick={() => openResponseDialog(response)}
@@ -431,6 +501,35 @@ export default function HotseatAdminPage() {
                     </div>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between mt-6 pt-4 border-t">
+                <span className="text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                </span>
+                <div className="flex items-center gap-2">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
+                    disabled={currentPage === 1}
+                  >
+                    <ChevronLeft className="h-4 w-4" />
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
+                    disabled={currentPage === totalPages}
+                  >
+                    Próxima
+                    <ChevronRight className="h-4 w-4" />
+                  </Button>
+                </div>
               </div>
             )}
           </CardContent>
