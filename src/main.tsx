@@ -35,7 +35,7 @@ const publicParam = urlSearch.get("public");
 
 const forceHashRoute = (routePath: string, query: string) => {
   // Clean query - remove public param since it's already been processed
-  const cleanQuery = query ? query.replace(/[?&]public=[^&]*/g, '').replace(/^\?&/, '?').replace(/^&/, '').replace(/^\?$/, '') : '';
+  let cleanQuery = query ? query.replace(/[?&]public=[^&]*/g, '').replace(/^\?&/, '?').replace(/^&/, '?').replace(/^\?$/, '') : '';
   const target = `${window.location.origin}/#${routePath}${cleanQuery}`;
   
   // Force navigation immediately - always redirect for public routes
