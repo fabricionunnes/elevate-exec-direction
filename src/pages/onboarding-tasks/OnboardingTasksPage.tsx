@@ -1321,15 +1321,6 @@ const OnboardingTasksPage = () => {
       return actionableProjects;
     }
 
-    const responsibleProjectIds =
-      filterConsultant === "all"
-        ? new Set<string>()
-        : new Set(
-            allTasks
-              .filter((t) => t.responsible_staff_id === filterConsultant)
-              .map((t) => t.project_id)
-          );
-
     const companyPortfolioProjectIds =
       filterConsultant === "all"
         ? new Set<string>()
@@ -1348,7 +1339,6 @@ const OnboardingTasksPage = () => {
       filterConsultant === "all"
         ? null
         : new Set<string>([
-            ...responsibleProjectIds,
             ...companyPortfolioProjectIds,
             ...projectPortfolioProjectIds,
           ]);
