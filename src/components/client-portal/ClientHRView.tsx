@@ -18,7 +18,8 @@ import {
   Star,
   Copy,
   Plus,
-  UserPlus
+  UserPlus,
+  TrendingUp
 } from "lucide-react";
 import { usePipelineStages } from "@/components/hr-recruitment/hooks/usePipelineStages";
 import { ClientCandidateDetailSheet } from "./ClientCandidateDetailSheet";
@@ -26,6 +27,8 @@ import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { JobOpeningDialog } from "@/components/hr-recruitment/dialogs/JobOpeningDialog";
 import { CandidateDialog } from "@/components/hr-recruitment/dialogs/CandidateDialog";
 import { useActivityTracking } from "@/contexts/ActivityTrackingContext";
+import { CareerViewSection } from "@/components/hr-recruitment/career-plan/CareerViewSection";
+import type { CareerTrack } from "@/components/hr-recruitment/career-plan/types";
 
 interface JobOpening {
   id: string;
@@ -57,6 +60,7 @@ interface ClientHRViewProps {
 export function ClientHRView({ projectId }: ClientHRViewProps) {
   const [jobs, setJobs] = useState<JobOpening[]>([]);
   const [candidates, setCandidates] = useState<Candidate[]>([]);
+  const [careerTracks, setCareerTracks] = useState<CareerTrack[]>([]);
   const [loading, setLoading] = useState(true);
   const [searchJobs, setSearchJobs] = useState("");
   const [searchCandidates, setSearchCandidates] = useState("");
@@ -101,6 +105,47 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
 
     if (candidatesData) {
       setCandidates(candidatesData as unknown as Candidate[]);
+    }
+
+    // Fetch published career plan tracks
+    const { data: activeVersion } = await supabase
+      .from("career_plan_versions")
+      .select("id")
+      .eq("project_id", projectId)
+      .eq("is_published", true)
+      .eq("is_active", true)
+      .order("version_number", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (activeVersion) {
+      const { data: tracksData } = await supabase
+        .from("career_tracks")
+        .select("*")
+        .eq("version_id", activeVersion.id)
+        .order("sort_order");
+
+      if (tracksData) {
+        const tracksWithRoles: CareerTrack[] = [];
+        for (const track of tracksData) {
+          const { data: roles } = await supabase
+            .from("career_roles")
+            .select("*")
+            .eq("track_id", track.id)
+            .order("level_order");
+
+          const rolesWithDetails = [];
+          for (const role of roles || []) {
+            const [{ data: criteria }, { data: goals }] = await Promise.all([
+              supabase.from("career_criteria").select("*").eq("role_id", role.id).order("sort_order"),
+              supabase.from("career_goals").select("*").eq("role_id", role.id).order("sort_order"),
+            ]);
+            rolesWithDetails.push({ ...role, criteria: criteria || [], goals: goals || [] });
+          }
+          tracksWithRoles.push({ ...track, roles: rolesWithDetails });
+        }
+        setCareerTracks(tracksWithRoles);
+      }
     }
 
     setLoading(false);
@@ -167,10 +212,11 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
       </div>
 
       <Tabs defaultValue="jobs" className="space-y-4">
-        <TabsList className="grid w-full grid-cols-3">
+        <TabsList className="grid w-full grid-cols-4">
           <TabsTrigger value="jobs"><Briefcase className="h-4 w-4 mr-2" />Vagas</TabsTrigger>
           <TabsTrigger value="candidates"><Users className="h-4 w-4 mr-2" />Candidatos</TabsTrigger>
           <TabsTrigger value="pipeline"><GitBranch className="h-4 w-4 mr-2" />Pipeline</TabsTrigger>
+          <TabsTrigger value="career"><TrendingUp className="h-4 w-4 mr-2" />Carreira</TabsTrigger>
         </TabsList>
 
         <TabsContent value="jobs" className="space-y-4">
@@ -309,6 +355,14 @@ export function ClientHRView({ projectId }: ClientHRViewProps) {
             </div>
             <ScrollBar orientation="horizontal" />
           </ScrollArea>
+        </TabsContent>
+
+        <TabsContent value="career" className="space-y-4">
+          <div>
+            <h3 className="text-lg font-semibold mb-1">Plano de Carreira</h3>
+            <p className="text-sm text-muted-foreground mb-4">Visualize as trilhas de crescimento e critérios de progressão</p>
+          </div>
+          <CareerViewSection tracks={careerTracks} readOnly />
         </TabsContent>
       </Tabs>
 
