@@ -172,7 +172,7 @@ export function HotseatResponseDialog({
   const [isSendingChat, setIsSendingChat] = useState(false);
   const chatEndRef = useRef<HTMLDivElement>(null);
 
-  const isAdmin = currentStaffRole === "admin";
+  const isAdmin = currentStaffRole === "admin" || currentStaffRole === "master";
 
   // Auto-scroll chat to bottom when new messages arrive
   useEffect(() => {
