@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { TrendingUp, ClipboardList, Edit3, GitBranch, Award, Target, Play, History, Eye } from "lucide-react";
+import { TrendingUp, ClipboardList, Edit3, GitBranch, Award, Target, Play, History, Eye, Download } from "lucide-react";
 import { useCareerPlan } from "../career-plan/useCareerPlan";
 import { CareerOverviewSection } from "../career-plan/CareerOverviewSection";
 import { CareerFormSection } from "../career-plan/CareerFormSection";
@@ -8,6 +8,7 @@ import { CareerEditorSection } from "../career-plan/CareerEditorSection";
 import { CareerSimulationSection } from "../career-plan/CareerSimulationSection";
 import { CareerVersionsSection } from "../career-plan/CareerVersionsSection";
 import { CareerViewSection } from "../career-plan/CareerViewSection";
+import { CareerPDFSection } from "../career-plan/CareerPDFSection";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import type { CareerPlanVersion } from "../career-plan/types";
@@ -92,6 +93,10 @@ export function CareerPlanTab({ projectId, canEdit, isStaff }: CareerPlanTabProp
             <Eye className="h-4 w-4" />
             <span className="hidden sm:inline">Visualização</span>
           </TabsTrigger>
+          <TabsTrigger value="pdf" className="gap-2">
+            <Download className="h-4 w-4" />
+            <span className="hidden sm:inline">PDF</span>
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview" className="mt-6">
@@ -135,6 +140,10 @@ export function CareerPlanTab({ projectId, canEdit, isStaff }: CareerPlanTabProp
 
         <TabsContent value="view" className="mt-6">
           <CareerViewSection tracks={tracks} />
+        </TabsContent>
+
+        <TabsContent value="pdf" className="mt-6">
+          <CareerPDFSection tracks={tracks} activeVersion={activeVersion} />
         </TabsContent>
       </Tabs>
     </div>
