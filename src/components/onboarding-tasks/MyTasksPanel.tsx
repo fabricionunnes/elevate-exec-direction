@@ -8,9 +8,16 @@ import {
   DialogTitle,
 } from "@/components/ui/dialog";
 import { Badge } from "@/components/ui/badge";
+import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
 import {
   CheckCircle2,
   Circle,
@@ -20,12 +27,17 @@ import {
   Calendar,
   Building2,
   ExternalLink,
+  CalendarDays,
+  X,
 } from "lucide-react";
-import { format, isBefore, startOfDay, parseISO } from "date-fns";
+import { format, isBefore, startOfDay, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { motion, AnimatePresence } from "framer-motion";
+import { parseDateLocal } from "@/lib/dateUtils";
 
 type StatusFilter = "all" | "pending" | "in_progress" | "completed" | "overdue";
+type DatePreset = "all" | "today" | "this_week" | "last_week" | "this_month" | "custom";
 
 interface MyTask {
   id: string;
@@ -52,6 +64,10 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
   const [loading, setLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [statusFilter, setStatusFilter] = useState<StatusFilter>("all");
+  const [datePreset, setDatePreset] = useState<DatePreset>("all");
+  const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
+  const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
+  const [showDatePicker, setShowDatePicker] = useState(false);
 
   const today = startOfDay(new Date());
 
@@ -113,6 +129,38 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
     return "pending";
   };
 
+  const getDateRange = (): { start: Date; end: Date } | null => {
+    const now = new Date();
+    switch (datePreset) {
+      case "today":
+        return { start: startOfDay(now), end: startOfDay(now) };
+      case "this_week":
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+      case "last_week": {
+        const lw = subWeeks(now, 1);
+        return { start: startOfWeek(lw, { weekStartsOn: 1 }), end: endOfWeek(lw, { weekStartsOn: 1 }) };
+      }
+      case "this_month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "custom":
+        if (customDateFrom && customDateTo) {
+          return { start: startOfDay(customDateFrom), end: startOfDay(customDateTo) };
+        }
+        if (customDateFrom) return { start: startOfDay(customDateFrom), end: startOfDay(customDateFrom) };
+        return null;
+      default:
+        return null;
+    }
+  };
+
+  const matchesDateFilter = (task: MyTask): boolean => {
+    const range = getDateRange();
+    if (!range) return true;
+    if (!task.due_date) return false;
+    const taskDate = startOfDay(parseDateLocal(task.due_date));
+    return isWithinInterval(taskDate, { start: range.start, end: range.end });
+  };
+
   const filteredTasks = useMemo(() => {
     return tasks.filter((task) => {
       const matchesSearch =
@@ -121,11 +169,12 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
         task.company_name?.toLowerCase().includes(search.toLowerCase());
 
       const effectiveStatus = getEffectiveStatus(task);
-      const matchesFilter = statusFilter === "all" || effectiveStatus === statusFilter;
+      const matchesStatus = statusFilter === "all" || effectiveStatus === statusFilter;
+      const matchesDate = matchesDateFilter(task);
 
-      return matchesSearch && matchesFilter;
+      return matchesSearch && matchesStatus && matchesDate;
     });
-  }, [tasks, search, statusFilter, today]);
+  }, [tasks, search, statusFilter, datePreset, customDateFrom, customDateTo, today]);
 
   const counts = useMemo(() => {
     const c = { all: tasks.length, pending: 0, in_progress: 0, completed: 0, overdue: 0 };
@@ -229,7 +278,93 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           ))}
         </div>
 
-        {/* Tasks list */}
+        {/* Date filter */}
+        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0 flex-wrap">
+          {([
+            { value: "all" as DatePreset, label: "Todas as datas" },
+            { value: "today" as DatePreset, label: "Hoje" },
+            { value: "this_week" as DatePreset, label: "Semana atual" },
+            { value: "last_week" as DatePreset, label: "Semana anterior" },
+            { value: "this_month" as DatePreset, label: "Mês atual" },
+          ]).map((preset) => (
+            <button
+              type="button"
+              key={preset.value}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset(preset.value); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
+              className={`
+                flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium
+                whitespace-nowrap transition-all flex-shrink-0
+                ${datePreset === preset.value
+                  ? "bg-primary text-primary-foreground"
+                  : "bg-muted text-muted-foreground hover:bg-muted/80"
+                }
+              `}
+            >
+              {preset.label}
+            </button>
+          ))}
+
+          {/* Custom date range */}
+          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+            <PopoverTrigger asChild>
+              <button
+                type="button"
+                className={`
+                  flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium
+                  whitespace-nowrap transition-all flex-shrink-0
+                  ${datePreset === "custom"
+                    ? "bg-primary text-primary-foreground"
+                    : "bg-muted text-muted-foreground hover:bg-muted/80"
+                  }
+                `}
+              >
+                <CalendarDays className="h-3 w-3" />
+                {datePreset === "custom" && customDateFrom
+                  ? `${format(customDateFrom, "dd/MM")}${customDateTo ? ` - ${format(customDateTo, "dd/MM")}` : ""}`
+                  : "Período"}
+              </button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-3" align="start">
+              <div className="space-y-3">
+                <p className="text-xs font-medium text-muted-foreground">De:</p>
+                <CalendarComponent
+                  mode="single"
+                  selected={customDateFrom}
+                  onSelect={(d) => { setCustomDateFrom(d); setDatePreset("custom"); }}
+                  locale={ptBR}
+                  className={cn("p-1 pointer-events-auto")}
+                />
+                <p className="text-xs font-medium text-muted-foreground">Até:</p>
+                <CalendarComponent
+                  mode="single"
+                  selected={customDateTo}
+                  onSelect={(d) => { setCustomDateTo(d); setDatePreset("custom"); }}
+                  disabled={(date) => customDateFrom ? date < customDateFrom : false}
+                  locale={ptBR}
+                  className={cn("p-1 pointer-events-auto")}
+                />
+                <Button
+                  size="sm"
+                  variant="outline"
+                  className="w-full text-xs"
+                  onClick={() => { setShowDatePicker(false); }}
+                >
+                  Aplicar
+                </Button>
+              </div>
+            </PopoverContent>
+          </Popover>
+
+          {datePreset !== "all" && (
+            <button
+              type="button"
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset("all"); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
+              className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] text-muted-foreground hover:bg-muted/80 transition-all flex-shrink-0"
+            >
+              <X className="h-3 w-3" />
+            </button>
+          )}
+        </div>
         <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto" style={{ maxHeight: "calc(85vh - 240px)" }}>
           {loading ? (
             <div className="space-y-3">
