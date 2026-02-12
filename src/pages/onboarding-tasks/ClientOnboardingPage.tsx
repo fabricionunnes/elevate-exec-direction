@@ -30,6 +30,7 @@ import {
   GraduationCap,
   ExternalLink,
   Send,
+  CalendarDays,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -52,6 +53,7 @@ import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualB
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientInventoryModule } from "@/components/client-inventory/ClientInventoryModule";
 import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
+import { ClientAppointmentsModule } from "@/components/client-appointments/ClientAppointmentsModule";
 import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
 import {
   DropdownMenu,
@@ -100,7 +102,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -299,6 +301,7 @@ const ClientOnboardingPage = () => {
         inventory: "Estoque & Compras",
         sales: "Vendas",
         customers: "Clientes",
+        appointments: "Agendamentos",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -437,6 +440,7 @@ const ClientOnboardingPage = () => {
           { id: "sales" as ViewType, icon: ShoppingBag, label: "Vendas", menuKey: CLIENT_MENU_KEYS.gestao_vendas },
           { id: "financial" as ViewType, icon: Wallet, label: "Financeiro", menuKey: CLIENT_MENU_KEYS.gestao_financeiro },
           { id: "inventory" as ViewType, icon: Package, label: "Estoque", menuKey: CLIENT_MENU_KEYS.gestao_estoque },
+          { id: "appointments" as ViewType, icon: CalendarDays, label: "Agendamentos", menuKey: CLIENT_MENU_KEYS.gestao_agendamentos },
         ],
       },
       { id: "tickets" as ViewType, icon: MessageSquare, label: "Chamados", menuKey: CLIENT_MENU_KEYS.chamados },
@@ -1039,6 +1043,20 @@ const ClientOnboardingPage = () => {
               <ClientCustomersPanel 
                 projectId={projectId || ""} 
                 canEdit={true}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "appointments" && (
+            <motion.div
+              key="appointments"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientAppointmentsModule 
+                projectId={projectId || ""} 
+                userRole={currentUser?.role}
               />
             </motion.div>
           )}

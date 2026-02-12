@@ -116,4 +116,5 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   rh: CLIENT_MENU_KEYS.rh,
   board: CLIENT_MENU_KEYS.board,
   referrals: CLIENT_MENU_KEYS.indicar,
+  appointments: CLIENT_MENU_KEYS.gestao_agendamentos,
 };
