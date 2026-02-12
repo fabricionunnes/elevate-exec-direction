@@ -174,7 +174,9 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
 
   const handleTaskClick = (task: MyTask) => {
     onOpenChange(false);
-    navigate(`/onboarding-tasks/${task.project_id}`);
+    navigate(`/onboarding-tasks/${task.project_id}`, {
+      state: { openTaskId: task.id }
+    });
   };
 
   return (
