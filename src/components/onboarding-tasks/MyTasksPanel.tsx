@@ -198,11 +198,12 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
         </div>
 
         {/* Filter chips */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1">
+        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0">
           {filters.map((filter) => (
             <button
+              type="button"
               key={filter.value}
-              onClick={() => setStatusFilter(filter.value)}
+              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatusFilter(filter.value); }}
               className={`
                 flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
                 whitespace-nowrap transition-all flex-shrink-0
@@ -227,7 +228,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
         </div>
 
         {/* Tasks list */}
-        <ScrollArea className="flex-1 -mx-6 px-6">
+        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0" style={{ maxHeight: "calc(85vh - 220px)" }}>
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
