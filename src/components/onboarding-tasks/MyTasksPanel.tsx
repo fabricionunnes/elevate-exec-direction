@@ -10,7 +10,6 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import {
@@ -29,6 +28,7 @@ import {
   ExternalLink,
   CalendarDays,
   X,
+  ListChecks,
 } from "lucide-react";
 import { format, isBefore, startOfDay, parseISO, startOfWeek, endOfWeek, startOfMonth, endOfMonth, subWeeks, isWithinInterval } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -185,39 +185,50 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
     return c;
   }, [tasks, today]);
 
-  const filters: { value: StatusFilter; label: string; icon: React.ReactNode; color: string }[] = [
-    { value: "all", label: "Todas", icon: null, color: "bg-primary" },
-    { value: "pending", label: "À executar", icon: <Circle className="h-3 w-3" />, color: "bg-muted-foreground" },
-    { value: "in_progress", label: "Em andamento", icon: <Clock className="h-3 w-3" />, color: "bg-amber-500" },
-    { value: "completed", label: "Concluídas", icon: <CheckCircle2 className="h-3 w-3" />, color: "bg-emerald-500" },
-    { value: "overdue", label: "Em atraso", icon: <AlertTriangle className="h-3 w-3" />, color: "bg-destructive" },
+  const filters: { value: StatusFilter; label: string; icon: React.ReactNode }[] = [
+    { value: "all", label: "Todas", icon: <ListChecks className="h-3.5 w-3.5" /> },
+    { value: "pending", label: "À executar", icon: <Circle className="h-3.5 w-3.5" /> },
+    { value: "in_progress", label: "Em andamento", icon: <Clock className="h-3.5 w-3.5" /> },
+    { value: "completed", label: "Concluídas", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
+    { value: "overdue", label: "Em atraso", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
   ];
+
+  const getStatusColor = (value: StatusFilter, active: boolean) => {
+    if (!active) return "bg-muted/60 text-muted-foreground hover:bg-muted";
+    switch (value) {
+      case "all": return "bg-primary text-primary-foreground shadow-sm";
+      case "pending": return "bg-slate-600 text-white shadow-sm";
+      case "in_progress": return "bg-amber-500 text-white shadow-sm";
+      case "completed": return "bg-emerald-500 text-white shadow-sm";
+      case "overdue": return "bg-destructive text-destructive-foreground shadow-sm";
+    }
+  };
 
   const getStatusIcon = (task: MyTask) => {
     const effective = getEffectiveStatus(task);
     switch (effective) {
       case "completed":
-        return <CheckCircle2 className="h-4 w-4 text-emerald-500" />;
+        return <CheckCircle2 className="h-4.5 w-4.5 text-emerald-500" />;
       case "in_progress":
-        return <Clock className="h-4 w-4 text-amber-500" />;
+        return <Clock className="h-4.5 w-4.5 text-amber-500" />;
       case "overdue":
-        return <AlertTriangle className="h-4 w-4 text-destructive" />;
+        return <AlertTriangle className="h-4.5 w-4.5 text-destructive" />;
       default:
-        return <Circle className="h-4 w-4 text-muted-foreground" />;
+        return <Circle className="h-4.5 w-4.5 text-muted-foreground/60" />;
     }
   };
 
-  const getTaskBorderClass = (task: MyTask) => {
+  const getTaskCardClass = (task: MyTask) => {
     const effective = getEffectiveStatus(task);
     switch (effective) {
       case "completed":
-        return "border-emerald-200/50 dark:border-emerald-500/20 bg-emerald-50/50 dark:bg-emerald-500/5";
+        return "border-l-emerald-400 bg-emerald-50/40 dark:bg-emerald-500/5 hover:bg-emerald-50/70 dark:hover:bg-emerald-500/10";
       case "in_progress":
-        return "border-amber-200 dark:border-amber-500/30 bg-amber-50/50 dark:bg-amber-500/5";
+        return "border-l-amber-400 bg-amber-50/40 dark:bg-amber-500/5 hover:bg-amber-50/70 dark:hover:bg-amber-500/10";
       case "overdue":
-        return "border-destructive/30 bg-destructive/5";
+        return "border-l-destructive bg-destructive/5 hover:bg-destructive/8";
       default:
-        return "border-border hover:border-primary/50";
+        return "border-l-muted-foreground/30 bg-card hover:bg-accent/50";
     }
   };
 
@@ -228,216 +239,244 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
     });
   };
 
+  const progressPercent = tasks.length > 0 ? Math.round((counts.completed / tasks.length) * 100) : 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
-        <DialogHeader>
-          <DialogTitle className="text-lg font-semibold">
-            📋 Minhas Tarefas
-          </DialogTitle>
-        </DialogHeader>
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+        {/* Header */}
+        <div className="px-6 pt-6 pb-4 space-y-4 border-b border-border/50 bg-gradient-to-b from-muted/30 to-transparent">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-2.5">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
+                <ListChecks className="h-5 w-5 text-primary" />
+              </div>
+              Minhas Tarefas
+              {!loading && (
+                <span className="text-sm font-normal text-muted-foreground ml-1">
+                  ({filteredTasks.length})
+                </span>
+              )}
+            </DialogTitle>
+          </DialogHeader>
 
-        {/* Search */}
-        <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar tarefa ou empresa..."
-            value={search}
-            onChange={(e) => setSearch(e.target.value)}
-            className="pl-10"
-          />
-        </div>
+          {/* Progress bar */}
+          {!loading && tasks.length > 0 && (
+            <div className="space-y-1.5">
+              <div className="flex justify-between items-center text-xs text-muted-foreground">
+                <span>{counts.completed} de {tasks.length} concluídas</span>
+                <span className="font-semibold text-foreground">{progressPercent}%</span>
+              </div>
+              <div className="h-2 rounded-full bg-muted overflow-hidden">
+                <motion.div
+                  initial={{ width: 0 }}
+                  animate={{ width: `${progressPercent}%` }}
+                  transition={{ duration: 0.6, ease: "easeOut" }}
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
+                />
+              </div>
+            </div>
+          )}
 
-        {/* Filter chips */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0">
-          {filters.map((filter) => (
-            <button
-              type="button"
-              key={filter.value}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatusFilter(filter.value); }}
-              className={`
-                flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium
-                whitespace-nowrap transition-all flex-shrink-0
-                ${statusFilter === filter.value
-                  ? `${filter.color} text-white`
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }
-              `}
-            >
-              {filter.icon}
-              {filter.label}
-              <Badge
-                variant="secondary"
-                className={`ml-0.5 h-5 min-w-5 px-1.5 text-[10px] ${
-                  statusFilter === filter.value ? "bg-white/20 text-white" : ""
-                }`}
-              >
-                {counts[filter.value]}
-              </Badge>
-            </button>
-          ))}
-        </div>
+          {/* Search */}
+          <div className="relative">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar tarefa ou empresa..."
+              value={search}
+              onChange={(e) => setSearch(e.target.value)}
+              className="pl-10 h-10 bg-background/80 border-border/60 focus-visible:ring-primary/30"
+            />
+          </div>
 
-        {/* Date filter */}
-        <div className="flex gap-1.5 overflow-x-auto pb-1 flex-shrink-0 flex-wrap">
-          {([
-            { value: "all" as DatePreset, label: "Todas as datas" },
-            { value: "today" as DatePreset, label: "Hoje" },
-            { value: "this_week" as DatePreset, label: "Semana atual" },
-            { value: "last_week" as DatePreset, label: "Semana anterior" },
-            { value: "this_month" as DatePreset, label: "Mês atual" },
-          ]).map((preset) => (
-            <button
-              type="button"
-              key={preset.value}
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset(preset.value); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
-              className={`
-                flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium
-                whitespace-nowrap transition-all flex-shrink-0
-                ${datePreset === preset.value
-                  ? "bg-primary text-primary-foreground"
-                  : "bg-muted text-muted-foreground hover:bg-muted/80"
-                }
-              `}
-            >
-              {preset.label}
-            </button>
-          ))}
-
-          {/* Custom date range */}
-          <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
-            <PopoverTrigger asChild>
+          {/* Status filter chips */}
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+            {filters.map((filter) => (
               <button
                 type="button"
-                className={`
-                  flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium
-                  whitespace-nowrap transition-all flex-shrink-0
-                  ${datePreset === "custom"
-                    ? "bg-primary text-primary-foreground"
-                    : "bg-muted text-muted-foreground hover:bg-muted/80"
-                  }
-                `}
+                key={filter.value}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatusFilter(filter.value); }}
+                className={cn(
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium",
+                  "whitespace-nowrap transition-all duration-200 flex-shrink-0",
+                  getStatusColor(filter.value, statusFilter === filter.value)
+                )}
               >
-                <CalendarDays className="h-3 w-3" />
-                {datePreset === "custom" && customDateFrom
-                  ? `${format(customDateFrom, "dd/MM")}${customDateTo ? ` - ${format(customDateTo, "dd/MM")}` : ""}`
-                  : "Período"}
+                {filter.icon}
+                {filter.label}
+                <span className={cn(
+                  "ml-0.5 text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full",
+                  statusFilter === filter.value ? "bg-white/25" : "bg-foreground/10"
+                )}>
+                  {counts[filter.value]}
+                </span>
               </button>
-            </PopoverTrigger>
-            <PopoverContent className="w-auto p-3" align="start">
-              <div className="space-y-3">
-                <p className="text-xs font-medium text-muted-foreground">De:</p>
-                <CalendarComponent
-                  mode="single"
-                  selected={customDateFrom}
-                  onSelect={(d) => { setCustomDateFrom(d); setDatePreset("custom"); }}
-                  locale={ptBR}
-                  className={cn("p-1 pointer-events-auto")}
-                />
-                <p className="text-xs font-medium text-muted-foreground">Até:</p>
-                <CalendarComponent
-                  mode="single"
-                  selected={customDateTo}
-                  onSelect={(d) => { setCustomDateTo(d); setDatePreset("custom"); }}
-                  disabled={(date) => customDateFrom ? date < customDateFrom : false}
-                  locale={ptBR}
-                  className={cn("p-1 pointer-events-auto")}
-                />
-                <Button
-                  size="sm"
-                  variant="outline"
-                  className="w-full text-xs"
-                  onClick={() => { setShowDatePicker(false); }}
-                >
-                  Aplicar
-                </Button>
-              </div>
-            </PopoverContent>
-          </Popover>
+            ))}
+          </div>
 
-          {datePreset !== "all" && (
-            <button
-              type="button"
-              onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset("all"); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
-              className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] text-muted-foreground hover:bg-muted/80 transition-all flex-shrink-0"
-            >
-              <X className="h-3 w-3" />
-            </button>
-          )}
+          {/* Date filter chips */}
+          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1 flex-wrap">
+            {([
+              { value: "all" as DatePreset, label: "Todas as datas" },
+              { value: "today" as DatePreset, label: "Hoje" },
+              { value: "this_week" as DatePreset, label: "Semana atual" },
+              { value: "last_week" as DatePreset, label: "Semana anterior" },
+              { value: "this_month" as DatePreset, label: "Mês atual" },
+            ]).map((preset) => (
+              <button
+                type="button"
+                key={preset.value}
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset(preset.value); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
+                className={cn(
+                  "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium",
+                  "whitespace-nowrap transition-all duration-200 flex-shrink-0 border",
+                  datePreset === preset.value
+                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                    : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                )}
+              >
+                {preset.label}
+              </button>
+            ))}
+
+            <Popover open={showDatePicker} onOpenChange={setShowDatePicker}>
+              <PopoverTrigger asChild>
+                <button
+                  type="button"
+                  className={cn(
+                    "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium",
+                    "whitespace-nowrap transition-all duration-200 flex-shrink-0 border",
+                    datePreset === "custom"
+                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
+                      : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                  )}
+                >
+                  <CalendarDays className="h-3 w-3" />
+                  {datePreset === "custom" && customDateFrom
+                    ? `${format(customDateFrom, "dd/MM")}${customDateTo ? ` - ${format(customDateTo, "dd/MM")}` : ""}`
+                    : "Período"}
+                </button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-3" align="start">
+                <div className="space-y-3">
+                  <p className="text-xs font-medium text-muted-foreground">De:</p>
+                  <CalendarComponent
+                    mode="single"
+                    selected={customDateFrom}
+                    onSelect={(d) => { setCustomDateFrom(d); setDatePreset("custom"); }}
+                    locale={ptBR}
+                    className={cn("p-1 pointer-events-auto")}
+                  />
+                  <p className="text-xs font-medium text-muted-foreground">Até:</p>
+                  <CalendarComponent
+                    mode="single"
+                    selected={customDateTo}
+                    onSelect={(d) => { setCustomDateTo(d); setDatePreset("custom"); }}
+                    disabled={(date) => customDateFrom ? date < customDateFrom : false}
+                    locale={ptBR}
+                    className={cn("p-1 pointer-events-auto")}
+                  />
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    className="w-full text-xs"
+                    onClick={() => { setShowDatePicker(false); }}
+                  >
+                    Aplicar
+                  </Button>
+                </div>
+              </PopoverContent>
+            </Popover>
+
+            {datePreset !== "all" && (
+              <button
+                type="button"
+                onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset("all"); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
+                className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all flex-shrink-0"
+              >
+                <X className="h-3 w-3" />
+              </button>
+            )}
+          </div>
         </div>
-        <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto" style={{ maxHeight: "calc(85vh - 240px)" }}>
+
+        {/* Task list */}
+        <div className="flex-1 overflow-y-auto px-4 py-3" style={{ maxHeight: "calc(85vh - 300px)" }}>
           {loading ? (
-            <div className="space-y-3">
+            <div className="space-y-2.5 px-2">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-20 w-full rounded-lg" />
+                <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
               ))}
             </div>
           ) : filteredTasks.length === 0 ? (
-            <div className="text-center py-12 text-muted-foreground">
-              <CheckCircle2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-              <p className="font-medium">Nenhuma tarefa encontrada</p>
-              <p className="text-sm mt-1">
+            <div className="text-center py-16 text-muted-foreground">
+              <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
+                <CheckCircle2 className="h-8 w-8 opacity-30" />
+              </div>
+              <p className="font-semibold text-foreground/70">Nenhuma tarefa encontrada</p>
+              <p className="text-sm mt-1.5">
                 {statusFilter !== "all"
                   ? "Tente outro filtro"
                   : "Você não possui tarefas atribuídas"}
               </p>
             </div>
           ) : (
-            <div className="space-y-2 pb-4">
+            <div className="space-y-1.5">
               <AnimatePresence>
                 {filteredTasks.map((task, index) => (
                   <motion.div
                     key={task.id}
-                    initial={{ opacity: 0, y: 8 }}
+                    initial={{ opacity: 0, y: 6 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.02 }}
+                    transition={{ delay: index * 0.015, duration: 0.2 }}
                     onClick={() => handleTaskClick(task)}
-                    className={`
-                      p-3 rounded-lg border-2 cursor-pointer transition-all
-                      ${getTaskBorderClass(task)}
-                    `}
+                    className={cn(
+                      "group px-3.5 py-3 rounded-xl border border-border/40 border-l-[3px] cursor-pointer",
+                      "transition-all duration-200 hover:shadow-sm",
+                      getTaskCardClass(task)
+                    )}
                   >
                     <div className="flex items-start gap-3">
-                      <div className="mt-0.5">{getStatusIcon(task)}</div>
+                      <div className="mt-0.5 shrink-0">{getStatusIcon(task)}</div>
                       <div className="flex-1 min-w-0">
                         <p
-                          className={`font-medium text-sm truncate ${
+                          className={cn(
+                            "font-medium text-sm leading-snug",
                             getEffectiveStatus(task) === "completed"
-                              ? "line-through text-muted-foreground"
-                              : ""
-                          }`}
+                              ? "line-through text-muted-foreground/70"
+                              : "text-foreground"
+                          )}
                         >
                           {task.title}
                         </p>
-                        <div className="flex flex-wrap items-center gap-2 mt-1">
+                        <div className="flex flex-wrap items-center gap-x-3 gap-y-1 mt-1.5">
                           {task.company_name && (
-                            <div className="flex items-center gap-1 text-xs text-muted-foreground">
-                              <Building2 className="h-3 w-3" />
-                              {task.company_name}
+                            <div className="flex items-center gap-1 text-[11px] text-muted-foreground">
+                              <Building2 className="h-3 w-3 shrink-0" />
+                              <span className="truncate max-w-[200px]">{task.company_name}</span>
                             </div>
                           )}
                           {task.due_date && (
                             <div
-                              className={`flex items-center gap-1 text-xs ${
+                              className={cn(
+                                "flex items-center gap-1 text-[11px]",
                                 isOverdue(task)
-                                  ? "text-destructive font-medium"
+                                  ? "text-destructive font-semibold"
                                   : "text-muted-foreground"
-                              }`}
+                              )}
                             >
-                              <Calendar className="h-3 w-3" />
-                              {format(parseISO(task.due_date), "dd/MM/yyyy", {
-                                locale: ptBR,
-                              })}
+                              <Calendar className="h-3 w-3 shrink-0" />
+                              {format(parseISO(task.due_date), "dd/MM/yyyy", { locale: ptBR })}
                             </div>
                           )}
                           {task.priority === "high" && (
-                            <Badge variant="destructive" className="text-[10px] h-5">
+                            <Badge variant="destructive" className="text-[9px] h-4 px-1.5 font-bold uppercase tracking-wider">
                               Alta
                             </Badge>
                           )}
                         </div>
                       </div>
-                      <ExternalLink className="h-4 w-4 text-muted-foreground shrink-0 mt-1" />
+                      <ExternalLink className="h-3.5 w-3.5 text-muted-foreground/40 shrink-0 mt-1 opacity-0 group-hover:opacity-100 transition-opacity" />
                     </div>
                   </motion.div>
                 ))}
