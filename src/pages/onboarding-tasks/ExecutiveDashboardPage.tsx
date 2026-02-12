@@ -31,6 +31,7 @@ import { ConsultantOneOnOnePanel } from "@/components/executive-dashboard/Consul
 import { CohortMatrix } from "@/components/retention/CohortMatrix";
 import { RetentionBySegmentChart } from "@/components/retention/RetentionBySegmentChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { NPSAlertsWidget } from "@/components/leader-dashboard/NPSAlertsWidget";
 
 interface PortfolioMetrics {
   totalProjects: number;
@@ -592,8 +593,9 @@ export default function ExecutiveDashboardPage() {
         </TabsContent>
 
         {isLeadershipUser && (
-          <TabsContent value="leadership">
+          <TabsContent value="leadership" className="space-y-6">
             <DailyLeadershipAgenda />
+            <NPSAlertsWidget daysBack={Number(period)} />
           </TabsContent>
         )}
 
