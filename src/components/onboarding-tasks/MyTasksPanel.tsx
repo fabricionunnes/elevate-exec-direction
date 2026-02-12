@@ -185,23 +185,17 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
     return c;
   }, [tasks, today]);
 
-  const filters: { value: StatusFilter; label: string; icon: React.ReactNode }[] = [
-    { value: "all", label: "Todas", icon: <ListChecks className="h-3.5 w-3.5" /> },
-    { value: "pending", label: "À executar", icon: <Circle className="h-3.5 w-3.5" /> },
-    { value: "in_progress", label: "Em andamento", icon: <Clock className="h-3.5 w-3.5" /> },
-    { value: "completed", label: "Concluídas", icon: <CheckCircle2 className="h-3.5 w-3.5" /> },
-    { value: "overdue", label: "Em atraso", icon: <AlertTriangle className="h-3.5 w-3.5" /> },
+  const filters: { value: StatusFilter; label: string; icon: React.ReactNode; activeClass: string; inactiveHover: string }[] = [
+    { value: "all", label: "Todas", icon: <ListChecks className="h-3.5 w-3.5" />, activeClass: "bg-primary text-primary-foreground shadow-md shadow-primary/25 ring-2 ring-primary/20", inactiveHover: "hover:bg-primary/10 hover:text-primary hover:border-primary/30" },
+    { value: "pending", label: "À executar", icon: <Circle className="h-3.5 w-3.5" />, activeClass: "bg-blue-500 text-white shadow-md shadow-blue-500/25 ring-2 ring-blue-500/20", inactiveHover: "hover:bg-blue-50 hover:text-blue-600 hover:border-blue-200" },
+    { value: "in_progress", label: "Em andamento", icon: <Clock className="h-3.5 w-3.5" />, activeClass: "bg-amber-500 text-white shadow-md shadow-amber-500/25 ring-2 ring-amber-500/20", inactiveHover: "hover:bg-amber-50 hover:text-amber-600 hover:border-amber-200" },
+    { value: "completed", label: "Concluídas", icon: <CheckCircle2 className="h-3.5 w-3.5" />, activeClass: "bg-emerald-500 text-white shadow-md shadow-emerald-500/25 ring-2 ring-emerald-500/20", inactiveHover: "hover:bg-emerald-50 hover:text-emerald-600 hover:border-emerald-200" },
+    { value: "overdue", label: "Em atraso", icon: <AlertTriangle className="h-3.5 w-3.5" />, activeClass: "bg-destructive text-destructive-foreground shadow-md shadow-destructive/25 ring-2 ring-destructive/20", inactiveHover: "hover:bg-destructive/10 hover:text-destructive hover:border-destructive/30" },
   ];
 
-  const getStatusColor = (value: StatusFilter, active: boolean) => {
-    if (!active) return "bg-muted/60 text-muted-foreground hover:bg-muted";
-    switch (value) {
-      case "all": return "bg-primary text-primary-foreground shadow-sm";
-      case "pending": return "bg-slate-600 text-white shadow-sm";
-      case "in_progress": return "bg-amber-500 text-white shadow-sm";
-      case "completed": return "bg-emerald-500 text-white shadow-sm";
-      case "overdue": return "bg-destructive text-destructive-foreground shadow-sm";
-    }
+  const getStatusColor = (filter: typeof filters[0], active: boolean) => {
+    if (active) return filter.activeClass;
+    return `bg-background text-muted-foreground border border-border/60 ${filter.inactiveHover}`;
   };
 
   const getStatusIcon = (task: MyTask) => {
@@ -243,36 +237,41 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 gap-0 overflow-hidden rounded-2xl">
         {/* Header */}
-        <div className="px-6 pt-6 pb-4 space-y-4 border-b border-border/50 bg-gradient-to-b from-muted/30 to-transparent">
+        <div className="px-6 pt-6 pb-4 space-y-4 border-b border-border/30 bg-gradient-to-br from-primary/5 via-background to-amber-500/5">
           <DialogHeader>
-            <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-2.5">
-              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center">
-                <ListChecks className="h-5 w-5 text-primary" />
+            <DialogTitle className="text-xl font-bold tracking-tight flex items-center gap-3">
+              <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-primary to-primary/80 flex items-center justify-center shadow-md shadow-primary/20">
+                <ListChecks className="h-5 w-5 text-primary-foreground" />
               </div>
-              Minhas Tarefas
-              {!loading && (
-                <span className="text-sm font-normal text-muted-foreground ml-1">
-                  ({filteredTasks.length})
-                </span>
-              )}
+              <div>
+                Minhas Tarefas
+                {!loading && (
+                  <span className="block text-xs font-normal text-muted-foreground mt-0.5">
+                    {filteredTasks.length} {filteredTasks.length === 1 ? "tarefa" : "tarefas"} encontrada{filteredTasks.length !== 1 ? "s" : ""}
+                  </span>
+                )}
+              </div>
             </DialogTitle>
           </DialogHeader>
 
           {/* Progress bar */}
           {!loading && tasks.length > 0 && (
-            <div className="space-y-1.5">
-              <div className="flex justify-between items-center text-xs text-muted-foreground">
-                <span>{counts.completed} de {tasks.length} concluídas</span>
-                <span className="font-semibold text-foreground">{progressPercent}%</span>
+            <div className="space-y-2 bg-card/80 rounded-xl p-3 border border-border/30">
+              <div className="flex justify-between items-center text-xs">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500" />
+                  {counts.completed} de {tasks.length} concluídas
+                </span>
+                <span className="font-bold text-emerald-600 text-sm">{progressPercent}%</span>
               </div>
-              <div className="h-2 rounded-full bg-muted overflow-hidden">
+              <div className="h-2.5 rounded-full bg-muted/80 overflow-hidden">
                 <motion.div
                   initial={{ width: 0 }}
                   animate={{ width: `${progressPercent}%` }}
-                  transition={{ duration: 0.6, ease: "easeOut" }}
-                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 to-emerald-500"
+                  transition={{ duration: 0.8, ease: "easeOut" }}
+                  className="h-full rounded-full bg-gradient-to-r from-emerald-400 via-emerald-500 to-teal-500 shadow-sm shadow-emerald-500/30"
                 />
               </div>
             </div>
@@ -290,23 +289,24 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           </div>
 
           {/* Status filter chips */}
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1">
+          {/* Status filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1">
             {filters.map((filter) => (
               <button
                 type="button"
                 key={filter.value}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setStatusFilter(filter.value); }}
                 className={cn(
-                  "flex items-center gap-1.5 px-3 py-1.5 rounded-full text-xs font-medium",
-                  "whitespace-nowrap transition-all duration-200 flex-shrink-0",
-                  getStatusColor(filter.value, statusFilter === filter.value)
+                  "flex items-center gap-1.5 px-3.5 py-2 rounded-xl text-xs font-semibold",
+                  "whitespace-nowrap transition-all duration-250 flex-shrink-0",
+                  getStatusColor(filter, statusFilter === filter.value)
                 )}
               >
                 {filter.icon}
                 {filter.label}
                 <span className={cn(
-                  "ml-0.5 text-[10px] font-bold min-w-[18px] h-[18px] flex items-center justify-center rounded-full",
-                  statusFilter === filter.value ? "bg-white/25" : "bg-foreground/10"
+                  "ml-0.5 text-[10px] font-bold min-w-[20px] h-[20px] flex items-center justify-center rounded-lg",
+                  statusFilter === filter.value ? "bg-white/25" : "bg-foreground/8"
                 )}>
                   {counts[filter.value]}
                 </span>
@@ -315,26 +315,28 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           </div>
 
           {/* Date filter chips */}
-          <div className="flex gap-1.5 overflow-x-auto pb-0.5 -mx-1 px-1 flex-wrap">
+          {/* Date filter chips */}
+          <div className="flex gap-2 overflow-x-auto pb-0.5 -mx-1 px-1 flex-wrap">
             {([
-              { value: "all" as DatePreset, label: "Todas as datas" },
-              { value: "today" as DatePreset, label: "Hoje" },
-              { value: "this_week" as DatePreset, label: "Semana atual" },
-              { value: "last_week" as DatePreset, label: "Semana anterior" },
-              { value: "this_month" as DatePreset, label: "Mês atual" },
+              { value: "all" as DatePreset, label: "Todas as datas", icon: <CalendarDays className="h-3 w-3" /> },
+              { value: "today" as DatePreset, label: "Hoje", icon: <Calendar className="h-3 w-3" /> },
+              { value: "this_week" as DatePreset, label: "Semana atual", icon: <Calendar className="h-3 w-3" /> },
+              { value: "last_week" as DatePreset, label: "Semana anterior", icon: <Calendar className="h-3 w-3" /> },
+              { value: "this_month" as DatePreset, label: "Mês atual", icon: <Calendar className="h-3 w-3" /> },
             ]).map((preset) => (
               <button
                 type="button"
                 key={preset.value}
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset(preset.value); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
                 className={cn(
-                  "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium",
-                  "whitespace-nowrap transition-all duration-200 flex-shrink-0 border",
+                  "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold",
+                  "whitespace-nowrap transition-all duration-250 flex-shrink-0",
                   datePreset === preset.value
-                    ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                    : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                    ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25 ring-2 ring-violet-500/20"
+                    : "bg-background text-muted-foreground border border-border/60 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200"
                 )}
               >
+                {preset.icon}
                 {preset.label}
               </button>
             ))}
@@ -344,22 +346,22 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
                 <button
                   type="button"
                   className={cn(
-                    "flex items-center gap-1 px-2.5 py-1 rounded-full text-[11px] font-medium",
-                    "whitespace-nowrap transition-all duration-200 flex-shrink-0 border",
+                    "flex items-center gap-1.5 px-3 py-1.5 rounded-xl text-[11px] font-semibold",
+                    "whitespace-nowrap transition-all duration-250 flex-shrink-0",
                     datePreset === "custom"
-                      ? "bg-primary text-primary-foreground border-primary shadow-sm"
-                      : "bg-background text-muted-foreground border-border/60 hover:border-primary/40 hover:text-foreground"
+                      ? "bg-gradient-to-r from-violet-500 to-purple-600 text-white shadow-md shadow-violet-500/25 ring-2 ring-violet-500/20"
+                      : "bg-background text-muted-foreground border border-border/60 hover:bg-violet-50 hover:text-violet-600 hover:border-violet-200"
                   )}
                 >
                   <CalendarDays className="h-3 w-3" />
                   {datePreset === "custom" && customDateFrom
-                    ? `${format(customDateFrom, "dd/MM")}${customDateTo ? ` - ${format(customDateTo, "dd/MM")}` : ""}`
+                    ? `${format(customDateFrom, "dd/MM")}${customDateTo ? ` → ${format(customDateTo, "dd/MM")}` : ""}`
                     : "Período"}
                 </button>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-3" align="start">
+              <PopoverContent className="w-auto p-4 rounded-xl" align="start">
                 <div className="space-y-3">
-                  <p className="text-xs font-medium text-muted-foreground">De:</p>
+                  <p className="text-xs font-semibold text-foreground">📅 De:</p>
                   <CalendarComponent
                     mode="single"
                     selected={customDateFrom}
@@ -367,7 +369,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
                     locale={ptBR}
                     className={cn("p-1 pointer-events-auto")}
                   />
-                  <p className="text-xs font-medium text-muted-foreground">Até:</p>
+                  <p className="text-xs font-semibold text-foreground">📅 Até:</p>
                   <CalendarComponent
                     mode="single"
                     selected={customDateTo}
@@ -378,11 +380,10 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
                   />
                   <Button
                     size="sm"
-                    variant="outline"
-                    className="w-full text-xs"
+                    className="w-full text-xs rounded-lg bg-gradient-to-r from-violet-500 to-purple-600 text-white hover:from-violet-600 hover:to-purple-700"
                     onClick={() => { setShowDatePicker(false); }}
                   >
-                    Aplicar
+                    Aplicar período
                   </Button>
                 </div>
               </PopoverContent>
@@ -392,9 +393,10 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
               <button
                 type="button"
                 onClick={(e) => { e.preventDefault(); e.stopPropagation(); setDatePreset("all"); setCustomDateFrom(undefined); setCustomDateTo(undefined); }}
-                className="flex items-center gap-1 px-2 py-1 rounded-full text-[11px] text-muted-foreground hover:bg-destructive/10 hover:text-destructive transition-all flex-shrink-0"
+                className="flex items-center gap-1 px-2.5 py-1.5 rounded-xl text-[11px] font-medium text-muted-foreground hover:bg-destructive/10 hover:text-destructive border border-transparent hover:border-destructive/20 transition-all flex-shrink-0"
               >
                 <X className="h-3 w-3" />
+                Limpar
               </button>
             )}
           </div>
@@ -405,34 +407,34 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           {loading ? (
             <div className="space-y-2.5 px-2">
               {[1, 2, 3, 4, 5].map((i) => (
-                <Skeleton key={i} className="h-[72px] w-full rounded-xl" />
+                <Skeleton key={i} className="h-[76px] w-full rounded-xl" />
               ))}
             </div>
           ) : filteredTasks.length === 0 ? (
             <div className="text-center py-16 text-muted-foreground">
-              <div className="h-16 w-16 rounded-2xl bg-muted/50 flex items-center justify-center mx-auto mb-4">
-                <CheckCircle2 className="h-8 w-8 opacity-30" />
+              <div className="h-20 w-20 rounded-2xl bg-gradient-to-br from-muted/60 to-muted/30 flex items-center justify-center mx-auto mb-4 border border-border/30">
+                <CheckCircle2 className="h-9 w-9 text-muted-foreground/30" />
               </div>
-              <p className="font-semibold text-foreground/70">Nenhuma tarefa encontrada</p>
-              <p className="text-sm mt-1.5">
+              <p className="font-bold text-foreground/70 text-base">Nenhuma tarefa encontrada</p>
+              <p className="text-sm mt-1.5 text-muted-foreground/80">
                 {statusFilter !== "all"
-                  ? "Tente outro filtro"
-                  : "Você não possui tarefas atribuídas"}
+                  ? "Tente outro filtro para ver mais resultados"
+                  : "Você não possui tarefas atribuídas no momento"}
               </p>
             </div>
           ) : (
-            <div className="space-y-1.5">
+            <div className="space-y-2">
               <AnimatePresence>
                 {filteredTasks.map((task, index) => (
                   <motion.div
                     key={task.id}
-                    initial={{ opacity: 0, y: 6 }}
+                    initial={{ opacity: 0, y: 8 }}
                     animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: index * 0.015, duration: 0.2 }}
+                    transition={{ delay: index * 0.02, duration: 0.25 }}
                     onClick={() => handleTaskClick(task)}
                     className={cn(
-                      "group px-3.5 py-3 rounded-xl border border-border/40 border-l-[3px] cursor-pointer",
-                      "transition-all duration-200 hover:shadow-sm",
+                      "group px-4 py-3.5 rounded-xl border border-border/30 border-l-[4px] cursor-pointer",
+                      "transition-all duration-250 hover:shadow-md hover:-translate-y-0.5",
                       getTaskCardClass(task)
                     )}
                   >
