@@ -41,6 +41,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
+import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 
 interface Service {
   id: string;
@@ -154,6 +155,9 @@ const OnboardingTasksPage = () => {
   
   // Global access control panel state
   const [showAccessControlPanel, setShowAccessControlPanel] = useState(false);
+  
+  // My Tasks panel state
+  const [showMyTasks, setShowMyTasks] = useState(false);
   
   // Bulk health score update state
   const [updatingAllHealthScores, setUpdatingAllHealthScores] = useState(false);
@@ -2101,6 +2105,18 @@ const OnboardingTasksPage = () => {
                 Contratos
               </Button>
             )}
+            {/* Minhas Tarefas button - visible for all staff */}
+            {currentUserRole && currentStaffId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowMyTasks(true)}
+                className="gap-2"
+              >
+                <CheckCircle2 className="h-4 w-4" />
+                Minhas Tarefas
+              </Button>
+            )}
             {/* Resultados button - visible for all staff (admin, cs, consultant) */}
             {currentUserRole && (
               <Button 
@@ -2910,6 +2926,13 @@ const OnboardingTasksPage = () => {
       <StaffSettingsSheet
         open={showStaffSettings}
         onOpenChange={setShowStaffSettings}
+      />
+
+      {/* My Tasks Panel */}
+      <MyTasksPanel
+        open={showMyTasks}
+        onOpenChange={setShowMyTasks}
+        staffId={currentStaffId}
       />
     </div>
   );
