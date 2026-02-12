@@ -32,6 +32,7 @@ import { CohortMatrix } from "@/components/retention/CohortMatrix";
 import { RetentionBySegmentChart } from "@/components/retention/RetentionBySegmentChart";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NPSAlertsWidget } from "@/components/leader-dashboard/NPSAlertsWidget";
+import { NPSPromotersWidget } from "@/components/leader-dashboard/NPSPromotersWidget";
 
 interface PortfolioMetrics {
   totalProjects: number;
@@ -596,6 +597,7 @@ export default function ExecutiveDashboardPage() {
           <TabsContent value="leadership" className="space-y-6">
             <DailyLeadershipAgenda />
             <NPSAlertsWidget daysBack={Number(period)} />
+            <NPSPromotersWidget daysBack={30} />
           </TabsContent>
         )}
 
