@@ -47,10 +47,12 @@ export const TaskNotificationsDialog = () => {
         .eq("user_id", user.id)
         .maybeSingle();
 
+      if (!staffMember) return;
+
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
 
-      // Fetch tasks with project and company info to apply proper filters
+      // Fetch tasks assigned to this staff member (by responsible_staff_id)
       let tasksQuery = supabase
         .from("onboarding_tasks")
         .select(`
@@ -66,6 +68,7 @@ export const TaskNotificationsDialog = () => {
             onboarding_company:onboarding_companies(id, name, status, is_simulator)
           )
         `)
+        .eq("responsible_staff_id", staffMember.id)
         .neq("status", "completed")
         .not("due_date", "is", null)
         .lte("due_date", todayStr)
