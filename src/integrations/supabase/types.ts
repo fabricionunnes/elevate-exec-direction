@@ -883,6 +883,553 @@ export type Database = {
           },
         ]
       }
+      appointment_clients: {
+        Row: {
+          birth_date: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          full_name: string
+          id: string
+          is_active: boolean | null
+          notes: string | null
+          phone: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          full_name: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          phone?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          birth_date?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string
+          id?: string
+          is_active?: boolean | null
+          notes?: string | null
+          phone?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_clients_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_logs: {
+        Row: {
+          action: string
+          appointment_id: string
+          created_at: string
+          id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          performed_by: string | null
+        }
+        Insert: {
+          action: string
+          appointment_id: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Update: {
+          action?: string
+          appointment_id?: string
+          created_at?: string
+          id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          performed_by?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_logs_appointment_id_fkey"
+            columns: ["appointment_id"]
+            isOneToOne: false
+            referencedRelation: "appointments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_professional_services: {
+        Row: {
+          created_at: string
+          id: string
+          professional_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          professional_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          professional_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_professional_services_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_professional_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_professionals: {
+        Row: {
+          commission_percent: number | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          specialty: string | null
+          updated_at: string
+        }
+        Insert: {
+          commission_percent?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          specialty?: string | null
+          updated_at?: string
+        }
+        Update: {
+          commission_percent?: number | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          specialty?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_professionals_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_resource_services: {
+        Row: {
+          created_at: string
+          id: string
+          resource_id: string
+          service_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          resource_id: string
+          service_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          resource_id?: string
+          service_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_resource_services_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_resource_services_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_resources: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          resource_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          resource_type?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          resource_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_resources_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_schedules: {
+        Row: {
+          created_at: string
+          day_of_week: number
+          end_time: string
+          id: string
+          is_active: boolean | null
+          professional_id: string | null
+          project_id: string
+          resource_id: string | null
+          start_time: string
+        }
+        Insert: {
+          created_at?: string
+          day_of_week: number
+          end_time: string
+          id?: string
+          is_active?: boolean | null
+          professional_id?: string | null
+          project_id: string
+          resource_id?: string | null
+          start_time: string
+        }
+        Update: {
+          created_at?: string
+          day_of_week?: number
+          end_time?: string
+          id?: string
+          is_active?: boolean | null
+          professional_id?: string | null
+          project_id?: string
+          resource_id?: string | null
+          start_time?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_schedules_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_schedules_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_schedules_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_resources"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_service_categories: {
+        Row: {
+          color: string | null
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_service_categories_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_services: {
+        Row: {
+          allows_packages: boolean | null
+          category_id: string | null
+          created_at: string
+          description: string | null
+          duration_minutes: number
+          id: string
+          is_active: boolean | null
+          name: string
+          post_instructions: string | null
+          pre_instructions: string | null
+          price: number | null
+          project_id: string
+          sessions_per_package: number | null
+          sort_order: number | null
+          updated_at: string
+        }
+        Insert: {
+          allows_packages?: boolean | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          name: string
+          post_instructions?: string | null
+          pre_instructions?: string | null
+          price?: number | null
+          project_id: string
+          sessions_per_package?: number | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Update: {
+          allows_packages?: boolean | null
+          category_id?: string | null
+          created_at?: string
+          description?: string | null
+          duration_minutes?: number
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          post_instructions?: string | null
+          pre_instructions?: string | null
+          price?: number | null
+          project_id?: string
+          sessions_per_package?: number | null
+          sort_order?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_services_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_service_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointment_services_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointment_settings: {
+        Row: {
+          allow_overlap: boolean | null
+          business_name: string | null
+          created_at: string
+          id: string
+          project_id: string
+          slot_interval_minutes: number | null
+          updated_at: string
+          working_hours_end: string | null
+          working_hours_start: string | null
+        }
+        Insert: {
+          allow_overlap?: boolean | null
+          business_name?: string | null
+          created_at?: string
+          id?: string
+          project_id: string
+          slot_interval_minutes?: number | null
+          updated_at?: string
+          working_hours_end?: string | null
+          working_hours_start?: string | null
+        }
+        Update: {
+          allow_overlap?: boolean | null
+          business_name?: string | null
+          created_at?: string
+          id?: string
+          project_id?: string
+          slot_interval_minutes?: number | null
+          updated_at?: string
+          working_hours_end?: string | null
+          working_hours_start?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointment_settings_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      appointments: {
+        Row: {
+          cancellation_reason: string | null
+          client_id: string
+          created_at: string
+          duration_minutes: number
+          end_time: string
+          id: string
+          notes: string | null
+          price: number | null
+          professional_id: string | null
+          project_id: string
+          resource_id: string | null
+          service_id: string
+          start_time: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          cancellation_reason?: string | null
+          client_id: string
+          created_at?: string
+          duration_minutes: number
+          end_time: string
+          id?: string
+          notes?: string | null
+          price?: number | null
+          professional_id?: string | null
+          project_id: string
+          resource_id?: string | null
+          service_id: string
+          start_time: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          cancellation_reason?: string | null
+          client_id?: string
+          created_at?: string
+          duration_minutes?: number
+          end_time?: string
+          id?: string
+          notes?: string | null
+          price?: number | null
+          professional_id?: string | null
+          project_id?: string
+          resource_id?: string | null
+          service_id?: string
+          start_time?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "appointments_client_id_fkey"
+            columns: ["client_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_clients"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_professional_id_fkey"
+            columns: ["professional_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_professionals"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_resource_id_fkey"
+            columns: ["resource_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_resources"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "appointments_service_id_fkey"
+            columns: ["service_id"]
+            isOneToOne: false
+            referencedRelation: "appointment_services"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       assessment_360_evaluations: {
         Row: {
           additional_comments: string | null
@@ -22070,6 +22617,10 @@ export type Database = {
           total_tasks: number
         }[]
       }
+      has_appointment_access: {
+        Args: { check_project_id: string }
+        Returns: boolean
+      }
       has_client_menu_permission: {
         Args: { check_menu_key: string; check_user_id: string }
         Returns: boolean
@@ -22096,6 +22647,10 @@ export type Database = {
       }
       has_whatsapp_instance_access: {
         Args: { _instance_id: string; _staff_id: string }
+        Returns: boolean
+      }
+      is_appointment_project_client: {
+        Args: { check_project_id: string }
         Returns: boolean
       }
       is_ceo: { Args: never; Returns: boolean }
