@@ -230,7 +230,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
         </div>
 
         {/* Tasks list */}
-        <ScrollArea className="flex-1 -mx-6 px-6 min-h-0 overflow-hidden" style={{ height: "calc(85vh - 240px)" }}>
+        <div className="flex-1 -mx-6 px-6 min-h-0 overflow-y-auto" style={{ maxHeight: "calc(85vh - 240px)" }}>
           {loading ? (
             <div className="space-y-3">
               {[1, 2, 3, 4, 5].map((i) => (
@@ -309,7 +309,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
               </AnimatePresence>
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
