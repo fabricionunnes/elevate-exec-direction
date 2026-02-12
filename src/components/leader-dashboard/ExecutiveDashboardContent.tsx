@@ -25,6 +25,7 @@ import { subDays } from "date-fns";
 import { CohortMatrix } from "@/components/retention/CohortMatrix";
 import { RetentionBySegmentChart } from "@/components/retention/RetentionBySegmentChart";
 import { ChurnPredictionWidget } from "@/components/retention/ChurnPredictionWidget";
+import { NPSAlertsWidget } from "@/components/leader-dashboard/NPSAlertsWidget";
 
 export default function ExecutiveDashboardContent() {
   const navigate = useNavigate();
@@ -169,6 +170,9 @@ export default function ExecutiveDashboardContent() {
         <ChurnPredictionWidget limit={5} />
         <RetentionBySegmentChart />
       </div>
+
+      {/* NPS Críticos */}
+      <NPSAlertsWidget daysBack={Number(period)} />
 
       {/* Cohort Matrix */}
       <Card>
