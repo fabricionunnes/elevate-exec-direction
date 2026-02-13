@@ -853,6 +853,28 @@ const OnboardingProjectPage = () => {
     });
   };
 
+  const handlePhaseRename = async (oldName: string, newName: string) => {
+    if (!newName.trim() || newName.trim() === oldName) return;
+    const trimmed = newName.trim();
+    try {
+      // Find all tasks in this project with tags[0] === oldName
+      const tasksToUpdate = tasks.filter(t => t.tags?.[0] === oldName);
+      for (const task of tasksToUpdate) {
+        const newTags = [trimmed, ...(task.tags?.slice(1) || [])];
+        const { error } = await supabase
+          .from("onboarding_tasks")
+          .update({ tags: newTags })
+          .eq("id", task.id);
+        if (error) throw error;
+      }
+      toast.success(`Fase renomeada para "${trimmed}"`);
+      fetchProjectData();
+    } catch (error) {
+      console.error("Error renaming phase:", error);
+      toast.error("Erro ao renomear fase");
+    }
+  };
+
   const isAdmin = isStaffAdmin || currentUserRole === "admin";
   const canAddTasks = isAdmin || currentUserRole === "cs" || currentUserRole === "consultant";
   const getStatusIcon = (status: string) => {
@@ -1565,6 +1587,7 @@ const OnboardingProjectPage = () => {
                 onStatusChange={handleStatusChange}
                 onDeleteTask={handleDeleteTask}
                 canDelete={isAdmin}
+                onPhaseRename={canAddTasks ? handlePhaseRename : undefined}
               />
             )}
 

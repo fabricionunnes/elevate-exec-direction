@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
@@ -12,6 +12,7 @@ import {
   Trash2,
   MoreHorizontal,
   EyeOff,
+  Pencil,
   AlertCircle,
   User,
 } from "lucide-react";
@@ -58,6 +59,7 @@ interface TasksListViewProps {
   onStatusChange: (taskId: string, status: "pending" | "in_progress" | "completed") => void;
   onDeleteTask?: (taskId: string) => void;
   canDelete?: boolean;
+  onPhaseRename?: (oldName: string, newName: string) => void;
 }
 
 // Color schemes for different phases
@@ -88,8 +90,32 @@ export const TasksListView = ({
   onTaskClick, 
   onStatusChange, 
   onDeleteTask,
-  canDelete = false 
+  canDelete = false,
+  onPhaseRename
 }: TasksListViewProps) => {
+  const [editingPhase, setEditingPhase] = useState<string | null>(null);
+  const [editingValue, setEditingValue] = useState("");
+  const editInputRef = useRef<HTMLInputElement>(null);
+
+  useEffect(() => {
+    if (editingPhase && editInputRef.current) {
+      editInputRef.current.focus();
+      editInputRef.current.select();
+    }
+  }, [editingPhase]);
+
+  const handleStartEdit = (e: React.MouseEvent, phaseName: string) => {
+    e.stopPropagation();
+    setEditingPhase(phaseName);
+    setEditingValue(phaseName);
+  };
+
+  const handleFinishEdit = () => {
+    if (editingPhase && editingValue.trim() && editingValue.trim() !== editingPhase) {
+      onPhaseRename?.(editingPhase, editingValue);
+    }
+    setEditingPhase(null);
+  };
   const [expandedPhases, setExpandedPhases] = useState<Set<string>>(
     new Set(phases.map(p => p.name))
   );
@@ -146,7 +172,7 @@ export const TasksListView = ({
               initial={{ opacity: 0, y: 20 }}
               animate={{ opacity: 1, y: 0 }}
               transition={{ delay: phaseIndex * 0.05 }}
-              className={`rounded-lg sm:rounded-xl border overflow-hidden bg-card border-l-4 ${phaseColor.border}`}
+              className={`rounded-lg sm:rounded-xl border overflow-hidden bg-card border-l-4 ${phaseColor.border} group/phase`}
             >
               {/* Phase Header */}
               <button
@@ -174,7 +200,32 @@ export const TasksListView = ({
                   </div>
 
                   <div className="min-w-0 flex-1">
-                    <h4 className="font-semibold text-sm sm:text-lg truncate">{phase.name}</h4>
+                    {editingPhase === phase.name ? (
+                      <input
+                        ref={editInputRef}
+                        value={editingValue}
+                        onChange={(e) => setEditingValue(e.target.value)}
+                        onBlur={handleFinishEdit}
+                        onKeyDown={(e) => {
+                          if (e.key === "Enter") handleFinishEdit();
+                          if (e.key === "Escape") setEditingPhase(null);
+                        }}
+                        onClick={(e) => e.stopPropagation()}
+                        className="font-semibold text-sm sm:text-lg bg-transparent border-b-2 border-primary outline-none w-full"
+                      />
+                    ) : (
+                      <div className="flex items-center gap-1.5">
+                        <h4 className="font-semibold text-sm sm:text-lg truncate">{phase.name}</h4>
+                        {onPhaseRename && phase.name !== "Sem fase" && (
+                          <button
+                            onClick={(e) => handleStartEdit(e, phase.name)}
+                            className="opacity-0 group-hover/phase:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
+                          >
+                            <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                          </button>
+                        )}
+                      </div>
+                    )}
                     <p className="text-xs sm:text-sm text-muted-foreground">
                       {phase.completedCount}/{phase.tasks.length} • {phaseProgress}%
                     </p>
