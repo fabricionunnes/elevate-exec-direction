@@ -1153,6 +1153,12 @@ const OnboardingProjectPage = () => {
                 <span className="hidden sm:inline">Usuários ({users.length})</span>
               </Button>
               {isStaffAdmin && (
+                <Button variant="outline" size="sm" onClick={() => setShowProjectMenuPermissions(true)}>
+                  <LayoutGrid className="h-4 w-4 sm:mr-2" />
+                  <span className="hidden sm:inline">Menus do Projeto</span>
+                </Button>
+              )}
+              {isStaffAdmin && (
                 <Button 
                   variant="destructive" 
                   size="icon"
