@@ -89,7 +89,8 @@ import { HRRecruitmentPanel } from "@/components/hr-recruitment/HRRecruitmentPan
 import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualBoard";
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessHistory";
-import { Wallet, Eye } from "lucide-react";
+import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
+import { Wallet, Eye, LayoutGrid } from "lucide-react";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -233,6 +234,7 @@ const OnboardingProjectPage = () => {
   const [crmPasswordInput, setCrmPasswordInput] = useState("");
   const [docsLinkInput, setDocsLinkInput] = useState("");
   const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
+  const [showProjectMenuPermissions, setShowProjectMenuPermissions] = useState(false);
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
     if (!projectId) return;
@@ -1110,6 +1112,12 @@ const OnboardingProjectPage = () => {
                     Usuários ({users.length})
                   </DropdownMenuItem>
                   {isStaffAdmin && (
+                    <DropdownMenuItem onClick={() => setShowProjectMenuPermissions(true)}>
+                      <LayoutGrid className="h-4 w-4 mr-2" />
+                      Menus do Projeto
+                    </DropdownMenuItem>
+                  )}
+                  {isStaffAdmin && (
                     <DropdownMenuItem onClick={handleDeleteProject} className="text-destructive">
                       <Trash2 className="h-4 w-4 mr-2" />
                       Excluir Projeto
@@ -1985,6 +1993,12 @@ const OnboardingProjectPage = () => {
         tasks={tasks}
         projectId={projectId!}
         onTasksUpdated={fetchProjectData}
+      />
+
+      <ProjectMenuPermissionsDialog
+        open={showProjectMenuPermissions}
+        onOpenChange={setShowProjectMenuPermissions}
+        projectId={projectId!}
       />
     </div>
   );
