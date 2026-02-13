@@ -452,7 +452,7 @@ const ClientOnboardingPage = () => {
       { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
     ];
 
-    if (isFullAccess) return allMenus;
+    // Project-level menu filtering applies to ALL roles including full access
 
     return allMenus
       .map((item) => {
@@ -465,17 +465,16 @@ const ClientOnboardingPage = () => {
         return item;
       })
       .filter(Boolean) as typeof allMenus;
-  }, [hasPermission, isFullAccess]);
+  }, [hasPermission]);
 
   const hasViewAccess = useCallback(
     (view: ViewType) => {
-      if (isFullAccess) return true;
       const key = VIEW_TO_MENU_KEY[view];
       // Some views are legacy/unused; if not mapped, default to allow (they won't appear in menu anyway)
       if (!key) return true;
       return hasPermission(key);
     },
-    [hasPermission, isFullAccess]
+    [hasPermission]
   );
 
   // If user lands in a view they can't access (direct link/state), move to the first allowed menu.
