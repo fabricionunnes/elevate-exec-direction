@@ -216,7 +216,7 @@ export const TasksListView = ({
                     ) : (
                       <div className="flex items-center gap-1.5">
                         <h4 className="font-semibold text-sm sm:text-lg truncate">{phase.name}</h4>
-                        {onPhaseRename && phase.name !== "Sem fase" && (
+                        {onPhaseRename && (
                           <button
                             onClick={(e) => handleStartEdit(e, phase.name)}
                             className="opacity-0 group-hover/phase:opacity-100 transition-opacity p-0.5 rounded hover:bg-muted"
