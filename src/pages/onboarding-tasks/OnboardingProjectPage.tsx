@@ -858,7 +858,10 @@ const OnboardingProjectPage = () => {
     const trimmed = newName.trim();
     try {
       // Find all tasks in this project with tags[0] === oldName
-      const tasksToUpdate = tasks.filter(t => t.tags?.[0] === oldName);
+      // "Sem fase" is a UI label for tasks with no tags/empty tags
+      const tasksToUpdate = oldName === "Sem fase"
+        ? tasks.filter(t => !t.tags || t.tags.length === 0 || !t.tags[0])
+        : tasks.filter(t => t.tags?.[0] === oldName);
       for (const task of tasksToUpdate) {
         const newTags = [trimmed, ...(task.tags?.slice(1) || [])];
         const { error } = await supabase
