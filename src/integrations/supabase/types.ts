@@ -19462,6 +19462,41 @@ export type Database = {
           },
         ]
       }
+      project_menu_permissions: {
+        Row: {
+          created_at: string
+          id: string
+          is_enabled: boolean
+          menu_key: string
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          menu_key: string
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_enabled?: boolean
+          menu_key?: string
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_menu_permissions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rescue_playbooks: {
         Row: {
           ai_recommendations: string | null

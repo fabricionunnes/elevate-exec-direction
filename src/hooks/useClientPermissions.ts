@@ -17,6 +17,7 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
   const [loading, setLoading] = useState(true);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
+  const [projectEnabledMenus, setProjectEnabledMenus] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -32,13 +33,34 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
           return;
         }
 
-        // Get onboarding user for this project
-        const { data: onboardingUser } = await supabase
-          .from("onboarding_users")
-          .select("*")
-          .eq("user_id", user.id)
-          .eq("project_id", projectId)
-          .maybeSingle();
+        // Fetch project-level menu permissions and user data in parallel
+        const [onboardingUserResult, projectMenuResult] = await Promise.all([
+          supabase
+            .from("onboarding_users")
+            .select("*")
+            .eq("user_id", user.id)
+            .eq("project_id", projectId)
+            .maybeSingle(),
+          supabase
+            .from("project_menu_permissions")
+            .select("menu_key, is_enabled")
+            .eq("project_id", projectId),
+        ]);
+
+        const onboardingUser = onboardingUserResult.data;
+
+        // Process project-level menu permissions
+        if (projectMenuResult.data && projectMenuResult.data.length > 0) {
+          const enabled = new Set(
+            projectMenuResult.data
+              .filter((p) => p.is_enabled)
+              .map((p) => p.menu_key)
+          );
+          setProjectEnabledMenus(enabled);
+        } else {
+          // No config = all menus enabled
+          setProjectEnabledMenus(null);
+        }
 
         if (!onboardingUser) {
           setLoading(false);
@@ -79,6 +101,10 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
 
   const hasPermission = (menuKey: ClientMenuKey | string): boolean => {
     if (!currentUser) return false;
+    // Check project-level permissions first - if menu is disabled at project level, deny
+    if (projectEnabledMenus !== null && !projectEnabledMenus.has(menuKey)) {
+      return false;
+    }
     // Full access roles
     if (isFullAccess) return true;
     // For restricted roles, check permissions
