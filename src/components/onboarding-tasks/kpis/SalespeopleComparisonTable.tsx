@@ -151,27 +151,40 @@ export const SalespeopleComparisonTable = ({
     return mainGoal || kpis.find((k) => k.kpi_type === "monetary");
   }, [kpis]);
 
-  // Get sales count KPI
+  // Get sales count KPI - look for "venda"/"fechamento", or fallback to main goal if it's numeric
   const salesKpi = useMemo(() => {
-    return kpis.find((k) =>
+    const vendaKpi = kpis.find((k) =>
       k.name.toLowerCase().includes("venda") ||
       k.name.toLowerCase().includes("fechamento")
     );
+    return vendaKpi;
   }, [kpis]);
+
+  // Determine which KPI IDs to use for the main goal total
+  // If there are monetary KPIs, sum all of them
+  // Otherwise, use the main goal KPI (even if numeric)
+  const mainGoalKpiIds = useMemo(() => {
+    if (allMonetaryKpis.length > 0) {
+      return allMonetaryKpis.map(k => k.id);
+    }
+    // Fallback: use the main goal KPI if it exists
+    if (mainGoalKpi) {
+      return [mainGoalKpi.id];
+    }
+    return [];
+  }, [allMonetaryKpis, mainGoalKpi]);
 
   // Calculate totals per salesperson
   const salespeopleData = useMemo(() => {
     const data = filteredSalespeople.map((sp) => {
       const spEntries = entries.filter((e) => e.salesperson_id === sp.id);
 
-      // Sum ALL monetary KPIs for this salesperson (not just the main goal)
-      // This ensures all revenue/sales KPIs are included in the comparison
-      const allMonetaryKpiIds = allMonetaryKpis.map(k => k.id);
+      // Sum KPIs for this salesperson based on determined main goal IDs
       const mainGoalTotal = spEntries
-        .filter((e) => allMonetaryKpiIds.includes(e.kpi_id))
+        .filter((e) => mainGoalKpiIds.includes(e.kpi_id))
         .reduce((sum, e) => sum + e.value, 0);
 
-      // Sales count total
+      // Sales count total - if no explicit "vendas" KPI, use 0
       const salesTotal = salesKpi
         ? spEntries
             .filter((e) => e.kpi_id === salesKpi.id)
@@ -205,7 +218,7 @@ export const SalespeopleComparisonTable = ({
 
     // Sort by main goal value descending
     return data.sort((a, b) => b.mainGoalValue - a.mainGoalValue);
-  }, [filteredSalespeople, entries, kpis, mainGoalKpi, allMonetaryKpis, salesKpi, units]);
+  }, [filteredSalespeople, entries, kpis, mainGoalKpi, mainGoalKpiIds, salesKpi, units]);
 
   // Calculate team averages for comparison
   const teamAverages = useMemo(() => {
