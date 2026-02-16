@@ -363,6 +363,15 @@ export const KPIDashboardTab = ({
       selectedSector !== "all" ||
       selectedSalesperson !== "all";
 
+    const monetaryKpis = filteredKpis.filter((k) => k.kpi_type === "monetary");
+    
+    // FALLBACK: If there are NO monetary KPIs at all, use the main goal KPI (even if numeric)
+    // This ensures companies with only numeric KPIs still get projection cards
+    if (monetaryKpis.length === 0) {
+      const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
+      return mainGoalKpis;
+    }
+
     // When filtering by Sector (but not by a specific Team/Salesperson), users expect the
     // sector total to reflect the SUM of all teams inside that sector, not a single "main goal" KPI.
     if (
@@ -375,7 +384,7 @@ export const KPIDashboardTab = ({
         const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
         if (mainGoalKpis.length > 0) return mainGoalKpis;
       }
-      return filteredKpis.filter((k) => k.kpi_type === "monetary");
+      return monetaryKpis;
     }
 
     if (!hasAnyOrgFilter) {
@@ -386,11 +395,11 @@ export const KPIDashboardTab = ({
         if (mainGoalKpis.length > 0) return mainGoalKpis;
         // If no main goals, return all monetary but they'll be shown separately in the UI
       }
-      return filteredKpis.filter((k) => k.kpi_type === "monetary");
+      return monetaryKpis;
     }
 
     const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
-    return mainGoalKpis.length > 0 ? mainGoalKpis : filteredKpis.filter((k) => k.kpi_type === "monetary");
+    return mainGoalKpis.length > 0 ? mainGoalKpis : monetaryKpis;
   };
 
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
