@@ -63,6 +63,14 @@ interface ParsedLead {
 interface StageMapping {
   csvValue: string;
   stageId: string;
+  pipelineId?: string;
+}
+
+interface PipelineStageMapping {
+  pipelineCsvValue: string;
+  stageCsvValue: string;
+  pipelineId: string;
+  stageId: string;
 }
 
 const CRM_FIELDS = [
@@ -79,6 +87,7 @@ const CRM_FIELDS = [
   { value: "main_pain", label: "Dor Principal" },
   { value: "urgency", label: "Urgência" },
   { value: "notes", label: "Observações" },
+  { value: "pipeline_name", label: "Funil (nome)" },
   { value: "stage_name", label: "Etapa (nome)" },
   { value: "ignore", label: "Ignorar coluna" },
 ];
@@ -100,6 +109,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
   const [importing, setImporting] = useState(false);
   const [importProgress, setImportProgress] = useState(0);
   const [importResults, setImportResults] = useState<{ success: number; errors: number }>({ success: 0, errors: 0 });
+
+  const [pipelineStageMappings, setPipelineStageMappings] = useState<PipelineStageMapping[]>([]);
 
   useEffect(() => {
     if (open) {
@@ -212,6 +223,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
         crmField = "urgency";
       } else if (lowerHeader.includes("observ") || lowerHeader.includes("nota") || lowerHeader.includes("notes")) {
         crmField = "notes";
+      } else if (lowerHeader.includes("funil") || lowerHeader.includes("pipeline")) {
+        crmField = "pipeline_name";
       } else if (lowerHeader.includes("etapa") || lowerHeader.includes("stage") || lowerHeader.includes("fase") || lowerHeader.includes("status")) {
         crmField = "stage_name";
       }
@@ -243,17 +256,64 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
       return;
     }
 
-    // Check if stage_name is mapped
     const stageNameMapping = columnMappings.find(m => m.crmField === "stage_name");
-    if (stageNameMapping) {
-      // Get unique stage values from CSV
+    const pipelineNameMapping = columnMappings.find(m => m.crmField === "pipeline_name");
+
+    if (pipelineNameMapping && stageNameMapping) {
+      // Both pipeline and stage columns mapped - build combined mappings
+      const combos = new Map<string, Set<string>>();
+      csvData.forEach(row => {
+        const pipelineVal = row[pipelineNameMapping.csvColumn]?.trim();
+        const stageVal = row[stageNameMapping.csvColumn]?.trim();
+        if (pipelineVal) {
+          if (!combos.has(pipelineVal)) combos.set(pipelineVal, new Set());
+          if (stageVal) combos.get(pipelineVal)!.add(stageVal);
+        }
+      });
+
+      const mappings: PipelineStageMapping[] = [];
+      combos.forEach((stageValues, pipelineCsvValue) => {
+        // Try to auto-match pipeline by name
+        const matchedPipeline = pipelines.find(p => 
+          p.name.toLowerCase().trim() === pipelineCsvValue.toLowerCase().trim()
+        );
+        const pipelineId = matchedPipeline?.id || selectedPipeline;
+        const pipelineStgs = stages.filter(s => s.pipeline_id === pipelineId);
+
+        stageValues.forEach(stageCsvValue => {
+          const matchedStage = pipelineStgs.find(s => 
+            s.name.toLowerCase().trim() === stageCsvValue.toLowerCase().trim()
+          );
+          mappings.push({
+            pipelineCsvValue,
+            stageCsvValue,
+            pipelineId,
+            stageId: matchedStage?.id || (pipelineStgs[0]?.id || defaultStage),
+          });
+        });
+
+        // Add a fallback for rows with pipeline but no stage
+        if (stageValues.size === 0) {
+          mappings.push({
+            pipelineCsvValue,
+            stageCsvValue: "",
+            pipelineId,
+            stageId: pipelineStgs[0]?.id || defaultStage,
+          });
+        }
+      });
+
+      setPipelineStageMappings(mappings);
+      setStageMappings([]);
+      setUniqueStageValues([]);
+      setStep("stage-mapping");
+    } else if (stageNameMapping) {
+      // Only stage column mapped (original behavior)
       const stageValues = [...new Set(csvData.map(row => row[stageNameMapping.csvColumn]).filter(v => v && v.trim() !== ''))];
       setUniqueStageValues(stageValues);
       
-      // Initialize stage mappings
       const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
       const initialMappings = stageValues.map(value => {
-        // Try to auto-match by name similarity
         const matchedStage = pipelineStages.find(s => 
           s.name.toLowerCase().trim() === value.toLowerCase().trim()
         );
@@ -263,6 +323,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
         };
       });
       setStageMappings(initialMappings);
+      setPipelineStageMappings([]);
       setStep("stage-mapping");
     } else {
       setStep("preview");
@@ -279,7 +340,26 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
     );
   };
 
+  const updatePipelineStageMapping = (pipelineCsvValue: string, stageCsvValue: string, field: "pipelineId" | "stageId", value: string) => {
+    setPipelineStageMappings(prev => 
+      prev.map(m => {
+        if (m.pipelineCsvValue === pipelineCsvValue && m.stageCsvValue === stageCsvValue) {
+          if (field === "pipelineId") {
+            // When pipeline changes, reset stage to first stage of new pipeline
+            const newPipelineStages = stages.filter(s => s.pipeline_id === value);
+            return { ...m, pipelineId: value, stageId: newPipelineStages[0]?.id || defaultStage };
+          }
+          return { ...m, [field]: value };
+        }
+        return m;
+      })
+    );
+  };
+
   const getLeadPreview = () => {
+    const pipelineNameMapping = columnMappings.find(m => m.crmField === "pipeline_name");
+    const stageNameMapping = columnMappings.find(m => m.crmField === "stage_name");
+
     return csvData.slice(0, 5).map(row => {
       const lead: any = {};
       columnMappings.forEach(mapping => {
@@ -288,12 +368,22 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
         }
       });
 
-      // Map stage if stage_name is present
-      if (lead.stage_name) {
+      // Resolve pipeline and stage
+      if (pipelineNameMapping && stageNameMapping && pipelineStageMappings.length > 0) {
+        const pipelineVal = row[pipelineNameMapping.csvColumn]?.trim();
+        const stageVal = row[stageNameMapping.csvColumn]?.trim();
+        const combo = pipelineStageMappings.find(m => m.pipelineCsvValue === pipelineVal && m.stageCsvValue === stageVal);
+        const pipeline = pipelines.find(p => p.id === (combo?.pipelineId || selectedPipeline));
+        const stage = stages.find(s => s.id === (combo?.stageId || defaultStage));
+        lead._pipelineName = pipeline?.name || "Funil padrão";
+        lead._stageName = stage?.name || "Etapa padrão";
+      } else if (lead.stage_name) {
         const stageMapping = stageMappings.find(m => m.csvValue === lead.stage_name);
         const stage = stages.find(s => s.id === (stageMapping?.stageId || defaultStage));
+        lead._pipelineName = pipelines.find(p => p.id === selectedPipeline)?.name || "";
         lead._stageName = stage?.name || "Etapa padrão";
       } else {
+        lead._pipelineName = pipelines.find(p => p.id === selectedPipeline)?.name || "";
         const stage = stages.find(s => s.id === defaultStage);
         lead._stageName = stage?.name || "Etapa padrão";
       }
@@ -322,7 +412,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
       if (!staff) throw new Error("Staff não encontrado");
 
       const stageNameMapping = columnMappings.find(m => m.crmField === "stage_name");
-      const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
+      const pipelineNameMapping = columnMappings.find(m => m.crmField === "pipeline_name");
 
       let success = 0;
       let errors = 0;
@@ -341,7 +431,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
           };
 
           columnMappings.forEach(mapping => {
-            if (mapping.crmField !== "ignore" && mapping.crmField !== "stage_name") {
+            if (mapping.crmField !== "ignore" && mapping.crmField !== "stage_name" && mapping.crmField !== "pipeline_name") {
               const value = row[mapping.csvColumn]?.trim();
               if (value) {
                 if (mapping.crmField === "opportunity_value") {
@@ -354,8 +444,16 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
             }
           });
 
-          // Map stage if stage_name is present
-          if (stageNameMapping) {
+          // Resolve pipeline + stage per row
+          if (pipelineNameMapping && stageNameMapping && pipelineStageMappings.length > 0) {
+            const pipelineVal = row[pipelineNameMapping.csvColumn]?.trim();
+            const stageVal = row[stageNameMapping.csvColumn]?.trim();
+            const combo = pipelineStageMappings.find(m => m.pipelineCsvValue === pipelineVal && m.stageCsvValue === (stageVal || ""));
+            if (combo) {
+              lead.pipeline_id = combo.pipelineId;
+              lead.stage_id = combo.stageId;
+            }
+          } else if (stageNameMapping) {
             const stageValue = row[stageNameMapping.csvColumn]?.trim();
             if (stageValue) {
               const stageMapping = stageMappings.find(m => m.csvValue === stageValue);
@@ -408,6 +506,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
     setDefaultOwner("");
     setColumnMappings([]);
     setStageMappings([]);
+    setPipelineStageMappings([]);
     setUniqueStageValues([]);
     setImportProgress(0);
     setImportResults({ success: 0, errors: 0 });
@@ -419,8 +518,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
   };
 
   const downloadTemplate = () => {
-    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Etapa"];
-    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Triagem"];
+    const headers = ["Nome", "Telefone", "E-mail", "Empresa", "Cargo", "Cidade", "UF", "Origem", "Valor", "Segmento", "Dor Principal", "Urgência", "Observações", "Funil", "Etapa"];
+    const example = ["João Silva", "(11) 99999-9999", "joao@empresa.com", "Empresa ABC", "Diretor", "São Paulo", "SP", "Indicação", "50000", "Tecnologia", "Precisa de automação", "high", "Cliente potencial", "Pipeline Comercial", "Triagem"];
     
     const csv = [headers.join(","), example.join(",")].join("\n");
     const blob = new Blob([csv], { type: "text/csv;charset=utf-8;" });
@@ -516,7 +615,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                   <li>• A primeira linha deve conter os cabeçalhos das colunas</li>
                   <li>• O campo "Nome" é obrigatório para cada lead</li>
                   <li>• Formatos aceitos: CSV, XLSX, XLS</li>
-                  <li>• Se tiver uma coluna de "Etapa", você poderá mapear cada valor para uma etapa do funil</li>
+                  <li>• Inclua colunas "Funil" e "Etapa" para distribuir leads em diferentes funis e etapas</li>
+                  <li>• Se não informar o funil, será usado o funil padrão selecionado</li>
                 </ul>
               </div>
             </div>
@@ -633,8 +733,11 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                           ))}
                         </SelectContent>
                       </Select>
-                      {mapping.crmField !== "ignore" && mapping.crmField !== "stage_name" && (
+                      {mapping.crmField !== "ignore" && mapping.crmField !== "stage_name" && mapping.crmField !== "pipeline_name" && (
                         <Check className="h-4 w-4 text-green-500 flex-shrink-0" />
+                      )}
+                      {mapping.crmField === "pipeline_name" && (
+                        <Badge variant="secondary" className="flex-shrink-0">Funil</Badge>
                       )}
                       {mapping.crmField === "stage_name" && (
                         <Badge variant="secondary" className="flex-shrink-0">Etapa</Badge>
@@ -660,41 +763,101 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
           {step === "stage-mapping" && (
             <div className="space-y-6 py-6">
               <div className="bg-muted/30 rounded-lg p-4">
-                <p className="text-sm font-medium mb-2">Mapeamento de Etapas</p>
+                <p className="text-sm font-medium mb-2">Mapeamento de Funis e Etapas</p>
                 <p className="text-xs text-muted-foreground">
-                  Associe cada valor de etapa do arquivo a uma etapa do funil selecionado.
+                  {pipelineStageMappings.length > 0 
+                    ? "Associe cada combinação de funil/etapa do arquivo aos funis e etapas do CRM."
+                    : "Associe cada valor de etapa do arquivo a uma etapa do funil selecionado."}
                 </p>
               </div>
 
-              <div className="space-y-3">
-                {stageMappings.map((mapping, idx) => (
-                  <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
-                    <div className="flex-1">
-                      <Badge variant="outline">{mapping.csvValue}</Badge>
-                      <p className="text-xs text-muted-foreground mt-1">
-                        {csvData.filter(row => {
-                          const stageCol = columnMappings.find(m => m.crmField === "stage_name")?.csvColumn;
-                          return stageCol && row[stageCol] === mapping.csvValue;
-                        }).length} leads
-                      </p>
+              <ScrollArea className="h-[350px] pr-4">
+                <div className="space-y-3 pb-2">
+                  {/* Combined pipeline + stage mapping mode */}
+                  {pipelineStageMappings.length > 0 && pipelineStageMappings.map((mapping, idx) => {
+                    const mappingPipelineStages = stages.filter(s => s.pipeline_id === mapping.pipelineId);
+                    return (
+                      <div key={idx} className="p-3 border rounded-lg space-y-2">
+                        <div className="flex items-center gap-2 flex-wrap">
+                          <Badge variant="outline">{mapping.pipelineCsvValue}</Badge>
+                          {mapping.stageCsvValue && (
+                            <>
+                              <ArrowRight className="h-3 w-3 text-muted-foreground" />
+                              <Badge variant="outline">{mapping.stageCsvValue}</Badge>
+                            </>
+                          )}
+                          <span className="text-xs text-muted-foreground ml-auto">
+                            {csvData.filter(row => {
+                              const pipelineCol = columnMappings.find(m => m.crmField === "pipeline_name")?.csvColumn;
+                              const stageCol = columnMappings.find(m => m.crmField === "stage_name")?.csvColumn;
+                              return pipelineCol && row[pipelineCol]?.trim() === mapping.pipelineCsvValue 
+                                && (!mapping.stageCsvValue || (stageCol && row[stageCol]?.trim() === mapping.stageCsvValue));
+                            }).length} leads
+                          </span>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          <Select
+                            value={mapping.pipelineId}
+                            onValueChange={(value) => updatePipelineStageMapping(mapping.pipelineCsvValue, mapping.stageCsvValue, "pipelineId", value)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Funil" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {pipelines.map(p => (
+                                <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                          <Select
+                            value={mapping.stageId}
+                            onValueChange={(value) => updatePipelineStageMapping(mapping.pipelineCsvValue, mapping.stageCsvValue, "stageId", value)}
+                          >
+                            <SelectTrigger className="flex-1">
+                              <SelectValue placeholder="Etapa" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {mappingPipelineStages.map(s => (
+                                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      </div>
+                    );
+                  })}
+
+                  {/* Stage-only mapping mode */}
+                  {stageMappings.length > 0 && stageMappings.map((mapping, idx) => (
+                    <div key={idx} className="flex items-center gap-4 p-3 border rounded-lg">
+                      <div className="flex-1">
+                        <Badge variant="outline">{mapping.csvValue}</Badge>
+                        <p className="text-xs text-muted-foreground mt-1">
+                          {csvData.filter(row => {
+                            const stageCol = columnMappings.find(m => m.crmField === "stage_name")?.csvColumn;
+                            return stageCol && row[stageCol] === mapping.csvValue;
+                          }).length} leads
+                        </p>
+                      </div>
+                      <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                      <Select
+                        value={mapping.stageId}
+                        onValueChange={(value) => updateStageMapping(mapping.csvValue, value)}
+                      >
+                        <SelectTrigger className="w-[200px]">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {pipelineStages.map(s => (
+                            <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
                     </div>
-                    <ArrowRight className="h-4 w-4 text-muted-foreground flex-shrink-0" />
-                    <Select
-                      value={mapping.stageId}
-                      onValueChange={(value) => updateStageMapping(mapping.csvValue, value)}
-                    >
-                      <SelectTrigger className="w-[200px]">
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {pipelineStages.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                ))}
-              </div>
+                  ))}
+                </div>
+              </ScrollArea>
 
               <div className="flex justify-between pt-4">
                 <Button variant="outline" onClick={() => setStep("mapping")}>
@@ -725,7 +888,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                       <th className="px-3 py-2 text-left">Nome</th>
                       <th className="px-3 py-2 text-left">Telefone</th>
                       <th className="px-3 py-2 text-left">E-mail</th>
-                      <th className="px-3 py-2 text-left">Empresa</th>
+                      <th className="px-3 py-2 text-left">Funil</th>
                       <th className="px-3 py-2 text-left">Etapa</th>
                     </tr>
                   </thead>
@@ -735,7 +898,9 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                         <td className="px-3 py-2">{lead.name || "-"}</td>
                         <td className="px-3 py-2">{lead.phone || "-"}</td>
                         <td className="px-3 py-2">{lead.email || "-"}</td>
-                        <td className="px-3 py-2">{lead.company || "-"}</td>
+                        <td className="px-3 py-2">
+                          <Badge variant="outline" className="text-xs">{lead._pipelineName}</Badge>
+                        </td>
                         <td className="px-3 py-2">
                           <Badge variant="secondary">{lead._stageName}</Badge>
                         </td>
