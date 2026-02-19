@@ -62,6 +62,7 @@ interface Meeting {
   notes: string | null;
   is_finalized: boolean;
   project_id: string;
+  calendar_owner_id: string | null;
   calendar_owner_name: string | null;
   project?: {
     product_name: string;
@@ -145,6 +146,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
           notes,
           is_finalized,
           project_id,
+          calendar_owner_id,
           calendar_owner_name,
           project:project_id (
             product_name,
@@ -278,7 +280,8 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         return !m.is_finalized && isAfter(meetingDate, now);
       }
       if (statusFilter === "pending_finalization") {
-        return !m.is_finalized && isBefore(meetingDate, now);
+        const ownerToCheck = isAdminOrMaster && selectedStaffId !== "all" ? selectedStaffId : staffId;
+        return !m.is_finalized && isBefore(meetingDate, now) && m.calendar_owner_id === ownerToCheck;
       }
       if (statusFilter === "finalized") {
         return m.is_finalized;
@@ -286,14 +289,16 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
 
       return true;
     });
-  }, [staffFilteredMeetings, statusFilter, dateRange, now]);
+  }, [staffFilteredMeetings, statusFilter, dateRange, now, staffId, selectedStaffId, isAdminOrMaster]);
 
+  const pendingOwnerToCheck = isAdminOrMaster && selectedStaffId !== "all" ? selectedStaffId : staffId;
+    const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
   const counts = useMemo(() => {
     const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
-    const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now)).length;
+    const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now) && m.calendar_owner_id === pendingOwnerToCheck).length;
     const finalized = staffFilteredMeetings.filter((m) => m.is_finalized).length;
     return { upcoming, pending, finalized, all: staffFilteredMeetings.length };
-  }, [staffFilteredMeetings, now]);
+  }, [staffFilteredMeetings, now, pendingOwnerToCheck]);
 
   const statusButtons: { value: MeetingFilter; label: string; shortLabel: string; count: number }[] = [
     { value: "all", label: "Todas", shortLabel: "Todas", count: counts.all },
