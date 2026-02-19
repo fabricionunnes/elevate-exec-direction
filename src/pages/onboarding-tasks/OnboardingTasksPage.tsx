@@ -42,6 +42,7 @@ import {
 } from "@/components/ui/select";
 import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
+import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
 
 interface Service {
   id: string;
@@ -158,6 +159,7 @@ const OnboardingTasksPage = () => {
   
   // My Tasks panel state
   const [showMyTasks, setShowMyTasks] = useState(false);
+  const [showMeetings, setShowMeetings] = useState(false);
   
   // Bulk health score update state
   const [updatingAllHealthScores, setUpdatingAllHealthScores] = useState(false);
@@ -2117,6 +2119,18 @@ const OnboardingTasksPage = () => {
                 Minhas Tarefas
               </Button>
             )}
+            {/* Reuniões button - visible for all staff */}
+            {currentUserRole && currentStaffId && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => setShowMeetings(true)}
+                className="gap-2"
+              >
+                <Video className="h-4 w-4" />
+                Reuniões
+              </Button>
+            )}
             {/* Resultados button - visible for all staff (admin, cs, consultant) */}
             {currentUserRole && (
               <Button 
@@ -2933,6 +2947,14 @@ const OnboardingTasksPage = () => {
         open={showMyTasks}
         onOpenChange={setShowMyTasks}
         staffId={currentStaffId}
+      />
+
+      {/* Meetings Panel */}
+      <MeetingsPanel
+        open={showMeetings}
+        onOpenChange={setShowMeetings}
+        staffId={currentStaffId}
+        staffRole={currentUserRole}
       />
     </div>
   );
