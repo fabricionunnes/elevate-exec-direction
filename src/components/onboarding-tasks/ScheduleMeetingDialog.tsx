@@ -316,7 +316,7 @@ export const ScheduleMeetingDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[90vh] flex flex-col">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <Video className="h-5 w-5" />
@@ -324,7 +324,7 @@ export const ScheduleMeetingDialog = ({
           </DialogTitle>
         </DialogHeader>
 
-        <div className="space-y-4">
+        <div className="space-y-4 overflow-y-auto flex-1 pr-1">
           {/* Target Calendar Selection */}
           <div className="space-y-2">
             <Label className="flex items-center gap-2">
