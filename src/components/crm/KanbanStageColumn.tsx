@@ -173,7 +173,7 @@ export const KanbanStageColumn = ({
       {/* Lead Cards with virtual scroll */}
       <div 
         ref={scrollRef}
-        className="flex-1 min-h-0 overflow-y-scroll px-2 pb-2"
+        className="flex-1 min-h-0 kanban-scroll px-2 pb-2"
       >
         <div className="space-y-2">
           {visibleLeads.map(lead => (
