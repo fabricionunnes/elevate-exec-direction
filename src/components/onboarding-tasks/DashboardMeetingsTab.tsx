@@ -16,6 +16,13 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from "@/components/ui/popover";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import {
   Video,
@@ -27,11 +34,17 @@ import {
   CheckCircle2,
   AlertTriangle,
   X,
+  Users,
 } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+
+interface StaffOption {
+  id: string;
+  name: string;
+}
 
 interface Meeting {
   id: string;
@@ -44,8 +57,11 @@ interface Meeting {
   calendar_owner_name: string | null;
   project?: {
     product_name: string;
+    onboarding_company_id?: string | null;
     onboarding_company?: {
       name: string;
+      consultant_id?: string | null;
+      cs_id?: string | null;
     } | null;
   } | null;
 }
@@ -66,12 +82,29 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   const [statusFilter, setStatusFilter] = useState<MeetingFilter>("all");
   const [dateRange, setDateRange] = useState<DateRange | undefined>(undefined);
   const [dateOpen, setDateOpen] = useState(false);
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
+
+  const isAdminOrMaster = staffRole === "admin" || staffRole === "master";
 
   useEffect(() => {
     if (open && staffId) {
       fetchMeetings();
+      if (isAdminOrMaster) {
+        fetchStaffOptions();
+      }
     }
   }, [open, staffId]);
+
+  const fetchStaffOptions = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name")
+      .eq("is_active", true)
+      .in("role", ["cs", "consultant", "admin", "master"])
+      .order("name");
+    setStaffOptions(data || []);
+  };
 
   const fetchMeetings = async () => {
     if (!staffId) return;
@@ -106,7 +139,9 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
             product_name,
             onboarding_company_id,
             onboarding_company:onboarding_company_id (
-              name
+              name,
+              consultant_id,
+              cs_id
             )
           )
         `)
@@ -128,6 +163,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         project: m.project
           ? {
               product_name: m.project.product_name,
+              onboarding_company_id: m.project.onboarding_company_id,
               onboarding_company: m.project.onboarding_company,
             }
           : null,
@@ -143,8 +179,18 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
 
   const now = new Date();
 
-  const filteredMeetings = useMemo(() => {
+  // Pre-filter by selected staff
+  const staffFilteredMeetings = useMemo(() => {
+    if (selectedStaffId === "all" || !isAdminOrMaster) return meetings;
     return meetings.filter((m) => {
+      const company = m.project?.onboarding_company;
+      if (!company) return false;
+      return company.consultant_id === selectedStaffId || company.cs_id === selectedStaffId;
+    });
+  }, [meetings, selectedStaffId, isAdminOrMaster]);
+
+  const filteredMeetings = useMemo(() => {
+    return staffFilteredMeetings.filter((m) => {
       const meetingDate = parseISO(m.meeting_date);
 
       if (dateRange?.from && isBefore(meetingDate, startOfDay(dateRange.from))) return false;
@@ -162,14 +208,14 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
 
       return true;
     });
-  }, [meetings, statusFilter, dateRange, now]);
+  }, [staffFilteredMeetings, statusFilter, dateRange, now]);
 
   const counts = useMemo(() => {
-    const upcoming = meetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
-    const pending = meetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now)).length;
-    const finalized = meetings.filter((m) => m.is_finalized).length;
-    return { upcoming, pending, finalized, all: meetings.length };
-  }, [meetings, now]);
+    const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
+    const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now)).length;
+    const finalized = staffFilteredMeetings.filter((m) => m.is_finalized).length;
+    return { upcoming, pending, finalized, all: staffFilteredMeetings.length };
+  }, [staffFilteredMeetings, now]);
 
   const statusButtons: { value: MeetingFilter; label: string; shortLabel: string; count: number }[] = [
     { value: "all", label: "Todas", shortLabel: "Todas", count: counts.all },
@@ -194,6 +240,26 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
           </div>
         ) : (
           <div className="space-y-3 flex-1 overflow-hidden flex flex-col">
+            {/* Staff filter for admins */}
+            {isAdminOrMaster && staffOptions.length > 0 && (
+              <div className="flex items-center gap-2">
+                <Users className="h-4 w-4 text-muted-foreground" />
+                <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                  <SelectTrigger className="h-8 w-[200px] text-xs">
+                    <SelectValue placeholder="Filtrar por usuário" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os usuários</SelectItem>
+                    {staffOptions.map((staff) => (
+                      <SelectItem key={staff.id} value={staff.id}>
+                        {staff.name}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
             {/* Filters */}
             <div className="flex flex-wrap items-center gap-2">
               {statusButtons.map((btn) => (
