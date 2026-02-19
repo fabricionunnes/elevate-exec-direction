@@ -280,8 +280,14 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         return !m.is_finalized && isAfter(meetingDate, now);
       }
       if (statusFilter === "pending_finalization") {
-        const ownerToCheck = isAdminOrMaster && selectedStaffId !== "all" ? selectedStaffId : staffId;
-        return !m.is_finalized && isBefore(meetingDate, now) && m.calendar_owner_id === ownerToCheck;
+        const isPastAndOpen = !m.is_finalized && isBefore(meetingDate, now);
+        if (!isPastAndOpen) return false;
+        // Admin/Master with "all" filter: show all pending
+        if (isAdminOrMaster && selectedStaffId === "all") return true;
+        // Admin/Master with specific staff filter: show only that staff's calendar
+        if (isAdminOrMaster && selectedStaffId !== "all") return m.calendar_owner_id === selectedStaffId;
+        // Non-admin: show only own calendar
+        return m.calendar_owner_id === staffId;
       }
       if (statusFilter === "finalized") {
         return m.is_finalized;
@@ -291,13 +297,17 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
     });
   }, [staffFilteredMeetings, statusFilter, dateRange, now, staffId, selectedStaffId, isAdminOrMaster]);
 
-  const pendingOwnerToCheck = isAdminOrMaster && selectedStaffId !== "all" ? selectedStaffId : staffId;
   const counts = useMemo(() => {
     const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
-    const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now) && m.calendar_owner_id === pendingOwnerToCheck).length;
+    const pending = staffFilteredMeetings.filter((m) => {
+      if (!(!m.is_finalized && isBefore(parseISO(m.meeting_date), now))) return false;
+      if (isAdminOrMaster && selectedStaffId === "all") return true;
+      if (isAdminOrMaster && selectedStaffId !== "all") return m.calendar_owner_id === selectedStaffId;
+      return m.calendar_owner_id === staffId;
+    }).length;
     const finalized = staffFilteredMeetings.filter((m) => m.is_finalized).length;
     return { upcoming, pending, finalized, all: staffFilteredMeetings.length };
-  }, [staffFilteredMeetings, now, pendingOwnerToCheck]);
+  }, [staffFilteredMeetings, now, staffId, selectedStaffId, isAdminOrMaster]);
 
   const statusButtons: { value: MeetingFilter; label: string; shortLabel: string; count: number }[] = [
     { value: "all", label: "Todas", shortLabel: "Todas", count: counts.all },
