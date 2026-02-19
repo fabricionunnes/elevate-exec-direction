@@ -72,6 +72,8 @@ export const CRMLeadsPage = () => {
   const [addLeadOpen, setAddLeadOpen] = useState(false);
   const [importLeadsOpen, setImportLeadsOpen] = useState(false);
   const [selectedLeads, setSelectedLeads] = useState<string[]>([]);
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(1);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -167,6 +169,16 @@ export const CRMLeadsPage = () => {
       return true;
     });
   }, [leads, searchTerm, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, pipelines, staff]);
+
+  const totalPages = Math.ceil(filteredLeads.length / pageSize);
+  const paginatedLeads = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filteredLeads.slice(start, start + pageSize);
+  }, [filteredLeads, currentPage, pageSize]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchTerm, filterPipeline, filterStage, filterOwner, filterOrigin, filterUrgency, pageSize]);
 
   const formatCurrency = (value: number | null) => {
     if (!value) return "-";
@@ -340,7 +352,7 @@ export const CRMLeadsPage = () => {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredLeads.map(lead => (
+                {paginatedLeads.map(lead => (
                   <TableRow key={lead.id}>
                     <TableCell>
                       <Checkbox
@@ -425,7 +437,7 @@ export const CRMLeadsPage = () => {
                   </TableRow>
                 ))}
 
-                {filteredLeads.length === 0 && (
+                {paginatedLeads.length === 0 && (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                       Nenhum lead encontrado
@@ -434,6 +446,46 @@ export const CRMLeadsPage = () => {
                 )}
               </TableBody>
             </Table>
+          </div>
+
+          {/* Pagination */}
+          <div className="flex items-center justify-between p-4 border-t">
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">Exibir</span>
+              <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
+                <SelectTrigger className="h-8 w-[70px] text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="10">10</SelectItem>
+                  <SelectItem value="50">50</SelectItem>
+                  <SelectItem value="100">100</SelectItem>
+                </SelectContent>
+              </Select>
+              <span className="text-sm text-muted-foreground">por página</span>
+            </div>
+
+            <div className="flex items-center gap-2">
+              <span className="text-sm text-muted-foreground">
+                {Math.min((currentPage - 1) * pageSize + 1, filteredLeads.length)}-{Math.min(currentPage * pageSize, filteredLeads.length)} de {filteredLeads.length}
+              </span>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage === 1}
+                onClick={() => setCurrentPage(p => p - 1)}
+              >
+                Anterior
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={currentPage >= totalPages}
+                onClick={() => setCurrentPage(p => p + 1)}
+              >
+                Próximo
+              </Button>
+            </div>
           </div>
         </CardContent>
       </Card>
