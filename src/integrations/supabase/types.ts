@@ -19497,6 +19497,41 @@ export type Database = {
           },
         ]
       }
+      project_strategic_plans: {
+        Row: {
+          created_at: string
+          editable_cronograma: Json | null
+          id: string
+          project_id: string
+          raw_content: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          editable_cronograma?: Json | null
+          id?: string
+          project_id: string
+          raw_content: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          editable_cronograma?: Json | null
+          id?: string
+          project_id?: string
+          raw_content?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "project_strategic_plans_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rescue_playbooks: {
         Row: {
           ai_recommendations: string | null
