@@ -292,7 +292,6 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   }, [staffFilteredMeetings, statusFilter, dateRange, now, staffId, selectedStaffId, isAdminOrMaster]);
 
   const pendingOwnerToCheck = isAdminOrMaster && selectedStaffId !== "all" ? selectedStaffId : staffId;
-    const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
   const counts = useMemo(() => {
     const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
     const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now) && m.calendar_owner_id === pendingOwnerToCheck).length;
