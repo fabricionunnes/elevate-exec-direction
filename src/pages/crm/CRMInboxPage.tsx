@@ -665,7 +665,7 @@ export const CRMInboxPage = () => {
                     </span>
                     <span className="text-[10px] text-muted-foreground">
                       {conv.last_message_at 
-                        ? format(new Date(conv.last_message_at), "HH:mm") 
+                        ? format(new Date(conv.last_message_at), "dd/MM/yyyy HH:mm") 
                         : ""}
                     </span>
                   </div>
@@ -893,7 +893,7 @@ export const CRMInboxPage = () => {
                       )}
                       <div className="flex items-center justify-end gap-1 mt-1">
                         <span className="text-[10px] text-muted-foreground">
-                          {format(new Date(message.created_at), "HH:mm")}
+                          {format(new Date(message.created_at), "dd/MM/yyyy HH:mm")}
                         </span>
                         {message.direction === "outbound" && getStatusIcon(message.status)}
                       </div>
