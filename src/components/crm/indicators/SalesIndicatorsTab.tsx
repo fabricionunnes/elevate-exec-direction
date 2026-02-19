@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -51,6 +51,7 @@ interface SaleRecord {
   saleDate: string;
   pipeline: string;
   closer: string;
+  closerId: string;
   sdr: string;
   company: string;
   product: string;
@@ -61,6 +62,7 @@ interface ForecastRecord {
   id: string;
   day: number;
   closer: string;
+  closerId: string;
   client: string;
   status: string;
   product: string;
@@ -71,9 +73,6 @@ type DateFilterType = "today" | "week" | "month" | "quarter" | "custom";
 
 export const SalesIndicatorsTab = () => {
   const [loading, setLoading] = useState(true);
-  const [closers, setClosers] = useState<CloserMetrics[]>([]);
-  const [sales, setSales] = useState<SaleRecord[]>([]);
-  const [forecasts, setForecasts] = useState<ForecastRecord[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string>("all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
@@ -84,56 +83,16 @@ export const SalesIndicatorsTab = () => {
   const [customDateFrom, setCustomDateFrom] = useState<Date | undefined>(undefined);
   const [customDateTo, setCustomDateTo] = useState<Date | undefined>(undefined);
   
-  // Main metrics
-  const [metrics, setMetrics] = useState({
-    metaReceita: 0,
-    receita: 0,
-    faltaReceita: 0,
-    vendas: 0,
-    ticketMedio: 0,
-    qtr: 0,
-    conversao: 0,
-    superMeta: 0,
-    hiperMeta: 0,
-    faltaSuper: 0,
-    faltaHiper: 0,
-    forecast: 0,
-    projecaoReceita: 0,
-    projecaoPercent: 0,
-  });
-
-  // Calls metrics
-  const [callsMetrics, setCallsMetrics] = useState({
-    agendadas: 0,
-    realizadas: 0,
-    noShowPercent: 0,
-  });
-
-  // Daily goal state
-  const [dailyGoal, setDailyGoal] = useState({
-    monthlyTarget: 0,
-    achieved: 0,
-    remaining: 0,
-    businessDaysLeft: 0,
-    dailyTarget: 0,
-  });
-
-  // Daily revenue accumulation
-  const [dailyRevenueData, setDailyRevenueData] = useState<{ day: number; [key: string]: number }[]>([]);
-  
-  // Revenue evolution
-  const [revenueEvolution, setRevenueEvolution] = useState<{ day: number; meta: number; receita: number | null; super: number; hiper: number }[]>([]);
-
-  // Vision data (QTR, YTD, MAT)
-  const [visionData, setVisionData] = useState({
-    qtr: { value: 0, change: 0 },
-    ytd: { value: 0, change: 0 },
-    mat: { value: 0, change: 0 },
-    receita: { value: 0, change: 0 },
-  });
-
-  // Product distribution
-  const [productDistribution, setProductDistribution] = useState<{ name: string; value: number; color: string }[]>([]);
+  // Raw data state (fetched from DB, unfiltered)
+  const [rawSalesData, setRawSalesData] = useState<any[]>([]);
+  const [rawMeetingEvents, setRawMeetingEvents] = useState<any[]>([]);
+  const [rawCalls, setRawCalls] = useState<any[]>([]);
+  const [rawForecastData, setRawForecastData] = useState<any[]>([]);
+  const [rawCloserStaff, setRawCloserStaff] = useState<{ id: string; name: string }[]>([]);
+  const [staffGoalsMap, setStaffGoalsMap] = useState<Map<string, { meta: number; super: number; hiper: number }>>(new Map());
+  const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
+  const [filterStartDate, setFilterStartDate] = useState<Date>(startOfMonth(new Date()));
+  const [filterEndDate, setFilterEndDate] = useState<Date>(endOfMonth(new Date()));
 
   // Get date range based on filter
   const getDateRange = () => {
@@ -175,15 +134,13 @@ export const SalesIndicatorsTab = () => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const now = new Date();
       const { start: filterStart, end: filterEnd } = getDateRange();
-      const daysInMonth = getDaysInMonth(filterStart);
-      const currentDay = getDate(now);
+      setFilterStartDate(filterStart);
+      setFilterEndDate(filterEnd);
       const filterMonth = filterStart.getMonth() + 1;
       const filterYear = filterStart.getFullYear();
 
       // Load closers (staff with closer role who have CRM access)
-      // First get staff IDs with CRM access
       const { data: crmAccessData } = await supabase
         .from("staff_menu_permissions")
         .select("staff_id")
@@ -191,20 +148,19 @@ export const SalesIndicatorsTab = () => {
       
       const crmStaffIds = new Set((crmAccessData || []).map(a => a.staff_id));
 
-      // Load all active staff, then filter in JS to guarantee admin/master never appear
       const { data: allActiveStaff } = await supabase
         .from("onboarding_staff")
         .select("id, name, role")
         .eq("is_active", true);
 
-      // Only allow closer and head_comercial roles (never admin/master)
       const allowedCloserRoles = new Set(["closer", "head_comercial"]);
       const filteredCloserStaff = (allActiveStaff || []).filter(staff => {
         const role = String((staff as any).role ?? "").toLowerCase();
         return crmStaffIds.has(staff.id) && allowedCloserRoles.has(role);
       });
+      setRawCloserStaff(filteredCloserStaff.map(s => ({ id: s.id, name: s.name })));
 
-      // Load scheduled calls using date range
+      // Load scheduled calls
       const { data: calls } = await supabase
         .from("crm_scheduled_calls")
         .select(`
@@ -214,8 +170,9 @@ export const SalesIndicatorsTab = () => {
         `)
         .gte("scheduled_at", filterStart.toISOString())
         .lte("scheduled_at", filterEnd.toISOString());
+      setRawCalls(calls || []);
 
-      // Load meeting events from card buttons
+      // Load meeting events
       const { data: meetingEvents } = await supabase
         .from("crm_meeting_events")
         .select(`
@@ -224,8 +181,9 @@ export const SalesIndicatorsTab = () => {
         `)
         .gte("event_date", filterStart.toISOString())
         .lte("event_date", filterEnd.toISOString());
+      setRawMeetingEvents(meetingEvents || []);
 
-      // Load sales using date range
+      // Load sales
       const { data: salesData } = await supabase
         .from("crm_sales")
         .select(`
@@ -238,6 +196,7 @@ export const SalesIndicatorsTab = () => {
         `)
         .gte("sale_date", format(filterStart, "yyyy-MM-dd"))
         .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
+      setRawSalesData(salesData || []);
 
       // Load forecasts
       const { data: forecastData } = await supabase
@@ -248,8 +207,9 @@ export const SalesIndicatorsTab = () => {
           lead:crm_leads(id, name, company)
         `)
         .eq("status", "open");
+      setRawForecastData(forecastData || []);
 
-      // Load goal type for "Vendas" (currency type)
+      // Load goals
       const { data: goalTypeData } = await supabase
         .from("crm_goal_types")
         .select("id")
@@ -257,13 +217,8 @@ export const SalesIndicatorsTab = () => {
         .eq("is_active", true)
         .single();
 
-      // Load goals from crm_goal_values (correct table)
-      let metaReceita = 0;
-      let superMeta = 0;
-      let hiperMeta = 0;
-
-      // Map of staff_id -> goal values
-      const staffGoalsMap = new Map<string, { meta: number; super: number; hiper: number }>();
+      const goalsMap = new Map<string, { meta: number; super: number; hiper: number }>();
+      let totalMeta = 0, totalSuper = 0, totalHiper = 0;
 
       if (goalTypeData?.id) {
         const { data: goalValues } = await supabase
@@ -273,211 +228,21 @@ export const SalesIndicatorsTab = () => {
           .eq("month", filterMonth)
           .eq("year", filterYear);
 
-        // Sum all staff goals for total and build map
         if (goalValues && goalValues.length > 0) {
           goalValues.forEach(g => {
-            staffGoalsMap.set(g.staff_id, {
+            goalsMap.set(g.staff_id, {
               meta: g.meta_value || 0,
               super: g.super_meta_value || 0,
               hiper: g.hiper_meta_value || 0,
             });
           });
-          metaReceita = goalValues.reduce((sum, g) => sum + (g.meta_value || 0), 0);
-          superMeta = goalValues.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
-          hiperMeta = goalValues.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
+          totalMeta = goalValues.reduce((sum, g) => sum + (g.meta_value || 0), 0);
+          totalSuper = goalValues.reduce((sum, g) => sum + (g.super_meta_value || 0), 0);
+          totalHiper = goalValues.reduce((sum, g) => sum + (g.hiper_meta_value || 0), 0);
         }
       }
-
-      // Calculate metrics
-      const totalRevenue = (salesData || []).reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-      const totalSales = salesData?.length || 0;
-      const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
-      
-      // Calculate calls metrics (from scheduled_calls table)
-      const totalScheduledCalls = calls?.length || 0;
-      const totalCompletedCalls = (calls || []).filter(c => c.status === "completed").length;
-      const totalNoShowCalls = (calls || []).filter(c => c.status === "no_show").length;
-      
-      // Calculate meeting events metrics (from card buttons)
-      const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
-      const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
-      const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
-      
-      // Combined totals (prefer meeting events when available, fallback to scheduled calls)
-      const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
-      const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
-      const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
-      
-      const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
-      const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
-
-      // Calculate projection
-      const dailyAvg = currentDay > 0 ? totalRevenue / currentDay : 0;
-      const projectedRevenue = dailyAvg * daysInMonth;
-      const projectedPercent = metaReceita > 0 ? (projectedRevenue / metaReceita) * 100 : 0;
-
-      // Total forecast
-      const forecastTotal = (forecastData || []).reduce((sum, f) => sum + (f.forecast_value || 0), 0);
-
-      setMetrics({
-        metaReceita,
-        receita: totalRevenue,
-        faltaReceita: Math.max(0, metaReceita - totalRevenue),
-        vendas: totalSales,
-        ticketMedio,
-        qtr: 0,
-        conversao: conversion,
-        superMeta,
-        hiperMeta,
-        faltaSuper: Math.max(0, superMeta - totalRevenue),
-        faltaHiper: Math.max(0, hiperMeta - totalRevenue),
-        forecast: forecastTotal,
-        projecaoReceita: projectedRevenue,
-        projecaoPercent: projectedPercent,
-      });
-
-      setCallsMetrics({
-        agendadas: totalScheduled,
-        realizadas: totalCompleted,
-        noShowPercent,
-      });
-
-      // Calculate daily goal
-      const businessDaysLeft = getRemainingBusinessDaysInMonth(now);
-      const remaining = Math.max(0, metaReceita - totalRevenue);
-      const dailyTarget = businessDaysLeft > 0 ? remaining / businessDaysLeft : 0;
-      
-      setDailyGoal({
-        monthlyTarget: metaReceita,
-        achieved: totalRevenue,
-        remaining,
-        businessDaysLeft,
-        dailyTarget,
-      });
-
-      // Calculate closer metrics (use filtered staff)
-      const closerMetrics: CloserMetrics[] = filteredCloserStaff.map(closer => {
-        const closerCalls = (calls || []).filter(c => c.assigned_to === closer.id);
-        const closerSales = (salesData || []).filter(s => s.closer_staff_id === closer.id);
-        const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-        
-        // Meeting events credited to this closer
-        const closerMeetingEvents = (meetingEvents || []).filter(e => e.credited_staff_id === closer.id);
-        const closerEventsScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
-        const closerEventsRealized = closerMeetingEvents.filter(e => e.event_type === "realized").length;
-        
-        // Combine scheduled_calls with meeting_events (prefer events when available)
-        const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
-        const closerScheduledFromCalls = closerCalls.length;
-        
-        // Use meeting events if available, otherwise use scheduled calls
-        const closerScheduled = closerEventsScheduled > 0 ? closerEventsScheduled : closerScheduledFromCalls;
-        const closerCompleted = closerEventsRealized > 0 ? closerEventsRealized : closerCompletedFromCalls;
-        
-        // Use the preloaded goals map
-        const closerGoal = staffGoalsMap.get(closer.id);
-        const closerMeta = closerGoal?.meta || (metaReceita / (filteredCloserStaff.length || 1));
-
-        return {
-          id: closer.id,
-          name: closer.name,
-          callsScheduled: closerScheduled,
-          callsCompleted: closerCompleted,
-          salesQty: closerSales.length,
-          revenue: closerRevenue,
-          metaPercent: closerMeta > 0 ? (closerRevenue / closerMeta) * 100 : 0,
-          conversion: closerCompleted > 0 ? (closerSales.length / closerCompleted) * 100 : 0,
-          ticketMedio: closerSales.length > 0 ? closerRevenue / closerSales.length : 0,
-        };
-      });
-      setClosers(closerMetrics);
-
-      // Format sales records
-      const salesRecords: SaleRecord[] = (salesData || []).map(s => ({
-        id: s.id,
-        saleDate: format(new Date(s.sale_date), "dd"),
-        pipeline: s.pipeline?.name || "-",
-        closer: s.closer?.name || "-",
-        sdr: s.sdr?.name || "-",
-        company: s.lead?.company || s.lead?.name || "-",
-        product: s.product?.name || s.product_name || "-",
-        revenue: s.revenue_value || 0,
-      }));
-      setSales(salesRecords);
-
-      // Format forecasts
-      const forecastRecords: ForecastRecord[] = (forecastData || []).map(f => ({
-        id: f.id,
-        day: f.expected_close_date ? getDate(new Date(f.expected_close_date)) : 0,
-        closer: f.closer?.name || "-",
-        client: f.lead?.name || "-",
-        status: f.status || "open",
-        product: f.product_name || "-",
-        value: f.forecast_value || 0,
-      }));
-      setForecasts(forecastRecords);
-
-      // Calculate daily revenue accumulation by closer
-      const dailyData: { day: number; [key: string]: number }[] = [];
-      const closerNames = closerMetrics.map(c => c.name);
-      
-      for (let day = 1; day <= currentDay; day++) {
-        const dayData: { day: number; [key: string]: number } = { day };
-        closerNames.forEach(name => {
-          const closerDayRevenue = (salesData || [])
-            .filter(s => {
-              const saleDay = getDate(new Date(s.sale_date));
-              return saleDay <= day && s.closer?.name === name;
-            })
-            .reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-          dayData[name] = closerDayRevenue;
-        });
-        dailyData.push(dayData);
-      }
-      setDailyRevenueData(dailyData);
-
-      // Calculate cumulative revenue evolution with goals
-      // First, build a map of revenue per day
-      // Extract day directly from string to avoid timezone issues (e.g., "2026-02-02" -> 2)
-      const revenueByDay: Record<number, number> = {};
-      (salesData || []).forEach(s => {
-        const saleDay = parseInt(s.sale_date.split('-')[2], 10);
-        revenueByDay[saleDay] = (revenueByDay[saleDay] || 0) + (s.revenue_value || 0);
-      });
-      
-      const evolutionData: { day: number; meta: number; receita: number | null; super: number; hiper: number }[] = [];
-      let accumulatedRevenue = 0;
-      
-      for (let day = 1; day <= daysInMonth; day++) {
-        // Only add revenue for days that have passed (including today)
-        if (day <= currentDay) {
-          accumulatedRevenue += (revenueByDay[day] || 0);
-        }
-        
-        evolutionData.push({
-          day,
-          meta: (metaReceita / daysInMonth) * day,
-          receita: day <= currentDay ? accumulatedRevenue : null,
-          super: (superMeta / daysInMonth) * day,
-          hiper: (hiperMeta / daysInMonth) * day,
-        });
-      }
-      setRevenueEvolution(evolutionData);
-
-      // Calculate product distribution
-      const productGroups: Record<string, number> = {};
-      (salesData || []).forEach(s => {
-        const productName = s.product?.name || s.product_name || "Outros";
-        productGroups[productName] = (productGroups[productName] || 0) + (s.revenue_value || 0);
-      });
-      const colors = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
-      setProductDistribution(
-        Object.entries(productGroups).map(([name, value], i) => ({
-          name,
-          value,
-          color: colors[i % colors.length],
-        }))
-      );
+      setStaffGoalsMap(goalsMap);
+      setTotalGoals({ meta: totalMeta, super: totalSuper, hiper: totalHiper });
 
     } catch (error) {
       console.error("Error loading sales indicators:", error);
@@ -485,6 +250,232 @@ export const SalesIndicatorsTab = () => {
       setLoading(false);
     }
   };
+
+  // ── Derived / filtered metrics ──
+  const computed = useMemo(() => {
+    const now = new Date();
+    const daysInMonth = getDaysInMonth(filterStartDate);
+    const currentDay = getDate(now);
+    const isCloserFilter = selectedCloser !== "all";
+
+    // Filter raw data by selected closer
+    const salesData = isCloserFilter
+      ? rawSalesData.filter(s => s.closer_staff_id === selectedCloser)
+      : rawSalesData;
+
+    const meetingEvents = isCloserFilter
+      ? rawMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
+      : rawMeetingEvents;
+
+    const calls = isCloserFilter
+      ? rawCalls.filter(c => c.assigned_to === selectedCloser)
+      : rawCalls;
+
+    const forecastData = isCloserFilter
+      ? rawForecastData.filter(f => f.closer_staff_id === selectedCloser)
+      : rawForecastData;
+
+    // Goals: use closer-specific or total
+    let metaReceita: number, superMeta: number, hiperMeta: number;
+    if (isCloserFilter) {
+      const closerGoal = staffGoalsMap.get(selectedCloser);
+      metaReceita = closerGoal?.meta || 0;
+      superMeta = closerGoal?.super || 0;
+      hiperMeta = closerGoal?.hiper || 0;
+    } else {
+      metaReceita = totalGoals.meta;
+      superMeta = totalGoals.super;
+      hiperMeta = totalGoals.hiper;
+    }
+
+    // Sales metrics
+    const totalRevenue = salesData.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
+    const totalSales = salesData.length;
+    const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
+
+    // Calls metrics
+    const totalScheduledCalls = calls.length;
+    const totalCompletedCalls = calls.filter(c => c.status === "completed").length;
+    const totalNoShowCalls = calls.filter(c => c.status === "no_show").length;
+
+    const meetingEventsScheduled = meetingEvents.filter(e => e.event_type === "scheduled").length;
+    const meetingEventsRealized = meetingEvents.filter(e => e.event_type === "realized").length;
+    const meetingEventsNoShow = meetingEvents.filter(e => e.event_type === "no_show").length;
+
+    const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
+    const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
+    const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
+
+    const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
+    const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
+
+    // Projection
+    const dailyAvg = currentDay > 0 ? totalRevenue / currentDay : 0;
+    const projectedRevenue = dailyAvg * daysInMonth;
+    const projectedPercent = metaReceita > 0 ? (projectedRevenue / metaReceita) * 100 : 0;
+
+    // Forecast
+    const forecastTotal = forecastData.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+
+    const metrics = {
+      metaReceita,
+      receita: totalRevenue,
+      faltaReceita: Math.max(0, metaReceita - totalRevenue),
+      vendas: totalSales,
+      ticketMedio,
+      qtr: 0,
+      conversao: conversion,
+      superMeta,
+      hiperMeta,
+      faltaSuper: Math.max(0, superMeta - totalRevenue),
+      faltaHiper: Math.max(0, hiperMeta - totalRevenue),
+      forecast: forecastTotal,
+      projecaoReceita: projectedRevenue,
+      projecaoPercent: projectedPercent,
+    };
+
+    const callsMetrics = {
+      agendadas: totalScheduled,
+      realizadas: totalCompleted,
+      noShowPercent,
+    };
+
+    // Daily goal
+    const businessDaysLeft = getRemainingBusinessDaysInMonth(now);
+    const remaining = Math.max(0, metaReceita - totalRevenue);
+    const dailyTarget = businessDaysLeft > 0 ? remaining / businessDaysLeft : 0;
+
+    const dailyGoal = {
+      monthlyTarget: metaReceita,
+      achieved: totalRevenue,
+      remaining,
+      businessDaysLeft,
+      dailyTarget,
+    };
+
+    // Closer metrics table (always show all closers in the table)
+    const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
+      const closerCalls = rawCalls.filter(c => c.assigned_to === closer.id);
+      const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
+      const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
+
+      const closerMeetingEvts = rawMeetingEvents.filter(e => e.credited_staff_id === closer.id);
+      const closerEventsScheduled = closerMeetingEvts.filter(e => e.event_type === "scheduled").length;
+      const closerEventsRealized = closerMeetingEvts.filter(e => e.event_type === "realized").length;
+
+      const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
+      const closerScheduledFromCalls = closerCalls.length;
+
+      const closerScheduled = closerEventsScheduled > 0 ? closerEventsScheduled : closerScheduledFromCalls;
+      const closerCompleted = closerEventsRealized > 0 ? closerEventsRealized : closerCompletedFromCalls;
+
+      const closerGoal = staffGoalsMap.get(closer.id);
+      const closerMeta = closerGoal?.meta || (totalGoals.meta / (rawCloserStaff.length || 1));
+
+      return {
+        id: closer.id,
+        name: closer.name,
+        callsScheduled: closerScheduled,
+        callsCompleted: closerCompleted,
+        salesQty: closerSales.length,
+        revenue: closerRevenue,
+        metaPercent: closerMeta > 0 ? (closerRevenue / closerMeta) * 100 : 0,
+        conversion: closerCompleted > 0 ? (closerSales.length / closerCompleted) * 100 : 0,
+        ticketMedio: closerSales.length > 0 ? closerRevenue / closerSales.length : 0,
+      };
+    });
+
+    // Sales records (filtered)
+    const salesRecords: SaleRecord[] = salesData.map(s => ({
+      id: s.id,
+      saleDate: format(new Date(s.sale_date), "dd"),
+      pipeline: s.pipeline?.name || "-",
+      closer: s.closer?.name || "-",
+      closerId: s.closer_staff_id || "",
+      sdr: s.sdr?.name || "-",
+      company: s.lead?.company || s.lead?.name || "-",
+      product: s.product?.name || s.product_name || "-",
+      revenue: s.revenue_value || 0,
+    }));
+
+    // Forecast records (filtered)
+    const forecastRecords: ForecastRecord[] = forecastData.map(f => ({
+      id: f.id,
+      day: f.expected_close_date ? getDate(new Date(f.expected_close_date)) : 0,
+      closer: f.closer?.name || "-",
+      closerId: f.closer_staff_id || "",
+      client: f.lead?.name || "-",
+      status: f.status || "open",
+      product: f.product_name || "-",
+      value: f.forecast_value || 0,
+    }));
+
+    // Daily revenue accumulation (always per closer for chart)
+    const dailyRevenueData: { day: number; [key: string]: number }[] = [];
+    const closerNames = closerMetrics.map(c => c.name);
+    for (let day = 1; day <= currentDay; day++) {
+      const dayData: { day: number; [key: string]: number } = { day };
+      closerNames.forEach(name => {
+        const closerDayRevenue = rawSalesData
+          .filter(s => {
+            const saleDay = getDate(new Date(s.sale_date));
+            return saleDay <= day && s.closer?.name === name;
+          })
+          .reduce((sum, s) => sum + (s.revenue_value || 0), 0);
+        dayData[name] = closerDayRevenue;
+      });
+      dailyRevenueData.push(dayData);
+    }
+
+    // Revenue evolution (filtered)
+    const revenueByDay: Record<number, number> = {};
+    salesData.forEach(s => {
+      const saleDay = parseInt(s.sale_date.split('-')[2], 10);
+      revenueByDay[saleDay] = (revenueByDay[saleDay] || 0) + (s.revenue_value || 0);
+    });
+
+    const revenueEvolution: { day: number; meta: number; receita: number | null; super: number; hiper: number }[] = [];
+    let accumulatedRevenue = 0;
+    for (let day = 1; day <= daysInMonth; day++) {
+      if (day <= currentDay) {
+        accumulatedRevenue += (revenueByDay[day] || 0);
+      }
+      revenueEvolution.push({
+        day,
+        meta: (metaReceita / daysInMonth) * day,
+        receita: day <= currentDay ? accumulatedRevenue : null,
+        super: (superMeta / daysInMonth) * day,
+        hiper: (hiperMeta / daysInMonth) * day,
+      });
+    }
+
+    // Product distribution (filtered)
+    const productGroups: Record<string, number> = {};
+    salesData.forEach(s => {
+      const productName = s.product?.name || s.product_name || "Outros";
+      productGroups[productName] = (productGroups[productName] || 0) + (s.revenue_value || 0);
+    });
+    const colors = ["#10B981", "#3B82F6", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"];
+    const productDistribution = Object.entries(productGroups).map(([name, value], i) => ({
+      name,
+      value,
+      color: colors[i % colors.length],
+    }));
+
+    return {
+      metrics,
+      callsMetrics,
+      dailyGoal,
+      closerMetrics,
+      salesRecords,
+      forecastRecords,
+      dailyRevenueData,
+      revenueEvolution,
+      productDistribution,
+    };
+  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+
+  const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
   const formatCurrency = (value: number) => {
     if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)} mi`;
@@ -793,7 +784,7 @@ export const SalesIndicatorsTab = () => {
       {/* Term Vision Chart - QTR/YTD/MAT */}
       <TermVisionChart />
 
-      {/* Agendamentos e Calls Row - Cards individuais */}
+      {/* Agendamentos e Calls Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
         <Card>
           <CardContent className="p-4">
@@ -817,7 +808,6 @@ export const SalesIndicatorsTab = () => {
 
       {/* Charts row */}
       <div className="grid md:grid-cols-2 gap-4">
-
         {/* Receita por produto */}
         <Card>
           <CardHeader className="pb-2">
@@ -862,16 +852,16 @@ export const SalesIndicatorsTab = () => {
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span>Super Meta</span>
-                <span>{((metrics.receita / metrics.superMeta) * 100).toFixed(0)}%</span>
+                <span>{metrics.superMeta > 0 ? ((metrics.receita / metrics.superMeta) * 100).toFixed(0) : 0}%</span>
               </div>
-              <Progress value={Math.min(100, (metrics.receita / metrics.superMeta) * 100)} className="h-2 [&>div]:bg-yellow-500" />
+              <Progress value={Math.min(100, metrics.superMeta > 0 ? (metrics.receita / metrics.superMeta) * 100 : 0)} className="h-2 [&>div]:bg-yellow-500" />
             </div>
             <div>
               <div className="flex justify-between text-xs mb-1">
                 <span>Hiper Meta</span>
-                <span>{((metrics.receita / metrics.hiperMeta) * 100).toFixed(0)}%</span>
+                <span>{metrics.hiperMeta > 0 ? ((metrics.receita / metrics.hiperMeta) * 100).toFixed(0) : 0}%</span>
               </div>
-              <Progress value={Math.min(100, (metrics.receita / metrics.hiperMeta) * 100)} className="h-2 [&>div]:bg-purple-500" />
+              <Progress value={Math.min(100, metrics.hiperMeta > 0 ? (metrics.receita / metrics.hiperMeta) * 100 : 0)} className="h-2 [&>div]:bg-purple-500" />
             </div>
           </CardContent>
         </Card>
@@ -883,7 +873,6 @@ export const SalesIndicatorsTab = () => {
           <CardTitle className="text-base font-semibold text-center">EVOLUÇÃO DE RECEITA</CardTitle>
         </CardHeader>
         <CardContent>
-          {/* Legend at top */}
           <div className="flex items-center justify-center gap-6 mb-4 text-xs flex-wrap">
             <div className="flex items-center gap-1.5">
               <div className="w-6 h-0.5 bg-red-500" />
@@ -927,49 +916,10 @@ export const SalesIndicatorsTab = () => {
                   labelFormatter={(day) => `Dia ${day}`}
                   contentStyle={{ fontSize: 12 }}
                 />
-                {/* Meta Receita - Red solid line */}
-                <Line 
-                  type="linear" 
-                  dataKey="meta" 
-                  name="Meta Receita" 
-                  stroke="#EF4444" 
-                  strokeWidth={2} 
-                  dot={false}
-                  activeDot={{ r: 4, fill: "#EF4444" }}
-                />
-                {/* Receita - Green solid line */}
-                <Line 
-                  type="linear" 
-                  dataKey="receita" 
-                  name="Receita" 
-                  stroke="#16A34A" 
-                  strokeWidth={2.5} 
-                  dot={false}
-                  activeDot={{ r: 5, fill: "#16A34A" }}
-                  connectNulls={false}
-                />
-                {/* Super Meta - Orange dashed line */}
-                <Line 
-                  type="linear" 
-                  dataKey="super" 
-                  name="Super Meta Receita" 
-                  stroke="#F59E0B" 
-                  strokeWidth={2} 
-                  strokeDasharray="8 4"
-                  dot={false}
-                  activeDot={{ r: 4, fill: "#F59E0B" }}
-                />
-                {/* Hiper Meta - Blue dashed line */}
-                <Line 
-                  type="linear" 
-                  dataKey="hiper" 
-                  name="Hiper Meta Receita" 
-                  stroke="#3B82F6" 
-                  strokeWidth={2} 
-                  strokeDasharray="8 4"
-                  dot={false}
-                  activeDot={{ r: 4, fill: "#3B82F6" }}
-                />
+                <Line type="linear" dataKey="meta" name="Meta Receita" stroke="#EF4444" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#EF4444" }} />
+                <Line type="linear" dataKey="receita" name="Receita" stroke="#16A34A" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#16A34A" }} connectNulls={false} />
+                <Line type="linear" dataKey="super" name="Super Meta Receita" stroke="#F59E0B" strokeWidth={2} strokeDasharray="8 4" dot={false} activeDot={{ r: 4, fill: "#F59E0B" }} />
+                <Line type="linear" dataKey="hiper" name="Hiper Meta Receita" stroke="#3B82F6" strokeWidth={2} strokeDasharray="8 4" dot={false} activeDot={{ r: 4, fill: "#3B82F6" }} />
               </LineChart>
             </ResponsiveContainer>
           </div>
@@ -1149,7 +1099,6 @@ export const SalesIndicatorsTab = () => {
         open={importDialogOpen}
         onOpenChange={setImportDialogOpen}
         onSuccess={() => {
-          // Refresh data after import
           setLoading(true);
           window.location.reload();
         }}
