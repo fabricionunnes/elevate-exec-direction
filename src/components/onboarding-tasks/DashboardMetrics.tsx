@@ -3,7 +3,6 @@ import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { Video } from "lucide-react";
 import { 
   CheckCircle2, 
   AlertTriangle, 
@@ -50,7 +49,6 @@ import {
 import { TasksListDialog } from "./TasksListDialog";
 import { DashboardAgenda } from "./DashboardAgenda";
 import { HealthScoreHistoryDialog } from "./health-score/HealthScoreHistoryDialog";
-import { DashboardMeetingsTab } from "./DashboardMeetingsTab";
 
 interface Task {
   id: string;
@@ -1006,10 +1004,9 @@ const DashboardMetrics = ({
           setNpsDetailType(null);
         }
       }}>
-        <TabsList className="w-full grid grid-cols-6 h-8 sm:h-9">
+        <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
-          <TabsTrigger value="reunioes" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Video className="h-3 w-3" /><span className="hidden sm:inline">Reuniões</span><span className="sm:hidden">Reun</span></TabsTrigger>
           <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tar</span></TabsTrigger>
           <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
           <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
@@ -1452,10 +1449,6 @@ const DashboardMetrics = ({
               </div>
             );
           })()}
-        </TabsContent>
-
-        <TabsContent value="reunioes" className="mt-2 sm:mt-3">
-          <DashboardMeetingsTab />
         </TabsContent>
       </Tabs>
 
