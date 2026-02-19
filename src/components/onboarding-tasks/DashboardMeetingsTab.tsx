@@ -447,7 +447,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
             </div>
 
             {/* Meetings list */}
-            <ScrollArea className="flex-1 min-h-0">
+            <div className="flex-1 min-h-0 overflow-y-auto">
               <div className="space-y-1.5 pr-2">
                 {filteredMeetings.length === 0 ? (
                   <div className="text-center py-8 text-sm text-muted-foreground">
@@ -531,7 +531,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
                   })
                 )}
               </div>
-            </ScrollArea>
+            </div>
           </div>
         )}
       </DialogContent>
