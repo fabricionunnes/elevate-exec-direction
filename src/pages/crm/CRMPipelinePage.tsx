@@ -31,7 +31,6 @@ import { useCRMContext } from "./CRMLayout";
 import { KanbanLeadCard } from "@/components/crm/KanbanLeadCard";
 import { KanbanStageColumn } from "@/components/crm/KanbanStageColumn";
 import { KanbanBulkActions } from "@/components/crm/KanbanBulkActions";
-import * as ScrollAreaPrimitive from "@radix-ui/react-scroll-area";
 import { useDragScroll } from "@/hooks/useDragScroll";
 
 interface Stage {
@@ -551,60 +550,46 @@ export const CRMPipelinePage = () => {
         />
       </div>
 
-      {/* Kanban Board (barra horizontal sempre visível, sem rolagem vertical da página) */}
+      {/* Kanban Board */}
       <div className="flex-1 min-h-0 overflow-hidden">
-        <ScrollAreaPrimitive.Root
-          type="always"
-          className="relative h-full w-full"
+        <div
+          ref={dragScrollRef}
+          className="h-full w-full overflow-x-auto overflow-y-hidden kanban-horizontal-scroll"
+          style={{ cursor: isDraggingScroll ? 'grabbing' : 'grab' }}
+          {...dragScrollBind}
         >
-          <ScrollAreaPrimitive.Viewport 
-            ref={dragScrollRef}
-            className="h-full w-full [&>div]:h-full"
-            style={{ cursor: isDraggingScroll ? 'grabbing' : 'grab' }}
-            {...dragScrollBind}
-          >
-            <div className="h-full px-2 sm:px-4 pb-4">
-              <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
-                {stages.map(stage => {
-                  const stageLeads = getLeadsByStage(stage.id);
+          <div className="h-full px-2 sm:px-4 pb-4">
+            <div className="flex gap-2 sm:gap-3 h-full" style={{ minWidth: "max-content" }}>
+              {stages.map(stage => {
+                const stageLeads = getLeadsByStage(stage.id);
 
-                  return (
-                    <KanbanStageColumn
-                      key={stage.id}
-                      stage={stage}
-                      leads={stageLeads}
-                      pipelineId={selectedPipeline || ""}
-                      selectedLeads={selectedLeads}
-                      isSelectionMode={isSelectionMode}
-                      isMaster={isMaster}
-                      draggedLeadId={draggedLead?.id || null}
-                      onSelectLead={handleLeadSelect}
-                      onSelectAllInStage={handleSelectAllInStage}
-                      onDragOver={handleDragOver}
-                      onDrop={handleDrop}
-                      onDragStart={handleDragStart}
-                      onOpenChat={handleOpenChat}
-                      onRefresh={loadStagesAndLeads}
-                      onAddLead={(stageId) => {
-                        setAddLeadStageId(stageId);
-                        setAddLeadOpen(true);
-                      }}
-                    />
-                  );
-                })}
-              </div>
+                return (
+                  <KanbanStageColumn
+                    key={stage.id}
+                    stage={stage}
+                    leads={stageLeads}
+                    pipelineId={selectedPipeline || ""}
+                    selectedLeads={selectedLeads}
+                    isSelectionMode={isSelectionMode}
+                    isMaster={isMaster}
+                    draggedLeadId={draggedLead?.id || null}
+                    onSelectLead={handleLeadSelect}
+                    onSelectAllInStage={handleSelectAllInStage}
+                    onDragOver={handleDragOver}
+                    onDrop={handleDrop}
+                    onDragStart={handleDragStart}
+                    onOpenChat={handleOpenChat}
+                    onRefresh={loadStagesAndLeads}
+                    onAddLead={(stageId) => {
+                      setAddLeadStageId(stageId);
+                      setAddLeadOpen(true);
+                    }}
+                  />
+                );
+              })}
             </div>
-          </ScrollAreaPrimitive.Viewport>
-
-          <ScrollAreaPrimitive.Scrollbar
-            orientation="horizontal"
-            className="sticky bottom-0 left-0 right-0 z-20 flex h-3 touch-none select-none border-t border-border bg-card/80 backdrop-blur supports-[backdrop-filter]:bg-card/60"
-          >
-            <ScrollAreaPrimitive.Thumb className="relative flex-1 rounded-full bg-border" />
-          </ScrollAreaPrimitive.Scrollbar>
-
-          <ScrollAreaPrimitive.Corner />
-        </ScrollAreaPrimitive.Root>
+          </div>
+        </div>
       </div>
 
       {/* Bulk Actions Bar (Master only) */}
