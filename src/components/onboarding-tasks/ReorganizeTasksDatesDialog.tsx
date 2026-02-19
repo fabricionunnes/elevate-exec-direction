@@ -15,7 +15,7 @@ import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { CalendarIcon, Wand2, AlertTriangle, CheckCircle2, Loader2 } from "lucide-react";
-import { format, addDays } from "date-fns";
+import { format, addDays, isBefore, startOfDay, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
@@ -38,7 +38,7 @@ interface ReorganizeTasksDatesDialogProps {
   onTasksUpdated: () => void;
 }
 
-type StatusFilter = "pending" | "in_progress" | "pending_and_in_progress";
+type StatusFilter = "pending" | "in_progress" | "pending_and_in_progress" | "overdue" | "overdue_and_pending";
 
 export const ReorganizeTasksDatesDialog = ({
   open,
@@ -49,17 +49,27 @@ export const ReorganizeTasksDatesDialog = ({
 }: ReorganizeTasksDatesDialogProps) => {
   const [days, setDays] = useState<number>(90);
   const [startDate, setStartDate] = useState<Date>(getTodayLocal());
-  const [statusFilter, setStatusFilter] = useState<StatusFilter>("pending");
+  const [statusFilter, setStatusFilter] = useState<StatusFilter>("overdue_and_pending");
   const [loading, setLoading] = useState(false);
   const [showPreview, setShowPreview] = useState(false);
+
+  const today = startOfDay(new Date());
+
+  const isOverdue = (task: OnboardingTask) => {
+    if (task.status === "completed" || !task.due_date) return false;
+    return isBefore(startOfDay(parseISO(task.due_date)), today);
+  };
 
   // Filter tasks based on selected status
   const getFilteredTasks = () => {
     return tasks.filter(task => {
-      if (statusFilter === "pending") return task.status === "pending";
+      if (statusFilter === "pending") return task.status === "pending" && !isOverdue(task);
       if (statusFilter === "in_progress") return task.status === "in_progress";
       if (statusFilter === "pending_and_in_progress") 
         return task.status === "pending" || task.status === "in_progress";
+      if (statusFilter === "overdue") return isOverdue(task);
+      if (statusFilter === "overdue_and_pending") 
+        return isOverdue(task) || (task.status === "pending" && !isOverdue(task));
       return false;
     }).sort((a, b) => {
       // Sort by current due_date first, then by sort_order
@@ -129,9 +139,11 @@ export const ReorganizeTasksDatesDialog = ({
 
   const getStatusLabel = (filter: StatusFilter) => {
     switch (filter) {
-      case "pending": return "Pendentes";
+      case "pending": return "Pendentes (no prazo)";
       case "in_progress": return "Em andamento";
       case "pending_and_in_progress": return "Pendentes + Em andamento";
+      case "overdue": return "Atrasadas";
+      case "overdue_and_pending": return "Atrasadas + Pendentes";
     }
   };
 
@@ -159,7 +171,9 @@ export const ReorganizeTasksDatesDialog = ({
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                <SelectItem value="pending">Apenas Pendentes</SelectItem>
+                <SelectItem value="overdue_and_pending">Atrasadas + Pendentes</SelectItem>
+                <SelectItem value="overdue">Apenas Atrasadas</SelectItem>
+                <SelectItem value="pending">Apenas Pendentes (no prazo)</SelectItem>
                 <SelectItem value="in_progress">Apenas Em andamento</SelectItem>
                 <SelectItem value="pending_and_in_progress">Pendentes + Em andamento</SelectItem>
               </SelectContent>
