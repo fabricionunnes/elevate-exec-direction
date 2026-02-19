@@ -478,8 +478,14 @@ export const SalesIndicatorsTab = () => {
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
   const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)} mi`;
-    if (value >= 1000) return `R$ ${(value / 1000).toFixed(0)} mil`;
+    if (value >= 1000000) {
+      const val = value / 1000000;
+      return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} mi`;
+    }
+    if (value >= 1000) {
+      const val = value / 1000;
+      return `R$ ${val % 1 === 0 ? val.toFixed(0) : val.toFixed(1)} mil`;
+    }
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   };
 
