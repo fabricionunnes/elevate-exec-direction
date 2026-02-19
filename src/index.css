@@ -323,31 +323,38 @@
   background: hsl(355 85% 50% / 0.6);
 }
 
-/* Kanban column scrollbar - always visible in Chrome */
+/* Kanban column scrollbar - always visible in Chrome/Edge/Safari */
 .kanban-scroll {
-  overflow-y: scroll;
+  overflow-y: scroll !important;
+  overflow-x: hidden;
   scrollbar-width: thin;
-  scrollbar-color: hsl(214 20% 75%) hsl(214 15% 94%);
+  scrollbar-color: hsl(214 20% 72%) hsl(214 15% 92%);
 }
 
 .kanban-scroll::-webkit-scrollbar {
-  width: 6px;
-  display: block;
+  width: 8px !important;
+  display: block !important;
+  -webkit-appearance: none;
 }
 
 .kanban-scroll::-webkit-scrollbar-track {
-  background: hsl(214 15% 94%);
-  border-radius: 3px;
+  background: hsl(214 15% 92%) !important;
+  border-radius: 4px;
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb {
-  background: hsl(214 20% 75%);
-  border-radius: 3px;
-  min-height: 30px;
+  background: hsl(214 20% 72%) !important;
+  border-radius: 4px;
+  min-height: 40px;
+  border: 1px solid hsl(214 15% 92%);
 }
 
 .kanban-scroll::-webkit-scrollbar-thumb:hover {
-  background: hsl(214 20% 60%);
+  background: hsl(214 20% 55%) !important;
+}
+
+.kanban-scroll::-webkit-scrollbar-button {
+  display: none;
 }
 
 /* Selection */
