@@ -10,7 +10,12 @@ import {
   DialogContent,
   DialogHeader,
   DialogTitle,
+  DialogFooter,
 } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Popover,
   PopoverContent,
@@ -35,11 +40,14 @@ import {
   AlertTriangle,
   X,
   Users,
+  Lock,
+  PlayCircle,
 } from "lucide-react";
 import { format, parseISO, isAfter, isBefore, startOfDay } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { DateRange } from "react-day-picker";
+import { toast } from "sonner";
 
 interface StaffOption {
   id: string;
@@ -84,6 +92,9 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   const [dateOpen, setDateOpen] = useState(false);
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
+  const [meetingToFinalize, setMeetingToFinalize] = useState<Meeting | null>(null);
+  const [finalizeForm, setFinalizeForm] = useState({ notes: "", attendees: "", recordingLink: "", isInternal: false });
+  const [saving, setSaving] = useState(false);
 
   const isAdminOrMaster = staffRole === "admin" || staffRole === "master";
 
@@ -177,6 +188,73 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
     }
   };
 
+  const openMeetingDetails = (meeting: Meeting) => {
+    setMeetingToFinalize(meeting);
+    setFinalizeForm({
+      notes: meeting.notes || "",
+      attendees: "",
+      recordingLink: "",
+      isInternal: false,
+    });
+  };
+
+  const handleFinalize = async () => {
+    if (!meetingToFinalize) return;
+    if (!finalizeForm.notes.trim()) {
+      toast.error("Descreva o que foi tratado na reunião");
+      return;
+    }
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({
+          notes: finalizeForm.notes.trim(),
+          attendees: finalizeForm.attendees.trim() || null,
+          recording_link: finalizeForm.recordingLink.trim() || null,
+          is_finalized: true,
+          is_internal: finalizeForm.isInternal,
+        })
+        .eq("id", meetingToFinalize.id);
+
+      if (error) throw error;
+      toast.success("Reunião finalizada com sucesso!");
+      setMeetingToFinalize(null);
+      fetchMeetings();
+    } catch (error) {
+      console.error("Error finalizing meeting:", error);
+      toast.error("Erro ao finalizar reunião");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleSaveNotes = async () => {
+    if (!meetingToFinalize) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("onboarding_meeting_notes")
+        .update({
+          notes: finalizeForm.notes.trim() || null,
+          attendees: finalizeForm.attendees.trim() || null,
+          recording_link: finalizeForm.recordingLink.trim() || null,
+          is_internal: finalizeForm.isInternal,
+        })
+        .eq("id", meetingToFinalize.id);
+
+      if (error) throw error;
+      toast.success("Alterações salvas com sucesso!");
+      setMeetingToFinalize(null);
+      fetchMeetings();
+    } catch (error) {
+      console.error("Error saving meeting:", error);
+      toast.error("Erro ao salvar alterações");
+    } finally {
+      setSaving(false);
+    }
+  };
+
   const now = new Date();
 
   // Pre-filter by selected staff
@@ -225,6 +303,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   ];
 
   return (
+    <>
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col">
         <DialogHeader>
@@ -389,10 +468,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
                           isPending && "border-orange-300 bg-orange-50/50 dark:bg-orange-950/20",
                           isUpcoming && "border-blue-200 bg-blue-50/30 dark:bg-blue-950/20"
                         )}
-                        onClick={() => {
-                          onOpenChange(false);
-                          navigate(`/onboarding-tasks/${meeting.project_id}?tab=meetings`);
-                        }}
+                        onClick={() => openMeetingDetails(meeting)}
                       >
                         <CardContent className="p-3 flex items-center gap-3">
                           <div
@@ -460,5 +536,112 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         )}
       </DialogContent>
     </Dialog>
+
+    {/* Meeting Details / Finalize Dialog */}
+    <Dialog open={!!meetingToFinalize} onOpenChange={(open) => !open && setMeetingToFinalize(null)}>
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
+        <DialogHeader>
+          <DialogTitle className="flex items-center gap-2">
+            <Video className="h-5 w-5 text-primary" />
+            {meetingToFinalize?.is_finalized ? "Detalhes da Reunião" : "Finalizar Reunião"}
+          </DialogTitle>
+        </DialogHeader>
+
+        {meetingToFinalize && (
+          <div className="space-y-4">
+            {/* Meeting Info */}
+            <div className="bg-muted/50 rounded-lg p-3 space-y-2">
+              <p className="font-medium">{meetingToFinalize.subject || meetingToFinalize.meeting_title}</p>
+              <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                <span className="flex items-center gap-1">
+                  <CalendarIcon className="h-4 w-4" />
+                  {format(parseISO(meetingToFinalize.meeting_date), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
+                {meetingToFinalize.project && (
+                  <span className="flex items-center gap-1">
+                    <Building2 className="h-4 w-4" />
+                    {meetingToFinalize.project.onboarding_company?.name || meetingToFinalize.project.product_name}
+                  </span>
+                )}
+              </div>
+            </div>
+
+            {/* Notes */}
+            <div className="space-y-2">
+              <Label>O que foi tratado na reunião? {!meetingToFinalize.is_finalized && "*"}</Label>
+              <Textarea
+                placeholder="Descreva os principais pontos discutidos, decisões tomadas, próximos passos..."
+                value={finalizeForm.notes}
+                onChange={(e) => setFinalizeForm({ ...finalizeForm, notes: e.target.value })}
+                rows={5}
+              />
+            </div>
+
+            {/* Attendees */}
+            <div className="space-y-2">
+              <Label>Participantes (opcional)</Label>
+              <Input
+                placeholder="Nomes dos participantes"
+                value={finalizeForm.attendees}
+                onChange={(e) => setFinalizeForm({ ...finalizeForm, attendees: e.target.value })}
+              />
+            </div>
+
+            {/* Recording Link */}
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <PlayCircle className="h-4 w-4 text-destructive" />
+                Link da Gravação (opcional)
+              </Label>
+              <Input
+                placeholder="https://drive.google.com/file/..."
+                value={finalizeForm.recordingLink}
+                onChange={(e) => setFinalizeForm({ ...finalizeForm, recordingLink: e.target.value })}
+              />
+            </div>
+
+            {/* Internal Meeting Checkbox */}
+            <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
+              <Checkbox
+                id="is-internal-panel"
+                checked={finalizeForm.isInternal}
+                onCheckedChange={(checked) => setFinalizeForm({ ...finalizeForm, isInternal: checked === true })}
+              />
+              <div className="flex items-center gap-2">
+                <Lock className="h-4 w-4 text-amber-500" />
+                <Label htmlFor="is-internal-panel" className="text-sm font-normal cursor-pointer">
+                  Reunião Interna (não visível para o cliente)
+                </Label>
+              </div>
+            </div>
+          </div>
+        )}
+
+        <DialogFooter className="gap-2 sm:gap-0">
+          <Button variant="outline" size="sm" onClick={() => {
+            setMeetingToFinalize(null);
+            navigate(`/onboarding-tasks/${meetingToFinalize?.project_id}?tab=meetings`);
+            onOpenChange(false);
+          }}>
+            Abrir no Projeto
+          </Button>
+          <div className="flex gap-2 ml-auto">
+            <Button variant="outline" onClick={() => setMeetingToFinalize(null)} disabled={saving}>
+              Cancelar
+            </Button>
+            {meetingToFinalize?.is_finalized ? (
+              <Button onClick={handleSaveNotes} disabled={saving}>
+                {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Salvar Alterações"}
+              </Button>
+            ) : (
+              <Button onClick={handleFinalize} disabled={saving}>
+                {saving ? <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Salvando...</> : "Finalizar Reunião"}
+              </Button>
+            )}
+          </div>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+    </>
   );
 };
