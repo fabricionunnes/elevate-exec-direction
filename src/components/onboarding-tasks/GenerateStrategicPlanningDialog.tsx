@@ -266,26 +266,65 @@ export const GenerateStrategicPlanningDialog = ({
   const [editingSubactionIndex, setEditingSubactionIndex] = useState<{ actionIdx: number; subIdx: number } | null>(null);
   const [newSubactionText, setNewSubactionText] = useState("");
   const [addingSubactionToAction, setAddingSubactionToAction] = useState<number | null>(null);
+  const [loadingSaved, setLoadingSaved] = useState(false);
+  const [savedPlanId, setSavedPlanId] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
+  // Load saved plan when dialog opens
   useEffect(() => {
-    if (open) {
-      setContent("");
-      setIsComplete(false);
-      setTaskCreated(false);
-      setEditableCronograma([]);
-      setEditingActionIndex(null);
-      setEditingSubactionIndex(null);
+    if (open && projectId) {
+      setLoadingSaved(true);
+      (supabase
+        .from("project_strategic_plans") as any)
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle()
+        .then(({ data }) => {
+          if (data) {
+            setContent(data.raw_content);
+            contentRef.current = data.raw_content;
+            setIsComplete(true);
+            setSavedPlanId(data.id);
+            if (data.editable_cronograma) {
+              setEditableCronograma(data.editable_cronograma as unknown as CronogramaAction[]);
+            } else {
+              const parsed = parseContent(data.raw_content);
+              setEditableCronograma(parsed.cronograma);
+            }
+          } else {
+            setContent("");
+            setIsComplete(false);
+            setTaskCreated(false);
+            setEditableCronograma([]);
+            setSavedPlanId(null);
+          }
+          setEditingActionIndex(null);
+          setEditingSubactionIndex(null);
+          setLoadingSaved(false);
+        });
     }
-  }, [open]);
+  }, [open, projectId]);
 
-  // When content is complete, initialize editable cronograma
-  useEffect(() => {
-    if (isComplete && content) {
-      const parsed = parseContent(content);
-      setEditableCronograma(parsed.cronograma);
+  // Save to database whenever content is complete
+  const savePlanToDb = async (rawContent: string, cronograma: CronogramaAction[]) => {
+    if (!projectId || !rawContent) return;
+    try {
+      const payload = {
+        project_id: projectId,
+        raw_content: rawContent,
+        editable_cronograma: cronograma as unknown as Record<string, unknown>[],
+      };
+      const { data, error } = await (supabase
+        .from("project_strategic_plans") as any)
+        .upsert(payload, { onConflict: "project_id" })
+        .select("id")
+        .single();
+      if (error) throw error;
+      if (data) setSavedPlanId(data.id);
+    } catch (err) {
+      console.error("Error saving strategic plan:", err);
     }
-  }, [isComplete, content]);
+  };
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -293,9 +332,12 @@ export const GenerateStrategicPlanningDialog = ({
     }
   }, [content]);
 
+  const contentRef = useRef("");
+
   const handleGenerate = async () => {
     setGenerating(true);
     setContent("");
+    contentRef.current = "";
     setIsComplete(false);
 
     try {
@@ -362,7 +404,11 @@ export const GenerateStrategicPlanningDialog = ({
             const parsed = JSON.parse(jsonStr);
             const deltaContent = parsed.choices?.[0]?.delta?.content;
             if (deltaContent) {
-              setContent((prev) => prev + deltaContent);
+              setContent((prev) => {
+                const updated = prev + deltaContent;
+                contentRef.current = updated;
+                return updated;
+              });
             }
           } catch {
             buffer = line + "\n" + buffer;
@@ -370,6 +416,12 @@ export const GenerateStrategicPlanningDialog = ({
           }
         }
       }
+
+      // Save generated plan to DB
+      const finalContent = contentRef.current;
+      const parsed = parseContent(finalContent);
+      setEditableCronograma(parsed.cronograma);
+      await savePlanToDb(finalContent, parsed.cronograma);
 
       setIsComplete(true);
     } catch (error: any) {
@@ -385,7 +437,17 @@ export const GenerateStrategicPlanningDialog = ({
     toast.success("Planejamento copiado para a área de transferência");
   };
 
-  // Cronograma editing functions
+  // Auto-save cronograma edits to DB (debounced)
+  const saveTimerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
+  useEffect(() => {
+    if (!isComplete || !content || loadingSaved) return;
+    if (saveTimerRef.current) clearTimeout(saveTimerRef.current);
+    saveTimerRef.current = setTimeout(() => {
+      savePlanToDb(content, editableCronograma);
+    }, 1000);
+    return () => { if (saveTimerRef.current) clearTimeout(saveTimerRef.current); };
+  }, [editableCronograma, isComplete, content, loadingSaved]);
+
   const moveAction = (index: number, direction: "up" | "down") => {
     const newCronograma = [...editableCronograma];
     const targetIndex = direction === "up" ? index - 1 : index + 1;
@@ -771,7 +833,12 @@ export const GenerateStrategicPlanningDialog = ({
         </DialogHeader>
 
         <div className="flex-1 min-h-0 overflow-y-auto" ref={scrollRef}>
-          {!content && !generating ? (
+          {loadingSaved ? (
+            <div className="flex flex-col items-center justify-center py-16 gap-4 px-6">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <p className="text-muted-foreground">Carregando planejamento salvo...</p>
+            </div>
+          ) : !content && !generating ? (
             <div className="flex flex-col items-center justify-center py-16 gap-4 px-6">
               <FileText className="h-16 w-16 text-muted-foreground opacity-50" />
               <p className="text-muted-foreground text-center max-w-md">
