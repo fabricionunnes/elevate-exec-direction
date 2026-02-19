@@ -253,7 +253,7 @@ export const GeneratePDFTasksDialog = ({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className={step === 'preview' ? "sm:max-w-4xl max-h-[90vh]" : "sm:max-w-md"}>
+      <DialogContent className={step === 'preview' ? "sm:max-w-4xl max-h-[90vh] flex flex-col" : "sm:max-w-md"}>
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <FileText className="h-5 w-5 text-primary" />
@@ -357,7 +357,7 @@ export const GeneratePDFTasksDialog = ({
 
         {/* STEP: PREVIEW */}
         {step === 'preview' && (
-          <div className="space-y-4">
+          <div className="flex flex-col gap-4 min-h-0 flex-1 overflow-hidden">
             {summary && (
               <div className="p-3 bg-muted/50 rounded-lg text-sm">
                 <strong>Resumo:</strong> {summary}
@@ -379,7 +379,7 @@ export const GeneratePDFTasksDialog = ({
               </Badge>
             </div>
 
-            <ScrollArea className="h-[400px] pr-4">
+            <ScrollArea className="flex-1 min-h-0 max-h-[50vh] pr-4">
               <div className="space-y-6">
                 {Object.entries(tasksByPhase).map(([phase, tasks]) => (
                   <div key={phase} className="space-y-2">
