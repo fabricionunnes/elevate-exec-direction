@@ -379,8 +379,8 @@ export const GeneratePDFTasksDialog = ({
               </Badge>
             </div>
 
-            <ScrollArea className="flex-1 min-h-0 max-h-[50vh] pr-4">
-              <div className="space-y-6">
+            <div className="overflow-y-auto max-h-[50vh] pr-2 border rounded-md">
+              <div className="space-y-6 p-3">
                 {Object.entries(tasksByPhase).map(([phase, tasks]) => (
                   <div key={phase} className="space-y-2">
                     <h4 className="font-semibold text-sm text-muted-foreground uppercase tracking-wide">
@@ -439,7 +439,7 @@ export const GeneratePDFTasksDialog = ({
                   </div>
                 ))}
               </div>
-            </ScrollArea>
+            </div>
 
             <div className="flex gap-2 justify-between">
               <Button variant="ghost" onClick={handleBack} disabled={isCreating}>
