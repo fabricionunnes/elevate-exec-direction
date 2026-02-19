@@ -599,6 +599,16 @@ export function ConversationSidebar({
           leads={linkedLeads} 
           loading={loadingLinkedLeads} 
           defaultOpen={linkedLeadsOpen}
+          onAddToFunnel={(lead) => {
+            setSelectedLeadForPipelineChange(lead);
+            setNewPipelineId("");
+            setShowChangePipelineDialog(true);
+          }}
+          onChangeFunnel={(lead) => {
+            setSelectedLeadForPipelineChange(lead);
+            setNewPipelineId(lead.pipeline?.id || "");
+            setShowChangePipelineDialog(true);
+          }}
         />
       )}
 
@@ -987,23 +997,27 @@ export function ConversationSidebar({
         </DialogContent>
       </Dialog>
 
-      {/* Change Pipeline Dialog */}
+      {/* Change/Add Pipeline Dialog */}
       <Dialog open={showChangePipelineDialog} onOpenChange={setShowChangePipelineDialog}>
         <DialogContent className="max-w-md">
           <DialogHeader>
-            <DialogTitle>Mudar de Funil</DialogTitle>
+            <DialogTitle>
+              {selectedLeadForPipelineChange?.pipeline?.id ? "Mudar de Funil" : "Adicionar ao Funil"}
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {selectedLeadForPipelineChange && (
               <div className="p-3 bg-muted/50 rounded-lg">
                 <p className="text-sm font-medium">{selectedLeadForPipelineChange.name}</p>
                 <p className="text-xs text-muted-foreground">
-                  Funil atual: {selectedLeadForPipelineChange.pipeline?.name || "Nenhum"}
+                  {selectedLeadForPipelineChange.pipeline?.name 
+                    ? `Funil atual: ${selectedLeadForPipelineChange.pipeline.name}`
+                    : "Sem funil atribuído"}
                 </p>
               </div>
             )}
             <div>
-              <Label>Novo Funil *</Label>
+              <Label>{selectedLeadForPipelineChange?.pipeline?.id ? "Novo Funil *" : "Funil *"}</Label>
               <Select value={newPipelineId} onValueChange={setNewPipelineId}>
                 <SelectTrigger className="mt-2">
                   <SelectValue placeholder="Selecione um funil" />
@@ -1019,12 +1033,12 @@ export function ConversationSidebar({
                 </SelectContent>
               </Select>
               <p className="text-xs text-muted-foreground mt-1">
-                O lead será movido para a primeira etapa do novo funil.
+                O lead será movido para a primeira etapa do funil selecionado.
               </p>
             </div>
             <Button onClick={handleChangePipeline} className="w-full" disabled={loading}>
               <ArrowRightLeft className="h-4 w-4 mr-2" />
-              {loading ? "Movendo..." : "Mover Lead"}
+              {loading ? "Movendo..." : selectedLeadForPipelineChange?.pipeline?.id ? "Mover Lead" : "Adicionar ao Funil"}
             </Button>
           </div>
         </DialogContent>
