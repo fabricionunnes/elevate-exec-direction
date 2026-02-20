@@ -10049,6 +10049,7 @@ export type Database = {
           is_automation: boolean | null
           lead_id: string
           notes: string | null
+          notified_at: string | null
           responsible_staff_id: string | null
           scheduled_at: string | null
           status: string | null
@@ -10065,6 +10066,7 @@ export type Database = {
           is_automation?: boolean | null
           lead_id: string
           notes?: string | null
+          notified_at?: string | null
           responsible_staff_id?: string | null
           scheduled_at?: string | null
           status?: string | null
@@ -10081,6 +10083,7 @@ export type Database = {
           is_automation?: boolean | null
           lead_id?: string
           notes?: string | null
+          notified_at?: string | null
           responsible_staff_id?: string | null
           scheduled_at?: string | null
           status?: string | null
