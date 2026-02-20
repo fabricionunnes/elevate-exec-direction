@@ -86,13 +86,42 @@ const OnboardingCompaniesPage = () => {
         `)
         .order("name");
 
-      // Filter based on role
-      if (role === "cs") {
-        query = query.eq("cs_id", staffId);
-      } else if (role === "consultant") {
-        query = query.eq("consultant_id", staffId);
+      // Filter based on role - non-admin/master users see only their companies
+      if (role !== "admin" && role !== "master") {
+        // First get company IDs where staff is assigned at the project level
+        const { data: projectCompanies } = await supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id, company_id")
+          .or(`consultant_id.eq.${staffId},cs_id.eq.${staffId}`);
+        
+        const projectCompanyIds = new Set(
+          (projectCompanies || [])
+            .map(p => p.onboarding_company_id || p.company_id)
+            .filter(Boolean)
+        );
+
+        // Get company IDs where staff is assigned at company level
+        const { data: directCompanies } = await supabase
+          .from("onboarding_companies")
+          .select("id")
+          .or(`cs_id.eq.${staffId},consultant_id.eq.${staffId}`);
+        
+        const directCompanyIds = new Set(
+          (directCompanies || []).map(c => c.id)
+        );
+
+        // Merge both sets
+        const allCompanyIds = [...new Set([...projectCompanyIds, ...directCompanyIds])];
+        
+        if (allCompanyIds.length === 0) {
+          setCompanies([]);
+          setLoading(false);
+          return;
+        }
+        
+        query = query.in("id", allCompanyIds);
       }
-      // Admin sees all companies (no filter)
+      // Admin/master sees all companies (no filter)
 
       const { data, error } = await query;
 
