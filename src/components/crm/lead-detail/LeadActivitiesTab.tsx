@@ -230,6 +230,9 @@ export const LeadActivitiesTab = ({
 
   const currentStageIndex = stages.findIndex(s => s.id === currentStageId);
 
+  // Manual activities (added via AddActivityDialog) that are not completed
+  const manualActivities = activities.filter(a => a.status !== "completed" && a.type !== "note");
+
   // Group activities by date
   const groupedActivities = activities.reduce((groups, activity) => {
     const date = activity.scheduled_at 
@@ -421,6 +424,40 @@ export const LeadActivitiesTab = ({
                   </div>
                 )}
                 
+                {/* Manual Activities (added via dialog) */}
+                {manualActivities.length > 0 && (
+                  <>
+                    <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-t border-border bg-muted/30">
+                      Tarefas adicionadas
+                    </div>
+                    {manualActivities.map((activity) => (
+                      <div
+                        key={activity.id}
+                        className="flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4 hover:bg-muted/30 border-l-transparent"
+                      >
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            onActivityComplete(activity.id);
+                          }}
+                          className="w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors border-muted-foreground/50 hover:border-primary"
+                        />
+                        <span className="text-muted-foreground shrink-0">
+                          {getActivityIcon(activity.type)}
+                        </span>
+                        <div className="flex-1 min-w-0">
+                          <span className="text-sm truncate block">{activity.title}</span>
+                          {activity.scheduled_at && (
+                            <span className="text-xs text-muted-foreground">
+                              {format(new Date(activity.scheduled_at), "dd/MM HH:mm")}
+                            </span>
+                          )}
+                        </div>
+                      </div>
+                    ))}
+                  </>
+                )}
+
                 {/* Add Task Button */}
                 <button
                   onClick={() => setShowAddActivityDialog(true)}
