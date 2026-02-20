@@ -130,14 +130,20 @@ export const TaskDetailsDialog = ({
   const isStaffRole = isConsultant || isCS;
   const isTaskCreatedByCurrentUser = taskCreatedBy === currentUserId;
   
+  // Check if the current user is the assignee of this task
+  const isTaskAssignee = !!(currentUserId && task && (
+    task.assignee_id === currentUserId || 
+    task.responsible_staff?.id === currentUserId
+  ));
+  
   // Only Admin and CS can edit dates - consultants cannot modify due dates
   const canEditDates = isAdmin || isCS;
   
   // CS and Consultant can edit assignee
   const canEditAssignee = isAdmin || isStaffRole;
   
-  // CS and Consultant can change status and observations
-  const canEditStatusAndObservations = isAdmin || isStaffRole;
+  // CS, Consultant, and task assignees can change status and observations
+  const canEditStatusAndObservations = isAdmin || isStaffRole || isTaskAssignee;
   
   // Title: Admin/CS can always edit, Consultant only if they created the task
   const canEditTitle = isAdmin || isCS || (isConsultant && isTaskCreatedByCurrentUser);
