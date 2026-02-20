@@ -1128,9 +1128,11 @@ const OnboardingTasksPage = () => {
       }
       
       // For consultants: only show companies where they are the consultant or CS
+      // Check both company-level AND project-level assignments
       if (currentUserRole === "consultant" && currentStaffId) {
         const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
-        if (!isMyCompany) return false;
+        const hasMyProject = company.projects?.some(p => p.consultant_id === currentStaffId || p.cs_id === currentStaffId);
+        if (!isMyCompany && !hasMyProject) return false;
       }
       
       // Text search filter
