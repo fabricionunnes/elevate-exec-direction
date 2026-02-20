@@ -551,15 +551,15 @@ const OnboardingProjectPage = () => {
       const { error } = await supabase.from("onboarding_tasks").update(updates).eq("id", taskId);
       if (error) throw error;
 
-      // Log history
+      // Log history (non-blocking - don't let history failures prevent task completion)
       if (task && task.status !== newStatus) {
-        await logTaskHistory({
+        logTaskHistory({
           taskId,
           action: "status_change",
           fieldChanged: "status",
           oldValue: getStatusLabel(task.status),
           newValue: getStatusLabel(newStatus),
-        });
+        }).catch(err => console.warn("Failed to log task history:", err));
       }
 
       // Sync: If task is completed, check if it has a meeting_link and finalize the associated meeting
