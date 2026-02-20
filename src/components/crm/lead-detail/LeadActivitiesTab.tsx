@@ -25,12 +25,14 @@ import {
   Settings,
   Send,
   Loader2,
+  Pencil,
 } from "lucide-react";
 import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { AddActivityDialog } from "@/components/crm/AddActivityDialog";
+import { EditActivityDialog } from "@/components/crm/EditActivityDialog";
 import { ScheduleLeadMeetingDialog } from "./ScheduleLeadMeetingDialog";
 import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButton";
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
@@ -120,6 +122,7 @@ export const LeadActivitiesTab = ({
   const [sendingMessage, setSendingMessage] = useState(false);
   const [userInstanceId, setUserInstanceId] = useState<string | null>(null);
   const [userStaffId, setUserStaffId] = useState<string | null>(null);
+  const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
 
   // Fetch user's WhatsApp instance with send permission
   useEffect(() => {
@@ -478,6 +481,17 @@ export const LeadActivitiesTab = ({
                             </span>
                           )}
                         </div>
+                        {activity.status !== "completed" && (
+                          <button
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              setEditingActivity(activity);
+                            }}
+                            className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                          >
+                            <Pencil className="h-3.5 w-3.5" />
+                          </button>
+                        )}
                       </div>
                     ))}
                   </>
@@ -622,6 +636,13 @@ export const LeadActivitiesTab = ({
         leadId={leadId}
         leadName={leadName}
         leadEmail={leadEmail}
+        onSuccess={onRefresh}
+      />
+
+      <EditActivityDialog
+        open={!!editingActivity}
+        onOpenChange={(open) => { if (!open) setEditingActivity(null); }}
+        activity={editingActivity}
         onSuccess={onRefresh}
       />
     </div>
