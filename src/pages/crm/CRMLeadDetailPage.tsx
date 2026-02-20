@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   AlertDialog,
   AlertDialogAction,
@@ -146,6 +147,8 @@ export const CRMLeadDetailPage = () => {
   const [selectedLossReason, setSelectedLossReason] = useState("");
   const [activeTab, setActiveTab] = useState("activities");
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
+  const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
+  const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
@@ -286,6 +289,38 @@ export const CRMLeadDetailPage = () => {
   useEffect(() => {
     loadLead();
   }, [loadLead]);
+
+  // Load all available tags
+  useEffect(() => {
+    const loadTags = async () => {
+      const { data } = await supabase
+        .from("crm_tags")
+        .select("id, name, color")
+        .eq("is_active", true)
+        .order("name");
+      setAllTags(data || []);
+    };
+    loadTags();
+  }, []);
+
+  const handleAddTag = async (tagId: string) => {
+    if (!lead) return;
+    try {
+      const { error } = await supabase
+        .from("crm_lead_tags")
+        .insert({ lead_id: lead.id, tag_id: tagId });
+      if (error) throw error;
+      toast.success("Etiqueta adicionada");
+      setTagPopoverOpen(false);
+      loadLead();
+    } catch (error: any) {
+      if (error.code === "23505") {
+        toast.info("Etiqueta já adicionada");
+      } else {
+        toast.error("Erro ao adicionar etiqueta");
+      }
+    }
+  };
 
   const handleStageChange = async (stageId: string) => {
     if (!lead) return;
@@ -853,9 +888,36 @@ export const CRMLeadDetailPage = () => {
               </button>
             </Badge>
           ))}
-          <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground">
-            <Plus className="h-3 w-3" />
-          </Button>
+          <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+            <PopoverTrigger asChild>
+              <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground">
+                <Plus className="h-3 w-3" />
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-56 p-2" align="start">
+              <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">Adicionar etiqueta</p>
+              <div className="max-h-48 overflow-y-auto space-y-0.5">
+                {allTags
+                  .filter(tag => !lead.tags?.some(t => t.tag.id === tag.id))
+                  .map(tag => (
+                    <button
+                      key={tag.id}
+                      onClick={() => handleAddTag(tag.id)}
+                      className="flex items-center gap-2 w-full px-2 py-1.5 text-sm rounded hover:bg-muted transition-colors"
+                    >
+                      <span
+                        className="w-3 h-3 rounded-full shrink-0"
+                        style={{ backgroundColor: tag.color }}
+                      />
+                      {tag.name}
+                    </button>
+                  ))}
+                {allTags.filter(tag => !lead.tags?.some(t => t.tag.id === tag.id)).length === 0 && (
+                  <p className="text-xs text-muted-foreground text-center py-2">Todas etiquetas já aplicadas</p>
+                )}
+              </div>
+            </PopoverContent>
+          </Popover>
 
         {lead.stage?.final_type === "won" && linkedProject?.id && (
           <Link
