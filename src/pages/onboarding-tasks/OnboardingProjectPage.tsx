@@ -548,10 +548,12 @@ const OnboardingProjectPage = () => {
         updates.completed_at = null;
       }
 
-      const { error } = await supabase.from("onboarding_tasks").update(updates).eq("id", taskId);
+      const { error, count } = await supabase.from("onboarding_tasks").update(updates).eq("id", taskId);
       if (error) throw error;
 
-      // Log history (non-blocking - don't let history failures prevent task completion)
+      console.log("[handleStatusChange] Task updated successfully:", taskId, "->", newStatus);
+
+      // Log history (non-blocking)
       if (task && task.status !== newStatus) {
         logTaskHistory({
           taskId,
@@ -562,35 +564,42 @@ const OnboardingProjectPage = () => {
         }).catch(err => console.warn("Failed to log task history:", err));
       }
 
-      // Sync: If task is completed, check if it has a meeting_link and finalize the associated meeting
+      // Sync meeting (non-blocking)
       if (newStatus === "completed") {
-        const { data: taskWithMeetingLink } = await supabase
-          .from("onboarding_tasks")
-          .select("meeting_link")
-          .eq("id", taskId)
-          .maybeSingle();
+        (async () => {
+          try {
+            const { data: taskWithMeetingLink } = await supabase
+              .from("onboarding_tasks")
+              .select("meeting_link")
+              .eq("id", taskId)
+              .maybeSingle();
 
-        if (taskWithMeetingLink?.meeting_link) {
-          const { data: meetingToFinalize } = await supabase
-            .from("onboarding_meeting_notes")
-            .select("id, is_finalized")
-            .eq("project_id", projectId)
-            .eq("meeting_link", taskWithMeetingLink.meeting_link)
-            .maybeSingle();
+            if (taskWithMeetingLink?.meeting_link) {
+              const { data: meetingToFinalize } = await supabase
+                .from("onboarding_meeting_notes")
+                .select("id, is_finalized")
+                .eq("project_id", projectId)
+                .eq("meeting_link", taskWithMeetingLink.meeting_link)
+                .maybeSingle();
 
-          if (meetingToFinalize && !meetingToFinalize.is_finalized) {
-            await supabase
-              .from("onboarding_meeting_notes")
-              .update({
-                is_finalized: true,
-                notes: "Reunião finalizada automaticamente ao concluir tarefa.",
-              })
-              .eq("id", meetingToFinalize.id);
+              if (meetingToFinalize && !meetingToFinalize.is_finalized) {
+                await supabase
+                  .from("onboarding_meeting_notes")
+                  .update({
+                    is_finalized: true,
+                    notes: "Reunião finalizada automaticamente ao concluir tarefa.",
+                  })
+                  .eq("id", meetingToFinalize.id);
+              }
+            }
+          } catch (err) {
+            console.warn("Failed to sync meeting:", err);
           }
-        }
+        })();
       }
 
-      fetchProjectData();
+      await fetchProjectData();
+      console.log("[handleStatusChange] Data refreshed after status change");
 
       if (task?.recurrence && newStatus === "completed") {
         toast.success("Tarefa concluída! Nova tarefa recorrente criada automaticamente.");
