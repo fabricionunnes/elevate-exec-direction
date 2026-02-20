@@ -2753,7 +2753,15 @@ const OnboardingTasksPage = () => {
                 {expandedCompanyId === company.id && (
                   <div className="mt-1 ml-3 sm:ml-6 pl-3 sm:pl-6 border-l-2 border-dashed border-muted-foreground/30 space-y-2 py-2">
                     {company.projects && company.projects.length > 0 ? (
-                      company.projects.map((project) => (
+                      company.projects
+                        .filter((project) => {
+                          // For consultants: only show projects where they are assigned
+                          if (currentUserRole === "consultant" && currentStaffId) {
+                            return project.consultant_id === currentStaffId || project.cs_id === currentStaffId;
+                          }
+                          return true;
+                        })
+                        .map((project) => (
                         <Card
                           key={project.id}
                           className="cursor-pointer hover:shadow-md transition-all bg-white border border-muted hover:border-primary/50"
