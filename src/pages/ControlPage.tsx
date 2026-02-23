@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { BuyNowButton } from "@/components/checkout/BuyNowButton";
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -217,12 +218,7 @@ export default function ControlPage() {
               garantindo disciplina, constância e foco mês após mês.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/diagnostico">
-                <Button variant="hero" size="xl">
-                  Aplicar Agora
-                  <ArrowRight className="ml-2" />
-                </Button>
-              </Link>
+              <BuyNowButton productId="control" productName="UNV Control" amountCents={599700} priceLabel="R$ 5.997/ano" />
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
                   Ver Todos os Serviços
@@ -662,12 +658,7 @@ export default function ControlPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Resultados dependem da execução. UNV direciona e cobra — o cliente executa.
           </p>
-          <Link to="/diagnostico">
-            <Button variant="hero" size="xl">
-              Aplicar Agora
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+          <BuyNowButton productId="control" productName="UNV Control" amountCents={599700} priceLabel="R$ 5.997/ano" />
         </div>
       </section>
 

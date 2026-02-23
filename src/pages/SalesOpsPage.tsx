@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { BuyNowButton } from "@/components/checkout/BuyNowButton";
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -293,12 +294,12 @@ export default function SalesOpsPage() {
               independentemente de quem esteja vendendo.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/diagnostico">
-                <Button variant="hero" size="xl">
-                  Aplicar Agora
-                  <ArrowRight className="ml-2" />
-                </Button>
-              </Link>
+              <BuyNowButton
+                productId="sales-ops"
+                productName="UNV Sales Ops"
+                amountCents={1200000}
+                priceLabel="R$ 12.000/ano"
+              />
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
                   Ver Todos os Serviços
@@ -873,12 +874,12 @@ export default function SalesOpsPage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Acompanhamento mensal em grupo • Focado em treinamentos
           </p>
-          <Link to="/diagnostico">
-            <Button variant="hero" size="xl">
-              Aplicar Agora
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+          <BuyNowButton
+            productId="sales-ops"
+            productName="UNV Sales Ops"
+            amountCents={1200000}
+            priceLabel="R$ 12.000/ano"
+          />
         </div>
       </section>
 

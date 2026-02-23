@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { BuyNowButton } from "@/components/checkout/BuyNowButton";
 import {
   ArrowRight,
   CheckCircle,
@@ -235,12 +236,7 @@ export default function SalesAccelerationPage() {
               Programa de 12 meses para treinar, acompanhar e acelerar seu time
               de vendas com método e previsibilidade.
             </p>
-            <Link to="/diagnostico">
-              <Button variant="hero" size="xl">
-                Aplicar para Diagnóstico
-                <ArrowRight className="ml-2" />
-              </Button>
-            </Link>
+            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={2400000} priceLabel="R$ 24.000/ano" />
           </div>
         </div>
       </section>
@@ -584,12 +580,7 @@ export default function SalesAccelerationPage() {
               Resultados variam conforme execução. Payback é projeção operacional,
               não garantia. UNV direciona e cobra — o cliente executa.
             </p>
-            <Link to="/diagnostico">
-              <Button variant="hero" size="xl">
-                Aplicar para Diagnóstico
-                <ArrowRight className="ml-2" />
-              </Button>
-            </Link>
+            <BuyNowButton productId="sales-acceleration" productName="UNV Sales Acceleration" amountCents={2400000} priceLabel="R$ 24.000/ano" />
           </div>
         </div>
       </section>
