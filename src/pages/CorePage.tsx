@@ -1,6 +1,7 @@
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
+import { BuyNowButton } from "@/components/checkout/BuyNowButton";
 import { 
   ArrowRight, 
   CheckCircle, 
@@ -204,12 +205,7 @@ export default function CorePage() {
               para que seu time consiga vender com método, clareza e controle.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link to="/diagnostico">
-                <Button variant="hero" size="xl">
-                  Aplicar Agora
-                  <ArrowRight className="ml-2" />
-                </Button>
-              </Link>
+              <BuyNowButton productId="core" productName="UNV Core" amountCents={199700} priceLabel="R$ 1.997 único" />
               <Link to="/products">
                 <Button variant="outline" size="xl" className="border-primary/30 text-foreground hover:bg-primary/10">
                   Ver Todos os Serviços
@@ -636,12 +632,7 @@ export default function CorePage() {
           <p className="text-muted-foreground/60 text-sm mb-10 max-w-md mx-auto">
             Valor varia conforme complexidade da operação. Resultados dependem da execução do cliente.
           </p>
-          <Link to="/diagnostico">
-            <Button variant="hero" size="xl">
-              Aplicar Agora
-              <ArrowRight className="ml-2" />
-            </Button>
-          </Link>
+          <BuyNowButton productId="core" productName="UNV Core" amountCents={199700} priceLabel="R$ 1.997 único" />
         </div>
       </section>
 
