@@ -227,3 +227,6 @@ verify_jwt = false
 
 [functions.generate-career-plan]
 verify_jwt = false
+
+[functions.pagarme-checkout]
+verify_jwt = false
