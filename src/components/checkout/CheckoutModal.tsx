@@ -89,12 +89,19 @@ export function CheckoutModal({
     onOpenChange(val);
   };
 
-  const formatCPF = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 11);
+  const formatDocument = (v: string) => {
+    const d = v.replace(/\D/g, "").slice(0, 14);
+    if (d.length <= 11) {
+      return d
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d)/, "$1.$2")
+        .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+    }
     return d
+      .replace(/(\d{2})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d)/, "$1.$2")
-      .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
+      .replace(/(\d{3})(\d)/, "$1/$2")
+      .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
   };
 
   const formatPhone = (v: string) => {
@@ -115,7 +122,7 @@ export function CheckoutModal({
 
   const handleSubmit = async () => {
     if (!name || !email || !document) {
-      toast.error("Preencha nome, email e CPF");
+      toast.error("Preencha nome, email e CPF/CNPJ");
       return;
     }
 
@@ -213,8 +220,8 @@ export function CheckoutModal({
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <div>
-                  <Label htmlFor="checkout-doc">CPF *</Label>
-                  <Input id="checkout-doc" value={document} onChange={(e) => setDocument(formatCPF(e.target.value))} placeholder="000.000.000-00" />
+                  <Label htmlFor="checkout-doc">CPF/CNPJ *</Label>
+                  <Input id="checkout-doc" value={document} onChange={(e) => setDocument(formatDocument(e.target.value))} placeholder="000.000.000-00 ou 00.000.000/0000-00" />
                 </div>
                 <div>
                   <Label htmlFor="checkout-phone">Telefone</Label>
