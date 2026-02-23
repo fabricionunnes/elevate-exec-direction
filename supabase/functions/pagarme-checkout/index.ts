@@ -25,6 +25,29 @@ Deno.serve(async (req) => {
     });
 
     const body = await req.json();
+
+    // If test mode, just validate the key
+    if (body.test_key === true) {
+      const testResp = await fetch("https://api.pagar.me/core/v5/orders?size=1", {
+        method: "GET",
+        headers: {
+          "Content-Type": "application/json",
+          Authorization: `Basic ${btoa(PAGARME_API_KEY + ":")}`,
+        },
+      });
+      const testData = await testResp.json();
+      return new Response(
+        JSON.stringify({
+          key_valid: testResp.ok,
+          status: testResp.status,
+          key_length: PAGARME_API_KEY.length,
+          key_prefix: PAGARME_API_KEY.substring(0, 8),
+          response_preview: JSON.stringify(testData).substring(0, 200),
+        }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const {
       customer_name,
       customer_email,
