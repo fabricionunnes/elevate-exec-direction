@@ -109,8 +109,9 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         .maybeSingle();
 
       if (existingProject) {
-        toast.error("Esta empresa já possui um projeto com este produto");
+        toast.info("Esta empresa já possui um projeto com este produto");
         setLoading(false);
+        onOpenChange(false);
         return;
       }
 
