@@ -18755,6 +18755,8 @@ export type Database = {
           product_name: string
           status: string
           updated_at: string
+          webhook_event: string | null
+          webhook_received_at: string | null
         }
         Insert: {
           amount_cents: number
@@ -18779,6 +18781,8 @@ export type Database = {
           product_name: string
           status?: string
           updated_at?: string
+          webhook_event?: string | null
+          webhook_received_at?: string | null
         }
         Update: {
           amount_cents?: number
@@ -18803,6 +18807,8 @@ export type Database = {
           product_name?: string
           status?: string
           updated_at?: string
+          webhook_event?: string | null
+          webhook_received_at?: string | null
         }
         Relationships: []
       }
