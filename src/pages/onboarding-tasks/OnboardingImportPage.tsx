@@ -367,32 +367,38 @@ export default function OnboardingImportPage() {
 
       setProgress(30);
 
-      // 2. Create project
+      // 2. Create project (or reuse existing one for same company + product)
       const { data: existingProjects } = await supabase
         .from('onboarding_projects')
         .select('id, product_name')
         .eq('onboarding_company_id', companyId)
         .ilike('product_id', service.slug);
 
-      const projectNumber = (existingProjects?.length || 0) + 1;
-      const projectName = projectNumber > 1 
-        ? `${companyNameToUse} - ${service.name} (${projectNumber})`
-        : `${companyNameToUse} - ${service.name}`;
+      let projectId: string;
 
-      const { data: newProject, error: projectError } = await supabase
-        .from('onboarding_projects')
-        .insert({
-          onboarding_company_id: companyId,
-          product_id: service.slug,
-          product_name: projectName,
-          status: 'active',
-          cs_id: selectedCS || null,
-          consultant_id: selectedConsultant || null,
-        })
-        .select('id')
-        .single();
+      if (existingProjects && existingProjects.length > 0) {
+        // Reuse existing project — never create duplicates
+        projectId = existingProjects[0].id;
+        console.log("Projeto já existe para esta empresa/produto, reutilizando:", projectId);
+      } else {
+        const projectName = `${companyNameToUse} - ${service.name}`;
 
-      if (projectError) throw projectError;
+        const { data: newProject, error: projectError } = await supabase
+          .from('onboarding_projects')
+          .insert({
+            onboarding_company_id: companyId,
+            product_id: service.slug,
+            product_name: projectName,
+            status: 'active',
+            cs_id: selectedCS || null,
+            consultant_id: selectedConsultant || null,
+          })
+          .select('id')
+          .single();
+
+        if (projectError) throw projectError;
+        projectId = newProject.id;
+      }
 
       // 3. Create staff as project users
       const staffToAdd: { staff_id: string; role: 'cs' | 'consultant' }[] = [];
@@ -418,7 +424,7 @@ export default function OnboardingImportPage() {
           const { data: existingUser } = await supabase
             .from('onboarding_users')
             .select('id')
-            .eq('project_id', newProject.id)
+            .eq('project_id', projectId)
             .eq('user_id', staffData.user_id)
             .single();
 
@@ -426,7 +432,7 @@ export default function OnboardingImportPage() {
             await supabase
               .from('onboarding_users')
               .insert({
-                project_id: newProject.id,
+                project_id: projectId,
                 user_id: staffData.user_id,
                 email: staffData.email,
                 name: staffData.name,
@@ -445,7 +451,7 @@ export default function OnboardingImportPage() {
       );
 
       const tasksData = tasksToImport.map((task, index) => ({
-        project_id: newProject.id,
+        project_id: projectId,
         title: task.name,
         description: task.notes || null,
         status: task.status,
@@ -478,8 +484,8 @@ export default function OnboardingImportPage() {
       setImportResult({
         companyId,
         companyName: companyNameToUse,
-        projectId: newProject.id,
-        projectName,
+        projectId: projectId,
+        projectName: companyNameToUse + ' - ' + service.name,
         tasksImported: imported,
       });
 
