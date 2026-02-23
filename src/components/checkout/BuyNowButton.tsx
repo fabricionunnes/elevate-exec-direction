@@ -19,7 +19,7 @@ export function BuyNowButton({
   productName,
   amountCents,
   priceLabel,
-  label = "Comprar Agora",
+  label = "Contratar Agora",
   variant = "hero",
   size = "xl",
   className,

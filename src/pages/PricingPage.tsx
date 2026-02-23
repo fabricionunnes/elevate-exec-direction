@@ -35,7 +35,7 @@ interface ProductPrice {
   tiers?: { label: string; price: string }[];
   link: string;
   category: string;
-  amountCents?: number; // for checkout - if set, shows "Comprar Agora"
+  amountCents?: number; // for checkout - if set, shows "Contratar Agora"
 }
 
 const products: ProductPrice[] = [
@@ -380,7 +380,7 @@ export default function PricingPage() {
                           className="w-full"
                           onClick={() => setCheckoutProduct(product)}
                         >
-                          Comprar Agora
+                          Contratar Agora
                         </Button>
                       )}
                       <Button variant="outline" className="w-full" asChild>
