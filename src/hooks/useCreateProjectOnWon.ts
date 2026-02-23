@@ -213,6 +213,23 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       };
     }
 
+    // Check for duplicate project (same company + same product)
+    const { data: existingProject } = await supabase
+      .from("onboarding_projects")
+      .select("id")
+      .eq("onboarding_company_id", companyId)
+      .eq("product_id", serviceData.slug || serviceData.id)
+      .maybeSingle();
+
+    if (existingProject) {
+      console.log("Projeto duplicado encontrado, pulando criação:", existingProject.id);
+      return {
+        success: true,
+        projectId: existingProject.id,
+        companyId: companyId,
+      };
+    }
+
     // Criar projeto
     const { data: project, error: projectError } = await supabase
       .from("onboarding_projects")

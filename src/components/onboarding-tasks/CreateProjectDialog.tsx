@@ -100,6 +100,20 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         companyId = newCompany.id;
       }
 
+      // Check for duplicate project (same company + same product)
+      const { data: existingProject } = await supabase
+        .from("onboarding_projects")
+        .select("id")
+        .eq("onboarding_company_id", companyId)
+        .eq("product_id", selectedProduct)
+        .maybeSingle();
+
+      if (existingProject) {
+        toast.error("Esta empresa já possui um projeto com este produto");
+        setLoading(false);
+        return;
+      }
+
       const productName = productDetails[selectedProduct]?.name || selectedProduct;
 
       // Create project linked to onboarding_company
