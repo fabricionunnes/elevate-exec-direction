@@ -17,6 +17,13 @@ Deno.serve(async (req) => {
       throw new Error("PAGARME_API_KEY not configured");
     }
 
+    // Debug: log key info (prefix only, never full key)
+    console.log("Pagar.me key info:", {
+      length: PAGARME_API_KEY.length,
+      prefix: PAGARME_API_KEY.substring(0, 8),
+      hasColon: PAGARME_API_KEY.includes(":"),
+    });
+
     const body = await req.json();
     const {
       customer_name,
