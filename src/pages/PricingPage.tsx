@@ -1,8 +1,10 @@
+import { useState } from "react";
 import { Layout } from "@/components/layout/Layout";
 import { Link } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ServiceJourneyPath } from "@/components/ServiceJourneyPath";
-import { 
+import { CheckoutModal } from "@/components/checkout/CheckoutModal";
+import {
   ArrowRight, 
   Target,
   Compass,
@@ -33,6 +35,7 @@ interface ProductPrice {
   tiers?: { label: string; price: string }[];
   link: string;
   category: string;
+  amountCents?: number; // for checkout - if set, shows "Comprar Agora"
 }
 
 const products: ProductPrice[] = [
@@ -46,7 +49,8 @@ const products: ProductPrice[] = [
     price: "R$ 1.997",
     priceType: "único",
     link: "/core",
-    category: "Trilha Principal"
+    category: "Trilha Principal",
+    amountCents: 199700,
   },
   {
     id: "control",
@@ -58,7 +62,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "À vista ou parcelado",
     link: "/control",
-    category: "Trilha Principal"
+    category: "Trilha Principal",
+    amountCents: 599700,
   },
   {
     id: "sales-acceleration",
@@ -70,7 +75,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "À vista ou parcelado",
     link: "/sales-acceleration",
-    category: "Trilha Principal"
+    category: "Trilha Principal",
+    amountCents: 2400000,
   },
   // Operação Comercial
   {
@@ -83,7 +89,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "À vista ou parcelado",
     link: "/sales-ops",
-    category: "Operação Comercial"
+    category: "Operação Comercial",
+    amountCents: 1200000,
   },
   {
     id: "ads",
@@ -135,7 +142,8 @@ const products: ProductPrice[] = [
     priceType: "/mês",
     priceNote: "+ Comissão variável escalonável",
     link: "/fractional-cro",
-    category: "Operação Comercial"
+    category: "Operação Comercial",
+    amountCents: 400000,
   },
   // Trilha Avançada
   {
@@ -147,7 +155,8 @@ const products: ProductPrice[] = [
     price: "R$ 3.997",
     priceType: "/evento",
     link: "/growth-room",
-    category: "Trilha Avançada"
+    category: "Trilha Avançada",
+    amountCents: 399700,
   },
   {
     id: "partners",
@@ -159,7 +168,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "À vista ou parcelado",
     link: "/partners",
-    category: "Trilha Avançada"
+    category: "Trilha Avançada",
+    amountCents: 3000000,
   },
   {
     id: "mastermind",
@@ -171,7 +181,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "Vagas limitadas",
     link: "/mastermind",
-    category: "Trilha Avançada"
+    category: "Trilha Avançada",
+    amountCents: 5000000,
   },
   {
     id: "execution-partnership",
@@ -183,7 +194,8 @@ const products: ProductPrice[] = [
     priceType: "projeto",
     priceNote: "3 meses • Máximo 10 empresas",
     link: "/execution-partnership",
-    category: "Trilha Avançada"
+    category: "Trilha Avançada",
+    amountCents: 4000000,
   },
   // Estratégia & Estrutura
   {
@@ -248,7 +260,8 @@ const products: ProductPrice[] = [
     priceType: "/ano",
     priceNote: "Por empresa",
     link: "/leadership",
-    category: "Outros"
+    category: "Outros",
+    amountCents: 1000000,
   }
 ];
 
@@ -261,8 +274,20 @@ const categories = [
 ];
 
 export default function PricingPage() {
+  const [checkoutProduct, setCheckoutProduct] = useState<ProductPrice | null>(null);
+
   return (
     <Layout>
+      <CheckoutModal
+        open={!!checkoutProduct}
+        onOpenChange={(open) => !open && setCheckoutProduct(null)}
+        productId={checkoutProduct?.id || ""}
+        productName={checkoutProduct?.name || ""}
+        amountCents={checkoutProduct?.amountCents || 0}
+        priceLabel={`${checkoutProduct?.price || ""} ${checkoutProduct?.priceType || ""}`}
+      />
+
+
       {/* Hero */}
       <section className="section-padding bg-gradient-to-br from-background via-background to-primary/5 relative overflow-hidden">
         <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_top_right,_var(--tw-gradient-stops))] from-primary/10 via-transparent to-transparent" />
@@ -348,12 +373,23 @@ export default function PricingPage() {
                     )}
 
                     {/* CTA */}
-                    <Button variant="outline" className="w-full" asChild>
-                      <Link to={product.link}>
-                        Ver Detalhes
-                        <ArrowRight className="ml-2 h-4 w-4" />
-                      </Link>
-                    </Button>
+                    <div className="space-y-2">
+                      {product.amountCents && (
+                        <Button
+                          variant="premium"
+                          className="w-full"
+                          onClick={() => setCheckoutProduct(product)}
+                        >
+                          Comprar Agora
+                        </Button>
+                      )}
+                      <Button variant="outline" className="w-full" asChild>
+                        <Link to={product.link}>
+                          Ver Detalhes
+                          <ArrowRight className="ml-2 h-4 w-4" />
+                        </Link>
+                      </Button>
+                    </div>
                   </div>
                 ))}
               </div>

@@ -18731,6 +18731,81 @@ export type Database = {
           },
         ]
       }
+      pagarme_orders: {
+        Row: {
+          amount_cents: number
+          boleto_barcode: string | null
+          boleto_due_date: string | null
+          boleto_url: string | null
+          created_at: string
+          customer_document: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone: string | null
+          id: string
+          installments: number | null
+          metadata: Json | null
+          pagarme_charge_id: string | null
+          pagarme_order_id: string | null
+          payment_method: string
+          pix_expires_at: string | null
+          pix_qr_code: string | null
+          pix_qr_code_url: string | null
+          product_id: string
+          product_name: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          boleto_barcode?: string | null
+          boleto_due_date?: string | null
+          boleto_url?: string | null
+          created_at?: string
+          customer_document?: string | null
+          customer_email: string
+          customer_name: string
+          customer_phone?: string | null
+          id?: string
+          installments?: number | null
+          metadata?: Json | null
+          pagarme_charge_id?: string | null
+          pagarme_order_id?: string | null
+          payment_method: string
+          pix_expires_at?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          product_id: string
+          product_name: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          boleto_barcode?: string | null
+          boleto_due_date?: string | null
+          boleto_url?: string | null
+          created_at?: string
+          customer_document?: string | null
+          customer_email?: string
+          customer_name?: string
+          customer_phone?: string | null
+          id?: string
+          installments?: number | null
+          metadata?: Json | null
+          pagarme_charge_id?: string | null
+          pagarme_order_id?: string | null
+          payment_method?: string
+          pix_expires_at?: string | null
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          product_id?: string
+          product_name?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       portal_audit_logs: {
         Row: {
           action: string

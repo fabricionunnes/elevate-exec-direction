@@ -1,0 +1,223 @@
+import { createClient } from "@supabase/supabase-js";
+
+const corsHeaders = {
+  "Access-Control-Allow-Origin": "*",
+  "Access-Control-Allow-Headers":
+    "authorization, x-client-info, apikey, content-type",
+};
+
+Deno.serve(async (req) => {
+  if (req.method === "OPTIONS") {
+    return new Response(null, { headers: corsHeaders });
+  }
+
+  try {
+    const PAGARME_API_KEY = Deno.env.get("PAGARME_API_KEY");
+    if (!PAGARME_API_KEY) {
+      throw new Error("PAGARME_API_KEY not configured");
+    }
+
+    const body = await req.json();
+    const {
+      customer_name,
+      customer_email,
+      customer_phone,
+      customer_document,
+      product_id,
+      product_name,
+      amount_cents,
+      payment_method,
+      installments = 1,
+      card_token,
+    } = body;
+
+    // Validate required fields
+    if (!customer_name || !customer_email || !product_id || !amount_cents || !payment_method) {
+      return new Response(
+        JSON.stringify({ error: "Campos obrigatórios faltando" }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Build Pagar.me order payload
+    const nameParts = customer_name.trim().split(" ");
+    const firstName = nameParts[0];
+    const lastName = nameParts.slice(1).join(" ") || firstName;
+
+    const customer: Record<string, unknown> = {
+      name: customer_name,
+      email: customer_email,
+      type: "individual",
+    };
+
+    if (customer_phone) {
+      const cleanPhone = customer_phone.replace(/\D/g, "");
+      customer.phones = {
+        mobile_phone: {
+          country_code: "55",
+          area_code: cleanPhone.substring(0, 2),
+          number: cleanPhone.substring(2),
+        },
+      };
+    }
+
+    if (customer_document) {
+      customer.document = customer_document.replace(/\D/g, "");
+      customer.document_type = customer.document.length > 11 ? "CNPJ" : "CPF";
+    }
+
+    // Build payment object based on method
+    let payment: Record<string, unknown> = {};
+
+    if (payment_method === "credit_card") {
+      if (!card_token) {
+        return new Response(
+          JSON.stringify({ error: "Token do cartão é obrigatório" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+      payment = {
+        payment_method: "credit_card",
+        credit_card: {
+          installments,
+          card_token,
+          statement_descriptor: "UNV",
+          card: {
+            billing_address: {
+              line_1: "N/A",
+              zip_code: "00000000",
+              city: "São Paulo",
+              state: "SP",
+              country: "BR",
+            },
+          },
+        },
+      };
+    } else if (payment_method === "pix") {
+      payment = {
+        payment_method: "pix",
+        pix: {
+          expires_in: 3600, // 1 hour
+        },
+      };
+    } else if (payment_method === "boleto") {
+      payment = {
+        payment_method: "boleto",
+        boleto: {
+          instructions: `Pagamento referente a ${product_name}`,
+          due_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString(),
+          document_number: "0001",
+          type: "DM",
+        },
+      };
+    }
+
+    // Create order on Pagar.me
+    const pagarmeResponse = await fetch("https://api.pagar.me/core/v5/orders", {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Basic ${btoa(PAGARME_API_KEY + ":")}`,
+      },
+      body: JSON.stringify({
+        items: [
+          {
+            amount: amount_cents,
+            description: product_name,
+            quantity: 1,
+            code: product_id,
+          },
+        ],
+        customer,
+        payments: [{ ...payment, amount: amount_cents }],
+      }),
+    });
+
+    const pagarmeData = await pagarmeResponse.json();
+
+    if (!pagarmeResponse.ok) {
+      console.error("Pagar.me error:", JSON.stringify(pagarmeData));
+      return new Response(
+        JSON.stringify({
+          error: "Erro ao processar pagamento",
+          details: pagarmeData.message || pagarmeData,
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Extract charge info
+    const charge = pagarmeData.charges?.[0];
+    const lastTransaction = charge?.last_transaction;
+
+    // Save order to database
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
+
+    const orderData: Record<string, unknown> = {
+      customer_name,
+      customer_email,
+      customer_phone,
+      customer_document,
+      product_id,
+      product_name,
+      amount_cents,
+      payment_method,
+      installments,
+      status: charge?.status === "paid" ? "paid" : "pending",
+      pagarme_order_id: pagarmeData.id,
+      pagarme_charge_id: charge?.id,
+    };
+
+    // Add PIX data
+    if (payment_method === "pix" && lastTransaction) {
+      orderData.pix_qr_code = lastTransaction.qr_code;
+      orderData.pix_qr_code_url = lastTransaction.qr_code_url;
+      orderData.pix_expires_at = lastTransaction.expires_at;
+    }
+
+    // Add boleto data
+    if (payment_method === "boleto" && lastTransaction) {
+      orderData.boleto_url = lastTransaction.url;
+      orderData.boleto_barcode = lastTransaction.barcode;
+      orderData.boleto_due_date = lastTransaction.due_at;
+    }
+
+    await supabase.from("pagarme_orders").insert(orderData);
+
+    // Build response
+    const response: Record<string, unknown> = {
+      success: true,
+      order_id: pagarmeData.id,
+      status: charge?.status,
+      payment_method,
+    };
+
+    if (payment_method === "pix") {
+      response.pix_qr_code = lastTransaction?.qr_code;
+      response.pix_qr_code_url = lastTransaction?.qr_code_url;
+      response.pix_expires_at = lastTransaction?.expires_at;
+    }
+
+    if (payment_method === "boleto") {
+      response.boleto_url = lastTransaction?.url;
+      response.boleto_barcode = lastTransaction?.barcode;
+    }
+
+    if (payment_method === "credit_card") {
+      response.paid = charge?.status === "paid";
+    }
+
+    return new Response(JSON.stringify(response), {
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  } catch (error) {
+    console.error("Checkout error:", error);
+    return new Response(
+      JSON.stringify({ error: error.message || "Erro interno" }),
+      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+    );
+  }
+});
