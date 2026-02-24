@@ -10,6 +10,13 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
 import {
   Building2,
@@ -39,6 +46,12 @@ interface UnassignedTask {
   is_overdue: boolean;
 }
 
+interface StaffMember {
+  id: string;
+  name: string;
+  role: string;
+}
+
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -46,16 +59,32 @@ interface Props {
 
 export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
   const [tasks, setTasks] = useState<UnassignedTask[]>([]);
+  const [staffList, setStaffList] = useState<StaffMember[]>([]);
   const [loading, setLoading] = useState(false);
   const [assigning, setAssigning] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [assignMode, setAssignMode] = useState<"consultant" | "manual">("consultant");
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("");
 
   useEffect(() => {
     if (open) {
       fetchUnassignedTasks();
+      fetchStaffList();
       setSelectedIds(new Set());
+      setAssignMode("consultant");
+      setSelectedStaffId("");
     }
   }, [open]);
+
+  const fetchStaffList = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name, role")
+      .eq("is_active", true)
+      .order("name");
+
+    if (data) setStaffList(data);
+  };
 
   const fetchUnassignedTasks = async () => {
     setLoading(true);
@@ -147,11 +176,20 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
   };
 
   const toggleSelectAll = () => {
-    const assignable = tasks.filter((t) => t.consultant_id);
-    if (selectedIds.size === assignable.length) {
-      setSelectedIds(new Set());
+    if (assignMode === "manual") {
+      // In manual mode, all tasks are selectable
+      if (selectedIds.size === tasks.length) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(tasks.map((t) => t.id)));
+      }
     } else {
-      setSelectedIds(new Set(assignable.map((t) => t.id)));
+      const assignable = tasks.filter((t) => t.consultant_id);
+      if (selectedIds.size === assignable.length) {
+        setSelectedIds(new Set());
+      } else {
+        setSelectedIds(new Set(assignable.map((t) => t.id)));
+      }
     }
   };
 
@@ -161,22 +199,32 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
       return;
     }
 
-    const tasksToAssign = tasks.filter(
-      (t) => selectedIds.has(t.id) && t.consultant_id
-    );
-
-    if (tasksToAssign.length === 0) {
-      toast.warning("Nenhuma tarefa selecionada possui consultor na empresa");
+    if (assignMode === "manual" && !selectedStaffId) {
+      toast.warning("Selecione um membro da equipe");
       return;
+    }
+
+    const selectedTasks = tasks.filter((t) => selectedIds.has(t.id));
+
+    if (assignMode === "consultant") {
+      const tasksWithConsultant = selectedTasks.filter((t) => t.consultant_id);
+      if (tasksWithConsultant.length === 0) {
+        toast.warning("Nenhuma tarefa selecionada possui consultor na empresa");
+        return;
+      }
     }
 
     setAssigning(true);
     try {
       let successCount = 0;
-      for (const task of tasksToAssign) {
+
+      for (const task of selectedTasks) {
+        const staffId = assignMode === "manual" ? selectedStaffId : task.consultant_id;
+        if (!staffId) continue;
+
         const { error } = await supabase
           .from("onboarding_tasks")
-          .update({ responsible_staff_id: task.consultant_id })
+          .update({ responsible_staff_id: staffId })
           .eq("id", task.id);
 
         if (!error) successCount++;
@@ -193,9 +241,13 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
     }
   };
 
-  const assignableCount = tasks.filter((t) => t.consultant_id).length;
+  const selectableCount = assignMode === "manual" ? tasks.length : tasks.filter((t) => t.consultant_id).length;
   const selectedCount = selectedIds.size;
   const overdueCount = tasks.filter((t) => t.is_overdue).length;
+
+  const isTaskSelectable = (task: UnassignedTask) => {
+    return assignMode === "manual" || !!task.consultant_id;
+  };
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -218,12 +270,44 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
               {overdueCount} atrasada(s)
             </Badge>
           )}
-          {assignableCount > 0 && (
-            <Badge className="bg-emerald-500 text-sm py-1 px-3">
-              {assignableCount} com consultor
-            </Badge>
-          )}
         </div>
+
+        {/* Assign mode selector */}
+        {!loading && tasks.length > 0 && (
+          <div className="flex flex-col gap-3 pb-3 border-b">
+            <div className="flex items-center gap-2">
+              <span className="text-sm font-medium">Atribuir para:</span>
+              <Select value={assignMode} onValueChange={(v: "consultant" | "manual") => {
+                setAssignMode(v);
+                setSelectedIds(new Set());
+                setSelectedStaffId("");
+              }}>
+                <SelectTrigger className="w-[220px] h-8 text-sm">
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="consultant">Consultor da empresa</SelectItem>
+                  <SelectItem value="manual">Escolher membro da equipe</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+
+            {assignMode === "manual" && (
+              <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                <SelectTrigger className="h-9 text-sm">
+                  <SelectValue placeholder="Selecione um membro da equipe..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList.map((staff) => (
+                    <SelectItem key={staff.id} value={staff.id}>
+                      {staff.name} ({staff.role})
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
@@ -237,75 +321,80 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
         ) : (
           <>
             {/* Select all */}
-            {assignableCount > 0 && (
+            {selectableCount > 0 && (
               <div className="flex items-center gap-2 pb-2 border-b">
                 <Checkbox
-                  checked={selectedIds.size === assignableCount && assignableCount > 0}
+                  checked={selectedIds.size === selectableCount && selectableCount > 0}
                   onCheckedChange={toggleSelectAll}
                 />
                 <span className="text-sm text-muted-foreground">
-                  Selecionar todas com consultor ({assignableCount})
+                  Selecionar todas ({selectableCount})
                 </span>
               </div>
             )}
 
             <ScrollArea className="flex-1 max-h-[50vh]">
               <div className="space-y-2 pr-2">
-                {tasks.map((task) => (
-                  <div
-                    key={task.id}
-                    className={`p-3 border rounded-lg transition-colors ${
-                      task.consultant_id
-                        ? "hover:bg-muted/50 cursor-pointer"
-                        : "opacity-60"
-                    } ${selectedIds.has(task.id) ? "bg-primary/5 border-primary/30" : ""}`}
-                    onClick={() => task.consultant_id && toggleSelect(task.id)}
-                  >
-                    <div className="flex items-start gap-3">
-                      {task.consultant_id && (
-                        <Checkbox
-                          checked={selectedIds.has(task.id)}
-                          onCheckedChange={() => toggleSelect(task.id)}
-                          onClick={(e) => e.stopPropagation()}
-                          className="mt-1"
-                        />
-                      )}
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-center gap-2 mb-1">
-                          <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
-                          <span className="text-xs text-muted-foreground truncate">
-                            {task.company_name} • {task.project_name}
-                          </span>
-                          {task.is_overdue && (
-                            <Badge variant="destructive" className="text-[10px] py-0 h-4">
-                              Atrasada
-                            </Badge>
-                          )}
-                        </div>
-                        <p className="font-medium text-sm truncate">{task.title}</p>
-                        <div className="flex items-center gap-3 mt-1">
-                          {task.due_date && (
-                            <div className="flex items-center gap-1">
-                              <Calendar className="h-3 w-3 text-muted-foreground" />
-                              <span className={`text-xs ${task.is_overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
-                                {formatDateLocal(task.due_date, "dd/MM/yyyy")}
-                              </span>
-                            </div>
-                          )}
-                          {task.consultant_id ? (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 border-emerald-300 text-emerald-600">
-                              → {task.consultant_name}
-                            </Badge>
-                          ) : (
-                            <Badge variant="outline" className="text-[10px] py-0 h-4 border-muted-foreground/40 text-muted-foreground">
-                              Sem consultor na empresa
-                            </Badge>
-                          )}
+                {tasks.map((task) => {
+                  const selectable = isTaskSelectable(task);
+                  return (
+                    <div
+                      key={task.id}
+                      className={`p-3 border rounded-lg transition-colors ${
+                        selectable
+                          ? "hover:bg-muted/50 cursor-pointer"
+                          : "opacity-60"
+                      } ${selectedIds.has(task.id) ? "bg-primary/5 border-primary/30" : ""}`}
+                      onClick={() => selectable && toggleSelect(task.id)}
+                    >
+                      <div className="flex items-start gap-3">
+                        {selectable && (
+                          <Checkbox
+                            checked={selectedIds.has(task.id)}
+                            onCheckedChange={() => toggleSelect(task.id)}
+                            onClick={(e) => e.stopPropagation()}
+                            className="mt-1"
+                          />
+                        )}
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-center gap-2 mb-1">
+                            <Building2 className="h-3 w-3 text-muted-foreground flex-shrink-0" />
+                            <span className="text-xs text-muted-foreground truncate">
+                              {task.company_name} • {task.project_name}
+                            </span>
+                            {task.is_overdue && (
+                              <Badge variant="destructive" className="text-[10px] py-0 h-4">
+                                Atrasada
+                              </Badge>
+                            )}
+                          </div>
+                          <p className="font-medium text-sm truncate">{task.title}</p>
+                          <div className="flex items-center gap-3 mt-1">
+                            {task.due_date && (
+                              <div className="flex items-center gap-1">
+                                <Calendar className="h-3 w-3 text-muted-foreground" />
+                                <span className={`text-xs ${task.is_overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
+                                  {formatDateLocal(task.due_date, "dd/MM/yyyy")}
+                                </span>
+                              </div>
+                            )}
+                            {assignMode === "consultant" && (
+                              task.consultant_id ? (
+                                <Badge variant="outline" className="text-[10px] py-0 h-4">
+                                  → {task.consultant_name}
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="text-[10px] py-0 h-4 text-muted-foreground">
+                                  Sem consultor na empresa
+                                </Badge>
+                              )
+                            )}
+                          </div>
                         </div>
                       </div>
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
               </div>
             </ScrollArea>
           </>
@@ -320,17 +409,17 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
             <Button variant="outline" onClick={() => onOpenChange(false)}>
               Fechar
             </Button>
-            {assignableCount > 0 && (
+            {tasks.length > 0 && (
               <Button
                 onClick={handleDistribute}
-                disabled={selectedCount === 0 || assigning}
+                disabled={selectedCount === 0 || assigning || (assignMode === "manual" && !selectedStaffId)}
               >
                 {assigning ? (
                   <Loader2 className="h-4 w-4 mr-2 animate-spin" />
                 ) : (
                   <UserPlus className="h-4 w-4 mr-2" />
                 )}
-                Distribuir para Consultor
+                Distribuir
               </Button>
             )}
           </div>
