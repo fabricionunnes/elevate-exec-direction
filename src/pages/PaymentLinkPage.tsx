@@ -1,9 +1,10 @@
 import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft } from "lucide-react";
+import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft, ClipboardList } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
@@ -26,6 +27,7 @@ interface GeneratedLink {
 }
 
 export default function PaymentLinkPage() {
+  const navigate = useNavigate();
   const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("pix");
@@ -88,10 +90,18 @@ export default function PaymentLinkPage() {
           <Button variant="ghost" size="icon" onClick={() => window.history.back()}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
-          <div>
+          <div className="flex-1">
             <h1 className="text-2xl font-bold text-foreground">Gerador de Links de Pagamento</h1>
             <p className="text-muted-foreground text-sm">Crie links para cobrar seus clientes via PIX, Boleto ou Cartão</p>
           </div>
+          <Button
+            variant="outline"
+            onClick={() => navigate("/onboarding-tasks/financeiro")}
+            className="gap-2"
+          >
+            <ClipboardList className="h-4 w-4" />
+            <span className="hidden sm:inline">Ver Cobranças</span>
+          </Button>
         </div>
 
         <Card>
