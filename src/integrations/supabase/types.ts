@@ -18747,6 +18747,7 @@ export type Database = {
           metadata: Json | null
           pagarme_charge_id: string | null
           pagarme_order_id: string | null
+          payment_link_id: string | null
           payment_method: string
           pix_expires_at: string | null
           pix_qr_code: string | null
@@ -18773,6 +18774,7 @@ export type Database = {
           metadata?: Json | null
           pagarme_charge_id?: string | null
           pagarme_order_id?: string | null
+          payment_link_id?: string | null
           payment_method: string
           pix_expires_at?: string | null
           pix_qr_code?: string | null
@@ -18799,6 +18801,7 @@ export type Database = {
           metadata?: Json | null
           pagarme_charge_id?: string | null
           pagarme_order_id?: string | null
+          payment_link_id?: string | null
           payment_method?: string
           pix_expires_at?: string | null
           pix_qr_code?: string | null
@@ -18809,6 +18812,47 @@ export type Database = {
           updated_at?: string
           webhook_event?: string | null
           webhook_received_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pagarme_orders_payment_link_id_fkey"
+            columns: ["payment_link_id"]
+            isOneToOne: false
+            referencedRelation: "payment_links"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      payment_links: {
+        Row: {
+          amount_cents: number
+          created_at: string
+          created_by: string | null
+          description: string
+          id: string
+          installments: number
+          payment_method: string
+          url: string
+        }
+        Insert: {
+          amount_cents: number
+          created_at?: string
+          created_by?: string | null
+          description: string
+          id?: string
+          installments?: number
+          payment_method: string
+          url: string
+        }
+        Update: {
+          amount_cents?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          id?: string
+          installments?: number
+          payment_method?: string
+          url?: string
         }
         Relationships: []
       }

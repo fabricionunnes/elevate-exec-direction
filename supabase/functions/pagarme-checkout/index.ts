@@ -59,6 +59,7 @@ Deno.serve(async (req) => {
       payment_method,
       installments = 1,
       card_token,
+      payment_link_id,
     } = body;
 
     // Validate required fields
@@ -199,6 +200,7 @@ Deno.serve(async (req) => {
       status: charge?.status === "paid" ? "paid" : "pending",
       pagarme_order_id: pagarmeData.id,
       pagarme_charge_id: charge?.id,
+      payment_link_id: payment_link_id || null,
     };
 
     // Add PIX data

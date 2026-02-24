@@ -49,30 +49,58 @@ export default function PaymentLinkPage() {
       return;
     }
 
-    const amountCents = Math.round(amount * 100);
+    setLoading(true);
+    try {
+      const amountCents = Math.round(amount * 100);
+      const publishedUrl = "https://elevate-exec-direction.lovable.app";
 
-    // Build the checkout URL with params
-    const params = new URLSearchParams({
-      product: description.trim(),
-      amount: amountCents.toString(),
-      method,
-      installments: installments.toString(),
-    });
+      // Save link to DB first
+      const { data: linkRow, error } = await supabase
+        .from("payment_links")
+        .insert({
+          description: description.trim(),
+          amount_cents: amountCents,
+          payment_method: method,
+          installments,
+          url: "", // placeholder, will update after
+        })
+        .select("id")
+        .single();
 
-    // Use published URL so links work publicly without Lovable auth
-    const publishedUrl = "https://elevate-exec-direction.lovable.app";
-    const link = `${publishedUrl}/#/checkout?${params.toString()}`;
+      if (error) throw error;
 
-    const newLink: GeneratedLink = {
-      method,
-      amount,
-      installments,
-      description: description.trim(),
-      url: link,
-    };
+      // Build the checkout URL with link id
+      const params = new URLSearchParams({
+        product: description.trim(),
+        amount: amountCents.toString(),
+        method,
+        installments: installments.toString(),
+        link_id: linkRow.id,
+      });
+      const link = `${publishedUrl}/#/checkout?${params.toString()}`;
 
-    setGeneratedLinks((prev) => [newLink, ...prev]);
-    toast.success("Link de pagamento gerado!");
+      // Update URL in DB
+      await supabase
+        .from("payment_links")
+        .update({ url: link })
+        .eq("id", linkRow.id);
+
+      const newLink: GeneratedLink = {
+        method,
+        amount,
+        installments,
+        description: description.trim(),
+        url: link,
+      };
+
+      setGeneratedLinks((prev) => [newLink, ...prev]);
+      toast.success("Link de pagamento gerado!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar o link");
+    } finally {
+      setLoading(false);
+    }
   };
 
   const copyLink = (url: string) => {

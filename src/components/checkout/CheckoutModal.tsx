@@ -23,6 +23,7 @@ interface CheckoutModalProps {
   productName: string;
   amountCents: number;
   priceLabel: string;
+  paymentLinkId?: string;
 }
 
 interface CheckoutResult {
@@ -51,6 +52,7 @@ export function CheckoutModal({
   productName,
   amountCents,
   priceLabel,
+  paymentLinkId,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
   const [method, setMethod] = useState<PaymentMethod>("credit_card");
@@ -140,6 +142,7 @@ export function CheckoutModal({
         amount_cents: amountCents,
         payment_method: method,
         installments,
+        payment_link_id: paymentLinkId || null,
       };
 
       if (method === "credit_card") {
