@@ -1349,7 +1349,7 @@ const OnboardingProjectPage = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
-                    {staffList.filter(s => s.role === "consultant" || s.role === "admin" || s.role === "cs" || s.role === "master").map((s) => (
+                    {staffList.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
@@ -1366,7 +1366,7 @@ const OnboardingProjectPage = () => {
                   </SelectTrigger>
                   <SelectContent className="bg-background">
                     <SelectItem value="none">Nenhum</SelectItem>
-                    {staffList.filter(s => s.role === "cs" || s.role === "admin" || s.role === "master").map((s) => (
+                    {staffList.map((s) => (
                       <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
                     ))}
                   </SelectContent>
