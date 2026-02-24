@@ -54,6 +54,9 @@ export default function PaymentLinkPage() {
       const amountCents = Math.round(amount * 100);
       const publishedUrl = "https://elevate-exec-direction.lovable.app";
 
+      // Get current user
+      const { data: { user } } = await supabase.auth.getUser();
+
       // Save link to DB first
       const { data: linkRow, error } = await supabase
         .from("payment_links")
@@ -62,12 +65,16 @@ export default function PaymentLinkPage() {
           amount_cents: amountCents,
           payment_method: method,
           installments,
-          url: "", // placeholder, will update after
+          url: "",
+          created_by: user?.id ?? null,
         })
         .select("id")
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Insert payment_links error:", error);
+        throw error;
+      }
 
       // Build the checkout URL with link id
       const params = new URLSearchParams({
