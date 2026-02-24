@@ -52,11 +52,10 @@ export default function RecebimentosPage() {
         .order("created_at", { ascending: false });
       if (linksErr) throw linksErr;
 
-      // Fetch orders that have a payment_link_id
+      // Fetch all orders (linked + avulsas)
       const { data: ordersData, error: ordersErr } = await supabase
         .from("pagarme_orders")
         .select("*")
-        .not("payment_link_id", "is", null)
         .order("created_at", { ascending: false });
       if (ordersErr) throw ordersErr;
 
@@ -69,10 +68,27 @@ export default function RecebimentosPage() {
         ordersByLink.get(linkId)!.push(order);
       }
 
-      return (linksData ?? []).map((link) => ({
+      const linkedRows = (linksData ?? []).map((link) => ({
         ...link,
         orders: ordersByLink.get(link.id) ?? [],
       }));
+
+      const standaloneRows = (ordersData ?? [])
+        .filter((order) => !order.payment_link_id)
+        .map((order) => ({
+          id: `order-${order.id}`,
+          description: order.product_name || "Cobrança avulsa",
+          amount_cents: order.amount_cents,
+          payment_method: order.payment_method,
+          installments: order.installments ?? 1,
+          url: "",
+          created_at: order.created_at,
+          orders: [order],
+        }));
+
+      return [...linkedRows, ...standaloneRows].sort(
+        (a, b) => new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+      );
     },
   });
 
@@ -96,6 +112,11 @@ export default function RecebimentosPage() {
     `R$ ${(cents / 100).toFixed(2).replace(".", ",")}`;
 
   const copyLink = (url: string) => {
+    if (!url) {
+      toast.error("Essa cobrança não possui link compartilhável");
+      return;
+    }
+
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
@@ -144,7 +165,7 @@ export default function RecebimentosPage() {
                 </div>
                 <div>
                   <p className="text-2xl font-bold">{totalLinks}</p>
-                  <p className="text-xs text-muted-foreground">Links criados</p>
+                  <p className="text-xs text-muted-foreground">Cobranças registradas</p>
                 </div>
               </div>
             </CardContent>
@@ -298,7 +319,8 @@ export default function RecebimentosPage() {
                                 size="icon"
                                 className="h-8 w-8"
                                 onClick={() => copyLink(link.url)}
-                                title="Copiar link"
+                                title={link.url ? "Copiar link" : "Sem link para copiar"}
+                                disabled={!link.url}
                               >
                                 <Copy className="h-4 w-4" />
                               </Button>
