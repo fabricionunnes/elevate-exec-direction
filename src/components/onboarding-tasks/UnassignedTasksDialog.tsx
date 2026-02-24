@@ -249,7 +249,7 @@ export const UnassignedTasksDialog = ({ open, onOpenChange }: Props) => {
               </div>
             )}
 
-            <ScrollArea className="flex-1 max-h-[400px]">
+            <ScrollArea className="flex-1 max-h-[50vh]">
               <div className="space-y-2 pr-2">
                 {tasks.map((task) => (
                   <div
