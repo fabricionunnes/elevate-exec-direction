@@ -23,6 +23,7 @@ interface TaskNotification {
   company_name: string;
   is_overdue: boolean;
   is_today: boolean;
+  has_responsible: boolean;
 }
 
 export const TaskNotificationsDialog = () => {
@@ -52,7 +53,7 @@ export const TaskNotificationsDialog = () => {
       const today = new Date();
       const todayStr = format(today, "yyyy-MM-dd");
 
-      // Fetch tasks assigned to this staff member (by responsible_staff_id)
+      // Fetch tasks assigned to this staff member OR without a responsible
       let tasksQuery = supabase
         .from("onboarding_tasks")
         .select(`
@@ -61,6 +62,7 @@ export const TaskNotificationsDialog = () => {
           due_date,
           project_id,
           status,
+          responsible_staff_id,
           project:onboarding_projects(
             id,
             product_name,
@@ -68,7 +70,7 @@ export const TaskNotificationsDialog = () => {
             onboarding_company:onboarding_companies(id, name, status, is_simulator)
           )
         `)
-        .eq("responsible_staff_id", staffMember.id)
+        .or(`responsible_staff_id.eq.${staffMember.id},responsible_staff_id.is.null`)
         .neq("status", "completed")
         .not("due_date", "is", null)
         .lte("due_date", todayStr)
@@ -110,7 +112,6 @@ export const TaskNotificationsDialog = () => {
       });
 
       const notifications: TaskNotification[] = filteredTasksData.map((task: any) => {
-        // Use parseDateLocal to avoid timezone issues with date-only strings
         const dueDate = parseDateLocal(task.due_date);
         const todayStart = startOfDay(new Date());
         
@@ -123,6 +124,7 @@ export const TaskNotificationsDialog = () => {
           company_name: task.project?.onboarding_company?.name || "Empresa",
           is_overdue: isBefore(dueDate, todayStart),
           is_today: isToday(dueDate),
+          has_responsible: !!task.responsible_staff_id,
         };
       });
 
@@ -210,6 +212,11 @@ export const TaskNotificationsDialog = () => {
                       </span>
                     </div>
                     <p className="font-medium text-sm truncate">{task.title}</p>
+                    {!task.has_responsible && (
+                      <Badge variant="outline" className="text-[10px] py-0 h-4 mt-0.5 border-muted-foreground/40 text-muted-foreground">
+                        Sem responsável
+                      </Badge>
+                    )}
                     <div className="flex items-center gap-2 mt-1">
                       <Calendar className="h-3 w-3 text-muted-foreground" />
                       <span className={`text-xs ${task.is_overdue ? "text-destructive font-medium" : "text-muted-foreground"}`}>
