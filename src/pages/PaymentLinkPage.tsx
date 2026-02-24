@@ -96,7 +96,7 @@ export default function PaymentLinkPage() {
           </div>
           <Button
             variant="outline"
-            onClick={() => navigate("/onboarding-tasks/financeiro")}
+            onClick={() => navigate("/recebimento")}
             className="gap-2"
           >
             <ClipboardList className="h-4 w-4" />
