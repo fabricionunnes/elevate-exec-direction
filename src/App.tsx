@@ -41,6 +41,8 @@ import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
 import AdminSetupPage from "./pages/AdminSetupPage";
 import AdminPage from "./pages/AdminPage";
 import NotFound from "./pages/NotFound";
+import PaymentLinkPage from "./pages/PaymentLinkPage";
+import CheckoutPage from "./pages/CheckoutPage";
 import InstagramOAuthCallback from "./pages/InstagramOAuthCallback";
 import SocialInstagramCallback from "./pages/social/SocialInstagramCallback";
 
@@ -407,6 +409,10 @@ const App = () => (
               <Route path="admin/reports" element={<AcademyAdminReportsPage />} />
               <Route path="settings" element={<AcademySettingsPage />} />
             </Route>
+            
+            {/* Payment Links */}
+            <Route path="/pagamento" element={<PaymentLinkPage />} />
+            <Route path="/checkout" element={<CheckoutPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

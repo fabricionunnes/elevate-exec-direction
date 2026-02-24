@@ -28,6 +28,8 @@ const publicRoutes = [
   "/job-application",
   "/social-briefing",
   "/career-plan",
+  "/pagamento",
+  "/checkout",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
