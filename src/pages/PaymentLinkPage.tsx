@@ -54,9 +54,17 @@ export default function PaymentLinkPage() {
       const amountCents = Math.round(amount * 100);
       const publishedUrl = "https://elevate-exec-direction.lovable.app";
 
-      // Get current user
-      const { data: { user } } = await supabase.auth.getUser();
-      console.log("Payment link - user:", user?.id, user?.email);
+      const {
+        data: { user },
+        error: userError,
+      } = await supabase.auth.getUser();
+
+      if (userError || !user) {
+        toast.error("Sua sessão expirou. Faça login novamente.");
+        return;
+      }
+
+      console.log("Payment link - user:", user.id, user.email);
 
       // Generate a temporary ID for the URL
       const tempId = crypto.randomUUID();
@@ -72,7 +80,7 @@ export default function PaymentLinkPage() {
       const link = `${publishedUrl}/#/checkout?${params.toString()}`;
 
       // Save link to DB with URL already set
-      const { data: linkRow, error } = await supabase
+      const { error } = await supabase
         .from("payment_links")
         .insert({
           id: tempId,
@@ -81,15 +89,17 @@ export default function PaymentLinkPage() {
           payment_method: method,
           installments,
           url: link,
-          created_by: user?.id ?? null,
-        })
-        .select("id")
-        .single();
-
-      console.log("Payment link insert result:", { linkRow, error });
+          created_by: user.id,
+        });
 
       if (error) {
         console.error("Insert payment_links error:", JSON.stringify(error));
+
+        if (error.code === "42501" || error.message?.toLowerCase().includes("row-level security")) {
+          toast.error("Seu usuário não tem permissão para gerar link de pagamento.");
+          return;
+        }
+
         throw error;
       }
 
@@ -107,6 +117,7 @@ export default function PaymentLinkPage() {
       console.error("Payment link generation failed:", err);
       toast.error("Erro ao salvar o link");
     } finally {
+
       setLoading(false);
     }
   };
