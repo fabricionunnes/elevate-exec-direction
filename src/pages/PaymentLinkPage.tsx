@@ -61,6 +61,7 @@ export default function PaymentLinkPage() {
 
       if (userError || !user) {
         toast.error("Sua sessão expirou. Faça login novamente.");
+        navigate(`/onboarding-tasks/login?redirect=${encodeURIComponent("/pagamento")}`);
         return;
       }
 
