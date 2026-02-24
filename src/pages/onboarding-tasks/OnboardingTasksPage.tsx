@@ -6,7 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -43,6 +43,7 @@ import {
 import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
+import { UnassignedTasksDialog } from "@/components/onboarding-tasks/UnassignedTasksDialog";
 
 interface Service {
   id: string;
@@ -163,6 +164,9 @@ const OnboardingTasksPage = () => {
   
   // Bulk health score update state
   const [updatingAllHealthScores, setUpdatingAllHealthScores] = useState(false);
+  
+  // Unassigned tasks dialog state
+  const [showUnassignedTasks, setShowUnassignedTasks] = useState(false);
 
   useEffect(() => {
     const loadData = async () => {
@@ -2333,6 +2337,10 @@ const OnboardingTasksPage = () => {
                               {updatingAllHealthScores ? "Atualizando..." : "Atualizar Saúde Global"}
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem onClick={() => setShowUnassignedTasks(true)}>
+                            <UserX className="h-4 w-4 mr-2" />
+                            Tarefas sem Responsável
+                          </DropdownMenuItem>
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
@@ -2965,6 +2973,12 @@ const OnboardingTasksPage = () => {
         onOpenChange={setShowMeetings}
         staffId={currentStaffId}
         staffRole={currentUserRole}
+      />
+
+      {/* Unassigned Tasks Dialog */}
+      <UnassignedTasksDialog
+        open={showUnassignedTasks}
+        onOpenChange={setShowUnassignedTasks}
       />
     </div>
   );
