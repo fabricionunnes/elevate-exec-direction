@@ -3,9 +3,8 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft, RefreshCw } from "lucide-react";
+import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft } from "lucide-react";
 import { cn } from "@/lib/utils";
-import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -24,7 +23,6 @@ interface GeneratedLink {
   installments: number;
   description: string;
   url: string;
-  isRecurring: boolean;
 }
 
 export default function PaymentLinkPage() {
@@ -32,7 +30,6 @@ export default function PaymentLinkPage() {
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("pix");
   const [installments, setInstallments] = useState(1);
-  const [isRecurring, setIsRecurring] = useState(false);
   const [loading, setLoading] = useState(false);
   const [generatedLinks, setGeneratedLinks] = useState<GeneratedLink[]>([]);
 
@@ -60,10 +57,6 @@ export default function PaymentLinkPage() {
       installments: installments.toString(),
     });
 
-    if (isRecurring) {
-      params.set("recurring", "true");
-    }
-
     // Use published URL so links work publicly without Lovable auth
     const publishedUrl = "https://elevate-exec-direction.lovable.app";
     const link = `${publishedUrl}/#/checkout?${params.toString()}`;
@@ -74,7 +67,6 @@ export default function PaymentLinkPage() {
       installments,
       description: description.trim(),
       url: link,
-      isRecurring,
     };
 
     setGeneratedLinks((prev) => [newLink, ...prev]);
@@ -157,7 +149,7 @@ export default function PaymentLinkPage() {
             </div>
 
             {/* Installments (credit card only) */}
-            {method === "credit_card" && !isRecurring && maxInstallments > 1 && (
+            {method === "credit_card" && maxInstallments > 1 && (
               <div>
                 <Label htmlFor="pay-installments">Parcelas</Label>
                 <select
@@ -175,27 +167,6 @@ export default function PaymentLinkPage() {
                 </select>
               </div>
             )}
-
-            {/* Recurrence toggle */}
-            <div className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30">
-              <Checkbox
-                id="pay-recurring"
-                checked={isRecurring}
-                onCheckedChange={(checked) => {
-                  setIsRecurring(checked === true);
-                  if (checked) setInstallments(1);
-                }}
-              />
-              <div className="flex-1">
-                <Label htmlFor="pay-recurring" className="cursor-pointer flex items-center gap-2 text-sm font-medium">
-                  <RefreshCw className="h-4 w-4 text-primary" />
-                  Cobrança Recorrente (mensal)
-                </Label>
-                <p className="text-xs text-muted-foreground mt-0.5">
-                  O cliente será cobrado automaticamente todo mês, sem comprometer o limite do cartão.
-                </p>
-              </div>
-            </div>
 
             <Button
               className="w-full"
@@ -226,18 +197,10 @@ export default function PaymentLinkPage() {
                   className="flex items-center gap-3 p-3 rounded-lg border border-border bg-muted/30"
                 >
                   <div className="flex-1 min-w-0">
-                    <p className="font-medium text-sm text-foreground truncate">
-                      {link.description}
-                      {link.isRecurring && (
-                        <span className="ml-2 inline-flex items-center gap-1 text-xs font-medium text-primary bg-primary/10 px-1.5 py-0.5 rounded">
-                          <RefreshCw className="h-3 w-3" /> Recorrente
-                        </span>
-                      )}
-                    </p>
+                    <p className="font-medium text-sm text-foreground truncate">{link.description}</p>
                     <p className="text-xs text-muted-foreground">
                       R$ {link.amount.toFixed(2).replace(".", ",")} • {methodLabel(link.method)}
                       {link.installments > 1 ? ` • ${link.installments}x` : ""}
-                      {link.isRecurring ? " • Mensal" : ""}
                     </p>
                     <p className="text-xs text-muted-foreground truncate mt-0.5">{link.url}</p>
                   </div>
