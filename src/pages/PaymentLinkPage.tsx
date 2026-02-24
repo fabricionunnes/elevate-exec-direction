@@ -107,7 +107,7 @@ export default function PaymentLinkPage() {
                 id="pay-desc"
                 value={description}
                 onChange={(e) => setDescription(e.target.value)}
-                placeholder="Ex: Consultoria Comercial - Janeiro/2026"
+                placeholder="Ex: Serviço - Nome do cliente"
                 maxLength={200}
               />
             </div>
