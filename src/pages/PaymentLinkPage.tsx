@@ -54,18 +54,9 @@ export default function PaymentLinkPage() {
       const amountCents = Math.round(amount * 100);
       const publishedUrl = "https://elevate-exec-direction.lovable.app";
 
-      const {
-        data: { user },
-        error: userError,
-      } = await supabase.auth.getUser();
+      // Try to get current user (optional - page works without login)
+      const { data: { user } } = await supabase.auth.getUser();
 
-      if (userError || !user) {
-        toast.error("Sua sessão expirou. Faça login novamente.");
-        navigate(`/onboarding-tasks/login?redirect=${encodeURIComponent("/pagamento")}`);
-        return;
-      }
-
-      console.log("Payment link - user:", user.id, user.email);
 
       // Generate a temporary ID for the URL
       const tempId = crypto.randomUUID();
@@ -90,7 +81,7 @@ export default function PaymentLinkPage() {
           payment_method: method,
           installments,
           url: link,
-          created_by: user.id,
+          created_by: user?.id ?? null,
         });
 
       if (error) {
