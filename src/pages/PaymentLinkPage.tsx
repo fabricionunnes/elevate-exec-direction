@@ -57,8 +57,9 @@ export default function PaymentLinkPage() {
       installments: installments.toString(),
     });
 
-    const baseUrl = window.location.origin;
-    const link = `${baseUrl}/#/checkout?${params.toString()}`;
+    // Use published URL so links work publicly without Lovable auth
+    const publishedUrl = "https://elevate-exec-direction.lovable.app";
+    const link = `${publishedUrl}/#/checkout?${params.toString()}`;
 
     const newLink: GeneratedLink = {
       method,
