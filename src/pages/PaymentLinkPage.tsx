@@ -56,41 +56,42 @@ export default function PaymentLinkPage() {
 
       // Get current user
       const { data: { user } } = await supabase.auth.getUser();
+      console.log("Payment link - user:", user?.id, user?.email);
 
-      // Save link to DB first
-      const { data: linkRow, error } = await supabase
-        .from("payment_links")
-        .insert({
-          description: description.trim(),
-          amount_cents: amountCents,
-          payment_method: method,
-          installments,
-          url: "",
-          created_by: user?.id ?? null,
-        })
-        .select("id")
-        .single();
+      // Generate a temporary ID for the URL
+      const tempId = crypto.randomUUID();
 
-      if (error) {
-        console.error("Insert payment_links error:", error);
-        throw error;
-      }
-
-      // Build the checkout URL with link id
+      // Build the checkout URL
       const params = new URLSearchParams({
         product: description.trim(),
         amount: amountCents.toString(),
         method,
         installments: installments.toString(),
-        link_id: linkRow.id,
+        link_id: tempId,
       });
       const link = `${publishedUrl}/#/checkout?${params.toString()}`;
 
-      // Update URL in DB
-      await supabase
+      // Save link to DB with URL already set
+      const { data: linkRow, error } = await supabase
         .from("payment_links")
-        .update({ url: link })
-        .eq("id", linkRow.id);
+        .insert({
+          id: tempId,
+          description: description.trim(),
+          amount_cents: amountCents,
+          payment_method: method,
+          installments,
+          url: link,
+          created_by: user?.id ?? null,
+        })
+        .select("id")
+        .single();
+
+      console.log("Payment link insert result:", { linkRow, error });
+
+      if (error) {
+        console.error("Insert payment_links error:", JSON.stringify(error));
+        throw error;
+      }
 
       const newLink: GeneratedLink = {
         method,
@@ -103,7 +104,7 @@ export default function PaymentLinkPage() {
       setGeneratedLinks((prev) => [newLink, ...prev]);
       toast.success("Link de pagamento gerado!");
     } catch (err) {
-      console.error(err);
+      console.error("Payment link generation failed:", err);
       toast.error("Erro ao salvar o link");
     } finally {
       setLoading(false);
