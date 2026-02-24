@@ -8,6 +8,7 @@ export default function CheckoutPage() {
 
   const product = searchParams.get("product") || "Pagamento";
   const amountCents = Number(searchParams.get("amount")) || 0;
+  const linkId = searchParams.get("link_id") || undefined;
   const priceLabel = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
 
   if (!amountCents) {
@@ -27,6 +28,7 @@ export default function CheckoutPage() {
         productName={product}
         amountCents={amountCents}
         priceLabel={priceLabel}
+        paymentLinkId={linkId}
       />
       {!open && (
         <p className="text-muted-foreground">Pagamento fechado. Você pode fechar esta janela.</p>
