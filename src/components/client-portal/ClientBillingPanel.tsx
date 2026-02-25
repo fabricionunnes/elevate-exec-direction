@@ -46,10 +46,15 @@ export function ClientBillingPanel({ companyId }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    if (!companyId) {
+      setLoading(false);
+      return;
+    }
     fetchInvoices();
   }, [companyId]);
 
   const fetchInvoices = async () => {
+    if (!companyId) return;
     // Update fees before fetching
     await supabase.functions.invoke("generate-invoices", {
       body: { action: "update_fees" },
