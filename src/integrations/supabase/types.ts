@@ -9571,6 +9571,74 @@ export type Database = {
           },
         ]
       }
+      company_recurring_charges: {
+        Row: {
+          amount_cents: number
+          company_id: string
+          created_at: string
+          created_by: string | null
+          customer_document: string | null
+          customer_email: string | null
+          customer_name: string | null
+          customer_phone: string | null
+          description: string
+          id: string
+          installments: number
+          is_active: boolean
+          next_charge_date: string
+          notes: string | null
+          payment_method: string
+          recurrence: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          customer_document?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description: string
+          id?: string
+          installments?: number
+          is_active?: boolean
+          next_charge_date: string
+          notes?: string | null
+          payment_method?: string
+          recurrence?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          customer_document?: string | null
+          customer_email?: string | null
+          customer_name?: string | null
+          customer_phone?: string | null
+          description?: string
+          id?: string
+          installments?: number
+          is_active?: boolean
+          next_charge_date?: string
+          notes?: string | null
+          payment_method?: string
+          recurrence?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_recurring_charges_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_sales_history: {
         Row: {
           company_id: string
@@ -18737,6 +18805,7 @@ export type Database = {
           boleto_barcode: string | null
           boleto_due_date: string | null
           boleto_url: string | null
+          company_id: string | null
           created_at: string
           customer_document: string | null
           customer_email: string
@@ -18764,6 +18833,7 @@ export type Database = {
           boleto_barcode?: string | null
           boleto_due_date?: string | null
           boleto_url?: string | null
+          company_id?: string | null
           created_at?: string
           customer_document?: string | null
           customer_email: string
@@ -18791,6 +18861,7 @@ export type Database = {
           boleto_barcode?: string | null
           boleto_due_date?: string | null
           boleto_url?: string | null
+          company_id?: string | null
           created_at?: string
           customer_document?: string | null
           customer_email?: string
@@ -18815,6 +18886,13 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "pagarme_orders_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "pagarme_orders_payment_link_id_fkey"
             columns: ["payment_link_id"]
             isOneToOne: false
@@ -18826,6 +18904,7 @@ export type Database = {
       payment_links: {
         Row: {
           amount_cents: number
+          company_id: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -18836,6 +18915,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description: string
@@ -18846,6 +18926,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          company_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -18854,7 +18935,15 @@ export type Database = {
           payment_method?: string
           url?: string
         }
-        Relationships: []
+        Relationships: [
+          {
+            foreignKeyName: "payment_links_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       portal_audit_logs: {
         Row: {
