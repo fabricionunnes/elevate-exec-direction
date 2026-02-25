@@ -307,8 +307,11 @@ export const AcademyLessonPage = () => {
         <iframe
           src={embedUrl}
           className="w-full h-full"
-          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
+          sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
+          referrerPolicy="no-referrer"
+          title={lesson?.title || "Video"}
         />
       </div>
     );
