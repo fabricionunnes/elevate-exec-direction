@@ -105,6 +105,9 @@ Deno.serve(async (req) => {
 
     const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
 
+    const encodedDesc = encodeURIComponent(`${description} (Recorrência)`);
+    const tempUrl = `${PUBLISHED_URL}/checkout`;
+
     const { data: linkData, error: linkError } = await supabase
       .from("payment_links")
       .insert({
@@ -112,7 +115,7 @@ Deno.serve(async (req) => {
         amount_cents,
         payment_method,
         installments: 1,
-        url: `${PUBLISHED_URL}/checkout`,
+        url: tempUrl,
         company_id,
       })
       .select()
@@ -123,7 +126,7 @@ Deno.serve(async (req) => {
       throw new Error("Erro ao criar link de pagamento local");
     }
 
-    const fullUrl = `${PUBLISHED_URL}/checkout?link_id=${linkData.id}`;
+    const fullUrl = `${PUBLISHED_URL}/checkout?link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}`;
     await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
 
     console.log("Local payment link created:", linkData.id);
