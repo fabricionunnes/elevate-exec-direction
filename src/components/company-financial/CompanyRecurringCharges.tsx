@@ -169,16 +169,32 @@ export function CompanyRecurringCharges({
     }
   };
 
-  const toggleActive = async (id: string, isActive: boolean) => {
+  const toggleActive = async (charge: RecurringCharge) => {
+    const newActive = !charge.is_active;
+
+    // If deactivating and has a Pagar.me plan, cancel it
+    if (!newActive && charge.pagarme_plan_id) {
+      toast.info("Cancelando assinatura na Pagar.me...");
+      try {
+        const { data, error } = await supabase.functions.invoke("pagarme-cancel-subscription", {
+          body: { plan_id: charge.pagarme_plan_id },
+        });
+        if (error) console.error("Cancel error:", error);
+        else toast.success("Assinatura cancelada na Pagar.me");
+      } catch (err) {
+        console.error("Cancel subscription error:", err);
+      }
+    }
+
     const { error } = await supabase
       .from("company_recurring_charges")
-      .update({ is_active: !isActive } as any)
-      .eq("id", id);
+      .update({ is_active: newActive } as any)
+      .eq("id", charge.id);
 
     if (error) {
       toast.error("Erro ao atualizar");
     } else {
-      toast.success(isActive ? "Recorrência pausada" : "Recorrência reativada");
+      toast.success(newActive ? "Recorrência reativada" : "Recorrência pausada");
       fetchCharges();
     }
   };
@@ -368,7 +384,7 @@ export function CompanyRecurringCharges({
                 <div className="flex items-center gap-2">
                   <Switch
                     checked={charge.is_active}
-                    onCheckedChange={() => toggleActive(charge.id, charge.is_active)}
+                    onCheckedChange={() => toggleActive(charge)}
                   />
                   <Button
                     type="button"

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -112,6 +112,7 @@ const OnboardingCompanyDetailPage = () => {
   const [showCreateProject, setShowCreateProject] = useState(false);
   const [activeTab, setActiveTab] = useState("info");
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const originalStatusRef = useRef<string>("active");
   
   const [form, setForm] = useState<CompanyForm>({
     name: "",
@@ -232,6 +233,7 @@ const OnboardingCompanyDetailPage = () => {
         notes: data.notes || "",
         is_simulator: data.is_simulator || false,
       });
+      originalStatusRef.current = data.status || "active";
     } catch (error: any) {
       console.error("Error fetching company:", error);
       toast.error("Erro ao carregar empresa");
@@ -298,6 +300,25 @@ const OnboardingCompanyDetailPage = () => {
           .eq("id", companyId);
 
         if (error) throw error;
+
+        // If company status changed to closed/inactive, cancel all Pagar.me subscriptions
+        const inactiveStatuses = ["closed", "inactive", "cancellation_signaled"];
+        const wasActive = !inactiveStatuses.includes(originalStatusRef.current);
+        const isNowInactive = inactiveStatuses.includes(form.status);
+        
+        if (wasActive && isNowInactive && companyId) {
+          toast.info("Cancelando assinaturas na Pagar.me...");
+          try {
+            await supabase.functions.invoke("pagarme-cancel-subscription", {
+              body: { company_id: companyId },
+            });
+            toast.success("Assinaturas canceladas na Pagar.me");
+          } catch (cancelErr) {
+            console.error("Error cancelling subscriptions:", cancelErr);
+          }
+        }
+
+        originalStatusRef.current = form.status;
         toast.success("Empresa atualizada com sucesso");
       }
     } catch (error: any) {
