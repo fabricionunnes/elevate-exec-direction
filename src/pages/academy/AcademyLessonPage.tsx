@@ -293,7 +293,8 @@ export const AcademyLessonPage = () => {
     if (provider === "youtube") {
       const match = url.match(/(?:youtube\.com\/(?:watch\?v=|embed\/)|youtu\.be\/)([^&?/]+)/);
       if (match) {
-        embedUrl = `https://www.youtube.com/embed/${match[1]}`;
+        const originParam = typeof window !== "undefined" ? `&origin=${encodeURIComponent(window.location.origin)}` : "";
+        embedUrl = `https://www.youtube.com/embed/${match[1]}?rel=0&modestbranding=1&playsinline=1${originParam}`;
       }
     } else if (provider === "vimeo") {
       const match = url.match(/vimeo\.com\/(\d+)/);
@@ -325,7 +326,7 @@ export const AcademyLessonPage = () => {
           className="w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
-          referrerPolicy="no-referrer-when-downgrade"
+          referrerPolicy="strict-origin-when-cross-origin"
           title={lesson?.title || "Video"}
         />
       </div>
