@@ -292,6 +292,14 @@ export const AcademyLessonPage = () => {
       if (!url.includes("embed")) {
         embedUrl = url.replace("player.pandavideo.com", "player.pandavideo.com.br/embed");
       }
+    } else if (provider === "google_drive") {
+      // Google Drive: extract file ID and use preview embed
+      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
+      if (match) {
+        embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+      } else if (!url.includes("/preview")) {
+        embedUrl = url.replace(/\/view.*$/, "/preview");
+      }
     }
 
     return (
