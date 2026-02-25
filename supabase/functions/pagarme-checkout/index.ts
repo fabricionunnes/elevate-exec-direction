@@ -264,6 +264,20 @@ Deno.serve(async (req) => {
         console.error("Error updating invoice status:", invoiceError);
       } else {
         console.log(`Invoice ${payment_link_id} marked as paid`);
+
+        // Check if this was the last installment and auto-renew
+        const { data: paidInvoice } = await supabase
+          .from("company_invoices")
+          .select("recurring_charge_id, installment_number, total_installments")
+          .eq("id", payment_link_id)
+          .single();
+
+        if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
+          console.log(`Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
+          await supabase.functions.invoke("generate-invoices", {
+            body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
+          });
+        }
       }
     }
 

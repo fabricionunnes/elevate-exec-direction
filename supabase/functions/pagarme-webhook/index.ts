@@ -104,6 +104,20 @@ Deno.serve(async (req) => {
                   console.error("[Pagar.me Webhook] Invoice update error:", invError);
                 } else {
                   console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+
+                  // Check if this was the last installment and auto-renew
+                  const { data: paidInvoice } = await supabase
+                    .from("company_invoices")
+                    .select("recurring_charge_id, installment_number, total_installments")
+                    .eq("id", order.payment_link_id)
+                    .single();
+
+                  if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
+                    console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
+                    await supabase.functions.invoke("generate-invoices", {
+                      body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
+                    });
+                  }
                 }
               }
             }
@@ -168,6 +182,20 @@ Deno.serve(async (req) => {
                   console.error("[Pagar.me Webhook] Invoice update error:", invError);
                 } else {
                   console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+
+                  // Check if this was the last installment and auto-renew
+                  const { data: paidInvoice } = await supabase
+                    .from("company_invoices")
+                    .select("recurring_charge_id, installment_number, total_installments")
+                    .eq("id", order.payment_link_id)
+                    .single();
+
+                  if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
+                    console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
+                    await supabase.functions.invoke("generate-invoices", {
+                      body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
+                    });
+                  }
                 }
               }
             }
