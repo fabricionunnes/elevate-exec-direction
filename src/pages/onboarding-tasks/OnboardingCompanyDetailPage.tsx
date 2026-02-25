@@ -42,12 +42,14 @@ import {
   ExternalLink,
   UserCircle,
   Trophy,
+  DollarSign,
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
+import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFinancialPanel";
 
 interface Staff {
   id: string;
@@ -455,6 +457,12 @@ const OnboardingCompanyDetailPage = () => {
                 <TabsTrigger value="points" className="gap-2">
                   <Trophy className="h-4 w-4" />
                   Pontuação
+                </TabsTrigger>
+              )}
+              {!isNew && (
+                <TabsTrigger value="financial" className="gap-2">
+                  <DollarSign className="h-4 w-4" />
+                  Financeiro
                 </TabsTrigger>
               )}
             </TabsList>
@@ -923,6 +931,20 @@ const OnboardingCompanyDetailPage = () => {
                     </div>
                   </CardContent>
                 </Card>
+              </TabsContent>
+            )}
+
+            {/* Financial Tab */}
+            {!isNew && companyId && (
+              <TabsContent value="financial">
+                <CompanyFinancialPanel
+                  companyId={companyId}
+                  companyName={form.name}
+                  contractValue={form.contract_value ? parseFloat(form.contract_value) : undefined}
+                  billingDay={form.billing_day ? parseInt(form.billing_day) : undefined}
+                  customerEmail={form.email}
+                  customerPhone={form.phone}
+                />
               </TabsContent>
             )}
 
