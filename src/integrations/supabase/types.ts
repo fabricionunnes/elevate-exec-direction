@@ -9587,6 +9587,9 @@ export type Database = {
           is_active: boolean
           next_charge_date: string
           notes: string | null
+          pagarme_link_id: string | null
+          pagarme_link_url: string | null
+          pagarme_plan_id: string | null
           payment_method: string
           recurrence: string
           updated_at: string
@@ -9606,6 +9609,9 @@ export type Database = {
           is_active?: boolean
           next_charge_date: string
           notes?: string | null
+          pagarme_link_id?: string | null
+          pagarme_link_url?: string | null
+          pagarme_plan_id?: string | null
           payment_method?: string
           recurrence?: string
           updated_at?: string
@@ -9625,6 +9631,9 @@ export type Database = {
           is_active?: boolean
           next_charge_date?: string
           notes?: string | null
+          pagarme_link_id?: string | null
+          pagarme_link_url?: string | null
+          pagarme_plan_id?: string | null
           payment_method?: string
           recurrence?: string
           updated_at?: string

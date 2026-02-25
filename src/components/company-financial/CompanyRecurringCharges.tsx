@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Loader2, Trash2, Calendar } from "lucide-react";
+import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -42,6 +42,9 @@ interface RecurringCharge {
   customer_phone: string | null;
   customer_document: string | null;
   notes: string | null;
+  pagarme_plan_id: string | null;
+  pagarme_link_id: string | null;
+  pagarme_link_url: string | null;
   created_at: string;
 }
 
@@ -112,7 +115,8 @@ export function CompanyRecurringCharges({
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const { error } = await supabase.from("company_recurring_charges").insert({
+      // Step 1: Create local record
+      const { data: insertedData, error } = await supabase.from("company_recurring_charges").insert({
         company_id: companyId,
         description: form.description,
         amount_cents: Math.round(form.amount * 100),
@@ -125,11 +129,37 @@ export function CompanyRecurringCharges({
         customer_document: form.customerDocument || null,
         notes: form.notes || null,
         created_by: user?.id,
-      } as any);
+      } as any).select().single();
 
       if (error) throw error;
 
-      toast.success("Recorrência criada com sucesso!");
+      const chargeId = (insertedData as any)?.id;
+
+      // Step 2: Create plan + subscription payment link on Pagar.me
+      toast.info("Criando assinatura na Pagar.me...");
+      const { data: subData, error: subError } = await supabase.functions.invoke("pagarme-subscription", {
+        body: {
+          description: form.description,
+          amount_cents: Math.round(form.amount * 100),
+          payment_method: form.paymentMethod,
+          recurrence: form.recurrence,
+          customer_name: form.customerName,
+          customer_email: form.customerEmail,
+          customer_document: form.customerDocument || null,
+          company_id: companyId,
+          recurring_charge_id: chargeId,
+        },
+      });
+
+      if (subError) {
+        console.error("Pagar.me subscription error:", subError);
+        toast.warning("Recorrência salva, mas houve erro ao criar na Pagar.me: " + (subError.message || "erro desconhecido"));
+      } else if (subData?.error) {
+        toast.warning("Recorrência salva, mas houve erro na Pagar.me: " + subData.error);
+      } else {
+        toast.success("Recorrência criada com link de pagamento!");
+      }
+
       setShowDialog(false);
       fetchCharges();
     } catch (err: any) {
@@ -167,6 +197,11 @@ export function CompanyRecurringCharges({
     }
   };
 
+  const copyLink = (url: string) => {
+    navigator.clipboard.writeText(url);
+    toast.success("Link copiado!");
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -184,7 +219,7 @@ export function CompanyRecurringCharges({
               <RefreshCw className="h-5 w-5 text-primary" />
               Cobranças Recorrentes
             </CardTitle>
-            <CardDescription>Configure cobranças automáticas para esta empresa</CardDescription>
+            <CardDescription>Configure cobranças automáticas via Pagar.me (assinatura)</CardDescription>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
@@ -253,9 +288,17 @@ export function CompanyRecurringCharges({
                     <Input value={form.customerEmail} onChange={(e) => setForm({ ...form, customerEmail: e.target.value })} />
                   </div>
                 </div>
+                <div className="space-y-2">
+                  <Label>CPF/CNPJ do Cliente</Label>
+                  <Input
+                    value={form.customerDocument}
+                    onChange={(e) => setForm({ ...form, customerDocument: e.target.value })}
+                    placeholder="000.000.000-00"
+                  />
+                </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Criar Recorrência
+                  Criar Recorrência na Pagar.me
                 </Button>
               </div>
             </DialogContent>
@@ -281,6 +324,9 @@ export function CompanyRecurringCharges({
                     <Badge variant={charge.is_active ? "default" : "secondary"}>
                       {charge.is_active ? "Ativo" : "Pausado"}
                     </Badge>
+                    {charge.pagarme_link_url && (
+                      <Badge variant="outline" className="text-xs">Pagar.me ✓</Badge>
+                    )}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>R$ {(charge.amount_cents / 100).toFixed(2).replace(".", ",")}</span>
@@ -292,6 +338,32 @@ export function CompanyRecurringCharges({
                       Próx: {format(new Date(charge.next_charge_date + "T12:00:00"), "dd/MM/yyyy")}
                     </span>
                   </div>
+                  {charge.pagarme_link_url && (
+                    <div className="flex items-center gap-2 mt-1">
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2"
+                        onClick={() => copyLink(charge.pagarme_link_url!)}
+                      >
+                        <Copy className="h-3 w-3 mr-1" />
+                        Copiar Link
+                      </Button>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-7 text-xs px-2"
+                        asChild
+                      >
+                        <a href={charge.pagarme_link_url} target="_blank" rel="noopener noreferrer">
+                          <ExternalLink className="h-3 w-3 mr-1" />
+                          Abrir
+                        </a>
+                      </Button>
+                    </div>
+                  )}
                 </div>
                 <div className="flex items-center gap-2">
                   <Switch
