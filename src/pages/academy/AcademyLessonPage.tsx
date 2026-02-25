@@ -325,8 +325,7 @@ export const AcademyLessonPage = () => {
           className="w-full h-full"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
           allowFullScreen
-          sandbox="allow-same-origin allow-scripts allow-popups allow-forms allow-presentation"
-          referrerPolicy="no-referrer"
+          referrerPolicy="no-referrer-when-downgrade"
           title={lesson?.title || "Video"}
         />
       </div>
