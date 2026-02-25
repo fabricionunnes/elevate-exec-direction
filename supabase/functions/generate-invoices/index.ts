@@ -49,12 +49,14 @@ Deno.serve(async (req) => {
           dueDate.setFullYear(dueDate.getFullYear() + i);
         }
 
+        const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+
         invoices.push({
           company_id: charge.company_id,
           recurring_charge_id: charge.id,
           description: charge.description,
           amount_cents: charge.amount_cents,
-          due_date: dueDate.toISOString().split("T")[0],
+          due_date: dueDateStr,
           status: "pending",
           payment_method: charge.payment_method,
           installment_number: i + 1,
@@ -91,7 +93,8 @@ Deno.serve(async (req) => {
 
     // Action: update overdue status and calculate fees
     if (action === "update_fees") {
-      const today = new Date().toISOString().split("T")[0];
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
       // Get all pending invoices that are overdue
       const { data: overdueInvoices } = await supabase

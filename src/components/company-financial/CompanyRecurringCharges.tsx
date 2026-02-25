@@ -74,7 +74,7 @@ export function CompanyRecurringCharges({
     if (nextDate <= now) {
       nextDate = new Date(now.getFullYear(), now.getMonth() + 1, day);
     }
-    return nextDate.toISOString().split("T")[0];
+    return `${nextDate.getFullYear()}-${String(nextDate.getMonth() + 1).padStart(2, "0")}-${String(nextDate.getDate()).padStart(2, "0")}`;
   };
 
   const [form, setForm] = useState({
