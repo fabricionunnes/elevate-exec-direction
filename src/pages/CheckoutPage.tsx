@@ -1,17 +1,62 @@
 import { useSearchParams } from "react-router-dom";
 import { CheckoutModal } from "@/components/checkout/CheckoutModal";
 import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { Loader2 } from "lucide-react";
 
 export default function CheckoutPage() {
   const [searchParams] = useSearchParams();
   const [open, setOpen] = useState(true);
+  const [loading, setLoading] = useState(false);
+  const [linkData, setLinkData] = useState<{
+    product: string;
+    amountCents: number;
+    linkId?: string;
+    paymentMethod?: string;
+    installments?: number;
+  } | null>(null);
 
-  const product = searchParams.get("product") || "Pagamento";
-  const amountCents = Number(searchParams.get("amount")) || 0;
-  const linkId = searchParams.get("link_id") || undefined;
-  const priceLabel = `R$ ${(amountCents / 100).toFixed(2).replace(".", ",")}`;
+  const linkId = searchParams.get("link_id");
+  const directAmount = Number(searchParams.get("amount")) || 0;
+  const directProduct = searchParams.get("product") || "Pagamento";
 
-  if (!amountCents) {
+  useEffect(() => {
+    if (linkId) {
+      setLoading(true);
+      supabase
+        .from("payment_links")
+        .select("id, description, amount_cents, payment_method, installments")
+        .eq("id", linkId)
+        .single()
+        .then(({ data, error }) => {
+          if (!error && data) {
+            setLinkData({
+              product: (data as any).description || "Pagamento",
+              amountCents: (data as any).amount_cents,
+              linkId: (data as any).id,
+              paymentMethod: (data as any).payment_method,
+              installments: (data as any).installments,
+            });
+          }
+          setLoading(false);
+        });
+    } else if (directAmount) {
+      setLinkData({
+        product: directProduct,
+        amountCents: directAmount,
+      });
+    }
+  }, [linkId, directAmount, directProduct]);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
+        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (!linkData || !linkData.amountCents) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <p className="text-muted-foreground">Link de pagamento inválido.</p>
@@ -19,16 +64,18 @@ export default function CheckoutPage() {
     );
   }
 
+  const priceLabel = `R$ ${(linkData.amountCents / 100).toFixed(2).replace(".", ",")}`;
+
   return (
     <div className="min-h-screen flex items-center justify-center bg-background">
       <CheckoutModal
         open={open}
         onOpenChange={setOpen}
         productId="payment-link"
-        productName={product}
-        amountCents={amountCents}
+        productName={linkData.product}
+        amountCents={linkData.amountCents}
         priceLabel={priceLabel}
-        paymentLinkId={linkId}
+        paymentLinkId={linkData.linkId}
       />
       {!open && (
         <p className="text-muted-foreground">Pagamento fechado. Você pode fechar esta janela.</p>
