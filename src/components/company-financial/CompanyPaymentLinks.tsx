@@ -15,7 +15,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, Link2, Loader2, Copy, ExternalLink } from "lucide-react";
+import { Plus, Link2, Loader2, Copy, ExternalLink, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
@@ -104,6 +104,16 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
   const copyLink = (url: string) => {
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
+  };
+
+  const deleteLink = async (id: string) => {
+    const { error } = await supabase.from("payment_links").delete().eq("id", id);
+    if (error) {
+      toast.error("Erro ao excluir link");
+    } else {
+      toast.success("Link excluído!");
+      setLinks((prev) => prev.filter((l) => l.id !== id));
+    }
   };
 
   const METHOD_LABELS: Record<string, string> = {
@@ -218,6 +228,9 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
                     <a href={link.url} target="_blank" rel="noopener noreferrer">
                       <ExternalLink className="h-4 w-4" />
                     </a>
+                  </Button>
+                  <Button type="button" variant="ghost" size="icon" onClick={() => deleteLink(link.id)} className="text-destructive hover:text-destructive">
+                    <Trash2 className="h-4 w-4" />
                   </Button>
                 </div>
               </div>
