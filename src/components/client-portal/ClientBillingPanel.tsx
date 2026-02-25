@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, FileText, Calendar, AlertTriangle, CheckCircle2, ExternalLink, Copy, Receipt } from "lucide-react";
+import { Loader2, FileText, Calendar, AlertTriangle, CheckCircle2, ExternalLink, Copy, Receipt, Clock, XCircle } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -31,11 +31,11 @@ interface Props {
   companyId: string;
 }
 
-const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline" }> = {
-  pending: { label: "Pendente", variant: "outline" },
-  paid: { label: "Pago", variant: "default" },
-  overdue: { label: "Vencida", variant: "destructive" },
-  cancelled: { label: "Cancelada", variant: "secondary" },
+const STATUS_CONFIG: Record<string, { label: string; variant: "default" | "secondary" | "destructive" | "outline"; icon: typeof CheckCircle2 }> = {
+  pending: { label: "Pendente", variant: "outline", icon: Clock },
+  paid: { label: "Pago", variant: "default", icon: CheckCircle2 },
+  overdue: { label: "Vencida", variant: "destructive", icon: AlertTriangle },
+  cancelled: { label: "Cancelada", variant: "secondary", icon: XCircle },
 };
 
 const formatCurrency = (cents: number) =>
@@ -136,8 +136,10 @@ export function ClientBillingPanel({ companyId }: Props) {
             <div className="space-y-3">
               {invoices.map((inv) => {
                 const statusInfo = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
+                const StatusIcon = statusInfo.icon;
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
+                const isCancelled = inv.status === "cancelled";
                 const dueDate = new Date(inv.due_date + "T12:00:00");
                 const displayAmount = isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
 
@@ -147,6 +149,7 @@ export function ClientBillingPanel({ companyId }: Props) {
                     className={`p-4 rounded-lg border transition-colors ${
                       isOverdue ? "border-destructive/30 bg-destructive/5" :
                       isPaid ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10" :
+                      isCancelled ? "opacity-60 bg-muted/30" :
                       "bg-card"
                     }`}
                   >
@@ -154,34 +157,44 @@ export function ClientBillingPanel({ companyId }: Props) {
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-sm">{inv.description}</p>
-                          <Badge variant={statusInfo.variant} className="text-xs">
+                          <Badge variant={statusInfo.variant} className="text-xs gap-1">
+                            <StatusIcon className="h-3 w-3" />
                             {statusInfo.label}
                           </Badge>
                           <span className="text-xs text-muted-foreground">
                             {inv.installment_number}/{inv.total_installments}
                           </span>
                         </div>
-                        <div className="flex items-center gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             Vence: {format(dueDate, "dd/MM/yyyy")}
                           </span>
                           <span>Valor: {formatCurrency(inv.amount_cents)}</span>
-                          {isOverdue && (
-                            <>
-                              <span className="text-destructive">
-                                Multa: {formatCurrency(inv.late_fee_cents)}
-                              </span>
-                              <span className="text-destructive">
-                                Juros: {formatCurrency(inv.interest_cents)}
-                              </span>
-                            </>
-                          )}
                         </div>
+                        {isOverdue && (
+                          <div className="flex items-center gap-3 text-xs text-destructive flex-wrap mt-1">
+                            <span className="flex items-center gap-1">
+                              <AlertTriangle className="h-3 w-3" />
+                              Multa ({inv.late_fee_percent}%): {formatCurrency(inv.late_fee_cents)}
+                            </span>
+                            <span>
+                              Juros ({inv.daily_interest_percent}%/dia): {formatCurrency(inv.interest_cents)}
+                            </span>
+                            <span className="font-semibold">
+                              Total c/ encargos: {formatCurrency(inv.total_with_fees_cents)}
+                            </span>
+                          </div>
+                        )}
                         {isPaid && inv.paid_at && (
-                          <p className="text-xs text-green-600 flex items-center gap-1">
+                          <p className="text-xs text-green-600 flex items-center gap-1 mt-1">
                             <CheckCircle2 className="h-3 w-3" />
                             Pago em {format(new Date(inv.paid_at), "dd/MM/yyyy")}
+                            {inv.paid_amount_cents && inv.paid_amount_cents !== inv.amount_cents && (
+                              <span className="ml-2">
+                                (Valor pago: {formatCurrency(inv.paid_amount_cents)})
+                              </span>
+                            )}
                           </p>
                         )}
                       </div>
@@ -189,7 +202,7 @@ export function ClientBillingPanel({ companyId }: Props) {
                         <p className={`font-bold text-sm ${isOverdue ? "text-destructive" : isPaid ? "text-green-600" : ""}`}>
                           {formatCurrency(displayAmount)}
                         </p>
-                        {!isPaid && inv.status !== "cancelled" && (
+                        {!isPaid && !isCancelled && (
                           <div className="flex gap-1">
                             <Button
                               type="button"

@@ -115,12 +115,14 @@ Deno.serve(async (req) => {
           // Juros de mora: 1% por dia
           const interest = Math.round(inv.amount_cents * (inv.daily_interest_percent / 100) * daysLate);
 
+          const totalWithFees = inv.amount_cents + lateFee + interest;
           await supabase
             .from("company_invoices")
             .update({
               status: "overdue",
               late_fee_cents: lateFee,
               interest_cents: interest,
+              total_with_fees_cents: totalWithFees,
             })
             .eq("id", inv.id);
 
