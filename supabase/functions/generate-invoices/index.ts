@@ -76,7 +76,7 @@ Deno.serve(async (req) => {
       // Generate payment links for each invoice
       for (const inv of inserted || []) {
         const encodedDesc = encodeURIComponent(inv.description);
-        const paymentUrl = `${PUBLISHED_URL}/checkout?link_id=${inv.id}&amount=${inv.amount_cents}&product=${encodedDesc}`;
+        const paymentUrl = `${PUBLISHED_URL}/#/checkout?link_id=${inv.id}&amount=${inv.amount_cents}&product=${encodedDesc}`;
         const publicUrl = `${PUBLISHED_URL}/#/fatura?token=${inv.public_token}`;
 
         await supabase

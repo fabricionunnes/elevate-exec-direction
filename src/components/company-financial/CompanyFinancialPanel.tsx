@@ -1,10 +1,11 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { CreditCard, RefreshCw, Link2, History } from "lucide-react";
+import { CreditCard, RefreshCw, Link2, History, Receipt } from "lucide-react";
 import { CompanyChargeForm } from "./CompanyChargeForm";
 import { CompanyRecurringCharges } from "./CompanyRecurringCharges";
 import { CompanyPaymentLinks } from "./CompanyPaymentLinks";
 import { CompanyPaymentHistory } from "./CompanyPaymentHistory";
+import { CompanyInvoicesList } from "./CompanyInvoicesList";
 
 interface Props {
   companyId: string;
@@ -28,7 +29,7 @@ export function CompanyFinancialPanel({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-4">
+        <TabsList className="grid w-full grid-cols-5">
           <TabsTrigger value="charge" className="gap-2 text-xs sm:text-sm">
             <CreditCard className="h-4 w-4" />
             <span className="hidden sm:inline">Cobrar</span>
@@ -36,6 +37,10 @@ export function CompanyFinancialPanel({
           <TabsTrigger value="recurring" className="gap-2 text-xs sm:text-sm">
             <RefreshCw className="h-4 w-4" />
             <span className="hidden sm:inline">Recorrências</span>
+          </TabsTrigger>
+          <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Faturas</span>
           </TabsTrigger>
           <TabsTrigger value="links" className="gap-2 text-xs sm:text-sm">
             <Link2 className="h-4 w-4" />
@@ -66,6 +71,10 @@ export function CompanyFinancialPanel({
             customerEmail={customerEmail}
             customerPhone={customerPhone}
           />
+        </TabsContent>
+
+        <TabsContent value="invoices" className="mt-4">
+          <CompanyInvoicesList companyId={companyId} />
         </TabsContent>
 
         <TabsContent value="links" className="mt-4">
