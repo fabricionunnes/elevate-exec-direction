@@ -101,6 +101,7 @@ const VIDEO_PROVIDERS = [
   { value: "youtube", label: "YouTube" },
   { value: "vimeo", label: "Vimeo" },
   { value: "panda", label: "Panda Video" },
+  { value: "google_drive", label: "Google Drive" },
   { value: "embed", label: "Embed genérico" },
 ];
 
@@ -225,13 +226,15 @@ export const AcademyAdminContentPage = () => {
       };
 
       if (editingLesson) {
-        await supabase
+        const { error } = await supabase
           .from("academy_lessons")
           .update(lessonData)
           .eq("id", editingLesson.id);
+        if (error) throw error;
         toast.success("Aula atualizada!");
       } else {
-        await supabase.from("academy_lessons").insert(lessonData);
+        const { error } = await supabase.from("academy_lessons").insert(lessonData);
+        if (error) throw error;
         toast.success("Aula criada!");
       }
 
@@ -240,9 +243,9 @@ export const AcademyAdminContentPage = () => {
       resetLessonForm();
       loadTrackLessons(lessonTrackId);
       loadTracks();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving lesson:", error);
-      toast.error("Erro ao salvar aula");
+      toast.error(error?.message || "Erro ao salvar aula");
     }
   };
 
