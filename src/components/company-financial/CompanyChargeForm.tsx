@@ -163,7 +163,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           </div>
         </div>
 
-        {form.paymentMethod === "credit_card" && maxInstallments > 1 && (
+        {form.paymentMethod === "credit_card" && (
           <div className="space-y-2 max-w-xs">
             <Label>Parcelas</Label>
             <Select
@@ -174,9 +174,10 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
                 <SelectValue />
               </SelectTrigger>
               <SelectContent>
-                {Array.from({ length: maxInstallments }, (_, i) => i + 1).map((n) => (
+                {Array.from({ length: Math.max(1, maxInstallments) }, (_, i) => i + 1).map((n) => (
                   <SelectItem key={n} value={String(n)}>
                     {n}x de R$ {((form.amount / n)).toFixed(2).replace(".", ",")}
+                    {n === 1 ? " (à vista)" : ""}
                   </SelectItem>
                 ))}
               </SelectContent>
