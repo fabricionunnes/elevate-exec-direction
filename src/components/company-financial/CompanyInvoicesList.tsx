@@ -3,7 +3,28 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogTrigger,
+} from "@/components/ui/dialog";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -44,6 +65,13 @@ const formatCurrency = (cents: number) =>
 export function CompanyInvoicesList({ companyId }: Props) {
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [loading, setLoading] = useState(true);
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [form, setForm] = useState({
+    description: "",
+    amount: 0,
+    dueDate: "",
+  });
 
   useEffect(() => {
     if (companyId) fetchInvoices();
@@ -51,7 +79,6 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
   const fetchInvoices = async () => {
     setLoading(true);
-    // Update fees first
     await supabase.functions.invoke("generate-invoices", {
       body: { action: "update_fees" },
     });
@@ -86,6 +113,59 @@ export function CompanyInvoicesList({ companyId }: Props) {
     } else {
       toast.success("Fatura marcada como paga!");
       fetchInvoices();
+    }
+  };
+
+  const revertPaid = async (invoiceId: string, dueDate: string) => {
+    const today = new Date();
+    const due = new Date(dueDate + "T12:00:00");
+    const newStatus = due < today ? "overdue" : "pending";
+
+    const { error } = await supabase
+      .from("company_invoices")
+      .update({
+        status: newStatus,
+        paid_at: null,
+        paid_amount_cents: null,
+      } as any)
+      .eq("id", invoiceId);
+
+    if (error) {
+      toast.error("Erro ao estornar fatura");
+    } else {
+      toast.success("Baixa estornada com sucesso!");
+      fetchInvoices();
+    }
+  };
+
+  const handleCreateManual = async () => {
+    if (!form.description || !form.amount || !form.dueDate) {
+      toast.error("Preencha todos os campos");
+      return;
+    }
+
+    setCreating(true);
+    try {
+      const { error } = await supabase.from("company_invoices").insert({
+        company_id: companyId,
+        description: form.description,
+        amount_cents: Math.round(form.amount * 100),
+        due_date: form.dueDate,
+        installment_number: 1,
+        total_installments: 1,
+        status: "pending",
+      } as any);
+
+      if (error) throw error;
+
+      toast.success("Fatura criada com sucesso!");
+      setShowCreateDialog(false);
+      setForm({ description: "", amount: 0, dueDate: "" });
+      fetchInvoices();
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao criar fatura");
+    } finally {
+      setCreating(false);
     }
   };
 
@@ -141,10 +221,56 @@ export function CompanyInvoicesList({ companyId }: Props) {
               </CardTitle>
               <CardDescription>Parcelas e cobranças geradas para esta empresa</CardDescription>
             </div>
-            <Button variant="outline" size="sm" onClick={fetchInvoices}>
-              <RefreshCw className="h-4 w-4 mr-2" />
-              Atualizar
-            </Button>
+            <div className="flex gap-2">
+              <Dialog open={showCreateDialog} onOpenChange={setShowCreateDialog}>
+                <DialogTrigger asChild>
+                  <Button size="sm">
+                    <Plus className="h-4 w-4 mr-2" />
+                    Nova Fatura
+                  </Button>
+                </DialogTrigger>
+                <DialogContent>
+                  <DialogHeader>
+                    <DialogTitle>Criar Fatura Manual</DialogTitle>
+                  </DialogHeader>
+                  <div className="space-y-4">
+                    <div className="space-y-2">
+                      <Label>Descrição</Label>
+                      <Input
+                        value={form.description}
+                        onChange={(e) => setForm({ ...form, description: e.target.value })}
+                        placeholder="Ex: Consultoria mensal"
+                      />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label>Valor (R$)</Label>
+                        <CurrencyInput
+                          value={form.amount}
+                          onChange={(v) => setForm({ ...form, amount: v })}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label>Vencimento</Label>
+                        <Input
+                          type="date"
+                          value={form.dueDate}
+                          onChange={(e) => setForm({ ...form, dueDate: e.target.value })}
+                        />
+                      </div>
+                    </div>
+                    <Button onClick={handleCreateManual} disabled={creating} className="w-full">
+                      {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+                      Criar Fatura
+                    </Button>
+                  </div>
+                </DialogContent>
+              </Dialog>
+              <Button variant="outline" size="sm" onClick={fetchInvoices}>
+                <RefreshCw className="h-4 w-4 mr-2" />
+                Atualizar
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent>
@@ -152,7 +278,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
             <div className="text-center py-8 text-muted-foreground">
               <Receipt className="h-10 w-10 mx-auto mb-3 opacity-40" />
               <p>Nenhuma fatura gerada ainda</p>
-              <p className="text-xs mt-1">Crie uma recorrência e gere as faturas</p>
+              <p className="text-xs mt-1">Crie uma recorrência ou adicione manualmente</p>
             </div>
           ) : (
             <div className="space-y-3">
@@ -181,9 +307,11 @@ export function CompanyInvoicesList({ companyId }: Props) {
                             <StatusIcon className="h-3 w-3" />
                             {statusInfo.label}
                           </Badge>
-                          <span className="text-xs text-muted-foreground">
-                            {inv.installment_number}/{inv.total_installments}
-                          </span>
+                          {inv.installment_number && inv.total_installments && (
+                            <span className="text-xs text-muted-foreground">
+                              {inv.installment_number}/{inv.total_installments}
+                            </span>
+                          )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
                           <span className="flex items-center gap-1">
@@ -231,7 +359,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                               onClick={() => markAsPaid(inv.id)}
                             >
                               <CheckCircle2 className="h-3 w-3 mr-1" />
-                              Marcar Pago
+                              Dar Baixa
                             </Button>
                             {inv.payment_link_url && (
                               <Button asChild variant="default" size="sm" className="h-7 text-xs px-3">
@@ -242,6 +370,30 @@ export function CompanyInvoicesList({ companyId }: Props) {
                               </Button>
                             )}
                           </div>
+                        )}
+                        {isPaid && (
+                          <AlertDialog>
+                            <AlertDialogTrigger asChild>
+                              <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-muted-foreground hover:text-destructive">
+                                <Undo2 className="h-3 w-3 mr-1" />
+                                Estornar
+                              </Button>
+                            </AlertDialogTrigger>
+                            <AlertDialogContent>
+                              <AlertDialogHeader>
+                                <AlertDialogTitle>Estornar baixa?</AlertDialogTitle>
+                                <AlertDialogDescription>
+                                  A fatura voltará ao status pendente/vencida. Esta ação pode ser refeita depois.
+                                </AlertDialogDescription>
+                              </AlertDialogHeader>
+                              <AlertDialogFooter>
+                                <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                <AlertDialogAction onClick={() => revertPaid(inv.id, inv.due_date)}>
+                                  Estornar
+                                </AlertDialogAction>
+                              </AlertDialogFooter>
+                            </AlertDialogContent>
+                          </AlertDialog>
                         )}
                       </div>
                     </div>
