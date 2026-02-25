@@ -44,6 +44,7 @@ import NotFound from "./pages/NotFound";
 import PaymentLinkPage from "./pages/PaymentLinkPage";
 import RecebimentosPage from "./pages/RecebimentosPage";
 import CheckoutPage from "./pages/CheckoutPage";
+import PublicInvoicePage from "./pages/PublicInvoicePage";
 import InstagramOAuthCallback from "./pages/InstagramOAuthCallback";
 import SocialInstagramCallback from "./pages/social/SocialInstagramCallback";
 
@@ -415,6 +416,7 @@ const App = () => (
             <Route path="/pagamento" element={<PaymentLinkPage />} />
             <Route path="/recebimento" element={<RecebimentosPage />} />
             <Route path="/checkout" element={<CheckoutPage />} />
+            <Route path="/fatura" element={<PublicInvoicePage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>

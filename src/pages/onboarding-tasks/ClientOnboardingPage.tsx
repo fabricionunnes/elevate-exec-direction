@@ -31,6 +31,7 @@ import {
   ExternalLink,
   Send,
   CalendarDays,
+  Receipt,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -55,6 +56,7 @@ import { ClientInventoryModule } from "@/components/client-inventory/ClientInven
 import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
 import { ClientAppointmentsModule } from "@/components/client-appointments/ClientAppointmentsModule";
 import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
+import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -102,7 +104,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -302,6 +304,7 @@ const ClientOnboardingPage = () => {
         sales: "Vendas",
         customers: "Clientes",
         appointments: "Agendamentos",
+        billing: "Minhas Faturas",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -450,6 +453,7 @@ const ClientOnboardingPage = () => {
       { id: "board" as ViewType, icon: Brain, label: "Board", menuKey: CLIENT_MENU_KEYS.board },
       { id: "academy" as const, icon: GraduationCap, label: "Academy", href: "/academy" },
       { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
+      { id: "billing" as ViewType, icon: Receipt, label: "Faturas", menuKey: CLIENT_MENU_KEYS.minhas_faturas },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1057,6 +1061,17 @@ const ClientOnboardingPage = () => {
                 projectId={projectId || ""} 
                 userRole={currentUser?.role}
               />
+            </motion.div>
+          )}
+
+          {activeView === "billing" && hasViewAccess("billing") && (
+            <motion.div
+              key="billing"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientBillingPanel companyId={companyId || ""} />
             </motion.div>
           )}
         </AnimatePresence>

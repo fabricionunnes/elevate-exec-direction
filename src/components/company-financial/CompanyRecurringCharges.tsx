@@ -16,7 +16,7 @@ import {
 } from "@/components/ui/dialog";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy } from "lucide-react";
+import { Plus, RefreshCw, Loader2, Trash2, Calendar, ExternalLink, Copy, FileText } from "lucide-react";
 import { format } from "date-fns";
 
 interface Props {
@@ -218,6 +218,20 @@ export function CompanyRecurringCharges({
     toast.success("Link copiado!");
   };
 
+  const generateInvoices = async (chargeId: string) => {
+    toast.info("Gerando parcelas...");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoices", {
+        body: { action: "generate", recurring_charge_id: chargeId },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`${data?.count || 0} parcelas geradas com sucesso!`);
+    } catch (err: any) {
+      toast.error("Erro ao gerar parcelas: " + (err.message || "erro desconhecido"));
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex justify-center py-8">
@@ -382,6 +396,16 @@ export function CompanyRecurringCharges({
                   )}
                 </div>
                 <div className="flex items-center gap-2">
+                  <Button
+                    type="button"
+                    variant="outline"
+                    size="sm"
+                    className="h-7 text-xs"
+                    onClick={() => generateInvoices(charge.id)}
+                  >
+                    <FileText className="h-3 w-3 mr-1" />
+                    Gerar Parcelas
+                  </Button>
                   <Switch
                     checked={charge.is_active}
                     onCheckedChange={() => toggleActive(charge)}

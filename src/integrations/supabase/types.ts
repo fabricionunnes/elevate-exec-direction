@@ -9472,6 +9472,95 @@ export type Database = {
         }
         Relationships: []
       }
+      company_invoices: {
+        Row: {
+          amount_cents: number
+          company_id: string
+          created_at: string
+          daily_interest_percent: number
+          description: string
+          due_date: string
+          id: string
+          installment_number: number | null
+          interest_cents: number
+          late_fee_cents: number
+          late_fee_percent: number
+          notes: string | null
+          pagarme_charge_id: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          payment_link_id: string | null
+          payment_link_url: string | null
+          payment_method: string | null
+          public_token: string
+          recurring_charge_id: string | null
+          status: string
+          total_installments: number | null
+          total_with_fees_cents: number | null
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          company_id: string
+          created_at?: string
+          daily_interest_percent?: number
+          description: string
+          due_date: string
+          id?: string
+          installment_number?: number | null
+          interest_cents?: number
+          late_fee_cents?: number
+          late_fee_percent?: number
+          notes?: string | null
+          pagarme_charge_id?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_link_id?: string | null
+          payment_link_url?: string | null
+          payment_method?: string | null
+          public_token?: string
+          recurring_charge_id?: string | null
+          status?: string
+          total_installments?: number | null
+          total_with_fees_cents?: number | null
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          company_id?: string
+          created_at?: string
+          daily_interest_percent?: number
+          description?: string
+          due_date?: string
+          id?: string
+          installment_number?: number | null
+          interest_cents?: number
+          late_fee_cents?: number
+          late_fee_percent?: number
+          notes?: string | null
+          pagarme_charge_id?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_link_id?: string | null
+          payment_link_url?: string | null
+          payment_method?: string | null
+          public_token?: string
+          recurring_charge_id?: string | null
+          status?: string
+          total_installments?: number | null
+          total_with_fees_cents?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_invoices_recurring_charge_id_fkey"
+            columns: ["recurring_charge_id"]
+            isOneToOne: false
+            referencedRelation: "company_recurring_charges"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_kpis: {
         Row: {
           company_id: string
