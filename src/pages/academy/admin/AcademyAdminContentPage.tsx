@@ -50,6 +50,8 @@ import {
   Upload,
   Image,
   X,
+  ArrowUp,
+  ArrowDown,
 } from "lucide-react";
 import { toast } from "sonner";
 import type { AcademyUserContext } from "../AcademyLayout";
@@ -188,6 +190,32 @@ export const AcademyAdminContentPage = () => {
       setTrackLessons((prev) => new Map(prev).set(trackId, data));
     }
     setExpandedTrack(trackId);
+  };
+
+  const moveLessonOrder = async (trackId: string, lessonIndex: number, direction: "up" | "down") => {
+    const lessons = trackLessons.get(trackId);
+    if (!lessons) return;
+
+    const newIndex = direction === "up" ? lessonIndex - 1 : lessonIndex + 1;
+    if (newIndex < 0 || newIndex >= lessons.length) return;
+
+    const reordered = [...lessons];
+    [reordered[lessonIndex], reordered[newIndex]] = [reordered[newIndex], reordered[lessonIndex]];
+
+    // Optimistic update
+    setTrackLessons((prev) => new Map(prev).set(trackId, reordered));
+
+    // Persist
+    try {
+      const updates = reordered.map((l, i) =>
+        supabase.from("academy_lessons").update({ sort_order: i + 1 }).eq("id", l.id)
+      );
+      await Promise.all(updates);
+    } catch (error) {
+      console.error("Error reordering:", error);
+      toast.error("Erro ao reordenar");
+      loadTrackLessons(trackId);
+    }
   };
 
   const handleTrackSubmit = async () => {
@@ -487,7 +515,26 @@ export const AcademyAdminContentPage = () => {
                       key={lesson.id}
                       className="flex items-center gap-3 p-3 rounded-lg border hover:bg-muted/50"
                     >
-                      <GripVertical className="h-4 w-4 text-muted-foreground cursor-grab" />
+                      <div className="flex flex-col gap-0.5">
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === 0}
+                          onClick={() => moveLessonOrder(track.id, index, "up")}
+                        >
+                          <ArrowUp className="h-3 w-3" />
+                        </Button>
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-6 w-6"
+                          disabled={index === (trackLessons.get(track.id) || []).length - 1}
+                          onClick={() => moveLessonOrder(track.id, index, "down")}
+                        >
+                          <ArrowDown className="h-3 w-3" />
+                        </Button>
+                      </div>
                       <div className="p-2 bg-primary/10 rounded-lg">
                         <Video className="h-4 w-4 text-primary" />
                       </div>
