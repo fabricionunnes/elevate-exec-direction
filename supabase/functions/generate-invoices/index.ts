@@ -151,6 +151,34 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Action: cleanup future invoices when recurring charge is deactivated
+    if (action === "cleanup_future_invoices" && recurring_charge_id) {
+      const now = new Date();
+      const cutoffDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
+
+      // Delete pending invoices with due_date > 30 days from now
+      const { data: deleted, error: delError } = await supabase
+        .from("company_invoices")
+        .delete()
+        .eq("recurring_charge_id", recurring_charge_id)
+        .eq("status", "pending")
+        .gt("due_date", cutoffStr)
+        .select("id");
+
+      const deletedCount = deleted?.length || 0;
+      console.log(`Cleanup: deleted ${deletedCount} future invoices for recurring ${recurring_charge_id}`);
+
+      if (delError) {
+        console.error("Cleanup error:", delError);
+      }
+
+      return new Response(
+        JSON.stringify({ success: true, deleted: deletedCount }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     return new Response(
       JSON.stringify({ error: "Ação inválida" }),
       { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
