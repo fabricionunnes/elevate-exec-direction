@@ -17,6 +17,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Plus, Link2, Loader2, Copy, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Props {
   companyId: string;
@@ -71,7 +72,8 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
     try {
       const { data: { user } } = await supabase.auth.getUser();
 
-      const linkUrl = `${window.location.origin}/checkout`;
+      const baseUrl = getPublicBaseUrl();
+      const linkUrl = `${baseUrl}/checkout`;
       const { data, error } = await supabase.from("payment_links").insert({
         description: form.description,
         amount_cents: Math.round(form.amount * 100),
@@ -84,7 +86,7 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
 
       if (error) throw error;
 
-      const fullUrl = `${window.location.origin}/checkout?link_id=${data.id}`;
+      const fullUrl = `${baseUrl}/checkout?link_id=${data.id}`;
       await supabase.from("payment_links").update({ url: fullUrl } as any).eq("id", data.id);
 
       toast.success("Link criado com sucesso!");
