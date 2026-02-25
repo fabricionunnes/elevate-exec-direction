@@ -160,6 +160,22 @@ export function CompanyRecurringCharges({
         toast.success("Recorrência criada com link de pagamento!");
       }
 
+      // Step 3: Auto-generate invoices/installments
+      if (chargeId) {
+        toast.info("Gerando parcelas automaticamente...");
+        try {
+          const { data: invData, error: invError } = await supabase.functions.invoke("generate-invoices", {
+            body: { action: "generate", recurring_charge_id: chargeId },
+          });
+          if (invError) throw invError;
+          if (invData?.error) throw new Error(invData.error);
+          toast.success(`${invData?.count || 0} parcelas geradas automaticamente!`);
+        } catch (invErr: any) {
+          console.error("Auto-generate invoices error:", invErr);
+          toast.warning("Recorrência criada, mas houve erro ao gerar parcelas: " + (invErr.message || "erro"));
+        }
+      }
+
       setShowDialog(false);
       fetchCharges();
     } catch (err: any) {
