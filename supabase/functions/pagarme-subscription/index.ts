@@ -3,12 +3,13 @@ import { createClient } from "@supabase/supabase-js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
 const PAGARME_BASE = "https://api.pagar.me/core/v5";
 
 async function pagarmeRequest(path: string, method: string, apiKey: string, body?: unknown) {
+  console.log(`Pagar.me ${method} ${path}`);
   const res = await fetch(`${PAGARME_BASE}${path}`, {
     method,
     headers: {
@@ -17,9 +18,17 @@ async function pagarmeRequest(path: string, method: string, apiKey: string, body
     },
     ...(body ? { body: JSON.stringify(body) } : {}),
   });
-  const data = await res.json();
+  const text = await res.text();
+  let data: any;
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch {
+    console.error(`Pagar.me non-JSON (${res.status}):`, text.substring(0, 300));
+    if (!res.ok) throw new Error(`HTTP ${res.status}`);
+    return {};
+  }
   if (!res.ok) {
-    console.error(`Pagar.me ${method} ${path} error:`, JSON.stringify(data));
+    console.error(`Pagar.me error (${res.status}):`, JSON.stringify(data));
     throw new Error(data.message || JSON.stringify(data));
   }
   return data;
@@ -46,7 +55,7 @@ Deno.serve(async (req) => {
       recurring_charge_id,
     } = await req.json();
 
-    if (!description || !amount_cents || !payment_method || !recurrence) {
+    if (!description || !amount_cents || !recurrence) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios faltando" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -56,10 +65,7 @@ Deno.serve(async (req) => {
     // Map recurrence to Pagar.me interval
     let interval = "month";
     let interval_count = 1;
-    if (recurrence === "monthly") {
-      interval = "month";
-      interval_count = 1;
-    } else if (recurrence === "quarterly") {
+    if (recurrence === "quarterly") {
       interval = "month";
       interval_count = 3;
     } else if (recurrence === "yearly") {
@@ -67,18 +73,13 @@ Deno.serve(async (req) => {
       interval_count = 1;
     }
 
-    // Map payment method
-    const paymentMethods: string[] = [];
-    if (payment_method === "credit_card") paymentMethods.push("credit_card");
-    else if (payment_method === "boleto") paymentMethods.push("boleto");
-    else if (payment_method === "pix") paymentMethods.push("pix");
-    // fallback
-    if (paymentMethods.length === 0) paymentMethods.push("credit_card");
+    // Pagar.me Plans only accept: credit_card, debit_card, cash, boleto
+    const planPaymentMethod = payment_method === "credit_card" ? "credit_card" : "boleto";
 
-    // Step 1: Create Plan
+    // Step 1: Create Plan on Pagar.me
     const plan = await pagarmeRequest("/plans", "POST", PAGARME_API_KEY, {
       name: description,
-      payment_methods: paymentMethods,
+      payment_methods: [planPaymentMethod],
       interval,
       interval_count,
       billing_type: "prepaid",
@@ -96,56 +97,45 @@ Deno.serve(async (req) => {
 
     console.log("Plan created:", plan.id);
 
-    // Step 2: Create Payment Link with type "subscription"
-    const paymentSettings: Record<string, unknown> = {
-      accepted_payment_methods: paymentMethods,
-    };
+    // Step 2: Create a local payment link for checkout (same system as CompanyPaymentLinks)
+    const supabase = createClient(
+      Deno.env.get("SUPABASE_URL")!,
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+    );
 
-    const customerSettings: Record<string, unknown> = {};
-    if (customer_name) customerSettings.name = customer_name;
-    if (customer_email) customerSettings.email = customer_email;
-    if (customer_document) customerSettings.document = customer_document?.replace(/\D/g, "");
+    const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
 
-    const linkPayload: Record<string, unknown> = {
-      name: description,
-      type: "subscription",
-      payment_settings: paymentSettings,
-      cart_settings: {
-        items: [
-          {
-            amount: amount_cents,
-            description: description,
-            quantity: 1,
-            name: description,
-          },
-        ],
-      },
-      subscription_settings: {
-        plan_id: plan.id,
-      },
-    };
+    const { data: linkData, error: linkError } = await supabase
+      .from("payment_links")
+      .insert({
+        description: `${description} (Recorrência)`,
+        amount_cents,
+        payment_method,
+        installments: 1,
+        url: `${PUBLISHED_URL}/checkout`,
+        company_id,
+      })
+      .select()
+      .single();
 
-    if (Object.keys(customerSettings).length > 0) {
-      linkPayload.customer_settings = customerSettings;
+    if (linkError) {
+      console.error("Link insert error:", linkError);
+      throw new Error("Erro ao criar link de pagamento local");
     }
 
-    const link = await pagarmeRequest("/paymentlinks", "POST", PAGARME_API_KEY, linkPayload);
+    const fullUrl = `${PUBLISHED_URL}/checkout?link_id=${linkData.id}`;
+    await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
 
-    console.log("Payment link created:", link.id, link.url);
+    console.log("Local payment link created:", linkData.id);
 
-    // Step 3: Update the recurring charge record with Pagar.me IDs
+    // Step 3: Update the recurring charge record
     if (recurring_charge_id) {
-      const supabase = createClient(
-        Deno.env.get("SUPABASE_URL")!,
-        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-      );
-
       await supabase
         .from("company_recurring_charges")
         .update({
           pagarme_plan_id: plan.id,
-          pagarme_link_id: link.id,
-          pagarme_link_url: link.url,
+          pagarme_link_id: linkData.id,
+          pagarme_link_url: fullUrl,
         })
         .eq("id", recurring_charge_id);
     }
@@ -154,8 +144,8 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         plan_id: plan.id,
-        link_id: link.id,
-        link_url: link.url,
+        link_id: linkData.id,
+        link_url: fullUrl,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
