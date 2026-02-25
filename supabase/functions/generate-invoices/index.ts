@@ -151,6 +151,129 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Action: auto-renew invoices when the last installment is paid
+    if (action === "auto_renew" && recurring_charge_id) {
+      // Check if recurring charge is still active
+      const { data: charge } = await supabase
+        .from("company_recurring_charges")
+        .select("*")
+        .eq("id", recurring_charge_id)
+        .eq("is_active", true)
+        .single();
+
+      if (!charge) {
+        return new Response(
+          JSON.stringify({ success: false, reason: "Recorrência inativa ou não encontrada" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Check if there are still pending invoices for this charge
+      const { data: pendingInvoices } = await supabase
+        .from("company_invoices")
+        .select("id")
+        .eq("recurring_charge_id", recurring_charge_id)
+        .in("status", ["pending", "overdue"])
+        .limit(1);
+
+      if (pendingInvoices && pendingInvoices.length > 0) {
+        return new Response(
+          JSON.stringify({ success: false, reason: "Ainda há parcelas pendentes" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Get the last invoice due_date to start the next batch from there
+      const { data: lastInvoice } = await supabase
+        .from("company_invoices")
+        .select("due_date")
+        .eq("recurring_charge_id", recurring_charge_id)
+        .order("due_date", { ascending: false })
+        .limit(1)
+        .single();
+
+      if (!lastInvoice) {
+        return new Response(
+          JSON.stringify({ success: false, reason: "Nenhuma fatura anterior encontrada" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Calculate next start date (one period after the last invoice)
+      const lastDate = new Date(lastInvoice.due_date + "T12:00:00");
+      if (charge.recurrence === "monthly") {
+        lastDate.setMonth(lastDate.getMonth() + 1);
+      } else if (charge.recurrence === "quarterly") {
+        lastDate.setMonth(lastDate.getMonth() + 3);
+      } else if (charge.recurrence === "yearly") {
+        lastDate.setFullYear(lastDate.getFullYear() + 1);
+      }
+
+      let numInvoices = 12;
+      if (charge.recurrence === "quarterly") numInvoices = 4;
+      if (charge.recurrence === "yearly") numInvoices = 1;
+
+      const invoices = [];
+      for (let i = 0; i < numInvoices; i++) {
+        const dueDate = new Date(lastDate);
+        if (charge.recurrence === "monthly") {
+          dueDate.setMonth(dueDate.getMonth() + i);
+        } else if (charge.recurrence === "quarterly") {
+          dueDate.setMonth(dueDate.getMonth() + i * 3);
+        } else if (charge.recurrence === "yearly") {
+          dueDate.setFullYear(dueDate.getFullYear() + i);
+        }
+
+        const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+
+        invoices.push({
+          company_id: charge.company_id,
+          recurring_charge_id: charge.id,
+          description: charge.description,
+          amount_cents: charge.amount_cents,
+          due_date: dueDateStr,
+          status: "pending",
+          payment_method: charge.payment_method,
+          installment_number: i + 1,
+          total_installments: numInvoices,
+          late_fee_percent: 2.0,
+          daily_interest_percent: 1.0,
+        });
+      }
+
+      const { data: inserted, error: insertError } = await supabase
+        .from("company_invoices")
+        .insert(invoices)
+        .select();
+
+      if (insertError) throw insertError;
+
+      // Generate payment links
+      for (const inv of inserted || []) {
+        const encodedDesc = encodeURIComponent(inv.description);
+        const paymentUrl = `${PUBLISHED_URL}/#/checkout?link_id=${inv.id}&amount=${inv.amount_cents}&product=${encodedDesc}`;
+
+        await supabase
+          .from("company_invoices")
+          .update({ payment_link_url: paymentUrl })
+          .eq("id", inv.id);
+      }
+
+      // Update next_charge_date on the recurring charge
+      const firstNewDueDateStr = invoices[0].due_date;
+      await supabase
+        .from("company_recurring_charges")
+        .update({ next_charge_date: firstNewDueDateStr })
+        .eq("id", recurring_charge_id);
+
+      console.log(`Auto-renew: generated ${inserted?.length || 0} new invoices for recurring ${recurring_charge_id}`);
+
+      return new Response(
+        JSON.stringify({ success: true, count: inserted?.length || 0 }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Action: cleanup future invoices when recurring charge is deactivated
     if (action === "cleanup_future_invoices" && recurring_charge_id) {
       const now = new Date();
