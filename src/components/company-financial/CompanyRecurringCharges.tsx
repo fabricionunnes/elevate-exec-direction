@@ -194,6 +194,16 @@ export function CompanyRecurringCharges({
     if (error) {
       toast.error("Erro ao atualizar");
     } else {
+      // If deactivating, cleanup future invoices (keep paid, overdue, and next 30 days)
+      if (!newActive) {
+        try {
+          await supabase.functions.invoke("generate-invoices", {
+            body: { action: "cleanup_future_invoices", recurring_charge_id: charge.id },
+          });
+        } catch (err) {
+          console.error("Cleanup invoices error:", err);
+        }
+      }
       toast.success(newActive ? "Recorrência reativada" : "Recorrência pausada");
       fetchCharges();
     }
