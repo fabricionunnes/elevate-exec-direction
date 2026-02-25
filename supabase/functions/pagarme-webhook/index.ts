@@ -72,19 +72,42 @@ Deno.serve(async (req) => {
       }
 
       if (Object.keys(updateFilter).length > 0) {
-        const { error } = await supabase
+        const { data: updatedOrders, error } = await supabase
           .from("pagarme_orders")
           .update({
             status: newStatus,
             webhook_received_at: new Date().toISOString(),
             webhook_event: eventType,
           })
-          .match(updateFilter);
+          .match(updateFilter)
+          .select("payment_link_id, amount_cents");
 
         if (error) {
           console.error("[Pagar.me Webhook] DB update error:", error);
         } else {
           console.log(`[Pagar.me Webhook] Order updated to status: ${newStatus}`);
+
+          // If paid, also update linked company_invoices
+          if (newStatus === "paid" && updatedOrders) {
+            for (const order of updatedOrders) {
+              if (order.payment_link_id) {
+                const { error: invError } = await supabase
+                  .from("company_invoices")
+                  .update({
+                    status: "paid",
+                    paid_at: new Date().toISOString(),
+                    paid_amount_cents: order.amount_cents,
+                  })
+                  .eq("id", order.payment_link_id);
+
+                if (invError) {
+                  console.error("[Pagar.me Webhook] Invoice update error:", invError);
+                } else {
+                  console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+                }
+              }
+            }
+          }
         }
       }
     }
@@ -113,19 +136,42 @@ Deno.serve(async (req) => {
             newStatus = orderStatus || "pending";
         }
 
-        const { error } = await supabase
+        const { data: updatedOrders, error } = await supabase
           .from("pagarme_orders")
           .update({
             status: newStatus,
             webhook_received_at: new Date().toISOString(),
             webhook_event: eventType,
           })
-          .eq("pagarme_order_id", orderId);
+          .eq("pagarme_order_id", orderId)
+          .select("payment_link_id, amount_cents");
 
         if (error) {
           console.error("[Pagar.me Webhook] DB update error:", error);
         } else {
           console.log(`[Pagar.me Webhook] Order ${orderId} updated to: ${newStatus}`);
+
+          // If paid, also update linked company_invoices
+          if (newStatus === "paid" && updatedOrders) {
+            for (const order of updatedOrders) {
+              if (order.payment_link_id) {
+                const { error: invError } = await supabase
+                  .from("company_invoices")
+                  .update({
+                    status: "paid",
+                    paid_at: new Date().toISOString(),
+                    paid_amount_cents: order.amount_cents,
+                  })
+                  .eq("id", order.payment_link_id);
+
+                if (invError) {
+                  console.error("[Pagar.me Webhook] Invoice update error:", invError);
+                } else {
+                  console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+                }
+              }
+            }
+          }
         }
       }
     }

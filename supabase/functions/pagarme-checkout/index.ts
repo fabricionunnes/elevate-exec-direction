@@ -249,6 +249,24 @@ Deno.serve(async (req) => {
 
     await supabase.from("pagarme_orders").insert(orderData);
 
+    // If payment is immediately confirmed (credit card) and linked to an invoice, mark it as paid
+    if (charge?.status === "paid" && payment_link_id) {
+      const { error: invoiceError } = await supabase
+        .from("company_invoices")
+        .update({
+          status: "paid",
+          paid_at: new Date().toISOString(),
+          paid_amount_cents: amount_cents,
+        })
+        .eq("id", payment_link_id);
+
+      if (invoiceError) {
+        console.error("Error updating invoice status:", invoiceError);
+      } else {
+        console.log(`Invoice ${payment_link_id} marked as paid`);
+      }
+    }
+
     // Build response
     const response: Record<string, unknown> = {
       success: true,
