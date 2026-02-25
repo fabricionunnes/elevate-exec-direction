@@ -192,23 +192,25 @@ export const AcademyAdminContentPage = () => {
   const handleTrackSubmit = async () => {
     try {
       if (editingTrack) {
-        await supabase
+        const { error } = await supabase
           .from("academy_tracks")
           .update(trackForm)
           .eq("id", editingTrack.id);
+        if (error) throw error;
         toast.success("Trilha atualizada!");
       } else {
-        await supabase.from("academy_tracks").insert(trackForm);
+        const { error } = await supabase.from("academy_tracks").insert(trackForm);
+        if (error) throw error;
         toast.success("Trilha criada!");
       }
 
       setTrackDialogOpen(false);
       setEditingTrack(null);
       resetTrackForm();
-      loadTracks();
-    } catch (error) {
+      await loadTracks();
+    } catch (error: any) {
       console.error("Error saving track:", error);
-      toast.error("Erro ao salvar trilha");
+      toast.error(error?.message || "Erro ao salvar trilha");
     }
   };
 
