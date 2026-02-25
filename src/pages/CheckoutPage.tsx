@@ -19,34 +19,62 @@ export default function CheckoutPage() {
   const linkId = searchParams.get("link_id");
   const directAmount = Number(searchParams.get("amount")) || 0;
   const directProduct = searchParams.get("product") || "Pagamento";
+  const directMethodParam = searchParams.get("method");
+  const directInstallments = Number(searchParams.get("installments")) || 1;
 
   useEffect(() => {
-    if (linkId) {
-      setLoading(true);
-      supabase
-        .from("payment_links")
-        .select("id, description, amount_cents, payment_method, installments")
-        .eq("id", linkId)
-        .single()
-        .then(({ data, error }) => {
-          if (!error && data) {
-            setLinkData({
-              product: (data as any).description || "Pagamento",
-              amountCents: (data as any).amount_cents,
-              linkId: (data as any).id,
-              paymentMethod: (data as any).payment_method,
-              installments: (data as any).installments,
-            });
-          }
+    const resolveLinkData = async () => {
+      if (linkId) {
+        setLoading(true);
+
+        const { data, error } = await supabase
+          .from("payment_links")
+          .select("id, description, amount_cents, payment_method, installments")
+          .eq("id", linkId)
+          .maybeSingle();
+
+        if (!error && data) {
+          setLinkData({
+            product: (data as any).description || "Pagamento",
+            amountCents: (data as any).amount_cents,
+            linkId: (data as any).id,
+            paymentMethod: (data as any).payment_method,
+            installments: (data as any).installments,
+          });
           setLoading(false);
+          return;
+        }
+
+        if (directAmount > 0) {
+          setLinkData({
+            product: directProduct,
+            amountCents: directAmount,
+            linkId,
+            paymentMethod: directMethodParam || undefined,
+            installments: directInstallments,
+          });
+        } else {
+          setLinkData(null);
+        }
+
+        setLoading(false);
+        return;
+      }
+
+      if (directAmount > 0) {
+        setLinkData({
+          product: directProduct,
+          amountCents: directAmount,
+          paymentMethod: directMethodParam || undefined,
+          installments: directInstallments,
         });
-    } else if (directAmount) {
-      setLinkData({
-        product: directProduct,
-        amountCents: directAmount,
-      });
-    }
-  }, [linkId, directAmount, directProduct]);
+      } else {
+        setLinkData(null);
+      }
+    };
+
+    resolveLinkData();
+  }, [linkId, directAmount, directProduct, directMethodParam, directInstallments]);
 
   if (loading) {
     return (

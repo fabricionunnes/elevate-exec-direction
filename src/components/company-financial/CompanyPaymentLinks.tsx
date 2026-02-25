@@ -74,9 +74,11 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
 
       const baseUrl = getPublicBaseUrl();
       const linkUrl = `${baseUrl}/checkout`;
+      const amountCents = Math.round(form.amount * 100);
+
       const { data, error } = await supabase.from("payment_links").insert({
         description: form.description,
-        amount_cents: Math.round(form.amount * 100),
+        amount_cents: amountCents,
         payment_method: form.paymentMethod,
         installments: form.installments,
         url: linkUrl,
@@ -86,7 +88,14 @@ export function CompanyPaymentLinks({ companyId, companyName }: Props) {
 
       if (error) throw error;
 
-      const fullUrl = `${baseUrl}/checkout?link_id=${data.id}`;
+      const params = new URLSearchParams({
+        link_id: data.id,
+        amount: String(amountCents),
+        product: form.description,
+        method: form.paymentMethod,
+        installments: String(form.installments),
+      });
+      const fullUrl = `${baseUrl}/checkout?${params.toString()}`;
       await supabase.from("payment_links").update({ url: fullUrl } as any).eq("id", data.id);
 
       toast.success("Link criado com sucesso!");
