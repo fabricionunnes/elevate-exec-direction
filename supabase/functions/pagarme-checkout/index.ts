@@ -59,6 +59,10 @@ Deno.serve(async (req) => {
       payment_method,
       installments = 1,
       card_token,
+      card_number,
+      card_expiry,
+      card_cvv,
+      card_holder,
       payment_link_id,
     } = body;
 
@@ -101,29 +105,55 @@ Deno.serve(async (req) => {
     let payment: Record<string, unknown> = {};
 
     if (payment_method === "credit_card") {
-      if (!card_token) {
+      if (card_token) {
+        // Tokenized card flow
+        payment = {
+          payment_method: "credit_card",
+          credit_card: {
+            installments,
+            card_token,
+            statement_descriptor: "UNV",
+            card: {
+              billing_address: {
+                line_1: "N/A",
+                zip_code: "00000000",
+                city: "São Paulo",
+                state: "SP",
+                country: "BR",
+              },
+            },
+          },
+        };
+      } else if (card_number && card_expiry && card_cvv && card_holder) {
+        // Raw card data flow
+        const [expMonth, expYear] = (card_expiry || "").split("/");
+        payment = {
+          payment_method: "credit_card",
+          credit_card: {
+            installments,
+            statement_descriptor: "UNV",
+            card: {
+              number: card_number.replace(/\s/g, ""),
+              holder_name: card_holder,
+              exp_month: parseInt(expMonth, 10),
+              exp_year: parseInt(expYear, 10),
+              cvv: card_cvv,
+              billing_address: {
+                line_1: "N/A",
+                zip_code: "00000000",
+                city: "São Paulo",
+                state: "SP",
+                country: "BR",
+              },
+            },
+          },
+        };
+      } else {
         return new Response(
-          JSON.stringify({ error: "Token do cartão é obrigatório" }),
+          JSON.stringify({ error: "Dados do cartão são obrigatórios" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      payment = {
-        payment_method: "credit_card",
-        credit_card: {
-          installments,
-          card_token,
-          statement_descriptor: "UNV",
-          card: {
-            billing_address: {
-              line_1: "N/A",
-              zip_code: "00000000",
-              city: "São Paulo",
-              state: "SP",
-              country: "BR",
-            },
-          },
-        },
-      };
     } else if (payment_method === "pix") {
       payment = {
         payment_method: "pix",
