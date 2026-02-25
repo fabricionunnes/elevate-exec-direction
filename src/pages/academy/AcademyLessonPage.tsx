@@ -273,9 +273,21 @@ export const AcademyLessonPage = () => {
   const getVideoEmbed = () => {
     if (!lesson?.video_url) return null;
 
-    const url = lesson.video_url;
-    const provider = lesson.video_provider;
+    const url = lesson.video_url.trim();
+    const lowerUrl = url.toLowerCase();
 
+    const inferredProvider =
+      lowerUrl.includes("youtu.be") || lowerUrl.includes("youtube.com")
+        ? "youtube"
+        : lowerUrl.includes("vimeo.com")
+          ? "vimeo"
+          : lowerUrl.includes("player.pandavideo.com")
+            ? "panda"
+            : lowerUrl.includes("drive.google.com")
+              ? "google_drive"
+              : null;
+
+    const provider = inferredProvider ?? lesson.video_provider;
     let embedUrl = url;
 
     if (provider === "youtube") {
@@ -293,12 +305,16 @@ export const AcademyLessonPage = () => {
         embedUrl = url.replace("player.pandavideo.com", "player.pandavideo.com.br/embed");
       }
     } else if (provider === "google_drive") {
-      // Google Drive: extract file ID and use preview embed
-      const match = url.match(/\/d\/([a-zA-Z0-9_-]+)/);
-      if (match) {
-        embedUrl = `https://drive.google.com/file/d/${match[1]}/preview`;
+      // Google Drive: aceita /file/d/{id}/view e links com ?id={id}
+      const fileIdFromPath = url.match(/\/d\/([a-zA-Z0-9_-]+)/)?.[1];
+      const fileIdFromQuery = url.match(/[?&]id=([a-zA-Z0-9_-]+)/)?.[1];
+      const fileId = fileIdFromPath ?? fileIdFromQuery;
+
+      if (fileId) {
+        embedUrl = `https://drive.google.com/file/d/${fileId}/preview`;
       } else if (!url.includes("/preview")) {
-        embedUrl = url.replace(/\/view.*$/, "/preview");
+        const previewUrl = url.replace(/\/(view|edit).*$|$/, "/preview");
+        embedUrl = previewUrl;
       }
     }
 
