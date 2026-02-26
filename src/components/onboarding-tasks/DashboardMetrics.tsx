@@ -495,6 +495,12 @@ const DashboardMetrics = ({
     };
   }, [contractRenewals, dateRange, filteredCompanies]);
 
+  // Build a set of company IDs that have renewal_status = 'nao_renovado' to exclude from churn/encerradas
+  const notRenewedCompanyIds = useMemo(
+    () => new Set(companies.filter(c => c.renewal_status === 'nao_renovado').map(c => c.id)),
+    [companies]
+  );
+
   const churnMetrics = useMemo(() => {
     const getClosedDate = (p: Project) => {
       const churnDateStr = p.churn_date || p.updated_at;
@@ -503,9 +509,14 @@ const DashboardMetrics = ({
     };
 
     // Use nonSimulatorAllProjects to include closed/completed projects but exclude simulators
-    const closedInPeriod = nonSimulatorAllProjects.filter(
-      p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })
-    ).length;
+    // Also exclude projects from companies marked as 'nao_renovado' (they appear in the "Não Renovadas" card instead)
+    const closedInPeriod = nonSimulatorAllProjects.filter(p => {
+      if (p.status !== "closed" && p.status !== "completed") return false;
+      if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
+      const companyId = getProjectCompanyId(p);
+      if (companyId && notRenewedCompanyIds.has(companyId)) return false;
+      return true;
+    }).length;
 
     const signaledInPeriod = nonSimulatorAllProjects.filter(
       p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
@@ -514,17 +525,23 @@ const DashboardMetrics = ({
     const totalActiveStart = projectMetrics.activeProjects + closedInPeriod + signaledInPeriod;
     const churnRate = totalActiveStart > 0 ? Math.round((closedInPeriod / totalActiveStart) * 100) : 0;
 
-    // Count unique companies with closed projects in the period
+    // Count unique companies with closed projects in the period, excluding 'nao_renovado'
     const closedCompanyIds = new Set(
       nonSimulatorAllProjects
-        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end }))
+        .filter(p => {
+          if (p.status !== "closed" && p.status !== "completed") return false;
+          if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
+          const companyId = getProjectCompanyId(p);
+          if (companyId && notRenewedCompanyIds.has(companyId)) return false;
+          return true;
+        })
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
     );
     const closedCompaniesInPeriod = closedCompanyIds.size;
 
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
-  }, [nonSimulatorAllProjects, dateRange, projectMetrics]);
+  }, [nonSimulatorAllProjects, dateRange, projectMetrics, notRenewedCompanyIds]);
 
   const monthlyChurnData = useMemo(() => {
     const currentYear = dateRange.start.getFullYear();
