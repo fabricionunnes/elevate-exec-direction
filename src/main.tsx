@@ -112,6 +112,9 @@ if (publicParam) {
   } else if (publicParam === "career-plan") {
     // expects project=...
     forceHashRoute("/career-plan", window.location.search);
+  } else if (publicParam === "checkout") {
+    // expects link_id=... amount=... product=... method=...
+    forceHashRoute("/checkout", window.location.search);
   }
 } else {
   // Path-based public links

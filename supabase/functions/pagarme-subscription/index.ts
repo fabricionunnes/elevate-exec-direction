@@ -126,7 +126,8 @@ Deno.serve(async (req) => {
       throw new Error("Erro ao criar link de pagamento local");
     }
 
-    const fullUrl = `${PUBLISHED_URL}/checkout?link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}`;
+    const methodParam = payment_method || "pix";
+    const fullUrl = `${PUBLISHED_URL}/?public=checkout&link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}&method=${methodParam}`;
     await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
 
     console.log("Local payment link created:", linkData.id);
