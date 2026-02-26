@@ -336,6 +336,11 @@ const DashboardMetrics = ({
   }, [filteredTasks, dateRange]);
 
   const getProjectCompanyId = (p: Project) => p.onboarding_company_id ?? p.company_id ?? null;
+  const getProjectClosedDate = (p: Project) => {
+    const churnDateStr = p.churn_date || p.updated_at;
+    const dateOnly = churnDateStr.substring(0, 10);
+    return new Date(dateOnly + "T12:00:00");
+  };
 
   // Get IDs of simulator companies to exclude their projects from metrics
   const simulatorCompanyIds = useMemo(
@@ -471,36 +476,24 @@ const DashboardMetrics = ({
     ).length;
     const renewedPercent = activeCompaniesCount > 0 ? Math.round((renewedClientsCount / activeCompaniesCount) * 100) : 0;
 
-    // Companies with contract ending in period that have NOT renewed yet
-    // Only include non-recurring contracts (not monthly payment)
-    const companiesWithContractEndingInPeriod = filteredCompanies.filter(c => {
-      if (c.status === "inactive" || c.status === "closed") return false;
-      if (c.payment_method === "monthly") return false; // Exclude recurring contracts
-      if (!c.contract_end_date) return false;
-      const endDate = new Date(c.contract_end_date);
-      return isWithinInterval(endDate, { start, end });
-    });
 
-    // Not renewed = companies with contract ending in period that were NOT renewed
-    // Explicit: renewal_status = 'nao_renovado'
-    // Automatic: company is inactive/closed + has closed project + contract ended in period + no renewal record
-    const renewedCompanyIdsInPeriod = renewedCompanyIds;
-    
-    // Get all companies (including inactive) that have contract ending in period and closed projects
-    const allCompaniesWithContractEndingInPeriod = companies.filter(c => {
+    // Not renewed (auto) = company had project closed/completed in period + no renewal in period
+    // This captures real non-renewals even when renewal_status is not manually updated.
+    const closedCompanyIdsInPeriod = new Set(
+      nonSimulatorAllProjects
+        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getProjectClosedDate(p), { start, end }))
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
+
+    const notRenewedCompanies = companies.filter(c => {
       if (c.is_simulator) return false;
       if (c.payment_method === "monthly") return false;
-      if (!c.contract_end_date) return false;
-      const endDate = new Date(c.contract_end_date);
-      return isWithinInterval(endDate, { start, end });
-    });
 
-    const notRenewedCompanies = allCompaniesWithContractEndingInPeriod.filter(c => {
-      // Explicit non-renewal
-      if (c.renewal_status === 'nao_renovado') return true;
-      // Auto-detect: company is inactive/closed AND was NOT renewed in the period
-      if ((c.status === 'inactive' || c.status === 'closed') && !renewedCompanyIdsInPeriod.has(c.id)) return true;
-      return false;
+      const explicitlyNotRenewed = c.renewal_status === "nao_renovado";
+      const autoNotRenewed = closedCompanyIdsInPeriod.has(c.id) && !renewedCompanyIds.has(c.id);
+
+      return explicitlyNotRenewed || autoNotRenewed;
     });
 
     return { 
