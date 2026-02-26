@@ -607,7 +607,7 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
                     <div className="flex-1">
                       <p className="font-semibold text-sm text-[#0f172a]">{t.title}</p>
                       {t.description && (
-                        <p className="text-xs text-slate-500 mt-1 line-clamp-2">{t.description}</p>
+                        <p className="text-xs text-slate-500 mt-1">{t.description}</p>
                       )}
                       {t.observations && (
                         <p className="text-xs text-slate-600 mt-1 italic">📝 {t.observations}</p>
