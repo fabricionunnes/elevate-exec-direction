@@ -33,6 +33,7 @@ import { RetentionBySegmentChart } from "@/components/retention/RetentionBySegme
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { NPSAlertsWidget } from "@/components/leader-dashboard/NPSAlertsWidget";
 import { NPSPromotersWidget } from "@/components/leader-dashboard/NPSPromotersWidget";
+import { ExecutiveReportGenerator } from "@/components/executive-dashboard/ExecutiveReportGenerator";
 
 interface PortfolioMetrics {
   totalProjects: number;
@@ -471,6 +472,7 @@ export default function ExecutiveDashboardPage() {
                 Painel do CEO
               </Button>
             )}
+          <ExecutiveReportGenerator />
           <Select value={period} onValueChange={setPeriod}>
             <SelectTrigger className="w-[150px]">
               <Calendar className="h-4 w-4 mr-2" />
