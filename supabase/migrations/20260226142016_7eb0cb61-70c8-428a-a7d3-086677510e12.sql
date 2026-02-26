@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_projects ADD COLUMN IF NOT EXISTS looker_embed_code TEXT;

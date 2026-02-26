@@ -18202,6 +18202,7 @@ export type Database = {
           documents_link: string | null
           id: string
           last_executive_checkpoint: string | null
+          looker_embed_code: string | null
           looker_studio_url: string | null
           notice_end_date: string | null
           onboarding_company_id: string | null
@@ -18237,6 +18238,7 @@ export type Database = {
           documents_link?: string | null
           id?: string
           last_executive_checkpoint?: string | null
+          looker_embed_code?: string | null
           looker_studio_url?: string | null
           notice_end_date?: string | null
           onboarding_company_id?: string | null
@@ -18272,6 +18274,7 @@ export type Database = {
           documents_link?: string | null
           id?: string
           last_executive_checkpoint?: string | null
+          looker_embed_code?: string | null
           looker_studio_url?: string | null
           notice_end_date?: string | null
           onboarding_company_id?: string | null
