@@ -449,42 +449,115 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
         </div>
 
         {/* Goals Section */}
-        {goals.length > 0 && (
-          <div className="mb-6">
-            <h2 className="text-lg font-bold text-[#0f172a] mb-3 flex items-center gap-2">
-              <span className="w-1 h-5 bg-[#C41E3A] rounded-full inline-block"></span>
-              Metas do Mês
-            </h2>
-            <table className="w-full text-sm border-collapse">
-              <thead>
-                <tr className="bg-[#0f172a] text-white">
-                  <th className="text-left p-2 rounded-tl-md">Indicador</th>
-                  <th className="text-right p-2">Meta</th>
-                  <th className="text-right p-2">Realizado</th>
-                  <th className="text-center p-2 rounded-tr-md">Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {goals.map((g, i) => {
-                  const achieved = g.actual_value !== null && g.actual_value >= g.target_value;
-                  const pct = g.actual_value !== null && g.target_value > 0 ? Math.round((g.actual_value / g.target_value) * 100) : 0;
-                  return (
-                    <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                      <td className="p-2 font-medium">{g.kpi_name}</td>
-                      <td className="p-2 text-right">{g.target_value.toLocaleString("pt-BR")} {g.unit || ""}</td>
-                      <td className="p-2 text-right">{g.actual_value !== null ? g.actual_value.toLocaleString("pt-BR") : "—"} {g.unit || ""}</td>
-                      <td className="p-2 text-center">
-                        <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${achieved ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-                          {g.actual_value !== null ? `${pct}%` : "Pendente"}
-                        </span>
-                      </td>
-                    </tr>
-                  );
-                })}
-              </tbody>
-            </table>
-          </div>
-        )}
+        <div className="mb-6">
+          <h2 className="text-lg font-bold text-[#0f172a] mb-3 flex items-center gap-2">
+            <span className="w-1 h-5 bg-[#C41E3A] rounded-full inline-block"></span>
+            Metas do Mês ({goals.length})
+          </h2>
+          {goals.length === 0 ? (
+            <p className="text-sm text-slate-500 italic">Nenhuma meta registrada para este período.</p>
+          ) : (
+            <>
+              {/* Visual Bar Chart - Meta vs Realizado */}
+              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
+                <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">Meta vs Realizado</p>
+                <div className="space-y-3">
+                  {goals.map((g, i) => {
+                    const pct = g.actual_value !== null && g.target_value > 0 ? Math.min(Math.round((g.actual_value / g.target_value) * 100), 150) : 0;
+                    const achieved = g.actual_value !== null && g.actual_value >= g.target_value;
+                    const barColor = achieved ? "#22c55e" : pct >= 70 ? "#eab308" : "#ef4444";
+                    return (
+                      <div key={i}>
+                        <div className="flex items-center justify-between mb-1">
+                          <span className="text-xs font-medium text-slate-700 truncate max-w-[60%]">{g.kpi_name}</span>
+                          <span className="text-xs font-bold" style={{ color: barColor }}>
+                            {g.actual_value !== null ? `${pct}%` : "Pendente"}
+                          </span>
+                        </div>
+                        <div className="relative h-5 bg-slate-200 rounded-full overflow-hidden">
+                          {/* Meta line at 100% */}
+                          <div className="absolute top-0 bottom-0 w-px bg-slate-500 z-10" style={{ left: `${Math.min(100 / 1.5, 100)}%` }} />
+                          {/* Actual bar */}
+                          <div
+                            className="h-full rounded-full transition-all"
+                            style={{
+                              width: `${Math.min(pct / 1.5, 100)}%`,
+                              backgroundColor: barColor,
+                              minWidth: g.actual_value !== null && g.actual_value > 0 ? "8px" : "0",
+                            }}
+                          />
+                        </div>
+                        <div className="flex justify-between mt-0.5 text-[10px] text-slate-400">
+                          <span>Realizado: {g.actual_value !== null ? g.actual_value.toLocaleString("pt-BR") : "—"} {g.unit || ""}</span>
+                          <span>Meta: {g.target_value.toLocaleString("pt-BR")} {g.unit || ""}</span>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+                {/* Summary */}
+                <div className="mt-4 pt-3 border-t border-slate-200 flex gap-6 text-xs">
+                  <div>
+                    <span className="text-slate-500">Total de metas: </span>
+                    <span className="font-bold text-slate-700">{goals.length}</span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Atingidas: </span>
+                    <span className="font-bold text-green-600">
+                      {goals.filter(g => g.actual_value !== null && g.actual_value >= g.target_value).length}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Não atingidas: </span>
+                    <span className="font-bold text-red-600">
+                      {goals.filter(g => g.actual_value !== null && g.actual_value < g.target_value).length}
+                    </span>
+                  </div>
+                  <div>
+                    <span className="text-slate-500">Pendentes: </span>
+                    <span className="font-bold text-slate-500">
+                      {goals.filter(g => g.actual_value === null).length}
+                    </span>
+                  </div>
+                </div>
+              </div>
+
+              {/* Detail Table */}
+              <table className="w-full text-sm border-collapse">
+                <thead>
+                  <tr className="bg-[#0f172a] text-white">
+                    <th className="text-left p-2 rounded-tl-md">Indicador</th>
+                    <th className="text-right p-2">Meta</th>
+                    <th className="text-right p-2">Realizado</th>
+                    <th className="text-center p-2">%</th>
+                    <th className="text-center p-2 rounded-tr-md">Status</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {goals.map((g, i) => {
+                    const achieved = g.actual_value !== null && g.actual_value >= g.target_value;
+                    const pct = g.actual_value !== null && g.target_value > 0 ? Math.round((g.actual_value / g.target_value) * 100) : 0;
+                    return (
+                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
+                        <td className="p-2 font-medium">{g.kpi_name}</td>
+                        <td className="p-2 text-right">{g.target_value.toLocaleString("pt-BR")} {g.unit || ""}</td>
+                        <td className="p-2 text-right">{g.actual_value !== null ? g.actual_value.toLocaleString("pt-BR") : "—"} {g.unit || ""}</td>
+                        <td className="p-2 text-center font-semibold" style={{ color: achieved ? "#22c55e" : pct >= 70 ? "#eab308" : "#ef4444" }}>
+                          {g.actual_value !== null ? `${pct}%` : "—"}
+                        </td>
+                        <td className="p-2 text-center">
+                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${achieved ? "bg-green-100 text-green-700" : g.actual_value === null ? "bg-slate-100 text-slate-500" : "bg-red-100 text-red-700"}`}>
+                            {g.actual_value === null ? "Pendente" : achieved ? "Atingida ✓" : "Não atingida"}
+                          </span>
+                        </td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            </>
+          )}
+        </div>
 
         {/* Tasks Section */}
         <div className="mb-6">
