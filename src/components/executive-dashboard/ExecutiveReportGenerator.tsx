@@ -205,25 +205,65 @@ export function ExecutiveReportGenerator() {
         is_finalized: m.is_finalized,
       }));
 
-      // Fetch KPI goals for the month
+      // Fetch KPI goals for the month - use correct field names
       const companyIds = filteredProjects.map(p => p.onboarding_company_id).filter(Boolean) as string[];
-      const { data: kpiIds } = await supabase.from("company_kpis").select("id").in("company_id", companyIds);
-      const kpiIdList = (kpiIds || []).map(k => k.id);
       
       let mappedGoals: GoalData[] = [];
-      if (kpiIdList.length > 0) {
-        const { data: kpiTargets } = await (supabase
-          .from("kpi_monthly_targets") as any)
-          .select("target_value, actual_value, kpi:company_kpis(name, unit)")
-          .in("company_kpi_id", kpiIdList)
-          .eq("month", mStartStr);
+      if (companyIds.length > 0) {
+        // Get company-level KPIs (not individual salesperson KPIs)
+        const { data: kpis } = await supabase
+          .from("company_kpis")
+          .select("id, name, kpi_type, target_value")
+          .in("company_id", companyIds)
+          .eq("is_active", true);
 
-        mappedGoals = (kpiTargets || []).map((g: any) => ({
-          kpi_name: g.kpi?.name || "Meta",
-          target_value: g.target_value,
-          actual_value: g.actual_value,
-          unit: g.kpi?.unit || null,
-        }));
+        const kpiList = kpis || [];
+        const kpiIdList = kpiList.map(k => k.id);
+
+        if (kpiIdList.length > 0) {
+          // Fetch monthly targets using correct field name: month_year
+          const { data: kpiTargets } = await supabase
+            .from("kpi_monthly_targets")
+            .select("kpi_id, target_value, level_name, level_order")
+            .in("kpi_id", kpiIdList)
+            .eq("month_year", mStartStr)
+            .is("unit_id", null)
+            .is("team_id", null)
+            .is("sector_id", null)
+            .is("salesperson_id", null);
+
+          // Fetch actual entries for the month to calculate realized values
+          const { data: entries } = await supabase
+            .from("kpi_entries")
+            .select("kpi_id, value, entry_date")
+            .in("kpi_id", kpiIdList)
+            .gte("entry_date", mStartStr)
+            .lte("entry_date", mEndStr);
+
+          // Aggregate actual values per KPI
+          const actualByKpi: Record<string, number> = {};
+          (entries || []).forEach((e: any) => {
+            actualByKpi[e.kpi_id] = (actualByKpi[e.kpi_id] || 0) + (e.value || 0);
+          });
+
+          // Build targets map (use Base level target, or first available)
+          const targetByKpi: Record<string, number> = {};
+          (kpiTargets || []).forEach((t: any) => {
+            // Prefer "Base" level or lowest level_order
+            if (!targetByKpi[t.kpi_id] || t.level_order === 0 || t.level_name === 'Base') {
+              targetByKpi[t.kpi_id] = t.target_value;
+            }
+          });
+
+          mappedGoals = kpiList
+            .filter(k => targetByKpi[k.id] || actualByKpi[k.id])
+            .map(k => ({
+              kpi_name: k.name,
+              target_value: targetByKpi[k.id] || k.target_value || 0,
+              actual_value: actualByKpi[k.id] !== undefined ? actualByKpi[k.id] : null,
+              unit: k.kpi_type === 'monetary' ? 'R$' : null,
+            }));
+        }
       }
 
 
@@ -606,29 +646,33 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
             <p className="text-sm text-slate-500 italic">Nenhuma reunião registrada neste período.</p>
           ) : (
             <div className="space-y-3">
-              {meetings.map((m, i) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
-                  <div className="flex items-start justify-between mb-2">
-                    <p className="font-semibold text-sm text-[#0f172a]">{m.title || "Reunião"}</p>
-                    <p className="text-xs text-slate-500">{formatDate(m.meeting_date)}</p>
+              {meetings.map((m, i) => {
+                // Truncate summary to max 300 chars for PDF readability
+                const summary = m.ai_summary || m.notes || null;
+                const truncatedSummary = summary
+                  ? summary.length > 300 ? summary.substring(0, 300).trim() + "..." : summary
+                  : null;
+                return (
+                  <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
+                    <div className="flex items-start justify-between mb-2">
+                      <p className="font-semibold text-sm text-[#0f172a]">{m.title || "Reunião"}</p>
+                      <p className="text-xs text-slate-500">{formatDate(m.meeting_date)}</p>
+                    </div>
+                    {truncatedSummary && (
+                      <div className="bg-slate-50 rounded p-2 text-xs text-slate-700">
+                        <p className="font-semibold text-slate-500 mb-1">Resumo:</p>
+                        <p className="whitespace-pre-line">{truncatedSummary}</p>
+                      </div>
+                    )}
+                    {!truncatedSummary && (
+                      <p className="text-xs text-slate-400 italic">Sem resumo disponível</p>
+                    )}
+                    {!m.is_finalized && (
+                      <p className="text-xs text-amber-600 mt-1">⚠ Reunião não finalizada</p>
+                    )}
                   </div>
-                  {m.ai_summary && (
-                    <div className="bg-slate-50 rounded p-2 text-xs text-slate-700 mb-1">
-                      <p className="font-semibold text-slate-500 mb-1">Resumo IA:</p>
-                      <p className="whitespace-pre-line">{m.ai_summary}</p>
-                    </div>
-                  )}
-                  {!m.ai_summary && m.notes && (
-                    <div className="bg-slate-50 rounded p-2 text-xs text-slate-700">
-                      <p className="font-semibold text-slate-500 mb-1">Notas:</p>
-                      <p className="whitespace-pre-line">{m.notes}</p>
-                    </div>
-                  )}
-                  {!m.is_finalized && (
-                    <p className="text-xs text-amber-600 mt-1">⚠ Reunião não finalizada</p>
-                  )}
-                </div>
-              ))}
+                );
+              })}
             </div>
           )}
         </div>
