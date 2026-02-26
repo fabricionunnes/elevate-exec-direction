@@ -98,18 +98,18 @@ Deno.serve(async (req) => {
                     paid_at: new Date().toISOString(),
                     paid_amount_cents: order.amount_cents,
                   })
-                  .eq("id", order.payment_link_id);
+                  .eq("payment_link_id", order.payment_link_id);
 
                 if (invError) {
                   console.error("[Pagar.me Webhook] Invoice update error:", invError);
                 } else {
-                  console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+                  console.log(`[Pagar.me Webhook] Invoice with payment_link_id ${order.payment_link_id} marked as paid`);
 
                   // Check if this was the last installment and auto-renew
                   const { data: paidInvoice } = await supabase
                     .from("company_invoices")
                     .select("recurring_charge_id, installment_number, total_installments")
-                    .eq("id", order.payment_link_id)
+                    .eq("payment_link_id", order.payment_link_id)
                     .single();
 
                   if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
@@ -176,18 +176,18 @@ Deno.serve(async (req) => {
                     paid_at: new Date().toISOString(),
                     paid_amount_cents: order.amount_cents,
                   })
-                  .eq("id", order.payment_link_id);
+                  .eq("payment_link_id", order.payment_link_id);
 
                 if (invError) {
                   console.error("[Pagar.me Webhook] Invoice update error:", invError);
                 } else {
-                  console.log(`[Pagar.me Webhook] Invoice ${order.payment_link_id} marked as paid`);
+                  console.log(`[Pagar.me Webhook] Invoice with payment_link_id ${order.payment_link_id} marked as paid`);
 
                   // Check if this was the last installment and auto-renew
                   const { data: paidInvoice } = await supabase
                     .from("company_invoices")
                     .select("recurring_charge_id, installment_number, total_installments")
-                    .eq("id", order.payment_link_id)
+                    .eq("payment_link_id", order.payment_link_id)
                     .single();
 
                   if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
