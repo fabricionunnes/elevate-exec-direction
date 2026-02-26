@@ -51,6 +51,7 @@ export const CLIENT_MENU_KEYS = {
   indicar: "indicar",
   gestao_agendamentos: "gestao_agendamentos",
   minhas_faturas: "minhas_faturas",
+  trafego_pago: "trafego_pago",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -150,6 +151,11 @@ export const CLIENT_MENU_STRUCTURE = [
   {
     key: CLIENT_MENU_KEYS.minhas_faturas,
     label: "Minhas Faturas",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.trafego_pago,
+    label: "Tráfego Pago",
     group: null,
   },
 ] as const;
