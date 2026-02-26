@@ -776,74 +776,214 @@ interface ReportContentProps {
   formatDate: (d: string | null) => string;
 }
 
+const sectionTitleStyle: React.CSSProperties = {
+  fontSize: "15px",
+  fontWeight: 700,
+  color: "#1a2744",
+  letterSpacing: "0.02em",
+  textTransform: "uppercase" as const,
+  marginBottom: "14px",
+  display: "flex",
+  alignItems: "center",
+  gap: "10px",
+};
+
+const sectionDot = (color: string): React.CSSProperties => ({
+  width: "8px",
+  height: "8px",
+  borderRadius: "50%",
+  backgroundColor: color,
+  display: "inline-block",
+  flexShrink: 0,
+});
+
+const cardStyle: React.CSSProperties = {
+  backgroundColor: "#ffffff",
+  borderRadius: "10px",
+  border: "1px solid #e8ecf1",
+  padding: "16px 18px",
+  marginBottom: "10px",
+};
+
+const labelStyle: React.CSSProperties = {
+  fontSize: "10px",
+  fontWeight: 600,
+  color: "#8793a6",
+  textTransform: "uppercase" as const,
+  letterSpacing: "0.06em",
+};
+
 const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
   ({ monthLabel, companyName, consultantName, tasks, meetings, goals, nextSteps, formatDate }, ref) => {
     return (
       <div
         ref={ref}
-        className="bg-background text-foreground p-10"
-        style={{ width: "794px", fontFamily: "'Lora', Georgia, serif", lineHeight: 1.5 }}
+        style={{
+          width: "794px",
+          fontFamily: "'Lora', Georgia, serif",
+          lineHeight: 1.55,
+          backgroundColor: "#f6f8fb",
+          color: "#1a2744",
+        }}
       >
-        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-5">
-          <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
-            <div className="flex items-center gap-4">
-              <img src={logoUnv} alt="Universidade Vendas" className="h-14" crossOrigin="anonymous" />
-              <div>
-                <h1 className="text-xl font-bold text-foreground">Relatório Mensal Executivo</h1>
-                <p className="text-sm text-muted-foreground">Universidade Vendas</p>
+        {/* ── HEADER ── */}
+        <section data-pdf-section="true" style={{ position: "relative", overflow: "hidden" }}>
+          {/* Red accent bar */}
+          <div
+            style={{
+              height: "6px",
+              background: "linear-gradient(90deg, #c5282e 0%, #e04347 60%, #f1767a 100%)",
+            }}
+          />
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1a2744 0%, #243556 100%)",
+              padding: "28px 32px 24px",
+              color: "#ffffff",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", justifyContent: "space-between" }}>
+              <div style={{ display: "flex", alignItems: "center", gap: "16px" }}>
+                <img
+                  src={logoUnv}
+                  alt="University Vendas"
+                  style={{ height: "48px", filter: "brightness(0) invert(1)", opacity: 0.95 }}
+                  crossOrigin="anonymous"
+                />
+                <div>
+                  <h1
+                    style={{
+                      fontSize: "22px",
+                      fontWeight: 700,
+                      margin: 0,
+                      letterSpacing: "0.01em",
+                    }}
+                  >
+                    Relatório Mensal Executivo
+                  </h1>
+                  <p style={{ fontSize: "12px", margin: "4px 0 0", opacity: 0.7 }}>
+                    University Vendas — Direção Comercial como Serviço
+                  </p>
+                </div>
+              </div>
+              <div style={{ textAlign: "right" }}>
+                <p
+                  style={{
+                    fontSize: "14px",
+                    fontWeight: 600,
+                    textTransform: "capitalize",
+                    margin: 0,
+                  }}
+                >
+                  {monthLabel}
+                </p>
+                <p style={{ fontSize: "10px", opacity: 0.6, margin: "3px 0 0" }}>
+                  Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                </p>
               </div>
             </div>
-            <div className="text-right">
-              <p className="text-sm font-semibold capitalize text-foreground">{monthLabel}</p>
-              <p className="text-xs text-muted-foreground">
-                Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
-              </p>
-            </div>
-          </div>
 
-          <div className="grid grid-cols-2 gap-3 text-sm">
-            <p>
-              <strong>Empresa:</strong> {companyName}
-            </p>
-            <p>
-              <strong>Consultor:</strong> {consultantName}
-            </p>
-            <p>
-              <strong>Tarefas concluídas:</strong> {tasks.length}
-            </p>
-            <p>
-              <strong>Reuniões finalizadas:</strong> {meetings.length}
-            </p>
+            {/* Summary strip */}
+            <div
+              style={{
+                display: "flex",
+                gap: "24px",
+                marginTop: "20px",
+                paddingTop: "16px",
+                borderTop: "1px solid rgba(255,255,255,0.15)",
+              }}
+            >
+              {[
+                { label: "Empresa", value: companyName },
+                { label: "Consultor", value: consultantName },
+                { label: "Tarefas concluídas", value: String(tasks.length) },
+                { label: "Reuniões", value: String(meetings.length) },
+                { label: "Metas", value: String(goals.length) },
+              ].map((item) => (
+                <div key={item.label} style={{ flex: 1 }}>
+                  <p style={{ fontSize: "9px", textTransform: "uppercase", letterSpacing: "0.08em", opacity: 0.55, margin: 0 }}>
+                    {item.label}
+                  </p>
+                  <p style={{ fontSize: "13px", fontWeight: 600, margin: "3px 0 0" }}>
+                    {item.value}
+                  </p>
+                </div>
+              ))}
+            </div>
           </div>
         </section>
 
-        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-5">
-          <h2 className="text-lg font-bold text-foreground mb-3">Metas do mês</h2>
+        {/* ── METAS DO MÊS ── */}
+        <section data-pdf-section="true" style={{ padding: "24px 32px 8px" }}>
+          <div style={sectionTitleStyle}>
+            <span style={sectionDot("#c5282e")} />
+            Metas do Mês
+          </div>
           {goals.length === 0 ? (
-            <p className="text-sm italic text-muted-foreground">Nenhuma meta registrada para este período.</p>
+            <div style={{ ...cardStyle, fontStyle: "italic", color: "#8793a6", fontSize: "13px" }}>
+              Nenhuma meta registrada para este período.
+            </div>
           ) : (
-            <div className="space-y-3">
+            <div style={{ display: "flex", gap: "12px", flexWrap: "wrap" }}>
               {goals.map((goal, index) => {
-                const percentage =
+                const pct =
                   goal.actual_value !== null && goal.target_value > 0
-                    ? Math.round((goal.actual_value / goal.target_value) * 100)
+                    ? Math.min(Math.round((goal.actual_value / goal.target_value) * 100), 100)
                     : 0;
-                const statusLabel =
-                  goal.actual_value === null
-                    ? "Pendente"
-                    : goal.actual_value >= goal.target_value
-                      ? "Meta atingida"
-                      : "Abaixo da meta";
+                const achieved = goal.actual_value !== null && goal.actual_value >= goal.target_value;
+                const barColor = achieved ? "#22c55e" : pct >= 70 ? "#eab308" : "#c5282e";
 
                 return (
-                  <div key={`${goal.kpi_name}-${index}`} className="rounded-lg border border-border bg-muted/30 p-3">
-                    <p className="font-semibold text-sm text-foreground">{goal.kpi_name}</p>
-                    <p className="text-xs text-muted-foreground mt-1">
-                      <strong>Meta:</strong> {goal.target_value.toLocaleString("pt-BR")} {goal.unit || ""} •{" "}
-                      <strong>Realizado:</strong> {goal.actual_value !== null ? goal.actual_value.toLocaleString("pt-BR") : "—"} {goal.unit || ""}
+                  <div
+                    key={`${goal.kpi_name}-${index}`}
+                    style={{
+                      ...cardStyle,
+                      flex: "1 1 calc(50% - 6px)",
+                      minWidth: "280px",
+                      borderLeft: `4px solid ${barColor}`,
+                    }}
+                  >
+                    <p style={{ fontSize: "13px", fontWeight: 700, margin: "0 0 6px", color: "#1a2744" }}>
+                      {goal.kpi_name}
                     </p>
-                    <p className="text-xs mt-1 text-muted-foreground">
-                      <strong>Desempenho:</strong> {goal.actual_value !== null ? `${percentage}%` : "—"} ({statusLabel})
+                    <div style={{ display: "flex", justifyContent: "space-between", marginBottom: "8px" }}>
+                      <span style={labelStyle}>
+                        Meta: {goal.target_value.toLocaleString("pt-BR")} {goal.unit || ""}
+                      </span>
+                      <span style={labelStyle}>
+                        Realizado: {goal.actual_value !== null ? goal.actual_value.toLocaleString("pt-BR") : "—"} {goal.unit || ""}
+                      </span>
+                    </div>
+                    {/* Progress bar */}
+                    <div
+                      style={{
+                        height: "7px",
+                        borderRadius: "4px",
+                        backgroundColor: "#e8ecf1",
+                        overflow: "hidden",
+                      }}
+                    >
+                      <div
+                        style={{
+                          height: "100%",
+                          width: `${pct}%`,
+                          borderRadius: "4px",
+                          backgroundColor: barColor,
+                          transition: "width 0.3s",
+                        }}
+                      />
+                    </div>
+                    <p
+                      style={{
+                        fontSize: "11px",
+                        fontWeight: 600,
+                        color: barColor,
+                        margin: "6px 0 0",
+                        textAlign: "right",
+                      }}
+                    >
+                      {goal.actual_value !== null ? `${pct}%` : "Pendente"}{" "}
+                      {achieved ? "✓ Meta atingida" : ""}
                     </p>
                   </div>
                 );
@@ -852,88 +992,225 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
           )}
         </section>
 
-        <section data-pdf-section="true" className="mb-3">
-          <h2 className="text-lg font-bold text-foreground">Tarefas realizadas</h2>
-          <p className="text-xs text-muted-foreground">Abaixo, somente o que foi efetivamente concluído no período.</p>
+        {/* ── TAREFAS REALIZADAS ── */}
+        <section data-pdf-section="true" style={{ padding: "16px 32px 8px" }}>
+          <div style={sectionTitleStyle}>
+            <span style={sectionDot("#3b82f6")} />
+            Tarefas Realizadas
+          </div>
+          <p style={{ fontSize: "10px", color: "#8793a6", margin: "-8px 0 14px 18px" }}>
+            Somente o que foi efetivamente concluído no período.
+          </p>
         </section>
 
         {tasks.length === 0 ? (
-          <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-4">
-            <p className="text-sm italic text-muted-foreground">Nenhuma tarefa concluída neste período.</p>
+          <section data-pdf-section="true" style={{ padding: "0 32px 16px" }}>
+            <div style={{ ...cardStyle, fontStyle: "italic", color: "#8793a6", fontSize: "13px" }}>
+              Nenhuma tarefa concluída neste período.
+            </div>
           </section>
         ) : (
           tasks.map((task, index) => (
-            <section key={`${task.title}-${index}`} data-pdf-section="true" className="mb-3 rounded-xl border border-border bg-card p-4">
-              <p className="font-semibold text-sm text-foreground">{task.title}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                <strong>Concluída em:</strong> {formatDate(task.completed_at)}
-              </p>
-              <p className="text-xs text-muted-foreground mt-1">
-                <strong>Responsável:</strong> {task.responsible_staff_name || "—"} • <strong>Atribuído a:</strong> {task.assignee_name || "—"}
-              </p>
+            <section key={`${task.title}-${index}`} data-pdf-section="true" style={{ padding: "0 32px 4px" }}>
+              <div
+                style={{
+                  ...cardStyle,
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "22px",
+                    height: "22px",
+                    borderRadius: "6px",
+                    backgroundColor: "#dbeafe",
+                    color: "#3b82f6",
+                    fontSize: "12px",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: "1px",
+                  }}
+                >
+                  ✓
+                </div>
+                <div style={{ flex: 1 }}>
+                  <p style={{ fontSize: "13px", fontWeight: 600, margin: "0 0 4px", color: "#1a2744" }}>
+                    {task.title}
+                  </p>
+                  <p style={{ fontSize: "10px", color: "#8793a6", margin: 0 }}>
+                    Concluída em {formatDate(task.completed_at)} · Responsável: {task.responsible_staff_name || "—"} · Atribuído: {task.assignee_name || "—"}
+                  </p>
+                </div>
+              </div>
             </section>
           ))
         )}
 
-        <section data-pdf-section="true" className="mb-3 mt-5">
-          <h2 className="text-lg font-bold text-foreground">Reuniões realizadas</h2>
-          <p className="text-xs text-muted-foreground">
-            Reuniões finalizadas no menu de reuniões do projeto, com briefing curto baseado em transcrição/briefing.
+        {/* ── REUNIÕES REALIZADAS ── */}
+        <section data-pdf-section="true" style={{ padding: "20px 32px 8px" }}>
+          <div style={sectionTitleStyle}>
+            <span style={sectionDot("#8b5cf6")} />
+            Reuniões Realizadas
+          </div>
+          <p style={{ fontSize: "10px", color: "#8793a6", margin: "-8px 0 14px 18px" }}>
+            Reuniões finalizadas com resumo baseado em transcrição e inteligência artificial.
           </p>
         </section>
 
         {meetings.length === 0 ? (
-          <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-4">
-            <p className="text-sm italic text-muted-foreground">Nenhuma reunião finalizada neste período.</p>
+          <section data-pdf-section="true" style={{ padding: "0 32px 16px" }}>
+            <div style={{ ...cardStyle, fontStyle: "italic", color: "#8793a6", fontSize: "13px" }}>
+              Nenhuma reunião finalizada neste período.
+            </div>
           </section>
         ) : (
           meetings.map((meeting) => {
             const briefing = extractMeetingBriefing(meeting);
             return (
-              <section key={meeting.id} data-pdf-section="true" className="mb-3 rounded-xl border border-border bg-card p-4">
-                <div className="flex items-start justify-between gap-3 mb-2">
-                  <p className="font-semibold text-sm text-foreground">{meeting.subject || meeting.title || "Reunião"}</p>
-                  <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(meeting.meeting_date)}</p>
+              <section key={meeting.id} data-pdf-section="true" style={{ padding: "0 32px 4px" }}>
+                <div
+                  style={{
+                    ...cardStyle,
+                    borderLeft: "4px solid #8b5cf6",
+                  }}
+                >
+                  <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", marginBottom: "10px" }}>
+                    <p style={{ fontSize: "13px", fontWeight: 700, margin: 0, color: "#1a2744" }}>
+                      {meeting.subject || meeting.title || "Reunião"}
+                    </p>
+                    <span
+                      style={{
+                        fontSize: "10px",
+                        fontWeight: 600,
+                        color: "#8b5cf6",
+                        backgroundColor: "#ede9fe",
+                        padding: "2px 10px",
+                        borderRadius: "20px",
+                      }}
+                    >
+                      {formatDate(meeting.meeting_date)}
+                    </span>
+                  </div>
+
+                  <p style={{ ...labelStyle, marginBottom: "4px" }}>Resumo Executivo</p>
+                  <p style={{ fontSize: "12px", color: "#374151", margin: "0 0 12px", lineHeight: 1.6 }}>
+                    {briefing.summary}
+                  </p>
+
+                  <p style={{ ...labelStyle, marginBottom: "6px" }}>Principais Alinhamentos</p>
+                  <div style={{ paddingLeft: "4px" }}>
+                    {briefing.alignments.map((alignment, idx) => (
+                      <div
+                        key={`${meeting.id}-alignment-${idx}`}
+                        style={{
+                          display: "flex",
+                          alignItems: "flex-start",
+                          gap: "8px",
+                          marginBottom: "5px",
+                        }}
+                      >
+                        <span
+                          style={{
+                            width: "5px",
+                            height: "5px",
+                            borderRadius: "50%",
+                            backgroundColor: "#8b5cf6",
+                            marginTop: "5px",
+                            flexShrink: 0,
+                          }}
+                        />
+                        <p style={{ fontSize: "12px", color: "#374151", margin: 0, lineHeight: 1.5 }}>
+                          {alignment}
+                        </p>
+                      </div>
+                    ))}
+                  </div>
                 </div>
-
-                <p className="text-xs text-muted-foreground mb-1 font-semibold">Briefing curto</p>
-                <p className="text-sm text-foreground mb-3">{briefing.summary}</p>
-
-                <p className="text-xs text-muted-foreground mb-1 font-semibold">Principais alinhamentos</p>
-                <ul className="list-disc pl-4 space-y-1">
-                  {briefing.alignments.map((alignment, index) => (
-                    <li key={`${meeting.id}-alignment-${index}`} className="text-sm text-foreground">
-                      {alignment}
-                    </li>
-                  ))}
-                </ul>
               </section>
             );
           })
         )}
 
-        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-muted/30 p-5">
-          <h2 className="text-lg font-bold text-foreground mb-2">Próximos passos (próximo mês)</h2>
-          <p className="text-xs text-muted-foreground mb-2">
-            Direcionamentos recomendados com base nas entregas, reuniões e desempenho do período.
-          </p>
-          <ul className="list-disc pl-5 space-y-1.5">
+        {/* ── PRÓXIMOS PASSOS ── */}
+        <section data-pdf-section="true" style={{ padding: "20px 32px 8px" }}>
+          <div
+            style={{
+              background: "linear-gradient(135deg, #1a2744 0%, #2d4066 100%)",
+              borderRadius: "10px",
+              padding: "20px 24px",
+              color: "#ffffff",
+            }}
+          >
+            <div style={{ ...sectionTitleStyle, color: "#ffffff", marginBottom: "6px" }}>
+              <span style={sectionDot("#f59e0b")} />
+              Próximos Passos
+            </div>
+            <p style={{ fontSize: "10px", opacity: 0.6, margin: "0 0 14px 18px" }}>
+              Direcionamentos recomendados com base nas entregas, reuniões e desempenho do período.
+            </p>
             {nextSteps.map((step, index) => (
-              <li key={`next-step-${index}`} className="text-sm text-foreground">
-                <strong>Passo {index + 1}:</strong> {step}
-              </li>
+              <div
+                key={`next-step-${index}`}
+                style={{
+                  display: "flex",
+                  alignItems: "flex-start",
+                  gap: "12px",
+                  marginBottom: "10px",
+                }}
+              >
+                <div
+                  style={{
+                    width: "24px",
+                    height: "24px",
+                    borderRadius: "50%",
+                    backgroundColor: "rgba(245,158,11,0.2)",
+                    border: "1.5px solid rgba(245,158,11,0.5)",
+                    color: "#f59e0b",
+                    fontSize: "11px",
+                    fontWeight: 700,
+                    display: "flex",
+                    alignItems: "center",
+                    justifyContent: "center",
+                    flexShrink: 0,
+                    marginTop: "1px",
+                  }}
+                >
+                  {index + 1}
+                </div>
+                <p style={{ fontSize: "12px", margin: 0, lineHeight: 1.55, opacity: 0.92 }}>
+                  {step}
+                </p>
+              </div>
             ))}
-          </ul>
+          </div>
         </section>
 
-        <section data-pdf-section="true" className="pt-2 border-t border-border flex items-center justify-between">
-          <div className="flex items-center gap-3">
-            <img src={logoUnv} alt="UNV" className="h-8 opacity-70" crossOrigin="anonymous" />
-            <p className="text-xs text-muted-foreground">
-              © {new Date().getFullYear()} Universidade Vendas. Documento confidencial.
+        {/* ── FOOTER ── */}
+        <section data-pdf-section="true" style={{ padding: "20px 32px 16px" }}>
+          <div
+            style={{
+              borderTop: "2px solid #e8ecf1",
+              paddingTop: "14px",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "space-between",
+            }}
+          >
+            <div style={{ display: "flex", alignItems: "center", gap: "10px" }}>
+              <img src={logoUnv} alt="UNV" style={{ height: "24px", opacity: 0.5 }} crossOrigin="anonymous" />
+              <p style={{ fontSize: "9px", color: "#8793a6", margin: 0 }}>
+                © {new Date().getFullYear()} University Vendas. Documento confidencial e de uso interno.
+              </p>
+            </div>
+            <p style={{ fontSize: "9px", color: "#8793a6", margin: 0 }}>
+              Relatório gerado automaticamente
             </p>
           </div>
-          <p className="text-xs text-muted-foreground">Relatório interno</p>
         </section>
       </div>
     );
