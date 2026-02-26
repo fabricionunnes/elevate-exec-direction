@@ -1,9 +1,12 @@
-import { useState, useRef, useEffect, forwardRef } from "react";
+import { useState, useRef, useEffect, forwardRef, useCallback } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Label } from "@/components/ui/label";
-import { FileText, Download, Loader2 } from "lucide-react";
+import { Checkbox } from "@/components/ui/checkbox";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { FileText, Download, Loader2, PackageOpen } from "lucide-react";
+import JSZip from "jszip";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
@@ -241,7 +244,10 @@ export function ExecutiveReportGenerator() {
   const [companies, setCompanies] = useState<CompanyOption[]>([]);
   const [selectedConsultant, setSelectedConsultant] = useState<string>("all");
   const [selectedCompany, setSelectedCompany] = useState<string>("all");
+  const [selectedCompanies, setSelectedCompanies] = useState<string[]>([]);
+  const [bulkMode, setBulkMode] = useState(false);
   const [selectedMonth, setSelectedMonth] = useState<string>(() => format(new Date(), "yyyy-MM"));
+  const [bulkProgress, setBulkProgress] = useState<{ current: number; total: number; companyName: string } | null>(null);
 
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
@@ -283,6 +289,7 @@ export function ExecutiveReportGenerator() {
         setCompanies(data || []);
       }
       setSelectedCompany("all");
+      setSelectedCompanies([]);
     };
     loadFilteredCompanies();
   }, [selectedConsultant, open]);
@@ -292,255 +299,146 @@ export function ExecutiveReportGenerator() {
     return { value: format(d, "yyyy-MM"), label: format(d, "MMMM yyyy", { locale: ptBR }) };
   });
 
+  // ── Core data fetch for a single company (or all) ──
+  const fetchReportData = async (companyId: string | null, consultantId: string | null) => {
+    const monthDate = parse(selectedMonth, "yyyy-MM", new Date());
+    const mStart = startOfMonth(monthDate);
+    const mEnd = endOfMonth(monthDate);
+    const mStartStr = format(mStart, "yyyy-MM-dd");
+    const mEndStr = format(mEnd, "yyyy-MM-dd");
+
+    let projectQuery = supabase
+      .from("onboarding_projects")
+      .select("id, onboarding_company_id, onboarding_companies(name), consultant:onboarding_staff!onboarding_projects_consultant_id_fkey(name)")
+      .eq("status", "active");
+
+    if (companyId) {
+      projectQuery = projectQuery.eq("onboarding_company_id", companyId);
+    }
+
+    const { data: projects } = await projectQuery;
+    if (!projects || projects.length === 0) return null;
+
+    let filteredProjects = projects;
+    if (consultantId) {
+      const { data: companyIds } = await supabase
+        .from("onboarding_companies")
+        .select("id")
+        .or(`consultant_id.eq.${consultantId},cs_id.eq.${consultantId}`);
+      const validCompanyIds = new Set((companyIds || []).map(c => c.id));
+      filteredProjects = projects.filter(p => p.onboarding_company_id && validCompanyIds.has(p.onboarding_company_id));
+    }
+
+    if (filteredProjects.length === 0) return null;
+
+    const projectIds = filteredProjects.map(p => p.id);
+
+    // Tasks
+    const { data: tasksData } = await (supabase
+      .from("onboarding_tasks")
+      .select("title, completed_at, responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(name), assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(name)") as any)
+      .in("project_id", projectIds)
+      .eq("status", "completed")
+      .gte("completed_at", `${mStartStr}T00:00:00`)
+      .lte("completed_at", `${mEndStr}T23:59:59`)
+      .order("completed_at", { ascending: true });
+
+    const mappedTasks: TaskData[] = (tasksData || []).map((t: any) => ({
+      title: t.title,
+      completed_at: t.completed_at,
+      responsible_staff_name: t.responsible_staff?.name || null,
+      assignee_name: t.assignee?.name || null,
+    }));
+
+    // Meetings
+    const { data: meetingsData } = await (supabase
+      .from("onboarding_meeting_notes")
+      .select(`id, meeting_title, subject, meeting_date, transcript, notes, is_finalized, onboarding_meeting_briefings (briefing_content)`) as any)
+      .in("project_id", projectIds)
+      .eq("is_finalized", true)
+      .gte("meeting_date", `${mStartStr}T00:00:00`)
+      .lte("meeting_date", `${mEndStr}T23:59:59`)
+      .order("meeting_date", { ascending: true });
+
+    const mappedMeetings: MeetingData[] = (meetingsData || []).map((m: any) => {
+      const relation = m.onboarding_meeting_briefings;
+      const briefingContent = Array.isArray(relation) ? relation[0]?.briefing_content || null : relation?.briefing_content || null;
+      return {
+        id: m.id, title: m.meeting_title, subject: m.subject, meeting_date: m.meeting_date,
+        transcript: m.transcript, notes: m.notes, briefing_content: briefingContent,
+        is_finalized: Boolean(m.is_finalized), ai_summary: null, ai_alignments: null,
+      };
+    });
+
+    // Enrich with AI summaries
+    const enrichedMeetings: MeetingData[] = [];
+    for (const meeting of mappedMeetings) {
+      const meetingText = (meeting.transcript || meeting.notes || "").trim();
+      if (meetingText.length < 180) { enrichedMeetings.push(meeting); continue; }
+      let hasCached = false;
+      if (meeting.briefing_content) {
+        try { hasCached = normalizeText(JSON.parse(meeting.briefing_content).report_summary).length > 0; } catch { hasCached = false; }
+      }
+      if (hasCached) { enrichedMeetings.push(meeting); continue; }
+      try {
+        const { data: summaryData, error } = await supabase.functions.invoke("summarize-meeting-transcription", { body: { meetingId: meeting.id } });
+        if (error) { enrichedMeetings.push(meeting); continue; }
+        enrichedMeetings.push({
+          ...meeting,
+          ai_summary: typeof summaryData?.summary === "string" ? summaryData.summary : null,
+          ai_alignments: Array.isArray(summaryData?.alignments) ? summaryData.alignments.map(String).filter(Boolean) : null,
+        });
+      } catch { enrichedMeetings.push(meeting); }
+    }
+
+    // Goals
+    const companyIds = filteredProjects.map(p => p.onboarding_company_id).filter(Boolean) as string[];
+    let mappedGoals: GoalData[] = [];
+    if (companyIds.length > 0) {
+      const { data: kpis } = await supabase.from("company_kpis").select("id, name, kpi_type, target_value").in("company_id", companyIds).eq("is_active", true);
+      const kpiList = kpis || [];
+      const kpiIdList = kpiList.map(k => k.id);
+      if (kpiIdList.length > 0) {
+        const { data: kpiTargets } = await supabase.from("kpi_monthly_targets").select("kpi_id, target_value, level_name, level_order").in("kpi_id", kpiIdList).eq("month_year", mStartStr).is("unit_id", null).is("team_id", null).is("sector_id", null).is("salesperson_id", null);
+        const { data: entries } = await supabase.from("kpi_entries").select("kpi_id, value, entry_date").in("kpi_id", kpiIdList).gte("entry_date", mStartStr).lte("entry_date", mEndStr);
+        const actualByKpi: Record<string, number> = {};
+        (entries || []).forEach((e: any) => { actualByKpi[e.kpi_id] = (actualByKpi[e.kpi_id] || 0) + (e.value || 0); });
+        const targetByKpi: Record<string, number> = {};
+        (kpiTargets || []).forEach((t: any) => { if (!targetByKpi[t.kpi_id] || t.level_order === 0 || t.level_name === 'Base') { targetByKpi[t.kpi_id] = t.target_value; } });
+        mappedGoals = kpiList.filter(k => targetByKpi[k.id] || actualByKpi[k.id]).map(k => ({
+          kpi_name: k.name, target_value: targetByKpi[k.id] || k.target_value || 0,
+          actual_value: actualByKpi[k.id] !== undefined ? actualByKpi[k.id] : null,
+          unit: k.kpi_type === 'monetary' ? 'R$' : null,
+        }));
+      }
+    }
+
+    const plannedNextSteps = buildNextSteps(mappedTasks, enrichedMeetings, mappedGoals);
+    return { tasks: mappedTasks, meetings: enrichedMeetings, goals: mappedGoals, nextSteps: plannedNextSteps };
+  };
+
+  // ── Single report generation (existing behavior) ──
   const generateReport = async () => {
     setLoading(true);
     setReportReady(false);
     try {
-      const monthDate = parse(selectedMonth, "yyyy-MM", new Date());
-      const mStart = startOfMonth(monthDate);
-      const mEnd = endOfMonth(monthDate);
-      const mStartStr = format(mStart, "yyyy-MM-dd");
-      const mEndStr = format(mEnd, "yyyy-MM-dd");
+      const consultantId = selectedConsultant !== "all" ? selectedConsultant : null;
+      const companyId = selectedCompany !== "all" ? selectedCompany : null;
 
-      // Find the project IDs matching filters
-      let projectQuery = supabase
-        .from("onboarding_projects")
-        .select("id, onboarding_company_id, onboarding_companies(name), consultant:onboarding_staff!onboarding_projects_consultant_id_fkey(name)")
-        .eq("status", "active");
+      const data = await fetchReportData(companyId, consultantId);
+      if (!data) { toast.error("Nenhum projeto encontrado com os filtros selecionados"); setLoading(false); return; }
 
       if (selectedCompany !== "all") {
-        projectQuery = projectQuery.eq("onboarding_company_id", selectedCompany);
-      }
-
-      const { data: projects } = await projectQuery;
-      if (!projects || projects.length === 0) {
-        toast.error("Nenhum projeto encontrado com os filtros selecionados");
-        setLoading(false);
-        return;
-      }
-
-      // Filter by consultant if needed
-      let filteredProjects = projects;
-      if (selectedConsultant !== "all") {
-        // Need to check consultant_id on company or project
-        const { data: companyIds } = await supabase
-          .from("onboarding_companies")
-          .select("id")
-          .or(`consultant_id.eq.${selectedConsultant},cs_id.eq.${selectedConsultant}`);
-        const validCompanyIds = new Set((companyIds || []).map(c => c.id));
-        filteredProjects = projects.filter(p => p.onboarding_company_id && validCompanyIds.has(p.onboarding_company_id));
-      }
-
-      if (filteredProjects.length === 0) {
-        toast.error("Nenhum projeto encontrado com os filtros selecionados");
-        setLoading(false);
-        return;
-      }
-
-      const projectIds = filteredProjects.map(p => p.id);
-
-      // Set report metadata
-      if (selectedCompany !== "all") {
-        const comp = companies.find(c => c.id === selectedCompany);
-        setReportCompanyName(comp?.name || "");
+        setReportCompanyName(companies.find(c => c.id === selectedCompany)?.name || "");
       } else {
         setReportCompanyName("Todas as empresas");
       }
-      if (selectedConsultant !== "all") {
-        const cons = consultants.find(c => c.id === selectedConsultant);
-        setReportConsultantName(cons?.name || "");
-      } else {
-        setReportConsultantName("Todos os consultores");
-      }
+      setReportConsultantName(selectedConsultant !== "all" ? (consultants.find(c => c.id === selectedConsultant)?.name || "") : "Todos os consultores");
 
-      // Fetch only completed tasks (somente o que foi feito)
-      const { data: tasksData } = await (supabase
-        .from("onboarding_tasks")
-        .select("title, completed_at, responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(name), assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(name)") as any)
-        .in("project_id", projectIds)
-        .eq("status", "completed")
-        .gte("completed_at", `${mStartStr}T00:00:00`)
-        .lte("completed_at", `${mEndStr}T23:59:59`)
-        .order("completed_at", { ascending: true });
-
-      const mappedTasks: TaskData[] = (tasksData || []).map((t: any) => ({
-        title: t.title,
-        completed_at: t.completed_at,
-        responsible_staff_name: t.responsible_staff?.name || null,
-        assignee_name: t.assignee?.name || null,
-      }));
-
-      // Fetch only finalized meetings from project meetings menu + AI briefing content
-      const { data: meetingsData, error: meetingsError } = await (supabase
-        .from("onboarding_meeting_notes")
-        .select(`
-          id,
-          meeting_title,
-          subject,
-          meeting_date,
-          transcript,
-          notes,
-          is_finalized,
-          onboarding_meeting_briefings (briefing_content)
-        `) as any)
-        .in("project_id", projectIds)
-        .eq("is_finalized", true)
-        .gte("meeting_date", `${mStartStr}T00:00:00`)
-        .lte("meeting_date", `${mEndStr}T23:59:59`)
-        .order("meeting_date", { ascending: true });
-
-      if (meetingsError) {
-        console.error("Erro ao buscar reuniões finalizadas:", meetingsError);
-      }
-
-      const mappedMeetings: MeetingData[] = (meetingsData || []).map((m: any) => {
-        const relation = m.onboarding_meeting_briefings;
-        const briefingContent = Array.isArray(relation)
-          ? relation[0]?.briefing_content || null
-          : relation?.briefing_content || null;
-
-        return {
-          id: m.id,
-          title: m.meeting_title,
-          subject: m.subject,
-          meeting_date: m.meeting_date,
-          transcript: m.transcript,
-          notes: m.notes,
-          briefing_content: briefingContent,
-          is_finalized: Boolean(m.is_finalized),
-          ai_summary: null,
-          ai_alignments: null,
-        };
-      });
-
-      const enrichMeetingsWithAISummary = async (meetingsList: MeetingData[]): Promise<MeetingData[]> => {
-        const enrichedMeetings: MeetingData[] = [];
-
-        for (const meeting of meetingsList) {
-          const meetingText = (meeting.transcript || meeting.notes || "").trim();
-          if (meetingText.length < 180) {
-            enrichedMeetings.push(meeting);
-            continue;
-          }
-
-          let hasCachedReportSummary = false;
-          if (meeting.briefing_content) {
-            try {
-              const parsed = JSON.parse(meeting.briefing_content) as Record<string, unknown>;
-              hasCachedReportSummary = normalizeText(parsed.report_summary).length > 0;
-            } catch {
-              hasCachedReportSummary = false;
-            }
-          }
-
-          if (hasCachedReportSummary) {
-            enrichedMeetings.push(meeting);
-            continue;
-          }
-
-          try {
-            const { data: summaryData, error: summaryError } = await supabase.functions.invoke(
-              "summarize-meeting-transcription",
-              {
-                body: { meetingId: meeting.id },
-              }
-            );
-
-            if (summaryError) {
-              console.error(`Erro ao resumir reunião ${meeting.id}:`, summaryError);
-              enrichedMeetings.push(meeting);
-              continue;
-            }
-
-            const aiSummary = typeof summaryData?.summary === "string" ? summaryData.summary : null;
-            const aiAlignments = Array.isArray(summaryData?.alignments)
-              ? summaryData.alignments.map((item: unknown) => String(item)).filter(Boolean)
-              : null;
-
-            enrichedMeetings.push({
-              ...meeting,
-              ai_summary: aiSummary,
-              ai_alignments: aiAlignments,
-            });
-          } catch (summaryErr) {
-            console.error(`Erro inesperado ao resumir reunião ${meeting.id}:`, summaryErr);
-            enrichedMeetings.push(meeting);
-          }
-        }
-
-        return enrichedMeetings;
-      };
-
-      const meetingsWithAISummary = await enrichMeetingsWithAISummary(mappedMeetings);
-
-      // Fetch KPI goals for the month - use correct field names
-      const companyIds = filteredProjects.map(p => p.onboarding_company_id).filter(Boolean) as string[];
-      
-      let mappedGoals: GoalData[] = [];
-      if (companyIds.length > 0) {
-        // Get company-level KPIs (not individual salesperson KPIs)
-        const { data: kpis } = await supabase
-          .from("company_kpis")
-          .select("id, name, kpi_type, target_value")
-          .in("company_id", companyIds)
-          .eq("is_active", true);
-
-        const kpiList = kpis || [];
-        const kpiIdList = kpiList.map(k => k.id);
-
-        if (kpiIdList.length > 0) {
-          // Fetch monthly targets using correct field name: month_year
-          const { data: kpiTargets } = await supabase
-            .from("kpi_monthly_targets")
-            .select("kpi_id, target_value, level_name, level_order")
-            .in("kpi_id", kpiIdList)
-            .eq("month_year", mStartStr)
-            .is("unit_id", null)
-            .is("team_id", null)
-            .is("sector_id", null)
-            .is("salesperson_id", null);
-
-          // Fetch actual entries for the month to calculate realized values
-          const { data: entries } = await supabase
-            .from("kpi_entries")
-            .select("kpi_id, value, entry_date")
-            .in("kpi_id", kpiIdList)
-            .gte("entry_date", mStartStr)
-            .lte("entry_date", mEndStr);
-
-          // Aggregate actual values per KPI
-          const actualByKpi: Record<string, number> = {};
-          (entries || []).forEach((e: any) => {
-            actualByKpi[e.kpi_id] = (actualByKpi[e.kpi_id] || 0) + (e.value || 0);
-          });
-
-          // Build targets map (use Base level target, or first available)
-          const targetByKpi: Record<string, number> = {};
-          (kpiTargets || []).forEach((t: any) => {
-            // Prefer "Base" level or lowest level_order
-            if (!targetByKpi[t.kpi_id] || t.level_order === 0 || t.level_name === 'Base') {
-              targetByKpi[t.kpi_id] = t.target_value;
-            }
-          });
-
-          mappedGoals = kpiList
-            .filter(k => targetByKpi[k.id] || actualByKpi[k.id])
-            .map(k => ({
-              kpi_name: k.name,
-              target_value: targetByKpi[k.id] || k.target_value || 0,
-              actual_value: actualByKpi[k.id] !== undefined ? actualByKpi[k.id] : null,
-              unit: k.kpi_type === 'monetary' ? 'R$' : null,
-            }));
-        }
-      }
-
-
-      const plannedNextSteps = buildNextSteps(mappedTasks, meetingsWithAISummary, mappedGoals);
-
-      setTasks(mappedTasks);
-      setMeetings(meetingsWithAISummary);
-      setGoals(mappedGoals);
-      setNextSteps(plannedNextSteps);
+      setTasks(data.tasks);
+      setMeetings(data.meetings);
+      setGoals(data.goals);
+      setNextSteps(data.nextSteps);
       setReportReady(true);
     } catch (err) {
       console.error("Error generating report:", err);
@@ -550,94 +448,62 @@ export function ExecutiveReportGenerator() {
     }
   };
 
+  // ── Render current reportRef to PDF blob ──
+  const renderCurrentReportToPDF = async (): Promise<Blob> => {
+    if (!reportRef.current) throw new Error("Report ref not available");
+
+    const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
+    const pageWidth = 210;
+    const pageHeight = 297;
+    const margin = 12;
+    const contentWidth = pageWidth - margin * 2;
+    const sectionGap = 3;
+    let currentY = margin;
+
+    const sections = Array.from(reportRef.current.querySelectorAll<HTMLElement>("[data-pdf-section='true']"));
+    if (sections.length === 0) throw new Error("Nenhuma seção encontrada.");
+
+    for (const section of sections) {
+      const canvas = await html2canvas(section, { scale: 2, useCORS: true, logging: false, backgroundColor: "#ffffff" });
+      const pxPerMm = canvas.width / contentWidth;
+      let renderedPx = 0;
+
+      while (renderedPx < canvas.height) {
+        if (pageHeight - margin - currentY < 10) { pdf.addPage(); currentY = margin; }
+        const availablePx = Math.max(1, Math.floor((pageHeight - margin - currentY) * pxPerMm));
+        const slicePx = Math.min(availablePx, canvas.height - renderedPx);
+        const sliceHeightMm = slicePx / pxPerMm;
+        const sliceCanvas = document.createElement("canvas");
+        sliceCanvas.width = canvas.width;
+        sliceCanvas.height = slicePx;
+        const ctx = sliceCanvas.getContext("2d");
+        if (!ctx) throw new Error("Canvas context failed");
+        ctx.drawImage(canvas, 0, renderedPx, canvas.width, slicePx, 0, 0, canvas.width, slicePx);
+        pdf.addImage(sliceCanvas.toDataURL("image/png"), "PNG", margin, currentY, contentWidth, sliceHeightMm);
+        renderedPx += slicePx;
+        currentY += sliceHeightMm;
+        if (renderedPx < canvas.height) { pdf.addPage(); currentY = margin; }
+      }
+      currentY += sectionGap;
+      if (currentY > pageHeight - margin) { pdf.addPage(); currentY = margin; }
+    }
+
+    return pdf.output("blob");
+  };
+
   const downloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
-
     try {
-      const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const pageWidth = 210;
-      const pageHeight = 297;
-      const margin = 12;
-      const contentWidth = pageWidth - margin * 2;
-      const sectionGap = 3;
-      let currentY = margin;
-
-      const sections = Array.from(
-        reportRef.current.querySelectorAll<HTMLElement>("[data-pdf-section='true']")
-      );
-
-      if (sections.length === 0) {
-        throw new Error("Nenhuma seção do relatório encontrada para exportar.");
-      }
-
-      for (const section of sections) {
-        const canvas = await html2canvas(section, {
-          scale: 2,
-          useCORS: true,
-          logging: false,
-          backgroundColor: "#ffffff",
-        });
-
-        const pxPerMm = canvas.width / contentWidth;
-        let renderedPx = 0;
-
-        while (renderedPx < canvas.height) {
-          const remainingMm = pageHeight - margin - currentY;
-
-          if (remainingMm < 10) {
-            pdf.addPage();
-            currentY = margin;
-          }
-
-          const availableMm = pageHeight - margin - currentY;
-          const availablePx = Math.max(1, Math.floor(availableMm * pxPerMm));
-          const slicePx = Math.min(availablePx, canvas.height - renderedPx);
-          const sliceHeightMm = slicePx / pxPerMm;
-
-          const sliceCanvas = document.createElement("canvas");
-          sliceCanvas.width = canvas.width;
-          sliceCanvas.height = slicePx;
-          const ctx = sliceCanvas.getContext("2d");
-
-          if (!ctx) {
-            throw new Error("Não foi possível renderizar a seção do relatório.");
-          }
-
-          ctx.drawImage(
-            canvas,
-            0,
-            renderedPx,
-            canvas.width,
-            slicePx,
-            0,
-            0,
-            canvas.width,
-            slicePx
-          );
-
-          const imgData = sliceCanvas.toDataURL("image/png");
-          pdf.addImage(imgData, "PNG", margin, currentY, contentWidth, sliceHeightMm);
-
-          renderedPx += slicePx;
-          currentY += sliceHeightMm;
-
-          if (renderedPx < canvas.height) {
-            pdf.addPage();
-            currentY = margin;
-          }
-        }
-
-        currentY += sectionGap;
-        if (currentY > pageHeight - margin) {
-          pdf.addPage();
-          currentY = margin;
-        }
-      }
-
+      const blob = await renderCurrentReportToPDF();
       const safeCompanyName = reportCompanyName ? reportCompanyName.replace(/\s+/g, "_") : "geral";
       const fileMonthLabel = format(parse(selectedMonth, "yyyy-MM", new Date()), "MMMM_yyyy", { locale: ptBR });
-      pdf.save(`Relatorio_Executivo_${safeCompanyName}_${fileMonthLabel}.pdf`);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Relatorio_Executivo_${safeCompanyName}_${fileMonthLabel}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
       toast.success("PDF gerado com sucesso!");
     } catch (err) {
       console.error("Error generating PDF:", err);
@@ -647,13 +513,96 @@ export function ExecutiveReportGenerator() {
     }
   };
 
+  // ── Bulk download: one PDF per company → ZIP ──
+  const downloadBulkPDFs = async () => {
+    if (selectedCompanies.length === 0) {
+      toast.error("Selecione pelo menos uma empresa");
+      return;
+    }
+
+    setGenerating(true);
+    const zip = new JSZip();
+    const consultantId = selectedConsultant !== "all" ? selectedConsultant : null;
+    const consultantName = selectedConsultant !== "all" ? (consultants.find(c => c.id === selectedConsultant)?.name || "") : "Todos os consultores";
+    const fileMonthLabel = format(parse(selectedMonth, "yyyy-MM", new Date()), "MMMM_yyyy", { locale: ptBR });
+
+    let successCount = 0;
+
+    for (let i = 0; i < selectedCompanies.length; i++) {
+      const companyId = selectedCompanies[i];
+      const company = companies.find(c => c.id === companyId);
+      const companyName = company?.name || "Empresa";
+
+      setBulkProgress({ current: i + 1, total: selectedCompanies.length, companyName });
+
+      try {
+        const data = await fetchReportData(companyId, consultantId);
+        if (!data) continue;
+
+        // Set state so ReportContent renders this company's data
+        setReportCompanyName(companyName);
+        setReportConsultantName(consultantName);
+        setTasks(data.tasks);
+        setMeetings(data.meetings);
+        setGoals(data.goals);
+        setNextSteps(data.nextSteps);
+        setReportReady(true);
+
+        // Wait for React to render the updated content
+        await new Promise(resolve => setTimeout(resolve, 500));
+
+        const blob = await renderCurrentReportToPDF();
+        const safeName = companyName.replace(/[^a-zA-Z0-9À-ÿ\s_-]/g, "").replace(/\s+/g, "_");
+        zip.file(`Relatorio_${safeName}_${fileMonthLabel}.pdf`, blob);
+        successCount++;
+      } catch (err) {
+        console.error(`Erro ao gerar PDF para ${companyName}:`, err);
+      }
+    }
+
+    setBulkProgress(null);
+
+    if (successCount === 0) {
+      toast.error("Nenhum relatório pôde ser gerado");
+      setGenerating(false);
+      return;
+    }
+
+    try {
+      const zipBlob = await zip.generateAsync({ type: "blob" });
+      const url = URL.createObjectURL(zipBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `Relatorios_Executivos_${fileMonthLabel}.zip`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success(`${successCount} relatório(s) gerado(s) com sucesso!`);
+    } catch (err) {
+      console.error("Erro ao gerar ZIP:", err);
+      toast.error("Erro ao gerar arquivo ZIP");
+    } finally {
+      setGenerating(false);
+      setReportReady(false);
+    }
+  };
+
+  const toggleCompanySelection = (companyId: string) => {
+    setSelectedCompanies(prev =>
+      prev.includes(companyId) ? prev.filter(id => id !== companyId) : [...prev, companyId]
+    );
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedCompanies.length === companies.length) {
+      setSelectedCompanies([]);
+    } else {
+      setSelectedCompanies(companies.map(c => c.id));
+    }
+  };
+
   const formatDate = (d: string | null) => {
     if (!d) return "—";
-    try {
-      return format(new Date(d), "dd/MM/yyyy", { locale: ptBR });
-    } catch {
-      return d;
-    }
+    try { return format(new Date(d), "dd/MM/yyyy", { locale: ptBR }); } catch { return d; }
   };
 
   const monthLabel = format(parse(selectedMonth, "yyyy-MM", new Date()), "MMMM 'de' yyyy", { locale: ptBR });
@@ -672,6 +621,28 @@ export function ExecutiveReportGenerator() {
         </DialogHeader>
 
         <div className="space-y-4">
+          {/* Mode toggle */}
+          <div className="flex items-center gap-3 p-2 rounded-lg bg-muted/40 border border-border">
+            <Button
+              variant={!bulkMode ? "default" : "ghost"}
+              size="sm"
+              className="flex-1 gap-1.5 text-xs"
+              onClick={() => { setBulkMode(false); setSelectedCompanies([]); }}
+            >
+              <FileText className="h-3.5 w-3.5" />
+              Individual
+            </Button>
+            <Button
+              variant={bulkMode ? "default" : "ghost"}
+              size="sm"
+              className="flex-1 gap-1.5 text-xs"
+              onClick={() => { setBulkMode(true); setSelectedCompany("all"); }}
+            >
+              <PackageOpen className="h-3.5 w-3.5" />
+              Em massa
+            </Button>
+          </div>
+
           {/* Filters */}
           <div className="grid grid-cols-1 gap-3">
             <div className="space-y-1.5">
@@ -690,20 +661,26 @@ export function ExecutiveReportGenerator() {
             </div>
 
             <div className="grid grid-cols-2 gap-3">
-              <div className="space-y-1.5">
-                <Label className="text-xs">Empresa</Label>
-                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                  <SelectTrigger className="h-9">
-                    <SelectValue placeholder="Todas" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas</SelectItem>
-                    {companies.map(c => (
-                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
-              </div>
+              {!bulkMode ? (
+                <div className="space-y-1.5">
+                  <Label className="text-xs">Empresa</Label>
+                  <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                    <SelectTrigger className="h-9">
+                      <SelectValue placeholder="Todas" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todas</SelectItem>
+                      {companies.map(c => (
+                        <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              ) : (
+                <div className="space-y-1.5 col-span-1">
+                  <Label className="text-xs">Empresas ({selectedCompanies.length} selecionada{selectedCompanies.length !== 1 ? "s" : ""})</Label>
+                </div>
+              )}
 
               <div className="space-y-1.5">
                 <Label className="text-xs">Mês</Label>
@@ -721,20 +698,89 @@ export function ExecutiveReportGenerator() {
             </div>
           </div>
 
+          {/* Multi-select companies list (bulk mode) */}
+          {bulkMode && (
+            <div className="border rounded-lg overflow-hidden">
+              <div
+                className="flex items-center gap-2 px-3 py-2 bg-muted/50 border-b cursor-pointer hover:bg-muted/70 transition-colors"
+                onClick={toggleSelectAll}
+              >
+                <Checkbox
+                  checked={selectedCompanies.length === companies.length && companies.length > 0}
+                  onCheckedChange={toggleSelectAll}
+                />
+                <span className="text-xs font-medium text-muted-foreground">
+                  {selectedCompanies.length === companies.length ? "Desmarcar todas" : "Selecionar todas"} ({companies.length})
+                </span>
+              </div>
+              <ScrollArea className="h-[180px]">
+                <div className="divide-y divide-border">
+                  {companies.map(c => (
+                    <div
+                      key={c.id}
+                      className="flex items-center gap-2 px-3 py-2 hover:bg-muted/30 cursor-pointer transition-colors"
+                      onClick={() => toggleCompanySelection(c.id)}
+                    >
+                      <Checkbox
+                        checked={selectedCompanies.includes(c.id)}
+                        onCheckedChange={() => toggleCompanySelection(c.id)}
+                      />
+                      <span className="text-sm">{c.name}</span>
+                    </div>
+                  ))}
+                </div>
+              </ScrollArea>
+            </div>
+          )}
+
+          {/* Action buttons */}
           <div className="flex gap-2">
-            <Button onClick={generateReport} disabled={loading} className="gap-2">
-              {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
-              Gerar Relatório
-            </Button>
-            {reportReady && (
-              <Button onClick={downloadPDF} disabled={generating} variant="outline" className="gap-2">
-                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
-                Baixar PDF
+            {!bulkMode ? (
+              <>
+                <Button onClick={generateReport} disabled={loading} className="gap-2">
+                  {loading ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileText className="h-4 w-4" />}
+                  Gerar Relatório
+                </Button>
+                {reportReady && (
+                  <Button onClick={downloadPDF} disabled={generating} variant="outline" className="gap-2">
+                    {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4" />}
+                    Baixar PDF
+                  </Button>
+                )}
+              </>
+            ) : (
+              <Button
+                onClick={downloadBulkPDFs}
+                disabled={generating || selectedCompanies.length === 0}
+                className="gap-2"
+              >
+                {generating ? <Loader2 className="h-4 w-4 animate-spin" /> : <PackageOpen className="h-4 w-4" />}
+                {generating
+                  ? bulkProgress
+                    ? `Gerando ${bulkProgress.current}/${bulkProgress.total}...`
+                    : "Finalizando ZIP..."
+                  : `Baixar ${selectedCompanies.length} relatório(s) (ZIP)`}
               </Button>
             )}
           </div>
 
-          {reportReady && (
+          {/* Progress indicator for bulk */}
+          {bulkProgress && (
+            <div className="border rounded-lg p-3 bg-muted/30 text-sm text-muted-foreground space-y-2">
+              <div className="flex justify-between text-xs">
+                <span>Gerando: <strong>{bulkProgress.companyName}</strong></span>
+                <span>{bulkProgress.current}/{bulkProgress.total}</span>
+              </div>
+              <div className="h-2 bg-muted rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-300"
+                  style={{ width: `${(bulkProgress.current / bulkProgress.total) * 100}%` }}
+                />
+              </div>
+            </div>
+          )}
+
+          {reportReady && !bulkMode && !bulkProgress && (
             <div className="border rounded-lg p-3 bg-muted/30 text-center text-sm text-muted-foreground">
               ✅ Relatório gerado com sucesso! Clique em "Baixar PDF" para fazer o download.
               <p className="text-xs mt-1">
