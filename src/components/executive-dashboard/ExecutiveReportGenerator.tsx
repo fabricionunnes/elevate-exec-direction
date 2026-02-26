@@ -188,17 +188,18 @@ export function ExecutiveReportGenerator() {
         observations: t.observations,
       }));
 
-      // Fetch meetings in the month
-      const { data: meetingsData } = await (supabase as any)
-        .from("onboarding_meetings")
-        .select("title, meeting_date, ai_summary, notes, is_finalized")
+      // Fetch meetings from onboarding_meeting_notes (correct table)
+      const { data: meetingsData } = await supabase
+        .from("onboarding_meeting_notes")
+        .select("meeting_title, meeting_date, ai_summary, notes, is_finalized, subject")
         .in("project_id", projectIds)
+        .eq("is_finalized", true)
         .gte("meeting_date", mStartStr)
-        .lte("meeting_date", mEndStr)
+        .lte("meeting_date", mEndStr + "T23:59:59")
         .order("meeting_date", { ascending: true });
 
       const mappedMeetings: MeetingData[] = (meetingsData || []).map((m: any) => ({
-        title: m.title,
+        title: m.meeting_title,
         meeting_date: m.meeting_date,
         ai_summary: m.ai_summary,
         notes: m.notes,
@@ -639,13 +640,13 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
           ) : (
             <div className="space-y-3">
               {meetings.map((m, i) => {
-                // Extract first 2 sentences or max 150 chars for a short summary
+                // Build a concise briefing: prefer ai_summary, fallback to notes
                 const rawSummary = m.ai_summary || m.notes || null;
-                let truncatedSummary: string | null = null;
+                let briefing: string | null = null;
                 if (rawSummary) {
-                  // Take first 2 sentences
-                  const sentences = rawSummary.split(/[.!?]\s+/).slice(0, 2).join('. ');
-                  truncatedSummary = sentences.length > 150 ? sentences.substring(0, 150).trim() + "..." : sentences + (sentences.endsWith('.') ? '' : '.');
+                  // Extract first sentence only, max 120 chars for a short briefing
+                  const firstSentence = rawSummary.split(/[.!?\n]+/)[0]?.trim() || "";
+                  briefing = firstSentence.length > 120 ? firstSentence.substring(0, 120).trim() + "..." : firstSentence + ".";
                 }
                 return (
                   <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
@@ -653,13 +654,13 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
                       <p className="font-semibold text-sm text-[#0f172a]">{m.title || "Reunião"}</p>
                       <p className="text-xs text-slate-500">{formatDate(m.meeting_date)}</p>
                     </div>
-                    {truncatedSummary && (
+                    {briefing && (
                       <div className="bg-slate-50 rounded p-2 text-xs text-slate-700">
-                        <p className="font-semibold text-slate-500 mb-1">Resumo:</p>
-                        <p className="whitespace-pre-line">{truncatedSummary}</p>
+                        <p className="font-semibold text-slate-500 mb-1">Briefing:</p>
+                        <p>{briefing}</p>
                       </div>
                     )}
-                    {!truncatedSummary && (
+                    {!briefing && (
                       <p className="text-xs text-slate-400 italic">Sem resumo disponível</p>
                     )}
                     {!m.is_finalized && (
