@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_projects ADD COLUMN looker_studio_url TEXT DEFAULT NULL;

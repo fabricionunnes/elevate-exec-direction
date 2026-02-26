@@ -32,6 +32,7 @@ import {
   Send,
   CalendarDays,
   Receipt,
+  Megaphone,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -57,6 +58,7 @@ import { ClientSalesModule } from "@/components/client-sales/ClientSalesModule";
 import { ClientAppointmentsModule } from "@/components/client-appointments/ClientAppointmentsModule";
 import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
 import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
+import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -104,7 +106,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -305,6 +307,7 @@ const ClientOnboardingPage = () => {
         customers: "Clientes",
         appointments: "Agendamentos",
         billing: "Minhas Faturas",
+        paid_traffic: "Tráfego Pago",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -454,6 +457,7 @@ const ClientOnboardingPage = () => {
       { id: "academy" as const, icon: GraduationCap, label: "Academy", href: "/academy" },
       { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
       { id: "billing" as ViewType, icon: Receipt, label: "Faturas", menuKey: CLIENT_MENU_KEYS.minhas_faturas },
+      { id: "paid_traffic" as ViewType, icon: Megaphone, label: "Tráfego Pago", menuKey: CLIENT_MENU_KEYS.trafego_pago },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1072,6 +1076,17 @@ const ClientOnboardingPage = () => {
               exit={{ opacity: 0, x: 20 }}
             >
               <ClientBillingPanel companyId={companyId || ""} />
+            </motion.div>
+          )}
+
+          {activeView === "paid_traffic" && hasViewAccess("paid_traffic") && (
+            <motion.div
+              key="paid_traffic"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientPaidTrafficPanel projectId={projectId || ""} />
             </motion.div>
           )}
         </AnimatePresence>
