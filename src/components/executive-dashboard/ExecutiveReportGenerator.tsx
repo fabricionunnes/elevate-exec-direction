@@ -67,6 +67,9 @@ const clampText = (value: string, maxLength: number) => {
   return `${value.slice(0, maxLength).trim()}...`;
 };
 
+const SUMMARY_KEYWORDS = /(alinh|acord|defin|meta|praz|próxim|acao|ação|estratég|resultado|plano|respons|decid|priorid|implement|encaminh)/i;
+const SMALL_TALK_PATTERN = /^(oi|olá|ola|bom dia|boa tarde|boa noite|e aí|e ai|tudo bem|beleza|ok|show|perfeito|certo)\b/i;
+
 const sanitizeMeetingText = (value: string): string =>
   value
     .replace(/https?:\/\/\S+/gi, " ")
@@ -74,14 +77,48 @@ const sanitizeMeetingText = (value: string): string =>
     .replace(/\b\d{2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:,\d{2}:\d{2}:\d{2}(?:[.,]\d{1,3})?)?\b/g, " ")
     .replace(/^\s*[A-Za-zÀ-ÿ0-9 _.'-]{2,60}:\s*/gm, "")
     .replace(/olá,\s*estou\s*transcrevendo[^.\n]*\.?/gi, " ")
+    .replace(/[\t ]+/g, " ")
     .replace(/[#>*_`~]/g, " ")
-    .replace(/\s+/g, " ")
+    .replace(/\n{3,}/g, "\n\n")
     .trim();
 
-const splitSentences = (value: string): string[] =>
-  (value.match(/[^.!?]+[.!?]?/g) || [])
+const splitSentences = (value: string): string[] => {
+  const normalized = sanitizeMeetingText(value)
+    .replace(/\r?\n+/g, ". ")
+    .replace(/\s*[•-]\s+/g, ". ")
+    .replace(/\s*[;:]\s+/g, ". ")
+    .replace(/\s+/g, " ");
+
+  return (normalized.match(/[^.!?]+[.!?]?/g) || [])
     .map((sentence) => sentence.trim())
     .filter(Boolean);
+};
+
+const pickSummarySentences = (sentences: string[], maxCount = 3): string[] => {
+  const scored = sentences
+    .map((sentence, index) => {
+      const sentenceLength = sentence.length;
+      const keywordBoost = SUMMARY_KEYWORDS.test(sentence) ? 3 : 0;
+      const smallTalkPenalty = SMALL_TALK_PATTERN.test(sentence.toLowerCase()) ? -4 : 0;
+      const sizeBoost = sentenceLength >= 50 && sentenceLength <= 260 ? 2 : 0;
+      const positionPenalty = index === 0 ? -1 : 0;
+
+      return {
+        sentence,
+        index,
+        score: keywordBoost + smallTalkPenalty + sizeBoost + positionPenalty,
+      };
+    })
+    .filter((item) => item.sentence.length > 28)
+    .sort((a, b) => b.score - a.score || a.index - b.index)
+    .slice(0, maxCount)
+    .sort((a, b) => a.index - b.index)
+    .map((item) => item.sentence);
+
+  if (scored.length > 0) return scored;
+
+  return sentences.filter((sentence) => sentence.length > 28).slice(0, maxCount);
+};
 
 const extractMeetingBriefing = (meeting: MeetingData) => {
   let summarySource = "";
@@ -92,41 +129,48 @@ const extractMeetingBriefing = (meeting: MeetingData) => {
       const parsed = JSON.parse(meeting.briefing_content) as Record<string, unknown>;
       summarySource =
         normalizeText(parsed.executive_summary) ||
+        normalizeText(parsed.client_history) ||
         normalizeText(parsed.goal_status) ||
         normalizeText(parsed.pending_items);
 
       alignments = [
         ...normalizeList(parsed.talking_points),
         ...normalizeList(parsed.suggested_agenda),
+        ...normalizeList(parsed.pending_items),
       ];
     } catch {
-      summarySource = meeting.briefing_content;
+      const rawBriefing = normalizeText(meeting.briefing_content);
+      summarySource = rawBriefing.startsWith("{") ? "" : rawBriefing;
     }
   }
 
   if (!summarySource) {
-    // Prioriza notas (normalmente mais úteis) antes da transcrição
-    summarySource = meeting.notes || meeting.transcript || "";
+    const transcriptText = normalizeText(meeting.transcript);
+    const notesText = normalizeText(meeting.notes);
+
+    // Prioriza transcrição para gerar resumo real; usa notas quando não houver transcrição útil
+    summarySource = transcriptText.length >= 120 ? transcriptText : notesText || transcriptText;
   }
 
-  const cleanedSource = sanitizeMeetingText(summarySource);
-  const sentenceCandidates = splitSentences(cleanedSource).filter((sentence) => sentence.length > 25);
-  const summaryFromSentences = sentenceCandidates.slice(0, 2).join(" ");
-
-  const summary = summaryFromSentences
-    ? clampText(summaryFromSentences, 320)
+  const sentenceCandidates = splitSentences(summarySource).filter((sentence) => !SMALL_TALK_PATTERN.test(sentence.toLowerCase()));
+  const selectedSentences = pickSummarySentences(sentenceCandidates, 3);
+  const summary = selectedSentences.length > 0
+    ? clampText(selectedSentences.join(" "), 460)
     : "Resumo curto indisponível para esta reunião.";
 
   if (alignments.length === 0) {
-    const rawAlignmentSource = sanitizeMeetingText(meeting.notes || meeting.transcript || "");
-    alignments = splitSentences(rawAlignmentSource)
+    const alignmentSource = meeting.notes || meeting.transcript || summarySource;
+    const alignmentCandidates = splitSentences(alignmentSource)
       .filter((item) => item.length > 30)
-      .slice(1, 4);
+      .filter((item) => !SMALL_TALK_PATTERN.test(item.toLowerCase()));
+
+    const prioritized = alignmentCandidates.filter((item) => SUMMARY_KEYWORDS.test(item));
+    alignments = (prioritized.length > 0 ? prioritized : alignmentCandidates).slice(0, 3);
   }
 
   const normalizedAlignments = alignments
-    .map((item) => clampText(sanitizeMeetingText(item), 160))
-    .filter((item) => item.length > 10 && item !== summary)
+    .map((item) => clampText(sanitizeMeetingText(item).replace(/\s+/g, " "), 180))
+    .filter((item) => item.length > 12 && item !== summary)
     .slice(0, 3);
 
   return {
