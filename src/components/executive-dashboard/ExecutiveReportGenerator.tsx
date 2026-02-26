@@ -337,18 +337,18 @@ export function ExecutiveReportGenerator() {
           Relatório Mensal
         </Button>
       </DialogTrigger>
-      <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Gerar Relatório Mensal</DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Filters */}
-          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-              <Label>Consultor</Label>
+          <div className="grid grid-cols-1 gap-3">
+            <div className="space-y-1.5">
+              <Label className="text-xs">Consultor</Label>
               <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-                <SelectTrigger>
+                <SelectTrigger className="h-9">
                   <SelectValue placeholder="Todos" />
                 </SelectTrigger>
                 <SelectContent>
@@ -360,33 +360,35 @@ export function ExecutiveReportGenerator() {
               </Select>
             </div>
 
-            <div className="space-y-2">
-              <Label>Empresa</Label>
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Todas" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas</SelectItem>
-                  {companies.map(c => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div className="space-y-1.5">
+                <Label className="text-xs">Empresa</Label>
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue placeholder="Todas" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas</SelectItem>
+                    {companies.map(c => (
+                      <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
 
-            <div className="space-y-2">
-              <Label>Mês</Label>
-              <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                <SelectTrigger>
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  {months.map(m => (
-                    <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <div className="space-y-1.5">
+                <Label className="text-xs">Mês</Label>
+                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {months.map(m => (
+                      <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
 
@@ -403,22 +405,12 @@ export function ExecutiveReportGenerator() {
             )}
           </div>
 
-          {/* Report Preview */}
           {reportReady && (
-            <div className="border rounded-lg overflow-hidden max-h-[400px] overflow-y-auto">
-              <div className="text-xs text-muted-foreground p-2 bg-muted">Pré-visualização do relatório</div>
-              <div className="p-2 scale-[0.5] origin-top-left" style={{ width: "200%", height: "auto" }}>
-                <ReportContent
-                  ref={reportRef}
-                  monthLabel={monthLabel}
-                  companyName={reportCompanyName}
-                  consultantName={reportConsultantName}
-                  tasks={tasks}
-                  meetings={meetings}
-                  goals={goals}
-                  formatDate={formatDate}
-                />
-              </div>
+            <div className="border rounded-lg p-3 bg-muted/30 text-center text-sm text-muted-foreground">
+              ✅ Relatório gerado com sucesso! Clique em "Baixar PDF" para fazer o download.
+              <p className="text-xs mt-1">
+                {tasks.length} tarefa(s) • {meetings.length} reunião(ões) • {goals.length} meta(s)
+              </p>
             </div>
           )}
         </div>
@@ -647,11 +639,14 @@ const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
           ) : (
             <div className="space-y-3">
               {meetings.map((m, i) => {
-                // Truncate summary to max 300 chars for PDF readability
-                const summary = m.ai_summary || m.notes || null;
-                const truncatedSummary = summary
-                  ? summary.length > 300 ? summary.substring(0, 300).trim() + "..." : summary
-                  : null;
+                // Extract first 2 sentences or max 150 chars for a short summary
+                const rawSummary = m.ai_summary || m.notes || null;
+                let truncatedSummary: string | null = null;
+                if (rawSummary) {
+                  // Take first 2 sentences
+                  const sentences = rawSummary.split(/[.!?]\s+/).slice(0, 2).join('. ');
+                  truncatedSummary = sentences.length > 150 ? sentences.substring(0, 150).trim() + "..." : sentences + (sentences.endsWith('.') ? '' : '.');
+                }
                 return (
                   <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
                     <div className="flex items-start justify-between mb-2">
