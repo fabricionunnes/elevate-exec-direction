@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from "react";
+import { useState, useRef, useEffect, forwardRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -24,20 +24,19 @@ interface CompanyOption {
 
 interface TaskData {
   title: string;
-  status: string;
-  due_date: string | null;
   completed_at: string | null;
-  description: string | null;
   responsible_staff_name: string | null;
   assignee_name: string | null;
-  observations: string | null;
 }
 
 interface MeetingData {
+  id: string;
   title: string | null;
+  subject: string | null;
   meeting_date: string | null;
-  ai_summary: string | null;
+  transcript: string | null;
   notes: string | null;
+  briefing_content: string | null;
   is_finalized: boolean;
 }
 
@@ -47,6 +46,110 @@ interface GoalData {
   actual_value: number | null;
   unit: string | null;
 }
+
+const normalizeText = (value: unknown): string => {
+  if (value == null) return "";
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean).join(" ");
+  return String(value).trim();
+};
+
+const normalizeList = (value: unknown): string[] => {
+  if (value == null) return [];
+  if (Array.isArray(value)) return value.map((item) => String(item).trim()).filter(Boolean);
+  return String(value)
+    .split(/\r?\n|•|- /)
+    .map((item) => item.trim())
+    .filter(Boolean);
+};
+
+const clampText = (value: string, maxLength: number) => {
+  if (value.length <= maxLength) return value;
+  return `${value.slice(0, maxLength).trim()}...`;
+};
+
+const splitSentences = (value: string): string[] =>
+  (value.replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [])
+    .map((sentence) => sentence.trim())
+    .filter(Boolean);
+
+const extractMeetingBriefing = (meeting: MeetingData) => {
+  let summarySource = "";
+  let alignments: string[] = [];
+
+  if (meeting.briefing_content) {
+    try {
+      const parsed = JSON.parse(meeting.briefing_content) as Record<string, unknown>;
+      summarySource =
+        normalizeText(parsed.executive_summary) ||
+        normalizeText(parsed.goal_status) ||
+        normalizeText(parsed.pending_items);
+
+      alignments = [
+        ...normalizeList(parsed.talking_points),
+        ...normalizeList(parsed.suggested_agenda),
+      ];
+    } catch {
+      summarySource = meeting.briefing_content;
+    }
+  }
+
+  if (!summarySource) {
+    summarySource = meeting.transcript || meeting.notes || "";
+  }
+
+  const summarySentences = splitSentences(summarySource).slice(0, 2).join(" ");
+  const summary = summarySentences
+    ? clampText(summarySentences, 260)
+    : "Resumo curto indisponível para esta reunião.";
+
+  if (alignments.length === 0) {
+    alignments = splitSentences(meeting.transcript || meeting.notes || "").slice(1, 4);
+  }
+
+  const normalizedAlignments = alignments
+    .map((item) => clampText(item.replace(/^[-•]\s*/, "").trim(), 140))
+    .filter(Boolean)
+    .slice(0, 3);
+
+  return {
+    summary,
+    alignments:
+      normalizedAlignments.length > 0
+        ? normalizedAlignments
+        : ["Manter acompanhamento dos combinados definidos na reunião."],
+  };
+};
+
+const buildNextSteps = (tasks: TaskData[], meetings: MeetingData[], goals: GoalData[]): string[] => {
+  const nextSteps: string[] = [];
+
+  const pendingGoals = goals
+    .filter((goal) => goal.actual_value === null || goal.actual_value < goal.target_value)
+    .slice(0, 2);
+
+  pendingGoals.forEach((goal) => {
+    nextSteps.push(
+      `Priorizar plano de recuperação do indicador ${goal.kpi_name} para atingir a meta de ${goal.target_value.toLocaleString("pt-BR")} ${goal.unit || ""}.`
+    );
+  });
+
+  meetings.slice(0, 2).forEach((meeting) => {
+    const briefing = extractMeetingBriefing(meeting);
+    if (briefing.alignments[0]) {
+      nextSteps.push(`Executar alinhamento: ${briefing.alignments[0]}`);
+    }
+  });
+
+  if (tasks.length > 0) {
+    nextSteps.push("Desdobrar as entregas concluídas em novas ações com responsáveis e prazos para o próximo ciclo.");
+  }
+
+  if (nextSteps.length === 0) {
+    nextSteps.push("Manter rotina semanal de acompanhamento de metas, reuniões e execução operacional.");
+  }
+
+  return Array.from(new Set(nextSteps)).slice(0, 5);
+};
 
 export function ExecutiveReportGenerator() {
   const [open, setOpen] = useState(false);
@@ -61,6 +164,7 @@ export function ExecutiveReportGenerator() {
   const [tasks, setTasks] = useState<TaskData[]>([]);
   const [meetings, setMeetings] = useState<MeetingData[]>([]);
   const [goals, setGoals] = useState<GoalData[]>([]);
+  const [nextSteps, setNextSteps] = useState<string[]>([]);
   const [reportReady, setReportReady] = useState(false);
   const [reportCompanyName, setReportCompanyName] = useState("");
   const [reportConsultantName, setReportConsultantName] = useState("");
@@ -167,44 +271,63 @@ export function ExecutiveReportGenerator() {
         setReportConsultantName("Todos os consultores");
       }
 
-      // Fetch tasks completed in the month
+      // Fetch only completed tasks (somente o que foi feito)
       const { data: tasksData } = await (supabase
         .from("onboarding_tasks")
-        .select("title, status, due_date, completed_at, description, observations, responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(name), assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(name)") as any)
+        .select("title, completed_at, responsible_staff:onboarding_staff!onboarding_tasks_responsible_staff_id_fkey(name), assignee:onboarding_users!onboarding_tasks_assignee_id_fkey(name)") as any)
         .in("project_id", projectIds)
         .eq("status", "completed")
-        .gte("completed_at", mStartStr)
-        .lte("completed_at", mEndStr + "T23:59:59")
+        .gte("completed_at", `${mStartStr}T00:00:00`)
+        .lte("completed_at", `${mEndStr}T23:59:59`)
         .order("completed_at", { ascending: true });
 
       const mappedTasks: TaskData[] = (tasksData || []).map((t: any) => ({
         title: t.title,
-        status: t.status,
-        due_date: t.due_date,
         completed_at: t.completed_at,
-        description: t.description,
         responsible_staff_name: t.responsible_staff?.name || null,
         assignee_name: t.assignee?.name || null,
-        observations: t.observations,
       }));
 
-      // Fetch meetings from onboarding_meeting_notes (correct table)
-      const { data: meetingsData } = await supabase
+      // Fetch only finalized meetings from project meetings menu + AI briefing content
+      const { data: meetingsData, error: meetingsError } = await (supabase
         .from("onboarding_meeting_notes")
-        .select("meeting_title, meeting_date, ai_summary, notes, is_finalized, subject")
+        .select(`
+          id,
+          meeting_title,
+          subject,
+          meeting_date,
+          transcript,
+          notes,
+          is_finalized,
+          onboarding_meeting_briefings (briefing_content)
+        `) as any)
         .in("project_id", projectIds)
         .eq("is_finalized", true)
-        .gte("meeting_date", mStartStr)
-        .lte("meeting_date", mEndStr + "T23:59:59")
+        .gte("meeting_date", `${mStartStr}T00:00:00`)
+        .lte("meeting_date", `${mEndStr}T23:59:59`)
         .order("meeting_date", { ascending: true });
 
-      const mappedMeetings: MeetingData[] = (meetingsData || []).map((m: any) => ({
-        title: m.meeting_title,
-        meeting_date: m.meeting_date,
-        ai_summary: m.ai_summary,
-        notes: m.notes,
-        is_finalized: m.is_finalized,
-      }));
+      if (meetingsError) {
+        console.error("Erro ao buscar reuniões finalizadas:", meetingsError);
+      }
+
+      const mappedMeetings: MeetingData[] = (meetingsData || []).map((m: any) => {
+        const relation = m.onboarding_meeting_briefings;
+        const briefingContent = Array.isArray(relation)
+          ? relation[0]?.briefing_content || null
+          : relation?.briefing_content || null;
+
+        return {
+          id: m.id,
+          title: m.meeting_title,
+          subject: m.subject,
+          meeting_date: m.meeting_date,
+          transcript: m.transcript,
+          notes: m.notes,
+          briefing_content: briefingContent,
+          is_finalized: Boolean(m.is_finalized),
+        };
+      });
 
       // Fetch KPI goals for the month - use correct field names
       const companyIds = filteredProjects.map(p => p.onboarding_company_id).filter(Boolean) as string[];
@@ -268,9 +391,12 @@ export function ExecutiveReportGenerator() {
       }
 
 
+      const plannedNextSteps = buildNextSteps(mappedTasks, mappedMeetings, mappedGoals);
+
       setTasks(mappedTasks);
       setMeetings(mappedMeetings);
       setGoals(mappedGoals);
+      setNextSteps(plannedNextSteps);
       setReportReady(true);
     } catch (err) {
       console.error("Error generating report:", err);
@@ -283,33 +409,91 @@ export function ExecutiveReportGenerator() {
   const downloadPDF = async () => {
     if (!reportRef.current) return;
     setGenerating(true);
+
     try {
-      const canvas = await html2canvas(reportRef.current, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: "#ffffff",
-      });
-      const imgData = canvas.toDataURL("image/png");
       const pdf = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
-      const imgWidth = 210;
+      const pageWidth = 210;
       const pageHeight = 297;
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      let heightLeft = imgHeight;
-      let position = 0;
+      const margin = 12;
+      const contentWidth = pageWidth - margin * 2;
+      const sectionGap = 3;
+      let currentY = margin;
 
-      pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-      heightLeft -= pageHeight;
+      const sections = Array.from(
+        reportRef.current.querySelectorAll<HTMLElement>("[data-pdf-section='true']")
+      );
 
-      while (heightLeft >= 0) {
-        position = heightLeft - imgHeight;
-        pdf.addPage();
-        pdf.addImage(imgData, "PNG", 0, position, imgWidth, imgHeight);
-        heightLeft -= pageHeight;
+      if (sections.length === 0) {
+        throw new Error("Nenhuma seção do relatório encontrada para exportar.");
       }
 
-      const monthLabel = format(parse(selectedMonth, "yyyy-MM", new Date()), "MMMM_yyyy", { locale: ptBR });
-      pdf.save(`Relatorio_Executivo_${reportCompanyName.replace(/\s+/g, "_")}_${monthLabel}.pdf`);
+      for (const section of sections) {
+        const canvas = await html2canvas(section, {
+          scale: 2,
+          useCORS: true,
+          logging: false,
+          backgroundColor: "#ffffff",
+        });
+
+        const pxPerMm = canvas.width / contentWidth;
+        let renderedPx = 0;
+
+        while (renderedPx < canvas.height) {
+          const remainingMm = pageHeight - margin - currentY;
+
+          if (remainingMm < 10) {
+            pdf.addPage();
+            currentY = margin;
+          }
+
+          const availableMm = pageHeight - margin - currentY;
+          const availablePx = Math.max(1, Math.floor(availableMm * pxPerMm));
+          const slicePx = Math.min(availablePx, canvas.height - renderedPx);
+          const sliceHeightMm = slicePx / pxPerMm;
+
+          const sliceCanvas = document.createElement("canvas");
+          sliceCanvas.width = canvas.width;
+          sliceCanvas.height = slicePx;
+          const ctx = sliceCanvas.getContext("2d");
+
+          if (!ctx) {
+            throw new Error("Não foi possível renderizar a seção do relatório.");
+          }
+
+          ctx.drawImage(
+            canvas,
+            0,
+            renderedPx,
+            canvas.width,
+            slicePx,
+            0,
+            0,
+            canvas.width,
+            slicePx
+          );
+
+          const imgData = sliceCanvas.toDataURL("image/png");
+          pdf.addImage(imgData, "PNG", margin, currentY, contentWidth, sliceHeightMm);
+
+          renderedPx += slicePx;
+          currentY += sliceHeightMm;
+
+          if (renderedPx < canvas.height) {
+            pdf.addPage();
+            currentY = margin;
+          }
+        }
+
+        currentY += sectionGap;
+        if (currentY > pageHeight - margin) {
+          pdf.addPage();
+          currentY = margin;
+        }
+      }
+
+      const safeCompanyName = reportCompanyName ? reportCompanyName.replace(/\s+/g, "_") : "geral";
+      const fileMonthLabel = format(parse(selectedMonth, "yyyy-MM", new Date()), "MMMM_yyyy", { locale: ptBR });
+      pdf.save(`Relatorio_Executivo_${safeCompanyName}_${fileMonthLabel}.pdf`);
       toast.success("PDF gerado com sucesso!");
     } catch (err) {
       console.error("Error generating PDF:", err);
@@ -428,6 +612,7 @@ export function ExecutiveReportGenerator() {
             tasks={tasks}
             meetings={meetings}
             goals={goals}
+            nextSteps={nextSteps}
             formatDate={formatDate}
           />
         </div>
@@ -443,246 +628,169 @@ interface ReportContentProps {
   tasks: TaskData[];
   meetings: MeetingData[];
   goals: GoalData[];
+  nextSteps: string[];
   formatDate: (d: string | null) => string;
 }
 
-import { forwardRef } from "react";
-
 const ReportContent = forwardRef<HTMLDivElement, ReportContentProps>(
-  ({ monthLabel, companyName, consultantName, tasks, meetings, goals, formatDate }, ref) => {
+  ({ monthLabel, companyName, consultantName, tasks, meetings, goals, nextSteps, formatDate }, ref) => {
     return (
-      <div ref={ref} className="bg-white text-slate-900 p-10" style={{ width: "794px", fontFamily: "system-ui, sans-serif" }}>
-        {/* Header */}
-        <div className="flex items-center justify-between border-b-2 border-[#C41E3A] pb-4 mb-6">
-          <div className="flex items-center gap-4">
-            <img src={logoUnv} alt="Universidade Vendas" className="h-14" crossOrigin="anonymous" />
-            <div>
-              <h1 className="text-xl font-bold text-[#0f172a]">Relatório Mensal Executivo</h1>
-              <p className="text-sm text-slate-500">Universidade Vendas</p>
-            </div>
-          </div>
-          <div className="text-right">
-            <p className="text-sm font-semibold text-[#0f172a] capitalize">{monthLabel}</p>
-            <p className="text-xs text-slate-500">Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</p>
-          </div>
-        </div>
-
-        {/* Metadata */}
-        <div className="bg-slate-50 rounded-lg p-4 mb-6 border border-slate-200">
-          <div className="grid grid-cols-2 gap-4 text-sm">
-            <div>
-              <span className="text-slate-500">Empresa:</span>{" "}
-              <span className="font-semibold">{companyName}</span>
-            </div>
-            <div>
-              <span className="text-slate-500">Consultor:</span>{" "}
-              <span className="font-semibold">{consultantName}</span>
-            </div>
-          </div>
-        </div>
-
-        {/* Goals Section */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-[#0f172a] mb-3 flex items-center gap-2">
-            <span className="w-1 h-5 bg-[#C41E3A] rounded-full inline-block"></span>
-            Metas do Mês ({goals.length})
-          </h2>
-          {goals.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">Nenhuma meta registrada para este período.</p>
-          ) : (
-            <>
-              {/* Visual Bar Chart - Meta vs Realizado */}
-              <div className="mb-4 p-4 bg-slate-50 rounded-lg border border-slate-200">
-                <p className="text-xs font-semibold text-slate-500 mb-3 uppercase tracking-wide">Meta vs Realizado</p>
-                <div className="space-y-3">
-                  {goals.map((g, i) => {
-                    const pct = g.actual_value !== null && g.target_value > 0 ? Math.min(Math.round((g.actual_value / g.target_value) * 100), 150) : 0;
-                    const achieved = g.actual_value !== null && g.actual_value >= g.target_value;
-                    const barColor = achieved ? "#22c55e" : pct >= 70 ? "#eab308" : "#ef4444";
-                    return (
-                      <div key={i}>
-                        <div className="flex items-center justify-between mb-1">
-                          <span className="text-xs font-medium text-slate-700 truncate max-w-[60%]">{g.kpi_name}</span>
-                          <span className="text-xs font-bold" style={{ color: barColor }}>
-                            {g.actual_value !== null ? `${pct}%` : "Pendente"}
-                          </span>
-                        </div>
-                        <div className="relative h-5 bg-slate-200 rounded-full overflow-hidden">
-                          {/* Meta line at 100% */}
-                          <div className="absolute top-0 bottom-0 w-px bg-slate-500 z-10" style={{ left: `${Math.min(100 / 1.5, 100)}%` }} />
-                          {/* Actual bar */}
-                          <div
-                            className="h-full rounded-full transition-all"
-                            style={{
-                              width: `${Math.min(pct / 1.5, 100)}%`,
-                              backgroundColor: barColor,
-                              minWidth: g.actual_value !== null && g.actual_value > 0 ? "8px" : "0",
-                            }}
-                          />
-                        </div>
-                        <div className="flex justify-between mt-0.5 text-[10px] text-slate-400">
-                          <span>Realizado: {g.actual_value !== null ? g.actual_value.toLocaleString("pt-BR") : "—"} {g.unit || ""}</span>
-                          <span>Meta: {g.target_value.toLocaleString("pt-BR")} {g.unit || ""}</span>
-                        </div>
-                      </div>
-                    );
-                  })}
-                </div>
-                {/* Summary */}
-                <div className="mt-4 pt-3 border-t border-slate-200 flex gap-6 text-xs">
-                  <div>
-                    <span className="text-slate-500">Total de metas: </span>
-                    <span className="font-bold text-slate-700">{goals.length}</span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Atingidas: </span>
-                    <span className="font-bold text-green-600">
-                      {goals.filter(g => g.actual_value !== null && g.actual_value >= g.target_value).length}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Não atingidas: </span>
-                    <span className="font-bold text-red-600">
-                      {goals.filter(g => g.actual_value !== null && g.actual_value < g.target_value).length}
-                    </span>
-                  </div>
-                  <div>
-                    <span className="text-slate-500">Pendentes: </span>
-                    <span className="font-bold text-slate-500">
-                      {goals.filter(g => g.actual_value === null).length}
-                    </span>
-                  </div>
-                </div>
+      <div
+        ref={ref}
+        className="bg-background text-foreground p-10"
+        style={{ width: "794px", fontFamily: "'Lora', Georgia, serif", lineHeight: 1.5 }}
+      >
+        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-5">
+          <div className="flex items-center justify-between border-b border-border pb-4 mb-4">
+            <div className="flex items-center gap-4">
+              <img src={logoUnv} alt="Universidade Vendas" className="h-14" crossOrigin="anonymous" />
+              <div>
+                <h1 className="text-xl font-bold text-foreground">Relatório Mensal Executivo</h1>
+                <p className="text-sm text-muted-foreground">Universidade Vendas</p>
               </div>
-
-              {/* Detail Table */}
-              <table className="w-full text-sm border-collapse">
-                <thead>
-                  <tr className="bg-[#0f172a] text-white">
-                    <th className="text-left p-2 rounded-tl-md">Indicador</th>
-                    <th className="text-right p-2">Meta</th>
-                    <th className="text-right p-2">Realizado</th>
-                    <th className="text-center p-2">%</th>
-                    <th className="text-center p-2 rounded-tr-md">Status</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {goals.map((g, i) => {
-                    const achieved = g.actual_value !== null && g.actual_value >= g.target_value;
-                    const pct = g.actual_value !== null && g.target_value > 0 ? Math.round((g.actual_value / g.target_value) * 100) : 0;
-                    return (
-                      <tr key={i} className={i % 2 === 0 ? "bg-white" : "bg-slate-50"}>
-                        <td className="p-2 font-medium">{g.kpi_name}</td>
-                        <td className="p-2 text-right">{g.target_value.toLocaleString("pt-BR")} {g.unit || ""}</td>
-                        <td className="p-2 text-right">{g.actual_value !== null ? g.actual_value.toLocaleString("pt-BR") : "—"} {g.unit || ""}</td>
-                        <td className="p-2 text-center font-semibold" style={{ color: achieved ? "#22c55e" : pct >= 70 ? "#eab308" : "#ef4444" }}>
-                          {g.actual_value !== null ? `${pct}%` : "—"}
-                        </td>
-                        <td className="p-2 text-center">
-                          <span className={`inline-block px-2 py-0.5 rounded text-xs font-semibold ${achieved ? "bg-green-100 text-green-700" : g.actual_value === null ? "bg-slate-100 text-slate-500" : "bg-red-100 text-red-700"}`}>
-                            {g.actual_value === null ? "Pendente" : achieved ? "Atingida ✓" : "Não atingida"}
-                          </span>
-                        </td>
-                      </tr>
-                    );
-                  })}
-                </tbody>
-              </table>
-            </>
-          )}
-        </div>
-
-        {/* Tasks Section */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-[#0f172a] mb-3 flex items-center gap-2">
-            <span className="w-1 h-5 bg-[#C41E3A] rounded-full inline-block"></span>
-            Tarefas Realizadas ({tasks.length})
-          </h2>
-          {tasks.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">Nenhuma tarefa concluída neste período.</p>
-          ) : (
-            <div className="space-y-2">
-              {tasks.map((t, i) => (
-                <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
-                  <div className="flex items-start justify-between">
-                    <div className="flex-1">
-                      <p className="font-semibold text-sm text-[#0f172a]">{t.title}</p>
-                      {t.description && (
-                        <p className="text-xs text-slate-500 mt-1">{t.description}</p>
-                      )}
-                      {t.observations && (
-                        <p className="text-xs text-slate-600 mt-1 italic">📝 {t.observations}</p>
-                      )}
-                    </div>
-                    <div className="text-right ml-3 flex-shrink-0">
-                      <p className="text-xs text-slate-500">Concluída em</p>
-                      <p className="text-xs font-medium">{formatDate(t.completed_at)}</p>
-                    </div>
-                  </div>
-                  <div className="flex gap-4 mt-2 text-xs text-slate-500">
-                    {t.responsible_staff_name && <span>Responsável: <span className="font-medium text-slate-700">{t.responsible_staff_name}</span></span>}
-                    {t.assignee_name && <span>Atribuído a: <span className="font-medium text-slate-700">{t.assignee_name}</span></span>}
-                  </div>
-                </div>
-              ))}
             </div>
-          )}
-        </div>
+            <div className="text-right">
+              <p className="text-sm font-semibold capitalize text-foreground">{monthLabel}</p>
+              <p className="text-xs text-muted-foreground">
+                Gerado em {format(new Date(), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              </p>
+            </div>
+          </div>
 
-        {/* Meetings Section */}
-        <div className="mb-6">
-          <h2 className="text-lg font-bold text-[#0f172a] mb-3 flex items-center gap-2">
-            <span className="w-1 h-5 bg-[#C41E3A] rounded-full inline-block"></span>
-            Reuniões Realizadas ({meetings.length})
-          </h2>
-          {meetings.length === 0 ? (
-            <p className="text-sm text-slate-500 italic">Nenhuma reunião registrada neste período.</p>
+          <div className="grid grid-cols-2 gap-3 text-sm">
+            <p>
+              <strong>Empresa:</strong> {companyName}
+            </p>
+            <p>
+              <strong>Consultor:</strong> {consultantName}
+            </p>
+            <p>
+              <strong>Tarefas concluídas:</strong> {tasks.length}
+            </p>
+            <p>
+              <strong>Reuniões finalizadas:</strong> {meetings.length}
+            </p>
+          </div>
+        </section>
+
+        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-5">
+          <h2 className="text-lg font-bold text-foreground mb-3">Metas do mês</h2>
+          {goals.length === 0 ? (
+            <p className="text-sm italic text-muted-foreground">Nenhuma meta registrada para este período.</p>
           ) : (
             <div className="space-y-3">
-              {meetings.map((m, i) => {
-                // Build a concise briefing: prefer ai_summary, fallback to notes
-                const rawSummary = m.ai_summary || m.notes || null;
-                let briefing: string | null = null;
-                if (rawSummary) {
-                  // Extract first sentence only, max 120 chars for a short briefing
-                  const firstSentence = rawSummary.split(/[.!?\n]+/)[0]?.trim() || "";
-                  briefing = firstSentence.length > 120 ? firstSentence.substring(0, 120).trim() + "..." : firstSentence + ".";
-                }
+              {goals.map((goal, index) => {
+                const percentage =
+                  goal.actual_value !== null && goal.target_value > 0
+                    ? Math.round((goal.actual_value / goal.target_value) * 100)
+                    : 0;
+                const statusLabel =
+                  goal.actual_value === null
+                    ? "Pendente"
+                    : goal.actual_value >= goal.target_value
+                      ? "Meta atingida"
+                      : "Abaixo da meta";
+
                 return (
-                  <div key={i} className="border border-slate-200 rounded-lg p-3 bg-white">
-                    <div className="flex items-start justify-between mb-2">
-                      <p className="font-semibold text-sm text-[#0f172a]">{m.title || "Reunião"}</p>
-                      <p className="text-xs text-slate-500">{formatDate(m.meeting_date)}</p>
-                    </div>
-                    {briefing && (
-                      <div className="bg-slate-50 rounded p-2 text-xs text-slate-700">
-                        <p className="font-semibold text-slate-500 mb-1">Briefing:</p>
-                        <p>{briefing}</p>
-                      </div>
-                    )}
-                    {!briefing && (
-                      <p className="text-xs text-slate-400 italic">Sem resumo disponível</p>
-                    )}
-                    {!m.is_finalized && (
-                      <p className="text-xs text-amber-600 mt-1">⚠ Reunião não finalizada</p>
-                    )}
+                  <div key={`${goal.kpi_name}-${index}`} className="rounded-lg border border-border bg-muted/30 p-3">
+                    <p className="font-semibold text-sm text-foreground">{goal.kpi_name}</p>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      <strong>Meta:</strong> {goal.target_value.toLocaleString("pt-BR")} {goal.unit || ""} •{" "}
+                      <strong>Realizado:</strong> {goal.actual_value !== null ? goal.actual_value.toLocaleString("pt-BR") : "—"} {goal.unit || ""}
+                    </p>
+                    <p className="text-xs mt-1 text-muted-foreground">
+                      <strong>Desempenho:</strong> {goal.actual_value !== null ? `${percentage}%` : "—"} ({statusLabel})
+                    </p>
                   </div>
                 );
               })}
             </div>
           )}
-        </div>
+        </section>
 
-        {/* Footer */}
-        <div className="mt-8 pt-4 border-t-2 border-[#C41E3A] flex items-center justify-between">
+        <section data-pdf-section="true" className="mb-3">
+          <h2 className="text-lg font-bold text-foreground">Tarefas realizadas</h2>
+          <p className="text-xs text-muted-foreground">Abaixo, somente o que foi efetivamente concluído no período.</p>
+        </section>
+
+        {tasks.length === 0 ? (
+          <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm italic text-muted-foreground">Nenhuma tarefa concluída neste período.</p>
+          </section>
+        ) : (
+          tasks.map((task, index) => (
+            <section key={`${task.title}-${index}`} data-pdf-section="true" className="mb-3 rounded-xl border border-border bg-card p-4">
+              <p className="font-semibold text-sm text-foreground">{task.title}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                <strong>Concluída em:</strong> {formatDate(task.completed_at)}
+              </p>
+              <p className="text-xs text-muted-foreground mt-1">
+                <strong>Responsável:</strong> {task.responsible_staff_name || "—"} • <strong>Atribuído a:</strong> {task.assignee_name || "—"}
+              </p>
+            </section>
+          ))
+        )}
+
+        <section data-pdf-section="true" className="mb-3 mt-5">
+          <h2 className="text-lg font-bold text-foreground">Reuniões realizadas</h2>
+          <p className="text-xs text-muted-foreground">
+            Reuniões finalizadas no menu de reuniões do projeto, com briefing curto baseado em transcrição/briefing.
+          </p>
+        </section>
+
+        {meetings.length === 0 ? (
+          <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-card p-4">
+            <p className="text-sm italic text-muted-foreground">Nenhuma reunião finalizada neste período.</p>
+          </section>
+        ) : (
+          meetings.map((meeting) => {
+            const briefing = extractMeetingBriefing(meeting);
+            return (
+              <section key={meeting.id} data-pdf-section="true" className="mb-3 rounded-xl border border-border bg-card p-4">
+                <div className="flex items-start justify-between gap-3 mb-2">
+                  <p className="font-semibold text-sm text-foreground">{meeting.subject || meeting.title || "Reunião"}</p>
+                  <p className="text-xs text-muted-foreground whitespace-nowrap">{formatDate(meeting.meeting_date)}</p>
+                </div>
+
+                <p className="text-xs text-muted-foreground mb-1 font-semibold">Briefing curto</p>
+                <p className="text-sm text-foreground mb-3">{briefing.summary}</p>
+
+                <p className="text-xs text-muted-foreground mb-1 font-semibold">Principais alinhamentos</p>
+                <ul className="list-disc pl-4 space-y-1">
+                  {briefing.alignments.map((alignment, index) => (
+                    <li key={`${meeting.id}-alignment-${index}`} className="text-sm text-foreground">
+                      {alignment}
+                    </li>
+                  ))}
+                </ul>
+              </section>
+            );
+          })
+        )}
+
+        <section data-pdf-section="true" className="mb-5 rounded-xl border border-border bg-muted/30 p-5">
+          <h2 className="text-lg font-bold text-foreground mb-2">Próximos passos (próximo mês)</h2>
+          <p className="text-xs text-muted-foreground mb-2">
+            Direcionamentos recomendados com base nas entregas, reuniões e desempenho do período.
+          </p>
+          <ul className="list-disc pl-5 space-y-1.5">
+            {nextSteps.map((step, index) => (
+              <li key={`next-step-${index}`} className="text-sm text-foreground">
+                <strong>Passo {index + 1}:</strong> {step}
+              </li>
+            ))}
+          </ul>
+        </section>
+
+        <section data-pdf-section="true" className="pt-2 border-t border-border flex items-center justify-between">
           <div className="flex items-center gap-3">
-            <img src={logoUnv} alt="UNV" className="h-8 opacity-60" crossOrigin="anonymous" />
-            <p className="text-xs text-slate-400">
-              © {new Date().getFullYear()} Universidade Vendas. Todos os direitos reservados.
+            <img src={logoUnv} alt="UNV" className="h-8 opacity-70" crossOrigin="anonymous" />
+            <p className="text-xs text-muted-foreground">
+              © {new Date().getFullYear()} Universidade Vendas. Documento confidencial.
             </p>
           </div>
-          <p className="text-xs text-slate-400">Documento confidencial</p>
-        </div>
+          <p className="text-xs text-muted-foreground">Relatório interno</p>
+        </section>
       </div>
     );
   }
