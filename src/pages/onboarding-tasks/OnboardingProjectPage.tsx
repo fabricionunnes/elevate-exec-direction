@@ -90,7 +90,8 @@ import { ClientVirtualBoard } from "@/components/onboarding-tasks/ClientVirtualB
 import { ClientFinancialModule } from "@/components/client-financial/ClientFinancialModule";
 import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessHistory";
 import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
-import { Wallet, Eye, LayoutGrid } from "lucide-react";
+import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
+import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -233,8 +234,6 @@ const OnboardingProjectPage = () => {
   const [crmLoginInput, setCrmLoginInput] = useState("");
   const [crmPasswordInput, setCrmPasswordInput] = useState("");
   const [docsLinkInput, setDocsLinkInput] = useState("");
-  const [showLookerDialog, setShowLookerDialog] = useState(false);
-  const [lookerUrlInput, setLookerUrlInput] = useState("");
   const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
   const [showProjectMenuPermissions, setShowProjectMenuPermissions] = useState(false);
   // Check for attention/risk alerts when opening project
@@ -1316,47 +1315,6 @@ const OnboardingProjectPage = () => {
                   <span className="xs:hidden">Docs</span>
                 </Button>
               )}
-              {/* Looker Studio Button */}
-              {(project as any).looker_studio_url ? (
-                <div className="flex items-center gap-0.5">
-                  <Button 
-                    variant="outline" 
-                    size="sm" 
-                    className="h-7 px-2 text-xs"
-                    onClick={() => window.open((project as any).looker_studio_url!, "_blank")}
-                  >
-                    <ExternalLink className="h-3 w-3 mr-1" />
-                    Tráfego
-                  </Button>
-                  {currentUserRole && currentUserRole !== "client" && (
-                    <Button
-                      variant="ghost"
-                      size="sm"
-                      className="h-7 w-7 p-0"
-                      onClick={() => {
-                        setLookerUrlInput((project as any).looker_studio_url || "");
-                        setShowLookerDialog(true);
-                      }}
-                      title="Editar link do Looker Studio"
-                    >
-                      <Pencil className="h-3 w-3" />
-                    </Button>
-                  )}
-                </div>
-              ) : currentUserRole && currentUserRole !== "client" && (
-                <Button 
-                  variant="ghost" 
-                  size="sm" 
-                  className="h-7 px-2 text-xs text-muted-foreground"
-                  onClick={() => {
-                    setLookerUrlInput("");
-                    setShowLookerDialog(true);
-                  }}
-                >
-                  <Plus className="h-3 w-3 mr-1" />
-                  Tráfego
-                </Button>
-              )}
             </div>
           )}
 
@@ -1503,6 +1461,10 @@ const OnboardingProjectPage = () => {
                 <TabsTrigger value="financial" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <Wallet className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Financeiro
+                </TabsTrigger>
+                <TabsTrigger value="paid_traffic" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Megaphone className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Tráfego
                 </TabsTrigger>
                 <TabsTrigger value="access" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1752,6 +1714,13 @@ const OnboardingProjectPage = () => {
             <ClientFinancialModule 
               projectId={projectId!} 
               userRole={currentUserRole || 'staff'}
+            />
+          </TabsContent>
+
+          <TabsContent value="paid_traffic">
+            <ClientPaidTrafficPanel 
+              projectId={projectId!} 
+              canEdit={true}
             />
           </TabsContent>
 
@@ -2033,52 +2002,6 @@ const OnboardingProjectPage = () => {
         </DialogContent>
       </Dialog>
 
-      {/* Looker Studio Dialog */}
-      <Dialog open={showLookerDialog} onOpenChange={setShowLookerDialog}>
-        <DialogContent className="max-w-md">
-          <DialogHeader>
-            <DialogTitle>Link do Looker Studio (Tráfego Pago)</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div>
-              <Label>URL do dashboard</Label>
-              <Input
-                value={lookerUrlInput}
-                onChange={(e) => setLookerUrlInput(e.target.value)}
-                placeholder="https://lookerstudio.google.com/reporting/..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Cole o link de compartilhamento do Looker Studio.
-              </p>
-            </div>
-            <div className="flex gap-2">
-              <Button variant="outline" onClick={() => setShowLookerDialog(false)} className="flex-1">
-                Cancelar
-              </Button>
-              <Button
-                onClick={async () => {
-                  try {
-                    const { error } = await supabase
-                      .from("onboarding_projects")
-                      .update({ looker_studio_url: lookerUrlInput || null } as any)
-                      .eq("id", projectId);
-                    if (error) throw error;
-                    setProject(prev => prev ? { ...prev, looker_studio_url: lookerUrlInput || null } : null);
-                    setShowLookerDialog(false);
-                    toast.success("Link do Looker Studio atualizado");
-                  } catch (error) {
-                    console.error("Error updating looker url:", error);
-                    toast.error("Erro ao atualizar link");
-                  }
-                }}
-                className="flex-1"
-              >
-                Salvar
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
 
       {/* Add Task Dialog */}
       <AddTaskDialog
