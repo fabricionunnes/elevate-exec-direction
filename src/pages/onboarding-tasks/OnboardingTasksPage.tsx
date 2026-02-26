@@ -72,6 +72,7 @@ interface OnboardingProject {
   cs_id: string | null;
   current_nps?: number | null;
   reactivated_at?: string | null;
+  churn_date?: string | null;
   tasks_count?: number;
   completed_count?: number;
 }
@@ -1222,12 +1223,26 @@ const OnboardingTasksPage = () => {
             return isWithinInterval(reactivatedDate, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "closed") {
-          // Filter companies with closed projects in the period
-          matchesMetricFilter = company.projects?.some(p => {
+          // Filter companies with closed projects in the period,
+          // but exclude those that are classified as non-renewed in the same period.
+          const hasClosedProjectInPeriod = company.projects?.some(p => {
             if (p.status !== "closed" && p.status !== "completed") return false;
-            const updatedAt = new Date(p.updated_at);
-            return isWithinInterval(updatedAt, { start: dateRange.start, end: dateRange.end });
+            const closedDate = new Date((p.churn_date || p.updated_at));
+            return isWithinInterval(closedDate, { start: dateRange.start, end: dateRange.end });
           }) ?? false;
+
+          const hasRenewalInPeriod = contractRenewals.some(r => {
+            if (r.company_id !== company.id) return false;
+            const renewalDate = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
+            return isWithinInterval(renewalDate, { start: dateRange.start, end: dateRange.end });
+          });
+
+          const isAutoNotRenewed =
+            hasClosedProjectInPeriod &&
+            company.payment_method !== "monthly" &&
+            !hasRenewalInPeriod;
+
+          matchesMetricFilter = hasClosedProjectInPeriod && !isAutoNotRenewed;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "churn_signaled") {
           // Special filter: includes both cancellation_signaled AND notice_period
           // No date filter here - matches how projectMetrics.churnSignaled is calculated
