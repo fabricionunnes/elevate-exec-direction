@@ -67,8 +67,19 @@ const clampText = (value: string, maxLength: number) => {
   return `${value.slice(0, maxLength).trim()}...`;
 };
 
+const sanitizeMeetingText = (value: string): string =>
+  value
+    .replace(/https?:\/\/\S+/gi, " ")
+    .replace(/\btactiq\.io\/\S*/gi, " ")
+    .replace(/\b\d{2}:\d{2}:\d{2}(?:[.,]\d{1,3})?(?:,\d{2}:\d{2}:\d{2}(?:[.,]\d{1,3})?)?\b/g, " ")
+    .replace(/^\s*[A-Za-zÀ-ÿ0-9 _.'-]{2,60}:\s*/gm, "")
+    .replace(/olá,\s*estou\s*transcrevendo[^.\n]*\.?/gi, " ")
+    .replace(/[#>*_`~]/g, " ")
+    .replace(/\s+/g, " ")
+    .trim();
+
 const splitSentences = (value: string): string[] =>
-  (value.replace(/\s+/g, " ").match(/[^.!?]+[.!?]?/g) || [])
+  (value.match(/[^.!?]+[.!?]?/g) || [])
     .map((sentence) => sentence.trim())
     .filter(Boolean);
 
@@ -94,21 +105,28 @@ const extractMeetingBriefing = (meeting: MeetingData) => {
   }
 
   if (!summarySource) {
-    summarySource = meeting.transcript || meeting.notes || "";
+    // Prioriza notas (normalmente mais úteis) antes da transcrição
+    summarySource = meeting.notes || meeting.transcript || "";
   }
 
-  const summarySentences = splitSentences(summarySource).slice(0, 2).join(" ");
-  const summary = summarySentences
-    ? clampText(summarySentences, 260)
+  const cleanedSource = sanitizeMeetingText(summarySource);
+  const sentenceCandidates = splitSentences(cleanedSource).filter((sentence) => sentence.length > 25);
+  const summaryFromSentences = sentenceCandidates.slice(0, 2).join(" ");
+
+  const summary = summaryFromSentences
+    ? clampText(summaryFromSentences, 320)
     : "Resumo curto indisponível para esta reunião.";
 
   if (alignments.length === 0) {
-    alignments = splitSentences(meeting.transcript || meeting.notes || "").slice(1, 4);
+    const rawAlignmentSource = sanitizeMeetingText(meeting.notes || meeting.transcript || "");
+    alignments = splitSentences(rawAlignmentSource)
+      .filter((item) => item.length > 30)
+      .slice(1, 4);
   }
 
   const normalizedAlignments = alignments
-    .map((item) => clampText(item.replace(/^[-•]\s*/, "").trim(), 140))
-    .filter(Boolean)
+    .map((item) => clampText(sanitizeMeetingText(item), 160))
+    .filter((item) => item.length > 10 && item !== summary)
     .slice(0, 3);
 
   return {
