@@ -127,7 +127,7 @@ Deno.serve(async (req) => {
     }
 
     const methodParam = payment_method || "pix";
-    const fullUrl = `${PUBLISHED_URL}/?public=checkout&link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}&method=${methodParam}`;
+    const fullUrl = `${PUBLISHED_URL}/#/checkout?link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}&method=${methodParam}`;
     await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
 
     console.log("Local payment link created:", linkData.id);
