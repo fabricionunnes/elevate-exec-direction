@@ -481,10 +481,27 @@ const DashboardMetrics = ({
       return isWithinInterval(endDate, { start, end });
     });
 
-    // Not renewed = contract ending in period AND already decided not to renew (renewal_status = 'nao_renovado')
-    const notRenewedCompanies = companiesWithContractEndingInPeriod.filter(
-      c => c.renewal_status === 'nao_renovado'
-    );
+    // Not renewed = companies with contract ending in period that were NOT renewed
+    // Explicit: renewal_status = 'nao_renovado'
+    // Automatic: company is inactive/closed + has closed project + contract ended in period + no renewal record
+    const renewedCompanyIdsInPeriod = renewedCompanyIds;
+    
+    // Get all companies (including inactive) that have contract ending in period and closed projects
+    const allCompaniesWithContractEndingInPeriod = companies.filter(c => {
+      if (c.is_simulator) return false;
+      if (c.payment_method === "monthly") return false;
+      if (!c.contract_end_date) return false;
+      const endDate = new Date(c.contract_end_date);
+      return isWithinInterval(endDate, { start, end });
+    });
+
+    const notRenewedCompanies = allCompaniesWithContractEndingInPeriod.filter(c => {
+      // Explicit non-renewal
+      if (c.renewal_status === 'nao_renovado') return true;
+      // Auto-detect: company is inactive/closed AND was NOT renewed in the period
+      if ((c.status === 'inactive' || c.status === 'closed') && !renewedCompanyIdsInPeriod.has(c.id)) return true;
+      return false;
+    });
 
     return { 
       renewalsCount, 
@@ -493,12 +510,13 @@ const DashboardMetrics = ({
       notRenewedCompanies,
       notRenewedCount: notRenewedCompanies.length
     };
-  }, [contractRenewals, dateRange, filteredCompanies]);
+  }, [contractRenewals, dateRange, filteredCompanies, companies]);
 
-  // Build a set of company IDs that have renewal_status = 'nao_renovado' to exclude from churn/encerradas
+  // Build a set of company IDs that are "não renovadas" to exclude from churn/encerradas
+  // Uses the same auto-detected list from renewalMetrics
   const notRenewedCompanyIds = useMemo(
-    () => new Set(companies.filter(c => c.renewal_status === 'nao_renovado').map(c => c.id)),
-    [companies]
+    () => new Set(renewalMetrics.notRenewedCompanies.map((c: Company) => c.id)),
+    [renewalMetrics.notRenewedCompanies]
   );
 
   const churnMetrics = useMemo(() => {
