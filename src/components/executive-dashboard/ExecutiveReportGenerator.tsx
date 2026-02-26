@@ -38,6 +38,8 @@ interface MeetingData {
   notes: string | null;
   briefing_content: string | null;
   is_finalized: boolean;
+  ai_summary?: string | null;
+  ai_alignments?: string[] | null;
 }
 
 interface GoalData {
@@ -121,6 +123,22 @@ const pickSummarySentences = (sentences: string[], maxCount = 3): string[] => {
 };
 
 const extractMeetingBriefing = (meeting: MeetingData) => {
+  if (meeting.ai_summary && meeting.ai_summary.trim().length > 0) {
+    const summary = clampText(meeting.ai_summary.trim(), 460);
+    const aiAlignments = (meeting.ai_alignments || [])
+      .map((item) => clampText(sanitizeMeetingText(item).replace(/\s+/g, " "), 180))
+      .filter((item) => item.length > 12)
+      .slice(0, 3);
+
+    return {
+      summary,
+      alignments:
+        aiAlignments.length > 0
+          ? aiAlignments
+          : ["Manter acompanhamento dos combinados definidos na reunião."],
+    };
+  }
+
   let summarySource = "";
   let alignments: string[] = [];
 
@@ -128,12 +146,14 @@ const extractMeetingBriefing = (meeting: MeetingData) => {
     try {
       const parsed = JSON.parse(meeting.briefing_content) as Record<string, unknown>;
       summarySource =
+        normalizeText(parsed.report_summary) ||
         normalizeText(parsed.executive_summary) ||
         normalizeText(parsed.client_history) ||
         normalizeText(parsed.goal_status) ||
         normalizeText(parsed.pending_items);
 
       alignments = [
+        ...normalizeList(parsed.report_alignments),
         ...normalizeList(parsed.talking_points),
         ...normalizeList(parsed.suggested_agenda),
         ...normalizeList(parsed.pending_items),
@@ -388,8 +408,70 @@ export function ExecutiveReportGenerator() {
           notes: m.notes,
           briefing_content: briefingContent,
           is_finalized: Boolean(m.is_finalized),
+          ai_summary: null,
+          ai_alignments: null,
         };
       });
+
+      const enrichMeetingsWithAISummary = async (meetingsList: MeetingData[]): Promise<MeetingData[]> => {
+        const enrichedMeetings: MeetingData[] = [];
+
+        for (const meeting of meetingsList) {
+          const meetingText = (meeting.transcript || meeting.notes || "").trim();
+          if (meetingText.length < 180) {
+            enrichedMeetings.push(meeting);
+            continue;
+          }
+
+          let hasCachedReportSummary = false;
+          if (meeting.briefing_content) {
+            try {
+              const parsed = JSON.parse(meeting.briefing_content) as Record<string, unknown>;
+              hasCachedReportSummary = normalizeText(parsed.report_summary).length > 0;
+            } catch {
+              hasCachedReportSummary = false;
+            }
+          }
+
+          if (hasCachedReportSummary) {
+            enrichedMeetings.push(meeting);
+            continue;
+          }
+
+          try {
+            const { data: summaryData, error: summaryError } = await supabase.functions.invoke(
+              "summarize-meeting-transcription",
+              {
+                body: { meetingId: meeting.id },
+              }
+            );
+
+            if (summaryError) {
+              console.error(`Erro ao resumir reunião ${meeting.id}:`, summaryError);
+              enrichedMeetings.push(meeting);
+              continue;
+            }
+
+            const aiSummary = typeof summaryData?.summary === "string" ? summaryData.summary : null;
+            const aiAlignments = Array.isArray(summaryData?.alignments)
+              ? summaryData.alignments.map((item: unknown) => String(item)).filter(Boolean)
+              : null;
+
+            enrichedMeetings.push({
+              ...meeting,
+              ai_summary: aiSummary,
+              ai_alignments: aiAlignments,
+            });
+          } catch (summaryErr) {
+            console.error(`Erro inesperado ao resumir reunião ${meeting.id}:`, summaryErr);
+            enrichedMeetings.push(meeting);
+          }
+        }
+
+        return enrichedMeetings;
+      };
+
+      const meetingsWithAISummary = await enrichMeetingsWithAISummary(mappedMeetings);
 
       // Fetch KPI goals for the month - use correct field names
       const companyIds = filteredProjects.map(p => p.onboarding_company_id).filter(Boolean) as string[];
@@ -453,10 +535,10 @@ export function ExecutiveReportGenerator() {
       }
 
 
-      const plannedNextSteps = buildNextSteps(mappedTasks, mappedMeetings, mappedGoals);
+      const plannedNextSteps = buildNextSteps(mappedTasks, meetingsWithAISummary, mappedGoals);
 
       setTasks(mappedTasks);
-      setMeetings(mappedMeetings);
+      setMeetings(meetingsWithAISummary);
       setGoals(mappedGoals);
       setNextSteps(plannedNextSteps);
       setReportReady(true);
