@@ -258,18 +258,18 @@ Deno.serve(async (req) => {
           paid_at: new Date().toISOString(),
           paid_amount_cents: amount_cents,
         })
-        .eq("id", payment_link_id);
+        .eq("payment_link_id", payment_link_id);
 
       if (invoiceError) {
         console.error("Error updating invoice status:", invoiceError);
       } else {
-        console.log(`Invoice ${payment_link_id} marked as paid`);
+        console.log(`Invoice with payment_link_id ${payment_link_id} marked as paid`);
 
         // Check if this was the last installment and auto-renew
         const { data: paidInvoice } = await supabase
           .from("company_invoices")
           .select("recurring_charge_id, installment_number, total_installments")
-          .eq("id", payment_link_id)
+          .eq("payment_link_id", payment_link_id)
           .single();
 
         if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {

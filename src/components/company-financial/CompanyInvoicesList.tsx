@@ -146,17 +146,42 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
     setCreating(true);
     try {
-      const { error } = await supabase.from("company_invoices").insert({
+      const amountCents = Math.round(form.amount * 100);
+
+      // 1. Create the invoice
+      const { data: invoiceData, error } = await supabase.from("company_invoices").insert({
         company_id: companyId,
         description: form.description,
-        amount_cents: Math.round(form.amount * 100),
+        amount_cents: amountCents,
         due_date: form.dueDate,
         installment_number: 1,
         total_installments: 1,
         status: "pending",
-      } as any);
+      } as any).select("id").single();
 
       if (error) throw error;
+
+      // 2. Create a real payment_links record
+      const encodedDesc = encodeURIComponent(form.description);
+      const baseUrl = "https://elevate-exec-direction.lovable.app";
+      
+      const { data: linkData } = await supabase.from("payment_links").insert({
+        description: form.description,
+        amount_cents: amountCents,
+        payment_method: "pix",
+        installments: 1,
+        url: "pending",
+        company_id: companyId,
+      } as any).select("id").single();
+
+      if (linkData) {
+        const fullUrl = `${baseUrl}/#/checkout?link_id=${linkData.id}&amount=${amountCents}&product=${encodedDesc}`;
+        await supabase.from("payment_links").update({ url: fullUrl } as any).eq("id", linkData.id);
+        await supabase.from("company_invoices").update({
+          payment_link_id: linkData.id,
+          payment_link_url: fullUrl,
+        } as any).eq("id", (invoiceData as any).id);
+      }
 
       toast.success("Fatura criada com sucesso!");
       setShowCreateDialog(false);

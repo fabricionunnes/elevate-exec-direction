@@ -8,6 +8,53 @@ const corsHeaders = {
 
 const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
 
+/**
+ * Creates a real payment_links record for an invoice and updates the invoice
+ * with the payment_link_id and payment_link_url.
+ */
+async function createPaymentLinkForInvoice(
+  supabase: ReturnType<typeof createClient>,
+  invoice: { id: string; description: string; amount_cents: number; company_id: string; payment_method?: string }
+) {
+  const encodedDesc = encodeURIComponent(invoice.description || "Fatura");
+
+  // 1. Insert a real payment_links record
+  const { data: linkData, error: linkError } = await supabase
+    .from("payment_links")
+    .insert({
+      description: invoice.description || "Fatura",
+      amount_cents: invoice.amount_cents,
+      payment_method: invoice.payment_method || "pix",
+      installments: 1,
+      url: "pending", // placeholder, will update below
+      company_id: invoice.company_id,
+    })
+    .select("id")
+    .single();
+
+  if (linkError || !linkData) {
+    console.error(`[generate-invoices] Failed to create payment_link for invoice ${invoice.id}:`, linkError);
+    return;
+  }
+
+  // 2. Build the canonical checkout URL using the payment_links.id
+  const fullUrl = `${PUBLISHED_URL}/#/checkout?link_id=${linkData.id}&amount=${invoice.amount_cents}&product=${encodedDesc}`;
+
+  // 3. Update the payment_links record with the final URL
+  await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
+
+  // 4. Update the invoice with the real payment_link_id and URL
+  await supabase
+    .from("company_invoices")
+    .update({
+      payment_link_id: linkData.id,
+      payment_link_url: fullUrl,
+    })
+    .eq("id", invoice.id);
+
+  console.log(`[generate-invoices] Created payment_link ${linkData.id} for invoice ${invoice.id}`);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -31,8 +78,7 @@ Deno.serve(async (req) => {
 
       if (error || !charge) throw new Error("Cobrança recorrente não encontrada");
 
-      // Determine number of invoices to generate based on recurrence
-      let numInvoices = 12; // monthly = 12
+      let numInvoices = 12;
       if (charge.recurrence === "quarterly") numInvoices = 4;
       if (charge.recurrence === "yearly") numInvoices = 1;
 
@@ -73,16 +119,15 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Generate payment links for each invoice
+      // Create real payment_links for each invoice
       for (const inv of inserted || []) {
-        const encodedDesc = encodeURIComponent(inv.description);
-        const paymentUrl = `${PUBLISHED_URL}/#/checkout?link_id=${inv.id}&amount=${inv.amount_cents}&product=${encodedDesc}`;
-        const publicUrl = `${PUBLISHED_URL}/#/fatura?token=${inv.public_token}`;
-
-        await supabase
-          .from("company_invoices")
-          .update({ payment_link_url: paymentUrl })
-          .eq("id", inv.id);
+        await createPaymentLinkForInvoice(supabase, {
+          id: inv.id,
+          description: inv.description,
+          amount_cents: inv.amount_cents,
+          company_id: inv.company_id,
+          payment_method: inv.payment_method,
+        });
       }
 
       return new Response(
@@ -96,7 +141,6 @@ Deno.serve(async (req) => {
       const now = new Date();
       const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
 
-      // Get all pending invoices that are overdue
       const { data: overdueInvoices } = await supabase
         .from("company_invoices")
         .select("*")
@@ -110,9 +154,7 @@ Deno.serve(async (req) => {
         const daysLate = Math.max(0, Math.floor((now.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24)));
 
         if (daysLate > 0) {
-          // Multa moratória: 2% fixo
           const lateFee = Math.round(inv.amount_cents * (inv.late_fee_percent / 100));
-          // Juros de mora: 1% por dia
           const interest = Math.round(inv.amount_cents * (inv.daily_interest_percent / 100) * daysLate);
 
           const totalWithFees = inv.amount_cents + lateFee + interest;
@@ -153,7 +195,6 @@ Deno.serve(async (req) => {
 
     // Action: auto-renew invoices when the last installment is paid
     if (action === "auto_renew" && recurring_charge_id) {
-      // Check if recurring charge is still active
       const { data: charge } = await supabase
         .from("company_recurring_charges")
         .select("*")
@@ -168,7 +209,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Check if there are still pending invoices for this charge
       const { data: pendingInvoices } = await supabase
         .from("company_invoices")
         .select("id")
@@ -183,7 +223,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Get the last invoice due_date to start the next batch from there
       const { data: lastInvoice } = await supabase
         .from("company_invoices")
         .select("due_date")
@@ -199,7 +238,6 @@ Deno.serve(async (req) => {
         );
       }
 
-      // Calculate next start date (one period after the last invoice)
       const lastDate = new Date(lastInvoice.due_date + "T12:00:00");
       if (charge.recurrence === "monthly") {
         lastDate.setMonth(lastDate.getMonth() + 1);
@@ -248,18 +286,18 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Generate payment links
+      // Create real payment_links for each invoice
       for (const inv of inserted || []) {
-        const encodedDesc = encodeURIComponent(inv.description);
-        const paymentUrl = `${PUBLISHED_URL}/#/checkout?link_id=${inv.id}&amount=${inv.amount_cents}&product=${encodedDesc}`;
-
-        await supabase
-          .from("company_invoices")
-          .update({ payment_link_url: paymentUrl })
-          .eq("id", inv.id);
+        await createPaymentLinkForInvoice(supabase, {
+          id: inv.id,
+          description: inv.description,
+          amount_cents: inv.amount_cents,
+          company_id: inv.company_id,
+          payment_method: inv.payment_method,
+        });
       }
 
-      // Update next_charge_date on the recurring charge
+      // Update next_charge_date
       const firstNewDueDateStr = invoices[0].due_date;
       await supabase
         .from("company_recurring_charges")
@@ -280,7 +318,6 @@ Deno.serve(async (req) => {
       const cutoffDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
       const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
 
-      // Delete pending invoices with due_date > 30 days from now
       const { data: deleted, error: delError } = await supabase
         .from("company_invoices")
         .delete()
@@ -298,6 +335,28 @@ Deno.serve(async (req) => {
 
       return new Response(
         JSON.stringify({ success: true, deleted: deletedCount }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // Action: backfill - create payment_links for existing invoices that don't have one
+    if (action === "backfill_payment_links") {
+      const { data: invoicesWithoutLink } = await supabase
+        .from("company_invoices")
+        .select("id, description, amount_cents, company_id, payment_method")
+        .is("payment_link_id", null)
+        .in("status", ["pending", "overdue"]);
+
+      let fixed = 0;
+      for (const inv of invoicesWithoutLink || []) {
+        await createPaymentLinkForInvoice(supabase, inv);
+        fixed++;
+      }
+
+      console.log(`Backfill: created payment_links for ${fixed} invoices`);
+
+      return new Response(
+        JSON.stringify({ success: true, fixed }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
