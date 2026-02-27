@@ -17559,6 +17559,12 @@ export type Database = {
         Row: {
           acquisition_channels: string | null
           address: string | null
+          address_city: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
+          address_state: string | null
+          address_zipcode: string | null
           average_ticket: string | null
           billing_day: number | null
           cnpj: string | null
@@ -17617,6 +17623,12 @@ export type Database = {
         Insert: {
           acquisition_channels?: string | null
           address?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_zipcode?: string | null
           average_ticket?: string | null
           billing_day?: number | null
           cnpj?: string | null
@@ -17675,6 +17687,12 @@ export type Database = {
         Update: {
           acquisition_channels?: string | null
           address?: string | null
+          address_city?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
+          address_state?: string | null
+          address_zipcode?: string | null
           average_ticket?: string | null
           billing_day?: number | null
           cnpj?: string | null

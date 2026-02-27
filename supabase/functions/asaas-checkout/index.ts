@@ -58,6 +58,21 @@ Deno.serve(async (req) => {
       payment_link_id,
     } = body;
 
+    // Fetch company address data for Asaas customer
+    let companyAddress: Record<string, string | null> = {};
+    if (company_id) {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: companyData } = await supabaseAdmin
+        .from("onboarding_companies")
+        .select("address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, phone")
+        .eq("id", company_id)
+        .single();
+      if (companyData) companyAddress = companyData;
+    }
+
     if (!customer_name || !customer_email || !amount_cents || !payment_method) {
       return new Response(
         JSON.stringify({ error: "Campos obrigatórios faltando" }),
@@ -83,12 +98,30 @@ Deno.serve(async (req) => {
       const customerPayload: Record<string, unknown> = {
         name: customer_name,
         email: customer_email,
+        notificationDisabled: true,
       };
       if (cleanDoc) {
         customerPayload.cpfCnpj = cleanDoc;
       }
-      if (customer_phone) {
-        customerPayload.mobilePhone = customer_phone.replace(/\D/g, "");
+      const phoneToUse = customer_phone || companyAddress.phone || "";
+      if (phoneToUse) {
+        customerPayload.mobilePhone = phoneToUse.replace(/\D/g, "");
+      }
+      // Add address from company data
+      if (companyAddress.address_zipcode) {
+        customerPayload.postalCode = companyAddress.address_zipcode.replace(/\D/g, "");
+      }
+      if (companyAddress.address) {
+        customerPayload.address = companyAddress.address;
+      }
+      if (companyAddress.address_number) {
+        customerPayload.addressNumber = companyAddress.address_number;
+      }
+      if (companyAddress.address_complement) {
+        customerPayload.complement = companyAddress.address_complement;
+      }
+      if (companyAddress.address_neighborhood) {
+        customerPayload.province = companyAddress.address_neighborhood;
       }
       const newCustomer = await asaasRequest("/customers", "POST", ASAAS_API_KEY, customerPayload);
       customerId = newCustomer.id;

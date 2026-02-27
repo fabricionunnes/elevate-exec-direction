@@ -50,6 +50,7 @@ import { COMPANY_SEGMENTS } from "@/data/companySegments";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFinancialPanel";
+import { AddressFields } from "@/components/ui/address-fields";
 
 interface Staff {
   id: string;
@@ -73,6 +74,12 @@ interface CompanyForm {
   phone: string;
   email: string;
   address: string;
+  address_number: string;
+  address_complement: string;
+  address_neighborhood: string;
+  address_zipcode: string;
+  address_city: string;
+  address_state: string;
   cs_id: string;
   consultant_id: string;
   kickoff_date: string;
@@ -122,6 +129,12 @@ const OnboardingCompanyDetailPage = () => {
     phone: "",
     email: "",
     address: "",
+    address_number: "",
+    address_complement: "",
+    address_neighborhood: "",
+    address_zipcode: "",
+    address_city: "",
+    address_state: "",
     cs_id: "",
     consultant_id: "",
     kickoff_date: "",
@@ -215,6 +228,12 @@ const OnboardingCompanyDetailPage = () => {
         phone: data.phone || "",
         email: data.email || "",
         address: data.address || "",
+        address_number: (data as any).address_number || "",
+        address_complement: (data as any).address_complement || "",
+        address_neighborhood: (data as any).address_neighborhood || "",
+        address_zipcode: (data as any).address_zipcode || "",
+        address_city: (data as any).address_city || "",
+        address_state: (data as any).address_state || "",
         cs_id: data.cs_id || "",
         consultant_id: data.consultant_id || "",
         kickoff_date: data.kickoff_date || "",
@@ -264,6 +283,12 @@ const OnboardingCompanyDetailPage = () => {
         phone: form.phone || null,
         email: form.email || null,
         address: form.address || null,
+        address_number: form.address_number || null,
+        address_complement: form.address_complement || null,
+        address_neighborhood: form.address_neighborhood || null,
+        address_zipcode: form.address_zipcode || null,
+        address_city: form.address_city || null,
+        address_state: form.address_state || null,
         cs_id: form.cs_id || null,
         consultant_id: form.consultant_id || null,
         kickoff_date: form.kickoff_date || null,
@@ -559,14 +584,18 @@ const OnboardingCompanyDetailPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="space-y-2">
-                    <Label htmlFor="address">Endereço</Label>
-                    <Input
-                      id="address"
-                      value={form.address}
-                      onChange={(e) => setForm({ ...form, address: e.target.value })}
-                    />
-                  </div>
+                  <AddressFields
+                    value={{
+                      address: form.address,
+                      address_number: form.address_number,
+                      address_complement: form.address_complement,
+                      address_neighborhood: form.address_neighborhood,
+                      address_zipcode: form.address_zipcode,
+                      address_city: form.address_city,
+                      address_state: form.address_state,
+                    }}
+                    onChange={(addr) => setForm({ ...form, ...addr })}
+                  />
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
                     <Select 

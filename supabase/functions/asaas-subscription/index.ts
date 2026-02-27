@@ -81,8 +81,33 @@ Deno.serve(async (req) => {
       const customerPayload: Record<string, unknown> = {
         name: customer_name,
         email: customer_email,
+        notificationDisabled: true,
       };
       if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
+      if (customer_phone) {
+        customerPayload.mobilePhone = customer_phone.replace(/\D/g, "");
+      }
+
+      // Fetch company address for Asaas customer
+      if (company_id) {
+        const supabaseAddr = createClient(
+          Deno.env.get("SUPABASE_URL")!,
+          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+        );
+        const { data: compAddr } = await supabaseAddr
+          .from("onboarding_companies")
+          .select("address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state")
+          .eq("id", company_id)
+          .single();
+        if (compAddr) {
+          if (compAddr.address_zipcode) customerPayload.postalCode = compAddr.address_zipcode.replace(/\D/g, "");
+          if (compAddr.address) customerPayload.address = compAddr.address;
+          if (compAddr.address_number) customerPayload.addressNumber = compAddr.address_number;
+          if (compAddr.address_complement) customerPayload.complement = compAddr.address_complement;
+          if (compAddr.address_neighborhood) customerPayload.province = compAddr.address_neighborhood;
+        }
+      }
+
       const newCustomer = await asaasRequest("/customers", "POST", ASAAS_API_KEY, customerPayload);
       customerId = newCustomer.id;
     }

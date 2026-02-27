@@ -16,6 +16,7 @@ import {
 import { toast } from "sonner";
 import { ArrowLeft, Loader2 } from "lucide-react";
 import { COMPANY_SEGMENTS } from "@/data/companySegments";
+import { AddressFields, type AddressData } from "@/components/ui/address-fields";
 
 interface Staff {
   id: string;
@@ -39,6 +40,15 @@ const OnboardingNewCompanyPage = () => {
   const [csId, setCsId] = useState("");
   const [consultantId, setConsultantId] = useState("");
   const [notes, setNotes] = useState("");
+  const [addressData, setAddressData] = useState<AddressData>({
+    address: "",
+    address_number: "",
+    address_complement: "",
+    address_neighborhood: "",
+    address_zipcode: "",
+    address_city: "",
+    address_state: "",
+  });
 
   useEffect(() => {
     checkPermissions();
@@ -105,10 +115,17 @@ const OnboardingNewCompanyPage = () => {
           website: website || null,
           phone: phone || null,
           email: email || null,
+          address: addressData.address || null,
+          address_number: addressData.address_number || null,
+          address_complement: addressData.address_complement || null,
+          address_neighborhood: addressData.address_neighborhood || null,
+          address_zipcode: addressData.address_zipcode || null,
+          address_city: addressData.address_city || null,
+          address_state: addressData.address_state || null,
           cs_id: csId || null,
           consultant_id: consultantId || null,
           notes: notes || null,
-        })
+        } as any)
         .select("id")
         .single();
 
@@ -220,6 +237,12 @@ const OnboardingNewCompanyPage = () => {
                   onChange={(e) => setWebsite(e.target.value)}
                   placeholder="https://www.empresa.com.br"
                 />
+              </div>
+
+              {/* Endereço */}
+              <div className="space-y-2">
+                <Label className="text-base font-medium">Endereço</Label>
+                <AddressFields value={addressData} onChange={setAddressData} />
               </div>
 
               {/* CS e Consultor */}
