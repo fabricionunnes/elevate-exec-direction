@@ -536,8 +536,36 @@ const OnboardingCompanyDetailPage = () => {
                       <Input
                         id="cnpj"
                         value={form.cnpj}
-                        onChange={(e) => setForm({ ...form, cnpj: e.target.value })}
+                        placeholder="00.000.000/0000-00"
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "").slice(0, 14);
+                          const masked = raw
+                            .replace(/^(\d{2})(\d)/, "$1.$2")
+                            .replace(/^(\d{2}\.\d{3})(\d)/, "$1.$2")
+                            .replace(/^(\d{2}\.\d{3}\.\d{3})(\d)/, "$1/$2")
+                            .replace(/^(\d{2}\.\d{3}\.\d{3}\/\d{4})(\d)/, "$1-$2");
+                          setForm({ ...form, cnpj: masked });
+                        }}
                       />
+                      {form.cnpj && form.cnpj.replace(/\D/g, "").length > 0 && form.cnpj.replace(/\D/g, "").length < 14 && (
+                        <p className="text-xs text-destructive">CNPJ incompleto</p>
+                      )}
+                      {form.cnpj && form.cnpj.replace(/\D/g, "").length === 14 && (() => {
+                        const digits = form.cnpj.replace(/\D/g, "");
+                        if (/^(\d)\1{13}$/.test(digits)) return true;
+                        const calc = (slice: string, weights: number[]) => {
+                          const sum = slice.split("").reduce((s, d, i) => s + parseInt(d) * weights[i], 0);
+                          const r = sum % 11;
+                          return r < 2 ? 0 : 11 - r;
+                        };
+                        const w1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+                        const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+                        const d1 = calc(digits.slice(0,12), w1);
+                        const d2 = calc(digits.slice(0,13), w2);
+                        return d1 !== parseInt(digits[12]) || d2 !== parseInt(digits[13]);
+                      })() && (
+                        <p className="text-xs text-destructive">CNPJ inválido</p>
+                      )}
                     </div>
                   </div>
                   <div className="grid grid-cols-2 gap-4">
@@ -571,7 +599,21 @@ const OnboardingCompanyDetailPage = () => {
                       <Input
                         id="phone"
                         value={form.phone}
-                        onChange={(e) => setForm({ ...form, phone: e.target.value })}
+                        placeholder="(00) 00000-0000"
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                          let masked = raw;
+                          if (raw.length > 2 && raw.length <= 6) {
+                            masked = `(${raw.slice(0,2)}) ${raw.slice(2)}`;
+                          } else if (raw.length > 6 && raw.length <= 10) {
+                            masked = `(${raw.slice(0,2)}) ${raw.slice(2,6)}-${raw.slice(6)}`;
+                          } else if (raw.length > 10) {
+                            masked = `(${raw.slice(0,2)}) ${raw.slice(2,7)}-${raw.slice(7)}`;
+                          } else if (raw.length > 0) {
+                            masked = `(${raw}`;
+                          }
+                          setForm({ ...form, phone: masked });
+                        }}
                       />
                     </div>
                     <div className="space-y-2">
