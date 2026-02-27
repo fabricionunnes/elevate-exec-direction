@@ -224,7 +224,7 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
               errorMsgs.push(`Linha ${lineNum}: empresa "${getVal(row, "company_name")}" não encontrada`);
               continue;
             }
-            rows.push({
+            const record: any = {
               company_id: companyId,
               description,
               amount_cents: Math.round(amount * 100),
@@ -235,7 +235,12 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
               cost_center_id: ccMap.get(ccName) || null,
               installment_number: 1,
               total_installments: 1,
-            });
+            };
+            if (status === "paid") {
+              record.paid_at = dueDate;
+              record.paid_amount_cents = record.amount_cents;
+            }
+            rows.push(record);
           } else {
             const supplierName = getVal(row, "supplier_name");
             if (!supplierName) {
@@ -245,7 +250,7 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
             }
             const now = new Date();
             const refMonth = getVal(row, "reference_month") || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-            rows.push({
+            const record: any = {
               supplier_name: supplierName,
               description,
               amount,
@@ -255,7 +260,12 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
               notes: getVal(row, "notes") || null,
               category_id: catMap.get(catName) || null,
               cost_center_id: ccMap.get(ccName) || null,
-            });
+            };
+            if (status === "paid") {
+              record.paid_at = dueDate;
+              record.paid_amount = amount;
+            }
+            rows.push(record);
           }
         } catch {
           errors++;
