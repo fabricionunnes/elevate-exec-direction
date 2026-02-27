@@ -109,7 +109,7 @@ Deno.serve(async (req) => {
       cycle,
       nextDueDate,
       description,
-      notifications: { disabled: true },
+      notificationDisabled: true,
       interest: { value: 1, type: "PERCENTAGE" },
       fine: { value: 2, type: "PERCENTAGE" },
       discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
