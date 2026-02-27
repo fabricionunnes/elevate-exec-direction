@@ -972,9 +972,27 @@ Deno.serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${evolutionBaseUrl}/message/sendText/${instanceName}`, {
+        // Look up instance-specific API credentials from database
+        const supabaseServiceSendText = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: sendTextInstance } = await supabaseServiceSendText
+          .from('whatsapp_instances')
+          .select('api_url, api_key')
+          .eq('instance_name', instanceName)
+          .maybeSingle();
+
+        // Use instance-specific credentials if available, otherwise fall back to global
+        const sendTextBaseUrl = sendTextInstance?.api_url ? normalizeBaseUrl(sendTextInstance.api_url) : evolutionBaseUrl;
+        const sendTextHeaders = sendTextInstance?.api_key ? buildEvolutionHeaders(sendTextInstance.api_key) : evolutionHeaders;
+
+        console.log(`[evolution-api] send-text using ${sendTextInstance?.api_url ? 'custom' : 'global'} credentials for instance ${instanceName}`);
+
+        const response = await fetch(`${sendTextBaseUrl}/message/sendText/${instanceName}`, {
           method: 'POST',
-          headers: evolutionHeaders,
+          headers: sendTextHeaders,
           body: JSON.stringify({
             number,
             text,
