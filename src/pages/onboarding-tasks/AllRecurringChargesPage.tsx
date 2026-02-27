@@ -22,7 +22,8 @@ import {
   ArrowLeft, Loader2, ShieldAlert, Search, RefreshCw, Filter, Download,
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
-  ArrowDownCircle, FolderTree, FileText, ArrowRightLeft,
+  ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
+  TrendingUp, TrendingDown, Target, Wallet,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -32,6 +33,13 @@ import FinancialDashboardTab from "./financial/FinancialDashboardTab";
 import FinancialCategoriesTab from "./financial/FinancialCategoriesTab";
 import FinancialDRETab from "./financial/FinancialDRETab";
 import FinancialDFCTab from "./financial/FinancialDFCTab";
+import CFOExecutiveBoardTab from "./financial/CFOExecutiveBoardTab";
+import CFORevenueMRRTab from "./financial/CFORevenueMRRTab";
+import CFOChurnRetentionTab from "./financial/CFOChurnRetentionTab";
+import CFOUnitEconomicsTab from "./financial/CFOUnitEconomicsTab";
+import CFOCostsStructureTab from "./financial/CFOCostsStructureTab";
+import CFOCashProjectionTab from "./financial/CFOCashProjectionTab";
+import CFODelinquencyTab from "./financial/CFODelinquencyTab";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 
@@ -91,7 +99,15 @@ const NAV_ITEMS = [
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
   { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
   { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
-];
+  { key: "separator-cfo", label: "── DASHBOARD CFO ──", icon: BarChart3, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive, isSeparator: true },
+  { key: "cfo-executive", label: "Executive Board", icon: BarChart3, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive },
+  { key: "cfo-mrr", label: "Receita & MRR", icon: TrendingUp, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_mrr },
+  { key: "cfo-churn", label: "Churn & Retenção", icon: TrendingDown, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_churn },
+  { key: "cfo-unit-economics", label: "Unit Economics", icon: Target, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_unit_economics },
+  { key: "cfo-costs", label: "Custos & Estrutura", icon: Calculator, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_costs },
+  { key: "cfo-cash", label: "Caixa & Projeção", icon: Wallet, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_cash },
+  { key: "cfo-delinquency", label: "Inadimplência", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_delinquency },
+] as const;
 
 export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
@@ -485,7 +501,8 @@ export default function AllRecurringChargesPage() {
     );
   }
 
-  const visibleNavItems = NAV_ITEMS.filter(item => hasPerm(item.permKey));
+  const visibleNavItems = NAV_ITEMS.filter(item => !('isSeparator' in item && item.isSeparator) && hasPerm(item.permKey));
+  const hasCfoAccess = NAV_ITEMS.some(item => item.key.startsWith("cfo-") && hasPerm(item.permKey));
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -501,24 +518,33 @@ export default function AllRecurringChargesPage() {
             Financeiro
           </h1>
         </div>
-        <nav className="flex-1 p-2 space-y-1">
-          {visibleNavItems.map(item => {
+        <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
+          {visibleNavItems.map((item, idx) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
+            const isCfo = item.key.startsWith("cfo-");
+            const prevIsCfo = idx > 0 && visibleNavItems[idx - 1]?.key.startsWith("cfo-");
+            const showSeparator = isCfo && !prevIsCfo;
             return (
-              <button
-                key={item.key}
-                onClick={() => { setActiveTab(item.key); resetFilters(); }}
-                className={cn(
-                  "w-full flex items-center gap-3 px-3 py-2.5 rounded-lg text-sm transition-colors text-left",
-                  isActive
-                    ? "bg-primary text-primary-foreground font-medium"
-                    : "text-muted-foreground hover:bg-muted hover:text-foreground"
+              <div key={item.key}>
+                {showSeparator && (
+                  <div className="pt-3 pb-1 px-3">
+                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Dashboard CFO</p>
+                  </div>
                 )}
-              >
-                <Icon className="h-4 w-4 shrink-0" />
-                {item.label}
-              </button>
+                <button
+                  onClick={() => { setActiveTab(item.key); resetFilters(); }}
+                  className={cn(
+                    "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left",
+                    isActive
+                      ? "bg-primary text-primary-foreground font-medium"
+                      : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                  )}
+                >
+                  <Icon className="h-4 w-4 shrink-0" />
+                  <span className="truncate">{item.label}</span>
+                </button>
+              </div>
             );
           })}
         </nav>
@@ -889,6 +915,29 @@ export default function AllRecurringChargesPage() {
                 )}
               </div>
             </div>
+          )}
+
+          {/* CFO Tabs */}
+          {activeTab === "cfo-executive" && (
+            <CFOExecutiveBoardTab invoices={invoices} payables={payables} banks={banks} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-mrr" && (
+            <CFORevenueMRRTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-churn" && (
+            <CFOChurnRetentionTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-unit-economics" && (
+            <CFOUnitEconomicsTab invoices={invoices} payables={payables} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-costs" && (
+            <CFOCostsStructureTab invoices={invoices} payables={payables} categories={staffCategories} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-cash" && (
+            <CFOCashProjectionTab invoices={invoices} payables={payables} banks={banks} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-delinquency" && (
+            <CFODelinquencyTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
         </div>
       </main>

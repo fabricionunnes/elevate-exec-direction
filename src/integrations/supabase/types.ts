@@ -13907,6 +13907,42 @@ export type Database = {
           },
         ]
       }
+      financial_alert_config: {
+        Row: {
+          alert_key: string
+          comparison: string
+          created_at: string
+          id: string
+          is_active: boolean
+          label: string
+          severity: string
+          threshold: number
+          updated_at: string
+        }
+        Insert: {
+          alert_key: string
+          comparison?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label: string
+          severity?: string
+          threshold: number
+          updated_at?: string
+        }
+        Update: {
+          alert_key?: string
+          comparison?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          label?: string
+          severity?: string
+          threshold?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_bank_accounts: {
         Row: {
           account_number: string | null
@@ -14237,6 +14273,48 @@ export type Database = {
           },
         ]
       }
+      financial_employees: {
+        Row: {
+          benefits_cents: number
+          created_at: string
+          department: string | null
+          end_date: string | null
+          id: string
+          is_active: boolean
+          name: string
+          role: string | null
+          salary_cents: number
+          start_date: string
+          updated_at: string
+        }
+        Insert: {
+          benefits_cents?: number
+          created_at?: string
+          department?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          role?: string | null
+          salary_cents?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Update: {
+          benefits_cents?: number
+          created_at?: string
+          department?: string | null
+          end_date?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          role?: string | null
+          salary_cents?: number
+          start_date?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_integrations: {
         Row: {
           config: Json | null
@@ -14270,6 +14348,36 @@ export type Database = {
           sync_error?: string | null
           sync_status?: string | null
           updated_at?: string
+        }
+        Relationships: []
+      }
+      financial_monthly_targets: {
+        Row: {
+          created_at: string
+          id: string
+          metric_key: string
+          notes: string | null
+          target_value: number
+          updated_at: string
+          year_month: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          metric_key: string
+          notes?: string | null
+          target_value?: number
+          updated_at?: string
+          year_month: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          metric_key?: string
+          notes?: string | null
+          target_value?: number
+          updated_at?: string
+          year_month?: string
         }
         Relationships: []
       }
@@ -22220,6 +22328,7 @@ export type Database = {
       }
       staff_financial_categories: {
         Row: {
+          cost_type: string | null
           created_at: string
           dfc_section: string | null
           dre_line: string | null
@@ -22232,6 +22341,7 @@ export type Database = {
           type: string
         }
         Insert: {
+          cost_type?: string | null
           created_at?: string
           dfc_section?: string | null
           dre_line?: string | null
@@ -22244,6 +22354,7 @@ export type Database = {
           type: string
         }
         Update: {
+          cost_type?: string | null
           created_at?: string
           dfc_section?: string | null
           dre_line?: string | null
