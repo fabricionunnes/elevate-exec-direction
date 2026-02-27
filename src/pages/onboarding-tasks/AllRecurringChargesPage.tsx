@@ -23,7 +23,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -89,8 +89,10 @@ interface Invoice {
   total_with_fees_cents: number;
   recurring_charge_id: string | null;
   pagarme_charge_id: string | null;
+  payment_link_url: string | null;
   created_at: string;
   company_name?: string;
+  company_phone?: string;
 }
 
 const NAV_ITEMS = [
@@ -205,7 +207,7 @@ export default function AllRecurringChargesPage() {
     try {
       const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
-        supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator").order("name"),
+        supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator, phone").order("name"),
         supabase.from("financial_payables").select("*").order("due_date", { ascending: false }),
         supabase.from("company_invoices").select("*").order("due_date", { ascending: true }),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
@@ -217,12 +219,13 @@ export default function AllRecurringChargesPage() {
       if (companiesRes.error) throw companiesRes.error;
       const allCompanies = (companiesRes.data || []).filter((c: any) => !c.is_simulator);
       const companiesMap = new Map(allCompanies.map((c: any) => [c.id, c.name]));
+      const companiesPhoneMap = new Map(allCompanies.map((c: any) => [c.id, c.phone]));
       setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida" })));
       setCompanies(allCompanies.map((c: any) => ({ id: c.id, name: c.name })));
       setFullCompanies(allCompanies);
       setStaffList(staffRes.data || []);
       setPayables((payablesRes.data as any) || []);
-      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida" })));
+      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
@@ -779,23 +782,41 @@ export default function AllRecurringChargesPage() {
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
-                                {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
-                                  <div className="flex justify-end gap-1">
-                                    {inv.status !== "paid" && inv.status !== "cancelled" ? (
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" disabled={isProcessing}
-                                        onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "confirm", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(displayAmount)}` })}>
-                                        {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                                        Baixa
+                                <div className="flex justify-end gap-1">
+                                  {inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled" && (
+                                    <>
+                                      <Button variant="ghost" size="icon" className="h-7 w-7" title="Copiar link de pagamento"
+                                        onClick={() => { navigator.clipboard.writeText(inv.payment_link_url!); toast.success("Link copiado!"); }}>
+                                        <Copy className="h-3.5 w-3.5" />
                                       </Button>
-                                    ) : hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && inv.status === "paid" ? (
-                                      <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
-                                        onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` })}>
-                                        {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
-                                        Estornar
+                                      <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp"
+                                        onClick={() => {
+                                          const phone = inv.company_phone?.replace(/\D/g, "") || "";
+                                          const msg = encodeURIComponent(`Olá! Segue o link para pagamento da fatura *${inv.description}* (${inv.installment_number}/${inv.total_installments}) no valor de *${formatCurrencyCents(displayAmount)}* com vencimento em *${inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}*:\n\n${inv.payment_link_url}`);
+                                          window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+                                        }}>
+                                        <Send className="h-3.5 w-3.5" />
                                       </Button>
-                                    ) : null}
-                                  </div>
-                                )}
+                                    </>
+                                  )}
+                                  {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
+                                    <>
+                                      {inv.status !== "paid" && inv.status !== "cancelled" ? (
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" disabled={isProcessing}
+                                          onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "confirm", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(displayAmount)}` })}>
+                                          {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                          Baixa
+                                        </Button>
+                                      ) : hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && inv.status === "paid" ? (
+                                        <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
+                                          onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` })}>
+                                          {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                                          Estornar
+                                        </Button>
+                                      ) : null}
+                                    </>
+                                  )}
+                                </div>
                               </TableCell>
                             </TableRow>
                           );
