@@ -9644,6 +9644,7 @@ export type Database = {
       company_invoices: {
         Row: {
           amount_cents: number
+          bank_id: string | null
           company_id: string
           created_at: string
           daily_interest_percent: number
@@ -9671,6 +9672,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          bank_id?: string | null
           company_id: string
           created_at?: string
           daily_interest_percent?: number
@@ -9698,6 +9700,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          bank_id?: string | null
           company_id?: string
           created_at?: string
           daily_interest_percent?: number
@@ -9724,6 +9727,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "company_invoices_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "financial_banks"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "company_invoices_recurring_charge_id_fkey"
             columns: ["recurring_charge_id"]
@@ -13922,6 +13932,86 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_bank_transactions: {
+        Row: {
+          amount_cents: number
+          bank_id: string
+          created_at: string
+          description: string | null
+          id: string
+          reference_id: string | null
+          reference_type: string | null
+          type: string
+        }
+        Insert: {
+          amount_cents: number
+          bank_id: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type: string
+        }
+        Update: {
+          amount_cents?: number
+          bank_id?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          reference_id?: string | null
+          reference_type?: string | null
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_bank_transactions_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "financial_banks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      financial_banks: {
+        Row: {
+          account_number: string | null
+          agency: string | null
+          bank_code: string | null
+          created_at: string
+          current_balance_cents: number
+          id: string
+          initial_balance_cents: number
+          is_active: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          account_number?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          created_at?: string
+          current_balance_cents?: number
+          id?: string
+          initial_balance_cents?: number
+          is_active?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          account_number?: string | null
+          agency?: string | null
+          bank_code?: string | null
+          created_at?: string
+          current_balance_cents?: number
+          id?: string
+          initial_balance_cents?: number
+          is_active?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       financial_budgets: {
         Row: {
           actual_amount: number | null
@@ -14167,6 +14257,7 @@ export type Database = {
         Row: {
           amount: number
           bank_account_id: string | null
+          bank_id: string | null
           category_id: string | null
           conta_azul_id: string | null
           cost_center: string | null
@@ -14190,6 +14281,7 @@ export type Database = {
         Insert: {
           amount: number
           bank_account_id?: string | null
+          bank_id?: string | null
           category_id?: string | null
           conta_azul_id?: string | null
           cost_center?: string | null
@@ -14213,6 +14305,7 @@ export type Database = {
         Update: {
           amount?: number
           bank_account_id?: string | null
+          bank_id?: string | null
           category_id?: string | null
           conta_azul_id?: string | null
           cost_center?: string | null
@@ -14239,6 +14332,13 @@ export type Database = {
             columns: ["bank_account_id"]
             isOneToOne: false
             referencedRelation: "financial_bank_accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_payables_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "financial_banks"
             referencedColumns: ["id"]
           },
           {
@@ -23229,6 +23329,10 @@ export type Database = {
       has_whatsapp_instance_access: {
         Args: { _instance_id: string; _staff_id: string }
         Returns: boolean
+      }
+      increment_bank_balance: {
+        Args: { p_amount: number; p_bank_id: string }
+        Returns: undefined
       }
       is_appointment_project_client: {
         Args: { check_project_id: string }
