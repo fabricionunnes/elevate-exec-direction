@@ -35,6 +35,7 @@ import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
 import { DailyGoalCard } from "./DailyGoalCard";
+import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -1769,6 +1770,16 @@ export const KPIDashboardTab = ({
         selectedTeam={selectedTeam}
         selectedSector={selectedSector}
         selectedSalesperson={selectedSalesperson}
+      />
+
+      {/* Term Vision Card - QTR/YTD/MAT */}
+      <ProjectTermVisionCard
+        companyId={companyId}
+        projectId={projectId}
+        selectedSalesperson={selectedSalesperson}
+        selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
       />
 
       {/* Sales Comparison Chart - Before vs After UNV */}
