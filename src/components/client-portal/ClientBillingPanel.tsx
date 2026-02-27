@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -71,7 +72,8 @@ export function ClientBillingPanel({ companyId }: Props) {
   };
 
   const copyLink = (token: string) => {
-    const url = `${window.location.origin}/#/fatura?token=${token}`;
+    const baseUrl = getPublicBaseUrl();
+    const url = `${baseUrl}/#/fatura?token=${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link da fatura copiado!");
   };
