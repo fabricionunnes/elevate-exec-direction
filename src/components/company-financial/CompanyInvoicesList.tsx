@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -98,8 +99,9 @@ export function CompanyInvoicesList({ companyId }: Props) {
   };
 
   const copyLink = (inv: Invoice) => {
-    // Prefer Asaas URL if available, fallback to internal link
-    const url = inv.payment_link_url || `${window.location.origin}/#/fatura?token=${inv.public_token}`;
+    // Prefer Asaas URL if available, fallback to internal link using published domain
+    const baseUrl = getPublicBaseUrl();
+    const url = inv.payment_link_url || `${baseUrl}/#/fatura?token=${inv.public_token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
