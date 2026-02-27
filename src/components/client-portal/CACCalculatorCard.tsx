@@ -44,6 +44,22 @@ export const CACCalculatorCard = ({ projectId, autoSalesCount }: CACCalculatorCa
 
   const monthName = new Date(currentYear, currentMonth - 1).toLocaleString("pt-BR", { month: "long" });
 
+  // Currency mask: stores raw cents as string, displays formatted
+  const formatInputCurrency = (rawCents: string) => {
+    const cents = parseInt(rawCents || "0", 10);
+    return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+  };
+
+  const handleCurrencyInput = (e: React.ChangeEvent<HTMLInputElement>) => {
+    // Strip non-digits
+    const raw = e.target.value.replace(/\D/g, "");
+    setNewItem((prev) => ({ ...prev, value: raw }));
+  };
+
+  const getValueInReais = (rawCents: string) => {
+    return parseInt(rawCents || "0", 10) / 100;
+  };
+
   useEffect(() => {
     fetchCostItems();
   }, [projectId]);
@@ -76,8 +92,13 @@ export const CACCalculatorCard = ({ projectId, autoSalesCount }: CACCalculatorCa
   };
 
   const handleAddItem = async () => {
-    if (!newItem.name.trim() || !newItem.value) {
-      toast.error("Preencha o nome e valor do custo");
+    const numericValue = getValueInReais(newItem.value);
+    if (numericValue <= 0) {
+      toast.error("Preencha o valor do custo");
+      return;
+    }
+    if (!newItem.name.trim()) {
+      toast.error("Preencha o nome do custo");
       return;
     }
 
@@ -89,7 +110,7 @@ export const CACCalculatorCard = ({ projectId, autoSalesCount }: CACCalculatorCa
           project_id: projectId,
           name: newItem.name.trim(),
           description: newItem.description.trim() || null,
-          value: parseFloat(newItem.value),
+          value: numericValue,
           month: currentMonth,
           year: currentYear,
         })
@@ -211,13 +232,16 @@ export const CACCalculatorCard = ({ projectId, autoSalesCount }: CACCalculatorCa
                   </div>
                   <div className="space-y-1.5">
                     <Label className="text-xs">Valor (R$) *</Label>
-                    <Input
-                      type="number"
-                      placeholder="0,00"
-                      value={newItem.value}
-                      onChange={(e) => setNewItem((prev) => ({ ...prev, value: e.target.value }))}
-                      className="h-8 text-sm"
-                    />
+                    <div className="relative">
+                      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-xs text-muted-foreground">R$</span>
+                      <Input
+                        inputMode="numeric"
+                        placeholder="0,00"
+                        value={newItem.value ? formatInputCurrency(newItem.value) : ""}
+                        onChange={handleCurrencyInput}
+                        className="h-8 text-sm pl-9"
+                      />
+                    </div>
                   </div>
                   <div className="flex gap-2">
                     <Button
