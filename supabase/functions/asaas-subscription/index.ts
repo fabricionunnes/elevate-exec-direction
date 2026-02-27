@@ -114,33 +114,23 @@ Deno.serve(async (req) => {
     const subscription = await asaasRequest("/subscriptions", "POST", ASAAS_API_KEY, subscriptionPayload);
     console.log("Asaas subscription created:", subscription.id);
 
-    // Step 5: Create a local public payment link
+    // Step 5: Get the invoice URL from the first Asaas payment
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const encodedDesc = encodeURIComponent(description);
-    let publicUrl = "";
-
-    // Create a payment_links record for the subscription
-    const { data: linkData } = await supabase
-      .from("payment_links")
-      .insert({
-        description,
-        amount_cents,
-        payment_method: payment_method || "pix",
-        installments: 1,
-        url: "pending",
-        company_id,
-      })
-      .select("id")
-      .single();
-
-    if (linkData) {
-      publicUrl = `${PUBLISHED_URL}/#/checkout?link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}`;
-      await supabase.from("payment_links").update({ url: publicUrl }).eq("id", linkData.id);
+    let invoiceUrl = "";
+    try {
+      const payments = await asaasRequest(`/subscriptions/${subscription.id}/payments`, "GET", ASAAS_API_KEY);
+      if (payments.data?.length > 0) {
+        invoiceUrl = payments.data[0].invoiceUrl || "";
+      }
+    } catch (e) {
+      console.error("Error getting subscription payments:", e);
     }
+
+    console.log("Asaas invoiceUrl:", invoiceUrl);
 
     // Step 6: Update the recurring charge record
     if (recurring_charge_id) {
@@ -148,8 +138,7 @@ Deno.serve(async (req) => {
         .from("company_recurring_charges")
         .update({
           pagarme_plan_id: subscription.id,
-          pagarme_link_id: linkData?.id || null,
-          pagarme_link_url: publicUrl,
+          pagarme_link_url: invoiceUrl,
         } as any)
         .eq("id", recurring_charge_id);
     }
@@ -158,7 +147,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         subscription_id: subscription.id,
-        payment_link_url: publicUrl,
+        invoice_url: invoiceUrl,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
