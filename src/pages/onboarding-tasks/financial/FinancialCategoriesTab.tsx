@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
@@ -12,7 +13,7 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { Plus, Edit2, Trash2, FolderTree, ArrowUpRight, ArrowDownRight } from "lucide-react";
+import { Plus, Edit2, Trash2, FolderTree, ArrowUpRight, ArrowDownRight, Target } from "lucide-react";
 import { toast } from "sonner";
 
 interface Category {
@@ -22,6 +23,14 @@ interface Category {
   group_name: string;
   dre_line: string | null;
   dfc_section: string | null;
+  sort_order: number;
+  is_active: boolean;
+}
+
+interface CostCenter {
+  id: string;
+  name: string;
+  description: string | null;
   sort_order: number;
   is_active: boolean;
 }
@@ -43,6 +52,9 @@ const DFC_SECTIONS = [
 ];
 
 export default function FinancialCategoriesTab() {
+  const [activeSubTab, setActiveSubTab] = useState("categories");
+
+  // Categories state
   const [categories, setCategories] = useState<Category[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const [dialog, setDialog] = useState<{ open: boolean; category: Category | null }>({ open: false, category: null });
@@ -50,8 +62,15 @@ export default function FinancialCategoriesTab() {
     name: "", type: "despesa", group_name: "", dre_line: "none", dfc_section: "operacional", sort_order: "0",
   });
 
-  useEffect(() => { loadCategories(); }, []);
+  // Cost centers state
+  const [costCenters, setCostCenters] = useState<CostCenter[]>([]);
+  const [ccLoading, setCcLoading] = useState(true);
+  const [ccDialog, setCcDialog] = useState<{ open: boolean; costCenter: CostCenter | null }>({ open: false, costCenter: null });
+  const [ccForm, setCcForm] = useState({ name: "", description: "", sort_order: "0" });
 
+  useEffect(() => { loadCategories(); loadCostCenters(); }, []);
+
+  // --- Categories ---
   const loadCategories = async () => {
     const { data, error } = await supabase
       .from("staff_financial_categories")
@@ -100,17 +119,13 @@ export default function FinancialCategoriesTab() {
 
   const openEdit = (cat: Category) => {
     setForm({
-      name: cat.name,
-      type: cat.type,
-      group_name: cat.group_name,
-      dre_line: cat.dre_line || "none",
-      dfc_section: cat.dfc_section || "operacional",
+      name: cat.name, type: cat.type, group_name: cat.group_name,
+      dre_line: cat.dre_line || "none", dfc_section: cat.dfc_section || "operacional",
       sort_order: String(cat.sort_order),
     });
     setDialog({ open: true, category: cat });
   };
 
-  // Group categories
   const grouped = categories.reduce<Record<string, Category[]>>((acc, cat) => {
     const key = cat.group_name || "Outros";
     if (!acc[key]) acc[key] = [];
@@ -118,81 +133,200 @@ export default function FinancialCategoriesTab() {
     return acc;
   }, {});
 
+  // --- Cost Centers ---
+  const loadCostCenters = async () => {
+    const { data, error } = await supabase
+      .from("staff_financial_cost_centers")
+      .select("*")
+      .eq("is_active", true)
+      .order("sort_order");
+    if (!error) setCostCenters((data as any) || []);
+    setCcLoading(false);
+  };
+
+  const handleSaveCc = async () => {
+    if (!ccForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+    const payload = {
+      name: ccForm.name,
+      description: ccForm.description || null,
+      sort_order: parseInt(ccForm.sort_order) || 0,
+    };
+
+    if (ccDialog.costCenter) {
+      const { error } = await supabase.from("staff_financial_cost_centers").update(payload as any).eq("id", ccDialog.costCenter.id);
+      if (error) { toast.error("Erro: " + error.message); return; }
+      toast.success("Centro de custo atualizado");
+    } else {
+      const { error } = await supabase.from("staff_financial_cost_centers").insert(payload as any);
+      if (error) { toast.error("Erro: " + error.message); return; }
+      toast.success("Centro de custo criado");
+    }
+    setCcDialog({ open: false, costCenter: null });
+    loadCostCenters();
+  };
+
+  const handleDeleteCc = async (id: string) => {
+    if (!confirm("Desativar este centro de custo?")) return;
+    await supabase.from("staff_financial_cost_centers").update({ is_active: false } as any).eq("id", id);
+    toast.success("Centro de custo desativado");
+    loadCostCenters();
+  };
+
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold flex items-center gap-2">
-            <FolderTree className="h-5 w-5 text-primary" />
-            Plano de Contas
-          </h2>
-          <p className="text-sm text-muted-foreground">Categorias para classificar receitas e despesas no DRE/DFC</p>
-        </div>
-        <Button size="sm" onClick={openCreate}>
-          <Plus className="h-4 w-4 mr-2" />
-          Nova Categoria
-        </Button>
-      </div>
+      <Tabs value={activeSubTab} onValueChange={setActiveSubTab}>
+        <TabsList>
+          <TabsTrigger value="categories" className="gap-2">
+            <FolderTree className="h-4 w-4" />
+            Categorias
+          </TabsTrigger>
+          <TabsTrigger value="cost_centers" className="gap-2">
+            <Target className="h-4 w-4" />
+            Centros de Custo
+          </TabsTrigger>
+        </TabsList>
 
-      {Object.entries(grouped).map(([group, cats]) => (
-        <Card key={group}>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm">{group}</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Nome</TableHead>
-                  <TableHead>Tipo</TableHead>
-                  <TableHead>Linha DRE</TableHead>
-                  <TableHead>Seção DFC</TableHead>
-                  <TableHead>Ordem</TableHead>
-                  <TableHead className="w-20" />
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {cats.map(cat => (
-                  <TableRow key={cat.id}>
-                    <TableCell className="font-medium">{cat.name}</TableCell>
-                    <TableCell>
-                      <Badge variant={cat.type === "receita" ? "default" : "destructive"} className="gap-1 text-xs">
-                        {cat.type === "receita" ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
-                        {cat.type === "receita" ? "Receita" : "Despesa"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {DRE_LINES.find(l => l.value === cat.dre_line)?.label || "-"}
-                    </TableCell>
-                    <TableCell className="text-sm text-muted-foreground">
-                      {DFC_SECTIONS.find(s => s.value === cat.dfc_section)?.label || "-"}
-                    </TableCell>
-                    <TableCell className="text-sm">{cat.sort_order}</TableCell>
-                    <TableCell>
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}>
-                          <Edit2 className="h-3.5 w-3.5" />
-                        </Button>
-                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(cat.id)}>
-                          <Trash2 className="h-3.5 w-3.5" />
-                        </Button>
-                      </div>
-                    </TableCell>
+        {/* Categories Tab */}
+        <TabsContent value="categories" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <FolderTree className="h-5 w-5 text-primary" />
+                Plano de Contas
+              </h2>
+              <p className="text-sm text-muted-foreground">Categorias para classificar receitas e despesas no DRE/DFC</p>
+            </div>
+            <Button size="sm" onClick={openCreate}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Categoria
+            </Button>
+          </div>
+
+          {Object.entries(grouped).map(([group, cats]) => (
+            <Card key={group}>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm">{group}</CardTitle>
+              </CardHeader>
+              <CardContent className="p-0">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Tipo</TableHead>
+                      <TableHead>Linha DRE</TableHead>
+                      <TableHead>Seção DFC</TableHead>
+                      <TableHead>Ordem</TableHead>
+                      <TableHead className="w-20" />
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {cats.map(cat => (
+                      <TableRow key={cat.id}>
+                        <TableCell className="font-medium">{cat.name}</TableCell>
+                        <TableCell>
+                          <Badge variant={cat.type === "receita" ? "default" : "destructive"} className="gap-1 text-xs">
+                            {cat.type === "receita" ? <ArrowUpRight className="h-3 w-3" /> : <ArrowDownRight className="h-3 w-3" />}
+                            {cat.type === "receita" ? "Receita" : "Despesa"}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {DRE_LINES.find(l => l.value === cat.dre_line)?.label || "-"}
+                        </TableCell>
+                        <TableCell className="text-sm text-muted-foreground">
+                          {DFC_SECTIONS.find(s => s.value === cat.dfc_section)?.label || "-"}
+                        </TableCell>
+                        <TableCell className="text-sm">{cat.sort_order}</TableCell>
+                        <TableCell>
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => openEdit(cat)}>
+                              <Edit2 className="h-3.5 w-3.5" />
+                            </Button>
+                            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDelete(cat.id)}>
+                              <Trash2 className="h-3.5 w-3.5" />
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          ))}
+
+          {categories.length === 0 && !isLoading && (
+            <Card>
+              <CardContent className="py-8 text-center text-muted-foreground">
+                Nenhuma categoria cadastrada.
+              </CardContent>
+            </Card>
+          )}
+        </TabsContent>
+
+        {/* Cost Centers Tab */}
+        <TabsContent value="cost_centers" className="mt-4 space-y-4">
+          <div className="flex items-center justify-between">
+            <div>
+              <h2 className="text-lg font-semibold flex items-center gap-2">
+                <Target className="h-5 w-5 text-primary" />
+                Centros de Custo
+              </h2>
+              <p className="text-sm text-muted-foreground">Centros de custo para classificar lançamentos</p>
+            </div>
+            <Button size="sm" onClick={() => {
+              setCcForm({ name: "", description: "", sort_order: "0" });
+              setCcDialog({ open: true, costCenter: null });
+            }}>
+              <Plus className="h-4 w-4 mr-2" />
+              Novo Centro de Custo
+            </Button>
+          </div>
+
+          <Card>
+            <CardContent className="p-0">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Nome</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead>Ordem</TableHead>
+                    <TableHead className="w-20" />
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </CardContent>
-        </Card>
-      ))}
-
-      {categories.length === 0 && !isLoading && (
-        <Card>
-          <CardContent className="py-8 text-center text-muted-foreground">
-            Nenhuma categoria cadastrada.
-          </CardContent>
-        </Card>
-      )}
+                </TableHeader>
+                <TableBody>
+                  {costCenters.map(cc => (
+                    <TableRow key={cc.id}>
+                      <TableCell className="font-medium">{cc.name}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{cc.description || "-"}</TableCell>
+                      <TableCell className="text-sm">{cc.sort_order}</TableCell>
+                      <TableCell>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                            setCcForm({ name: cc.name, description: cc.description || "", sort_order: String(cc.sort_order) });
+                            setCcDialog({ open: true, costCenter: cc });
+                          }}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteCc(cc.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                  {costCenters.length === 0 && !ccLoading && (
+                    <TableRow>
+                      <TableCell colSpan={4} className="text-center py-8 text-muted-foreground">
+                        Nenhum centro de custo cadastrado.
+                      </TableCell>
+                    </TableRow>
+                  )}
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
 
       {/* Category Dialog */}
       <AlertDialog open={dialog.open} onOpenChange={(open) => { if (!open) setDialog({ open: false, category: null }); }}>
@@ -250,6 +384,33 @@ export default function FinancialCategoriesTab() {
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
             <AlertDialogAction onClick={handleSave}>{dialog.category ? "Salvar" : "Criar"}</AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Cost Center Dialog */}
+      <AlertDialog open={ccDialog.open} onOpenChange={(open) => { if (!open) setCcDialog({ open: false, costCenter: null }); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{ccDialog.costCenter ? "Editar Centro de Custo" : "Novo Centro de Custo"}</AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Nome *</label>
+              <Input value={ccForm.name} onChange={(e) => setCcForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Marketing Digital" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Descrição</label>
+              <Input value={ccForm.description} onChange={(e) => setCcForm(p => ({ ...p, description: e.target.value }))} placeholder="Opcional" />
+            </div>
+            <div>
+              <label className="text-sm font-medium mb-1 block">Ordem</label>
+              <Input type="number" value={ccForm.sort_order} onChange={(e) => setCcForm(p => ({ ...p, sort_order: e.target.value }))} className="w-24" />
+            </div>
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveCc}>{ccDialog.costCenter ? "Salvar" : "Criar"}</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

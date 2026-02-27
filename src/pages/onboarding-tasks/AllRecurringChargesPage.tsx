@@ -115,17 +115,21 @@ export default function AllRecurringChargesPage() {
   const [bankDialog, setBankDialog] = useState<{ open: boolean; bank: any | null }>({ open: false, bank: null });
   const [bankForm, setBankForm] = useState({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
 
+  // Categories & Cost Centers for forms
+  const [staffCategories, setStaffCategories] = useState<any[]>([]);
+  const [staffCostCenters, setStaffCostCenters] = useState<any[]>([]);
+
   // New receivable dialog
   const [receivableDialog, setReceivableDialog] = useState(false);
   const [receivableForm, setReceivableForm] = useState({
-    company_id: "", description: "", amount: 0, due_date: "", notes: "",
+    company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "",
   });
   const [savingReceivable, setSavingReceivable] = useState(false);
 
   // New payable dialog
   const [payableDialog, setPayableDialog] = useState(false);
   const [payableForm, setPayableForm] = useState({
-    supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "",
+    supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "",
   });
   const [savingPayable, setSavingPayable] = useState(false);
 
@@ -160,12 +164,14 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
         supabase.from("onboarding_companies").select("id, name").order("name"),
         supabase.from("financial_payables").select("*").order("due_date", { ascending: false }),
         supabase.from("company_invoices").select("*").order("due_date", { ascending: true }),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
+        supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
       ]);
       if (chargesRes.error) throw chargesRes.error;
       if (companiesRes.error) throw companiesRes.error;
@@ -175,6 +181,8 @@ export default function AllRecurringChargesPage() {
       setPayables((payablesRes.data as any) || []);
       setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida" })));
       setBanks((banksRes.data as any) || []);
+      setStaffCategories((catRes.data as any) || []);
+      setStaffCostCenters((ccRes.data as any) || []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
@@ -358,14 +366,16 @@ export default function AllRecurringChargesPage() {
         amount_cents: amountCents,
         due_date: receivableForm.due_date,
         notes: receivableForm.notes || null,
+        category_id: receivableForm.category_id || null,
+        cost_center_id: receivableForm.cost_center_id || null,
         status: "pending",
         installment_number: 1,
         total_installments: 1,
-      });
+      } as any);
       if (error) throw error;
       toast.success("Conta a receber lançada com sucesso");
       setReceivableDialog(false);
-      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
+      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -391,12 +401,14 @@ export default function AllRecurringChargesPage() {
         due_date: payableForm.due_date,
         reference_month: refMonth,
         notes: payableForm.notes || null,
+        category_id: payableForm.category_id || null,
+        cost_center_id: payableForm.cost_center_id || null,
         status: "pending",
-      });
+      } as any);
       if (error) throw error;
       toast.success("Conta a pagar lançada com sucesso");
       setPayableDialog(false);
-      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
+      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -547,7 +559,7 @@ export default function AllRecurringChargesPage() {
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_create) && (
                   <Button size="sm" onClick={() => {
-                    setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
+                    setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
                     setReceivableDialog(true);
                   }}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -715,7 +727,7 @@ export default function AllRecurringChargesPage() {
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_create) && (
                   <Button size="sm" onClick={() => {
-                    setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
+                    setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
                     setPayableDialog(true);
                   }}>
                     <Plus className="h-4 w-4 mr-2" />
@@ -1000,6 +1012,28 @@ export default function AllRecurringChargesPage() {
                 <Input type="date" value={receivableForm.due_date} onChange={(e) => setReceivableForm(p => ({ ...p, due_date: e.target.value }))} />
               </div>
             </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Categoria</Label>
+                <Select value={receivableForm.category_id} onValueChange={(v) => setReceivableForm(p => ({ ...p, category_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {staffCategories.filter(c => c.type === "receita").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Centro de Custo</Label>
+                <Select value={receivableForm.cost_center_id} onValueChange={(v) => setReceivableForm(p => ({ ...p, cost_center_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
             <div>
               <Label>Observações</Label>
               <Input value={receivableForm.notes} onChange={(e) => setReceivableForm(p => ({ ...p, notes: e.target.value }))} placeholder="Opcional" />
@@ -1038,6 +1072,28 @@ export default function AllRecurringChargesPage() {
               <div>
                 <Label>Vencimento *</Label>
                 <Input type="date" value={payableForm.due_date} onChange={(e) => setPayableForm(p => ({ ...p, due_date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Categoria</Label>
+                <Select value={payableForm.category_id} onValueChange={(v) => setPayableForm(p => ({ ...p, category_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhuma</SelectItem>
+                    {staffCategories.filter(c => c.type === "despesa").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <Label>Centro de Custo</Label>
+                <Select value={payableForm.cost_center_id} onValueChange={(v) => setPayableForm(p => ({ ...p, cost_center_id: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="">Nenhum</SelectItem>
+                    {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
