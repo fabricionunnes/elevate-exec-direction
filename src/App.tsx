@@ -133,6 +133,7 @@ import GlobalTalentPoolResumesPage from "./pages/onboarding-tasks/GlobalTalentPo
 import HotseatAdminPage from "./pages/onboarding-tasks/HotseatAdminPage";
 import HotseatFormPage from "./pages/HotseatFormPage";
 import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
+import BillingRulesPage from "./pages/onboarding-tasks/BillingRulesPage";
 import ContractGeneratorPage from "./pages/onboarding-tasks/ContractGeneratorPage";
 import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
 
@@ -287,6 +288,7 @@ const App = () => (
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
+              <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
