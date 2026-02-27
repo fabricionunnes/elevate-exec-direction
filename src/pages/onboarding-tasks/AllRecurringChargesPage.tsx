@@ -790,10 +790,32 @@ export default function AllRecurringChargesPage() {
                                         <Copy className="h-3.5 w-3.5" />
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp"
-                                        onClick={() => {
+                                        onClick={async () => {
                                           const phone = inv.company_phone?.replace(/\D/g, "") || "";
-                                          const msg = encodeURIComponent(`Olá! Segue o link para pagamento da fatura *${inv.description}* (${inv.installment_number}/${inv.total_installments}) no valor de *${formatCurrencyCents(displayAmount)}* com vencimento em *${inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}*:\n\n${inv.payment_link_url}`);
-                                          window.open(`https://wa.me/${phone}?text=${msg}`, "_blank");
+                                          if (!phone) { toast.error("Telefone da empresa não cadastrado"); return; }
+                                          const msg = `Olá! Segue o link para pagamento da fatura *${inv.description}* (${inv.installment_number}/${inv.total_installments}) no valor de *${formatCurrencyCents(displayAmount)}* com vencimento em *${inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}*:\n\n${inv.payment_link_url}`;
+                                          try {
+                                            const { data: { session } } = await supabase.auth.getSession();
+                                            if (!session) throw new Error("Não autenticado");
+                                            const { data: instance } = await supabase
+                                              .from("whatsapp_instances")
+                                              .select("instance_name")
+                                              .eq("status", "connected")
+                                              .order("is_default", { ascending: false, nullsFirst: false })
+                                              .limit(1)
+                                              .single();
+                                            if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
+                                            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+                                              method: 'POST',
+                                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+                                              body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
+                                            });
+                                            if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+                                            toast.success("Link enviado via WhatsApp!");
+                                          } catch (err: any) {
+                                            console.error("WhatsApp send error:", err);
+                                            toast.error(err.message || "Erro ao enviar WhatsApp");
+                                          }
                                         }}>
                                         <Send className="h-3.5 w-3.5" />
                                       </Button>
