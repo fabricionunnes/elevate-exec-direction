@@ -128,12 +128,34 @@ export const ProjectTermVisionCard = ({
         }
       }
 
-      // 3. Group by month
+      // 3. Fetch sales history (company_sales_history) for historical data
+      const { data: salesHistory } = await supabase
+        .from("company_sales_history")
+        .select("month_year, revenue")
+        .eq("company_id", companyId);
+
+      // 4. Group kpi_entries by month
       const monthlyRevenue: Record<string, number> = {};
+
+      // First, seed with sales history (lower priority)
+      salesHistory?.forEach(sh => {
+        const monthKey = sh.month_year; // Already in "YYYY-MM" format
+        monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (Number(sh.revenue) || 0);
+      });
+
+      // Then overlay with kpi_entries (higher priority - replaces history for same month)
+      const kpiMonthlyRevenue: Record<string, number> = {};
       allEntries.forEach(entry => {
         const d = parseDateLocal(entry.entry_date);
         const monthKey = format(d, "yyyy-MM");
-        monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (Number(entry.value) || 0);
+        kpiMonthlyRevenue[monthKey] = (kpiMonthlyRevenue[monthKey] || 0) + (Number(entry.value) || 0);
+      });
+
+      // Merge: use kpi_entries when available, otherwise keep sales history
+      Object.keys(kpiMonthlyRevenue).forEach(monthKey => {
+        if (kpiMonthlyRevenue[monthKey] > 0) {
+          monthlyRevenue[monthKey] = kpiMonthlyRevenue[monthKey];
+        }
       });
 
       // 4. Build chart data for last 12 months
