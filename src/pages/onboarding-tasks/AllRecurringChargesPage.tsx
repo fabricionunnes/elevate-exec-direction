@@ -43,6 +43,10 @@ import {
   AlertTriangle,
   XCircle,
   CalendarIcon,
+  Landmark,
+  Plus,
+  Trash2,
+  Edit2,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -117,6 +121,12 @@ export default function AllRecurringChargesPage() {
     open: false, invoiceId: "", action: "confirm", description: "",
   });
   const [manualFee, setManualFee] = useState("1.99");
+  const [selectedBankId, setSelectedBankId] = useState("none");
+
+  // Banks state
+  const [banks, setBanks] = useState<any[]>([]);
+  const [bankDialog, setBankDialog] = useState<{ open: boolean; bank: any | null }>({ open: false, bank: null });
+  const [bankForm, setBankForm] = useState({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -172,7 +182,7 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes, invoicesRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes] = await Promise.all([
         supabase
           .from("company_recurring_charges")
           .select("*")
@@ -189,6 +199,11 @@ export default function AllRecurringChargesPage() {
           .from("company_invoices")
           .select("*")
           .order("due_date", { ascending: true }),
+        supabase
+          .from("financial_banks")
+          .select("*")
+          .eq("is_active", true)
+          .order("name"),
       ]);
 
       if (chargesRes.error) throw chargesRes.error;
@@ -209,6 +224,7 @@ export default function AllRecurringChargesPage() {
       setCompanies(companiesRes.data || []);
       setPayables((payablesRes.data as any) || []);
       setInvoices(invoicesEnriched);
+      setBanks((banksRes.data as any) || []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
@@ -332,7 +348,7 @@ export default function AllRecurringChargesPage() {
   };
 
   // Manual payment confirmation (baixa) with Asaas sync
-  const handleManualPayment = async (invoiceId: string, feeCents: number) => {
+  const handleManualPayment = async (invoiceId: string, feeCents: number, bankId: string | null) => {
     setProcessingInvoiceId(invoiceId);
     try {
       // 1. Update locally
@@ -340,19 +356,36 @@ export default function AllRecurringChargesPage() {
       const inv = invoices.find(i => i.id === invoiceId);
       const paidAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
 
+      const updateData: any = {
+        status: "paid",
+        paid_at: today,
+        paid_amount_cents: paidAmount,
+        payment_fee_cents: feeCents,
+      };
+      if (bankId) updateData.bank_id = bankId;
+
       const { error } = await supabase
         .from("company_invoices")
-        .update({
-          status: "paid",
-          paid_at: today,
-          paid_amount_cents: paidAmount,
-          payment_fee_cents: feeCents,
-        } as any)
+        .update(updateData)
         .eq("id", invoiceId);
 
       if (error) throw error;
 
-      // 2. Sync with Asaas
+      // 2. Update bank balance (credit - add money, minus fee)
+      if (bankId && paidAmount) {
+        const netAmount = paidAmount - feeCents;
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: netAmount });
+        await supabase.from("financial_bank_transactions").insert({
+          bank_id: bankId,
+          type: "credit",
+          amount_cents: netAmount,
+          description: `Recebimento: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`,
+          reference_type: "invoice",
+          reference_id: invoiceId,
+        } as any);
+      }
+
+      // 3. Sync with Asaas
       const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", {
         body: { invoice_id: invoiceId, action: "confirm" },
       });
@@ -373,6 +406,7 @@ export default function AllRecurringChargesPage() {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "confirm", description: "" });
       setManualFee("1.99");
+      setSelectedBankId("none");
     }
   };
 
@@ -380,6 +414,12 @@ export default function AllRecurringChargesPage() {
   const handleRevertPayment = async (invoiceId: string) => {
     setProcessingInvoiceId(invoiceId);
     try {
+      const inv = invoices.find(i => i.id === invoiceId);
+      const invAny = inv as any;
+      const bankId = invAny?.bank_id;
+      const paidAmount = invAny?.paid_amount_cents || invAny?.amount_cents || 0;
+      const feeCents = invAny?.payment_fee_cents || 0;
+
       // 1. Update locally
       const { error } = await supabase
         .from("company_invoices")
@@ -387,12 +427,27 @@ export default function AllRecurringChargesPage() {
           status: "pending",
           paid_at: null,
           paid_amount_cents: null,
+          bank_id: null,
         } as any)
         .eq("id", invoiceId);
 
       if (error) throw error;
 
-      // 2. Sync with Asaas
+      // 2. Reverse bank balance
+      if (bankId) {
+        const netAmount = paidAmount - feeCents;
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: -netAmount });
+        await supabase.from("financial_bank_transactions").insert({
+          bank_id: bankId,
+          type: "debit",
+          amount_cents: netAmount,
+          description: `Estorno: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`,
+          reference_type: "invoice",
+          reference_id: invoiceId,
+        } as any);
+      }
+
+      // 3. Sync with Asaas
       const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", {
         body: { invoice_id: invoiceId, action: "revert" },
       });
@@ -412,6 +467,58 @@ export default function AllRecurringChargesPage() {
     } finally {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "revert", description: "" });
+    }
+  };
+
+  // Bank CRUD
+  const handleSaveBank = async () => {
+    try {
+      const balanceCents = Math.round(parseFloat(bankForm.initial_balance || "0") * 100);
+      if (!bankForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
+
+      if (bankDialog.bank) {
+        const { error } = await supabase
+          .from("financial_banks")
+          .update({
+            name: bankForm.name,
+            bank_code: bankForm.bank_code || null,
+            agency: bankForm.agency || null,
+            account_number: bankForm.account_number || null,
+          } as any)
+          .eq("id", bankDialog.bank.id);
+        if (error) throw error;
+        toast.success("Banco atualizado");
+      } else {
+        const { error } = await supabase
+          .from("financial_banks")
+          .insert({
+            name: bankForm.name,
+            bank_code: bankForm.bank_code || null,
+            agency: bankForm.agency || null,
+            account_number: bankForm.account_number || null,
+            initial_balance_cents: balanceCents,
+            current_balance_cents: balanceCents,
+          } as any);
+        if (error) throw error;
+        toast.success("Banco cadastrado");
+      }
+      setBankDialog({ open: false, bank: null });
+      setBankForm({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    }
+  };
+
+  const handleDeleteBank = async (bankId: string) => {
+    if (!confirm("Excluir este banco?")) return;
+    try {
+      const { error } = await supabase.from("financial_banks").update({ is_active: false } as any).eq("id", bankId);
+      if (error) throw error;
+      toast.success("Banco removido");
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
     }
   };
 
@@ -535,6 +642,12 @@ export default function AllRecurringChargesPage() {
               <TabsTrigger value="payables" className="gap-2">
                 <ArrowUpCircle className="h-4 w-4" />
                 Contas a Pagar
+              </TabsTrigger>
+            )}
+            {isMaster && (
+              <TabsTrigger value="banks" className="gap-2">
+                <Landmark className="h-4 w-4" />
+                Bancos
               </TabsTrigger>
             )}
           </TabsList>
@@ -865,6 +978,65 @@ export default function AllRecurringChargesPage() {
               </Card>
             </TabsContent>
           )}
+          {/* Bancos Tab */}
+          {isMaster && (
+            <TabsContent value="banks" className="space-y-4">
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold">Contas Bancárias</h2>
+                <Button size="sm" onClick={() => {
+                  setBankForm({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
+                  setBankDialog({ open: true, bank: null });
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Banco
+                </Button>
+              </div>
+
+              <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+                {banks.map((bank: any) => (
+                  <Card key={bank.id}>
+                    <CardHeader className="pb-2">
+                      <div className="flex items-center justify-between">
+                        <CardTitle className="text-base flex items-center gap-2">
+                          <Landmark className="h-4 w-4 text-primary" />
+                          {bank.name}
+                        </CardTitle>
+                        <div className="flex gap-1">
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                            setBankForm({
+                              name: bank.name,
+                              bank_code: bank.bank_code || "",
+                              agency: bank.agency || "",
+                              account_number: bank.account_number || "",
+                              initial_balance: (bank.initial_balance_cents / 100).toString(),
+                            });
+                            setBankDialog({ open: true, bank });
+                          }}>
+                            <Edit2 className="h-3.5 w-3.5" />
+                          </Button>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteBank(bank.id)}>
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        </div>
+                      </div>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="text-2xl font-bold">{formatCurrencyCents(bank.current_balance_cents)}</div>
+                      {bank.bank_code && <p className="text-xs text-muted-foreground mt-1">Banco: {bank.bank_code} | Ag: {bank.agency || "-"} | Conta: {bank.account_number || "-"}</p>}
+                      <p className="text-xs text-muted-foreground">Saldo inicial: {formatCurrencyCents(bank.initial_balance_cents)}</p>
+                    </CardContent>
+                  </Card>
+                ))}
+                {banks.length === 0 && (
+                  <Card className="col-span-full">
+                    <CardContent className="py-8 text-center text-muted-foreground">
+                      Nenhum banco cadastrado. Clique em "Novo Banco" para começar.
+                    </CardContent>
+                  </Card>
+                )}
+              </div>
+            </TabsContent>
+          )}
         </Tabs>
       </main>
 
@@ -885,18 +1057,34 @@ export default function AllRecurringChargesPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           {confirmDialog.action === "confirm" && (
-            <div className="px-6 pb-2">
-              <label className="text-sm font-medium mb-1.5 block">Taxa cobrada (R$)</label>
-              <Input
-                type="number"
-                step="0.01"
-                min="0"
-                value={manualFee}
-                onChange={(e) => setManualFee(e.target.value)}
-                placeholder="0.00"
-                className="w-40"
-              />
-              <p className="text-xs text-muted-foreground mt-1">Informe a taxa do boleto/pix (padrão: R$ 1,99)</p>
+            <div className="px-6 pb-2 space-y-3">
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Banco (opcional)</label>
+                <Select value={selectedBankId} onValueChange={setSelectedBankId}>
+                  <SelectTrigger className="w-full">
+                    <SelectValue placeholder="Selecione o banco" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="none">Nenhum</SelectItem>
+                    {banks.map((b: any) => (
+                      <SelectItem key={b.id} value={b.id}>{b.name} ({formatCurrencyCents(b.current_balance_cents)})</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1.5 block">Taxa cobrada (R$)</label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  min="0"
+                  value={manualFee}
+                  onChange={(e) => setManualFee(e.target.value)}
+                  placeholder="0.00"
+                  className="w-40"
+                />
+                <p className="text-xs text-muted-foreground mt-1">Informe a taxa do boleto/pix (padrão: R$ 1,99)</p>
+              </div>
             </div>
           )}
           <AlertDialogFooter>
@@ -907,7 +1095,8 @@ export default function AllRecurringChargesPage() {
               onClick={() => {
                 if (confirmDialog.action === "confirm") {
                   const feeCents = Math.round(parseFloat(manualFee || "0") * 100);
-                  handleManualPayment(confirmDialog.invoiceId, feeCents);
+                  const bankId = selectedBankId !== "none" ? selectedBankId : null;
+                  handleManualPayment(confirmDialog.invoiceId, feeCents, bankId);
                 } else {
                   handleRevertPayment(confirmDialog.invoiceId);
                 }
@@ -917,6 +1106,47 @@ export default function AllRecurringChargesPage() {
                 <Loader2 className="h-4 w-4 animate-spin mr-2" />
               ) : null}
               {confirmDialog.action === "confirm" ? "Confirmar Baixa" : "Confirmar Estorno"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      {/* Bank Dialog */}
+      <AlertDialog open={bankDialog.open} onOpenChange={(open) => { if (!open) setBankDialog({ open: false, bank: null }); }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>{bankDialog.bank ? "Editar Banco" : "Novo Banco"}</AlertDialogTitle>
+          </AlertDialogHeader>
+          <div className="px-6 pb-2 space-y-3">
+            <div>
+              <label className="text-sm font-medium mb-1 block">Nome *</label>
+              <Input value={bankForm.name} onChange={(e) => setBankForm(p => ({ ...p, name: e.target.value }))} placeholder="Ex: Banco do Brasil" />
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              <div>
+                <label className="text-sm font-medium mb-1 block">Código</label>
+                <Input value={bankForm.bank_code} onChange={(e) => setBankForm(p => ({ ...p, bank_code: e.target.value }))} placeholder="001" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Agência</label>
+                <Input value={bankForm.agency} onChange={(e) => setBankForm(p => ({ ...p, agency: e.target.value }))} placeholder="1234" />
+              </div>
+              <div>
+                <label className="text-sm font-medium mb-1 block">Conta</label>
+                <Input value={bankForm.account_number} onChange={(e) => setBankForm(p => ({ ...p, account_number: e.target.value }))} placeholder="12345-6" />
+              </div>
+            </div>
+            {!bankDialog.bank && (
+              <div>
+                <label className="text-sm font-medium mb-1 block">Saldo Inicial (R$)</label>
+                <Input type="number" step="0.01" value={bankForm.initial_balance} onChange={(e) => setBankForm(p => ({ ...p, initial_balance: e.target.value }))} placeholder="0.00" />
+              </div>
+            )}
+          </div>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleSaveBank}>
+              {bankDialog.bank ? "Salvar" : "Cadastrar"}
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
