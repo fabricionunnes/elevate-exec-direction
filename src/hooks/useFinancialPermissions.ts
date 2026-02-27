@@ -54,21 +54,18 @@ export function useFinancialPermissions(): UseFinancialPermissionsResult {
         .eq("menu_key", "financial")
         .maybeSingle();
 
-      setHasFinancialMenuAccess(!!menuPerm);
-
-      if (!menuPerm) {
-        setFinancialPermissions([]);
-        setLoading(false);
-        return;
-      }
-
       // Fetch granular financial permissions
       const { data: finPerms } = await supabase
         .from("staff_financial_permissions")
         .select("permission_key")
         .eq("staff_id", staff.id);
 
-      setFinancialPermissions((finPerms || []).map(p => p.permission_key));
+      const permKeys = (finPerms || []).map(p => p.permission_key);
+      
+      // Grant access if user has menu permission OR any financial sub-permissions
+      const hasAccess = !!menuPerm || permKeys.length > 0;
+      setHasFinancialMenuAccess(hasAccess);
+      setFinancialPermissions(permKeys);
     } catch (error) {
       console.error("Error fetching financial permissions:", error);
     } finally {
