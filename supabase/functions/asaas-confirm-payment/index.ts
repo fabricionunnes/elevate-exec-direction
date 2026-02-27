@@ -66,9 +66,10 @@ Deno.serve(async (req) => {
       throw new Error("Fatura não encontrada");
     }
 
+    const inv = invoice as any;
+
     // Get the recurring charge to find the Asaas subscription ID
-    const recurringChargeId = (invoice as any).recurring_charge_id;
-    if (!recurringChargeId) {
+    if (!inv.recurring_charge_id) {
       console.log("Invoice has no recurring_charge_id, skipping Asaas sync");
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "no_recurring_charge" }),
@@ -79,14 +80,38 @@ Deno.serve(async (req) => {
     const { data: charge } = await supabase
       .from("company_recurring_charges")
       .select("*")
-      .eq("id", recurringChargeId)
+      .eq("id", inv.recurring_charge_id)
       .single();
 
-    const subscriptionId = (charge as any)?.pagarme_plan_id; // Reused column for Asaas subscription ID
+    const subscriptionId = (charge as any)?.pagarme_plan_id;
     if (!subscriptionId) {
       console.log("Recurring charge has no Asaas subscription, skipping");
       return new Response(
         JSON.stringify({ success: true, skipped: true, reason: "no_subscription" }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // If reverting and we have the stored Asaas payment ID, use it directly
+    if (action === "revert" && inv.pagarme_charge_id) {
+      console.log(`Reverting stored Asaas payment ${inv.pagarme_charge_id}`);
+      try {
+        await asaasRequest(
+          `/payments/${inv.pagarme_charge_id}/undoReceivedInCash`,
+          "POST",
+          ASAAS_API_KEY
+        );
+        console.log(`Asaas payment ${inv.pagarme_charge_id} reverted`);
+      } catch (e: any) {
+        console.error(`Revert error for ${inv.pagarme_charge_id}:`, e.message);
+      }
+      // Clear the stored Asaas payment ID
+      await supabase
+        .from("company_invoices")
+        .update({ pagarme_charge_id: null } as any)
+        .eq("id", invoice_id);
+      return new Response(
+        JSON.stringify({ success: true, asaas_payment_id: inv.pagarme_charge_id }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
@@ -106,84 +131,100 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Find matching payment by due date and amount
-    const invoiceDueDate = (invoice as any).due_date;
-    const invoiceAmount = (invoice as any).amount_cents / 100;
+    const invoiceDueDate = inv.due_date;
+    const invoiceAmount = inv.amount_cents / 100;
 
-    const matchingPayment = payments.data.find((p: any) => {
-      const sameDue = p.dueDate === invoiceDueDate;
-      const sameAmount = Math.abs(p.value - invoiceAmount) < 0.01;
-      return sameDue && sameAmount && p.status !== "RECEIVED" && p.status !== "CONFIRMED";
-    });
+    if (action === "confirm") {
+      // Find matching payment by due date (exact match first)
+      let targetPayment = payments.data.find((p: any) => {
+        return p.dueDate === invoiceDueDate && p.status === "PENDING";
+      });
 
-    if (!matchingPayment) {
-      // Try to find by installment number or closest date
-      const pendingPayments = payments.data
-        .filter((p: any) => p.status !== "RECEIVED" && p.status !== "CONFIRMED")
-        .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime());
+      if (!targetPayment) {
+        // Fallback: first pending payment with same amount
+        targetPayment = payments.data
+          .filter((p: any) => p.status === "PENDING" && Math.abs(p.value - invoiceAmount) < 0.01)
+          .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+      }
 
-      if (pendingPayments.length === 0) {
-        console.log("All Asaas payments already confirmed");
+      if (!targetPayment) {
+        console.log("No pending Asaas payment found to confirm");
         return new Response(
-          JSON.stringify({ success: true, skipped: true, reason: "already_paid" }),
+          JSON.stringify({ success: true, skipped: true, reason: "no_pending_payment" }),
           { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
 
-      // Use the first pending payment as fallback
-      const fallbackPayment = pendingPayments[0];
-      console.log(`No exact match, using fallback payment ${fallbackPayment.id}`);
+      console.log(`Confirming Asaas payment ${targetPayment.id} (dueDate: ${targetPayment.dueDate}) for invoice due ${invoiceDueDate}`);
 
-      if (action === "confirm") {
-        await asaasRequest(
-          `/payments/${fallbackPayment.id}/receiveInCash`,
-          "POST",
-          ASAAS_API_KEY,
-          {
-            paymentDate: new Date().toISOString().split("T")[0],
-            value: fallbackPayment.value,
-          }
-        );
-        console.log(`Asaas payment ${fallbackPayment.id} confirmed via receiveInCash`);
-      } else if (action === "revert") {
-        await asaasRequest(
-          `/payments/${fallbackPayment.id}/undoReceivedInCash`,
-          "POST",
-          ASAAS_API_KEY
-        );
-        console.log(`Asaas payment ${fallbackPayment.id} reverted`);
-      }
-
-      return new Response(
-        JSON.stringify({ success: true, asaas_payment_id: fallbackPayment.id }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
-
-    // Confirm or revert the matching payment
-    if (action === "confirm") {
       await asaasRequest(
-        `/payments/${matchingPayment.id}/receiveInCash`,
+        `/payments/${targetPayment.id}/receiveInCash`,
         "POST",
         ASAAS_API_KEY,
         {
           paymentDate: new Date().toISOString().split("T")[0],
-          value: matchingPayment.value,
+          value: targetPayment.value,
         }
       );
-      console.log(`Asaas payment ${matchingPayment.id} confirmed via receiveInCash`);
+
+      // Store the Asaas payment ID on the invoice for future reference
+      await supabase
+        .from("company_invoices")
+        .update({ pagarme_charge_id: targetPayment.id } as any)
+        .eq("id", invoice_id);
+
+      console.log(`Asaas payment ${targetPayment.id} confirmed and stored on invoice`);
+
+      return new Response(
+        JSON.stringify({ success: true, asaas_payment_id: targetPayment.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     } else if (action === "revert") {
+      // Find payment to revert: must be RECEIVED_IN_CASH status
+      let targetPayment = payments.data.find((p: any) => {
+        return p.dueDate === invoiceDueDate && p.status === "RECEIVED_IN_CASH";
+      });
+
+      if (!targetPayment) {
+        // Fallback: first RECEIVED_IN_CASH payment with same amount
+        targetPayment = payments.data
+          .filter((p: any) => p.status === "RECEIVED_IN_CASH" && Math.abs(p.value - invoiceAmount) < 0.01)
+          .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+      }
+
+      if (!targetPayment) {
+        console.log("No RECEIVED_IN_CASH Asaas payment found to revert");
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "no_cash_payment" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      console.log(`Reverting Asaas payment ${targetPayment.id} (dueDate: ${targetPayment.dueDate})`);
+
       await asaasRequest(
-        `/payments/${matchingPayment.id}/undoReceivedInCash`,
+        `/payments/${targetPayment.id}/undoReceivedInCash`,
         "POST",
         ASAAS_API_KEY
       );
-      console.log(`Asaas payment ${matchingPayment.id} reverted`);
+
+      // Clear the stored Asaas payment ID
+      await supabase
+        .from("company_invoices")
+        .update({ pagarme_charge_id: null } as any)
+        .eq("id", invoice_id);
+
+      console.log(`Asaas payment ${targetPayment.id} reverted`);
+
+      return new Response(
+        JSON.stringify({ success: true, asaas_payment_id: targetPayment.id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
-      JSON.stringify({ success: true, asaas_payment_id: matchingPayment.id }),
-      { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ error: "Ação inválida" }),
+      { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
     console.error("Asaas confirm error:", error);

@@ -87,88 +87,86 @@ Deno.serve(async (req) => {
     if (!matched && subscriptionId && dueDate) {
       console.log(`[Asaas Webhook] Trying subscription match: ${subscriptionId}, dueDate: ${dueDate}`);
 
-      // Find recurring charge with this Asaas subscription ID
-      const { data: charges } = await supabase
-        .from("company_recurring_charges")
-        .select("id")
-        .eq("pagarme_plan_id", subscriptionId);
+      // Strategy 2a: First check if any invoice already has this payment ID stored (manual confirm flow)
+      const { data: directMatch } = await supabase
+        .from("company_invoices")
+        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+        .eq("pagarme_charge_id", paymentId)
+        .limit(1);
 
-      if (charges?.length) {
-        const recurringChargeId = charges[0].id;
-        console.log(`[Asaas Webhook] Found recurring_charge: ${recurringChargeId}`);
+      if (directMatch?.length) {
+        const invoice = directMatch[0];
+        console.log(`[Asaas Webhook] Direct match by pagarme_charge_id: invoice ${invoice.id} (status: ${invoice.status})`);
 
-        // Find matching invoice by recurring_charge_id + due_date
-        const { data: invoices, error: invErr } = await supabase
-          .from("company_invoices")
-          .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id")
-          .eq("recurring_charge_id", recurringChargeId)
-          .eq("due_date", dueDate)
-          .neq("status", "paid");
-
-        if (!invErr && invoices?.length) {
-          const invoice = invoices[0];
-          console.log(`[Asaas Webhook] Matched invoice ${invoice.id} (installment ${invoice.installment_number}/${invoice.total_installments})`);
-
-          if (newStatus === "paid") {
-            // Mark invoice as paid
-            const { error: updateErr } = await supabase
-              .from("company_invoices")
-              .update({
-                status: "paid",
-                paid_at: new Date().toISOString(),
-                paid_amount_cents: invoice.amount_cents,
-                pagarme_charge_id: paymentId,
-              })
-              .eq("id", invoice.id);
-
-            if (updateErr) {
-              console.error("[Asaas Webhook] Invoice update error:", updateErr);
-            } else {
-              console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
-              matched = true;
-
-              // Send WhatsApp payment confirmation (non-blocking)
-              supabase.functions.invoke("notify-payment-confirmed", {
-                body: { invoice_id: invoice.id },
-              }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
-
-              // Check if last installment for auto-renew
-              if (invoice.installment_number === invoice.total_installments) {
-                console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
-                await supabase.functions.invoke("generate-invoices", {
-                  body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
-                });
-              }
-            }
-          } else {
-            // Update invoice status for non-paid statuses
-            await supabase
-              .from("company_invoices")
-              .update({
-                status: newStatus,
-                pagarme_charge_id: paymentId,
-              })
-              .eq("id", invoice.id);
-            matched = true;
-          }
-        } else {
-          // Fallback: try matching by amount if no exact due_date match
-          const amountCents = Math.round(paymentValue * 100);
-          const { data: fallbackInvoices } = await supabase
+        if (newStatus === "paid" && invoice.status === "paid") {
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} already paid, skipping`);
+          matched = true;
+        } else if (newStatus === "paid" && invoice.status !== "paid") {
+          await supabase
             .from("company_invoices")
-            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id")
-            .eq("recurring_charge_id", recurringChargeId)
-            .eq("amount_cents", amountCents)
-            .neq("status", "paid")
-            .order("due_date", { ascending: true })
-            .limit(1);
+            .update({
+              status: "paid",
+              paid_at: new Date().toISOString(),
+              paid_amount_cents: invoice.amount_cents,
+            })
+            .eq("id", invoice.id);
+          matched = true;
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
 
-          if (fallbackInvoices?.length) {
-            const invoice = fallbackInvoices[0];
-            console.log(`[Asaas Webhook] Fallback match invoice ${invoice.id} by amount`);
+          if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
+            await supabase.functions.invoke("generate-invoices", {
+              body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
+            });
+          }
+        } else if (newStatus === "pending") {
+          // Revert scenario
+          const due = new Date(dueDate + "T12:00:00");
+          const revertStatus = due < new Date() ? "overdue" : "pending";
+          await supabase
+            .from("company_invoices")
+            .update({
+              status: revertStatus,
+              paid_at: null,
+              paid_amount_cents: null,
+              pagarme_charge_id: null,
+            })
+            .eq("id", invoice.id);
+          matched = true;
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} reverted to ${revertStatus} (direct match)`);
+        } else {
+          await supabase
+            .from("company_invoices")
+            .update({ status: newStatus })
+            .eq("id", invoice.id);
+          matched = true;
+        }
+      }
+
+      // Strategy 2b: Match via subscription -> recurring_charge -> invoice by dueDate
+      if (!matched) {
+        const { data: charges } = await supabase
+          .from("company_recurring_charges")
+          .select("id")
+          .eq("pagarme_plan_id", subscriptionId);
+
+        if (charges?.length) {
+          const recurringChargeId = charges[0].id;
+          console.log(`[Asaas Webhook] Found recurring_charge: ${recurringChargeId}`);
+
+          // Find matching invoice by recurring_charge_id + due_date
+          const { data: invoices, error: invErr } = await supabase
+            .from("company_invoices")
+            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+            .eq("recurring_charge_id", recurringChargeId)
+            .eq("due_date", dueDate)
+            .neq("status", "paid");
+
+          if (!invErr && invoices?.length) {
+            const invoice = invoices[0];
+            console.log(`[Asaas Webhook] Matched invoice ${invoice.id} (installment ${invoice.installment_number}/${invoice.total_installments})`);
 
             if (newStatus === "paid") {
-              await supabase
+              const { error: updateErr } = await supabase
                 .from("company_invoices")
                 .update({
                   status: "paid",
@@ -177,18 +175,33 @@ Deno.serve(async (req) => {
                   pagarme_charge_id: paymentId,
                 })
                 .eq("id", invoice.id);
-              matched = true;
 
-              // Send WhatsApp payment confirmation (non-blocking)
-              supabase.functions.invoke("notify-payment-confirmed", {
-                body: { invoice_id: invoice.id },
-              }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+              if (updateErr) {
+                console.error("[Asaas Webhook] Invoice update error:", updateErr);
+              } else {
+                console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
+                matched = true;
 
-              if (invoice.installment_number === invoice.total_installments) {
-                await supabase.functions.invoke("generate-invoices", {
-                  body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
-                });
+                supabase.functions.invoke("notify-payment-confirmed", {
+                  body: { invoice_id: invoice.id },
+                }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+
+                if (invoice.installment_number === invoice.total_installments) {
+                  console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
+                  await supabase.functions.invoke("generate-invoices", {
+                    body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
+                  });
+                }
               }
+            } else {
+              await supabase
+                .from("company_invoices")
+                .update({
+                  status: newStatus,
+                  pagarme_charge_id: paymentId,
+                })
+                .eq("id", invoice.id);
+              matched = true;
             }
           }
         }
