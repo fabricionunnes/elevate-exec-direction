@@ -100,7 +100,7 @@ async function getOrCreateAsaasPaymentUrl(
             value: invoice.amount_cents / 100,
             dueDate: invoice.due_date,
             description: invoice.description,
-            notifications: { disabled: true },
+            notificationDisabled: true,
             interest: { value: 1, type: "PERCENTAGE" },
             fine: { value: 2, type: "PERCENTAGE" },
             discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
@@ -142,12 +142,13 @@ async function sendWhatsAppInvoiceNotification(
 
     const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
 
-    // Get default WhatsApp instance
+    // Get WhatsApp instance (prefer default, fallback to any connected)
     const { data: whatsappInstance } = await supabase
       .from("whatsapp_instances")
-      .select("api_url, api_key, instance_name")
-      .eq("is_default", true)
+      .select("api_url, api_key, instance_name, is_default")
       .eq("status", "connected")
+      .order("is_default", { ascending: false, nullsFirst: false })
+      .limit(1)
       .single();
 
     if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
@@ -338,8 +339,19 @@ Deno.serve(async (req) => {
       // Send WhatsApp notification for the first invoice only
       if (firstInvoiceUrl && (inserted?.length || 0) > 0) {
         const firstInv = inserted![0];
-        const customerPhone = charge.customer_phone || "";
+        let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
+        
+        // Fallback: get phone from company if not on charge
+        if (!customerPhone && charge.company_id) {
+          const { data: companyData } = await supabase
+            .from("onboarding_companies")
+            .select("phone")
+            .eq("id", charge.company_id)
+            .single();
+          if (companyData?.phone) customerPhone = companyData.phone;
+        }
+        
         if (customerPhone) {
           await sendWhatsAppInvoiceNotification(supabase, {
             description: firstInv.description,
@@ -525,8 +537,18 @@ Deno.serve(async (req) => {
       // Send WhatsApp notification for the first renewed invoice
       if (firstRenewUrl && (inserted?.length || 0) > 0) {
         const firstInv = inserted![0];
-        const customerPhone = charge.customer_phone || "";
+        let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
+        
+        if (!customerPhone && charge.company_id) {
+          const { data: companyData } = await supabase
+            .from("onboarding_companies")
+            .select("phone")
+            .eq("id", charge.company_id)
+            .single();
+          if (companyData?.phone) customerPhone = companyData.phone;
+        }
+        
         if (customerPhone) {
           await sendWhatsAppInvoiceNotification(supabase, {
             description: firstInv.description,

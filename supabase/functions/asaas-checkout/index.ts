@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
       value: amountValue,
       dueDate,
       description: product_name || "Cobrança avulsa",
-      notifications: { disabled: true },
+      notificationDisabled: true,
       interest: { value: 1, type: "PERCENTAGE" },
       fine: { value: 2, type: "PERCENTAGE" },
       discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
