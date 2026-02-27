@@ -22188,6 +22188,141 @@ export type Database = {
           },
         ]
       }
+      staff_financial_categories: {
+        Row: {
+          created_at: string
+          dfc_section: string | null
+          dre_line: string | null
+          group_name: string
+          id: string
+          is_active: boolean
+          name: string
+          parent_id: string | null
+          sort_order: number
+          type: string
+        }
+        Insert: {
+          created_at?: string
+          dfc_section?: string | null
+          dre_line?: string | null
+          group_name?: string
+          id?: string
+          is_active?: boolean
+          name: string
+          parent_id?: string | null
+          sort_order?: number
+          type: string
+        }
+        Update: {
+          created_at?: string
+          dfc_section?: string | null
+          dre_line?: string | null
+          group_name?: string
+          id?: string
+          is_active?: boolean
+          name?: string
+          parent_id?: string | null
+          sort_order?: number
+          type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_financial_categories_parent_id_fkey"
+            columns: ["parent_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_categories"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_financial_entries: {
+        Row: {
+          amount_cents: number
+          bank_id: string | null
+          category_id: string | null
+          company_id: string | null
+          created_at: string
+          created_by: string | null
+          description: string
+          due_date: string
+          id: string
+          notes: string | null
+          paid_amount_cents: number | null
+          paid_at: string | null
+          payment_method: string | null
+          reference_month: string | null
+          source: string
+          source_id: string | null
+          status: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents?: number
+          bank_id?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description: string
+          due_date: string
+          id?: string
+          notes?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          reference_month?: string | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          bank_id?: string | null
+          category_id?: string | null
+          company_id?: string | null
+          created_at?: string
+          created_by?: string | null
+          description?: string
+          due_date?: string
+          id?: string
+          notes?: string | null
+          paid_amount_cents?: number | null
+          paid_at?: string | null
+          payment_method?: string | null
+          reference_month?: string | null
+          source?: string
+          source_id?: string | null
+          status?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_financial_entries_bank_id_fkey"
+            columns: ["bank_id"]
+            isOneToOne: false
+            referencedRelation: "financial_banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_financial_entries_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_financial_entries_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_menu_permissions: {
         Row: {
           created_at: string
