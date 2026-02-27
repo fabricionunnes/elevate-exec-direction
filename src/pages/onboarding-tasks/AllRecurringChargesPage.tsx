@@ -217,9 +217,11 @@ export default function AllRecurringChargesPage() {
       ]);
       if (chargesRes.error) throw chargesRes.error;
       if (companiesRes.error) throw companiesRes.error;
-      const allCompanies = (companiesRes.data || []).filter((c: any) => !c.is_simulator);
-      const companiesMap = new Map(allCompanies.map((c: any) => [c.id, c.name]));
-      const companiesPhoneMap = new Map(allCompanies.map((c: any) => [c.id, c.phone]));
+      const allCompaniesRaw = companiesRes.data || [];
+      const allCompanies = allCompaniesRaw.filter((c: any) => !c.is_simulator);
+      // Use ALL companies (including simulators) for name/phone maps so invoices always resolve
+      const companiesMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.name]));
+      const companiesPhoneMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.phone]));
       setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida" })));
       setCompanies(allCompanies.map((c: any) => ({ id: c.id, name: c.name })));
       setFullCompanies(allCompanies);
