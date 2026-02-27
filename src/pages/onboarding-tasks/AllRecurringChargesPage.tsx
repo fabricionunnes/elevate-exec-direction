@@ -316,7 +316,10 @@ export default function AllRecurringChargesPage() {
       const balanceCents = Math.round(parseFloat(bankForm.initial_balance || "0") * 100);
       if (!bankForm.name.trim()) { toast.error("Nome é obrigatório"); return; }
       if (bankDialog.bank) {
-        const { error } = await supabase.from("financial_banks").update({ name: bankForm.name, bank_code: bankForm.bank_code || null, agency: bankForm.agency || null, account_number: bankForm.account_number || null } as any).eq("id", bankDialog.bank.id);
+        const oldInitialCents = bankDialog.bank.initial_balance_cents || 0;
+        const diff = balanceCents - oldInitialCents;
+        const newCurrentCents = (bankDialog.bank.current_balance_cents || 0) + diff;
+        const { error } = await supabase.from("financial_banks").update({ name: bankForm.name, bank_code: bankForm.bank_code || null, agency: bankForm.agency || null, account_number: bankForm.account_number || null, initial_balance_cents: balanceCents, current_balance_cents: newCurrentCents } as any).eq("id", bankDialog.bank.id);
         if (error) throw error;
         toast.success("Banco atualizado");
       } else {
@@ -955,12 +958,10 @@ export default function AllRecurringChargesPage() {
                 <Input value={bankForm.account_number} onChange={(e) => setBankForm(p => ({ ...p, account_number: e.target.value }))} placeholder="12345-6" />
               </div>
             </div>
-            {!bankDialog.bank && (
-              <div>
-                <label className="text-sm font-medium mb-1 block">Saldo Inicial (R$)</label>
-                <Input type="number" step="0.01" value={bankForm.initial_balance} onChange={(e) => setBankForm(p => ({ ...p, initial_balance: e.target.value }))} placeholder="0.00" />
-              </div>
-            )}
+            <div>
+              <label className="text-sm font-medium mb-1 block">Saldo Inicial (R$)</label>
+              <Input type="number" step="0.01" value={bankForm.initial_balance} onChange={(e) => setBankForm(p => ({ ...p, initial_balance: e.target.value }))} placeholder="0.00" />
+            </div>
           </div>
           <AlertDialogFooter>
             <AlertDialogCancel>Cancelar</AlertDialogCancel>
