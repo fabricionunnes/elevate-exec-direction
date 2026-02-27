@@ -50,26 +50,37 @@ async function getOrCreateAsaasPaymentUrl(
       .single();
 
     if (charge?.pagarme_plan_id) {
-      // Try to find a matching payment by due date in the Asaas subscription
+      // Fetch ALL payments from the subscription (paginated if needed)
       try {
-        const payments = await asaasRequest(
-          `/subscriptions/${charge.pagarme_plan_id}/payments`,
-          "GET",
-          apiKey
-        );
-        if (payments.data?.length > 0) {
-          // Find payment matching this invoice's due date
-          const matching = payments.data.find((p: any) => p.dueDate === invoice.due_date);
+        let allPayments: any[] = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          const payments = await asaasRequest(
+            `/subscriptions/${charge.pagarme_plan_id}/payments?offset=${offset}&limit=${limit}`,
+            "GET",
+            apiKey
+          );
+          if (payments.data?.length > 0) {
+            allPayments = allPayments.concat(payments.data);
+            offset += limit;
+            hasMore = payments.data.length === limit;
+          } else {
+            hasMore = false;
+          }
+        }
+
+        if (allPayments.length > 0) {
+          // Find payment matching this invoice's due date exactly
+          const matching = allPayments.find((p: any) => p.dueDate === invoice.due_date);
           if (matching?.invoiceUrl) {
+            console.log(`[getOrCreateAsaasPaymentUrl] Found matching payment for ${invoice.due_date}: ${matching.invoiceUrl}`);
             return matching.invoiceUrl;
           }
-          // If no exact match, try first pending payment
-          const pending = payments.data.find((p: any) =>
-            p.status === "PENDING" || p.status === "OVERDUE"
-          );
-          if (pending?.invoiceUrl) {
-            return pending.invoiceUrl;
-          }
+
+          console.log(`[getOrCreateAsaasPaymentUrl] No exact match for ${invoice.due_date} among ${allPayments.length} payments`);
         }
       } catch (e) {
         console.error("Error fetching subscription payments:", e);
@@ -77,7 +88,6 @@ async function getOrCreateAsaasPaymentUrl(
 
       // If subscription exists but no matching payment found, create a standalone charge
       try {
-        // Get the customer ID from the subscription
         const sub = await asaasRequest(`/subscriptions/${charge.pagarme_plan_id}`, "GET", apiKey);
         if (sub?.customer) {
           let billingType = "PIX";
@@ -462,21 +472,47 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: backfill - create payment_links for existing invoices that don't have one
+    // Action: backfill - re-fetch Asaas URLs for all pending/overdue invoices
     if (action === "backfill_payment_links") {
-      const { data: invoicesWithoutLink } = await supabase
+      const { data: invoicesToFix } = await supabase
         .from("company_invoices")
-        .select("id, description, amount_cents, company_id, payment_method, due_date, recurring_charge_id")
-        .is("payment_link_id", null)
+        .select("id, description, amount_cents, company_id, payment_method, due_date, recurring_charge_id, payment_link_id, payment_link_url")
         .in("status", ["pending", "overdue"]);
 
       let fixed = 0;
-      for (const inv of invoicesWithoutLink || []) {
-        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, inv);
-        fixed++;
+      for (const inv of invoicesToFix || []) {
+        // Re-fetch Asaas URL for each invoice individually
+        if (ASAAS_API_KEY && inv.due_date && inv.recurring_charge_id) {
+          try {
+            const asaasUrl = await getOrCreateAsaasPaymentUrl(supabase, ASAAS_API_KEY, inv);
+            if (asaasUrl) {
+              // Update the invoice's payment_link_url
+              await supabase
+                .from("company_invoices")
+                .update({ payment_link_url: asaasUrl })
+                .eq("id", inv.id);
+
+              // Update the payment_links record too if exists
+              if (inv.payment_link_id) {
+                await supabase
+                  .from("payment_links")
+                  .update({ url: asaasUrl })
+                  .eq("id", inv.payment_link_id);
+              }
+
+              fixed++;
+            }
+          } catch (e) {
+            console.error(`Backfill error for invoice ${inv.id}:`, e);
+          }
+        } else if (!inv.payment_link_id) {
+          // No payment link at all - create one
+          await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, inv);
+          fixed++;
+        }
       }
 
-      console.log(`Backfill: created payment_links for ${fixed} invoices`);
+      console.log(`Backfill: updated ${fixed} invoices with correct Asaas URLs`);
 
       return new Response(
         JSON.stringify({ success: true, fixed }),
