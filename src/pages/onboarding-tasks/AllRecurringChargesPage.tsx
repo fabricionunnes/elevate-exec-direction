@@ -187,7 +187,11 @@ export default function AllRecurringChargesPage() {
     if (!finPerms.loading) {
       if (finPerms.hasFinancialAccess) {
         setUserRole(finPerms.userRole);
-        setActiveTab("dashboard");
+        // Auto-select first permitted tab instead of hardcoding "dashboard"
+        const firstPermitted = NAV_ITEMS.find(
+          item => !('isSeparator' in item && item.isSeparator) && finPerms.hasFinancialPermission(item.permKey)
+        );
+        setActiveTab(firstPermitted ? firstPermitted.key : "dashboard");
         loadData().finally(() => setIsLoading(false));
       } else {
         setUserRole(null);
