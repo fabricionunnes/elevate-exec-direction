@@ -9658,6 +9658,7 @@ export type Database = {
           pagarme_charge_id: string | null
           paid_amount_cents: number | null
           paid_at: string | null
+          payment_fee_cents: number
           payment_link_id: string | null
           payment_link_url: string | null
           payment_method: string | null
@@ -9684,6 +9685,7 @@ export type Database = {
           pagarme_charge_id?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_fee_cents?: number
           payment_link_id?: string | null
           payment_link_url?: string | null
           payment_method?: string | null
@@ -9710,6 +9712,7 @@ export type Database = {
           pagarme_charge_id?: string | null
           paid_amount_cents?: number | null
           paid_at?: string | null
+          payment_fee_cents?: number
           payment_link_id?: string | null
           payment_link_url?: string | null
           payment_method?: string | null

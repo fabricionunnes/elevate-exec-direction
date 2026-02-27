@@ -116,6 +116,7 @@ export default function AllRecurringChargesPage() {
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert"; description: string }>({
     open: false, invoiceId: "", action: "confirm", description: "",
   });
+  const [manualFee, setManualFee] = useState("1.99");
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -324,7 +325,7 @@ export default function AllRecurringChargesPage() {
   };
 
   // Manual payment confirmation (baixa) with Asaas sync
-  const handleManualPayment = async (invoiceId: string) => {
+  const handleManualPayment = async (invoiceId: string, feeCents: number) => {
     setProcessingInvoiceId(invoiceId);
     try {
       // 1. Update locally
@@ -338,6 +339,7 @@ export default function AllRecurringChargesPage() {
           status: "paid",
           paid_at: today,
           paid_amount_cents: paidAmount,
+          payment_fee_cents: feeCents,
         } as any)
         .eq("id", invoiceId);
 
@@ -363,6 +365,7 @@ export default function AllRecurringChargesPage() {
     } finally {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "confirm", description: "" });
+      setManualFee("1.99");
     }
   };
 
@@ -687,6 +690,7 @@ export default function AllRecurringChargesPage() {
                         <TableHead className="text-right">Valor</TableHead>
                         <TableHead>Vencimento</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Taxa</TableHead>
                         <TableHead>Pago em</TableHead>
                         <TableHead className="text-center">Ações</TableHead>
                       </TableRow>
@@ -694,7 +698,7 @@ export default function AllRecurringChargesPage() {
                     <TableBody>
                       {filteredInvoices.length === 0 ? (
                         <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma parcela encontrada</TableCell>
+                          <TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma parcela encontrada</TableCell>
                         </TableRow>
                       ) : filteredInvoices.map(inv => {
                         const isOverdue = inv.status === "overdue";
@@ -722,6 +726,9 @@ export default function AllRecurringChargesPage() {
                                 <StatusIcon status={inv.status} />
                                 {statusLabel(inv.status)}
                               </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {(inv as any).payment_fee_cents ? formatCurrencyCents((inv as any).payment_fee_cents) : "-"}
                             </TableCell>
                             <TableCell className="text-sm text-muted-foreground">
                               {inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}
@@ -855,7 +862,7 @@ export default function AllRecurringChargesPage() {
       </main>
 
       {/* Confirm Dialog */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { if (!open) { setConfirmDialog(prev => ({ ...prev, open: false })); setManualFee("1.99"); } }}>
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>
@@ -870,6 +877,21 @@ export default function AllRecurringChargesPage() {
               <strong className="block mt-2">{confirmDialog.description}</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
+          {confirmDialog.action === "confirm" && (
+            <div className="px-6 pb-2">
+              <label className="text-sm font-medium mb-1.5 block">Taxa cobrada (R$)</label>
+              <Input
+                type="number"
+                step="0.01"
+                min="0"
+                value={manualFee}
+                onChange={(e) => setManualFee(e.target.value)}
+                placeholder="0.00"
+                className="w-40"
+              />
+              <p className="text-xs text-muted-foreground mt-1">Informe a taxa do boleto/pix (padrão: R$ 1,99)</p>
+            </div>
+          )}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!processingInvoiceId}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
@@ -877,7 +899,8 @@ export default function AllRecurringChargesPage() {
               className={confirmDialog.action === "revert" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
               onClick={() => {
                 if (confirmDialog.action === "confirm") {
-                  handleManualPayment(confirmDialog.invoiceId);
+                  const feeCents = Math.round(parseFloat(manualFee || "0") * 100);
+                  handleManualPayment(confirmDialog.invoiceId, feeCents);
                 } else {
                   handleRevertPayment(confirmDialog.invoiceId);
                 }
