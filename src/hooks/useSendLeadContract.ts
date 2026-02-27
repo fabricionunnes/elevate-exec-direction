@@ -63,10 +63,11 @@ export function useSendLeadContract() {
     if (!lead.address?.trim()) {
       missing.push({ field: "address", label: "Endereço (Rua)" });
     }
-    if (!lead.city?.trim()) {
+    // City and state are optional if full address is already provided
+    if (!lead.city?.trim() && !lead.address?.trim()) {
       missing.push({ field: "city", label: "Cidade" });
     }
-    if (!lead.state?.trim()) {
+    if (!lead.state?.trim() && !lead.address?.trim()) {
       missing.push({ field: "state", label: "Estado" });
     }
 
