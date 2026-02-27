@@ -617,11 +617,36 @@ const DashboardMetrics = ({
       ? Math.round((lifetimes.reduce((sum, m) => sum + m, 0) / lifetimes.length) * 10) / 10
       : 0;
 
-    // Ticket médio mensal: somente empresas com valor de contrato
-    const companiesWithValue = filteredCompanies.filter(c => c.contract_value && c.contract_value > 0);
-    const totalContractValue = companiesWithValue.reduce((sum, c) => sum + (c.contract_value || 0), 0);
-    const averageMonthlyTicket = companiesWithValue.length > 0
-      ? Math.round(totalContractValue / companiesWithValue.length)
+    // Ticket médio mensal: normaliza contratos por ciclo de pagamento
+    const getPaymentCycle = (pm: string): string => {
+      const p = pm?.toLowerCase() || "";
+      if (p === "monthly" || p === "mensal" || p === "recorrente") return "monthly";
+      if (p === "quarterly" || p === "trimestral") return "quarterly";
+      if (p === "semiannual" || p === "semestral") return "semiannual";
+      if (p === "annual" || p === "anual" || p === "card" || p === "cartao" || p === "cartão" || p === "boleto" || p === "pix") return "annual";
+      if (p.includes("vista") || p.includes("unico") || p.includes("único")) return "one_time";
+      return "unknown";
+    };
+    const toMonthly = (value: number, cycle: string): number => {
+      switch (cycle) {
+        case "monthly": return value;
+        case "quarterly": return value / 3;
+        case "semiannual": return value / 6;
+        case "annual": return value / 12;
+        default: return 0;
+      }
+    };
+    const validForTicket = filteredCompanies
+      .filter(c => c.contract_value && c.contract_value > 0)
+      .map(c => {
+        const cycle = getPaymentCycle(c.payment_method);
+        if (cycle === "one_time" || cycle === "unknown") return null;
+        return toMonthly(c.contract_value!, cycle);
+      })
+      .filter((v): v is number => v !== null);
+    const totalMRR = validForTicket.reduce((sum, v) => sum + v, 0);
+    const averageMonthlyTicket = validForTicket.length > 0
+      ? Math.round(totalMRR / validForTicket.length)
       : 0;
 
     // LTV = Ticket Médio Mensal × Tempo Médio de Permanência (em meses)
