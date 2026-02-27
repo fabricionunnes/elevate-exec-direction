@@ -24,49 +24,50 @@ interface BigNumber {
   bgClass: string;
 }
 
-// Helper to calculate MRR from companies
-const calculateMRRFromCompanies = (companies: any[]): number => {
-  let mrr = 0;
-  
+// Classify payment method into a billing cycle
+const getPaymentCycle = (paymentMethod: string): "monthly" | "quarterly" | "semiannual" | "annual" | "one_time" | "unknown" => {
+  const pm = paymentMethod?.toLowerCase() || "";
+  if (pm === "monthly" || pm === "mensal" || pm === "recorrente") return "monthly";
+  if (pm === "quarterly" || pm === "trimestral") return "quarterly";
+  if (pm === "semiannual" || pm === "semestral") return "semiannual";
+  if (pm === "annual" || pm === "anual" || pm === "card" || pm === "cartao" || pm === "cartão" || pm === "boleto" || pm === "pix") return "annual";
+  if (pm.includes("vista") || pm.includes("unico") || pm.includes("único")) return "one_time";
+  return "unknown";
+};
+
+// Normalize a single company's contract value to monthly
+const toMonthlyValue = (value: number, cycle: string): number => {
+  switch (cycle) {
+    case "monthly": return value;
+    case "quarterly": return value / 3;
+    case "semiannual": return value / 6;
+    case "annual": return value / 12;
+    default: return 0;
+  }
+};
+
+// Calculate MRR and average ticket following the rule:
+// 1. Group companies by billing cycle
+// 2. For each group, normalize values to monthly and compute group average
+// 3. Total MRR = sum of all normalized monthly values
+// 4. Ticket Médio = Total MRR / total active companies
+const calculateMRRMetrics = (companies: any[]): { totalMRR: number; avgTicket: number; avgLTV: number } => {
+  const validCompanies: { monthlyValue: number }[] = [];
+
   companies?.forEach((c) => {
     const value = Number(c.contract_value) || 0;
-    const paymentMethod = c.payment_method?.toLowerCase() || "";
-    
-    // Monthly payments = value is already monthly
-    if (paymentMethod === "monthly" || paymentMethod === "mensal" || paymentMethod === "recorrente") {
-      mrr += value;
-    }
-    // Quarterly = value / 3
-    else if (paymentMethod === "quarterly" || paymentMethod === "trimestral") {
-      mrr += value / 3;
-    }
-    // Semiannual = value / 6
-    else if (paymentMethod === "semiannual" || paymentMethod === "semestral") {
-      mrr += value / 6;
-    }
-    // Annual or card (typically annual payments) = value / 12
-    else if (paymentMethod === "annual" || paymentMethod === "anual" || paymentMethod === "card" || paymentMethod === "cartao" || paymentMethod === "cartão") {
-      mrr += value / 12;
-    }
-    // Boleto or pix could be annual too
-    else if (paymentMethod === "boleto" || paymentMethod === "pix") {
-      mrr += value / 12;
-    }
-    // Skip one-time payments (à vista, único)
-    else if (paymentMethod.includes("vista") || paymentMethod.includes("unico") || paymentMethod.includes("único")) {
-      // Don't add to MRR - one-time payment
-    }
-    // Unknown payment method with value > 1000 assume annual
-    else if (value > 1000) {
-      mrr += value / 12;
-    }
-    // Small values without payment method, assume monthly
-    else if (value > 0) {
-      mrr += value;
-    }
+    if (value <= 0) return;
+    const cycle = getPaymentCycle(c.payment_method);
+    if (cycle === "one_time" || cycle === "unknown") return;
+    validCompanies.push({ monthlyValue: toMonthlyValue(value, cycle) });
   });
-  
-  return mrr;
+
+  const totalMRR = validCompanies.reduce((sum, c) => sum + c.monthlyValue, 0);
+  const count = validCompanies.length;
+  const avgTicket = count > 0 ? totalMRR / count : 0;
+  const avgLTV = avgTicket * 12;
+
+  return { totalMRR, avgTicket, avgLTV };
 };
 
 export function CEOBigNumbers() {
