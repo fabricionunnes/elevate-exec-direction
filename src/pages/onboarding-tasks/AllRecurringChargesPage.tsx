@@ -7,6 +7,8 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Table,
   TableBody,
@@ -40,10 +42,12 @@ import {
   Clock,
   AlertTriangle,
   XCircle,
+  CalendarIcon,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 
 interface RecurringCharge {
   id: string;
@@ -119,6 +123,8 @@ export default function AllRecurringChargesPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
+  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
 
   useEffect(() => {
     checkAccess();
@@ -231,13 +237,17 @@ export default function AllRecurringChargesPage() {
         if (selectedStatus === "overdue" && inv.status !== "overdue") return false;
         if (selectedStatus === "cancelled" && inv.status !== "cancelled") return false;
       }
-      if (selectedMonth !== "all") {
-        const invMonth = inv.due_date?.substring(0, 7);
-        if (invMonth !== selectedMonth) return false;
+      if (dateFrom) {
+        const fromStr = format(dateFrom, "yyyy-MM-dd");
+        if (inv.due_date < fromStr) return false;
+      }
+      if (dateTo) {
+        const toStr = format(dateTo, "yyyy-MM-dd");
+        if (inv.due_date > toStr) return false;
       }
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatus, selectedMonth]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo]);
 
   const filteredCharges = useMemo(() => {
     return charges.filter(ch => {
@@ -309,6 +319,8 @@ export default function AllRecurringChargesPage() {
     setSelectedStatus("all");
     setSelectedMonth("all");
     setSelectedRecurrence("all");
+    setDateFrom(undefined);
+    setDateTo(undefined);
   };
 
   // Manual payment confirmation (baixa) with Asaas sync
@@ -575,19 +587,35 @@ export default function AllRecurringChargesPage() {
                 </Select>
 
                 {activeTab === "recurring" && (
-                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Mês de Vencimento" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os meses</SelectItem>
-                      {invoiceMonths.map(m => (
-                        <SelectItem key={m} value={m}>
-                          {format(new Date(m + "-01"), "MMMM yyyy", { locale: ptBR })}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "Data início"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("justify-start text-left font-normal", !dateTo && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {dateTo ? format(dateTo, "dd/MM/yyyy") : "Data fim"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={dateTo} onSelect={setDateTo} initialFocus className="p-3 pointer-events-auto" />
+                      </PopoverContent>
+                    </Popover>
+                    {(dateFrom || dateTo) && (
+                      <Button variant="ghost" size="sm" onClick={() => { setDateFrom(undefined); setDateTo(undefined); }}>
+                        Limpar datas
+                      </Button>
+                    )}
+                  </>
                 )}
 
                 {activeTab === "payables" && (
