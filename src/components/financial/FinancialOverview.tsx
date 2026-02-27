@@ -480,6 +480,10 @@ export function FinancialOverview() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
+            <Button variant="default" size="sm" onClick={() => window.location.hash = "/onboarding-tasks/financeiro/recorrencias"}>
+              <RefreshCw className="h-4 w-4 mr-2" />
+              Todas as Recorrências
+            </Button>
             <Button variant="outline" size="sm">
               <ArrowDownCircle className="h-4 w-4 mr-2" />
               Nova Conta a Receber

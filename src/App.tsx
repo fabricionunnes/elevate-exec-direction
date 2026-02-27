@@ -120,6 +120,7 @@ import PublicCareerPlanFormPage from "./pages/hr-recruitment/PublicCareerPlanFor
 import SocialBriefingPublicPage from "./pages/public/SocialBriefingPublicPage";
 import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
 import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
+import AllRecurringChargesPage from "./pages/onboarding-tasks/AllRecurringChargesPage";
 import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
 import ClientDisparadorPage from "./pages/disparador/ClientDisparadorPage";
 import ChurnPredictionPage from "./pages/onboarding-tasks/ChurnPredictionPage";
@@ -279,6 +280,7 @@ const App = () => (
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<FinancialModulePage />} />
+              <Route path="/onboarding-tasks/financeiro/recorrencias" element={<AllRecurringChargesPage />} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
               <Route path="/onboarding-tasks/cohort-retention" element={<CohortRetentionPage />} />
