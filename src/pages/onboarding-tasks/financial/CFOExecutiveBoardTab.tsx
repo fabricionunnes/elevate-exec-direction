@@ -12,16 +12,20 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   payables: any[];
   banks: any[];
   companies: any[];
+  fullCompanies: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFOExecutiveBoardTab({ invoices, payables, banks, companies, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFOExecutiveBoardTab({ invoices, payables, banks, companies, fullCompanies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const [period, setPeriod] = useState("current");
   const [alerts, setAlerts] = useState<any[]>([]);
 
@@ -32,8 +36,12 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
 
   const metrics = useMemo(() => {
     const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    const prevMonthStr = `${now.getFullYear()}-${String(now.getMonth()).padStart(2, "0")}`;
+    const selectedMonth = filters.month !== "all" ? filters.month : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthStr = selectedMonth;
+    const prevDate = filters.month !== "all" 
+      ? new Date(parseInt(filters.month.split("-")[0]), parseInt(filters.month.split("-")[1]) - 2, 1)
+      : new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const prevMonthStr = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
 
     // Revenue this month (paid invoices)
     const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
@@ -77,17 +85,35 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
     // Runway
     const runway = burnRate > 0 ? caixaAtual / burnRate : 999;
 
-    // Active companies
+    // Active companies from invoices
     const activeCompanyIds = new Set(
       invoices.filter(i => i.status === "paid" && i.due_date?.startsWith(monthStr)).map(i => i.company_id)
     );
 
-    // Churn: companies that had invoices last month but not this month
+    // Churn: use real system data from fullCompanies
+    // Companies with status 'churned', 'cancelled', or contract ended
+    const churnedFromSystem = fullCompanies.filter((c: any) => {
+      if (c.status === 'churned' || c.status === 'cancelled') return true;
+      if (c.contract_end_date && c.contract_end_date <= monthStr + "-31") {
+        // Check if contract ended in this period
+        const endMonth = c.contract_end_date.substring(0, 7);
+        return endMonth === monthStr;
+      }
+      return false;
+    });
+
+    // Also detect invoice-based churn: companies that had invoices last month but not this month
     const prevCompanyIds = new Set(
       invoices.filter(i => i.status === "paid" && i.due_date?.startsWith(prevMonthStr)).map(i => i.company_id)
     );
-    const churned = [...prevCompanyIds].filter(id => !activeCompanyIds.has(id));
-    const churnRate = prevCompanyIds.size > 0 ? (churned.length / prevCompanyIds.size) * 100 : 0;
+    const invoiceChurned = [...prevCompanyIds].filter(id => !activeCompanyIds.has(id));
+    
+    // Combine both sources, deduplicate
+    const allChurnedIds = new Set([
+      ...churnedFromSystem.map((c: any) => c.id),
+      ...invoiceChurned
+    ]);
+    const churnRate = prevCompanyIds.size > 0 ? (allChurnedIds.size / prevCompanyIds.size) * 100 : 0;
 
     // Delinquency
     const overdueInvoices = invoices.filter(i => i.status === "overdue");
@@ -108,14 +134,17 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
       caixaAtual, burnRate, runway, cac, ltv, ltvCac, churnRate, inadimplencia,
       revenueChange, activeCompanies: activeCompanyIds.size
     };
-  }, [invoices, payables, banks]);
+  }, [invoices, payables, banks, fullCompanies, filters.month]);
 
   // Monthly trend data (last 6 months)
   const trendData = useMemo(() => {
     const months: any[] = [];
     const now = new Date();
+    const refDate = filters.month !== "all" 
+      ? new Date(parseInt(filters.month.split("-")[0]), parseInt(filters.month.split("-")[1]) - 1, 1)
+      : now;
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(refDate.getFullYear(), refDate.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
@@ -129,7 +158,7 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
       months.push({ label, receita: rec, mrr: recurringRec, despesa: desp, ebitda: rec - desp });
     }
     return months;
-  }, [invoices, payables]);
+  }, [invoices, payables, filters.month]);
 
   // Active alerts
   const activeAlerts = useMemo(() => {

@@ -7,15 +7,18 @@ import {
   Legend, ReferenceLine, BarChart, Bar
 } from "recharts";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   payables: any[];
   banks: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFOCashProjectionTab({ invoices, payables, banks, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFOCashProjectionTab({ invoices, payables, banks, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
 
   const cashFlow = useMemo(() => {

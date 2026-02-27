@@ -7,18 +7,24 @@ import {
   LineChart, Line, Legend, PieChart, Pie, Cell, Area, AreaChart
 } from "recharts";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   companies: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFORevenueMRRTab({ invoices, companies, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFORevenueMRRTab({ invoices, companies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
-  const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  const refDate = filters.month !== "all"
+    ? new Date(parseInt(filters.month.split("-")[0]), parseInt(filters.month.split("-")[1]) - 1, 1)
+    : now;
+  const monthStr = filters.month !== "all" ? filters.month : `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
   const prevMonthStr = (() => {
-    const d = new Date(now.getFullYear(), now.getMonth() - 1, 1);
+    const d = new Date(refDate.getFullYear(), refDate.getMonth() - 1, 1);
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   })();
 
@@ -74,7 +80,7 @@ export default function CFORevenueMRRTab({ invoices, companies, formatCurrency, 
   const mrrTrend = useMemo(() => {
     const months: any[] = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(refDate.getFullYear(), refDate.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 

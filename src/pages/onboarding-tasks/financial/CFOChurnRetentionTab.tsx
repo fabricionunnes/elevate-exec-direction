@@ -7,21 +7,33 @@ import {
   LineChart, Line, Legend, Area, AreaChart
 } from "recharts";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   companies: any[];
+  fullCompanies: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFOChurnRetentionTab({ invoices, companies, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFOChurnRetentionTab({ invoices, companies, fullCompanies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
+  const refDate = filters.month !== "all"
+    ? new Date(parseInt(filters.month.split("-")[0]), parseInt(filters.month.split("-")[1]) - 1, 1)
+    : now;
+
+  // System-level churned companies
+  const systemChurnedIds = useMemo(() => new Set(
+    fullCompanies.filter((c: any) => c.status === "churned" || c.status === "cancelled").map((c: any) => c.id)
+  ), [fullCompanies]);
 
   // Monthly churn analysis (last 6 months)
   const monthlyChurn = useMemo(() => {
     const months: any[] = [];
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(refDate.getFullYear(), refDate.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const prevD = new Date(d.getFullYear(), d.getMonth() - 1, 1);
       const prevKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
@@ -30,12 +42,20 @@ export default function CFOChurnRetentionTab({ invoices, companies, formatCurren
       const curCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && inv.recurring_charge_id).map(i => i.company_id));
       const prevCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id).map(i => i.company_id));
 
-      const churned = [...prevCompanies].filter(id => !curCompanies.has(id));
-      const churnRate = prevCompanies.size > 0 ? (churned.length / prevCompanies.size) * 100 : 0;
+      // Invoice-based churn + system churn
+      const invoiceChurned = [...prevCompanies].filter(id => !curCompanies.has(id));
+      const systemChurnedInPeriod = fullCompanies.filter((c: any) => {
+        if (c.contract_end_date && c.contract_end_date.startsWith(key)) return true;
+        if ((c.status === "churned" || c.status === "cancelled") && c.status_changed_at?.startsWith(key)) return true;
+        return false;
+      }).map((c: any) => c.id);
+      
+      const allChurned = new Set([...invoiceChurned, ...systemChurnedInPeriod]);
+      const churnRate = prevCompanies.size > 0 ? (allChurned.size / prevCompanies.size) * 100 : 0;
 
       // Revenue churn
       const churnedRevenue = invoices
-        .filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id && churned.includes(inv.company_id))
+        .filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id && allChurned.has(inv.company_id))
         .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
       const prevRevenue = invoices
         .filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id)
@@ -44,17 +64,17 @@ export default function CFOChurnRetentionTab({ invoices, companies, formatCurren
 
       months.push({
         label, clientChurn: churnRate, revenueChurn: revenueChurnRate,
-        activeClients: curCompanies.size, churnedCount: churned.length
+        activeClients: curCompanies.size, churnedCount: allChurned.size
       });
     }
     return months;
-  }, [invoices]);
+  }, [invoices, fullCompanies, refDate]);
 
   // Retention cohort analysis
   const cohortRetention = useMemo(() => {
     const cohorts: any[] = [];
     for (let c = 5; c >= 0; c--) {
-      const cohortDate = new Date(now.getFullYear(), now.getMonth() - c, 1);
+      const cohortDate = new Date(refDate.getFullYear(), refDate.getMonth() - c, 1);
       const cohortKey = `${cohortDate.getFullYear()}-${String(cohortDate.getMonth() + 1).padStart(2, "0")}`;
       const cohortLabel = cohortDate.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
