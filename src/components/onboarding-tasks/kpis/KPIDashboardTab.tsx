@@ -30,6 +30,7 @@ import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidge
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
 import { SalesComparisonChart } from "./SalesComparisonChart";
+import { CACCalculatorCard } from "@/components/client-portal/CACCalculatorCard";
 import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
@@ -1790,6 +1791,11 @@ export const KPIDashboardTab = ({
         currentMonthRevenue={calculatedMetrics.totalRevenue}
         refreshKey={salesHistoryRefreshKey}
       />
+
+      {/* CAC Calculator Card */}
+      {projectId && (
+        <CACCalculatorCard projectId={projectId} />
+      )}
 
       {/* Conversion Card - Detailed */}
       {calculatedMetrics.hasAnyConversionData && (
