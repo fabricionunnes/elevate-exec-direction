@@ -1,13 +1,13 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
+  AreaChart, Area, XAxis, YAxis, ResponsiveContainer, Tooltip, CartesianGrid,
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseDateLocal } from "@/lib/dateUtils";
-import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, Activity } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface ChartDataPoint {
@@ -55,7 +55,6 @@ export const ProjectTermVisionCard = ({
     try {
       const now = new Date();
 
-      // 1. Get monetary/main KPIs for this company
       let kpiQuery = supabase
         .from("company_kpis")
         .select("id, name, kpi_type, is_main_goal")
@@ -65,15 +64,12 @@ export const ProjectTermVisionCard = ({
       const { data: allKpis } = await kpiQuery;
       if (!allKpis || allKpis.length === 0) { setLoading(false); return; }
 
-      // Prefer monetary KPIs marked as main_goal, then all monetary, then main_goal
       let targetKpis = allKpis.filter(k => k.is_main_goal && k.kpi_type === "monetary");
       if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.kpi_type === "monetary");
       if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.is_main_goal);
       if (targetKpis.length === 0) { setLoading(false); return; }
 
       const kpiIds = targetKpis.map(k => k.id);
-
-      // 2. Fetch entries for last 24 months
       const startDate = subMonths(startOfMonth(now), 24);
       const endDate = endOfMonth(now);
 
@@ -88,363 +84,223 @@ export const ProjectTermVisionCard = ({
         entryQuery = entryQuery.eq("salesperson_id", selectedSalesperson);
       }
 
-      // Paginate
       let allEntries: Array<{ entry_date: string; value: number; salesperson_id: string | null; kpi_id: string }> = [];
       let from = 0;
       const pageSize = 1000;
       let hasMore = true;
-
       while (hasMore) {
         const { data, error } = await entryQuery.range(from, from + pageSize - 1);
         if (error) { console.error("Error fetching entries:", error); break; }
-        if (data && data.length > 0) {
-          allEntries = [...allEntries, ...data];
-          from += pageSize;
-          hasMore = data.length === pageSize;
-        } else {
-          hasMore = false;
-        }
+        if (data && data.length > 0) { allEntries = [...allEntries, ...data]; from += pageSize; hasMore = data.length === pageSize; }
+        else { hasMore = false; }
       }
 
-      // Filter by unit/team/sector if needed (need salespeople mapping)
       if (selectedUnit !== "all" || selectedTeam !== "all" || selectedSector !== "all") {
-        const { data: spData } = await supabase
-          .from("company_salespeople")
-          .select("id, unit_id, team_id, sector_id")
-          .eq("company_id", companyId);
-
+        const { data: spData } = await supabase.from("company_salespeople").select("id, unit_id, team_id, sector_id").eq("company_id", companyId);
         if (spData) {
-          const validSpIds = new Set(
-            spData
-              .filter(sp => {
-                if (selectedSalesperson !== "all") return sp.id === selectedSalesperson;
-                if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
-                if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-                if (selectedSector !== "all" && sp.sector_id !== selectedSector) return false;
-                return true;
-              })
-              .map(sp => sp.id)
-          );
+          const validSpIds = new Set(spData.filter(sp => {
+            if (selectedSalesperson !== "all") return sp.id === selectedSalesperson;
+            if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+            if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+            if (selectedSector !== "all" && sp.sector_id !== selectedSector) return false;
+            return true;
+          }).map(sp => sp.id));
           allEntries = allEntries.filter(e => e.salesperson_id && validSpIds.has(e.salesperson_id));
         }
       }
 
-      // 3. Fetch sales history (company_sales_history) for historical data
-      const { data: salesHistory } = await supabase
-        .from("company_sales_history")
-        .select("month_year, revenue")
-        .eq("company_id", companyId);
-
-      // 4. Group kpi_entries by month
+      const { data: salesHistory } = await supabase.from("company_sales_history").select("month_year, revenue").eq("company_id", companyId);
       const monthlyRevenue: Record<string, number> = {};
+      salesHistory?.forEach(sh => { const k = sh.month_year.substring(0, 7); monthlyRevenue[k] = (monthlyRevenue[k] || 0) + (Number(sh.revenue) || 0); });
+      const kpiMonthly: Record<string, number> = {};
+      allEntries.forEach(e => { const k = format(parseDateLocal(e.entry_date), "yyyy-MM"); kpiMonthly[k] = (kpiMonthly[k] || 0) + (Number(e.value) || 0); });
+      Object.keys(kpiMonthly).forEach(k => { if (kpiMonthly[k] > 0) monthlyRevenue[k] = kpiMonthly[k]; });
 
-      // First, seed with sales history (lower priority)
-      salesHistory?.forEach(sh => {
-        // month_year can be "YYYY-MM-01" or "YYYY-MM" format
-        const monthKey = sh.month_year.substring(0, 7); // Extract "YYYY-MM"
-        monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (Number(sh.revenue) || 0);
-      });
-
-      // Then overlay with kpi_entries (higher priority - replaces history for same month)
-      const kpiMonthlyRevenue: Record<string, number> = {};
-      allEntries.forEach(entry => {
-        const d = parseDateLocal(entry.entry_date);
-        const monthKey = format(d, "yyyy-MM");
-        kpiMonthlyRevenue[monthKey] = (kpiMonthlyRevenue[monthKey] || 0) + (Number(entry.value) || 0);
-      });
-
-      // Merge: use kpi_entries when available, otherwise keep sales history
-      Object.keys(kpiMonthlyRevenue).forEach(monthKey => {
-        if (kpiMonthlyRevenue[monthKey] > 0) {
-          monthlyRevenue[monthKey] = kpiMonthlyRevenue[monthKey];
-        }
-      });
-
-      // 4. Build chart data for last 12 months
       const data: ChartDataPoint[] = [];
       for (let i = 11; i >= 0; i--) {
-        const monthDate = subMonths(now, i);
-        const monthKey = format(monthDate, "yyyy-MM");
-        const monthLabel = format(monthDate, "MMMM", { locale: ptBR });
-        const shortLabel = format(monthDate, "MMM", { locale: ptBR }).replace(".", "");
-        const revenue = monthlyRevenue[monthKey] || 0;
-
-        // QTR: average of last 3 months (excluding current)
-        let qtrSum = 0;
-        for (let j = 1; j <= 3; j++) {
-          qtrSum += monthlyRevenue[format(subMonths(monthDate, j), "yyyy-MM")] || 0;
-        }
-        const qtrAvg = qtrSum / 3;
-
-        // YTD: average from Jan to previous month of same year
-        const yearOfMonth = monthDate.getFullYear();
-        const monthOfYear = monthDate.getMonth();
-        let ytdSum = 0;
-        let ytdCount = 0;
-        for (let m = 0; m < monthOfYear; m++) {
-          ytdSum += monthlyRevenue[format(new Date(yearOfMonth, m, 1), "yyyy-MM")] || 0;
-          ytdCount++;
-        }
-        const ytdAvg = ytdCount > 0 ? ytdSum / ytdCount : 0;
-
-        // MAT: average of last 12 months (excluding current)
-        let matSum = 0;
-        for (let j = 1; j <= 12; j++) {
-          matSum += monthlyRevenue[format(subMonths(monthDate, j), "yyyy-MM")] || 0;
-        }
-        const matAvg = matSum / 12;
-
-        data.push({
-          month: monthKey,
-          monthLabel: monthLabel.charAt(0).toUpperCase() + monthLabel.slice(1),
-          shortLabel: shortLabel.charAt(0).toUpperCase() + shortLabel.slice(1),
-          revenue, qtr: qtrAvg, ytd: ytdAvg, mat: matAvg,
-        });
+        const md = subMonths(now, i);
+        const mk = format(md, "yyyy-MM");
+        const ml = format(md, "MMMM", { locale: ptBR });
+        const sl = format(md, "MMM", { locale: ptBR }).replace(".", "");
+        const rev = monthlyRevenue[mk] || 0;
+        let qS = 0; for (let j = 1; j <= 3; j++) qS += monthlyRevenue[format(subMonths(md, j), "yyyy-MM")] || 0;
+        const yr = md.getFullYear(), mo = md.getMonth();
+        let yS = 0, yC = 0; for (let m = 0; m < mo; m++) { yS += monthlyRevenue[format(new Date(yr, m, 1), "yyyy-MM")] || 0; yC++; }
+        let mS = 0; for (let j = 1; j <= 12; j++) mS += monthlyRevenue[format(subMonths(md, j), "yyyy-MM")] || 0;
+        data.push({ month: mk, monthLabel: ml.charAt(0).toUpperCase() + ml.slice(1), shortLabel: sl.charAt(0).toUpperCase() + sl.slice(1), revenue: rev, qtr: qS / 3, ytd: yC > 0 ? yS / yC : 0, mat: mS / 12 });
       }
-
       setChartData(data);
-
-      // KPI values from last data point
       const last = data[data.length - 1];
-      const cQtr = last?.qtr || 0;
-      const cYtd = last?.ytd || 0;
-      const cMat = last?.mat || 0;
-      const cMonth = last?.revenue || 0;
-
-      setKpis({
-        qtr: cQtr, ytd: cYtd, mat: cMat, currentMonth: cMonth,
-        qtrVsYtd: cYtd > 0 ? ((cQtr - cYtd) / cYtd) * 100 : 0,
-        ytdVsMat: cMat > 0 ? ((cYtd - cMat) / cMat) * 100 : 0,
-        currentVsQtr: cQtr > 0 ? ((cMonth - cQtr) / cQtr) * 100 : 0,
-      });
-    } catch (error) {
-      console.error("Error loading term vision data:", error);
-    } finally {
-      setLoading(false);
-    }
+      const cQ = last?.qtr || 0, cY = last?.ytd || 0, cM = last?.mat || 0, cMo = last?.revenue || 0;
+      setKpis({ qtr: cQ, ytd: cY, mat: cM, currentMonth: cMo, qtrVsYtd: cY > 0 ? ((cQ - cY) / cY) * 100 : 0, ytdVsMat: cM > 0 ? ((cY - cM) / cM) * 100 : 0, currentVsQtr: cQ > 0 ? ((cMo - cQ) / cQ) * 100 : 0 });
+    } catch (error) { console.error("Error loading term vision data:", error); }
+    finally { setLoading(false); }
   };
 
-  const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}mi`;
-    if (value >= 1000) return `R$ ${Math.round(value / 1000)}mil`;
-    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(value);
+  const formatCurrency = (v: number) => {
+    if (v >= 1000000) return `R$ ${(v / 1000000).toFixed(1)}mi`;
+    if (v >= 1000) return `R$ ${Math.round(v / 1000)}mil`;
+    return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(v);
   };
+  const formatAxis = (v: number) => { if (v >= 1000000) return `${(v / 1000000).toFixed(0)}mi`; if (v >= 1000) return `${Math.round(v / 1000)}k`; return v.toString(); };
 
-  const formatAxisValue = (value: number) => {
-    if (value >= 1000000) return `${(value / 1000000).toFixed(0)}mi`;
-    if (value >= 1000) return `${Math.round(value / 1000)}k`;
-    return value.toString();
-  };
-
-  const VariationBadge = ({ value, label }: { value: number; label: string }) => {
-    const isNeutral = Math.abs(value) < 0.1;
-    const isPositive = value > 0;
-    const Icon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown;
-    const bgClass = isNeutral
-      ? "bg-muted/50"
-      : isPositive ? "bg-emerald-500/10" : "bg-rose-500/10";
-    const textClass = isNeutral
-      ? "text-muted-foreground"
-      : isPositive ? "text-emerald-600" : "text-rose-500";
-
+  const VarBadge = ({ value, label }: { value: number; label: string }) => {
+    const neutral = Math.abs(value) < 0.1;
+    const pos = value > 0;
+    const Icon = neutral ? Minus : pos ? TrendingUp : TrendingDown;
+    const col = neutral ? "rgba(255,255,255,0.3)" : pos ? "#34d399" : "#fb7185";
     return (
-      <span className={`text-[10px] font-medium flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${bgClass} ${textClass}`}>
+      <span className="text-[10px] font-semibold flex items-center gap-0.5" style={{ color: col }}>
         <Icon className="h-3 w-3" />
         {Math.abs(value).toFixed(1)}% {label}
       </span>
     );
   };
 
-  const CustomTooltip = ({ active, payload, label }: any) => {
-    if (active && payload && payload.length) {
-      return (
-        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl p-3 min-w-[160px]">
-          <p className="text-xs font-medium text-muted-foreground mb-2 border-b border-border/30 pb-1.5">
-            {payload[0]?.payload?.monthLabel}
-          </p>
-          {payload.map((entry: any, index: number) => {
-            const labels: Record<string, string> = {
-              revenue: "Vendas", qtr: "QTR", ytd: "YTD", mat: "MAT",
-            };
-            return (
-              <div key={index} className="flex items-center justify-between gap-3 py-0.5">
-                <div className="flex items-center gap-1.5">
-                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
-                  <span className="text-xs text-muted-foreground">{labels[entry.dataKey] || entry.name}</span>
-                </div>
-                <span className="text-xs font-semibold" style={{ color: entry.color }}>
-                  {formatCurrency(entry.value)}
-                </span>
+  const CustomTooltip = ({ active, payload }: any) => {
+    if (!active || !payload?.length) return null;
+    return (
+      <div className="rounded-2xl shadow-2xl p-4 min-w-[180px] border border-white/10" style={{ background: "linear-gradient(135deg, rgba(15,23,42,0.98), rgba(30,41,59,0.96))", backdropFilter: "blur(16px)" }}>
+        <p className="text-[11px] font-bold text-white/50 mb-2.5 tracking-widest uppercase">{payload[0]?.payload?.monthLabel}</p>
+        {payload.map((e: any, i: number) => {
+          const labels: Record<string, string> = { revenue: "Vendas", qtr: "QTR", ytd: "YTD", mat: "MAT" };
+          return (
+            <div key={i} className="flex items-center justify-between gap-4 py-1">
+              <div className="flex items-center gap-2">
+                <div className="w-2.5 h-2.5 rounded-full" style={{ backgroundColor: e.color, boxShadow: `0 0 8px ${e.color}60` }} />
+                <span className="text-[11px] text-white/60 font-medium">{labels[e.dataKey] || e.name}</span>
               </div>
-            );
-          })}
-        </div>
-      );
-    }
-    return null;
+              <span className="text-[12px] font-bold text-white">{formatCurrency(e.value)}</span>
+            </div>
+          );
+        })}
+      </div>
+    );
   };
 
   if (loading) {
     return (
-      <Card className={className}>
+      <Card className={className} style={{ background: "linear-gradient(145deg, #0f172a, #1e293b)" }}>
         <CardContent className="flex items-center justify-center h-[400px]">
-          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+          <div className="animate-spin rounded-full h-8 w-8 border-2 border-purple-400 border-t-transparent" />
         </CardContent>
       </Card>
     );
   }
-
   if (chartData.length === 0) return null;
 
-  const lineConfig = [
-    { key: "revenue", label: "VENDAS", color: "#10b981", colorEnd: "#34d399", width: 3, dash: "6 3", dot: 5, glow: true },
-    { key: "qtr", label: "QTR", color: "#a78bfa", colorEnd: "#c4b5fd", width: 2.5, dash: undefined, dot: 3, glow: false },
-    { key: "ytd", label: "YTD", color: "#60a5fa", colorEnd: "#93c5fd", width: 2.5, dash: undefined, dot: 3, glow: false },
-    { key: "mat", label: "MAT", color: "#fbbf24", colorEnd: "#fcd34d", width: 2.5, dash: undefined, dot: 3, glow: false },
+  const lines = [
+    { key: "revenue", label: "VENDAS", color: "#34d399", opacity: 0.25, w: 3, dash: "6 3" },
+    { key: "qtr", label: "QTR", color: "#c084fc", opacity: 0.15, w: 2, dash: undefined },
+    { key: "ytd", label: "YTD", color: "#60a5fa", opacity: 0.12, w: 2, dash: undefined },
+    { key: "mat", label: "MAT", color: "#fbbf24", opacity: 0.10, w: 2, dash: undefined },
   ];
 
-  const kpiCards = [
-    { label: "Mês Atual", value: kpis.currentMonth, variation: kpis.currentVsQtr, varLabel: "vs QTR", color: "#10b981", colorEnd: "#34d399", icon: "💰" },
-    { label: "QTR", value: kpis.qtr, variation: kpis.qtrVsYtd, varLabel: "vs YTD", color: "#a78bfa", colorEnd: "#c4b5fd", icon: "📊" },
-    { label: "YTD", value: kpis.ytd, variation: kpis.ytdVsMat, varLabel: "vs MAT", color: "#60a5fa", colorEnd: "#93c5fd", icon: "📈" },
-    { label: "MAT", value: kpis.mat, variation: null, varLabel: "12 meses", color: "#fbbf24", colorEnd: "#fcd34d", icon: "🎯" },
+  const cards = [
+    { label: "Mês Atual", value: kpis.currentMonth, var: kpis.currentVsQtr, vl: "vs QTR", color: "#34d399" },
+    { label: "QTR (3m)", value: kpis.qtr, var: kpis.qtrVsYtd, vl: "vs YTD", color: "#c084fc" },
+    { label: "YTD", value: kpis.ytd, var: kpis.ytdVsMat, vl: "vs MAT", color: "#60a5fa" },
+    { label: "MAT (12m)", value: kpis.mat, var: null, vl: "", color: "#fbbf24" },
   ];
 
   return (
-    <Card className={`relative overflow-hidden border-border/50 bg-gradient-to-br from-background via-background to-muted/20 ${className || ""}`}>
-      {/* Decorative blurs */}
-      <div className="absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br from-violet-500/8 via-fuchsia-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-emerald-500/6 via-cyan-500/4 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute top-1/2 right-1/3 w-32 h-32 bg-gradient-to-br from-amber-500/4 to-transparent rounded-full blur-2xl pointer-events-none" />
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.5 }} className={className}>
+      <Card className="relative overflow-hidden border-0 shadow-2xl" style={{ background: "linear-gradient(145deg, #0f172a 0%, #1e293b 50%, #0f172a 100%)" }}>
+        {/* Ambient glow */}
+        <div className="absolute -top-32 -right-32 w-64 h-64 rounded-full blur-[80px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(168,85,247,0.15), transparent 70%)" }} />
+        <div className="absolute -bottom-24 -left-24 w-56 h-56 rounded-full blur-[60px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(52,211,153,0.12), transparent 70%)" }} />
+        <div className="absolute top-1/3 left-1/2 w-40 h-40 rounded-full blur-[50px] pointer-events-none" style={{ background: "radial-gradient(circle, rgba(96,165,250,0.08), transparent 70%)" }} />
 
-      <CardHeader className="pb-3 relative z-10">
-        <div className="flex items-center gap-2">
-          <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-500/10">
-            <BarChart3 className="h-4 w-4 text-violet-500" />
+        {/* Header */}
+        <div className="relative z-10 px-5 pt-5 pb-3 flex items-center gap-3">
+          <div className="p-2.5 rounded-xl" style={{ background: "linear-gradient(135deg, rgba(168,85,247,0.3), rgba(96,165,250,0.2))" }}>
+            <Activity className="h-5 w-5 text-purple-300" />
           </div>
-          <CardTitle className="text-base sm:text-lg font-bold">
-            Visão de Curto, Médio e Longo Prazo
-          </CardTitle>
-        </div>
-      </CardHeader>
-
-      <CardContent className="space-y-4 relative z-10">
-        {/* KPI Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-          {kpiCards.map((card, idx) => (
-            <motion.div
-              key={card.label}
-              initial={{ opacity: 0, y: 10 }}
-              animate={{ opacity: 1, y: 0 }}
-              transition={{ duration: 0.3, delay: idx * 0.08 }}
-              className="relative overflow-hidden rounded-xl border border-border/50 p-3 bg-gradient-to-br from-background to-muted/30"
-            >
-              <div
-                className="absolute top-0 left-0 w-full h-1 rounded-t-xl"
-                style={{ background: `linear-gradient(90deg, ${card.color}, ${card.colorEnd})` }}
-              />
-              <div
-                className="absolute top-0 left-0 w-full h-12 rounded-t-xl opacity-[0.04]"
-                style={{ background: `linear-gradient(180deg, ${card.color}, transparent)` }}
-              />
-              <div className="flex items-center justify-between mb-1.5">
-                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
-                  {card.label}
-                </span>
-                <span className="text-sm">{card.icon}</span>
-              </div>
-              <p className="text-lg sm:text-xl font-bold tracking-tight" style={{ color: card.color }}>
-                {formatCurrency(card.value)}
-              </p>
-              <div className="mt-1.5">
-                {card.variation !== null ? (
-                  <VariationBadge value={card.variation} label={card.varLabel} />
-                ) : (
-                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted/50">
-                    Média 12 meses
-                  </span>
-                )}
-              </div>
-            </motion.div>
-          ))}
+          <div>
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Visão de Curto, Médio e Longo Prazo</h3>
+            <p className="text-[11px] text-white/40 font-medium">Análise de tendência • Últimos 12 meses</p>
+          </div>
         </div>
 
-        {/* Chart */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ duration: 0.5, delay: 0.3 }}
-          className="h-[300px] sm:h-[360px]"
-        >
-          <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 15, right: 10, left: -5, bottom: 10 }}>
-              <defs>
-                {lineConfig.map(l => (
-                  <linearGradient key={`stroke-${l.key}`} id={`stroke-${l.key}`} x1="0" y1="0" x2="1" y2="0">
-                    <stop offset="0%" stopColor={l.color} />
-                    <stop offset="100%" stopColor={l.colorEnd} />
-                  </linearGradient>
-                ))}
-                {lineConfig.filter(l => l.glow).map(l => (
-                  <filter key={`glow-${l.key}`} id={`glow-${l.key}`}>
-                    <feGaussianBlur stdDeviation="3" result="blur" />
-                    <feMerge>
-                      <feMergeNode in="blur" />
-                      <feMergeNode in="SourceGraphic" />
-                    </feMerge>
-                  </filter>
-                ))}
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
-              <XAxis
-                dataKey="shortLabel"
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                interval={0}
-                axisLine={false}
-                tickLine={false}
-              />
-              <YAxis
-                tickFormatter={formatAxisValue}
-                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
-                width={48}
-                axisLine={false}
-                tickLine={false}
-              />
-              <Tooltip content={<CustomTooltip />} />
-              {lineConfig.map(l => (
-                <Line
-                  key={l.key}
-                  type="monotone"
-                  dataKey={l.key}
-                  name={l.label}
-                  stroke={`url(#stroke-${l.key})`}
-                  strokeWidth={l.width}
-                  strokeDasharray={l.dash}
-                  dot={{ fill: l.color, strokeWidth: 2, stroke: l.colorEnd, r: l.dot }}
-                  activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--background))", fill: l.color }}
-                  filter={l.glow ? `url(#glow-${l.key})` : undefined}
-                />
-              ))}
-            </LineChart>
-          </ResponsiveContainer>
-        </motion.div>
+        <CardContent className="space-y-5 relative z-10 pb-5">
+          {/* KPI Cards */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2.5">
+            {cards.map((c, idx) => (
+              <motion.div
+                key={c.label}
+                initial={{ opacity: 0, scale: 0.9 }}
+                animate={{ opacity: 1, scale: 1 }}
+                transition={{ duration: 0.35, delay: idx * 0.07 }}
+                className="relative overflow-hidden rounded-2xl p-3.5 border border-white/[0.06]"
+                style={{ background: `linear-gradient(135deg, ${c.color}15, ${c.color}05)` }}
+              >
+                <span className="text-[10px] font-bold tracking-[0.15em] uppercase" style={{ color: `${c.color}99` }}>{c.label}</span>
+                <p className="text-xl sm:text-2xl font-extrabold mt-1 tracking-tight text-white">{formatCurrency(c.value)}</p>
+                <div className="mt-2">
+                  {c.var !== null ? <VarBadge value={c.var} label={c.vl} /> : <span className="text-[10px] text-white/30 font-medium">Média anual</span>}
+                </div>
+                <div className="absolute -top-3 -right-3 w-10 h-10 rounded-full opacity-20 blur-md" style={{ backgroundColor: c.color }} />
+              </motion.div>
+            ))}
+          </div>
 
-        {/* Legend */}
-        <div className="flex flex-wrap justify-center gap-2 pt-1">
-          {lineConfig.map(l => (
-            <div key={l.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/40 bg-muted/30 backdrop-blur-sm">
-              <div
-                className="w-4 h-1 rounded-full"
-                style={{
-                  background: `linear-gradient(90deg, ${l.color}, ${l.colorEnd})`,
-                  ...(l.dash ? { backgroundImage: `repeating-linear-gradient(90deg, ${l.color} 0, ${l.colorEnd} 4px, transparent 4px, transparent 6px)` } : {}),
-                }}
-              />
-              <span className="text-[11px] font-semibold text-muted-foreground">{l.label}</span>
+          {/* Chart */}
+          <motion.div
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            transition={{ duration: 0.6, delay: 0.3 }}
+            className="rounded-2xl p-3 pt-4 border border-white/[0.06]"
+            style={{ background: "linear-gradient(180deg, rgba(255,255,255,0.02), rgba(255,255,255,0.005))" }}
+          >
+            <div className="h-[280px] sm:h-[340px]">
+              <ResponsiveContainer width="100%" height="100%">
+                <AreaChart data={chartData} margin={{ top: 10, right: 10, left: -10, bottom: 5 }}>
+                  <defs>
+                    {lines.map(l => (
+                      <linearGradient key={`a-${l.key}`} id={`a-${l.key}`} x1="0" y1="0" x2="0" y2="1">
+                        <stop offset="0%" stopColor={l.color} stopOpacity={l.opacity} />
+                        <stop offset="85%" stopColor={l.color} stopOpacity={0} />
+                      </linearGradient>
+                    ))}
+                    {lines.map(l => (
+                      <filter key={`g-${l.key}`} id={`g-${l.key}`}>
+                        <feGaussianBlur stdDeviation="2.5" result="b" />
+                        <feMerge><feMergeNode in="b" /><feMergeNode in="SourceGraphic" /></feMerge>
+                      </filter>
+                    ))}
+                  </defs>
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(255,255,255,0.04)" vertical={false} />
+                  <XAxis dataKey="shortLabel" tick={{ fontSize: 10, fill: "rgba(255,255,255,0.35)", fontWeight: 600 }} interval={0} axisLine={false} tickLine={false} />
+                  <YAxis tickFormatter={formatAxis} tick={{ fontSize: 10, fill: "rgba(255,255,255,0.25)", fontWeight: 500 }} width={45} axisLine={false} tickLine={false} />
+                  <Tooltip content={<CustomTooltip />} cursor={{ stroke: "rgba(255,255,255,0.08)", strokeWidth: 1 }} />
+                  {lines.map(l => (
+                    <Area
+                      key={l.key} type="monotone" dataKey={l.key} name={l.label}
+                      stroke={l.color} strokeWidth={l.w} fill={`url(#a-${l.key})`}
+                      dot={{ fill: l.color, strokeWidth: 0, r: l.key === "revenue" ? 4 : 2.5 }}
+                      activeDot={{ r: 6, strokeWidth: 2, stroke: "#0f172a", fill: l.color }}
+                      filter={`url(#g-${l.key})`} strokeDasharray={l.dash}
+                    />
+                  ))}
+                </AreaChart>
+              </ResponsiveContainer>
             </div>
-          ))}
-        </div>
-      </CardContent>
-    </Card>
+          </motion.div>
+
+          {/* Legend */}
+          <div className="flex flex-wrap justify-center gap-2">
+            {lines.map(l => (
+              <div key={l.key} className="flex items-center gap-2 px-3.5 py-2 rounded-full border border-white/[0.06]" style={{ background: `linear-gradient(135deg, ${l.color}10, transparent)` }}>
+                <div className="relative">
+                  <div className="w-3 h-3 rounded-full" style={{ backgroundColor: l.color }} />
+                  <div className="absolute inset-0 w-3 h-3 rounded-full animate-ping" style={{ backgroundColor: l.color, opacity: 0.15, animationDuration: "3s" }} />
+                </div>
+                <span className="text-[11px] font-bold text-white/60 tracking-wide">{l.label}</span>
+              </div>
+            ))}
+          </div>
+        </CardContent>
+      </Card>
+    </motion.div>
   );
 };
