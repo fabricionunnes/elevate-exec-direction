@@ -162,7 +162,14 @@ async function sendWhatsAppInvoiceNotification(
       ? `\n📌 *Parcela:* ${invoice.installment_number}/${invoice.total_installments}`
       : "";
 
-    const message = `Olá ${customerName || ""}! 👋\n\nVocê tem uma nova fatura disponível:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${paymentUrl}\n\nObrigado! ✨`;
+    // Calculate discount date (1 day before due date) and discounted amount (5%)
+    const dueDateObj = new Date(invoice.due_date + "T12:00:00");
+    const discountDateObj = new Date(dueDateObj);
+    discountDateObj.setDate(discountDateObj.getDate() - 1);
+    const discountDateFormatted = `${String(discountDateObj.getDate()).padStart(2, "0")}/${String(discountDateObj.getMonth() + 1).padStart(2, "0")}/${discountDateObj.getFullYear()}`;
+    const discountedAmount = (invoice.amount_cents * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+
+    const message = `Olá ${customerName || ""}! 👋\n\nSeja muito bem-vindo(a)! Estamos felizes em tê-lo(a) conosco. 🎉\n\nSegue sua fatura:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDateFormatted}*! Valor com desconto: *${discountedAmount}*\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${paymentUrl}\n\nQualquer dúvida, estamos à disposição! ✨`;
 
     const sendResponse = await fetch(`${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`, {
       method: "POST",
