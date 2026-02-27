@@ -34,6 +34,7 @@ import { KPIEntriesHistoryDialog } from "./KPIEntriesHistoryDialog";
 import { SalespeopleComparisonTable } from "./SalespeopleComparisonTable";
 import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
+import { DailyGoalCard } from "./DailyGoalCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -1673,6 +1674,26 @@ export const KPIDashboardTab = ({
           )}
         </div>
       )}
+
+      {/* Daily Goal Card */}
+      <DailyGoalCard
+        kpis={kpis}
+        salespeople={salespeople}
+        entries={entries.map(e => ({
+          id: e.id,
+          kpi_id: e.kpi_id,
+          salesperson_id: e.salesperson_id,
+          entry_date: e.entry_date,
+          value: e.value,
+        }))}
+        allMonthlyTargets={allMonthlyTargets}
+        dateRange={dateRange}
+        selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
+        selectedSalesperson={selectedSalesperson}
+        sectorTeams={sectorTeams}
+      />
 
       {/* Salespeople Comparison Table */}
       <SalespeopleComparisonTable
