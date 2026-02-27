@@ -262,7 +262,7 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
               cost_center_id: ccMap.get(ccName) || null,
             };
             if (status === "paid") {
-              record.paid_at = dueDate;
+              record.paid_date = dueDate;
               record.paid_amount = amount;
             }
             rows.push(record);
