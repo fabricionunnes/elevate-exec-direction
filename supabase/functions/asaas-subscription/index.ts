@@ -109,6 +109,7 @@ Deno.serve(async (req) => {
       cycle,
       nextDueDate,
       description,
+      notifications: { disabled: true },
     };
 
     const subscription = await asaasRequest("/subscriptions", "POST", ASAAS_API_KEY, subscriptionPayload);

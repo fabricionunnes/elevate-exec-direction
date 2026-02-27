@@ -110,6 +110,7 @@ Deno.serve(async (req) => {
       value: amountValue,
       dueDate,
       description: product_name || "Cobrança avulsa",
+      notifications: { disabled: true },
     };
 
     if (billingType === "CREDIT_CARD" && installments > 1) {
