@@ -1677,6 +1677,7 @@ export const KPIDashboardTab = ({
 
       {/* Daily Goal Card */}
       <DailyGoalCard
+        companyId={companyId}
         kpis={kpis}
         salespeople={salespeople}
         entries={entries.map(e => ({

@@ -2,8 +2,6 @@ import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Switch } from "@/components/ui/switch";
-import { Label } from "@/components/ui/label";
 import { CalendarDays } from "lucide-react";
 import { isHoliday } from "@/lib/businessDays";
 import { format, startOfMonth, endOfMonth } from "date-fns";
@@ -53,6 +51,23 @@ export const SalespersonDailyGoalCard = ({
   const [realized, setRealized] = useState(0);
   const [kpiType, setKpiType] = useState<string>("monetary");
   const [loading, setLoading] = useState(true);
+
+  // Load company settings for day toggles
+  useEffect(() => {
+    if (!companyId) return;
+    supabase
+      .from("company_daily_goal_settings")
+      .select("include_saturday, include_sunday, include_holidays")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setIncludeSaturday(data.include_saturday);
+          setIncludeSunday(data.include_sunday);
+          setIncludeHolidays(data.include_holidays);
+        }
+      });
+  }, [companyId]);
 
   useEffect(() => {
     fetchData();
@@ -170,35 +185,6 @@ export const SalespersonDailyGoalCard = ({
               {dayInfo.remaining !== 1 ? "s" : ""}
             </Badge>
           </CardTitle>
-        </div>
-        <div className="flex items-center gap-3 flex-wrap mt-1">
-          <div className="flex items-center gap-1.5">
-            <Switch
-              id="sp-sat"
-              checked={includeSaturday}
-              onCheckedChange={setIncludeSaturday}
-              className="scale-75"
-            />
-            <Label htmlFor="sp-sat" className="text-[10px] cursor-pointer">Sáb</Label>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Switch
-              id="sp-sun"
-              checked={includeSunday}
-              onCheckedChange={setIncludeSunday}
-              className="scale-75"
-            />
-            <Label htmlFor="sp-sun" className="text-[10px] cursor-pointer">Dom</Label>
-          </div>
-          <div className="flex items-center gap-1.5">
-            <Switch
-              id="sp-hol"
-              checked={includeHolidays}
-              onCheckedChange={setIncludeHolidays}
-              className="scale-75"
-            />
-            <Label htmlFor="sp-hol" className="text-[10px] cursor-pointer">Feriados</Label>
-          </div>
         </div>
       </CardHeader>
       <CardContent>

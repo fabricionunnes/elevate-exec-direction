@@ -1,4 +1,5 @@
-import { useMemo, useState } from "react";
+import { useMemo, useState, useEffect, useCallback } from "react";
+import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
@@ -57,6 +58,7 @@ interface SectorTeam {
 }
 
 interface DailyGoalCardProps {
+  companyId: string;
   kpis: KPI[];
   salespeople: Salesperson[];
   entries: Entry[];
@@ -108,6 +110,7 @@ function getRemainingDaysInMonth(
 }
 
 export const DailyGoalCard = ({
+  companyId,
   kpis,
   salespeople,
   entries,
@@ -122,6 +125,58 @@ export const DailyGoalCard = ({
   const [includeSaturday, setIncludeSaturday] = useState(false);
   const [includeSunday, setIncludeSunday] = useState(false);
   const [includeHolidays, setIncludeHolidays] = useState(false);
+  const [settingsLoaded, setSettingsLoaded] = useState(false);
+
+  // Load settings from DB
+  useEffect(() => {
+    if (!companyId) return;
+    supabase
+      .from("company_daily_goal_settings")
+      .select("include_saturday, include_sunday, include_holidays")
+      .eq("company_id", companyId)
+      .maybeSingle()
+      .then(({ data }) => {
+        if (data) {
+          setIncludeSaturday(data.include_saturday);
+          setIncludeSunday(data.include_sunday);
+          setIncludeHolidays(data.include_holidays);
+        }
+        setSettingsLoaded(true);
+      });
+  }, [companyId]);
+
+  // Persist settings to DB
+  const saveSettings = useCallback(
+    async (sat: boolean, sun: boolean, hol: boolean) => {
+      if (!companyId) return;
+      await supabase
+        .from("company_daily_goal_settings")
+        .upsert(
+          {
+            company_id: companyId,
+            include_saturday: sat,
+            include_sunday: sun,
+            include_holidays: hol,
+            updated_at: new Date().toISOString(),
+          },
+          { onConflict: "company_id" }
+        );
+    },
+    [companyId]
+  );
+
+  const handleSaturdayChange = (v: boolean) => {
+    setIncludeSaturday(v);
+    saveSettings(v, includeSunday, includeHolidays);
+  };
+  const handleSundayChange = (v: boolean) => {
+    setIncludeSunday(v);
+    saveSettings(includeSaturday, v, includeHolidays);
+  };
+  const handleHolidaysChange = (v: boolean) => {
+    setIncludeHolidays(v);
+    saveSettings(includeSaturday, includeSunday, v);
+  };
 
   // Main goal KPIs only
   const mainGoalKpis = useMemo(() => {
@@ -301,7 +356,7 @@ export const DailyGoalCard = ({
               <Switch
                 id="include-saturday"
                 checked={includeSaturday}
-                onCheckedChange={setIncludeSaturday}
+                onCheckedChange={handleSaturdayChange}
                 className="scale-75"
               />
               <Label htmlFor="include-saturday" className="text-xs cursor-pointer">
@@ -312,7 +367,7 @@ export const DailyGoalCard = ({
               <Switch
                 id="include-sunday"
                 checked={includeSunday}
-                onCheckedChange={setIncludeSunday}
+                onCheckedChange={handleSundayChange}
                 className="scale-75"
               />
               <Label htmlFor="include-sunday" className="text-xs cursor-pointer">
@@ -323,7 +378,7 @@ export const DailyGoalCard = ({
               <Switch
                 id="include-holidays"
                 checked={includeHolidays}
-                onCheckedChange={setIncludeHolidays}
+                onCheckedChange={handleHolidaysChange}
                 className="scale-75"
               />
               <Label htmlFor="include-holidays" className="text-xs cursor-pointer">
