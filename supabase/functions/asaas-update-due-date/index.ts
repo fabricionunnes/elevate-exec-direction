@@ -135,7 +135,7 @@ Deno.serve(async (req) => {
           // Fallback: match by old due date (any non-paid/cancelled status)
           if (!targetPayment) {
             targetPayment = payments.data.find((p: any) =>
-              p.dueDate === oldDueDate && !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
+              p.dueDate === oldDueDate && !["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
             );
             if (targetPayment) console.log(`Matched by oldDueDate: ${targetPayment.id}`);
           }
@@ -143,7 +143,7 @@ Deno.serve(async (req) => {
           // Fallback: match by new due date (in case it was already partially updated)
           if (!targetPayment) {
             targetPayment = payments.data.find((p: any) =>
-              p.dueDate === new_due_date && !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
+              p.dueDate === new_due_date && !["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
             );
             if (targetPayment) console.log(`Matched by new_due_date: ${targetPayment.id}`);
           }
@@ -153,7 +153,7 @@ Deno.serve(async (req) => {
             const invoiceAmount = inv.amount_cents / 100;
             targetPayment = payments.data
               .filter((p: any) =>
-                !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status) &&
+                !["RECEIVED", "RECEIVED_IN_CASH", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status) &&
                 Math.abs(p.value - invoiceAmount) < 0.01
               )
               .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
