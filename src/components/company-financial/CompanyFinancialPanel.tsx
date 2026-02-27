@@ -14,6 +14,7 @@ interface Props {
   billingDay?: number;
   customerEmail?: string;
   customerPhone?: string;
+  customerDocument?: string;
 }
 
 export function CompanyFinancialPanel({
@@ -23,6 +24,7 @@ export function CompanyFinancialPanel({
   billingDay,
   customerEmail,
   customerPhone,
+  customerDocument,
 }: Props) {
   const [activeTab, setActiveTab] = useState("charge");
 
@@ -70,6 +72,7 @@ export function CompanyFinancialPanel({
             billingDay={billingDay}
             customerEmail={customerEmail}
             customerPhone={customerPhone}
+            customerDocument={customerDocument}
           />
         </TabsContent>
 
