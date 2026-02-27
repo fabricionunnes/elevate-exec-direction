@@ -97,10 +97,26 @@ export function CompanyInvoicesList({ companyId }: Props) {
     setLoading(false);
   };
 
-  const copyLink = (token: string) => {
-    const url = `${window.location.origin}/#/fatura?token=${token}`;
+  const copyLink = (inv: Invoice) => {
+    // Prefer Asaas URL if available, fallback to internal link
+    const url = inv.payment_link_url || `${window.location.origin}/#/fatura?token=${inv.public_token}`;
     navigator.clipboard.writeText(url);
-    toast.success("Link da fatura copiado!");
+    toast.success("Link copiado!");
+  };
+
+  const syncAsaasLinks = async () => {
+    toast.info("Sincronizando links com Asaas...");
+    try {
+      const { data, error } = await supabase.functions.invoke("generate-invoices", {
+        body: { action: "backfill_payment_links" },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+      toast.success(`${data?.fixed || 0} links atualizados!`);
+      fetchInvoices();
+    } catch (err: any) {
+      toast.error("Erro ao sincronizar: " + (err.message || "erro"));
+    }
   };
 
   const markAsPaid = async (invoiceId: string) => {
@@ -377,6 +393,10 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   </div>
                 </DialogContent>
               </Dialog>
+              <Button variant="outline" size="sm" onClick={syncAsaasLinks} title="Sincronizar links de pagamento com Asaas">
+                <ExternalLink className="h-4 w-4 mr-2" />
+                Sync Asaas
+              </Button>
               <Button variant="outline" size="sm" onClick={fetchInvoices}>
                 <RefreshCw className="h-4 w-4 mr-2" />
                 Atualizar
@@ -504,7 +524,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                               variant="ghost"
                               size="sm"
                               className="h-7 text-xs px-2"
-                              onClick={() => copyLink(inv.public_token)}
+                              onClick={() => copyLink(inv)}
                             >
                               <Copy className="h-3 w-3 mr-1" />
                               Link
