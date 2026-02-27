@@ -2212,6 +2212,18 @@ const OnboardingTasksPage = () => {
                 CRM Comercial
               </Button>
             )}
+            {/* Financeiro button - visible for admin and master only */}
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}
+                className="gap-2"
+              >
+                <Calculator className="h-4 w-4" />
+                Financeiro
+              </Button>
+            )}
 
             {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
             {canAccessAnalytics && (
