@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import {
@@ -68,6 +69,8 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const [loading, setLoading] = useState(true);
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [creating, setCreating] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [deleting, setDeleting] = useState(false);
   const [form, setForm] = useState({
     description: "",
     amount: 0,
@@ -180,6 +183,44 @@ export function CompanyInvoicesList({ companyId }: Props) {
     } else {
       toast.success("Fatura excluída!");
       fetchInvoices();
+    }
+  };
+
+  const deleteBulk = async () => {
+    if (selectedIds.size === 0) return;
+    setDeleting(true);
+    const { error } = await supabase
+      .from("company_invoices")
+      .delete()
+      .in("id", Array.from(selectedIds));
+
+    if (error) {
+      toast.error("Erro ao excluir faturas");
+    } else {
+      toast.success(`${selectedIds.size} fatura(s) excluída(s)!`);
+      setSelectedIds(new Set());
+      fetchInvoices();
+    }
+    setDeleting(false);
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id);
+      else next.add(id);
+      return next;
+    });
+  };
+
+  const selectableInvoices = invoices.filter(i => !i.recurring_charge_id);
+  const allSelectableSelected = selectableInvoices.length > 0 && selectableInvoices.every(i => selectedIds.has(i.id));
+
+  const toggleSelectAll = () => {
+    if (allSelectableSelected) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(selectableInvoices.map(i => i.id)));
     }
   };
 
@@ -352,6 +393,44 @@ export function CompanyInvoicesList({ companyId }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Bulk actions bar */}
+              {selectableInvoices.length > 0 && (
+                <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
+                  <Checkbox
+                    checked={allSelectableSelected}
+                    onCheckedChange={toggleSelectAll}
+                  />
+                  <span className="text-sm text-muted-foreground">
+                    {selectedIds.size > 0
+                      ? `${selectedIds.size} selecionada(s)`
+                      : "Selecionar todas (manuais)"}
+                  </span>
+                  {selectedIds.size > 0 && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="destructive" size="sm" className="ml-auto h-7 text-xs" disabled={deleting}>
+                          {deleting ? <Loader2 className="h-3 w-3 mr-1 animate-spin" /> : <Trash2 className="h-3 w-3 mr-1" />}
+                          Excluir {selectedIds.size}
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir {selectedIds.size} fatura(s)?</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Esta ação não pode ser desfeita. As faturas selecionadas serão removidas permanentemente.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={deleteBulk} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
+              )}
               {invoices.map((inv) => {
                 const statusInfo = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
                 const StatusIcon = statusInfo.icon;
@@ -370,6 +449,14 @@ export function CompanyInvoicesList({ companyId }: Props) {
                     }`}
                   >
                     <div className="flex items-start justify-between gap-3">
+                      {!inv.recurring_charge_id && (
+                        <div className="pt-1">
+                          <Checkbox
+                            checked={selectedIds.has(inv.id)}
+                            onCheckedChange={() => toggleSelect(inv.id)}
+                          />
+                        </div>
+                      )}
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-sm">{inv.description}</p>
