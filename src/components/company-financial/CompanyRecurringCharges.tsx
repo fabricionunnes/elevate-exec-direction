@@ -110,6 +110,14 @@ export function CompanyRecurringCharges({
       toast.error("Informe um valor válido");
       return;
     }
+    if (!form.customerEmail?.trim()) {
+      toast.error("Email do cliente é obrigatório");
+      return;
+    }
+    if (!form.customerDocument?.trim()) {
+      toast.error("CPF/CNPJ do cliente é obrigatório");
+      return;
+    }
 
     setSaving(true);
     try {
@@ -340,17 +348,18 @@ export function CompanyRecurringCharges({
                     <Label>Nome do Cliente</Label>
                     <Input value={form.customerName} onChange={(e) => setForm({ ...form, customerName: e.target.value })} />
                   </div>
-                  <div className="space-y-2">
-                    <Label>Email</Label>
-                    <Input value={form.customerEmail} onChange={(e) => setForm({ ...form, customerEmail: e.target.value })} />
+                <div className="space-y-2">
+                    <Label>Email *</Label>
+                    <Input value={form.customerEmail} onChange={(e) => setForm({ ...form, customerEmail: e.target.value })} required />
                   </div>
                 </div>
                 <div className="space-y-2">
-                  <Label>CPF/CNPJ do Cliente</Label>
+                  <Label>CPF/CNPJ do Cliente *</Label>
                   <Input
                     value={form.customerDocument}
                     onChange={(e) => setForm({ ...form, customerDocument: e.target.value })}
                     placeholder="000.000.000-00"
+                    required
                   />
                 </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
