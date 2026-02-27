@@ -174,6 +174,14 @@ export default function AllRecurringChargesPage() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0);
   });
+  const [payableDateFrom, setPayableDateFrom] = useState<Date | undefined>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [payableDateTo, setPayableDateTo] = useState<Date | undefined>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  });
 
   useEffect(() => {
     if (!finPerms.loading) {
@@ -280,10 +288,11 @@ export default function AllRecurringChargesPage() {
       if (selectedStatus === "pending" && p.status !== "pending") return false;
       if (selectedStatus === "paid" && p.status !== "paid") return false;
       if (selectedStatus === "overdue" && p.status !== "overdue") return false;
-      if (selectedMonth !== "all" && p.reference_month !== selectedMonth) return false;
+      if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
+      if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       return true;
     });
-  }, [payables, searchTerm, selectedStatus, selectedMonth]);
+  }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
@@ -316,6 +325,8 @@ export default function AllRecurringChargesPage() {
     setSelectedRecurrence("all");
     setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
     setDateTo(new Date(now.getFullYear(), now.getMonth() + 1, 0));
+    setPayableDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
+    setPayableDateTo(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   };
 
   // Manual payment (baixa)
@@ -823,7 +834,7 @@ export default function AllRecurringChargesPage() {
                   <CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4" />Filtros</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-3 md:grid-cols-3">
+                  <div className="grid gap-3 md:grid-cols-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -837,13 +848,28 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="overdue">Vencido</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                      <SelectTrigger><SelectValue placeholder="Mês" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os Meses</SelectItem>
-                        {financialMonths.map(m => <SelectItem key={m} value={m}>{m}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateFrom && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {payableDateFrom ? format(payableDateFrom, "dd/MM/yyyy") : "De"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={payableDateFrom} onSelect={setPayableDateFrom} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
+                    <Popover>
+                      <PopoverTrigger asChild>
+                        <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateTo && "text-muted-foreground")}>
+                          <CalendarIcon className="mr-2 h-4 w-4" />
+                          {payableDateTo ? format(payableDateTo, "dd/MM/yyyy") : "Até"}
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-auto p-0" align="start">
+                        <Calendar mode="single" selected={payableDateTo} onSelect={setPayableDateTo} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
+                      </PopoverContent>
+                    </Popover>
                   </div>
                 </CardContent>
               </Card>
