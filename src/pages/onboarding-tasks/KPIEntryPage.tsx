@@ -353,14 +353,7 @@ export default function KPIEntryPage() {
 
     setLoading(true);
     try {
-      // Delete existing entries for this date/salesperson (upsert approach)
-      await supabase
-        .from("kpi_entries")
-        .delete()
-        .eq("salesperson_id", salesperson.id)
-        .eq("entry_date", entryDate);
-
-      // Insert new entries with team_id and sector_id
+      // Upsert entries using onConflict to avoid unique constraint violations
       const entries = kpis.map(kpi => ({
         company_id: companyId,
         salesperson_id: salesperson.id,
@@ -371,9 +364,12 @@ export default function KPIEntryPage() {
         unit_id: selectedUnit || salesperson.unit_id || null,
         team_id: salesperson.team_id || null,
         sector_id: kpi.sector_id || (salespersonSectors.length === 1 ? salespersonSectors[0] : null),
+        updated_at: new Date().toISOString(),
       }));
 
-      const { error } = await supabase.from("kpi_entries").insert(entries);
+      const { error } = await supabase
+        .from("kpi_entries")
+        .upsert(entries, { onConflict: "salesperson_id,kpi_id,entry_date" });
 
       if (error) throw error;
 
