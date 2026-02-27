@@ -1,13 +1,14 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { supabase } from "@/integrations/supabase/client";
 import {
-  LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend,
+  LineChart, Line, XAxis, YAxis, ResponsiveContainer, Tooltip, Legend, CartesianGrid,
 } from "recharts";
 import { format, subMonths, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseDateLocal } from "@/lib/dateUtils";
-import { TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { TrendingUp, TrendingDown, Minus, BarChart3 } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface ChartDataPoint {
   month: string;
@@ -224,8 +225,8 @@ export const ProjectTermVisionCard = ({
   };
 
   const formatCurrency = (value: number) => {
-    if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)} mi`;
-    if (value >= 1000) return `R$ ${Math.round(value / 1000)} mil`;
+    if (value >= 1000000) return `R$ ${(value / 1000000).toFixed(1)}mi`;
+    if (value >= 1000) return `R$ ${Math.round(value / 1000)}mil`;
     return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(value);
   };
 
@@ -239,16 +240,48 @@ export const ProjectTermVisionCard = ({
     const isNeutral = Math.abs(value) < 0.1;
     const isPositive = value > 0;
     const Icon = isNeutral ? Minus : isPositive ? TrendingUp : TrendingDown;
-    const colorClass = isNeutral
+    const bgClass = isNeutral
+      ? "bg-muted/50"
+      : isPositive ? "bg-emerald-500/10" : "bg-rose-500/10";
+    const textClass = isNeutral
       ? "text-muted-foreground"
-      : isPositive ? "text-green-600" : "text-red-500";
+      : isPositive ? "text-emerald-600" : "text-rose-500";
 
     return (
-      <span className={`text-xs flex items-center gap-0.5 ${colorClass}`}>
+      <span className={`text-[10px] font-medium flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${bgClass} ${textClass}`}>
         <Icon className="h-3 w-3" />
         {Math.abs(value).toFixed(1)}% {label}
       </span>
     );
+  };
+
+  const CustomTooltip = ({ active, payload, label }: any) => {
+    if (active && payload && payload.length) {
+      return (
+        <div className="bg-background/95 backdrop-blur-sm border border-border/50 rounded-xl shadow-xl p-3 min-w-[160px]">
+          <p className="text-xs font-medium text-muted-foreground mb-2 border-b border-border/30 pb-1.5">
+            {payload[0]?.payload?.monthLabel}
+          </p>
+          {payload.map((entry: any, index: number) => {
+            const labels: Record<string, string> = {
+              revenue: "Vendas", qtr: "QTR", ytd: "YTD", mat: "MAT",
+            };
+            return (
+              <div key={index} className="flex items-center justify-between gap-3 py-0.5">
+                <div className="flex items-center gap-1.5">
+                  <div className="w-2 h-2 rounded-full" style={{ backgroundColor: entry.color }} />
+                  <span className="text-xs text-muted-foreground">{labels[entry.dataKey] || entry.name}</span>
+                </div>
+                <span className="text-xs font-semibold" style={{ color: entry.color }}>
+                  {formatCurrency(entry.value)}
+                </span>
+              </div>
+            );
+          })}
+        </div>
+      );
+    }
+    return null;
   };
 
   if (loading) {
@@ -263,99 +296,138 @@ export const ProjectTermVisionCard = ({
 
   if (chartData.length === 0) return null;
 
+  const lineConfig = [
+    { key: "revenue", label: "VENDAS", color: "#22c55e", width: 2.5, dash: "6 4", dot: 4 },
+    { key: "qtr", label: "QTR", color: "#8b5cf6", width: 2, dash: undefined, dot: 2.5 },
+    { key: "ytd", label: "YTD", color: "#3b82f6", width: 2, dash: undefined, dot: 2.5 },
+    { key: "mat", label: "MAT", color: "#f59e0b", width: 2, dash: undefined, dot: 2.5 },
+  ];
+
+  const kpiCards = [
+    { label: "Mês Atual", value: kpis.currentMonth, variation: kpis.currentVsQtr, varLabel: "vs QTR", color: "#22c55e", icon: "💰" },
+    { label: "QTR", value: kpis.qtr, variation: kpis.qtrVsYtd, varLabel: "vs YTD", color: "#8b5cf6", icon: "📊" },
+    { label: "YTD", value: kpis.ytd, variation: kpis.ytdVsMat, varLabel: "vs MAT", color: "#3b82f6", icon: "📈" },
+    { label: "MAT", value: kpis.mat, variation: null, varLabel: "12 meses", color: "#f59e0b", icon: "🎯" },
+  ];
+
   return (
-    <Card className={className}>
-      <CardHeader className="pb-2">
-        <CardTitle className="text-base sm:text-lg font-bold text-center">
-          VISÃO DE CURTO, MÉDIO E LONGO PRAZO
-        </CardTitle>
+    <Card className={`relative overflow-hidden border-border/50 bg-gradient-to-br from-background via-background to-muted/20 ${className || ""}`}>
+      {/* Decorative blurs */}
+      <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-violet-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+
+      <CardHeader className="pb-3 relative z-10">
+        <div className="flex items-center gap-2">
+          <div className="p-2 rounded-lg bg-gradient-to-br from-violet-500/20 to-violet-500/10">
+            <BarChart3 className="h-4 w-4 text-violet-500" />
+          </div>
+          <CardTitle className="text-base sm:text-lg font-bold">
+            Visão de Curto, Médio e Longo Prazo
+          </CardTitle>
+        </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+
+      <CardContent className="space-y-4 relative z-10">
         {/* KPI Cards */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-2 sm:gap-3">
-          <div className="border rounded-lg p-3 bg-card">
-            <p className="text-xs font-medium text-muted-foreground text-center mb-1">QTR</p>
-            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.qtr)}</p>
-            <div className="flex justify-center">
-              <VariationBadge value={kpis.qtrVsYtd} label="from YTD" />
-            </div>
-          </div>
-          <div className="border rounded-lg p-3 bg-card">
-            <p className="text-xs font-medium text-muted-foreground text-center mb-1">YTD</p>
-            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.ytd)}</p>
-            <div className="flex justify-center">
-              <VariationBadge value={kpis.ytdVsMat} label="from MAT" />
-            </div>
-          </div>
-          <div className="border rounded-lg p-3 bg-card">
-            <p className="text-xs font-medium text-muted-foreground text-center mb-1">MAT</p>
-            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.mat)}</p>
-            <div className="flex justify-center">
-              <span className="text-xs text-muted-foreground">Média 12 meses</span>
-            </div>
-          </div>
-          <div className="border rounded-lg p-3 bg-card">
-            <p className="text-xs font-medium text-muted-foreground text-center mb-1">VENDAS</p>
-            <p className="text-lg sm:text-xl font-bold text-center">{formatCurrency(kpis.currentMonth)}</p>
-            <div className="flex justify-center">
-              <VariationBadge value={kpis.currentVsQtr} label="from QTR" />
-            </div>
-          </div>
+          {kpiCards.map((card, idx) => (
+            <motion.div
+              key={card.label}
+              initial={{ opacity: 0, y: 10 }}
+              animate={{ opacity: 1, y: 0 }}
+              transition={{ duration: 0.3, delay: idx * 0.08 }}
+              className="relative overflow-hidden rounded-xl border border-border/50 p-3 bg-gradient-to-br from-background to-muted/30"
+            >
+              <div
+                className="absolute top-0 left-0 w-full h-0.5 rounded-t-xl"
+                style={{ background: `linear-gradient(90deg, ${card.color}80, ${card.color}20)` }}
+              />
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
+                  {card.label}
+                </span>
+                <span className="text-sm">{card.icon}</span>
+              </div>
+              <p className="text-lg sm:text-xl font-bold tracking-tight" style={{ color: card.color }}>
+                {formatCurrency(card.value)}
+              </p>
+              <div className="mt-1.5">
+                {card.variation !== null ? (
+                  <VariationBadge value={card.variation} label={card.varLabel} />
+                ) : (
+                  <span className="text-[10px] text-muted-foreground px-1.5 py-0.5 rounded-full bg-muted/50">
+                    Média 12 meses
+                  </span>
+                )}
+              </div>
+            </motion.div>
+          ))}
         </div>
 
-        {/* Chart Title */}
-        <div className="text-center">
-          <h3 className="font-semibold text-base">VENDAS</h3>
-        </div>
-
-        {/* Line Chart */}
-        <div className="h-[320px] sm:h-[380px]">
+        {/* Chart */}
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ duration: 0.5, delay: 0.3 }}
+          className="h-[300px] sm:h-[360px]"
+        >
           <ResponsiveContainer width="100%" height="100%">
-            <LineChart data={chartData} margin={{ top: 20, right: 30, left: 10, bottom: 20 }}>
+            <LineChart data={chartData} margin={{ top: 15, right: 10, left: -5, bottom: 10 }}>
+              <defs>
+                {lineConfig.map(l => (
+                  <linearGradient key={l.key} id={`grad-${l.key}`} x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor={l.color} stopOpacity={0.15} />
+                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                  </linearGradient>
+                ))}
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
               <XAxis
                 dataKey="shortLabel"
-                tick={{ fontSize: 10 }}
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
                 interval={0}
-                angle={-45}
-                textAnchor="end"
-                height={50}
+                axisLine={false}
+                tickLine={false}
               />
-              <YAxis tickFormatter={formatAxisValue} tick={{ fontSize: 10 }} width={50} />
-              <Tooltip
-                formatter={(value: number, name: string) => {
-                  const labels: Record<string, string> = {
-                    revenue: "Vendas", qtr: "QTR", ytd: "YTD", mat: "MAT",
-                  };
-                  return [formatCurrency(value), labels[name] || name];
-                }}
-                labelFormatter={(_, payload) =>
-                  payload?.[0]?.payload?.monthLabel || ""
-                }
+              <YAxis
+                tickFormatter={formatAxisValue}
+                tick={{ fontSize: 10, fill: "hsl(var(--muted-foreground))" }}
+                width={48}
+                axisLine={false}
+                tickLine={false}
               />
-              <Legend
-                wrapperStyle={{ fontSize: "12px", paddingTop: "10px" }}
-                payload={[
-                  { value: "VENDAS", type: "line", color: "#22C55E" },
-                  { value: "QTR", type: "line", color: "#8B5CF6" },
-                  { value: "YTD", type: "line", color: "#3B82F6" },
-                  { value: "MAT", type: "line", color: "#F59E0B" },
-                ]}
-              />
-              <Line
-                type="monotone" dataKey="revenue" name="revenue"
-                stroke="#22C55E" strokeWidth={2} strokeDasharray="5 5"
-                dot={{ fill: "#22C55E", strokeWidth: 0, r: 3 }}
-                label={({ x, y, value }) => (
-                  <text x={x} y={y - 10} fill="#22C55E" fontSize={9} textAnchor="middle">
-                    {formatCurrency(value as number)}
-                  </text>
-                )}
-              />
-              <Line type="monotone" dataKey="qtr" name="qtr" stroke="#8B5CF6" strokeWidth={2} dot={{ fill: "#8B5CF6", strokeWidth: 0, r: 2 }} />
-              <Line type="monotone" dataKey="ytd" name="ytd" stroke="#3B82F6" strokeWidth={2} dot={{ fill: "#3B82F6", strokeWidth: 0, r: 2 }} />
-              <Line type="monotone" dataKey="mat" name="mat" stroke="#F59E0B" strokeWidth={2} dot={{ fill: "#F59E0B", strokeWidth: 0, r: 2 }} />
+              <Tooltip content={<CustomTooltip />} />
+              {lineConfig.map(l => (
+                <Line
+                  key={l.key}
+                  type="monotone"
+                  dataKey={l.key}
+                  name={l.label}
+                  stroke={l.color}
+                  strokeWidth={l.width}
+                  strokeDasharray={l.dash}
+                  dot={{ fill: l.color, strokeWidth: 0, r: l.dot }}
+                  activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                />
+              ))}
             </LineChart>
           </ResponsiveContainer>
+        </motion.div>
+
+        {/* Legend */}
+        <div className="flex flex-wrap justify-center gap-3 pt-1">
+          {lineConfig.map(l => (
+            <div key={l.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/40">
+              <div
+                className="w-3.5 h-[3px] rounded-full"
+                style={{
+                  backgroundColor: l.color,
+                  ...(l.dash ? { backgroundImage: `repeating-linear-gradient(90deg, ${l.color} 0, ${l.color} 4px, transparent 4px, transparent 7px)`, backgroundColor: "transparent" } : {}),
+                }}
+              />
+              <span className="text-[11px] font-medium text-muted-foreground">{l.label}</span>
+            </div>
+          ))}
         </div>
       </CardContent>
     </Card>
