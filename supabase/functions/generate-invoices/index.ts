@@ -6,19 +6,137 @@ const corsHeaders = {
     "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
-const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
+const ASAAS_BASE = "https://api.asaas.com/v3";
+
+async function asaasRequest(path: string, method: string, apiKey: string, body?: unknown) {
+  const res = await fetch(`${ASAAS_BASE}${path}`, {
+    method,
+    headers: { "Content-Type": "application/json", "access_token": apiKey },
+    ...(body ? { body: JSON.stringify(body) } : {}),
+  });
+  const text = await res.text();
+  let data: any;
+  try { data = text ? JSON.parse(text) : {}; } catch { return {}; }
+  if (!res.ok) {
+    console.error(`Asaas error (${res.status}):`, text.substring(0, 300));
+    throw new Error(data.errors?.[0]?.description || `HTTP ${res.status}`);
+  }
+  return data;
+}
 
 /**
- * Creates a real payment_links record for an invoice and updates the invoice
- * with the payment_link_id and payment_link_url.
+ * For a given invoice, try to find the Asaas payment invoiceUrl via the subscription.
+ * If found, use that URL. Otherwise, fall back to a direct Asaas charge creation.
+ */
+async function getOrCreateAsaasPaymentUrl(
+  supabase: ReturnType<typeof createClient>,
+  apiKey: string,
+  invoice: {
+    id: string;
+    description: string;
+    amount_cents: number;
+    company_id: string;
+    payment_method?: string;
+    due_date: string;
+    recurring_charge_id?: string;
+  }
+): Promise<string> {
+  // Try to get subscription ID from recurring charge
+  if (invoice.recurring_charge_id) {
+    const { data: charge } = await supabase
+      .from("company_recurring_charges")
+      .select("pagarme_plan_id, customer_document, customer_name, customer_email")
+      .eq("id", invoice.recurring_charge_id)
+      .single();
+
+    if (charge?.pagarme_plan_id) {
+      // Try to find a matching payment by due date in the Asaas subscription
+      try {
+        const payments = await asaasRequest(
+          `/subscriptions/${charge.pagarme_plan_id}/payments`,
+          "GET",
+          apiKey
+        );
+        if (payments.data?.length > 0) {
+          // Find payment matching this invoice's due date
+          const matching = payments.data.find((p: any) => p.dueDate === invoice.due_date);
+          if (matching?.invoiceUrl) {
+            return matching.invoiceUrl;
+          }
+          // If no exact match, try first pending payment
+          const pending = payments.data.find((p: any) =>
+            p.status === "PENDING" || p.status === "OVERDUE"
+          );
+          if (pending?.invoiceUrl) {
+            return pending.invoiceUrl;
+          }
+        }
+      } catch (e) {
+        console.error("Error fetching subscription payments:", e);
+      }
+
+      // If subscription exists but no matching payment found, create a standalone charge
+      try {
+        // Get the customer ID from the subscription
+        const sub = await asaasRequest(`/subscriptions/${charge.pagarme_plan_id}`, "GET", apiKey);
+        if (sub?.customer) {
+          let billingType = "PIX";
+          if (invoice.payment_method === "credit_card") billingType = "CREDIT_CARD";
+          else if (invoice.payment_method === "boleto") billingType = "BOLETO";
+
+          const payment = await asaasRequest("/payments", "POST", apiKey, {
+            customer: sub.customer,
+            billingType,
+            value: invoice.amount_cents / 100,
+            dueDate: invoice.due_date,
+            description: invoice.description,
+          });
+          if (payment?.invoiceUrl) {
+            return payment.invoiceUrl;
+          }
+        }
+      } catch (e) {
+        console.error("Error creating standalone Asaas payment:", e);
+      }
+    }
+  }
+
+  return "";
+}
+
+/**
+ * Creates a payment link record and associates it with an invoice.
+ * Now uses Asaas invoiceUrl directly when available.
  */
 async function createPaymentLinkForInvoice(
   supabase: ReturnType<typeof createClient>,
-  invoice: { id: string; description: string; amount_cents: number; company_id: string; payment_method?: string }
+  apiKey: string | null,
+  invoice: {
+    id: string;
+    description: string;
+    amount_cents: number;
+    company_id: string;
+    payment_method?: string;
+    due_date?: string;
+    recurring_charge_id?: string;
+  }
 ) {
-  const encodedDesc = encodeURIComponent(invoice.description || "Fatura");
+  let paymentUrl = "";
 
-  // 1. Insert a real payment_links record
+  // Try to get Asaas payment URL
+  if (apiKey && invoice.due_date && invoice.recurring_charge_id) {
+    try {
+      paymentUrl = await getOrCreateAsaasPaymentUrl(
+        supabase,
+        apiKey,
+        invoice as any
+      );
+    } catch (e) {
+      console.error("Error getting Asaas URL for invoice:", e);
+    }
+  }
+
+  // Save the URL (Asaas URL or empty) in payment_links
   const { data: linkData, error: linkError } = await supabase
     .from("payment_links")
     .insert({
@@ -26,7 +144,7 @@ async function createPaymentLinkForInvoice(
       amount_cents: invoice.amount_cents,
       payment_method: invoice.payment_method || "pix",
       installments: 1,
-      url: "pending", // placeholder, will update below
+      url: paymentUrl || "pending",
       company_id: invoice.company_id,
     })
     .select("id")
@@ -37,22 +155,21 @@ async function createPaymentLinkForInvoice(
     return;
   }
 
-  // 2. Build the canonical checkout URL using the payment_links.id
-  const fullUrl = `${PUBLISHED_URL}/#/checkout?link_id=${linkData.id}&amount=${invoice.amount_cents}&product=${encodedDesc}`;
+  // If we have an Asaas URL, update the link with it; otherwise keep "pending"
+  if (paymentUrl) {
+    await supabase.from("payment_links").update({ url: paymentUrl }).eq("id", linkData.id);
+  }
 
-  // 3. Update the payment_links record with the final URL
-  await supabase.from("payment_links").update({ url: fullUrl }).eq("id", linkData.id);
-
-  // 4. Update the invoice with the real payment_link_id and URL
+  // Update the invoice
   await supabase
     .from("company_invoices")
     .update({
       payment_link_id: linkData.id,
-      payment_link_url: fullUrl,
+      payment_link_url: paymentUrl || "",
     })
     .eq("id", invoice.id);
 
-  console.log(`[generate-invoices] Created payment_link ${linkData.id} for invoice ${invoice.id}`);
+  console.log(`[generate-invoices] Created payment_link ${linkData.id} for invoice ${invoice.id}, url=${paymentUrl ? "asaas" : "none"}`);
 }
 
 Deno.serve(async (req) => {
@@ -65,6 +182,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY") || null;
 
     const { recurring_charge_id, company_id, action } = await req.json();
 
@@ -119,14 +238,16 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Create real payment_links for each invoice
+      // Create payment links with Asaas URLs
       for (const inv of inserted || []) {
-        await createPaymentLinkForInvoice(supabase, {
+        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
           id: inv.id,
           description: inv.description,
           amount_cents: inv.amount_cents,
           company_id: inv.company_id,
           payment_method: inv.payment_method,
+          due_date: inv.due_date,
+          recurring_charge_id: inv.recurring_charge_id,
         });
       }
 
@@ -286,14 +407,16 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Create real payment_links for each invoice
+      // Create payment links with Asaas URLs
       for (const inv of inserted || []) {
-        await createPaymentLinkForInvoice(supabase, {
+        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
           id: inv.id,
           description: inv.description,
           amount_cents: inv.amount_cents,
           company_id: inv.company_id,
           payment_method: inv.payment_method,
+          due_date: inv.due_date,
+          recurring_charge_id: inv.recurring_charge_id,
         });
       }
 
@@ -343,13 +466,13 @@ Deno.serve(async (req) => {
     if (action === "backfill_payment_links") {
       const { data: invoicesWithoutLink } = await supabase
         .from("company_invoices")
-        .select("id, description, amount_cents, company_id, payment_method")
+        .select("id, description, amount_cents, company_id, payment_method, due_date, recurring_charge_id")
         .is("payment_link_id", null)
         .in("status", ["pending", "overdue"]);
 
       let fixed = 0;
       for (const inv of invoicesWithoutLink || []) {
-        await createPaymentLinkForInvoice(supabase, inv);
+        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, inv);
         fixed++;
       }
 
