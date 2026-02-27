@@ -22323,6 +22323,45 @@ export type Database = {
           },
         ]
       }
+      staff_financial_permissions: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          permission_key: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_key: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          permission_key?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_financial_permissions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_financial_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_menu_permissions: {
         Row: {
           created_at: string
