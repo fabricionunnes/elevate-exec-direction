@@ -55,6 +55,23 @@ export function StaffFinancialPermissions({ staffId, staffRole, hasFinancialMenu
   const handleSave = async () => {
     setSaving(true);
     try {
+      // Ensure the "financial" menu permission exists when saving sub-permissions
+      if (permissions.length > 0) {
+        const { data: existingMenu } = await supabase
+          .from("staff_menu_permissions")
+          .select("id")
+          .eq("staff_id", staffId)
+          .eq("menu_key", "financial")
+          .maybeSingle();
+        
+        if (!existingMenu) {
+          await supabase.from("staff_menu_permissions").insert({
+            staff_id: staffId,
+            menu_key: "financial",
+          });
+        }
+      }
+
       await supabase.from("staff_financial_permissions").delete().eq("staff_id", staffId);
       if (permissions.length > 0) {
         const { error } = await supabase.from("staff_financial_permissions").insert(
