@@ -32,6 +32,8 @@ import FinancialDashboardTab from "./financial/FinancialDashboardTab";
 import FinancialCategoriesTab from "./financial/FinancialCategoriesTab";
 import FinancialDRETab from "./financial/FinancialDRETab";
 import FinancialDFCTab from "./financial/FinancialDFCTab";
+import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
+import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 
 interface RecurringCharge {
   id: string;
@@ -82,18 +84,19 @@ interface Invoice {
 }
 
 const NAV_ITEMS = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, masterOnly: false },
-  { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, masterOnly: false },
-  { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, masterOnly: true },
-  { key: "categories", label: "Categorias", icon: FolderTree, masterOnly: true },
-  { key: "dre", label: "DRE", icon: FileText, masterOnly: true },
-  { key: "dfc", label: "DFC", icon: ArrowRightLeft, masterOnly: true },
-  { key: "banks", label: "Bancos", icon: Landmark, masterOnly: true },
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
+  { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
+  { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
+  { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
+  { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
+  { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
+  { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
 ];
 
 export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
+  const finPerms = useFinancialPermissions();
+  const [isLoading, setIsLoading] = useState(!false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
 
@@ -141,34 +144,19 @@ export default function AllRecurringChargesPage() {
     return new Date(now.getFullYear(), now.getMonth() + 1, 0);
   });
 
-  useEffect(() => { checkAccess(); }, []);
-
-  const checkAccess = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) { navigate("/onboarding/login"); return; }
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("role")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .single();
-      const role = (staff as any)?.role;
-      if (role === "admin" || role === "master") {
-        setUserRole(role);
+  useEffect(() => {
+    if (!finPerms.loading) {
+      if (finPerms.hasFinancialAccess) {
+        setUserRole(finPerms.userRole);
         setActiveTab("dashboard");
-        await loadData();
+        loadData().finally(() => setIsLoading(false));
       } else {
         setUserRole(null);
-        toast.error("Acesso negado. Este módulo é restrito a administradores.");
+        setIsLoading(false);
+        if (!finPerms.loading) toast.error("Acesso negado. Você não tem permissão para o módulo financeiro.");
       }
-    } catch (error) {
-      console.error(error);
-      toast.error("Erro ao verificar acesso");
-    } finally {
-      setIsLoading(false);
     }
-  };
+  }, [finPerms.loading, finPerms.hasFinancialAccess]);
 
   const loadData = async () => {
     try {
@@ -193,8 +181,9 @@ export default function AllRecurringChargesPage() {
     }
   };
 
-  const isMaster = userRole === "master";
-  const isAdmin = userRole === "admin" || isMaster;
+  const isMaster = finPerms.isMaster;
+  const isAdmin = isMaster || userRole === "admin";
+  const hasPerm = finPerms.hasFinancialPermission;
 
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -481,7 +470,7 @@ export default function AllRecurringChargesPage() {
     );
   }
 
-  const visibleNavItems = NAV_ITEMS.filter(item => !item.masterOnly || isMaster);
+  const visibleNavItems = NAV_ITEMS.filter(item => hasPerm(item.permKey));
 
   return (
     <div className="min-h-screen bg-background flex">
@@ -553,13 +542,15 @@ export default function AllRecurringChargesPage() {
                   <ArrowDownCircle className="h-5 w-5 text-primary" />
                   Contas a Receber
                 </h2>
-                <Button size="sm" onClick={() => {
-                  setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
-                  setReceivableDialog(true);
-                }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Lançamento
-                </Button>
+                {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_create) && (
+                  <Button size="sm" onClick={() => {
+                    setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
+                    setReceivableDialog(true);
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Lançamento
+                  </Button>
+                )}
               </div>
 
               {/* Filters */}
@@ -682,7 +673,7 @@ export default function AllRecurringChargesPage() {
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
-                                {isAdmin && (
+                                {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
                                   <div className="flex justify-end gap-1">
                                     {inv.status !== "paid" && inv.status !== "cancelled" ? (
                                       <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" disabled={isProcessing}
@@ -690,7 +681,7 @@ export default function AllRecurringChargesPage() {
                                         {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                         Baixa
                                       </Button>
-                                    ) : isMaster && inv.status === "paid" ? (
+                                    ) : hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && inv.status === "paid" ? (
                                       <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
                                         onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` })}>
                                         {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
@@ -712,20 +703,22 @@ export default function AllRecurringChargesPage() {
           )}
 
           {/* Contas a Pagar */}
-          {activeTab === "payables" && isMaster && (
+          {activeTab === "payables" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_view) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <ArrowUpCircle className="h-5 w-5 text-primary" />
                   Contas a Pagar
                 </h2>
-                <Button size="sm" onClick={() => {
-                  setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
-                  setPayableDialog(true);
-                }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Lançamento
-                </Button>
+                {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_create) && (
+                  <Button size="sm" onClick={() => {
+                    setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
+                    setPayableDialog(true);
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Lançamento
+                  </Button>
+                )}
               </div>
 
               <Card>
@@ -815,20 +808,20 @@ export default function AllRecurringChargesPage() {
           )}
 
           {/* Categories */}
-          {activeTab === "categories" && isMaster && <FinancialCategoriesTab />}
+          {activeTab === "categories" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_categories) && <FinancialCategoriesTab />}
 
           {/* DRE */}
-          {activeTab === "dre" && isMaster && (
+          {activeTab === "dre" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dre) && (
             <FinancialDRETab invoices={invoices} payables={payables} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
 
           {/* DFC */}
-          {activeTab === "dfc" && isMaster && (
+          {activeTab === "dfc" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_dfc) && (
             <FinancialDFCTab invoices={invoices} payables={payables} banks={banks} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
 
           {/* Bancos */}
-          {activeTab === "banks" && isMaster && (
+          {activeTab === "banks" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_banks) && (
             <div className="space-y-4">
               <div className="flex items-center justify-between">
                 <h2 className="text-lg font-semibold flex items-center gap-2">

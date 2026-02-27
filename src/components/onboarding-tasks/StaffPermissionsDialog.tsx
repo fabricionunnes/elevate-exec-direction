@@ -13,7 +13,8 @@ import { Badge } from "@/components/ui/badge";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Shield, Crown } from "lucide-react";
-import { STAFF_MENU_STRUCTURE, STAFF_ROLE_LABELS, StaffRole, isMasterRole } from "@/types/staffPermissions";
+import { STAFF_MENU_STRUCTURE, STAFF_ROLE_LABELS, StaffRole, isMasterRole, STAFF_MENU_KEYS } from "@/types/staffPermissions";
+import { StaffFinancialPermissions } from "./StaffFinancialPermissions";
 
 interface StaffMember {
   id: string;
@@ -208,6 +209,13 @@ export const StaffPermissionsDialog = ({
                     </div>
                   </div>
                 ))}
+
+                {/* Financial sub-permissions */}
+                <StaffFinancialPermissions
+                  staffId={staff.id}
+                  staffRole={staff.role}
+                  hasFinancialMenuAccess={permissions.includes(STAFF_MENU_KEYS.financial)}
+                />
               </div>
             )}
 

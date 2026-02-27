@@ -31,6 +31,38 @@ export const STAFF_MENU_KEYS = {
   admin_menu: "admin_menu",
 } as const;
 
+// Financial sub-permission keys
+export const FINANCIAL_PERMISSION_KEYS = {
+  fin_dashboard: "fin_dashboard",
+  fin_receivables_view: "fin_receivables_view",
+  fin_receivables_create: "fin_receivables_create",
+  fin_receivables_confirm: "fin_receivables_confirm",
+  fin_receivables_revert: "fin_receivables_revert",
+  fin_payables_view: "fin_payables_view",
+  fin_payables_create: "fin_payables_create",
+  fin_categories: "fin_categories",
+  fin_dre: "fin_dre",
+  fin_dfc: "fin_dfc",
+  fin_banks: "fin_banks",
+} as const;
+
+export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
+
+// Financial sub-permission structure for the dialog
+export const FINANCIAL_PERMISSION_STRUCTURE = [
+  { key: FINANCIAL_PERMISSION_KEYS.fin_dashboard, label: "Dashboard", description: "Visualizar dashboard financeiro", group: "Visão Geral" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_receivables_view, label: "Contas a Receber - Visualizar", description: "Ver faturas e contas a receber", group: "Contas a Receber" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_receivables_create, label: "Contas a Receber - Criar", description: "Lançar novas contas a receber", group: "Contas a Receber" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm, label: "Contas a Receber - Dar Baixa", description: "Confirmar pagamento (baixa manual)", group: "Contas a Receber" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_receivables_revert, label: "Contas a Receber - Estornar", description: "Reverter pagamentos confirmados", group: "Contas a Receber" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_payables_view, label: "Contas a Pagar - Visualizar", description: "Ver despesas e contas a pagar", group: "Contas a Pagar" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_payables_create, label: "Contas a Pagar - Criar", description: "Lançar novas contas a pagar", group: "Contas a Pagar" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_categories, label: "Categorias / Plano de Contas", description: "Gerenciar categorias financeiras", group: "Relatórios" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_dre, label: "DRE", description: "Visualizar Demonstrativo de Resultados", group: "Relatórios" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_dfc, label: "DFC", description: "Visualizar Demonstrativo de Fluxo de Caixa", group: "Relatórios" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_banks, label: "Bancos", description: "Gerenciar contas bancárias", group: "Administração" },
+] as const;
+
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];
 
 // Menu structure for permission configuration
