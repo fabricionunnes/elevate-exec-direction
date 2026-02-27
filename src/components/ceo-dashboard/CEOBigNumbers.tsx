@@ -86,7 +86,7 @@ export function CEOBigNumbers() {
         if (companiesError) throw companiesError;
 
         const clientCount = companies?.length || 0;
-        const totalMRR = calculateMRRFromCompanies(companies || []);
+        const { totalMRR, avgTicket, avgLTV } = calculateMRRMetrics(companies || []);
 
         // Fetch health scores for churn calculation
         const { data: healthScores } = await supabase
@@ -107,9 +107,6 @@ export function CEOBigNumbers() {
           ? ((csatData.reduce((sum, n) => sum + n.score, 0) / csatData.length) * 10).toFixed(0)
           : "N/A";
 
-        // Calculate average ticket
-        const avgTicket = clientCount > 0 ? (totalMRR / clientCount) : 0;
-
         // Format currency
         const formatCurrency = (value: number) => {
           return new Intl.NumberFormat("pt-BR", {
@@ -119,9 +116,6 @@ export function CEOBigNumbers() {
             maximumFractionDigits: 0,
           }).format(value);
         };
-
-        // Calculate LTV (12 months of MRR per client)
-        const avgLTV = clientCount > 0 ? (totalMRR / clientCount) * 12 : 0;
 
         setMetrics([
           {
