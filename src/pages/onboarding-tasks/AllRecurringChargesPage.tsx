@@ -124,8 +124,14 @@ export default function AllRecurringChargesPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
-  const [dateFrom, setDateFrom] = useState<Date | undefined>(undefined);
-  const [dateTo, setDateTo] = useState<Date | undefined>(undefined);
+  const [dateFrom, setDateFrom] = useState<Date | undefined>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth(), 1);
+  });
+  const [dateTo, setDateTo] = useState<Date | undefined>(() => {
+    const now = new Date();
+    return new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  });
 
   useEffect(() => {
     checkAccess();
@@ -315,13 +321,14 @@ export default function AllRecurringChargesPage() {
   };
 
   const resetFilters = () => {
+    const now = new Date();
     setSearchTerm("");
     setSelectedCompany("all");
     setSelectedStatus("all");
     setSelectedMonth("all");
     setSelectedRecurrence("all");
-    setDateFrom(undefined);
-    setDateTo(undefined);
+    setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
+    setDateTo(new Date(now.getFullYear(), now.getMonth() + 1, 0));
   };
 
   // Manual payment confirmation (baixa) with Asaas sync
