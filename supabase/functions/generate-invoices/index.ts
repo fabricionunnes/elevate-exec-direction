@@ -100,6 +100,7 @@ async function getOrCreateAsaasPaymentUrl(
             value: invoice.amount_cents / 100,
             dueDate: invoice.due_date,
             description: invoice.description,
+            notifications: { disabled: true },
           });
           if (payment?.invoiceUrl) {
             return payment.invoiceUrl;
