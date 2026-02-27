@@ -70,44 +70,53 @@ Deno.serve(async (req) => {
     const cleanDoc = customer_document?.replace(/\D/g, "") || "";
     let customerId: string | null = null;
 
+    // Fetch company address for Asaas customer
+    let compAddr: Record<string, string | null> = {};
+    if (company_id) {
+      const supabaseAddr = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: compData } = await supabaseAddr
+        .from("onboarding_companies")
+        .select("address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, phone")
+        .eq("id", company_id)
+        .single();
+      if (compData) compAddr = compData;
+    }
+
+    // Build customer payload with address and phone
+    const phoneToUse = (customer_phone || compAddr.phone || "").replace(/\D/g, "");
+    const customerPayload: Record<string, unknown> = {
+      name: customer_name,
+      email: customer_email,
+      notificationDisabled: true,
+    };
+    if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
+    if (phoneToUse) {
+      customerPayload.mobilePhone = phoneToUse;
+      customerPayload.phone = phoneToUse;
+    }
+    if (compAddr.address_zipcode) customerPayload.postalCode = compAddr.address_zipcode.replace(/\D/g, "");
+    if (compAddr.address) customerPayload.address = compAddr.address;
+    if (compAddr.address_number) customerPayload.addressNumber = compAddr.address_number;
+    if (compAddr.address_complement) customerPayload.complement = compAddr.address_complement;
+    if (compAddr.address_neighborhood) customerPayload.province = compAddr.address_neighborhood;
+
     if (cleanDoc) {
       const existing = await asaasRequest(`/customers?cpfCnpj=${cleanDoc}`, "GET", ASAAS_API_KEY);
       if (existing.data?.length > 0) {
         customerId = existing.data[0].id;
+        console.log("Found existing Asaas customer:", customerId, "- updating with address/phone");
+        try {
+          await asaasRequest(`/customers/${customerId}`, "PUT", ASAAS_API_KEY, customerPayload);
+        } catch (e) {
+          console.error("Error updating Asaas customer:", e);
+        }
       }
     }
 
     if (!customerId) {
-      const customerPayload: Record<string, unknown> = {
-        name: customer_name,
-        email: customer_email,
-        notificationDisabled: true,
-      };
-      if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
-      if (customer_phone) {
-        customerPayload.mobilePhone = customer_phone.replace(/\D/g, "");
-      }
-
-      // Fetch company address for Asaas customer
-      if (company_id) {
-        const supabaseAddr = createClient(
-          Deno.env.get("SUPABASE_URL")!,
-          Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
-        );
-        const { data: compAddr } = await supabaseAddr
-          .from("onboarding_companies")
-          .select("address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state")
-          .eq("id", company_id)
-          .single();
-        if (compAddr) {
-          if (compAddr.address_zipcode) customerPayload.postalCode = compAddr.address_zipcode.replace(/\D/g, "");
-          if (compAddr.address) customerPayload.address = compAddr.address;
-          if (compAddr.address_number) customerPayload.addressNumber = compAddr.address_number;
-          if (compAddr.address_complement) customerPayload.complement = compAddr.address_complement;
-          if (compAddr.address_neighborhood) customerPayload.province = compAddr.address_neighborhood;
-        }
-      }
-
       const newCustomer = await asaasRequest("/customers", "POST", ASAAS_API_KEY, customerPayload);
       customerId = newCustomer.id;
     }

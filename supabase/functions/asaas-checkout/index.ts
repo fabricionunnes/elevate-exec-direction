@@ -84,45 +84,40 @@ Deno.serve(async (req) => {
     const cleanDoc = customer_document?.replace(/\D/g, "") || "";
     let customerId: string | null = null;
 
+    // Build customer payload with address and phone
+    const phoneToUse = (customer_phone || companyAddress.phone || "").replace(/\D/g, "");
+    const customerPayload: Record<string, unknown> = {
+      name: customer_name,
+      email: customer_email,
+      notificationDisabled: true,
+    };
+    if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
+    if (phoneToUse) {
+      customerPayload.mobilePhone = phoneToUse;
+      customerPayload.phone = phoneToUse;
+    }
+    if (companyAddress.address_zipcode) customerPayload.postalCode = companyAddress.address_zipcode.replace(/\D/g, "");
+    if (companyAddress.address) customerPayload.address = companyAddress.address;
+    if (companyAddress.address_number) customerPayload.addressNumber = companyAddress.address_number;
+    if (companyAddress.address_complement) customerPayload.complement = companyAddress.address_complement;
+    if (companyAddress.address_neighborhood) customerPayload.province = companyAddress.address_neighborhood;
+
+    console.log("Customer payload for Asaas:", JSON.stringify(customerPayload));
+
     if (cleanDoc) {
-      // Try to find existing customer by CPF/CNPJ
       const existing = await asaasRequest(`/customers?cpfCnpj=${cleanDoc}`, "GET", ASAAS_API_KEY);
       if (existing.data?.length > 0) {
         customerId = existing.data[0].id;
-        console.log("Found existing Asaas customer:", customerId);
+        console.log("Found existing Asaas customer:", customerId, "- updating with address/phone");
+        try {
+          await asaasRequest(`/customers/${customerId}`, "PUT", ASAAS_API_KEY, customerPayload);
+        } catch (e) {
+          console.error("Error updating Asaas customer:", e);
+        }
       }
     }
 
     if (!customerId) {
-      // Create new customer
-      const customerPayload: Record<string, unknown> = {
-        name: customer_name,
-        email: customer_email,
-        notificationDisabled: true,
-      };
-      if (cleanDoc) {
-        customerPayload.cpfCnpj = cleanDoc;
-      }
-      const phoneToUse = customer_phone || companyAddress.phone || "";
-      if (phoneToUse) {
-        customerPayload.mobilePhone = phoneToUse.replace(/\D/g, "");
-      }
-      // Add address from company data
-      if (companyAddress.address_zipcode) {
-        customerPayload.postalCode = companyAddress.address_zipcode.replace(/\D/g, "");
-      }
-      if (companyAddress.address) {
-        customerPayload.address = companyAddress.address;
-      }
-      if (companyAddress.address_number) {
-        customerPayload.addressNumber = companyAddress.address_number;
-      }
-      if (companyAddress.address_complement) {
-        customerPayload.complement = companyAddress.address_complement;
-      }
-      if (companyAddress.address_neighborhood) {
-        customerPayload.province = companyAddress.address_neighborhood;
-      }
       const newCustomer = await asaasRequest("/customers", "POST", ASAAS_API_KEY, customerPayload);
       customerId = newCustomer.id;
       console.log("Created Asaas customer:", customerId);
