@@ -127,6 +127,11 @@ Deno.serve(async (req) => {
               console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
               matched = true;
 
+              // Send WhatsApp payment confirmation (non-blocking)
+              supabase.functions.invoke("notify-payment-confirmed", {
+                body: { invoice_id: invoice.id },
+              }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+
               // Check if last installment for auto-renew
               if (invoice.installment_number === invoice.total_installments) {
                 console.log(`[Asaas Webhook] Last installment paid, triggering auto-renew`);
@@ -174,6 +179,11 @@ Deno.serve(async (req) => {
                 .eq("id", invoice.id);
               matched = true;
 
+              // Send WhatsApp payment confirmation (non-blocking)
+              supabase.functions.invoke("notify-payment-confirmed", {
+                body: { invoice_id: invoice.id },
+              }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+
               if (invoice.installment_number === invoice.total_installments) {
                 await supabase.functions.invoke("generate-invoices", {
                   body: { action: "auto_renew", recurring_charge_id: recurringChargeId },
@@ -218,6 +228,21 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
       console.error("[Asaas Webhook] Invoice update error:", error);
     } else {
       console.log(`[Asaas Webhook] Invoice paid via payment_link_id ${order.payment_link_id}`);
+
+      // Send WhatsApp payment confirmation (non-blocking)
+      const { data: paidInvForNotif } = await supabase
+        .from("company_invoices")
+        .select("id")
+        .eq("payment_link_id", order.payment_link_id)
+        .eq("status", "paid")
+        .limit(1)
+        .single();
+
+      if (paidInvForNotif?.id) {
+        supabase.functions.invoke("notify-payment-confirmed", {
+          body: { invoice_id: paidInvForNotif.id },
+        }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+      }
 
       const { data: paidInvoice } = await supabase
         .from("company_invoices")

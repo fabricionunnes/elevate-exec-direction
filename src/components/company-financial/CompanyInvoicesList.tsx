@@ -151,6 +151,19 @@ export function CompanyInvoicesList({ companyId }: Props) {
       }
     });
 
+    // Send WhatsApp payment confirmation (non-blocking)
+    supabase.functions.invoke("notify-payment-confirmed", {
+      body: { invoice_id: invoiceId },
+    }).then(({ data, error: notifErr }) => {
+      if (notifErr) {
+        console.error("WhatsApp notify error:", notifErr);
+      } else if (data?.skipped) {
+        console.log("WhatsApp notify skipped:", data.reason);
+      } else {
+        toast.success("Cliente notificado via WhatsApp ✓");
+      }
+    });
+
     fetchInvoices();
   };
 
