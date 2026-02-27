@@ -1,5 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
+const PUBLISHED_URL = "https://elevate-exec-direction.lovable.app";
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -112,21 +114,32 @@ Deno.serve(async (req) => {
     const subscription = await asaasRequest("/subscriptions", "POST", ASAAS_API_KEY, subscriptionPayload);
     console.log("Asaas subscription created:", subscription.id);
 
-    // Step 5: Generate payment link for first payment
+    // Step 5: Create a local public payment link
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Get the first payment of the subscription to get its invoice URL
-    let invoiceUrl = "";
-    try {
-      const payments = await asaasRequest(`/subscriptions/${subscription.id}/payments`, "GET", ASAAS_API_KEY);
-      if (payments.data?.length > 0) {
-        invoiceUrl = payments.data[0].invoiceUrl || "";
-      }
-    } catch (e) {
-      console.error("Error getting subscription payments:", e);
+    const encodedDesc = encodeURIComponent(description);
+    let publicUrl = "";
+
+    // Create a payment_links record for the subscription
+    const { data: linkData } = await supabase
+      .from("payment_links")
+      .insert({
+        description,
+        amount_cents,
+        payment_method: payment_method || "pix",
+        installments: 1,
+        url: "pending",
+        company_id,
+      })
+      .select("id")
+      .single();
+
+    if (linkData) {
+      publicUrl = `${PUBLISHED_URL}/#/checkout?link_id=${linkData.id}&amount=${amount_cents}&product=${encodedDesc}`;
+      await supabase.from("payment_links").update({ url: publicUrl }).eq("id", linkData.id);
     }
 
     // Step 6: Update the recurring charge record
@@ -134,8 +147,9 @@ Deno.serve(async (req) => {
       await supabase
         .from("company_recurring_charges")
         .update({
-          pagarme_plan_id: subscription.id, // Reusing column for Asaas subscription ID
-          pagarme_link_url: invoiceUrl,
+          pagarme_plan_id: subscription.id,
+          pagarme_link_id: linkData?.id || null,
+          pagarme_link_url: publicUrl,
         } as any)
         .eq("id", recurring_charge_id);
     }
@@ -144,7 +158,7 @@ Deno.serve(async (req) => {
       JSON.stringify({
         success: true,
         subscription_id: subscription.id,
-        invoice_url: invoiceUrl,
+        payment_link_url: publicUrl,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
