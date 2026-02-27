@@ -23,7 +23,6 @@ import {
   RefreshCw,
   Filter,
   Download,
-  ArrowDownCircle,
   ArrowUpCircle,
   Calculator,
 } from "lucide-react";
@@ -63,14 +62,13 @@ export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [activeTab, setActiveTab] = useState("receivables");
+  const [activeTab, setActiveTab] = useState("recurring");
 
   // Recurring charges state
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
 
   // Financial entries state
-  const [receivables, setReceivables] = useState<FinancialEntry[]>([]);
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
 
   // Filters
@@ -102,9 +100,9 @@ export default function AllRecurringChargesPage() {
         setUserRole(role);
         // Set default tab based on role
         if (role === "master") {
-          setActiveTab("receivables");
+          setActiveTab("payables");
         } else {
-          setActiveTab("receivables");
+          setActiveTab("recurring");
         }
         await loadData();
       } else {
@@ -121,7 +119,7 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, receivablesRes, payablesRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes] = await Promise.all([
         supabase
           .from("company_recurring_charges")
           .select("*")
@@ -130,10 +128,6 @@ export default function AllRecurringChargesPage() {
           .from("onboarding_companies")
           .select("id, name")
           .order("name"),
-        supabase
-          .from("financial_receivables")
-          .select("*")
-          .order("due_date", { ascending: false }),
         supabase
           .from("financial_payables")
           .select("*")
@@ -151,7 +145,6 @@ export default function AllRecurringChargesPage() {
 
       setCharges(enriched);
       setCompanies(companiesRes.data || []);
-      setReceivables((receivablesRes.data as any) || []);
       setPayables((payablesRes.data as any) || []);
     } catch (error) {
       console.error(error);
@@ -195,20 +188,6 @@ export default function AllRecurringChargesPage() {
       return true;
     });
   }, [charges, searchTerm, selectedCompany, selectedStatus, selectedMonth, selectedRecurrence]);
-
-  const filteredReceivables = useMemo(() => {
-    return receivables.filter(r => {
-      if (searchTerm) {
-        const s = searchTerm.toLowerCase();
-        if (!r.description?.toLowerCase().includes(s)) return false;
-      }
-      if (selectedStatus === "pending" && r.status !== "pending") return false;
-      if (selectedStatus === "paid" && r.status !== "paid") return false;
-      if (selectedStatus === "overdue" && r.status !== "overdue") return false;
-      if (selectedMonth !== "all" && r.reference_month !== selectedMonth) return false;
-      return true;
-    });
-  }, [receivables, searchTerm, selectedStatus, selectedMonth]);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -258,12 +237,7 @@ export default function AllRecurringChargesPage() {
 
   const exportCSV = () => {
     let rows: string[][] = [];
-    if (activeTab === "receivables") {
-      rows = [["Descrição", "Valor", "Vencimento", "Status", "Mês Ref", "Pago em"]];
-      filteredReceivables.forEach(r => {
-        rows.push([r.description, formatCurrency(r.amount), r.due_date ? format(new Date(r.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(r.status), r.reference_month, r.paid_at ? format(new Date(r.paid_at), "dd/MM/yyyy") : ""]);
-      });
-    } else if (activeTab === "payables") {
+    if (activeTab === "payables") {
       rows = [["Descrição", "Valor", "Vencimento", "Status", "Mês Ref", "Pago em"]];
       filteredPayables.forEach(p => {
         rows.push([p.description, formatCurrency(p.amount), p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(p.status), p.reference_month, p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy") : ""]);
@@ -287,14 +261,13 @@ export default function AllRecurringChargesPage() {
   // Financial months for filter
   const financialMonths = useMemo(() => {
     const set = new Set<string>();
-    receivables.forEach(r => { if (r.reference_month) set.add(r.reference_month); });
     payables.forEach(p => { if (p.reference_month) set.add(p.reference_month); });
     charges.forEach(ch => {
       if (ch.created_at) set.add(ch.created_at.substring(0, 7));
       if (ch.next_billing_date) set.add(ch.next_billing_date.substring(0, 7));
     });
     return Array.from(set).sort().reverse();
-  }, [receivables, payables, charges]);
+  }, [payables, charges]);
 
   if (isLoading) {
     return (
@@ -362,12 +335,6 @@ export default function AllRecurringChargesPage() {
       <main className="container mx-auto px-4 py-6 space-y-6">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); resetFilters(); }}>
           <TabsList>
-            {isAdmin && (
-              <TabsTrigger value="receivables" className="gap-2">
-                <ArrowDownCircle className="h-4 w-4" />
-                Contas a Receber
-              </TabsTrigger>
-            )}
             {isMaster && (
               <TabsTrigger value="payables" className="gap-2">
                 <ArrowUpCircle className="h-4 w-4" />
@@ -466,80 +433,6 @@ export default function AllRecurringChargesPage() {
               </div>
             </CardContent>
           </Card>
-
-          {/* Contas a Receber */}
-          {isAdmin && (
-            <TabsContent value="receivables" className="space-y-4">
-              <div className="grid gap-4 md:grid-cols-3">
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Total a Receber</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-emerald-600">
-                      {formatCurrency(filteredReceivables.filter(r => r.status !== "paid").reduce((s, r) => s + r.amount, 0))}
-                    </div>
-                    <p className="text-xs text-muted-foreground">{filteredReceivables.filter(r => r.status !== "paid").length} pendentes</p>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Recebido</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold">
-                      {formatCurrency(filteredReceivables.filter(r => r.status === "paid").reduce((s, r) => s + (r.paid_amount || r.amount), 0))}
-                    </div>
-                  </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardTitle className="text-sm text-muted-foreground">Vencidos</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <div className="text-2xl font-bold text-destructive">
-                      {formatCurrency(filteredReceivables.filter(r => r.status === "overdue").reduce((s, r) => s + r.amount, 0))}
-                    </div>
-                  </CardContent>
-                </Card>
-              </div>
-
-              <Card>
-                <CardContent className="p-0">
-                  <div className="overflow-x-auto">
-                    <Table>
-                      <TableHeader>
-                        <TableRow>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Mês Ref</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pago em</TableHead>
-                        </TableRow>
-                      </TableHeader>
-                      <TableBody>
-                        {filteredReceivables.length === 0 ? (
-                          <TableRow>
-                            <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell>
-                          </TableRow>
-                        ) : filteredReceivables.map(r => (
-                          <TableRow key={r.id}>
-                            <TableCell className="font-medium max-w-[250px] truncate">{r.description}</TableCell>
-                            <TableCell className="text-right font-semibold">{formatCurrency(r.amount)}</TableCell>
-                            <TableCell>{r.due_date ? format(new Date(r.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
-                            <TableCell>{r.reference_month}</TableCell>
-                            <TableCell><Badge variant={statusVariant(r.status)}>{statusLabel(r.status)}</Badge></TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{r.paid_at ? format(new Date(r.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
-                          </TableRow>
-                        ))}
-                      </TableBody>
-                    </Table>
-                  </div>
-                </CardContent>
-              </Card>
-            </TabsContent>
-          )}
 
           {/* Contas a Pagar - Master only */}
           {isMaster && (
