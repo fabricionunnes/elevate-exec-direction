@@ -2048,24 +2048,30 @@ export const KPIDashboardTab = ({
       </div>
 
       {/* Sales Funnel Chart - Always show */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Filter className="h-4 w-4" />
-              Funil de Vendas
-            </CardTitle>
+      <Card className="relative overflow-hidden border-0 shadow-xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/[0.03] via-transparent to-purple-900/[0.04] dark:from-violet-800/20 dark:via-transparent dark:to-purple-900/15" />
+        <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-radial from-violet-500/[0.07] to-transparent rounded-full blur-3xl" />
+        <CardHeader className="relative pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20">
+                <Filter className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Funil de Vendas</CardTitle>
+                <p className="text-xs text-muted-foreground">Conversão entre etapas</p>
+              </div>
+            </div>
             {salesFunnel.hasData && salesFunnel.overallConversion !== undefined && (
-              <Badge variant="outline" className="gap-1">
-                Conversão Geral: {salesFunnel.overallConversion.toFixed(1)}%
+              <Badge variant="outline" className="gap-1.5 px-3 py-1 text-sm font-bold border-0 shadow-sm bg-violet-500/10 text-violet-700 dark:text-violet-400">
+                {salesFunnel.overallConversion.toFixed(1)}% conversão
               </Badge>
             )}
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           {salesFunnel.hasData ? (
             <div className="grid gap-6 lg:grid-cols-2">
-              {/* Funnel Chart */}
               <ResponsiveContainer width="100%" height={300}>
                 <FunnelChart>
                   <Tooltip 
@@ -2074,57 +2080,39 @@ export const KPIDashboardTab = ({
                       props.payload.kpiName || name
                     ]}
                   />
-                  <Funnel
-                    dataKey="value"
-                    data={salesFunnel.data}
-                    isAnimationActive
-                  >
+                  <Funnel dataKey="value" data={salesFunnel.data} isAnimationActive>
                     {salesFunnel.data.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.fill} />
                     ))}
-                    <LabelList 
-                      position="right" 
-                      dataKey="name" 
-                      fill="#666" 
-                      stroke="none"
-                    />
-                    <LabelList 
-                      position="center" 
-                      dataKey="value" 
-                      fill="#fff" 
-                      stroke="none"
-                      formatter={(value: number) => value.toLocaleString("pt-BR")}
-                    />
+                    <LabelList position="right" dataKey="name" fill="#666" stroke="none" />
+                    <LabelList position="center" dataKey="value" fill="#fff" stroke="none" formatter={(value: number) => value.toLocaleString("pt-BR")} />
                   </Funnel>
                 </FunnelChart>
               </ResponsiveContainer>
-              
-              {/* Conversion Rates Detail */}
-              <div className="space-y-3">
-                <h4 className="font-medium text-sm text-muted-foreground">Taxas de Conversão</h4>
+              <div className="space-y-2">
+                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Taxas de Conversão</p>
                 {salesFunnel.data.map((stage, index) => (
-                  <div key={stage.name} className="flex items-center justify-between p-3 rounded-lg bg-muted/50">
-                    <div className="flex items-center gap-3">
-                      <div 
-                        className="w-3 h-3 rounded-full" 
-                        style={{ backgroundColor: stage.fill }}
-                      />
-                      <div>
-                        <p className="font-medium text-sm">{stage.name}</p>
-                        <p className="text-xs text-muted-foreground">{stage.kpiName}</p>
+                  <div key={stage.name} className="relative overflow-hidden rounded-xl border p-3 bg-card/60 backdrop-blur-sm transition-all hover:shadow-md">
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: stage.fill }} />
+                        <div>
+                          <p className="font-medium text-sm">{stage.name}</p>
+                          <p className="text-[10px] text-muted-foreground">{stage.kpiName}</p>
+                        </div>
                       </div>
-                    </div>
-                    <div className="text-right">
-                      <p className="font-bold">{stage.value.toLocaleString("pt-BR")}</p>
-                      {index > 0 && (
-                        <p className={`text-xs ${
-                          stage.conversionRate >= 50 ? 'text-green-600' :
-                          stage.conversionRate >= 20 ? 'text-amber-600' :
-                          'text-destructive'
-                        }`}>
-                          {stage.conversionRate.toFixed(1)}% do anterior
-                        </p>
-                      )}
+                      <div className="text-right">
+                        <p className="font-bold text-sm">{stage.value.toLocaleString("pt-BR")}</p>
+                        {index > 0 && (
+                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-0 font-bold ${
+                            stage.conversionRate >= 50 ? 'bg-emerald-500/10 text-emerald-600' :
+                            stage.conversionRate >= 20 ? 'bg-amber-500/10 text-amber-600' :
+                            'bg-red-500/10 text-red-600'
+                          }`}>
+                            {stage.conversionRate.toFixed(1)}%
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 ))}
@@ -2140,40 +2128,37 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
-      {/* Target vs Realized Chart - Prioritizes Main Goal KPIs */}
-      <Card>
-        <CardHeader>
-          <div className="flex items-center justify-between">
-            <CardTitle className="text-base flex items-center gap-2">
-              <Target className="h-4 w-4" />
-              Meta x Realizado
-            </CardTitle>
-            <Badge variant="outline" className="gap-1">
+      {/* Target vs Realized Chart */}
+      <Card className="relative overflow-hidden border-0 shadow-xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-teal-900/[0.03] via-transparent to-cyan-900/[0.04] dark:from-teal-800/20 dark:via-transparent dark:to-cyan-900/15" />
+        <CardHeader className="relative pb-3">
+          <div className="flex items-center justify-between flex-wrap gap-2">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/20">
+                <Target className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Meta x Realizado</CardTitle>
+                <p className="text-xs text-muted-foreground">Evolução cumulativa</p>
+              </div>
+            </div>
+            <Badge variant="outline" className="gap-1 border-0 bg-muted/60 px-3 py-1 text-xs font-medium">
               {targetVsRealized.kpiType === "monetary" ? (
-                <>
-                  <DollarSign className="h-3 w-3" />
-                  Faturamento
-                </>
+                <><DollarSign className="h-3 w-3" /> Faturamento</>
               ) : targetVsRealized.kpiType === "percentage" ? (
-                <>
-                  <Percent className="h-3 w-3" />
-                  Percentual
-                </>
+                <><Percent className="h-3 w-3" /> Percentual</>
               ) : (
-                <>
-                  <Hash className="h-3 w-3" />
-                  Quantidade
-                </>
+                <><Hash className="h-3 w-3" /> Quantidade</>
               )}
             </Badge>
           </div>
         </CardHeader>
-        <CardContent>
+        <CardContent className="relative">
           {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 ? (
             <ResponsiveContainer width="100%" height={350}>
               <LineChart data={targetVsRealized.data}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="date" />
+                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                 <YAxis 
                   tickFormatter={(value) => 
                     targetVsRealized.kpiType === "monetary" 
@@ -2182,6 +2167,7 @@ export const KPIDashboardTab = ({
                         ? `${value.toFixed(0)}%`
                         : value.toLocaleString("pt-BR")
                   }
+                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false}
                 />
                 <Tooltip 
                   formatter={(value: number, name: string) => [
@@ -2190,16 +2176,7 @@ export const KPIDashboardTab = ({
                   ]}
                 />
                 <Legend />
-                {/* Realized line */}
-                <Line 
-                  type="monotone" 
-                  dataKey="realizado" 
-                  name="Realizado"
-                  stroke="hsl(var(--primary))" 
-                  strokeWidth={3}
-                  dot={{ fill: "hsl(var(--primary))" }}
-                />
-                {/* Target level lines */}
+                <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
                 {targetVsRealized.targetLevels.map((levelName, index) => (
                   <Line 
                     key={levelName}
@@ -2224,27 +2201,35 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
-      {/* Charts Row */}
+      {/* Charts Row - Daily Evolution + Ranking */}
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Daily Evolution Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base">Evolução Diária</CardTitle>
+        <Card className="relative overflow-hidden border-0 shadow-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-sky-900/[0.03] via-transparent to-blue-900/[0.04] dark:from-sky-800/20 dark:via-transparent dark:to-blue-900/15" />
+          <CardHeader className="relative pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/20">
+                <TrendingUp className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Evolução Diária</CardTitle>
+                <p className="text-xs text-muted-foreground">Desempenho dia a dia</p>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             {dailyData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <LineChart data={dailyData}>
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     formatter={(value: number) => [
                       selectedKpiData ? formatValue(value, selectedKpiData.kpi_type) : value.toLocaleString("pt-BR"),
                       "Valor"
                     ]}
                   />
-                  <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2} />
+                  <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))", stroke: "#fff", strokeWidth: 2 }} />
                 </LineChart>
               </ResponsiveContainer>
             ) : (
@@ -2255,28 +2240,33 @@ export const KPIDashboardTab = ({
           </CardContent>
         </Card>
 
-        {/* Ranking Chart */}
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-base flex items-center gap-2">
-              <Users className="h-4 w-4" />
-              Ranking de Vendedores
-            </CardTitle>
+        <Card className="relative overflow-hidden border-0 shadow-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-orange-900/[0.03] via-transparent to-rose-900/[0.04] dark:from-orange-800/20 dark:via-transparent dark:to-rose-900/15" />
+          <CardHeader className="relative pb-3">
+            <div className="flex items-center gap-3">
+              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/20">
+                <Users className="h-4 w-4" />
+              </div>
+              <div>
+                <CardTitle className="text-base">Ranking de Vendedores</CardTitle>
+                <p className="text-xs text-muted-foreground">Por performance no período</p>
+              </div>
+            </div>
           </CardHeader>
-          <CardContent>
+          <CardContent className="relative">
             {rankingData.length > 0 && rankingData.some(r => r.total > 0) ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={rankingData} layout="vertical">
-                  <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis type="number" />
-                  <YAxis dataKey="name" type="category" width={100} />
+                  <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis dataKey="name" type="category" width={100} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
                   <Tooltip 
                     formatter={(value: number) => [
                       selectedKpiData ? formatValue(value, selectedKpiData.kpi_type) : value.toLocaleString("pt-BR"),
                       "Total"
                     ]}
                   />
-                  <Bar dataKey="total" fill="hsl(var(--primary))" />
+                  <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
                 </BarChart>
               </ResponsiveContainer>
             ) : (
@@ -2288,56 +2278,74 @@ export const KPIDashboardTab = ({
         </Card>
       </div>
 
-      {/* Detailed Table */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Detalhamento por KPI</CardTitle>
+      {/* Detailed KPI Table */}
+      <Card className="relative overflow-hidden border-0 shadow-xl">
+        <div className="absolute inset-0 bg-gradient-to-br from-slate-900/[0.03] via-transparent to-gray-900/[0.04] dark:from-slate-800/20 dark:via-transparent dark:to-gray-900/15" />
+        <CardHeader className="relative pb-3">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-slate-500 to-gray-600 text-white shadow-lg shadow-slate-500/20">
+              <Layers className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Detalhamento por KPI</CardTitle>
+              <p className="text-xs text-muted-foreground">{kpis.length} indicador{kpis.length !== 1 ? "es" : ""}</p>
+            </div>
+          </div>
         </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>KPI</TableHead>
-                <TableHead>Tipo</TableHead>
-                <TableHead className="text-right">Realizado</TableHead>
-                <TableHead className="text-right">Meta</TableHead>
-                <TableHead className="text-right">% Atingimento</TableHead>
-                <TableHead>Status</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {kpis.map(kpi => {
-                const summary = getKpiSummary(kpi);
-                const isOnTrack = summary.percentage >= 100;
-                
-                return (
-                  <TableRow key={kpi.id}>
-                    <TableCell className="font-medium">{kpi.name}</TableCell>
-                    <TableCell>
-                      <Badge variant="outline" className="gap-1">
-                        {getKpiIcon(kpi.kpi_type)}
-                        {kpi.is_individual ? "Individual" : "Coletivo"}
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-right font-medium">
-                      {formatValue(summary.total, kpi.kpi_type)}
-                    </TableCell>
-                    <TableCell className="text-right text-muted-foreground">
-                      {formatValue(summary.target, kpi.kpi_type)}
-                    </TableCell>
-                    <TableCell className="text-right font-bold">
-                      {summary.percentage.toFixed(1)}%
-                    </TableCell>
-                    <TableCell>
-                      <Badge variant={isOnTrack ? "default" : summary.percentage >= 80 ? "secondary" : "destructive"}>
-                        {isOnTrack ? "Meta Batida" : summary.percentage >= 80 ? "Próximo" : "Abaixo"}
-                      </Badge>
-                    </TableCell>
-                  </TableRow>
-                );
-              })}
-            </TableBody>
-          </Table>
+        <CardContent className="relative space-y-2">
+          {kpis.map((kpi, idx) => {
+            const summary = getKpiSummary(kpi);
+            const isOnTrack = summary.percentage >= 100;
+            return (
+              <div
+                key={kpi.id}
+                className={`relative overflow-hidden rounded-xl border p-3 transition-all hover:shadow-md ${
+                  isOnTrack ? "border-emerald-500/20 bg-emerald-500/[0.03]" : "bg-card/60 backdrop-blur-sm"
+                }`}
+              >
+                <div className="flex items-center justify-between gap-3 mb-2">
+                  <div className="flex items-center gap-2 min-w-0">
+                    {getKpiIcon(kpi.kpi_type)}
+                    <p className="text-sm font-semibold truncate">{kpi.name}</p>
+                    <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                      {kpi.is_individual ? "Individual" : "Coletivo"}
+                    </Badge>
+                  </div>
+                  <Badge
+                    variant="outline"
+                    className={`text-[10px] px-2 py-0.5 border-0 font-bold shrink-0 ${
+                      isOnTrack
+                        ? "bg-emerald-500/15 text-emerald-600"
+                        : summary.percentage >= 80
+                        ? "bg-amber-500/15 text-amber-600"
+                        : "bg-red-500/10 text-red-600"
+                    }`}
+                  >
+                    {isOnTrack ? "✓ Meta Batida" : summary.percentage >= 80 ? "Próximo" : "Abaixo"}
+                  </Badge>
+                </div>
+
+                <div className="relative h-2 rounded-full bg-muted/60 overflow-hidden mb-2">
+                  <div
+                    className={`h-full rounded-full transition-all ${
+                      isOnTrack
+                        ? "bg-gradient-to-r from-emerald-400 to-emerald-600"
+                        : summary.percentage >= 80
+                        ? "bg-gradient-to-r from-amber-400 to-amber-500"
+                        : "bg-gradient-to-r from-red-400 to-red-500"
+                    }`}
+                    style={{ width: `${Math.min(summary.percentage, 100)}%` }}
+                  />
+                </div>
+
+                <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                  <span>Realizado: <strong className="text-foreground">{formatValue(summary.total, kpi.kpi_type)}</strong></span>
+                  <span>Meta: {formatValue(summary.target, kpi.kpi_type)}</span>
+                  <span className="font-bold text-foreground">{summary.percentage.toFixed(1)}%</span>
+                </div>
+              </div>
+            );
+          })}
         </CardContent>
       </Card>
 
