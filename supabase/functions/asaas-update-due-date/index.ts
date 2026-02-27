@@ -115,30 +115,49 @@ Deno.serve(async (req) => {
         );
 
         if (payments.data?.length) {
+          console.log(`Found ${payments.data.length} payments for subscription ${subscriptionId}`);
+          console.log(`Looking for: pagarme_charge_id=${inv.pagarme_charge_id}, oldDueDate=${oldDueDate}, amount=${inv.amount_cents / 100}`);
+          
+          // Log all payments for debugging
+          payments.data.forEach((p: any) => {
+            console.log(`  Payment: id=${p.id}, dueDate=${p.dueDate}, status=${p.status}, value=${p.value}`);
+          });
+
           // Find matching payment: direct match by stored ID, or by old due date
           let targetPayment = null;
 
           // Try stored Asaas payment ID first
           if (inv.pagarme_charge_id) {
             targetPayment = payments.data.find((p: any) => p.id === inv.pagarme_charge_id);
+            if (targetPayment) console.log(`Matched by pagarme_charge_id: ${targetPayment.id}`);
           }
 
-          // Fallback: match by old due date
+          // Fallback: match by old due date (any non-paid/cancelled status)
           if (!targetPayment) {
             targetPayment = payments.data.find((p: any) =>
-              p.dueDate === oldDueDate && (p.status === "PENDING" || p.status === "OVERDUE")
+              p.dueDate === oldDueDate && !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
             );
+            if (targetPayment) console.log(`Matched by oldDueDate: ${targetPayment.id}`);
           }
 
-          // Fallback: match by amount and pending status
+          // Fallback: match by new due date (in case it was already partially updated)
+          if (!targetPayment) {
+            targetPayment = payments.data.find((p: any) =>
+              p.dueDate === new_due_date && !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status)
+            );
+            if (targetPayment) console.log(`Matched by new_due_date: ${targetPayment.id}`);
+          }
+
+          // Fallback: match by amount and any pending-like status
           if (!targetPayment) {
             const invoiceAmount = inv.amount_cents / 100;
             targetPayment = payments.data
               .filter((p: any) =>
-                (p.status === "PENDING" || p.status === "OVERDUE") &&
+                !["RECEIVED", "CONFIRMED", "REFUNDED", "CANCELLED"].includes(p.status) &&
                 Math.abs(p.value - invoiceAmount) < 0.01
               )
               .sort((a: any, b: any) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())[0];
+            if (targetPayment) console.log(`Matched by amount fallback: ${targetPayment.id}`);
           }
 
           if (targetPayment) {
