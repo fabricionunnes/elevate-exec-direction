@@ -104,7 +104,16 @@ export const SalespersonDailyGoalCard = ({
         .eq("month_year", monthYear)
         .in("kpi_id", kpiIds);
 
-      // Calculate total target: prefer salesperson-specific, then company-level
+      // Count active salespeople to divide company target when no individual target
+      const { count: salespeopleCount } = await supabase
+        .from("company_salespeople")
+        .select("id", { count: "exact", head: true })
+        .eq("company_id", companyId)
+        .eq("is_active", true);
+
+      const divisor = Math.max(salespeopleCount || 1, 1);
+
+      // Calculate total target: prefer salesperson-specific, then company-level / number of salespeople
       let totalTarget = 0;
       kpis.forEach((kpi) => {
         const spTargets = (targets || []).filter(
@@ -114,6 +123,7 @@ export const SalespersonDailyGoalCard = ({
           const meta = spTargets.find((t) => t.level_name === "Meta");
           totalTarget += meta?.target_value ?? spTargets[0].target_value;
         } else {
+          // No individual target: divide company target by number of salespeople
           const companyTargets = (targets || []).filter(
             (t) =>
               t.kpi_id === kpi.id &&
@@ -123,9 +133,9 @@ export const SalespersonDailyGoalCard = ({
           );
           if (companyTargets.length > 0) {
             const meta = companyTargets.find((t) => t.level_name === "Meta");
-            totalTarget += meta?.target_value ?? companyTargets[0].target_value;
+            totalTarget += (meta?.target_value ?? companyTargets[0].target_value) / divisor;
           } else {
-            totalTarget += kpi.target_value;
+            totalTarget += kpi.target_value / divisor;
           }
         }
       });
