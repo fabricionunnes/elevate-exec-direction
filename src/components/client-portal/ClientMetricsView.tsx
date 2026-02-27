@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Calculator, DollarSign, Target, TrendingUp, Trophy, History, Check, X, Pencil, TrendingDown, Lock } from "lucide-react";
+import { CACCalculatorCard } from "./CACCalculatorCard";
 import { format, getDaysInMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
@@ -219,6 +220,9 @@ export const ClientMetricsView = ({ projectId }: ClientMetricsViewProps) => {
           showAIAnalysis={false}
         />
       )}
+
+      {/* CAC Calculator */}
+      <CACCalculatorCard projectId={projectId} />
 
       {/* Meta do Mês Atual */}
       <Card className="overflow-hidden">
