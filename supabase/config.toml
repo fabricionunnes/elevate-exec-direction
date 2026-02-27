@@ -239,3 +239,12 @@ verify_jwt = false
 
 [functions.pagarme-order-status]
 verify_jwt = false
+
+[functions.asaas-checkout]
+verify_jwt = false
+
+[functions.asaas-subscription]
+verify_jwt = false
+
+[functions.asaas-cancel-subscription]
+verify_jwt = false

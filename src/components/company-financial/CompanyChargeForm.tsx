@@ -45,17 +45,17 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
     setResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("pagarme-checkout", {
+      const { data, error } = await supabase.functions.invoke("asaas-checkout", {
         body: {
           customer_name: form.customerName,
           customer_email: form.customerEmail,
           customer_phone: form.customerPhone,
           customer_document: form.customerDocument,
-          product_id: `company-${companyId}`,
           product_name: form.description,
           amount_cents: Math.round(form.amount * 100),
           payment_method: form.paymentMethod,
           installments: form.installments,
+          company_id: companyId,
         },
       });
 
@@ -90,7 +90,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           <CreditCard className="h-5 w-5 text-primary" />
           Gerar Cobrança Avulsa
         </CardTitle>
-        <CardDescription>Cobre via PIX, cartão de crédito ou boleto usando Pagar.me</CardDescription>
+        <CardDescription>Cobre via PIX, cartão de crédito ou boleto usando Asaas</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">

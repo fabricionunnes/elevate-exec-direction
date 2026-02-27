@@ -135,9 +135,9 @@ export function CompanyRecurringCharges({
 
       const chargeId = (insertedData as any)?.id;
 
-      // Step 2: Create plan + subscription payment link on Pagar.me
-      toast.info("Criando assinatura na Pagar.me...");
-      const { data: subData, error: subError } = await supabase.functions.invoke("pagarme-subscription", {
+      // Step 2: Create subscription on Asaas
+      toast.info("Criando assinatura no Asaas...");
+      const { data: subData, error: subError } = await supabase.functions.invoke("asaas-subscription", {
         body: {
           description: form.description,
           amount_cents: Math.round(form.amount * 100),
@@ -148,16 +148,17 @@ export function CompanyRecurringCharges({
           customer_document: form.customerDocument || null,
           company_id: companyId,
           recurring_charge_id: chargeId,
+          next_charge_date: form.nextChargeDate,
         },
       });
 
       if (subError) {
-        console.error("Pagar.me subscription error:", subError);
-        toast.warning("Recorrência salva, mas houve erro ao criar na Pagar.me: " + (subError.message || "erro desconhecido"));
+        console.error("Asaas subscription error:", subError);
+        toast.warning("Recorrência salva, mas houve erro ao criar no Asaas: " + (subError.message || "erro desconhecido"));
       } else if (subData?.error) {
-        toast.warning("Recorrência salva, mas houve erro na Pagar.me: " + subData.error);
+        toast.warning("Recorrência salva, mas houve erro no Asaas: " + subData.error);
       } else {
-        toast.success("Recorrência criada com link de pagamento!");
+        toast.success("Recorrência criada com sucesso no Asaas!");
       }
 
       // Step 3: Auto-generate invoices/installments
@@ -188,15 +189,15 @@ export function CompanyRecurringCharges({
   const toggleActive = async (charge: RecurringCharge) => {
     const newActive = !charge.is_active;
 
-    // If deactivating and has a Pagar.me plan, cancel it
+    // If deactivating and has an Asaas subscription, cancel it
     if (!newActive && charge.pagarme_plan_id) {
-      toast.info("Cancelando assinatura na Pagar.me...");
+      toast.info("Cancelando assinatura no Asaas...");
       try {
-        const { data, error } = await supabase.functions.invoke("pagarme-cancel-subscription", {
-          body: { plan_id: charge.pagarme_plan_id },
+        const { data, error } = await supabase.functions.invoke("asaas-cancel-subscription", {
+          body: { subscription_id: charge.pagarme_plan_id },
         });
         if (error) console.error("Cancel error:", error);
-        else toast.success("Assinatura cancelada na Pagar.me");
+        else toast.success("Assinatura cancelada no Asaas");
       } catch (err) {
         console.error("Cancel subscription error:", err);
       }
@@ -275,7 +276,7 @@ export function CompanyRecurringCharges({
               <RefreshCw className="h-5 w-5 text-primary" />
               Cobranças Recorrentes
             </CardTitle>
-            <CardDescription>Configure cobranças automáticas via Pagar.me (assinatura)</CardDescription>
+            <CardDescription>Configure cobranças automáticas via Asaas</CardDescription>
           </div>
           <Dialog open={showDialog} onOpenChange={setShowDialog}>
             <DialogTrigger asChild>
@@ -354,7 +355,7 @@ export function CompanyRecurringCharges({
                 </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                  Criar Recorrência na Pagar.me
+                  Criar Recorrência no Asaas
                 </Button>
               </div>
             </DialogContent>
@@ -381,7 +382,7 @@ export function CompanyRecurringCharges({
                       {charge.is_active ? "Ativo" : "Pausado"}
                     </Badge>
                     {charge.pagarme_link_url && (
-                      <Badge variant="outline" className="text-xs">Pagar.me ✓</Badge>
+                      <Badge variant="outline" className="text-xs">Asaas ✓</Badge>
                     )}
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
