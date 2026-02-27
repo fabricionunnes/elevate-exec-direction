@@ -227,26 +227,48 @@ export const DailyGoalCard = ({
     };
   }, [dateRange.start, includeSaturday, includeSunday, includeHolidays]);
 
+  // Count active salespeople for dividing company target
+  const activeSalespeopleCount = useMemo(() => {
+    return Math.max(salespeople.filter((sp) => sp.is_active).length, 1);
+  }, [salespeople]);
+
   // Get target for a KPI + optional salesperson
   const getTarget = (kpiId: string, salespersonId?: string): number => {
-    let targets: MonthlyTarget[] = [];
-
+    // If requesting for a specific salesperson, try individual target first
     if (salespersonId) {
-      targets = allMonthlyTargets.filter(
+      const spTargets = allMonthlyTargets.filter(
         (mt) => mt.kpi_id === kpiId && mt.salesperson_id === salespersonId
       );
-    }
+      if (spTargets.length > 0) {
+        const meta = spTargets.find((t) => t.level_name === "Meta");
+        return meta?.target_value ?? spTargets[0].target_value;
+      }
 
-    if (targets.length === 0) {
-      // Company level
-      targets = allMonthlyTargets.filter(
+      // No individual target: use company target divided by active salespeople
+      const companyTargets = allMonthlyTargets.filter(
         (mt) =>
           mt.kpi_id === kpiId &&
           mt.unit_id === null &&
           mt.team_id === null &&
           mt.salesperson_id === null
       );
+      if (companyTargets.length > 0) {
+        const meta = companyTargets.find((t) => t.level_name === "Meta");
+        return (meta?.target_value ?? companyTargets[0].target_value) / activeSalespeopleCount;
+      }
+
+      const kpi = mainGoalKpis.find((k) => k.id === kpiId);
+      return (kpi?.effective_target ?? kpi?.target_value ?? 0) / activeSalespeopleCount;
     }
+
+    // Company-level (no salesperson): return full target
+    const targets = allMonthlyTargets.filter(
+      (mt) =>
+        mt.kpi_id === kpiId &&
+        mt.unit_id === null &&
+        mt.team_id === null &&
+        mt.salesperson_id === null
+    );
 
     if (targets.length > 0) {
       const meta = targets.find((t) => t.level_name === "Meta");
