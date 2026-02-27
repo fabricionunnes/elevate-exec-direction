@@ -6,6 +6,9 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { Label } from "@/components/ui/label";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -108,6 +111,20 @@ export default function AllRecurringChargesPage() {
   const [banks, setBanks] = useState<any[]>([]);
   const [bankDialog, setBankDialog] = useState<{ open: boolean; bank: any | null }>({ open: false, bank: null });
   const [bankForm, setBankForm] = useState({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
+
+  // New receivable dialog
+  const [receivableDialog, setReceivableDialog] = useState(false);
+  const [receivableForm, setReceivableForm] = useState({
+    company_id: "", description: "", amount: 0, due_date: "", notes: "",
+  });
+  const [savingReceivable, setSavingReceivable] = useState(false);
+
+  // New payable dialog
+  const [payableDialog, setPayableDialog] = useState(false);
+  const [payableForm, setPayableForm] = useState({
+    supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "",
+  });
+  const [savingPayable, setSavingPayable] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -334,6 +351,69 @@ export default function AllRecurringChargesPage() {
     } catch (err: any) { toast.error("Erro: " + (err.message || "erro")); }
   };
 
+  // Save manual receivable
+  const handleSaveReceivable = async () => {
+    if (!receivableForm.company_id || !receivableForm.description || !receivableForm.amount || !receivableForm.due_date) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    setSavingReceivable(true);
+    try {
+      const amountCents = Math.round(receivableForm.amount * 100);
+      const { error } = await supabase.from("company_invoices").insert({
+        company_id: receivableForm.company_id,
+        description: receivableForm.description,
+        amount_cents: amountCents,
+        due_date: receivableForm.due_date,
+        notes: receivableForm.notes || null,
+        status: "pending",
+        installment_number: 1,
+        total_installments: 1,
+      });
+      if (error) throw error;
+      toast.success("Conta a receber lançada com sucesso");
+      setReceivableDialog(false);
+      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setSavingReceivable(false);
+    }
+  };
+
+  // Save manual payable
+  const handleSavePayable = async () => {
+    if (!payableForm.supplier_name || !payableForm.description || !payableForm.amount || !payableForm.due_date) {
+      toast.error("Preencha todos os campos obrigatórios");
+      return;
+    }
+    setSavingPayable(true);
+    try {
+      const now = new Date();
+      const refMonth = payableForm.reference_month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+      const { error } = await supabase.from("financial_payables").insert({
+        supplier_name: payableForm.supplier_name,
+        description: payableForm.description,
+        amount: payableForm.amount,
+        due_date: payableForm.due_date,
+        reference_month: refMonth,
+        notes: payableForm.notes || null,
+        status: "pending",
+      });
+      if (error) throw error;
+      toast.success("Conta a pagar lançada com sucesso");
+      setPayableDialog(false);
+      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setSavingPayable(false);
+    }
+  };
+
+
   const exportCSV = () => {
     let rows: string[][] = [];
     if (activeTab === "payables") {
@@ -468,10 +548,19 @@ export default function AllRecurringChargesPage() {
           {/* Contas a Receber */}
           {activeTab === "recurring" && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ArrowDownCircle className="h-5 w-5 text-primary" />
-                Contas a Receber
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <ArrowDownCircle className="h-5 w-5 text-primary" />
+                  Contas a Receber
+                </h2>
+                <Button size="sm" onClick={() => {
+                  setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "" });
+                  setReceivableDialog(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Lançamento
+                </Button>
+              </div>
 
               {/* Filters */}
               <Card>
@@ -625,10 +714,19 @@ export default function AllRecurringChargesPage() {
           {/* Contas a Pagar */}
           {activeTab === "payables" && isMaster && (
             <div className="space-y-4">
-              <h2 className="text-lg font-semibold flex items-center gap-2">
-                <ArrowUpCircle className="h-5 w-5 text-primary" />
-                Contas a Pagar
-              </h2>
+              <div className="flex items-center justify-between">
+                <h2 className="text-lg font-semibold flex items-center gap-2">
+                  <ArrowUpCircle className="h-5 w-5 text-primary" />
+                  Contas a Pagar
+                </h2>
+                <Button size="sm" onClick={() => {
+                  setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category: "", notes: "" });
+                  setPayableDialog(true);
+                }}>
+                  <Plus className="h-4 w-4 mr-2" />
+                  Novo Lançamento
+                </Button>
+              </div>
 
               <Card>
                 <CardHeader className="pb-3">
@@ -877,6 +975,97 @@ export default function AllRecurringChargesPage() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Receivable Dialog */}
+      <Dialog open={receivableDialog} onOpenChange={setReceivableDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Conta a Receber</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Empresa *</Label>
+              <Select value={receivableForm.company_id} onValueChange={(v) => setReceivableForm(p => ({ ...p, company_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
+                <SelectContent>
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Descrição *</Label>
+              <Input value={receivableForm.description} onChange={(e) => setReceivableForm(p => ({ ...p, description: e.target.value }))} placeholder="Ex: Consultoria mensal" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor (R$) *</Label>
+                <CurrencyInput value={receivableForm.amount} onChange={(v) => setReceivableForm(p => ({ ...p, amount: v }))} placeholder="0,00" />
+              </div>
+              <div>
+                <Label>Vencimento *</Label>
+                <Input type="date" value={receivableForm.due_date} onChange={(e) => setReceivableForm(p => ({ ...p, due_date: e.target.value }))} />
+              </div>
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Input value={receivableForm.notes} onChange={(e) => setReceivableForm(p => ({ ...p, notes: e.target.value }))} placeholder="Opcional" />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setReceivableDialog(false)}>Cancelar</Button>
+            <Button onClick={handleSaveReceivable} disabled={savingReceivable}>
+              {savingReceivable && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Payable Dialog */}
+      <Dialog open={payableDialog} onOpenChange={setPayableDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle>Nova Conta a Pagar</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Fornecedor *</Label>
+              <Input value={payableForm.supplier_name} onChange={(e) => setPayableForm(p => ({ ...p, supplier_name: e.target.value }))} placeholder="Ex: Fornecedor XYZ" />
+            </div>
+            <div>
+              <Label>Descrição *</Label>
+              <Input value={payableForm.description} onChange={(e) => setPayableForm(p => ({ ...p, description: e.target.value }))} placeholder="Ex: Aluguel do escritório" />
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Valor (R$) *</Label>
+                <CurrencyInput value={payableForm.amount} onChange={(v) => setPayableForm(p => ({ ...p, amount: v }))} placeholder="0,00" />
+              </div>
+              <div>
+                <Label>Vencimento *</Label>
+                <Input type="date" value={payableForm.due_date} onChange={(e) => setPayableForm(p => ({ ...p, due_date: e.target.value }))} />
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <Label>Mês Referência</Label>
+                <Input type="month" value={payableForm.reference_month} onChange={(e) => setPayableForm(p => ({ ...p, reference_month: e.target.value }))} />
+              </div>
+              <div>
+                <Label>Observações</Label>
+                <Input value={payableForm.notes} onChange={(e) => setPayableForm(p => ({ ...p, notes: e.target.value }))} placeholder="Opcional" />
+              </div>
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setPayableDialog(false)}>Cancelar</Button>
+            <Button onClick={handleSavePayable} disabled={savingPayable}>
+              {savingPayable && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
