@@ -26,27 +26,27 @@ export function CompanyFinancialPanel({
   customerPhone,
   customerDocument,
 }: Props) {
-  const [activeTab, setActiveTab] = useState("charge");
+  const [activeTab, setActiveTab] = useState("invoices");
 
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="grid w-full grid-cols-5">
-          <TabsTrigger value="charge" className="gap-2 text-xs sm:text-sm">
-            <CreditCard className="h-4 w-4" />
-            <span className="hidden sm:inline">Cobrar</span>
+          <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">
+            <Receipt className="h-4 w-4" />
+            <span className="hidden sm:inline">Faturas</span>
           </TabsTrigger>
           <TabsTrigger value="recurring" className="gap-2 text-xs sm:text-sm">
             <RefreshCw className="h-4 w-4" />
             <span className="hidden sm:inline">Recorrências</span>
           </TabsTrigger>
-          <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">
-            <Receipt className="h-4 w-4" />
-            <span className="hidden sm:inline">Faturas</span>
-          </TabsTrigger>
           <TabsTrigger value="links" className="gap-2 text-xs sm:text-sm">
             <Link2 className="h-4 w-4" />
             <span className="hidden sm:inline">Links</span>
+          </TabsTrigger>
+          <TabsTrigger value="charge" className="gap-2 text-xs sm:text-sm">
+            <CreditCard className="h-4 w-4" />
+            <span className="hidden sm:inline">Cobrar</span>
           </TabsTrigger>
           <TabsTrigger value="history" className="gap-2 text-xs sm:text-sm">
             <History className="h-4 w-4" />
