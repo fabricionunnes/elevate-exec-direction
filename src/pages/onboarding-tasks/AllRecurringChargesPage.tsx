@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -16,6 +16,16 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from "@/components/ui/alert-dialog";
+import {
   ArrowLeft,
   Loader2,
   ShieldAlert,
@@ -25,6 +35,11 @@ import {
   Download,
   ArrowUpCircle,
   Calculator,
+  CheckCircle2,
+  Undo2,
+  Clock,
+  AlertTriangle,
+  XCircle,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -58,6 +73,26 @@ interface FinancialEntry {
   created_at: string;
 }
 
+interface Invoice {
+  id: string;
+  company_id: string;
+  description: string;
+  amount_cents: number;
+  due_date: string;
+  status: string;
+  paid_at: string | null;
+  paid_amount_cents: number | null;
+  installment_number: number;
+  total_installments: number;
+  late_fee_cents: number;
+  interest_cents: number;
+  total_with_fees_cents: number;
+  recurring_charge_id: string | null;
+  pagarme_charge_id: string | null;
+  created_at: string;
+  company_name?: string;
+}
+
 export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
   const [isLoading, setIsLoading] = useState(true);
@@ -70,6 +105,13 @@ export default function AllRecurringChargesPage() {
 
   // Financial entries state
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
+
+  // Invoices state (for Recorrências tab)
+  const [invoices, setInvoices] = useState<Invoice[]>([]);
+  const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert"; description: string }>({
+    open: false, invoiceId: "", action: "confirm", description: "",
+  });
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -87,7 +129,6 @@ export default function AllRecurringChargesPage() {
       const { data: { user } } = await supabase.auth.getUser();
       if (!user) { navigate("/onboarding/login"); return; }
 
-      // Check staff role
       const { data: staff } = await supabase
         .from("onboarding_staff")
         .select("role")
@@ -98,7 +139,6 @@ export default function AllRecurringChargesPage() {
       const role = (staff as any)?.role;
       if (role === "admin" || role === "master") {
         setUserRole(role);
-        // Set default tab based on role
         if (role === "master") {
           setActiveTab("payables");
         } else {
@@ -119,7 +159,7 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes] = await Promise.all([
         supabase
           .from("company_recurring_charges")
           .select("*")
@@ -132,6 +172,10 @@ export default function AllRecurringChargesPage() {
           .from("financial_payables")
           .select("*")
           .order("due_date", { ascending: false }),
+        supabase
+          .from("company_invoices")
+          .select("*")
+          .order("due_date", { ascending: true }),
       ]);
 
       if (chargesRes.error) throw chargesRes.error;
@@ -143,9 +187,15 @@ export default function AllRecurringChargesPage() {
         company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida",
       }));
 
+      const invoicesEnriched = ((invoicesRes.data as any[]) || []).map((inv: any) => ({
+        ...inv,
+        company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida",
+      }));
+
       setCharges(enriched);
       setCompanies(companiesRes.data || []);
       setPayables((payablesRes.data as any) || []);
+      setInvoices(invoicesEnriched);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
@@ -155,15 +205,39 @@ export default function AllRecurringChargesPage() {
   const isMaster = userRole === "master";
   const isAdmin = userRole === "admin" || isMaster;
 
-  // Recurring charges filters
-  const months = useMemo(() => {
+  // Invoice months for filter
+  const invoiceMonths = useMemo(() => {
     const set = new Set<string>();
-    charges.forEach(ch => {
-      if (ch.created_at) set.add(ch.created_at.substring(0, 7));
-      if (ch.next_billing_date) set.add(ch.next_billing_date.substring(0, 7));
+    invoices.forEach(inv => {
+      if (inv.due_date) set.add(inv.due_date.substring(0, 7));
     });
     return Array.from(set).sort().reverse();
-  }, [charges]);
+  }, [invoices]);
+
+  // Filtered invoices
+  const filteredInvoices = useMemo(() => {
+    return invoices.filter(inv => {
+      if (searchTerm) {
+        const s = searchTerm.toLowerCase();
+        const match =
+          inv.description?.toLowerCase().includes(s) ||
+          inv.company_name?.toLowerCase().includes(s);
+        if (!match) return false;
+      }
+      if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
+      if (selectedStatus !== "all") {
+        if (selectedStatus === "pending" && inv.status !== "pending") return false;
+        if (selectedStatus === "paid" && inv.status !== "paid") return false;
+        if (selectedStatus === "overdue" && inv.status !== "overdue") return false;
+        if (selectedStatus === "cancelled" && inv.status !== "cancelled") return false;
+      }
+      if (selectedMonth !== "all") {
+        const invMonth = inv.due_date?.substring(0, 7);
+        if (invMonth !== selectedMonth) return false;
+      }
+      return true;
+    });
+  }, [invoices, searchTerm, selectedCompany, selectedStatus, selectedMonth]);
 
   const filteredCharges = useMemo(() => {
     return charges.filter(ch => {
@@ -180,14 +254,9 @@ export default function AllRecurringChargesPage() {
       if (selectedStatus === "active" && !ch.is_active) return false;
       if (selectedStatus === "inactive" && ch.is_active) return false;
       if (selectedRecurrence !== "all" && ch.recurrence !== selectedRecurrence) return false;
-      if (selectedMonth !== "all") {
-        const createdMonth = ch.created_at?.substring(0, 7);
-        const billingMonth = ch.next_billing_date?.substring(0, 7);
-        if (createdMonth !== selectedMonth && billingMonth !== selectedMonth) return false;
-      }
       return true;
     });
-  }, [charges, searchTerm, selectedCompany, selectedStatus, selectedMonth, selectedRecurrence]);
+  }, [charges, searchTerm, selectedCompany, selectedStatus, selectedRecurrence]);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -227,12 +296,101 @@ export default function AllRecurringChargesPage() {
     return "outline";
   };
 
+  const StatusIcon = ({ status }: { status: string }) => {
+    if (status === "paid") return <CheckCircle2 className="h-3.5 w-3.5" />;
+    if (status === "overdue") return <AlertTriangle className="h-3.5 w-3.5" />;
+    if (status === "cancelled") return <XCircle className="h-3.5 w-3.5" />;
+    return <Clock className="h-3.5 w-3.5" />;
+  };
+
   const resetFilters = () => {
     setSearchTerm("");
     setSelectedCompany("all");
     setSelectedStatus("all");
     setSelectedMonth("all");
     setSelectedRecurrence("all");
+  };
+
+  // Manual payment confirmation (baixa) with Asaas sync
+  const handleManualPayment = async (invoiceId: string) => {
+    setProcessingInvoiceId(invoiceId);
+    try {
+      // 1. Update locally
+      const today = new Date().toISOString().split("T")[0];
+      const inv = invoices.find(i => i.id === invoiceId);
+      const paidAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
+
+      const { error } = await supabase
+        .from("company_invoices")
+        .update({
+          status: "paid",
+          paid_at: today,
+          paid_amount_cents: paidAmount,
+        } as any)
+        .eq("id", invoiceId);
+
+      if (error) throw error;
+
+      // 2. Sync with Asaas
+      const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", {
+        body: { invoice_id: invoiceId, action: "confirm" },
+      });
+
+      if (fnError) {
+        console.error("Asaas sync error:", fnError);
+        toast.success("Baixa local realizada (erro ao sincronizar com Asaas)");
+      } else if (data?.skipped) {
+        toast.success("Baixa realizada localmente");
+      } else {
+        toast.success("Baixa realizada e sincronizada com Asaas ✓");
+      }
+
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro ao dar baixa: " + (err.message || "erro"));
+    } finally {
+      setProcessingInvoiceId(null);
+      setConfirmDialog({ open: false, invoiceId: "", action: "confirm", description: "" });
+    }
+  };
+
+  // Revert payment (estorno) with Asaas sync
+  const handleRevertPayment = async (invoiceId: string) => {
+    setProcessingInvoiceId(invoiceId);
+    try {
+      // 1. Update locally
+      const { error } = await supabase
+        .from("company_invoices")
+        .update({
+          status: "pending",
+          paid_at: null,
+          paid_amount_cents: null,
+        } as any)
+        .eq("id", invoiceId);
+
+      if (error) throw error;
+
+      // 2. Sync with Asaas
+      const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", {
+        body: { invoice_id: invoiceId, action: "revert" },
+      });
+
+      if (fnError) {
+        console.error("Asaas revert error:", fnError);
+        toast.success("Estorno local realizado (erro ao sincronizar com Asaas)");
+      } else if (data?.skipped) {
+        toast.success("Estorno realizado localmente");
+      } else {
+        toast.success("Estorno realizado e sincronizado com Asaas ✓");
+      }
+
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro ao estornar: " + (err.message || "erro"));
+    } finally {
+      setProcessingInvoiceId(null);
+      setConfirmDialog({ open: false, invoiceId: "", action: "revert", description: "" });
+    }
   };
 
   const exportCSV = () => {
@@ -242,10 +400,23 @@ export default function AllRecurringChargesPage() {
       filteredPayables.forEach(p => {
         rows.push([p.description, formatCurrency(p.amount), p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(p.status), p.reference_month, p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy") : ""]);
       });
+    } else if (activeTab === "recurring") {
+      rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em"]];
+      filteredInvoices.forEach(inv => {
+        rows.push([
+          inv.company_name || "",
+          inv.description,
+          `${inv.installment_number}/${inv.total_installments}`,
+          formatCurrencyCents(inv.amount_cents),
+          inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "",
+          statusLabel(inv.status),
+          inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "",
+        ]);
+      });
     } else {
-      rows = [["Empresa", "Descrição", "Valor", "Recorrência", "Status", "Próximo Vencimento", "Criado em"]];
+      rows = [["Empresa", "Descrição", "Valor", "Recorrência", "Status", "Criado em"]];
       filteredCharges.forEach(ch => {
-        rows.push([ch.company_name || "", ch.description, formatCurrencyCents(ch.amount_cents), recurrenceLabel(ch.recurrence), ch.is_active ? "Ativa" : "Inativa", ch.next_billing_date ? format(new Date(ch.next_billing_date), "dd/MM/yyyy") : "", ch.created_at ? format(new Date(ch.created_at), "dd/MM/yyyy") : ""]);
+        rows.push([ch.company_name || "", ch.description, formatCurrencyCents(ch.amount_cents), recurrenceLabel(ch.recurrence), ch.is_active ? "Ativa" : "Inativa", ch.created_at ? format(new Date(ch.created_at), "dd/MM/yyyy") : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -258,16 +429,27 @@ export default function AllRecurringChargesPage() {
     URL.revokeObjectURL(url);
   };
 
-  // Financial months for filter
+  // Financial months for payables filter
   const financialMonths = useMemo(() => {
     const set = new Set<string>();
     payables.forEach(p => { if (p.reference_month) set.add(p.reference_month); });
-    charges.forEach(ch => {
-      if (ch.created_at) set.add(ch.created_at.substring(0, 7));
-      if (ch.next_billing_date) set.add(ch.next_billing_date.substring(0, 7));
-    });
     return Array.from(set).sort().reverse();
-  }, [payables, charges]);
+  }, [payables]);
+
+  // Invoice summary stats
+  const invoiceSummary = useMemo(() => {
+    const pending = filteredInvoices.filter(i => i.status === "pending" || i.status === "overdue");
+    const paid = filteredInvoices.filter(i => i.status === "paid");
+    const overdue = filteredInvoices.filter(i => i.status === "overdue");
+    return {
+      totalPending: pending.reduce((s, i) => s + (i.status === "overdue" ? i.total_with_fees_cents : i.amount_cents), 0),
+      pendingCount: pending.length,
+      totalPaid: paid.reduce((s, i) => s + (i.paid_amount_cents || i.amount_cents), 0),
+      paidCount: paid.length,
+      totalOverdue: overdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
+      overdueCount: overdue.length,
+    };
+  }, [filteredInvoices]);
 
   if (isLoading) {
     return (
@@ -292,18 +474,6 @@ export default function AllRecurringChargesPage() {
       </div>
     );
   }
-
-  const totalActiveCharges = filteredCharges.filter(c => c.is_active).length;
-  const totalMRR = filteredCharges
-    .filter(c => c.is_active)
-    .reduce((sum, c) => {
-      const val = c.amount_cents || 0;
-      if (c.recurrence === "monthly") return sum + val;
-      if (c.recurrence === "quarterly") return sum + val / 3;
-      if (c.recurrence === "semiannual") return sum + val / 6;
-      if (c.recurrence === "annual") return sum + val / 12;
-      return sum + val;
-    }, 0);
 
   return (
     <div className="min-h-screen bg-background">
@@ -335,16 +505,16 @@ export default function AllRecurringChargesPage() {
       <main className="container mx-auto px-4 py-6 space-y-6">
         <Tabs value={activeTab} onValueChange={(v) => { setActiveTab(v); resetFilters(); }}>
           <TabsList>
+            <TabsTrigger value="recurring" className="gap-2">
+              <RefreshCw className="h-4 w-4" />
+              Recorrências
+            </TabsTrigger>
             {isMaster && (
               <TabsTrigger value="payables" className="gap-2">
                 <ArrowUpCircle className="h-4 w-4" />
                 Contas a Pagar
               </TabsTrigger>
             )}
-            <TabsTrigger value="recurring" className="gap-2">
-              <RefreshCw className="h-4 w-4" />
-              Recorrências
-            </TabsTrigger>
           </TabsList>
 
           {/* Filters */}
@@ -367,7 +537,7 @@ export default function AllRecurringChargesPage() {
                   />
                 </div>
 
-                {activeTab === "recurring" && (
+                {(activeTab === "recurring") && (
                   <Select value={selectedCompany} onValueChange={setSelectedCompany}>
                     <SelectTrigger>
                       <SelectValue placeholder="Empresa" />
@@ -389,8 +559,10 @@ export default function AllRecurringChargesPage() {
                     <SelectItem value="all">Todos</SelectItem>
                     {activeTab === "recurring" ? (
                       <>
-                        <SelectItem value="active">Ativas</SelectItem>
-                        <SelectItem value="inactive">Inativas</SelectItem>
+                        <SelectItem value="pending">Pendente</SelectItem>
+                        <SelectItem value="paid">Pago</SelectItem>
+                        <SelectItem value="overdue">Vencido</SelectItem>
+                        <SelectItem value="cancelled">Cancelado</SelectItem>
                       </>
                     ) : (
                       <>
@@ -403,36 +575,180 @@ export default function AllRecurringChargesPage() {
                 </Select>
 
                 {activeTab === "recurring" && (
-                  <Select value={selectedRecurrence} onValueChange={setSelectedRecurrence}>
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
                     <SelectTrigger>
-                      <SelectValue placeholder="Recorrência" />
+                      <SelectValue placeholder="Mês de Vencimento" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all">Todas</SelectItem>
-                      <SelectItem value="monthly">Mensal</SelectItem>
-                      <SelectItem value="quarterly">Trimestral</SelectItem>
-                      <SelectItem value="semiannual">Semestral</SelectItem>
-                      <SelectItem value="annual">Anual</SelectItem>
+                      <SelectItem value="all">Todos os meses</SelectItem>
+                      {invoiceMonths.map(m => (
+                        <SelectItem key={m} value={m}>
+                          {format(new Date(m + "-01"), "MMMM yyyy", { locale: ptBR })}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                 )}
 
-                <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-                  <SelectTrigger>
-                    <SelectValue placeholder="Mês" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os meses</SelectItem>
-                    {financialMonths.map(m => (
-                      <SelectItem key={m} value={m}>
-                        {format(new Date(m + "-01"), "MMMM yyyy", { locale: ptBR })}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                {activeTab === "payables" && (
+                  <Select value={selectedMonth} onValueChange={setSelectedMonth}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="Mês" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="all">Todos os meses</SelectItem>
+                      {financialMonths.map(m => (
+                        <SelectItem key={m} value={m}>
+                          {format(new Date(m + "-01"), "MMMM yyyy", { locale: ptBR })}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                )}
               </div>
             </CardContent>
           </Card>
+
+          {/* Recorrências - Now shows invoices */}
+          <TabsContent value="recurring" className="space-y-4">
+            <div className="grid gap-4 md:grid-cols-3">
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Total a Receber</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-destructive">
+                    {formatCurrencyCents(invoiceSummary.totalPending)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{invoiceSummary.pendingCount} parcela(s) pendente(s)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Total Recebido</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-emerald-600">
+                    {formatCurrencyCents(invoiceSummary.totalPaid)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{invoiceSummary.paidCount} parcela(s) paga(s)</p>
+                </CardContent>
+              </Card>
+              <Card>
+                <CardHeader className="pb-2">
+                  <CardTitle className="text-sm text-muted-foreground">Vencidas</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <div className="text-2xl font-bold text-destructive">
+                    {formatCurrencyCents(invoiceSummary.totalOverdue)}
+                  </div>
+                  <p className="text-xs text-muted-foreground">{invoiceSummary.overdueCount} parcela(s)</p>
+                </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+              <CardContent className="p-0">
+                <div className="overflow-x-auto">
+                  <Table>
+                    <TableHeader>
+                      <TableRow>
+                        <TableHead>Empresa</TableHead>
+                        <TableHead>Descrição</TableHead>
+                        <TableHead>Parcela</TableHead>
+                        <TableHead className="text-right">Valor</TableHead>
+                        <TableHead>Vencimento</TableHead>
+                        <TableHead>Status</TableHead>
+                        <TableHead>Pago em</TableHead>
+                        <TableHead className="text-center">Ações</TableHead>
+                      </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                      {filteredInvoices.length === 0 ? (
+                        <TableRow>
+                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma parcela encontrada</TableCell>
+                        </TableRow>
+                      ) : filteredInvoices.map(inv => {
+                        const isOverdue = inv.status === "overdue";
+                        const isPaid = inv.status === "paid";
+                        const isCancelled = inv.status === "cancelled";
+                        const displayAmount = isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
+                        const isProcessing = processingInvoiceId === inv.id;
+
+                        return (
+                          <TableRow key={inv.id} className={isOverdue ? "bg-destructive/5" : isPaid ? "bg-emerald-50/50 dark:bg-emerald-950/10" : ""}>
+                            <TableCell className="font-medium max-w-[180px] truncate">{inv.company_name}</TableCell>
+                            <TableCell className="max-w-[200px] truncate">{inv.description}</TableCell>
+                            <TableCell className="text-sm">{inv.installment_number}/{inv.total_installments}</TableCell>
+                            <TableCell className="text-right font-semibold">
+                              {formatCurrencyCents(displayAmount)}
+                              {isOverdue && inv.amount_cents !== inv.total_with_fees_cents && (
+                                <div className="text-xs text-destructive">
+                                  (original: {formatCurrencyCents(inv.amount_cents)})
+                                </div>
+                              )}
+                            </TableCell>
+                            <TableCell>{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
+                            <TableCell>
+                              <Badge variant={statusVariant(inv.status)} className="gap-1">
+                                <StatusIcon status={inv.status} />
+                                {statusLabel(inv.status)}
+                              </Badge>
+                            </TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}
+                              {isPaid && inv.paid_amount_cents && inv.paid_amount_cents !== inv.amount_cents && (
+                                <div className="text-xs">({formatCurrencyCents(inv.paid_amount_cents)})</div>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-center">
+                              {!isCancelled && (
+                                <div className="flex items-center justify-center gap-1">
+                                  {!isPaid ? (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50"
+                                      disabled={isProcessing}
+                                      onClick={() => setConfirmDialog({
+                                        open: true,
+                                        invoiceId: inv.id,
+                                        action: "confirm",
+                                        description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(displayAmount)}`,
+                                      })}
+                                    >
+                                      {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                      Baixa
+                                    </Button>
+                                  ) : (
+                                    <Button
+                                      variant="ghost"
+                                      size="sm"
+                                      className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10"
+                                      disabled={isProcessing}
+                                      onClick={() => setConfirmDialog({
+                                        open: true,
+                                        invoiceId: inv.id,
+                                        action: "revert",
+                                        description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})`,
+                                      })}
+                                    >
+                                      {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
+                                      Estornar
+                                    </Button>
+                                  )}
+                                </div>
+                              )}
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
+                    </TableBody>
+                  </Table>
+                </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
 
           {/* Contas a Pagar - Master only */}
           {isMaster && (
@@ -507,87 +823,46 @@ export default function AllRecurringChargesPage() {
               </Card>
             </TabsContent>
           )}
-
-          {/* Recorrências */}
-          <TabsContent value="recurring" className="space-y-4">
-            <div className="grid gap-4 md:grid-cols-3">
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Total Filtrado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{filteredCharges.length}</div>
-                  <p className="text-xs text-muted-foreground">{totalActiveCharges} ativas</p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">MRR Filtrado</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(totalMRR)}</div>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="pb-2">
-                  <CardTitle className="text-sm text-muted-foreground">Empresas</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {new Set(filteredCharges.map(c => c.company_id)).size}
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
-
-            <Card>
-              <CardContent className="p-0">
-                <div className="overflow-x-auto">
-                  <Table>
-                    <TableHeader>
-                      <TableRow>
-                        <TableHead>Empresa</TableHead>
-                        <TableHead>Descrição</TableHead>
-                        <TableHead>Cliente</TableHead>
-                        <TableHead className="text-right">Valor</TableHead>
-                        <TableHead>Recorrência</TableHead>
-                        <TableHead>Próx. Vencimento</TableHead>
-                        <TableHead>Status</TableHead>
-                        <TableHead>Criado em</TableHead>
-                      </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                      {filteredCharges.length === 0 ? (
-                        <TableRow>
-                          <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma recorrência encontrada</TableCell>
-                        </TableRow>
-                      ) : filteredCharges.map(ch => (
-                        <TableRow key={ch.id}>
-                          <TableCell className="font-medium max-w-[200px] truncate">{ch.company_name}</TableCell>
-                          <TableCell className="max-w-[200px] truncate">{ch.description}</TableCell>
-                          <TableCell className="text-sm">
-                            <div className="truncate max-w-[150px]">{ch.customer_name || "-"}</div>
-                            {ch.customer_email && (
-                              <div className="text-xs text-muted-foreground truncate max-w-[150px]">{ch.customer_email}</div>
-                            )}
-                          </TableCell>
-                          <TableCell className="text-right font-semibold">{formatCurrencyCents(ch.amount_cents)}</TableCell>
-                          <TableCell>{recurrenceLabel(ch.recurrence)}</TableCell>
-                          <TableCell>{ch.next_billing_date ? format(new Date(ch.next_billing_date), "dd/MM/yyyy") : "-"}</TableCell>
-                          <TableCell>
-                            <Badge variant={ch.is_active ? "default" : "secondary"}>{ch.is_active ? "Ativa" : "Inativa"}</Badge>
-                          </TableCell>
-                          <TableCell className="text-sm text-muted-foreground">{ch.created_at ? format(new Date(ch.created_at), "dd/MM/yyyy") : "-"}</TableCell>
-                        </TableRow>
-                      ))}
-                    </TableBody>
-                  </Table>
-                </div>
-              </CardContent>
-            </Card>
-          </TabsContent>
         </Tabs>
       </main>
+
+      {/* Confirm Dialog */}
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => !open && setConfirmDialog(prev => ({ ...prev, open: false }))}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>
+              {confirmDialog.action === "confirm" ? "Confirmar Baixa Manual" : "Confirmar Estorno"}
+            </AlertDialogTitle>
+            <AlertDialogDescription>
+              {confirmDialog.action === "confirm"
+                ? "Tem certeza que deseja dar baixa nesta parcela? A ação será sincronizada com o Asaas."
+                : "Tem certeza que deseja estornar esta parcela? A ação será sincronizada com o Asaas."
+              }
+              <br />
+              <strong className="block mt-2">{confirmDialog.description}</strong>
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={!!processingInvoiceId}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              disabled={!!processingInvoiceId}
+              className={confirmDialog.action === "revert" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              onClick={() => {
+                if (confirmDialog.action === "confirm") {
+                  handleManualPayment(confirmDialog.invoiceId);
+                } else {
+                  handleRevertPayment(confirmDialog.invoiceId);
+                }
+              }}
+            >
+              {processingInvoiceId ? (
+                <Loader2 className="h-4 w-4 animate-spin mr-2" />
+              ) : null}
+              {confirmDialog.action === "confirm" ? "Confirmar Baixa" : "Confirmar Estorno"}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
