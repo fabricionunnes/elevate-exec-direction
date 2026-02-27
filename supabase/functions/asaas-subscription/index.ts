@@ -110,6 +110,9 @@ Deno.serve(async (req) => {
       nextDueDate,
       description,
       notifications: { disabled: true },
+      interest: { value: 1, type: "PERCENTAGE" },
+      fine: { value: 2, type: "PERCENTAGE" },
+      discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
     };
 
     const subscription = await asaasRequest("/subscriptions", "POST", ASAAS_API_KEY, subscriptionPayload);

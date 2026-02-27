@@ -101,6 +101,9 @@ async function getOrCreateAsaasPaymentUrl(
             dueDate: invoice.due_date,
             description: invoice.description,
             notifications: { disabled: true },
+            interest: { value: 1, type: "PERCENTAGE" },
+            fine: { value: 2, type: "PERCENTAGE" },
+            discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
           });
           if (payment?.invoiceUrl) {
             return payment.invoiceUrl;
