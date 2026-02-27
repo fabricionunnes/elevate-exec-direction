@@ -212,8 +212,21 @@ const OnboardingNewCompanyPage = () => {
                   <Input
                     id="phone"
                     value={phone}
-                    onChange={(e) => setPhone(e.target.value)}
-                    placeholder="(11) 99999-9999"
+                    placeholder="(00) 00000-0000"
+                    onChange={(e) => {
+                      const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                      let masked = raw;
+                      if (raw.length > 2 && raw.length <= 6) {
+                        masked = `(${raw.slice(0,2)}) ${raw.slice(2)}`;
+                      } else if (raw.length > 6 && raw.length <= 10) {
+                        masked = `(${raw.slice(0,2)}) ${raw.slice(2,6)}-${raw.slice(6)}`;
+                      } else if (raw.length > 10) {
+                        masked = `(${raw.slice(0,2)}) ${raw.slice(2,7)}-${raw.slice(7)}`;
+                      } else if (raw.length > 0) {
+                        masked = `(${raw}`;
+                      }
+                      setPhone(masked);
+                    }}
                   />
                 </div>
                 <div className="space-y-2">
