@@ -119,6 +119,73 @@ async function getOrCreateAsaasPaymentUrl(
 }
 
 /**
+ * Sends a WhatsApp notification for an invoice with payment link.
+ */
+async function sendWhatsAppInvoiceNotification(
+  supabase: ReturnType<typeof createClient>,
+  invoice: {
+    description: string;
+    amount_cents: number;
+    due_date: string;
+    installment_number?: number;
+    total_installments?: number;
+  },
+  paymentUrl: string,
+  customerPhone: string,
+  customerName: string
+) {
+  if (!paymentUrl || !customerPhone) return;
+
+  try {
+    const cleanPhone = customerPhone.replace(/\D/g, "");
+    if (!cleanPhone || cleanPhone.length < 10) return;
+
+    const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+    // Get default WhatsApp instance
+    const { data: whatsappInstance } = await supabase
+      .from("whatsapp_instances")
+      .select("api_url, api_key, instance_name")
+      .eq("is_default", true)
+      .eq("status", "connected")
+      .single();
+
+    if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
+      console.log("No default WhatsApp instance found, skipping notification");
+      return;
+    }
+
+    const amountFormatted = (invoice.amount_cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const dueDateFormatted = invoice.due_date.split("-").reverse().join("/");
+    const installmentInfo = invoice.total_installments && invoice.total_installments > 1
+      ? `\n📌 *Parcela:* ${invoice.installment_number}/${invoice.total_installments}`
+      : "";
+
+    const message = `Olá ${customerName || ""}! 👋\n\nVocê tem uma nova fatura disponível:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${paymentUrl}\n\nObrigado! ✨`;
+
+    const sendResponse = await fetch(`${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: whatsappInstance.api_key,
+      },
+      body: JSON.stringify({
+        number: formattedPhone,
+        text: message,
+      }),
+    });
+
+    if (sendResponse.ok) {
+      console.log(`WhatsApp invoice notification sent to ${formattedPhone}`);
+    } else {
+      console.error("WhatsApp send failed:", await sendResponse.text());
+    }
+  } catch (e) {
+    console.error("Error sending WhatsApp invoice notification:", e);
+  }
+}
+
+/**
  * Creates a payment link record and associates it with an invoice.
  * Now uses Asaas invoiceUrl directly when available.
  */
@@ -166,7 +233,7 @@ async function createPaymentLinkForInvoice(
 
   if (linkError || !linkData) {
     console.error(`[generate-invoices] Failed to create payment_link for invoice ${invoice.id}:`, linkError);
-    return;
+    return paymentUrl;
   }
 
   // If we have an Asaas URL, update the link with it; otherwise keep "pending"
@@ -184,6 +251,7 @@ async function createPaymentLinkForInvoice(
     .eq("id", invoice.id);
 
   console.log(`[generate-invoices] Created payment_link ${linkData.id} for invoice ${invoice.id}, url=${paymentUrl ? "asaas" : "none"}`);
+  return paymentUrl;
 }
 
 Deno.serve(async (req) => {
@@ -252,9 +320,10 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Create payment links with Asaas URLs
+      // Create payment links with Asaas URLs and send WhatsApp for first invoice
+      let firstInvoiceUrl = "";
       for (const inv of inserted || []) {
-        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
+        const url = await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
           id: inv.id,
           description: inv.description,
           amount_cents: inv.amount_cents,
@@ -263,6 +332,23 @@ Deno.serve(async (req) => {
           due_date: inv.due_date,
           recurring_charge_id: inv.recurring_charge_id,
         });
+        if (!firstInvoiceUrl && url) firstInvoiceUrl = url;
+      }
+
+      // Send WhatsApp notification for the first invoice only
+      if (firstInvoiceUrl && (inserted?.length || 0) > 0) {
+        const firstInv = inserted![0];
+        const customerPhone = charge.customer_phone || "";
+        const customerName = charge.customer_name || "";
+        if (customerPhone) {
+          await sendWhatsAppInvoiceNotification(supabase, {
+            description: firstInv.description,
+            amount_cents: firstInv.amount_cents,
+            due_date: firstInv.due_date,
+            installment_number: firstInv.installment_number,
+            total_installments: firstInv.total_installments,
+          }, firstInvoiceUrl, customerPhone, customerName);
+        }
       }
 
       return new Response(
@@ -421,9 +507,10 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
-      // Create payment links with Asaas URLs
+      // Create payment links with Asaas URLs and send WhatsApp for first invoice
+      let firstRenewUrl = "";
       for (const inv of inserted || []) {
-        await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
+        const url = await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
           id: inv.id,
           description: inv.description,
           amount_cents: inv.amount_cents,
@@ -432,6 +519,23 @@ Deno.serve(async (req) => {
           due_date: inv.due_date,
           recurring_charge_id: inv.recurring_charge_id,
         });
+        if (!firstRenewUrl && url) firstRenewUrl = url;
+      }
+
+      // Send WhatsApp notification for the first renewed invoice
+      if (firstRenewUrl && (inserted?.length || 0) > 0) {
+        const firstInv = inserted![0];
+        const customerPhone = charge.customer_phone || "";
+        const customerName = charge.customer_name || "";
+        if (customerPhone) {
+          await sendWhatsAppInvoiceNotification(supabase, {
+            description: firstInv.description,
+            amount_cents: firstInv.amount_cents,
+            due_date: firstInv.due_date,
+            installment_number: firstInv.installment_number,
+            total_installments: firstInv.total_installments,
+          }, firstRenewUrl, customerPhone, customerName);
+        }
       }
 
       // Update next_charge_date
