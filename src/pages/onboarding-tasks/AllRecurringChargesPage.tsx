@@ -19,7 +19,7 @@ import {
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
 import {
-  ArrowLeft, Loader2, ShieldAlert, Search, RefreshCw, Filter, Download,
+  ArrowLeft, Loader2, ShieldAlert, Search, RefreshCw, Filter, Download, Upload,
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
@@ -42,6 +42,7 @@ import CFOCashProjectionTab from "./financial/CFOCashProjectionTab";
 import CFODelinquencyTab from "./financial/CFODelinquencyTab";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
+import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
 
 interface RecurringCharge {
   id: string;
@@ -148,6 +149,10 @@ export default function AllRecurringChargesPage() {
     supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "",
   });
   const [savingPayable, setSavingPayable] = useState(false);
+
+  // Import dialogs
+  const [importReceivableOpen, setImportReceivableOpen] = useState(false);
+  const [importPayableOpen, setImportPayableOpen] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -584,13 +589,19 @@ export default function AllRecurringChargesPage() {
                   Contas a Receber
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_create) && (
-                  <Button size="sm" onClick={() => {
-                    setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
-                    setReceivableDialog(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Lançamento
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setImportReceivableOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar
+                    </Button>
+                    <Button size="sm" onClick={() => {
+                      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+                      setReceivableDialog(true);
+                    }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Lançamento
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -752,13 +763,19 @@ export default function AllRecurringChargesPage() {
                   Contas a Pagar
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_create) && (
-                  <Button size="sm" onClick={() => {
-                    setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
-                    setPayableDialog(true);
-                  }}>
-                    <Plus className="h-4 w-4 mr-2" />
-                    Novo Lançamento
-                  </Button>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={() => setImportPayableOpen(true)}>
+                      <Upload className="h-4 w-4 mr-2" />
+                      Importar
+                    </Button>
+                    <Button size="sm" onClick={() => {
+                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
+                      setPayableDialog(true);
+                    }}>
+                      <Plus className="h-4 w-4 mr-2" />
+                      Novo Lançamento
+                    </Button>
+                  </div>
                 )}
               </div>
 
@@ -1165,6 +1182,25 @@ export default function AllRecurringChargesPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+      {/* Import Dialogs */}
+      <FinancialImportDialog
+        open={importReceivableOpen}
+        onOpenChange={setImportReceivableOpen}
+        type="receivable"
+        companies={companies}
+        categories={staffCategories}
+        costCenters={staffCostCenters}
+        onSuccess={() => { setIsLoading(true); loadData().finally(() => setIsLoading(false)); }}
+      />
+      <FinancialImportDialog
+        open={importPayableOpen}
+        onOpenChange={setImportPayableOpen}
+        type="payable"
+        companies={companies}
+        categories={staffCategories}
+        costCenters={staffCostCenters}
+        onSuccess={() => { setIsLoading(true); loadData().finally(() => setIsLoading(false)); }}
+      />
     </div>
   );
 }
