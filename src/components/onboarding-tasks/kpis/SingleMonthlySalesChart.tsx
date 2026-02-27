@@ -467,80 +467,85 @@ Empresa: "${companyName || "cliente"}".`;
   const hasTargets = chartData.some((d) => d.target > 0);
 
   return (
-    <Card>
-      <CardHeader className="pb-2">
+    <Card className="relative overflow-hidden border-0 shadow-xl">
+      <div className="absolute inset-0 bg-gradient-to-br from-indigo-900/[0.03] via-transparent to-primary/[0.04] dark:from-indigo-800/20 dark:via-transparent dark:to-primary/15" />
+      <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-radial from-primary/[0.07] to-transparent rounded-full blur-3xl" />
+
+      <CardHeader className="relative pb-2">
         <div className="flex items-center justify-between flex-wrap gap-2">
-          <div className="flex items-center gap-2">
-            <CardTitle className="flex items-center gap-2 text-base">
-              <Calendar className="h-5 w-5" />
-              {kpiName} - Mês a Mês
-            </CardTitle>
-            <Badge variant="outline" className="text-xs">
-              R$
-            </Badge>
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-indigo-500 to-primary text-white shadow-lg shadow-indigo-500/20">
+              <Calendar className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">{kpiName} - Mês a Mês</CardTitle>
+              <p className="text-xs text-muted-foreground">{chartData.length} meses de histórico</p>
+            </div>
           </div>
           {chartData.length >= 6 && (
-            <Badge variant={hasPositiveTrend ? "default" : "destructive"} className="gap-1">
-              {hasPositiveTrend ? <TrendingUp className="h-3 w-3" /> : <TrendingDown className="h-3 w-3" />}
-              {hasPositiveTrend ? "+" : ""}
-              {trendPercent.toFixed(1)}% tendência
+            <Badge
+              variant="outline"
+              className={`gap-1.5 px-3 py-1 text-sm font-bold border-0 shadow-sm ${
+                hasPositiveTrend
+                  ? "bg-emerald-500/10 text-emerald-700 dark:text-emerald-400"
+                  : "bg-red-500/10 text-red-700 dark:text-red-400"
+              }`}
+            >
+              {hasPositiveTrend ? <TrendingUp className="h-3.5 w-3.5" /> : <TrendingDown className="h-3.5 w-3.5" />}
+              {hasPositiveTrend ? "+" : ""}{trendPercent.toFixed(1)}%
             </Badge>
           )}
         </div>
       </CardHeader>
-      <CardContent className="space-y-4">
+      <CardContent className="relative space-y-5">
         {/* Summary Cards */}
-        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
-          <Card className="bg-muted/50">
-            <CardContent className="p-3">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Média Mensal</p>
-              <p className="text-sm sm:text-base font-bold truncate">{formatFullCurrency(average)}</p>
-            </CardContent>
-          </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+          <div className="relative overflow-hidden rounded-xl border p-3 bg-card/80 backdrop-blur-sm text-center">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-primary/40 to-primary/10" />
+            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Média Mensal</p>
+            <p className="text-sm sm:text-base font-bold truncate mt-0.5">{formatFullCurrency(average)}</p>
+          </div>
 
-          <Card className="bg-muted/50">
-            <CardContent className="p-3">
-              <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Total Meses</p>
-              <p className="text-sm sm:text-base font-bold">{chartData.length}</p>
-            </CardContent>
-          </Card>
+          <div className="relative overflow-hidden rounded-xl border p-3 bg-card/80 backdrop-blur-sm text-center">
+            <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-muted-foreground/30 to-muted-foreground/10" />
+            <p className="text-[10px] sm:text-xs text-muted-foreground font-medium">Total Meses</p>
+            <p className="text-sm sm:text-base font-bold mt-0.5">{chartData.length}</p>
+          </div>
 
           {bestMonth && (
-            <Card className="bg-green-50 dark:bg-green-950/20 border-green-200 dark:border-green-900">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-1 mb-1">
-                  <Award className="h-3 w-3 text-green-600" />
-                  <p className="text-[10px] sm:text-xs text-green-600 font-medium">Melhor</p>
-                </div>
-                <p className="text-xs font-bold text-green-700 dark:text-green-300 truncate">
-                  {bestMonth.monthLabel}: {formatCurrency(bestMonth.revenue)}
-                </p>
-              </CardContent>
-            </Card>
+            <div className="relative overflow-hidden rounded-xl border border-emerald-500/20 p-3 bg-emerald-500/[0.03] text-center">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-emerald-400 to-teal-500" />
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <Award className="h-3 w-3 text-emerald-600" />
+                <p className="text-[10px] sm:text-xs text-emerald-600 font-medium">Melhor</p>
+              </div>
+              <p className="text-xs font-bold truncate">
+                {bestMonth.monthLabel}: {formatCurrency(bestMonth.revenue)}
+              </p>
+            </div>
           )}
 
           {worstMonth && (
-            <Card className="bg-red-50 dark:bg-red-950/20 border-red-200 dark:border-red-900">
-              <CardContent className="p-3">
-                <div className="flex items-center gap-1 mb-1">
-                  <AlertTriangle className="h-3 w-3 text-red-600" />
-                  <p className="text-[10px] sm:text-xs text-red-600 font-medium">Menor</p>
-                </div>
-                <p className="text-xs font-bold text-red-700 dark:text-red-300 truncate">
-                  {worstMonth.monthLabel}: {formatCurrency(worstMonth.revenue)}
-                </p>
-              </CardContent>
-            </Card>
+            <div className="relative overflow-hidden rounded-xl border border-red-500/20 p-3 bg-red-500/[0.03] text-center">
+              <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-red-400 to-orange-500" />
+              <div className="flex items-center justify-center gap-1 mb-0.5">
+                <AlertTriangle className="h-3 w-3 text-red-600" />
+                <p className="text-[10px] sm:text-xs text-red-600 font-medium">Menor</p>
+              </div>
+              <p className="text-xs font-bold truncate">
+                {worstMonth.monthLabel}: {formatCurrency(worstMonth.revenue)}
+              </p>
+            </div>
           )}
         </div>
 
         {/* Chart */}
-        <div className="h-[300px]">
+        <div className="h-[300px] sm:h-[320px]">
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={chartData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+            <AreaChart data={chartData} margin={{ top: 20, right: 10, left: -10, bottom: 0 }}>
               <defs>
                 <linearGradient id={`colorRevenue-${kpiName}`} x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.3} />
+                  <stop offset="5%" stopColor="hsl(var(--primary))" stopOpacity={0.35} />
                   <stop offset="95%" stopColor="hsl(var(--primary))" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id={`colorTarget-${kpiName}`} x1="0" y1="0" x2="0" y2="1">
@@ -548,23 +553,26 @@ Empresa: "${companyName || "cliente"}".`;
                   <stop offset="95%" stopColor="hsl(var(--chart-2))" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
+              <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
               <XAxis
                 dataKey="monthLabel"
-                className="text-xs"
-                tick={{ fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
               />
               <YAxis
                 tickFormatter={formatCurrency}
-                className="text-xs"
-                tick={{ fill: "hsl(var(--muted-foreground))" }}
+                tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }}
+                tickLine={false}
+                axisLine={false}
               />
               <Tooltip content={<CustomTooltip />} />
               {average > 0 && (
                 <ReferenceLine
                   y={average}
                   stroke="hsl(var(--muted-foreground))"
-                  strokeDasharray="5 5"
+                  strokeDasharray="6 4"
+                  strokeOpacity={0.5}
                   label={{
                     value: `Média: ${formatCurrency(average)}`,
                     position: "insideTopRight",
@@ -582,6 +590,7 @@ Empresa: "${companyName || "cliente"}".`;
                   strokeWidth={2}
                   strokeDasharray="5 5"
                   fill={`url(#colorTarget-${kpiName})`}
+                  dot={false}
                 />
               )}
               <Area
@@ -589,8 +598,10 @@ Empresa: "${companyName || "cliente"}".`;
                 dataKey="revenue"
                 name="Realizado"
                 stroke="hsl(var(--primary))"
-                strokeWidth={2}
+                strokeWidth={2.5}
                 fill={`url(#colorRevenue-${kpiName})`}
+                dot={{ r: 3, fill: "hsl(var(--primary))", stroke: "#fff", strokeWidth: 2 }}
+                activeDot={{ r: 5, stroke: "hsl(var(--primary))", strokeWidth: 2, fill: "#fff" }}
               />
             </AreaChart>
           </ResponsiveContainer>
@@ -598,64 +609,63 @@ Empresa: "${companyName || "cliente"}".`;
 
         {/* Legend */}
         {hasTargets && (
-          <div className="flex items-center justify-center gap-6 text-sm">
+          <div className="flex items-center justify-center gap-6">
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full bg-primary" />
-              <span className="text-muted-foreground">Realizado</span>
+              <span className="h-3 w-3 rounded-full bg-primary shadow-sm shadow-primary/30" />
+              <span className="text-xs text-muted-foreground">Realizado</span>
             </div>
             <div className="flex items-center gap-2">
-              <div className="w-3 h-3 rounded-full" style={{ background: "hsl(var(--chart-2))" }} />
-              <span className="text-muted-foreground">Meta</span>
+              <span className="h-3 w-3 rounded-full" style={{ background: "hsl(var(--chart-2))" }} />
+              <span className="text-xs text-muted-foreground">Meta</span>
             </div>
           </div>
         )}
 
         {/* AI Analysis Section */}
-        <Card className="bg-gradient-to-r from-primary/5 via-primary/10 to-primary/5 border-primary/20">
-          <CardContent className="p-4">
-            <div className="flex items-start gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
-                <Sparkles className="h-4 w-4 text-primary" />
-              </div>
-              <div className="flex-1 space-y-2">
-                <div className="flex items-center justify-between">
-                  <p className="text-sm font-medium text-primary">Análise Inteligente</p>
-                  {analysisGenerated && !aiLoading && (
-                    <Button variant="ghost" size="sm" onClick={generateAIAnalysis} className="h-7 text-xs">
-                      Regenerar
-                    </Button>
-                  )}
-                </div>
-                {aiLoading ? (
-                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    Analisando dados...
-                  </div>
-                ) : aiAnalysis ? (
-                  <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
-                    {aiAnalysis}
-                  </p>
-                ) : (
-                  <div className="space-y-2">
-                    <p className="text-sm text-muted-foreground">
-                      Gere uma análise inteligente sobre a evolução, identificando melhores e piores meses.
-                    </p>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={generateAIAnalysis}
-                      className="gap-2"
-                      disabled={chartData.length < 1}
-                    >
-                      <Sparkles className="h-3 w-3" />
-                      Gerar Análise
-                    </Button>
-                  </div>
+        <div className="relative overflow-hidden rounded-xl border bg-gradient-to-r from-primary/5 via-primary/10 to-violet-500/5 p-4">
+          <div className="absolute top-0 left-0 w-full h-0.5 bg-gradient-to-r from-primary via-violet-500 to-primary" />
+          <div className="flex items-start gap-3">
+            <div className="p-2 rounded-lg bg-gradient-to-br from-primary/15 to-violet-500/15">
+              <Sparkles className="h-4 w-4 text-primary" />
+            </div>
+            <div className="flex-1 space-y-2">
+              <div className="flex items-center justify-between">
+                <p className="text-sm font-semibold text-primary">Análise Inteligente</p>
+                {analysisGenerated && !aiLoading && (
+                  <Button variant="ghost" size="sm" onClick={generateAIAnalysis} className="h-7 text-xs">
+                    Regenerar
+                  </Button>
                 )}
               </div>
+              {aiLoading ? (
+                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                  <Loader2 className="h-4 w-4 animate-spin" />
+                  Analisando dados...
+                </div>
+              ) : aiAnalysis ? (
+                <p className="text-sm text-muted-foreground leading-relaxed whitespace-pre-line">
+                  {aiAnalysis}
+                </p>
+              ) : (
+                <div className="space-y-2">
+                  <p className="text-sm text-muted-foreground">
+                    Gere uma análise inteligente sobre a evolução, identificando melhores e piores meses.
+                  </p>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={generateAIAnalysis}
+                    className="gap-2"
+                    disabled={chartData.length < 1}
+                  >
+                    <Sparkles className="h-3 w-3" />
+                    Gerar Análise
+                  </Button>
+                </div>
+              )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </CardContent>
     </Card>
   );

@@ -1,15 +1,8 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Users, Trophy, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Users, Trophy, TrendingUp, TrendingDown, Minus, Medal } from "lucide-react";
+import { motion } from "framer-motion";
 
 interface KPI {
   id: string;
@@ -90,23 +83,17 @@ export const SalespeopleComparisonTable = ({
   selectedSector,
   selectedSalesperson,
 }: SalespeopleComparisonTableProps) => {
-  // Build a map of sector_id -> team_ids for efficient lookup
   const teamIdsBySectorId = useMemo(() => {
     const map: Record<string, Set<string>> = {};
     sectorTeams.forEach(st => {
-      if (!map[st.sector_id]) {
-        map[st.sector_id] = new Set();
-      }
+      if (!map[st.sector_id]) map[st.sector_id] = new Set();
       map[st.sector_id].add(st.team_id);
     });
     return map;
   }, [sectorTeams]);
 
-  // Check if a salesperson belongs to a sector (directly or via team)
   const salespersonBelongsToSector = (sp: Salesperson, sectorId: string): boolean => {
-    // Direct sector match
     if (sp.sector_id === sectorId) return true;
-    // Check if salesperson's team is associated with the sector
     if (sp.team_id) {
       const teamsInSector = teamIdsBySectorId[sectorId];
       if (teamsInSector && teamsInSector.has(sp.team_id)) return true;
@@ -114,97 +101,45 @@ export const SalespeopleComparisonTable = ({
     return false;
   };
 
-  // Filter salespeople by all selected filters
   const filteredSalespeople = useMemo(() => {
     return salespeople.filter((sp) => {
-      // If specific salesperson selected, show only that one
-      if (selectedSalesperson !== "all") {
-        return sp.id === selectedSalesperson;
-      }
-      // Filter by unit
-      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) {
-        return false;
-      }
-      // Filter by team
-      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) {
-        return false;
-      }
-      // Filter by sector (direct match OR via team association)
-      if (selectedSector !== "all") {
-        if (!salespersonBelongsToSector(sp, selectedSector)) {
-          return false;
-        }
-      }
+      if (selectedSalesperson !== "all") return sp.id === selectedSalesperson;
+      if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+      if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+      if (selectedSector !== "all" && !salespersonBelongsToSector(sp, selectedSector)) return false;
       return true;
     });
   }, [salespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson, teamIdsBySectorId]);
 
-  // Get ALL monetary KPIs for the comparison
-  // This ensures all sales/revenue KPIs are summed together
-  const allMonetaryKpis = useMemo(() => {
-    return kpis.filter((k) => k.kpi_type === "monetary");
-  }, [kpis]);
+  const allMonetaryKpis = useMemo(() => kpis.filter((k) => k.kpi_type === "monetary"), [kpis]);
 
-  // Get the main goal KPI for column header display
   const mainGoalKpi = useMemo(() => {
-    const mainGoal = kpis.find((k) => k.is_main_goal);
-    return mainGoal || kpis.find((k) => k.kpi_type === "monetary");
+    return kpis.find((k) => k.is_main_goal) || kpis.find((k) => k.kpi_type === "monetary");
   }, [kpis]);
 
-  // Get sales count KPI - look for "venda"/"fechamento", or fallback to main goal if it's numeric
   const salesKpi = useMemo(() => {
-    const vendaKpi = kpis.find((k) =>
-      k.name.toLowerCase().includes("venda") ||
-      k.name.toLowerCase().includes("fechamento")
+    return kpis.find((k) =>
+      k.name.toLowerCase().includes("venda") || k.name.toLowerCase().includes("fechamento")
     );
-    return vendaKpi;
   }, [kpis]);
 
-  // Determine which KPI IDs to use for the main goal total
-  // If there are monetary KPIs, sum all of them
-  // Otherwise, use the main goal KPI (even if numeric)
   const mainGoalKpiIds = useMemo(() => {
-    if (allMonetaryKpis.length > 0) {
-      return allMonetaryKpis.map(k => k.id);
-    }
-    // Fallback: use the main goal KPI if it exists
-    if (mainGoalKpi) {
-      return [mainGoalKpi.id];
-    }
+    if (allMonetaryKpis.length > 0) return allMonetaryKpis.map(k => k.id);
+    if (mainGoalKpi) return [mainGoalKpi.id];
     return [];
   }, [allMonetaryKpis, mainGoalKpi]);
 
-  // Calculate totals per salesperson
   const salespeopleData = useMemo(() => {
     const data = filteredSalespeople.map((sp) => {
       const spEntries = entries.filter((e) => e.salesperson_id === sp.id);
-
-      // Sum KPIs for this salesperson based on determined main goal IDs
       const mainGoalTotal = spEntries
         .filter((e) => mainGoalKpiIds.includes(e.kpi_id))
         .reduce((sum, e) => sum + e.value, 0);
-
-      // Sales count total - if no explicit "vendas" KPI, use 0
       const salesTotal = salesKpi
-        ? spEntries
-            .filter((e) => e.kpi_id === salesKpi.id)
-            .reduce((sum, e) => sum + e.value, 0)
+        ? spEntries.filter((e) => e.kpi_id === salesKpi.id).reduce((sum, e) => sum + e.value, 0)
         : 0;
-
-      // Calculate all KPI totals
-      const kpiTotals: Record<string, number> = {};
-      kpis.forEach((kpi) => {
-        kpiTotals[kpi.id] = spEntries
-          .filter((e) => e.kpi_id === kpi.id)
-          .reduce((sum, e) => sum + e.value, 0);
-      });
-
-      // Calculate average ticket
       const avgTicket = salesTotal > 0 ? mainGoalTotal / salesTotal : 0;
-
-      // Get unit name
       const unit = units.find((u) => u.id === sp.unit_id);
-
       return {
         id: sp.id,
         name: sp.name,
@@ -212,19 +147,14 @@ export const SalespeopleComparisonTable = ({
         mainGoalValue: mainGoalTotal,
         salesCount: salesTotal,
         avgTicket,
-        kpiTotals,
       };
     });
-
-    // Sort by main goal value descending
     return data.sort((a, b) => b.mainGoalValue - a.mainGoalValue);
-  }, [filteredSalespeople, entries, kpis, mainGoalKpi, mainGoalKpiIds, salesKpi, units]);
+  }, [filteredSalespeople, entries, kpis, mainGoalKpiIds, salesKpi, units]);
 
-  // Calculate team averages for comparison
   const teamAverages = useMemo(() => {
     const total = salespeopleData.length;
     if (total === 0) return { mainGoalValue: 0, salesCount: 0, avgTicket: 0 };
-
     const totals = salespeopleData.reduce(
       (acc, sp) => ({
         mainGoalValue: acc.mainGoalValue + sp.mainGoalValue,
@@ -233,7 +163,6 @@ export const SalespeopleComparisonTable = ({
       }),
       { mainGoalValue: 0, salesCount: 0, avgTicket: 0 }
     );
-
     return {
       mainGoalValue: totals.mainGoalValue / total,
       salesCount: totals.salesCount / total,
@@ -241,86 +170,23 @@ export const SalespeopleComparisonTable = ({
     };
   }, [salespeopleData]);
 
-  const formatValue = (value: number, kpiType?: string) => {
-    if (kpiType === "monetary") {
-      return new Intl.NumberFormat("pt-BR", {
-        style: "currency",
-        currency: "BRL",
-        minimumFractionDigits: 0,
-        maximumFractionDigits: 0,
-      }).format(value);
-    } else if (kpiType === "percentage") {
-      return `${value.toFixed(1)}%`;
-    }
-    return new Intl.NumberFormat("pt-BR").format(value);
-  };
-
-  const formatCurrency = (value: number) => {
-    return new Intl.NumberFormat("pt-BR", {
+  const formatCurrency = (value: number) =>
+    new Intl.NumberFormat("pt-BR", {
       style: "currency",
       currency: "BRL",
       minimumFractionDigits: 0,
       maximumFractionDigits: 0,
     }).format(value);
-  };
 
-  const formatNumber = (value: number) => {
+  const formatValue = (value: number, kpiType?: string) => {
+    if (kpiType === "monetary") return formatCurrency(value);
+    if (kpiType === "percentage") return `${value.toFixed(1)}%`;
     return new Intl.NumberFormat("pt-BR").format(value);
-  };
-
-  const getComparisonBadge = (value: number, average: number) => {
-    if (average === 0) return null;
-    const diff = ((value - average) / average) * 100;
-
-    if (diff > 10) {
-      return (
-        <Badge variant="default" className="ml-2 gap-1 bg-green-600">
-          <TrendingUp className="h-3 w-3" />
-          +{diff.toFixed(0)}%
-        </Badge>
-      );
-    } else if (diff < -10) {
-      return (
-        <Badge variant="destructive" className="ml-2 gap-1">
-          <TrendingDown className="h-3 w-3" />
-          {diff.toFixed(0)}%
-        </Badge>
-      );
-    }
-    return (
-      <Badge variant="secondary" className="ml-2 gap-1">
-        <Minus className="h-3 w-3" />
-        Média
-      </Badge>
-    );
-  };
-
-  const getRankBadge = (index: number) => {
-    if (index === 0) {
-      return (
-        <Badge className="bg-yellow-500 text-yellow-950">
-          <Trophy className="h-3 w-3 mr-1" />1º
-        </Badge>
-      );
-    } else if (index === 1) {
-      return (
-        <Badge className="bg-gray-400 text-gray-900">
-          2º
-        </Badge>
-      );
-    } else if (index === 2) {
-      return (
-        <Badge className="bg-amber-600 text-amber-50">
-          3º
-        </Badge>
-      );
-    }
-    return <span className="text-muted-foreground">{index + 1}º</span>;
   };
 
   if (salespeopleData.length === 0) {
     return (
-      <Card>
+      <Card className="relative overflow-hidden border-0 shadow-xl">
         <CardHeader>
           <CardTitle className="text-base flex items-center gap-2">
             <Users className="h-4 w-4" />
@@ -336,74 +202,120 @@ export const SalespeopleComparisonTable = ({
     );
   }
 
+  const maxValue = Math.max(...salespeopleData.map(sp => sp.mainGoalValue), 1);
+
   return (
-    <Card>
-      <CardHeader>
-        <CardTitle className="text-base flex items-center gap-2">
-          <Users className="h-4 w-4" />
-          Comparativo de Vendedores
-          <Badge variant="outline" className="ml-2">
-            {salespeopleData.length} vendedor{salespeopleData.length !== 1 ? "es" : ""}
+    <Card className="relative overflow-hidden border-0 shadow-xl">
+      <div className="absolute inset-0 bg-gradient-to-br from-amber-900/[0.03] via-transparent to-yellow-900/[0.04] dark:from-amber-800/20 dark:via-transparent dark:to-yellow-900/15" />
+      <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-radial from-amber-500/[0.07] to-transparent rounded-full blur-3xl" />
+
+      <CardHeader className="relative pb-3">
+        <div className="flex items-center justify-between flex-wrap gap-2">
+          <div className="flex items-center gap-3">
+            <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-amber-500 to-yellow-600 text-white shadow-lg shadow-amber-500/20">
+              <Trophy className="h-4 w-4" />
+            </div>
+            <div>
+              <CardTitle className="text-base">Comparativo de Vendedores</CardTitle>
+              <p className="text-xs text-muted-foreground">
+                {salespeopleData.length} vendedor{salespeopleData.length !== 1 ? "es" : ""}
+              </p>
+            </div>
+          </div>
+          <Badge variant="outline" className="border-0 bg-muted/60 text-xs font-medium px-3 py-1">
+            Média: {formatValue(teamAverages.mainGoalValue, mainGoalKpi?.kpi_type)}
           </Badge>
-        </CardTitle>
-      </CardHeader>
-      <CardContent>
-        <div className="overflow-x-auto">
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead className="w-[60px]">Rank</TableHead>
-                <TableHead>Vendedor</TableHead>
-                {selectedUnit === "all" && <TableHead>Unidade</TableHead>}
-                <TableHead className="text-right">{mainGoalKpi?.name || "Meta Principal"}</TableHead>
-                <TableHead className="text-right">Vendas</TableHead>
-                <TableHead className="text-right">Ticket Médio</TableHead>
-                <TableHead className="text-center">vs. Média</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salespeopleData.map((sp, index) => (
-                <TableRow key={sp.id}>
-                  <TableCell>{getRankBadge(index)}</TableCell>
-                  <TableCell className="font-medium">{sp.name}</TableCell>
-                  {selectedUnit === "all" && (
-                    <TableCell>
-                      <Badge variant="outline">{sp.unitName}</Badge>
-                    </TableCell>
-                  )}
-                  <TableCell className="text-right font-bold">
-                    {formatValue(sp.mainGoalValue, mainGoalKpi?.kpi_type)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatNumber(sp.salesCount)}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    {formatCurrency(sp.avgTicket)}
-                  </TableCell>
-                  <TableCell className="text-center">
-                    {getComparisonBadge(sp.mainGoalValue, teamAverages.mainGoalValue)}
-                  </TableCell>
-                </TableRow>
-              ))}
-              {/* Team Average Row */}
-              <TableRow className="bg-muted/50 font-medium border-t-2">
-                <TableCell></TableCell>
-                <TableCell>Média da Equipe</TableCell>
-                {selectedUnit === "all" && <TableCell>-</TableCell>}
-                <TableCell className="text-right">
-                  {formatValue(teamAverages.mainGoalValue, mainGoalKpi?.kpi_type)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatNumber(teamAverages.salesCount)}
-                </TableCell>
-                <TableCell className="text-right">
-                  {formatCurrency(teamAverages.avgTicket)}
-                </TableCell>
-                <TableCell></TableCell>
-              </TableRow>
-            </TableBody>
-          </Table>
         </div>
+      </CardHeader>
+
+      <CardContent className="relative space-y-2">
+        {salespeopleData.map((sp, idx) => {
+          const diff = teamAverages.mainGoalValue > 0
+            ? ((sp.mainGoalValue - teamAverages.mainGoalValue) / teamAverages.mainGoalValue) * 100
+            : 0;
+          const isAbove = diff > 10;
+          const isBelow = diff < -10;
+          const barWidth = maxValue > 0 ? (sp.mainGoalValue / maxValue) * 100 : 0;
+
+          return (
+            <motion.div
+              key={sp.id}
+              initial={{ x: -10, opacity: 0 }}
+              animate={{ x: 0, opacity: 1 }}
+              transition={{ delay: idx * 0.05 }}
+              className={`relative overflow-hidden rounded-xl border p-3 transition-all hover:shadow-md ${
+                idx === 0
+                  ? "border-amber-500/20 bg-amber-500/[0.03]"
+                  : "bg-card/60 backdrop-blur-sm"
+              }`}
+            >
+              <div className="flex items-center gap-3">
+                {/* Rank */}
+                <div className={`flex items-center justify-center h-8 w-8 rounded-full text-xs font-bold shrink-0 ${
+                  idx === 0
+                    ? "bg-gradient-to-br from-amber-400 to-yellow-500 text-white shadow-md shadow-amber-400/30"
+                    : idx === 1
+                    ? "bg-gradient-to-br from-gray-300 to-gray-400 text-gray-800"
+                    : idx === 2
+                    ? "bg-gradient-to-br from-amber-600 to-amber-700 text-white"
+                    : "bg-muted text-muted-foreground"
+                }`}>
+                  {idx + 1}
+                </div>
+
+                {/* Info */}
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center justify-between gap-2 mb-1.5">
+                    <div className="flex items-center gap-2 min-w-0">
+                      <p className="text-sm font-semibold truncate">{sp.name}</p>
+                      {selectedUnit === "all" && sp.unitName !== "-" && (
+                        <Badge variant="outline" className="text-[9px] px-1.5 py-0 shrink-0">
+                          {sp.unitName}
+                        </Badge>
+                      )}
+                    </div>
+                    <p className="text-sm font-bold shrink-0">
+                      {formatValue(sp.mainGoalValue, mainGoalKpi?.kpi_type)}
+                    </p>
+                  </div>
+
+                  {/* Bar */}
+                  <div className="relative h-2 rounded-full bg-muted/60 overflow-hidden mb-1.5">
+                    <motion.div
+                      className={`h-full rounded-full ${
+                        idx === 0
+                          ? "bg-gradient-to-r from-amber-400 to-yellow-500"
+                          : "bg-gradient-to-r from-primary/70 to-primary"
+                      }`}
+                      initial={{ width: 0 }}
+                      animate={{ width: `${barWidth}%` }}
+                      transition={{ duration: 0.8, ease: "easeOut", delay: 0.1 + idx * 0.05 }}
+                    />
+                  </div>
+
+                  {/* Stats */}
+                  <div className="flex items-center justify-between text-[10px] text-muted-foreground">
+                    <span>Vendas: {sp.salesCount.toLocaleString("pt-BR")}</span>
+                    <span>Ticket: {formatCurrency(sp.avgTicket)}</span>
+                    <Badge
+                      variant="outline"
+                      className={`text-[9px] px-1.5 py-0 border-0 font-bold ${
+                        isAbove
+                          ? "bg-emerald-500/10 text-emerald-600"
+                          : isBelow
+                          ? "bg-red-500/10 text-red-600"
+                          : "bg-muted text-muted-foreground"
+                      }`}
+                    >
+                      {isAbove ? <TrendingUp className="h-2.5 w-2.5 mr-0.5 inline" /> : isBelow ? <TrendingDown className="h-2.5 w-2.5 mr-0.5 inline" /> : null}
+                      {diff > 0 ? "+" : ""}{diff.toFixed(0)}% vs média
+                    </Badge>
+                  </div>
+                </div>
+              </div>
+            </motion.div>
+          );
+        })}
       </CardContent>
     </Card>
   );
