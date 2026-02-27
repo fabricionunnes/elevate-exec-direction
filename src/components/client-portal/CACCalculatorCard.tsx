@@ -28,13 +28,14 @@ interface CostItem {
 
 interface CACCalculatorCardProps {
   projectId: string;
+  autoSalesCount?: number;
 }
 
-export const CACCalculatorCard = ({ projectId }: CACCalculatorCardProps) => {
+export const CACCalculatorCard = ({ projectId, autoSalesCount }: CACCalculatorCardProps) => {
   const [costItems, setCostItems] = useState<CostItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
-  const [salesCount, setSalesCount] = useState<string>("");
+  const [manualSalesCount, setManualSalesCount] = useState<string>("");
   const [showForm, setShowForm] = useState(false);
   const [newItem, setNewItem] = useState({ name: "", description: "", value: "" });
 
@@ -125,7 +126,8 @@ export const CACCalculatorCard = ({ projectId }: CACCalculatorCardProps) => {
   };
 
   const totalCost = useMemo(() => costItems.reduce((sum, item) => sum + item.value, 0), [costItems]);
-  const salesNumber = parseInt(salesCount) || 0;
+  const hasAutoSales = autoSalesCount !== undefined && autoSalesCount > 0;
+  const salesNumber = hasAutoSales ? autoSalesCount : (parseInt(manualSalesCount) || 0);
   const cac = salesNumber > 0 ? totalCost / salesNumber : null;
 
   const formatCurrency = (value: number) =>
@@ -295,20 +297,30 @@ export const CACCalculatorCard = ({ projectId }: CACCalculatorCardProps) => {
               <span className="text-lg font-bold text-primary">{formatCurrency(totalCost)}</span>
             </div>
 
-            {/* Sales input */}
-            <div className="space-y-1.5">
-              <Label className="text-xs flex items-center gap-1.5">
-                <Users className="h-3.5 w-3.5" />
-                Vendas realizadas no mês
-              </Label>
-              <Input
-                type="number"
-                placeholder="Quantidade de vendas"
-                value={salesCount}
-                onChange={(e) => setSalesCount(e.target.value)}
-                className="h-9"
-              />
-            </div>
+            {/* Sales count */}
+            {hasAutoSales ? (
+              <div className="flex items-center justify-between p-3 rounded-xl border bg-emerald-500/5 border-emerald-500/20">
+                <span className="text-sm font-medium flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5 text-emerald-600" />
+                  Vendas no mês
+                </span>
+                <span className="text-lg font-bold text-emerald-600">{autoSalesCount}</span>
+              </div>
+            ) : (
+              <div className="space-y-1.5">
+                <Label className="text-xs flex items-center gap-1.5">
+                  <Users className="h-3.5 w-3.5" />
+                  Vendas realizadas no mês
+                </Label>
+                <Input
+                  type="number"
+                  placeholder="Quantidade de vendas"
+                  value={manualSalesCount}
+                  onChange={(e) => setManualSalesCount(e.target.value)}
+                  className="h-9"
+                />
+              </div>
+            )}
 
             {/* CAC Result */}
             <AnimatePresence>
