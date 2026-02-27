@@ -297,24 +297,25 @@ export const ProjectTermVisionCard = ({
   if (chartData.length === 0) return null;
 
   const lineConfig = [
-    { key: "revenue", label: "VENDAS", color: "#22c55e", width: 2.5, dash: "6 4", dot: 4 },
-    { key: "qtr", label: "QTR", color: "#8b5cf6", width: 2, dash: undefined, dot: 2.5 },
-    { key: "ytd", label: "YTD", color: "#3b82f6", width: 2, dash: undefined, dot: 2.5 },
-    { key: "mat", label: "MAT", color: "#f59e0b", width: 2, dash: undefined, dot: 2.5 },
+    { key: "revenue", label: "VENDAS", color: "#10b981", colorEnd: "#34d399", width: 3, dash: "6 3", dot: 5, glow: true },
+    { key: "qtr", label: "QTR", color: "#a78bfa", colorEnd: "#c4b5fd", width: 2.5, dash: undefined, dot: 3, glow: false },
+    { key: "ytd", label: "YTD", color: "#60a5fa", colorEnd: "#93c5fd", width: 2.5, dash: undefined, dot: 3, glow: false },
+    { key: "mat", label: "MAT", color: "#fbbf24", colorEnd: "#fcd34d", width: 2.5, dash: undefined, dot: 3, glow: false },
   ];
 
   const kpiCards = [
-    { label: "Mês Atual", value: kpis.currentMonth, variation: kpis.currentVsQtr, varLabel: "vs QTR", color: "#22c55e", icon: "💰" },
-    { label: "QTR", value: kpis.qtr, variation: kpis.qtrVsYtd, varLabel: "vs YTD", color: "#8b5cf6", icon: "📊" },
-    { label: "YTD", value: kpis.ytd, variation: kpis.ytdVsMat, varLabel: "vs MAT", color: "#3b82f6", icon: "📈" },
-    { label: "MAT", value: kpis.mat, variation: null, varLabel: "12 meses", color: "#f59e0b", icon: "🎯" },
+    { label: "Mês Atual", value: kpis.currentMonth, variation: kpis.currentVsQtr, varLabel: "vs QTR", color: "#10b981", colorEnd: "#34d399", icon: "💰" },
+    { label: "QTR", value: kpis.qtr, variation: kpis.qtrVsYtd, varLabel: "vs YTD", color: "#a78bfa", colorEnd: "#c4b5fd", icon: "📊" },
+    { label: "YTD", value: kpis.ytd, variation: kpis.ytdVsMat, varLabel: "vs MAT", color: "#60a5fa", colorEnd: "#93c5fd", icon: "📈" },
+    { label: "MAT", value: kpis.mat, variation: null, varLabel: "12 meses", color: "#fbbf24", colorEnd: "#fcd34d", icon: "🎯" },
   ];
 
   return (
     <Card className={`relative overflow-hidden border-border/50 bg-gradient-to-br from-background via-background to-muted/20 ${className || ""}`}>
       {/* Decorative blurs */}
-      <div className="absolute -top-24 -right-24 w-48 h-48 bg-gradient-to-br from-violet-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute -bottom-20 -left-20 w-40 h-40 bg-gradient-to-br from-blue-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -top-24 -right-24 w-56 h-56 bg-gradient-to-br from-violet-500/8 via-fuchsia-500/5 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute -bottom-20 -left-20 w-48 h-48 bg-gradient-to-br from-emerald-500/6 via-cyan-500/4 to-transparent rounded-full blur-3xl pointer-events-none" />
+      <div className="absolute top-1/2 right-1/3 w-32 h-32 bg-gradient-to-br from-amber-500/4 to-transparent rounded-full blur-2xl pointer-events-none" />
 
       <CardHeader className="pb-3 relative z-10">
         <div className="flex items-center gap-2">
@@ -339,8 +340,12 @@ export const ProjectTermVisionCard = ({
               className="relative overflow-hidden rounded-xl border border-border/50 p-3 bg-gradient-to-br from-background to-muted/30"
             >
               <div
-                className="absolute top-0 left-0 w-full h-0.5 rounded-t-xl"
-                style={{ background: `linear-gradient(90deg, ${card.color}80, ${card.color}20)` }}
+                className="absolute top-0 left-0 w-full h-1 rounded-t-xl"
+                style={{ background: `linear-gradient(90deg, ${card.color}, ${card.colorEnd})` }}
+              />
+              <div
+                className="absolute top-0 left-0 w-full h-12 rounded-t-xl opacity-[0.04]"
+                style={{ background: `linear-gradient(180deg, ${card.color}, transparent)` }}
               />
               <div className="flex items-center justify-between mb-1.5">
                 <span className="text-[10px] font-semibold tracking-wider text-muted-foreground uppercase">
@@ -375,10 +380,19 @@ export const ProjectTermVisionCard = ({
             <LineChart data={chartData} margin={{ top: 15, right: 10, left: -5, bottom: 10 }}>
               <defs>
                 {lineConfig.map(l => (
-                  <linearGradient key={l.key} id={`grad-${l.key}`} x1="0" y1="0" x2="0" y2="1">
-                    <stop offset="0%" stopColor={l.color} stopOpacity={0.15} />
-                    <stop offset="100%" stopColor={l.color} stopOpacity={0} />
+                  <linearGradient key={`stroke-${l.key}`} id={`stroke-${l.key}`} x1="0" y1="0" x2="1" y2="0">
+                    <stop offset="0%" stopColor={l.color} />
+                    <stop offset="100%" stopColor={l.colorEnd} />
                   </linearGradient>
+                ))}
+                {lineConfig.filter(l => l.glow).map(l => (
+                  <filter key={`glow-${l.key}`} id={`glow-${l.key}`}>
+                    <feGaussianBlur stdDeviation="3" result="blur" />
+                    <feMerge>
+                      <feMergeNode in="blur" />
+                      <feMergeNode in="SourceGraphic" />
+                    </feMerge>
+                  </filter>
                 ))}
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.3} vertical={false} />
@@ -403,11 +417,12 @@ export const ProjectTermVisionCard = ({
                   type="monotone"
                   dataKey={l.key}
                   name={l.label}
-                  stroke={l.color}
+                  stroke={`url(#stroke-${l.key})`}
                   strokeWidth={l.width}
                   strokeDasharray={l.dash}
-                  dot={{ fill: l.color, strokeWidth: 0, r: l.dot }}
-                  activeDot={{ r: 5, strokeWidth: 2, stroke: "hsl(var(--background))" }}
+                  dot={{ fill: l.color, strokeWidth: 2, stroke: l.colorEnd, r: l.dot }}
+                  activeDot={{ r: 6, strokeWidth: 2, stroke: "hsl(var(--background))", fill: l.color }}
+                  filter={l.glow ? `url(#glow-${l.key})` : undefined}
                 />
               ))}
             </LineChart>
@@ -415,17 +430,17 @@ export const ProjectTermVisionCard = ({
         </motion.div>
 
         {/* Legend */}
-        <div className="flex flex-wrap justify-center gap-3 pt-1">
+        <div className="flex flex-wrap justify-center gap-2 pt-1">
           {lineConfig.map(l => (
-            <div key={l.key} className="flex items-center gap-1.5 px-2.5 py-1 rounded-full bg-muted/40">
+            <div key={l.key} className="flex items-center gap-1.5 px-3 py-1.5 rounded-full border border-border/40 bg-muted/30 backdrop-blur-sm">
               <div
-                className="w-3.5 h-[3px] rounded-full"
+                className="w-4 h-1 rounded-full"
                 style={{
-                  backgroundColor: l.color,
-                  ...(l.dash ? { backgroundImage: `repeating-linear-gradient(90deg, ${l.color} 0, ${l.color} 4px, transparent 4px, transparent 7px)`, backgroundColor: "transparent" } : {}),
+                  background: `linear-gradient(90deg, ${l.color}, ${l.colorEnd})`,
+                  ...(l.dash ? { backgroundImage: `repeating-linear-gradient(90deg, ${l.color} 0, ${l.colorEnd} 4px, transparent 4px, transparent 6px)` } : {}),
                 }}
               />
-              <span className="text-[11px] font-medium text-muted-foreground">{l.label}</span>
+              <span className="text-[11px] font-semibold text-muted-foreground">{l.label}</span>
             </div>
           ))}
         </div>
