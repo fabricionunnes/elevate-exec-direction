@@ -44,6 +44,13 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_dre: "fin_dre",
   fin_dfc: "fin_dfc",
   fin_banks: "fin_banks",
+  fin_cfo_executive: "fin_cfo_executive",
+  fin_cfo_mrr: "fin_cfo_mrr",
+  fin_cfo_churn: "fin_cfo_churn",
+  fin_cfo_unit_economics: "fin_cfo_unit_economics",
+  fin_cfo_costs: "fin_cfo_costs",
+  fin_cfo_cash: "fin_cfo_cash",
+  fin_cfo_delinquency: "fin_cfo_delinquency",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
@@ -61,6 +68,13 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_dre, label: "DRE", description: "Visualizar Demonstrativo de Resultados", group: "Relatórios" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_dfc, label: "DFC", description: "Visualizar Demonstrativo de Fluxo de Caixa", group: "Relatórios" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_banks, label: "Bancos", description: "Gerenciar contas bancárias", group: "Administração" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive, label: "CFO - Executive Board", description: "Visão executiva com KPIs estratégicos", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_mrr, label: "CFO - Receita & MRR", description: "MRR Breakdown, Ticket Médio", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_churn, label: "CFO - Churn & Retenção", description: "Churn rate, cohort, retenção", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_unit_economics, label: "CFO - Unit Economics", description: "CAC, LTV, Payback, Margem", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_costs, label: "CFO - Custos & Estrutura", description: "Custos fixos/variáveis, colaboradores", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_cash, label: "CFO - Caixa & Projeção", description: "Fluxo de caixa, runway, projeção 12m", group: "Dashboard CFO" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_delinquency, label: "CFO - Inadimplência", description: "Aging list, taxa de recuperação", group: "Dashboard CFO" },
 ] as const;
 
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];
