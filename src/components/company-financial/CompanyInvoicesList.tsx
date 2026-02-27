@@ -122,6 +122,19 @@ export function CompanyInvoicesList({ companyId }: Props) {
   };
 
   const markAsPaid = async (invoiceId: string) => {
+    // First verify invoice is still pending/overdue in DB
+    const { data: freshInvoice } = await supabase
+      .from("company_invoices")
+      .select("status")
+      .eq("id", invoiceId)
+      .single();
+
+    if ((freshInvoice as any)?.status === "paid") {
+      toast.info("Fatura já está paga!");
+      fetchInvoices();
+      return;
+    }
+
     const { error } = await supabase
       .from("company_invoices")
       .update({
@@ -137,7 +150,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
     toast.success("Fatura marcada como paga!");
 
-    // Sync with Asaas (non-blocking)
+    // Sync with Asaas (non-blocking) - this will also store the Asaas payment ID on the invoice
     supabase.functions.invoke("asaas-confirm-payment", {
       body: { invoice_id: invoiceId, action: "confirm" },
     }).then(({ data, error: asaasErr }) => {
