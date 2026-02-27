@@ -26,6 +26,7 @@ interface Props {
   billingDay?: number;
   customerEmail?: string;
   customerPhone?: string;
+  customerDocument?: string;
 }
 
 interface RecurringCharge {
@@ -61,6 +62,7 @@ export function CompanyRecurringCharges({
   billingDay,
   customerEmail,
   customerPhone,
+  customerDocument: companyDocument,
 }: Props) {
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
   const [loading, setLoading] = useState(true);
@@ -86,7 +88,7 @@ export function CompanyRecurringCharges({
     customerName: companyName,
     customerEmail: customerEmail || "",
     customerPhone: customerPhone || "",
-    customerDocument: "",
+    customerDocument: companyDocument || "",
     notes: "",
   });
 

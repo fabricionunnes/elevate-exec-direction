@@ -965,6 +965,7 @@ const OnboardingCompanyDetailPage = () => {
                   billingDay={form.billing_day ? parseInt(form.billing_day) : undefined}
                   customerEmail={form.email}
                   customerPhone={form.phone}
+                  customerDocument={form.cnpj}
                 />
               </TabsContent>
             )}
