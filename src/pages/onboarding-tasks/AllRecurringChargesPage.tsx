@@ -875,7 +875,7 @@ export default function AllRecurringChargesPage() {
                                       {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                       Baixa
                                     </Button>
-                                  ) : (
+                                  ) : isMaster ? (
                                     <Button
                                       variant="ghost"
                                       size="sm"
@@ -891,7 +891,7 @@ export default function AllRecurringChargesPage() {
                                       {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
                                       Estornar
                                     </Button>
-                                  )}
+                                  ) : null}
                                 </div>
                               )}
                             </TableCell>
