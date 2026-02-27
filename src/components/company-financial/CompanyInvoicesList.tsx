@@ -110,10 +110,26 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
     if (error) {
       toast.error("Erro ao marcar como pago");
-    } else {
-      toast.success("Fatura marcada como paga!");
-      fetchInvoices();
+      return;
     }
+
+    toast.success("Fatura marcada como paga!");
+
+    // Sync with Asaas (non-blocking)
+    supabase.functions.invoke("asaas-confirm-payment", {
+      body: { invoice_id: invoiceId, action: "confirm" },
+    }).then(({ data, error: asaasErr }) => {
+      if (asaasErr) {
+        console.error("Asaas sync error:", asaasErr);
+        toast.warning("Baixa local feita, mas houve erro ao sincronizar com Asaas");
+      } else if (data?.skipped) {
+        console.log("Asaas sync skipped:", data.reason);
+      } else {
+        toast.success("Baixa sincronizada com Asaas ✓");
+      }
+    });
+
+    fetchInvoices();
   };
 
   const revertPaid = async (invoiceId: string, dueDate: string) => {
@@ -132,10 +148,24 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
     if (error) {
       toast.error("Erro ao estornar fatura");
-    } else {
-      toast.success("Baixa estornada com sucesso!");
-      fetchInvoices();
+      return;
     }
+
+    toast.success("Baixa estornada com sucesso!");
+
+    // Revert in Asaas (non-blocking)
+    supabase.functions.invoke("asaas-confirm-payment", {
+      body: { invoice_id: invoiceId, action: "revert" },
+    }).then(({ data, error: asaasErr }) => {
+      if (asaasErr) {
+        console.error("Asaas revert error:", asaasErr);
+        toast.warning("Estorno local feito, mas houve erro ao sincronizar com Asaas");
+      } else if (!data?.skipped) {
+        toast.success("Estorno sincronizado com Asaas ✓");
+      }
+    });
+
+    fetchInvoices();
   };
 
   const handleCreateManual = async () => {

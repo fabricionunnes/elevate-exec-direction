@@ -248,3 +248,6 @@ verify_jwt = false
 
 [functions.asaas-cancel-subscription]
 verify_jwt = false
+
+[functions.asaas-confirm-payment]
+verify_jwt = false
