@@ -1603,6 +1603,50 @@ export type Database = {
           },
         ]
       }
+      cac_cost_items: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          month: number
+          name: string
+          project_id: string
+          updated_at: string
+          value: number
+          year: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          month: number
+          name: string
+          project_id: string
+          updated_at?: string
+          value?: number
+          year: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          month?: number
+          name?: string
+          project_id?: string
+          updated_at?: string
+          value?: number
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "cac_cost_items_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       candidate_ai_evaluations: {
         Row: {
           candidate_id: string
