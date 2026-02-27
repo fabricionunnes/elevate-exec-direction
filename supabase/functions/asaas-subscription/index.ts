@@ -67,7 +67,13 @@ Deno.serve(async (req) => {
     }
 
     // Step 1: Find or create customer
-    const cleanDoc = customer_document?.replace(/\D/g, "") || "";
+    let cleanDoc = customer_document?.replace(/\D/g, "") || "";
+    // Pad CPF to 11 digits or CNPJ to 14 digits
+    if (cleanDoc.length > 0 && cleanDoc.length <= 11) {
+      cleanDoc = cleanDoc.padStart(11, "0");
+    } else if (cleanDoc.length > 11 && cleanDoc.length <= 14) {
+      cleanDoc = cleanDoc.padStart(14, "0");
+    }
     let customerId: string | null = null;
 
     // Fetch company address for Asaas customer
