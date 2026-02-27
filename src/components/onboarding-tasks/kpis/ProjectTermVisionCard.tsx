@@ -139,7 +139,8 @@ export const ProjectTermVisionCard = ({
 
       // First, seed with sales history (lower priority)
       salesHistory?.forEach(sh => {
-        const monthKey = sh.month_year; // Already in "YYYY-MM" format
+        // month_year can be "YYYY-MM-01" or "YYYY-MM" format
+        const monthKey = sh.month_year.substring(0, 7); // Extract "YYYY-MM"
         monthlyRevenue[monthKey] = (monthlyRevenue[monthKey] || 0) + (Number(sh.revenue) || 0);
       });
 

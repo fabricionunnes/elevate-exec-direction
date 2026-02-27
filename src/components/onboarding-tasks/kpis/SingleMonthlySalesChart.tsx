@@ -217,7 +217,9 @@ export const SingleMonthlySalesChart = ({
       const monthlyAggregation: Record<string, { revenue: number; count: number }> = {};
 
       salesHistory?.forEach((sh) => {
-        const monthStr = sh.month_year + "-01"; // "YYYY-MM" -> "YYYY-MM-01"
+        // month_year can be "YYYY-MM-01" or "YYYY-MM" - normalize to "YYYY-MM-01"
+        const raw = sh.month_year.substring(0, 7); // "YYYY-MM"
+        const monthStr = raw + "-01";
         if (!monthlyAggregation[monthStr]) {
           monthlyAggregation[monthStr] = { revenue: 0, count: 0 };
         }
