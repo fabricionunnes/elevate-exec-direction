@@ -636,7 +636,7 @@ export default function AllRecurringChargesPage() {
           <TabsList>
             <TabsTrigger value="recurring" className="gap-2">
               <RefreshCw className="h-4 w-4" />
-              Recorrências
+              Contas a Receber
             </TabsTrigger>
             {isMaster && (
               <TabsTrigger value="payables" className="gap-2">
