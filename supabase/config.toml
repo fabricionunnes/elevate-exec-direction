@@ -251,3 +251,6 @@ verify_jwt = false
 
 [functions.asaas-confirm-payment]
 verify_jwt = false
+
+[functions.asaas-webhook]
+verify_jwt = false
