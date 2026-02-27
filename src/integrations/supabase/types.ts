@@ -9645,7 +9645,9 @@ export type Database = {
         Row: {
           amount_cents: number
           bank_id: string | null
+          category_id: string | null
           company_id: string
+          cost_center_id: string | null
           created_at: string
           daily_interest_percent: number
           description: string
@@ -9673,7 +9675,9 @@ export type Database = {
         Insert: {
           amount_cents: number
           bank_id?: string | null
+          category_id?: string | null
           company_id: string
+          cost_center_id?: string | null
           created_at?: string
           daily_interest_percent?: number
           description: string
@@ -9701,7 +9705,9 @@ export type Database = {
         Update: {
           amount_cents?: number
           bank_id?: string | null
+          category_id?: string | null
           company_id?: string
+          cost_center_id?: string | null
           created_at?: string
           daily_interest_percent?: number
           description?: string
@@ -9732,6 +9738,20 @@ export type Database = {
             columns: ["bank_id"]
             isOneToOne: false
             referencedRelation: "financial_banks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invoices_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_invoices_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_cost_centers"
             referencedColumns: ["id"]
           },
           {
@@ -14261,6 +14281,7 @@ export type Database = {
           category_id: string | null
           conta_azul_id: string | null
           cost_center: string | null
+          cost_center_id: string | null
           created_at: string
           description: string
           due_date: string
@@ -14285,6 +14306,7 @@ export type Database = {
           category_id?: string | null
           conta_azul_id?: string | null
           cost_center?: string | null
+          cost_center_id?: string | null
           created_at?: string
           description: string
           due_date: string
@@ -14309,6 +14331,7 @@ export type Database = {
           category_id?: string | null
           conta_azul_id?: string | null
           cost_center?: string | null
+          cost_center_id?: string | null
           created_at?: string
           description?: string
           due_date?: string
@@ -14346,6 +14369,13 @@ export type Database = {
             columns: ["category_id"]
             isOneToOne: false
             referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "financial_payables_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_cost_centers"
             referencedColumns: ["id"]
           },
         ]
@@ -22235,12 +22265,40 @@ export type Database = {
           },
         ]
       }
+      staff_financial_cost_centers: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          sort_order?: number
+        }
+        Relationships: []
+      }
       staff_financial_entries: {
         Row: {
           amount_cents: number
           bank_id: string | null
           category_id: string | null
           company_id: string | null
+          cost_center_id: string | null
           created_at: string
           created_by: string | null
           description: string
@@ -22262,6 +22320,7 @@ export type Database = {
           bank_id?: string | null
           category_id?: string | null
           company_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           description: string
@@ -22283,6 +22342,7 @@ export type Database = {
           bank_id?: string | null
           category_id?: string | null
           company_id?: string | null
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string
@@ -22319,6 +22379,13 @@ export type Database = {
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_financial_entries_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_cost_centers"
             referencedColumns: ["id"]
           },
         ]
