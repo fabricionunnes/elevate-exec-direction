@@ -2048,81 +2048,124 @@ export const KPIDashboardTab = ({
       </div>
 
       {/* Sales Funnel Chart - Always show */}
-      <Card className="relative overflow-hidden border-0 shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-violet-900/[0.03] via-transparent to-purple-900/[0.04] dark:from-violet-800/20 dark:via-transparent dark:to-purple-900/15" />
-        <div className="absolute -top-20 -right-20 w-60 h-60 bg-gradient-radial from-violet-500/[0.07] to-transparent rounded-full blur-3xl" />
-        <CardHeader className="relative pb-3">
+      <Card className="relative overflow-hidden border-0 shadow-2xl bg-gradient-to-br from-card via-card to-card">
+        {/* Decorative background layers */}
+        <div className="absolute inset-0 bg-gradient-to-br from-violet-600/[0.04] via-fuchsia-500/[0.02] to-purple-600/[0.05] dark:from-violet-700/20 dark:via-fuchsia-600/10 dark:to-purple-800/15" />
+        <div className="absolute -top-32 -right-32 w-80 h-80 bg-gradient-radial from-violet-500/[0.08] to-transparent rounded-full blur-3xl" />
+        <div className="absolute -bottom-20 -left-20 w-60 h-60 bg-gradient-radial from-fuchsia-500/[0.06] to-transparent rounded-full blur-3xl" />
+        <CardHeader className="relative pb-4">
           <div className="flex items-center justify-between flex-wrap gap-2">
             <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-violet-500 to-purple-600 text-white shadow-lg shadow-violet-500/20">
-                <Filter className="h-4 w-4" />
+              <div className="relative flex items-center justify-center h-10 w-10 rounded-xl bg-gradient-to-br from-violet-500 via-fuchsia-500 to-purple-600 text-white shadow-lg shadow-violet-500/30">
+                <Filter className="h-4.5 w-4.5" />
+                <div className="absolute inset-0 rounded-xl bg-white/10 animate-pulse" style={{ animationDuration: '3s' }} />
               </div>
               <div>
-                <CardTitle className="text-base">Funil de Vendas</CardTitle>
-                <p className="text-xs text-muted-foreground">Conversão entre etapas</p>
+                <CardTitle className="text-lg font-bold bg-gradient-to-r from-violet-700 via-fuchsia-600 to-purple-700 dark:from-violet-300 dark:via-fuchsia-300 dark:to-purple-300 bg-clip-text text-transparent">Funil de Vendas</CardTitle>
+                <p className="text-xs text-muted-foreground">Conversão entre etapas do processo comercial</p>
               </div>
             </div>
             {salesFunnel.hasData && salesFunnel.overallConversion !== undefined && (
-              <Badge variant="outline" className="gap-1.5 px-3 py-1 text-sm font-bold border-0 shadow-sm bg-violet-500/10 text-violet-700 dark:text-violet-400">
-                {salesFunnel.overallConversion.toFixed(1)}% conversão
-              </Badge>
+              <div className="flex items-center gap-2">
+                <Badge variant="outline" className="gap-1.5 px-3 py-1.5 text-sm font-bold border-0 shadow-md bg-gradient-to-r from-violet-500/15 to-fuchsia-500/15 text-violet-700 dark:text-violet-300">
+                  <Percent className="h-3 w-3" />
+                  {salesFunnel.overallConversion.toFixed(1)}% conversão total
+                </Badge>
+              </div>
             )}
           </div>
         </CardHeader>
         <CardContent className="relative">
           {salesFunnel.hasData ? (
-            <div className="grid gap-6 lg:grid-cols-2">
-              <ResponsiveContainer width="100%" height={300}>
-                <FunnelChart>
-                  <Tooltip 
-                    formatter={(value: number, name: string, props: any) => [
-                      `${value.toLocaleString("pt-BR")} (${props.payload.conversionRate.toFixed(1)}%)`,
-                      props.payload.kpiName || name
-                    ]}
-                  />
-                  <Funnel dataKey="value" data={salesFunnel.data} isAnimationActive>
-                    {salesFunnel.data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={entry.fill} />
-                    ))}
-                    <LabelList position="right" dataKey="name" fill="#666" stroke="none" />
-                    <LabelList position="center" dataKey="value" fill="#fff" stroke="none" formatter={(value: number) => value.toLocaleString("pt-BR")} />
-                  </Funnel>
-                </FunnelChart>
-              </ResponsiveContainer>
-              <div className="space-y-2">
-                <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wider">Taxas de Conversão</p>
-                {salesFunnel.data.map((stage, index) => (
-                  <div key={stage.name} className="relative overflow-hidden rounded-xl border p-3 bg-card/60 backdrop-blur-sm transition-all hover:shadow-md">
-                    <div className="flex items-center justify-between">
-                      <div className="flex items-center gap-3">
-                        <div className="w-3 h-3 rounded-full shadow-sm" style={{ backgroundColor: stage.fill }} />
-                        <div>
-                          <p className="font-medium text-sm">{stage.name}</p>
-                          <p className="text-[10px] text-muted-foreground">{stage.kpiName}</p>
+            <div className="space-y-6">
+              {/* Modern horizontal funnel bars */}
+              <div className="space-y-3">
+                {salesFunnel.data.map((stage, index) => {
+                  const maxValue = salesFunnel.data[0]?.value || 1;
+                  const widthPercent = Math.max((stage.value / maxValue) * 100, 12);
+                  const funnelColors = [
+                    { from: '#8b5cf6', to: '#a78bfa', bg: 'bg-violet-500/8', text: 'text-violet-700 dark:text-violet-300', border: 'border-violet-500/20' },
+                    { from: '#7c3aed', to: '#8b5cf6', bg: 'bg-purple-500/8', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-500/20' },
+                    { from: '#6d28d9', to: '#7c3aed', bg: 'bg-indigo-500/8', text: 'text-indigo-700 dark:text-indigo-300', border: 'border-indigo-500/20' },
+                    { from: '#d946ef', to: '#e879f9', bg: 'bg-fuchsia-500/8', text: 'text-fuchsia-700 dark:text-fuchsia-300', border: 'border-fuchsia-500/20' },
+                    { from: '#c026d3', to: '#d946ef', bg: 'bg-pink-500/8', text: 'text-pink-700 dark:text-pink-300', border: 'border-pink-500/20' },
+                    { from: '#a855f7', to: '#c084fc', bg: 'bg-purple-500/8', text: 'text-purple-700 dark:text-purple-300', border: 'border-purple-500/20' },
+                    { from: '#2563eb', to: '#3b82f6', bg: 'bg-blue-500/8', text: 'text-blue-700 dark:text-blue-300', border: 'border-blue-500/20' },
+                    { from: '#10b981', to: '#34d399', bg: 'bg-emerald-500/8', text: 'text-emerald-700 dark:text-emerald-300', border: 'border-emerald-500/20' },
+                  ];
+                  const colorSet = funnelColors[index % funnelColors.length];
+                  
+                  return (
+                    <div key={stage.name} className={`relative rounded-xl border ${colorSet.border} ${colorSet.bg} p-4 backdrop-blur-sm transition-all duration-300 hover:shadow-lg hover:scale-[1.01]`}>
+                      <div className="flex items-center justify-between mb-2.5">
+                        <div className="flex items-center gap-3">
+                          <div className="flex items-center justify-center w-7 h-7 rounded-lg text-white text-xs font-bold shadow-md" style={{ background: `linear-gradient(135deg, ${colorSet.from}, ${colorSet.to})` }}>
+                            {index + 1}
+                          </div>
+                          <div>
+                            <p className={`font-semibold text-sm ${colorSet.text}`}>{stage.name}</p>
+                            <p className="text-[10px] text-muted-foreground">{stage.kpiName}</p>
+                          </div>
+                        </div>
+                        <div className="flex items-center gap-3">
+                          {index > 0 && (
+                            <Badge variant="outline" className={`text-[10px] px-2 py-0.5 border-0 font-bold shadow-sm ${
+                              stage.conversionRate >= 50 ? 'bg-emerald-500/15 text-emerald-600 dark:text-emerald-400' :
+                              stage.conversionRate >= 20 ? 'bg-amber-500/15 text-amber-600 dark:text-amber-400' :
+                              'bg-red-500/15 text-red-600 dark:text-red-400'
+                            }`}>
+                              {stage.conversionRate.toFixed(1)}% conv.
+                            </Badge>
+                          )}
+                          <span className="font-bold text-base tabular-nums">{stage.value.toLocaleString("pt-BR")}</span>
                         </div>
                       </div>
-                      <div className="text-right">
-                        <p className="font-bold text-sm">{stage.value.toLocaleString("pt-BR")}</p>
-                        {index > 0 && (
-                          <Badge variant="outline" className={`text-[10px] px-1.5 py-0 border-0 font-bold ${
-                            stage.conversionRate >= 50 ? 'bg-emerald-500/10 text-emerald-600' :
-                            stage.conversionRate >= 20 ? 'bg-amber-500/10 text-amber-600' :
-                            'bg-red-500/10 text-red-600'
-                          }`}>
-                            {stage.conversionRate.toFixed(1)}%
-                          </Badge>
-                        )}
+                      {/* Progress bar */}
+                      <div className="relative h-3 rounded-full bg-muted/40 overflow-hidden">
+                        <div
+                          className="h-full rounded-full transition-all duration-700 ease-out shadow-sm"
+                          style={{
+                            width: `${widthPercent}%`,
+                            background: `linear-gradient(90deg, ${colorSet.from}, ${colorSet.to})`,
+                            boxShadow: `0 0 12px ${colorSet.from}40`,
+                          }}
+                        />
                       </div>
+                      {/* Connector arrow between stages */}
+                      {index < salesFunnel.data.length - 1 && (
+                        <div className="absolute -bottom-2 left-1/2 -translate-x-1/2 z-10">
+                          <div className="w-4 h-4 rotate-45 border-b-2 border-r-2 opacity-20" style={{ borderColor: colorSet.from }} />
+                        </div>
+                      )}
                     </div>
-                  </div>
-                ))}
+                  );
+                })}
+              </div>
+
+              {/* Summary stats row */}
+              <div className="grid grid-cols-3 gap-3">
+                <div className="rounded-xl border border-violet-500/10 bg-violet-500/[0.04] p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Topo do Funil</p>
+                  <p className="text-lg font-bold text-violet-700 dark:text-violet-300">{salesFunnel.data[0]?.value.toLocaleString("pt-BR") || '—'}</p>
+                </div>
+                <div className="rounded-xl border border-fuchsia-500/10 bg-fuchsia-500/[0.04] p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Fundo do Funil</p>
+                  <p className="text-lg font-bold text-fuchsia-700 dark:text-fuchsia-300">{salesFunnel.data[salesFunnel.data.length - 1]?.value.toLocaleString("pt-BR") || '—'}</p>
+                </div>
+                <div className="rounded-xl border border-emerald-500/10 bg-emerald-500/[0.04] p-3 text-center">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">Conversão Geral</p>
+                  <p className="text-lg font-bold text-emerald-700 dark:text-emerald-300">{salesFunnel.overallConversion?.toFixed(1) || '0'}%</p>
+                </div>
               </div>
             </div>
           ) : (
             <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
-              <Filter className="h-12 w-12 mb-4 opacity-20" />
+              <div className="relative">
+                <Filter className="h-14 w-14 mb-4 opacity-15" />
+                <div className="absolute inset-0 bg-gradient-radial from-violet-500/10 to-transparent rounded-full blur-xl" />
+              </div>
               <p className="font-medium">Nenhum dado para o funil no período</p>
-              <p className="text-sm">Lance KPIs como Ligações, Atendimentos, Propostas e Vendas para visualizar o funil</p>
+              <p className="text-sm text-center max-w-md">Lance KPIs como Ligações, Atendimentos, Propostas e Vendas para visualizar o funil</p>
             </div>
           )}
         </CardContent>
