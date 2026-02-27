@@ -1794,7 +1794,7 @@ export const KPIDashboardTab = ({
 
       {/* CAC Calculator Card */}
       {projectId && (
-        <CACCalculatorCard projectId={projectId} />
+        <CACCalculatorCard projectId={projectId} autoSalesCount={calculatedMetrics.totalSales} />
       )}
 
       {/* Conversion Card - Detailed */}
