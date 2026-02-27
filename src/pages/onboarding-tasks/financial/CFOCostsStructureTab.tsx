@@ -12,15 +12,18 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Tooltip, BarChart, Bar, XAxis
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   payables: any[];
   categories: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFOCostsStructureTab({ invoices, payables, categories, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFOCostsStructureTab({ invoices, payables, categories, filters, formatCurrency, formatCurrencyCents }: Props) {
   const [employees, setEmployees] = useState<any[]>([]);
   const [empDialog, setEmpDialog] = useState<{ open: boolean; emp: any | null }>({ open: false, emp: null });
   const [empForm, setEmpForm] = useState({ name: "", role: "", department: "", salary: 0, benefits: 0 });

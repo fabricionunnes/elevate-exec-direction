@@ -7,15 +7,18 @@ import {
 } from "recharts";
 import { supabase } from "@/integrations/supabase/client";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   payables: any[];
   companies: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFOUnitEconomicsTab({ invoices, payables, companies, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFOUnitEconomicsTab({ invoices, payables, companies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const [cacCosts, setCacCosts] = useState<any[]>([]);
   const now = new Date();
   const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;

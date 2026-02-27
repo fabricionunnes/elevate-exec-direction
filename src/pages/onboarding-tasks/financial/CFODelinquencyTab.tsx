@@ -8,14 +8,17 @@ import {
 } from "recharts";
 import { differenceInDays } from "date-fns";
 
+import { type CFOFilters } from "@/components/financial/CFOFilterBar";
+
 interface Props {
   invoices: any[];
   companies: any[];
+  filters: CFOFilters;
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function CFODelinquencyTab({ invoices, companies, formatCurrency, formatCurrencyCents }: Props) {
+export default function CFODelinquencyTab({ invoices, companies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
   const today = now.toISOString().split("T")[0];
 

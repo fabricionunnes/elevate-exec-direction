@@ -43,6 +43,7 @@ import CFODelinquencyTab from "./financial/CFODelinquencyTab";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
+import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 
 interface RecurringCharge {
   id: string;
@@ -120,6 +121,8 @@ export default function AllRecurringChargesPage() {
   // Data state
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
+  const [fullCompanies, setFullCompanies] = useState<any[]>([]);
+  const [staffList, setStaffList] = useState<any[]>([]);
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
@@ -135,6 +138,9 @@ export default function AllRecurringChargesPage() {
   // Categories & Cost Centers for forms
   const [staffCategories, setStaffCategories] = useState<any[]>([]);
   const [staffCostCenters, setStaffCostCenters] = useState<any[]>([]);
+
+  // CFO Filters
+  const [cfoFilters, setCfoFilters] = useState<CFOFilters>({ month: "all", consultantId: "all", companyId: "all" });
 
   // New receivable dialog
   const [receivableDialog, setReceivableDialog] = useState(false);
@@ -185,20 +191,24 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
-        supabase.from("onboarding_companies").select("id, name").order("name"),
+        supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator").order("name"),
         supabase.from("financial_payables").select("*").order("due_date", { ascending: false }),
         supabase.from("company_invoices").select("*").order("due_date", { ascending: true }),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
       ]);
       if (chargesRes.error) throw chargesRes.error;
       if (companiesRes.error) throw companiesRes.error;
-      const companiesMap = new Map(companiesRes.data?.map(c => [c.id, c.name]) || []);
+      const allCompanies = (companiesRes.data || []).filter((c: any) => !c.is_simulator);
+      const companiesMap = new Map(allCompanies.map((c: any) => [c.id, c.name]));
       setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida" })));
-      setCompanies(companiesRes.data || []);
+      setCompanies(allCompanies.map((c: any) => ({ id: c.id, name: c.name })));
+      setFullCompanies(allCompanies);
+      setStaffList(staffRes.data || []);
       setPayables((payablesRes.data as any) || []);
       setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida" })));
       setBanks((banksRes.data as any) || []);
@@ -212,6 +222,35 @@ export default function AllRecurringChargesPage() {
 
   const isMaster = finPerms.isMaster;
   const isAdmin = isMaster || userRole === "admin";
+  // CFO filtered data based on cfoFilters
+  const cfoFilteredCompanyIds = useMemo(() => {
+    let filtered = fullCompanies;
+    if (cfoFilters.consultantId !== "all") {
+      filtered = filtered.filter(c => c.consultant_id === cfoFilters.consultantId || c.cs_id === cfoFilters.consultantId);
+    }
+    if (cfoFilters.companyId !== "all") {
+      filtered = filtered.filter(c => c.id === cfoFilters.companyId);
+    }
+    return new Set(filtered.map(c => c.id));
+  }, [fullCompanies, cfoFilters.consultantId, cfoFilters.companyId]);
+
+  const cfoInvoices = useMemo(() => {
+    return invoices.filter(inv => cfoFilteredCompanyIds.has(inv.company_id));
+  }, [invoices, cfoFilteredCompanyIds]);
+
+  const cfoPayables = useMemo(() => {
+    // Payables don't have company_id filter unless consultant filters by company
+    if (cfoFilters.consultantId === "all" && cfoFilters.companyId === "all") return payables;
+    return payables; // payables are internal costs, not company-specific
+  }, [payables, cfoFilters]);
+
+  const cfoCompanies = useMemo(() => {
+    if (cfoFilters.consultantId === "all" && cfoFilters.companyId === "all") return fullCompanies;
+    return fullCompanies.filter(c => cfoFilteredCompanyIds.has(c.id));
+  }, [fullCompanies, cfoFilteredCompanyIds, cfoFilters]);
+
+  const isCfoTab = activeTab.startsWith("cfo-");
+
   const hasPerm = finPerms.hasFinancialPermission;
 
   // Filtered invoices
@@ -934,27 +973,32 @@ export default function AllRecurringChargesPage() {
             </div>
           )}
 
+          {/* CFO Filter Bar */}
+          {isCfoTab && (
+            <CFOFilterBar filters={cfoFilters} onChange={setCfoFilters} staff={staffList} companies={companies} />
+          )}
+
           {/* CFO Tabs */}
           {activeTab === "cfo-executive" && (
-            <CFOExecutiveBoardTab invoices={invoices} payables={payables} banks={banks} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFOExecutiveBoardTab invoices={cfoInvoices} payables={cfoPayables} banks={banks} companies={cfoCompanies} fullCompanies={fullCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-mrr" && (
-            <CFORevenueMRRTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFORevenueMRRTab invoices={cfoInvoices} companies={cfoCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-churn" && (
-            <CFOChurnRetentionTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFOChurnRetentionTab invoices={cfoInvoices} companies={cfoCompanies} fullCompanies={fullCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-unit-economics" && (
-            <CFOUnitEconomicsTab invoices={invoices} payables={payables} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFOUnitEconomicsTab invoices={cfoInvoices} payables={cfoPayables} companies={cfoCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-costs" && (
-            <CFOCostsStructureTab invoices={invoices} payables={payables} categories={staffCategories} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFOCostsStructureTab invoices={cfoInvoices} payables={cfoPayables} categories={staffCategories} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-cash" && (
-            <CFOCashProjectionTab invoices={invoices} payables={payables} banks={banks} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFOCashProjectionTab invoices={cfoInvoices} payables={cfoPayables} banks={banks} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
           {activeTab === "cfo-delinquency" && (
-            <CFODelinquencyTab invoices={invoices} companies={companies} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+            <CFODelinquencyTab invoices={cfoInvoices} companies={cfoCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
           )}
         </div>
       </main>
