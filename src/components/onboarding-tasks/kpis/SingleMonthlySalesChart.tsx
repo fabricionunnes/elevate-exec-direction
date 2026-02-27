@@ -14,7 +14,7 @@ import {
   ReferenceLine,
 } from "recharts";
 import { TrendingUp, TrendingDown, Sparkles, Loader2, Calendar, Award, AlertTriangle } from "lucide-react";
-import { format, parseISO, startOfMonth } from "date-fns";
+import { format, parseISO, startOfMonth, subMonths, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface MonthlyDataPoint {
@@ -207,8 +207,25 @@ export const SingleMonthlySalesChart = ({
         return kpiTargetValue || 0;
       };
 
-      let data: MonthlyDataPoint[] = [];
+      // Fetch sales history for this company
+      const { data: salesHistory } = await supabase
+        .from("company_sales_history")
+        .select("month_year, revenue, sales_count")
+        .eq("company_id", companyId);
 
+      // Build monthly aggregation from sales history first (lower priority)
+      const monthlyAggregation: Record<string, { revenue: number; count: number }> = {};
+
+      salesHistory?.forEach((sh) => {
+        const monthStr = sh.month_year + "-01"; // "YYYY-MM" -> "YYYY-MM-01"
+        if (!monthlyAggregation[monthStr]) {
+          monthlyAggregation[monthStr] = { revenue: 0, count: 0 };
+        }
+        monthlyAggregation[monthStr].revenue += Number(sh.revenue) || 0;
+        monthlyAggregation[monthStr].count += Number(sh.sales_count) || 0;
+      });
+
+      // Overlay with kpi_entries (higher priority)
       const entries = await fetchAllEntriesForKpis(targetKpiIds);
 
       if (entries && entries.length > 0) {
@@ -221,30 +238,41 @@ export const SingleMonthlySalesChart = ({
           );
         }
 
-        // Aggregate by month
-        const monthlyAggregation: Record<string, { revenue: number; count: number }> = {};
-
+        // Aggregate kpi_entries by month
+        const kpiMonthlyAgg: Record<string, { revenue: number; count: number }> = {};
         filteredEntries.forEach((entry) => {
           if (!entry.entry_date) return;
           const monthStr = format(parseISO(entry.entry_date), "yyyy-MM-01");
-          if (!monthlyAggregation[monthStr]) {
-            monthlyAggregation[monthStr] = { revenue: 0, count: 0 };
+          if (!kpiMonthlyAgg[monthStr]) {
+            kpiMonthlyAgg[monthStr] = { revenue: 0, count: 0 };
           }
-          monthlyAggregation[monthStr].revenue += entry.value || 0;
-          monthlyAggregation[monthStr].count += 1;
+          kpiMonthlyAgg[monthStr].revenue += entry.value || 0;
+          kpiMonthlyAgg[monthStr].count += 1;
         });
 
-        data = Object.entries(monthlyAggregation).map(([month, agg]) => ({
-          month,
-          monthLabel: format(parseISO(month), "MMM/yy", { locale: ptBR }),
-          revenue: agg.revenue,
-          target: getMonthlyTarget(month),
-          salesCount: agg.count,
-        }));
+        // Merge: kpi_entries override sales history for same month
+        Object.entries(kpiMonthlyAgg).forEach(([monthStr, agg]) => {
+          if (agg.revenue > 0) {
+            monthlyAggregation[monthStr] = agg;
+          }
+        });
       }
 
-      // Sort by date
-      data.sort((a, b) => new Date(a.month).getTime() - new Date(b.month).getTime());
+      // Always build last 12 months
+      const now = new Date();
+      let data: MonthlyDataPoint[] = [];
+      for (let i = 11; i >= 0; i--) {
+        const monthDate = subMonths(now, i);
+        const monthStr = format(startOfMonth(monthDate), "yyyy-MM-01");
+        const agg = monthlyAggregation[monthStr] || { revenue: 0, count: 0 };
+        data.push({
+          month: monthStr,
+          monthLabel: format(parseISO(monthStr), "MMM/yy", { locale: ptBR }),
+          revenue: agg.revenue,
+          target: getMonthlyTarget(monthStr),
+          salesCount: agg.count,
+        });
+      }
 
       setChartData(data);
       setAiAnalysis(null);
