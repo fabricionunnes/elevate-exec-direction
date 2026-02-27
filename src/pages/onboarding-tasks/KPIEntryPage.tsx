@@ -14,6 +14,7 @@ import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { CheckCircle2, Calendar, User, DollarSign, Percent, Hash, AlertCircle, Building2, Users, Layers } from "lucide-react";
 import { toDateString } from "@/lib/dateUtils";
+import { SalespersonDailyGoalCard } from "@/components/onboarding-tasks/kpis/SalespersonDailyGoalCard";
 
 interface KPI {
   id: string;
@@ -542,6 +543,15 @@ export default function KPIEntryPage() {
                   </SelectContent>
                 </Select>
               </div>
+            )}
+
+            {/* Salesperson Daily Goal */}
+            {salesperson && companyId && (
+              <SalespersonDailyGoalCard
+                companyId={companyId}
+                salespersonId={salesperson.id}
+                salespersonName={salesperson.name}
+              />
             )}
 
             {/* KPI Fields */}
