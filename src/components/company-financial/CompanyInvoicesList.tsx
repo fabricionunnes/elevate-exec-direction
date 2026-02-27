@@ -24,7 +24,7 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2 } from "lucide-react";
+import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2 } from "lucide-react";
 import { format } from "date-fns";
 import { toast } from "sonner";
 
@@ -46,6 +46,7 @@ interface Invoice {
   late_fee_percent: number;
   daily_interest_percent: number;
   created_at: string;
+  recurring_charge_id: string | null;
 }
 
 interface Props {
@@ -166,6 +167,20 @@ export function CompanyInvoicesList({ companyId }: Props) {
     });
 
     fetchInvoices();
+  };
+
+  const deleteInvoice = async (invoiceId: string) => {
+    const { error } = await supabase
+      .from("company_invoices")
+      .delete()
+      .eq("id", invoiceId);
+
+    if (error) {
+      toast.error("Erro ao excluir fatura");
+    } else {
+      toast.success("Fatura excluída!");
+      fetchInvoices();
+    }
   };
 
   const handleCreateManual = async () => {
@@ -423,6 +438,30 @@ export function CompanyInvoicesList({ companyId }: Props) {
                                   Pagar
                                 </a>
                               </Button>
+                             )}
+                            {!inv.recurring_charge_id && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button variant="ghost" size="sm" className="h-7 text-xs px-2 text-destructive hover:text-destructive">
+                                    <Trash2 className="h-3 w-3 mr-1" />
+                                    Excluir
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Excluir fatura?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      Esta ação não pode ser desfeita. A fatura será removida permanentemente.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                                    <AlertDialogAction onClick={() => deleteInvoice(inv.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                      Excluir
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
                             )}
                           </div>
                         )}
