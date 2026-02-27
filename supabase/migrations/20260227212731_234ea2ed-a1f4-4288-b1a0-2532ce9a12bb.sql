@@ -1,0 +1,1 @@
+ALTER TABLE public.company_invoices ADD COLUMN IF NOT EXISTS payment_fee_cents integer NOT NULL DEFAULT 0;
