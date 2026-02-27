@@ -9472,6 +9472,41 @@ export type Database = {
         }
         Relationships: []
       }
+      company_daily_goal_settings: {
+        Row: {
+          company_id: string
+          id: string
+          include_holidays: boolean
+          include_saturday: boolean
+          include_sunday: boolean
+          updated_at: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          include_holidays?: boolean
+          include_saturday?: boolean
+          include_sunday?: boolean
+          updated_at?: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          include_holidays?: boolean
+          include_saturday?: boolean
+          include_sunday?: boolean
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "company_daily_goal_settings_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_invoices: {
         Row: {
           amount_cents: number
