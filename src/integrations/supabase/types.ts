@@ -1603,6 +1603,96 @@ export type Database = {
           },
         ]
       }
+      billing_notification_logs: {
+        Row: {
+          company_id: string
+          id: string
+          invoice_id: string | null
+          message_sent: string | null
+          phone: string | null
+          rule_id: string | null
+          sent_at: string
+          status: string
+        }
+        Insert: {
+          company_id: string
+          id?: string
+          invoice_id?: string | null
+          message_sent?: string | null
+          phone?: string | null
+          rule_id?: string | null
+          sent_at?: string
+          status?: string
+        }
+        Update: {
+          company_id?: string
+          id?: string
+          invoice_id?: string | null
+          message_sent?: string | null
+          phone?: string | null
+          rule_id?: string | null
+          sent_at?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "billing_notification_logs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "company_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "billing_notification_logs_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "billing_notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      billing_notification_rules: {
+        Row: {
+          created_at: string
+          days_offset: number
+          id: string
+          include_discount_info: boolean
+          include_interest_info: boolean
+          include_payment_link: boolean
+          is_active: boolean
+          message_template: string
+          name: string
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          days_offset?: number
+          id?: string
+          include_discount_info?: boolean
+          include_interest_info?: boolean
+          include_payment_link?: boolean
+          is_active?: boolean
+          message_template: string
+          name: string
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          days_offset?: number
+          id?: string
+          include_discount_info?: boolean
+          include_interest_info?: boolean
+          include_payment_link?: boolean
+          is_active?: boolean
+          message_template?: string
+          name?: string
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       cac_cost_items: {
         Row: {
           created_at: string
