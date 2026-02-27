@@ -207,15 +207,17 @@ export const StaffPermissionsDialog = ({
                         </label>
                       ))}
                     </div>
+
+                    {/* Financial sub-permissions inline after Administração group */}
+                    {groupName === "Administração" && (
+                      <StaffFinancialPermissions
+                        staffId={staff.id}
+                        staffRole={staff.role}
+                        hasFinancialMenuAccess={permissions.includes(STAFF_MENU_KEYS.financial)}
+                      />
+                    )}
                   </div>
                 ))}
-
-                {/* Financial sub-permissions */}
-                <StaffFinancialPermissions
-                  staffId={staff.id}
-                  staffRole={staff.role}
-                  hasFinancialMenuAccess={permissions.includes(STAFF_MENU_KEYS.financial)}
-                />
               </div>
             )}
 
