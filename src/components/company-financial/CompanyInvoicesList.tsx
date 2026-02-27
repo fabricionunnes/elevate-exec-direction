@@ -8,6 +8,8 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Label } from "@/components/ui/label";
 import { CurrencyInput } from "@/components/ui/currency-input";
+import { Calendar as CalendarComponent } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
   Dialog,
   DialogContent,
@@ -26,8 +28,10 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2 } from "lucide-react";
+import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2, Pencil } from "lucide-react";
 import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 
 interface Invoice {
@@ -72,6 +76,8 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const [creating, setCreating] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [deleting, setDeleting] = useState(false);
+  const [editingDueDateId, setEditingDueDateId] = useState<string | null>(null);
+  const [updatingDueDate, setUpdatingDueDate] = useState(false);
   const [form, setForm] = useState({
     description: "",
     amount: 0,
@@ -214,6 +220,30 @@ export function CompanyInvoicesList({ companyId }: Props) {
     });
 
     fetchInvoices();
+  };
+
+  const updateDueDate = async (invoiceId: string, newDate: Date) => {
+    setUpdatingDueDate(true);
+    const newDueDateStr = format(newDate, "yyyy-MM-dd");
+    try {
+      const { data, error } = await supabase.functions.invoke("asaas-update-due-date", {
+        body: { invoice_id: invoiceId, new_due_date: newDueDateStr },
+      });
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.asaas_synced) {
+        toast.success("Vencimento atualizado e sincronizado com Asaas ✓");
+      } else {
+        toast.success("Vencimento atualizado localmente");
+      }
+      setEditingDueDateId(null);
+      fetchInvoices();
+    } catch (err: any) {
+      toast.error("Erro ao atualizar vencimento: " + (err.message || "erro"));
+    } finally {
+      setUpdatingDueDate(false);
+    }
   };
 
   const deleteInvoice = async (invoiceId: string) => {
@@ -522,6 +552,42 @@ export function CompanyInvoicesList({ companyId }: Props) {
                           <span className="flex items-center gap-1">
                             <Calendar className="h-3 w-3" />
                             Vence: {format(dueDate, "dd/MM/yyyy")}
+                            {!isPaid && inv.status !== "cancelled" && (
+                              <Popover
+                                open={editingDueDateId === inv.id}
+                                onOpenChange={(open) => setEditingDueDateId(open ? inv.id : null)}
+                              >
+                                <PopoverTrigger asChild>
+                                  <Button
+                                    variant="ghost"
+                                    size="sm"
+                                    className="h-5 w-5 p-0 ml-1"
+                                    title="Editar vencimento"
+                                  >
+                                    <Pencil className="h-3 w-3" />
+                                  </Button>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-auto p-0" align="start">
+                                  <CalendarComponent
+                                    mode="single"
+                                    selected={dueDate}
+                                    onSelect={(date) => {
+                                      if (date) updateDueDate(inv.id, date);
+                                    }}
+                                    disabled={updatingDueDate}
+                                    locale={ptBR}
+                                    initialFocus
+                                    className={cn("p-3 pointer-events-auto")}
+                                  />
+                                  {updatingDueDate && (
+                                    <div className="flex items-center justify-center p-2 border-t">
+                                      <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                                      <span className="text-xs">Atualizando...</span>
+                                    </div>
+                                  )}
+                                </PopoverContent>
+                              </Popover>
+                            )}
                           </span>
                           <span>Valor: {formatCurrency(inv.amount_cents)}</span>
                           {isOverdue && (
