@@ -53,6 +53,7 @@ Deno.serve(async (req) => {
       customer_name,
       customer_email,
       customer_document,
+      customer_phone,
       company_id,
       recurring_charge_id,
       next_charge_date,
@@ -148,13 +149,12 @@ Deno.serve(async (req) => {
     }
 
     // Step 7: Send WhatsApp notification with invoice URL
-    if (invoiceUrl && customer_document) {
+    if (invoiceUrl) {
       try {
-        const customerPhone = (customer_document || "").replace(/\D/g, "");
-        // Try to get the company's phone from the recurring charge or company record
-        let phoneToSend = "";
+        // Use customer_phone from request, fallback to company phone
+        let phoneToSend = (customer_phone || "").replace(/\D/g, "");
 
-        if (recurring_charge_id) {
+        if (!phoneToSend && recurring_charge_id) {
           const { data: chargeData } = await supabase
             .from("company_recurring_charges")
             .select("customer_phone, company_id")
@@ -175,15 +175,27 @@ Deno.serve(async (req) => {
           }
         }
 
+        if (!phoneToSend && company_id) {
+          const { data: companyData } = await supabase
+            .from("onboarding_companies")
+            .select("phone")
+            .eq("id", company_id)
+            .single();
+          if (companyData?.phone) {
+            phoneToSend = companyData.phone.replace(/\D/g, "");
+          }
+        }
+
         if (phoneToSend) {
           const formattedPhone = phoneToSend.startsWith("55") ? phoneToSend : `55${phoneToSend}`;
           
-          // Get default WhatsApp instance
+          // Get WhatsApp instance (prefer default, fallback to any connected)
           const { data: whatsappInstance } = await supabase
             .from("whatsapp_instances")
-            .select("api_url, api_key, instance_name")
-            .eq("is_default", true)
+            .select("api_url, api_key, instance_name, is_default")
             .eq("status", "connected")
+            .order("is_default", { ascending: false, nullsFirst: false })
+            .limit(1)
             .single();
 
           if (whatsappInstance?.api_url && whatsappInstance?.api_key) {

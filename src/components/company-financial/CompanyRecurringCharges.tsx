@@ -156,6 +156,7 @@ export function CompanyRecurringCharges({
           customer_name: form.customerName,
           customer_email: form.customerEmail,
           customer_document: form.customerDocument || null,
+          customer_phone: form.customerPhone || null,
           company_id: companyId,
           recurring_charge_id: chargeId,
           next_charge_date: form.nextChargeDate,
