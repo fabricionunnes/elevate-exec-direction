@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -8,6 +8,7 @@ import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
+import { Checkbox } from "@/components/ui/checkbox";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
@@ -161,6 +162,10 @@ export default function AllRecurringChargesPage() {
   // Import dialogs
   const [importReceivableOpen, setImportReceivableOpen] = useState(false);
   const [importPayableOpen, setImportPayableOpen] = useState(false);
+
+  // Bulk selection
+  const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
+  const [isBulkSending, setIsBulkSending] = useState(false);
 
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
@@ -746,6 +751,74 @@ export default function AllRecurringChargesPage() {
                 </Card>
               </div>
 
+              {/* Bulk action bar */}
+              {selectedInvoiceIds.size > 0 && (
+                <Card className="border-emerald-200 bg-emerald-50/50">
+                  <CardContent className="py-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedInvoiceIds(new Set())}>
+                        Limpar seleção
+                      </Button>
+                      <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" disabled={isBulkSending}
+                        onClick={async () => {
+                          setIsBulkSending(true);
+                          try {
+                            const { data: { session } } = await supabase.auth.getSession();
+                            if (!session) throw new Error("Não autenticado");
+                            const { data: instance } = await supabase
+                              .from("whatsapp_instances")
+                              .select("instance_name")
+                              .eq("status", "connected")
+                              .order("is_default", { ascending: false, nullsFirst: false })
+                              .limit(1)
+                              .single();
+                            if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
+
+                            const selected = filteredInvoices.filter(inv => selectedInvoiceIds.has(inv.id) && inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled");
+                            if (selected.length === 0) { toast.error("Nenhuma fatura válida selecionada (precisam ter link e não estar pagas/canceladas)"); return; }
+
+                            let sent = 0, failed = 0;
+                            for (const inv of selected) {
+                              const phoneRaw = inv.company_phone?.replace(/\D/g, "") || "";
+                              if (!phoneRaw) { failed++; continue; }
+                              const phone = phoneRaw.startsWith("55") ? phoneRaw : `55${phoneRaw}`;
+                              const displayAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
+                              const amountFormatted = formatCurrencyCents(displayAmount);
+                              const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
+                              const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                              const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
+                              const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
+                              const customerName = inv.company_name || "";
+                              const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
+                              try {
+                                const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+                                  method: 'POST',
+                                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+                                  body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
+                                });
+                                if (!response.ok) throw new Error();
+                                sent++;
+                                // Small delay between messages to avoid rate limiting
+                                await new Promise(r => setTimeout(r, 1500));
+                              } catch { failed++; }
+                            }
+                            toast.success(`${sent} mensagem(ns) enviada(s)${failed > 0 ? `, ${failed} falha(s)` : ""}`);
+                            setSelectedInvoiceIds(new Set());
+                          } catch (err: any) {
+                            toast.error(err.message || "Erro ao enviar em massa");
+                          } finally {
+                            setIsBulkSending(false);
+                          }
+                        }}>
+                        {isBulkSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                        Enviar via WhatsApp
+                      </Button>
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               {/* Table */}
               <Card>
                 <CardContent className="p-0">
@@ -753,6 +826,18 @@ export default function AllRecurringChargesPage() {
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={filteredInvoices.length > 0 && filteredInvoices.every(inv => selectedInvoiceIds.has(inv.id))}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedInvoiceIds(new Set(filteredInvoices.map(inv => inv.id)));
+                                } else {
+                                  setSelectedInvoiceIds(new Set());
+                                }
+                              }}
+                            />
+                          </TableHead>
                           <TableHead>Empresa</TableHead>
                           <TableHead>Descrição</TableHead>
                           <TableHead className="text-center">Parcela</TableHead>
@@ -765,12 +850,22 @@ export default function AllRecurringChargesPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredInvoices.length === 0 ? (
-                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
                         ) : filteredInvoices.map(inv => {
                           const isProcessing = processingInvoiceId === inv.id;
                           const displayAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
                           return (
-                            <TableRow key={inv.id}>
+                            <TableRow key={inv.id} className={cn(selectedInvoiceIds.has(inv.id) && "bg-emerald-50/50")}>
+                              <TableCell>
+                                <Checkbox
+                                  checked={selectedInvoiceIds.has(inv.id)}
+                                  onCheckedChange={(checked) => {
+                                    const next = new Set(selectedInvoiceIds);
+                                    if (checked) { next.add(inv.id); } else { next.delete(inv.id); }
+                                    setSelectedInvoiceIds(next);
+                                  }}
+                                />
+                              </TableCell>
                               <TableCell className="font-medium text-sm">{inv.company_name}</TableCell>
                               <TableCell className="max-w-[200px] truncate text-sm">{inv.description}</TableCell>
                               <TableCell className="text-center text-sm">{inv.installment_number}/{inv.total_installments}</TableCell>
