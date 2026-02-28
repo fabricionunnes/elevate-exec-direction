@@ -1,11 +1,15 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Tabs, TabsList, TabsTrigger, TabsContent } from "@/components/ui/tabs";
-import { Badge } from "@/components/ui/badge";
-import { ArrowRightLeft, TrendingUp, TrendingDown } from "lucide-react";
+import { Tabs, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowRightLeft, CalendarIcon } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid, ReferenceLine } from "recharts";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Props {
   invoices: any[];
@@ -32,17 +36,15 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
     });
   }, []);
 
-  const monthOptions = useMemo(() => {
-    const months: { value: string; label: string }[] = [];
-    // 24 months past + 12 months future
-    for (let i = 24; i >= -12; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-      months.push({ value: val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+  const selectedDate = parse(selectedMonth, "yyyy-MM", new Date());
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedMonth(format(date, "yyyy-MM"));
     }
-    return months;
-  }, []);
+  };
+
+  const monthLabel = format(selectedDate, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
 
   const dfcData = useMemo(() => {
     const isPaid = view === "realizado";
@@ -143,14 +145,26 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
               <TabsTrigger value="projetado">Projetado</TabsTrigger>
             </TabsList>
           </Tabs>
-          <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-            <SelectTrigger className="w-[220px]">
-              <SelectValue />
-            </SelectTrigger>
-            <SelectContent>
-              {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-            </SelectContent>
-          </Select>
+          <Popover>
+            <PopoverTrigger asChild>
+              <Button variant="outline" className="w-[220px] justify-start text-left font-normal">
+                <CalendarIcon className="mr-2 h-4 w-4" />
+                {monthLabel}
+              </Button>
+            </PopoverTrigger>
+            <PopoverContent className="w-auto p-0" align="end">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={handleDateSelect}
+                locale={ptBR}
+                captionLayout="dropdown-buttons"
+                fromYear={2020}
+                toYear={2030}
+                className={cn("p-3 pointer-events-auto")}
+              />
+            </PopoverContent>
+          </Popover>
         </div>
       </div>
 
