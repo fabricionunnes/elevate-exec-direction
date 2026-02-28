@@ -869,6 +869,7 @@ export default function AllRecurringChargesPage() {
               invoices={invoices}
               payables={payables}
               banks={banks}
+              charges={charges}
               formatCurrency={formatCurrency}
               formatCurrencyCents={formatCurrencyCents}
             />
