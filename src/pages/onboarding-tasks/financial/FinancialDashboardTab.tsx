@@ -2,7 +2,7 @@ import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { 
   TrendingUp, TrendingDown, DollarSign, AlertTriangle, 
-  ArrowUpRight, ArrowDownRight, Wallet 
+  ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, ShoppingCart, RefreshCw
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -13,11 +13,22 @@ interface Props {
   invoices: any[];
   payables: any[];
   banks: any[];
+  charges?: any[];
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
 
-export default function FinancialDashboardTab({ invoices, payables, banks, formatCurrency, formatCurrencyCents }: Props) {
+const toMonthlyMRR = (amountCents: number, recurrence: string): number => {
+  switch (recurrence) {
+    case "monthly": return amountCents;
+    case "quarterly": return amountCents / 3;
+    case "semiannual": return amountCents / 6;
+    case "annual": return amountCents / 12;
+    default: return amountCents;
+  }
+};
+
+export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents }: Props) {
   const currentMonth = new Date().toISOString().substring(0, 7);
   const currentYear = new Date().getFullYear();
 
@@ -38,6 +49,41 @@ export default function FinancialDashboardTab({ invoices, payables, banks, forma
 
     return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado };
   }, [invoices, payables, banks]);
+
+  // Inadimplência mensal
+  const inadimplencia = useMemo(() => {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
+    const total = monthInvoices.length;
+    const totalValue = monthInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
+    
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
+    const overdueCount = overdue.length;
+    const overdueValue = overdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
+
+    const pctQty = total > 0 ? (overdueCount / total) * 100 : 0;
+    const pctValue = totalValue > 0 ? (overdueValue / totalValue) * 100 : 0;
+
+    return { pctQty, pctValue, overdueCount, total, overdueValue, totalValue };
+  }, [invoices]);
+
+  // MRR (from active recurring charges)
+  const mrr = useMemo(() => {
+    const activeCharges = charges.filter(c => c.is_active);
+    return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+  }, [charges]);
+
+  // Vendas Novas (standalone invoices created this month)
+  const vendasNovas = useMemo(() => {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    const novas = invoices.filter(i => !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
+    const count = novas.length;
+    const value = novas.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
+    return { count, value };
+  }, [invoices]);
 
   // Monthly chart data (last 6 months)
   const monthlyData = useMemo(() => {
@@ -136,6 +182,71 @@ export default function FinancialDashboardTab({ invoices, payables, banks, forma
           <CardContent>
             <div className="text-xl font-bold">{formatCurrencyCents(summary.totalBancos)}</div>
             <p className="text-xs text-muted-foreground">{banks.length} conta(s)</p>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Inadimplência + MRR + Vendas Novas */}
+      <div className="grid gap-4 md:grid-cols-3">
+        <Card className="border-l-4 border-l-destructive">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
+              Inadimplência Mensal
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-baseline gap-4">
+              <div>
+                <div className={`text-2xl font-bold ${inadimplencia.pctQty > 10 ? "text-destructive" : inadimplencia.pctQty > 5 ? "text-amber-500" : "text-emerald-600"}`}>
+                  {inadimplencia.pctQty.toFixed(1)}%
+                </div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">por qtd</p>
+              </div>
+              <div className="h-8 w-px bg-border" />
+              <div>
+                <div className={`text-2xl font-bold ${inadimplencia.pctValue > 10 ? "text-destructive" : inadimplencia.pctValue > 5 ? "text-amber-500" : "text-emerald-600"}`}>
+                  {inadimplencia.pctValue.toFixed(1)}%
+                </div>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">por valor</p>
+              </div>
+            </div>
+            <p className="text-xs text-muted-foreground mt-2">
+              {inadimplencia.overdueCount} de {inadimplencia.total} faturas vencidas • {formatCurrencyCents(inadimplencia.overdueValue)} de {formatCurrencyCents(inadimplencia.totalValue)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <RefreshCw className="h-3.5 w-3.5 text-primary" />
+              MRR (Receita Recorrente)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{formatCurrencyCents(mrr)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {charges.filter(c => c.is_active).length} recorrência(s) ativa(s)
+            </p>
+            <p className="text-xs text-muted-foreground">
+              ARR: {formatCurrencyCents(mrr * 12)}
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-emerald-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <ShoppingCart className="h-3.5 w-3.5 text-emerald-500" />
+              Vendas Novas (Avulsas)
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(vendasNovas.value)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {vendasNovas.count} fatura(s) avulsa(s) no mês
+            </p>
           </CardContent>
         </Card>
       </div>
