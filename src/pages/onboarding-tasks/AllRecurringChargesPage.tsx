@@ -793,9 +793,16 @@ export default function AllRecurringChargesPage() {
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp"
                                         onClick={async () => {
-                                          const phone = inv.company_phone?.replace(/\D/g, "") || "";
-                                          if (!phone) { toast.error("Telefone da empresa não cadastrado"); return; }
-                                          const msg = `Olá! Segue o link para pagamento da fatura *${inv.description}* (${inv.installment_number}/${inv.total_installments}) no valor de *${formatCurrencyCents(displayAmount)}* com vencimento em *${inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}*:\n\n${inv.payment_link_url}`;
+                                          const phoneRaw = inv.company_phone?.replace(/\D/g, "") || "";
+                                          if (!phoneRaw) { toast.error("Telefone da empresa não cadastrado"); return; }
+                                          const phone = phoneRaw.startsWith("55") ? phoneRaw : `55${phoneRaw}`;
+                                          const amountFormatted = formatCurrencyCents(displayAmount);
+                                          const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
+                                          const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+                                          const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
+                                          const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
+                                          const customerName = inv.company_name || "";
+                                          const msg = `Olá ${customerName}! 👋\n\nSeja muito bem-vindo(a)! Estamos felizes em tê-lo(a) conosco. 🎉\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${inv.payment_link_url}\n\nQualquer dúvida, estamos à disposição! ✨`;
                                           try {
                                             const { data: { session } } = await supabase.auth.getSession();
                                             if (!session) throw new Error("Não autenticado");
