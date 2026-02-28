@@ -1,28 +1,40 @@
 
-# Adicionar campo para codigo embed no Trafego Pago
+
+# Corrigir mapeamento de status na importacao de Contas a Pagar
 
 ## Problema
-Atualmente so aceita URL do Looker Studio. O usuario quer poder colar diretamente o codigo embed (iframe) gerado pelo Looker Studio, que ja vem pronto para incorporar.
+Ao importar a planilha de contas a pagar, registros com situacao "Quitado" estao sendo salvos com status "pendente" (open). Isso indica que a coluna "Situacao" nao esta sendo mapeada corretamente para o campo `status_raw`, fazendo com que `mapStatus(undefined)` retorne "open".
+
+## Causa raiz
+O matching de colunas usa `includes()` bidirecional, que pode causar falhas em headers com acentos ou caracteres especiais do formato `.xls`. Alem disso, nao ha fallback caso o mapeamento falhe.
 
 ## Solucao
-Modificar o `ClientPaidTrafficPanel` e o dialog de configuracao para aceitar **duas opcoes**: URL ou codigo embed. Tambem adicionar uma nova coluna no banco para armazenar o codigo embed.
 
-## Mudancas
+### 1. Melhorar o matching de headers (ClientFinancialImportDialog.tsx)
+- Adicionar uma segunda passada de matching que tenta variantes mais agressivas (remover parenteses, caracteres especiais, etc.)
+- Adicionar log de debug para headers nao mapeados
+- Separar a logica de `includes` para evitar falsos positivos: exigir que o match via `includes` seja significativo (comprimento minimo)
 
-### 1. Banco de dados (migracao)
-- Adicionar coluna `looker_embed_code` (TEXT) na tabela `onboarding_projects`
+### 2. Adicionar deteccao de status baseada em conteudo
+- Se `status_raw` nao foi mapeado via header, escanear as colunas de dados buscando valores tipicos de status ("Quitado", "Pendente", "Vencido", etc.)
+- Usar a primeira coluna encontrada com esses valores como coluna de status
 
-### 2. `ClientPaidTrafficPanel.tsx`
-- Adicionar estado `embedCode` para armazenar o codigo embed do banco
-- No dialog de configuracao, adicionar um **Textarea** para colar o codigo embed, alem do campo de URL existente
-- Adicionar tabs ou separador "URL" vs "Codigo Embed" no dialog para o usuario escolher qual metodo usar
-- Na renderizacao do dashboard:
-  - Se tiver `embedCode`, usar `dangerouslySetInnerHTML` para renderizar o iframe direto (extraindo apenas a tag iframe por seguranca)
-  - Se tiver apenas `lookerUrl`, manter o comportamento atual com iframe gerado pelo sistema
-- Atualizar `fetchLookerUrl` para tambem buscar `looker_embed_code`
-- Atualizar `saveLookerUrl` para salvar o campo correto baseado na opcao escolhida
+### 3. Adicionar inferencia de status como fallback final
+- Se apos todas as tentativas `status_raw` ainda estiver vazio, inferir o status a partir dos dados:
+  - Se `paid_amount > 0` E `paid_at` tem data valida -> status = "paid"
+  - Se `due_date < hoje` e nao ha pagamento -> status = "overdue"
+  - Caso contrario -> status = "open"
 
-### 3. Detalhes tecnicos
-- Para seguranca, ao receber o codigo embed, extrair apenas o `src` da tag `<iframe>` usando regex, e renderizar um iframe controlado pelo React (evitando `dangerouslySetInnerHTML`)
-- O dialog tera duas abas: "Link" e "Codigo Embed" usando componentes de Tabs do Radix
-- Prioridade de exibicao: embed code > URL
+## Detalhes tecnicos
+
+### Arquivo: `src/components/client-financial/ClientFinancialImportDialog.tsx`
+
+1. **Novo helper `findColumnMapping`**: Substituir a logica inline de matching por uma funcao dedicada com 3 niveis:
+   - Nivel 1: Match exato (apos normalizacao)
+   - Nivel 2: `startsWith` (header comeca com a chave ou vice-versa)
+   - Nivel 3: `includes` (apenas se a substring tem 6+ caracteres, para evitar falsos positivos)
+
+2. **Deteccao por conteudo para status**: Apos o parse dos headers, se `status_raw` nao foi mapeado, iterar pelas colunas nao mapeadas e verificar se alguma contem valores como "quitado", "pendente", "vencido".
+
+3. **Inferencia no `handleImport`**: Antes de inserir, se `status` resultou "open" mas ha evidencia de pagamento (`paid_amount > 0` ou `paid_at` preenchido), forcar `status = "paid"`.
+
