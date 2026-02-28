@@ -36,8 +36,9 @@ export const WhatsAppSendButton = ({
   const [hasInstance, setHasInstance] = useState<boolean | null>(null);
 
   // Clean phone number
-  const cleanPhone = phone?.replace(/\D/g, "") || "";
-  const isValidPhone = cleanPhone.length >= 10;
+  const rawDigits = phone?.replace(/\D/g, "") || "";
+  const cleanPhone = rawDigits.startsWith("55") ? rawDigits : `55${rawDigits}`;
+  const isValidPhone = rawDigits.length >= 10;
 
   const checkInstance = async () => {
     if (hasInstance !== null) return hasInstance;
