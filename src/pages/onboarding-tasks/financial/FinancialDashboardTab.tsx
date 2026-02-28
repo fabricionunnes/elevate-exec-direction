@@ -106,6 +106,16 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { pctQty, pctValue, overdueCount, total, overdueValue, totalValue };
   }, [invoices, monthStr, isCurrentMonth, selectedYear, selectedMonth]);
 
+  // Total em atraso geral (todas as faturas, sem filtro de mês)
+  const totalOverdueGeral = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const allOverdue = invoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date && i.due_date < todayStr);
+    return {
+      count: allOverdue.length,
+      value: allOverdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0),
+    };
+  }, [invoices]);
+
   // MRR
   const mrr = useMemo(() => {
     const activeCharges = charges.filter(c => c.is_active);
@@ -298,6 +308,35 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             </div>
             <div className="text-2xl font-bold text-violet-400">{formatCurrencyCents(summary.totalBancos)}</div>
             <p className="text-[11px] text-violet-400/70 mt-1">{banks.length} conta(s)</p>
+          </div>
+        </GradientCard>
+      </div>
+
+      {/* Cards de Atraso */}
+      <div className="grid gap-4 md:grid-cols-2">
+        <GradientCard gradient="linear-gradient(135deg, rgba(251,146,60,0.18) 0%, rgba(194,65,12,0.1) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-orange-500/20 flex items-center justify-center">
+                <AlertTriangle className="h-4 w-4 text-orange-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Em Atraso no Período</span>
+            </div>
+            <div className="text-2xl font-bold text-orange-400">{formatCurrencyCents(inadimplencia.overdueValue)}</div>
+            <p className="text-[11px] text-orange-400/70 mt-1">{inadimplencia.overdueCount} fatura(s) vencida(s) em {MONTH_LABELS[selectedMonth]}/{selectedYear}</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient="linear-gradient(135deg, rgba(239,68,68,0.18) 0%, rgba(153,27,27,0.1) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <ShieldAlert className="h-4 w-4 text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Total em Atraso (Geral)</span>
+            </div>
+            <div className="text-2xl font-bold text-red-400">{formatCurrencyCents(totalOverdueGeral.value)}</div>
+            <p className="text-[11px] text-red-400/70 mt-1">{totalOverdueGeral.count} fatura(s) vencida(s) no total</p>
           </div>
         </GradientCard>
       </div>
