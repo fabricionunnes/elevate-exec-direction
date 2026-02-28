@@ -326,13 +326,14 @@ const OnboardingCompanyDetailPage = () => {
 
         if (error) throw error;
 
-        // If company status changed to closed/inactive, cancel all Pagar.me subscriptions
+        // If company status changed to closed/inactive/cancellation_signaled, cancel subscriptions + handle recurring charges
         const inactiveStatuses = ["closed", "inactive", "cancellation_signaled"];
         const wasActive = !inactiveStatuses.includes(originalStatusRef.current);
         const isNowInactive = inactiveStatuses.includes(form.status);
         
         if (wasActive && isNowInactive && companyId) {
-          toast.info("Cancelando assinaturas na Pagar.me...");
+          // Cancel Pagar.me subscriptions
+          toast.info("Cancelando assinaturas...");
           try {
             await supabase.functions.invoke("pagarme-cancel-subscription", {
               body: { company_id: companyId },
@@ -340,6 +341,35 @@ const OnboardingCompanyDetailPage = () => {
             toast.success("Assinaturas canceladas na Pagar.me");
           } catch (cancelErr) {
             console.error("Error cancelling subscriptions:", cancelErr);
+          }
+
+          // Deactivate all active recurring charges and cleanup future invoices (30-day rule)
+          try {
+            const { data: activeCharges } = await supabase
+              .from("company_recurring_charges")
+              .select("id")
+              .eq("company_id", companyId)
+              .eq("is_active", true);
+
+            if (activeCharges && activeCharges.length > 0) {
+              // Inactivate all recurring charges
+              await supabase
+                .from("company_recurring_charges")
+                .update({ is_active: false } as any)
+                .eq("company_id", companyId)
+                .eq("is_active", true);
+
+              // Cleanup future invoices for each charge (keeps invoices due within 30 days, deletes the rest)
+              for (const charge of activeCharges) {
+                await supabase.functions.invoke("generate-invoices", {
+                  body: { action: "cleanup_future_invoices", recurring_charge_id: charge.id },
+                });
+              }
+              toast.success(`${activeCharges.length} recorrência(s) inativada(s). Faturas com vencimento > 30 dias excluídas.`);
+            }
+          } catch (recurErr) {
+            console.error("Error deactivating recurring charges:", recurErr);
+            toast.error("Erro ao processar recorrências");
           }
         }
 
