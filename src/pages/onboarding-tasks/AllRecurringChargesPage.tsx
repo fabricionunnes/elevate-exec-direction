@@ -73,6 +73,7 @@ interface FinancialEntry {
   paid_amount: number | null;
   paid_at: string | null;
   created_at: string;
+  supplier_name?: string;
 }
 
 interface Invoice {
@@ -1279,6 +1280,7 @@ export default function AllRecurringChargesPage() {
                               }}
                             />
                           </TableHead>
+                          <TableHead>Fornecedor</TableHead>
                           <TableHead>Descrição</TableHead>
                           <TableHead className="text-right">Valor</TableHead>
                           <TableHead>Vencimento</TableHead>
@@ -1289,7 +1291,7 @@ export default function AllRecurringChargesPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredPayables.length === 0 ? (
-                          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
                         ) : filteredPayables.map(p => (
                           <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
                             <TableCell>
@@ -1302,7 +1304,8 @@ export default function AllRecurringChargesPage() {
                                 }}
                               />
                             </TableCell>
-                            <TableCell className="font-medium max-w-[250px] truncate">{p.description}</TableCell>
+                            <TableCell className="font-medium max-w-[180px] truncate">{p.supplier_name || "-"}</TableCell>
+                            <TableCell className="max-w-[250px] truncate">{p.description}</TableCell>
                             <TableCell className="text-right font-semibold">{formatCurrency(p.amount)}</TableCell>
                             <TableCell>{p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                             <TableCell>{p.reference_month}</TableCell>
