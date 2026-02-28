@@ -44,6 +44,7 @@ import CFOUnitEconomicsTab from "./financial/CFOUnitEconomicsTab";
 import CFOCostsStructureTab from "./financial/CFOCostsStructureTab";
 import CFOCashProjectionTab from "./financial/CFOCashProjectionTab";
 import CFODelinquencyTab from "./financial/CFODelinquencyTab";
+import FinancialOverdueTab from "./financial/FinancialOverdueTab";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
@@ -103,6 +104,7 @@ interface Invoice {
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
   { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
+  { key: "overdue", label: "Atrasados", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
   { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
   { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
@@ -1293,6 +1295,21 @@ export default function AllRecurringChargesPage() {
                 </div>
               )}
             </div>
+          )}
+
+          {/* Atrasados */}
+          {activeTab === "overdue" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_view) && (
+            <FinancialOverdueTab
+              invoices={invoices}
+              companies={companies}
+              formatCurrencyCents={formatCurrencyCents}
+              hasPerm={hasPerm}
+              onConfirmPayment={handleManualPayment}
+              processingInvoiceId={processingInvoiceId}
+              setConfirmDialog={setConfirmDialog}
+              banks={banks}
+              loadData={loadData}
+            />
           )}
 
           {/* Contas a Pagar */}
