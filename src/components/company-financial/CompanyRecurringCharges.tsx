@@ -84,6 +84,7 @@ export function CompanyRecurringCharges({
     amount: contractValue || 0,
     paymentMethod: "pix",
     recurrence: "monthly",
+    totalInstallments: 12,
     nextChargeDate: getDefaultNextDate(),
     customerName: companyName,
     customerEmail: customerEmail || "",
@@ -132,6 +133,7 @@ export function CompanyRecurringCharges({
         amount_cents: Math.round(form.amount * 100),
         payment_method: form.paymentMethod,
         recurrence: form.recurrence,
+        installments: form.totalInstallments,
         next_charge_date: form.nextChargeDate,
         customer_name: form.customerName,
         customer_email: form.customerEmail,
@@ -324,6 +326,17 @@ export function CompanyRecurringCharges({
                       </SelectContent>
                     </Select>
                   </div>
+                </div>
+                <div className="space-y-2">
+                  <Label>Qtd. de Parcelas</Label>
+                  <Input
+                    type="number"
+                    min={1}
+                    max={60}
+                    value={form.totalInstallments}
+                    onChange={(e) => setForm({ ...form, totalInstallments: Math.max(1, parseInt(e.target.value) || 1) })}
+                  />
+                  <p className="text-xs text-muted-foreground">Número de parcelas a serem geradas (padrão: 12)</p>
                 </div>
                 <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">

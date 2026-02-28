@@ -287,11 +287,14 @@ Deno.serve(async (req) => {
 
       if (error || !charge) throw new Error("Cobrança recorrente não encontrada");
 
-      // Generate 12 fixed invoices (or less for quarterly/yearly)
+      // Generate invoices based on the installments field (default 12)
       let invoices: any[] = [];
-      let numInvoices = 12;
-      if (charge.recurrence === "quarterly") numInvoices = 4;
-      if (charge.recurrence === "yearly") numInvoices = 1;
+      let numInvoices = charge.installments || 12;
+      // For quarterly/yearly with default, use sensible defaults
+      if (!charge.installments || charge.installments === 1) {
+        if (charge.recurrence === "quarterly") numInvoices = 4;
+        if (charge.recurrence === "yearly") numInvoices = 1;
+      }
 
       const startDate = new Date(charge.next_charge_date + "T12:00:00");
 
@@ -618,9 +621,11 @@ Deno.serve(async (req) => {
         lastDate.setFullYear(lastDate.getFullYear() + 1);
       }
 
-      let numInvoices = 12;
-      if (charge.recurrence === "quarterly") numInvoices = 4;
-      if (charge.recurrence === "yearly") numInvoices = 1;
+      let numInvoices = charge.installments || 12;
+      if (!charge.installments || charge.installments === 1) {
+        if (charge.recurrence === "quarterly") numInvoices = 4;
+        if (charge.recurrence === "yearly") numInvoices = 1;
+      }
 
       const fallbackInvoices = [];
       for (let i = 0; i < numInvoices; i++) {
