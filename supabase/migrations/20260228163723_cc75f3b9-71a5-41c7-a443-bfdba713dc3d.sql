@@ -1,0 +1,1 @@
+ALTER TABLE public.company_invoices ADD COLUMN IF NOT EXISTS conta_azul_id text DEFAULT NULL;
