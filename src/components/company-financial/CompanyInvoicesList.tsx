@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { WhatsAppSendButton } from "@/components/onboarding-tasks/WhatsAppSendButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -83,9 +84,24 @@ export function CompanyInvoicesList({ companyId }: Props) {
     amount: 0,
     dueDate: "",
   });
+  const [companyPhone, setCompanyPhone] = useState("");
+  const [companyName, setCompanyName] = useState("");
 
   useEffect(() => {
-    if (companyId) fetchInvoices();
+    if (companyId) {
+      fetchInvoices();
+      supabase
+        .from("onboarding_companies")
+        .select("name, phone")
+        .eq("id", companyId)
+        .single()
+        .then(({ data }) => {
+          if (data) {
+            setCompanyPhone((data as any).phone || "");
+            setCompanyName((data as any).name || "");
+          }
+        });
+    }
   }, [companyId]);
 
   const fetchInvoices = async () => {
@@ -632,6 +648,28 @@ export function CompanyInvoicesList({ companyId }: Props) {
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Dar Baixa
                             </Button>
+                            {companyPhone && (
+                              <WhatsAppSendButton
+                                phone={companyPhone}
+                                recipientName={companyName}
+                                companyId={companyId}
+                                variant="ghost"
+                                className="h-7 text-xs px-2"
+                                defaultMessage={(() => {
+                                  const valor = formatCurrency(isOverdue ? inv.total_with_fees_cents : inv.amount_cents);
+                                  const venc = format(dueDate, "dd/MM/yyyy");
+                                  const baseUrl = getPublicBaseUrl();
+                                  const link = inv.payment_link_url || `${baseUrl}/#/fatura?token=${inv.public_token}`;
+                                  let msg = `Olá${companyName ? `, ${companyName}` : ""}! 👋\n\n`;
+                                  msg += isOverdue
+                                    ? `Identificamos que a fatura *${inv.description}* no valor de *${valor}* (com juros/multa) venceu em *${venc}* e está em aberto.\n\n`
+                                    : `Segue o lembrete da fatura *${inv.description}* no valor de *${valor}*, com vencimento em *${venc}*.\n\n`;
+                                  msg += `💳 Link para pagamento:\n${link}\n\n`;
+                                  msg += `Qualquer dúvida, estamos à disposição!`;
+                                  return msg;
+                                })()}
+                              />
+                            )}
                             {inv.payment_link_url && (
                               <Button asChild variant="default" size="sm" className="h-7 text-xs px-3">
                                 <a href={inv.payment_link_url} target="_blank" rel="noopener noreferrer">
