@@ -1,40 +1,82 @@
 
 
-# Corrigir mapeamento de status na importacao de Contas a Pagar
+# Integracao Bidirecional com Conta Azul: Criacao, Edicao e Baixa Automatica
 
-## Problema
-Ao importar a planilha de contas a pagar, registros com situacao "Quitado" estao sendo salvos com status "pendente" (open). Isso indica que a coluna "Situacao" nao esta sendo mapeada corretamente para o campo `status_raw`, fazendo com que `mapStatus(undefined)` retorne "open".
+## Resumo
 
-## Causa raiz
-O matching de colunas usa `includes()` bidirecional, que pode causar falhas em headers com acentos ou caracteres especiais do formato `.xls`. Alem disso, nao ha fallback caso o mapeamento falhe.
+Ao criar, editar ou dar baixa em contas a pagar/receber no sistema, os registros serao automaticamente criados, atualizados ou liquidados no Conta Azul via API. Erros na sincronizacao nao bloqueiam a operacao local (apenas exibem aviso).
 
-## Solucao
+---
 
-### 1. Melhorar o matching de headers (ClientFinancialImportDialog.tsx)
-- Adicionar uma segunda passada de matching que tenta variantes mais agressivas (remover parenteses, caracteres especiais, etc.)
-- Adicionar log de debug para headers nao mapeados
-- Separar a logica de `includes` para evitar falsos positivos: exigir que o match via `includes` seja significativo (comprimento minimo)
+## Funcionalidades
 
-### 2. Adicionar deteccao de status baseada em conteudo
-- Se `status_raw` nao foi mapeado via header, escanear as colunas de dados buscando valores tipicos de status ("Quitado", "Pendente", "Vencido", etc.)
-- Usar a primeira coluna encontrada com esses valores como coluna de status
+### 1. Criar lancamento no Conta Azul ao criar no sistema
+- Quando um novo lancamento (pagar ou receber) for salvo, o sistema verifica se ha integracao ativa com o Conta Azul
+- Se ativa, envia os dados para a API do Conta Azul e salva o `conta_azul_id` retornado no registro local
 
-### 3. Adicionar inferencia de status como fallback final
-- Se apos todas as tentativas `status_raw` ainda estiver vazio, inferir o status a partir dos dados:
-  - Se `paid_amount > 0` E `paid_at` tem data valida -> status = "paid"
-  - Se `due_date < hoje` e nao ha pagamento -> status = "overdue"
-  - Caso contrario -> status = "open"
+### 2. Atualizar lancamento no Conta Azul ao editar no sistema
+- Quando um lancamento existente com `conta_azul_id` for editado, o sistema atualiza o registro correspondente no Conta Azul
 
-## Detalhes tecnicos
+### 3. Dar baixa no Conta Azul ao marcar como pago no sistema
+- Quando um lancamento for marcado como pago (individual ou em massa), se tiver `conta_azul_id`, o sistema chama a API do Conta Azul para registrar a liquidacao
 
-### Arquivo: `src/components/client-financial/ClientFinancialImportDialog.tsx`
+---
 
-1. **Novo helper `findColumnMapping`**: Substituir a logica inline de matching por uma funcao dedicada com 3 niveis:
-   - Nivel 1: Match exato (apos normalizacao)
-   - Nivel 2: `startsWith` (header comeca com a chave ou vice-versa)
-   - Nivel 3: `includes` (apenas se a substring tem 6+ caracteres, para evitar falsos positivos)
+## Detalhes Tecnicos
 
-2. **Deteccao por conteudo para status**: Apos o parse dos headers, se `status_raw` nao foi mapeado, iterar pelas colunas nao mapeadas e verificar se alguma contem valores como "quitado", "pendente", "vencido".
+### 1. Edge Function `conta-azul-oauth/index.ts` -- Novas actions
 
-3. **Inferencia no `handleImport`**: Antes de inserir, se `status` resultou "open" mas ha evidencia de pagamento (`paid_amount > 0` ou `paid_at` preenchido), forcar `status = "paid"`.
+Adicionar 2 novas actions:
+
+**`create-entry`** -- Cria ou atualiza um lancamento no Conta Azul
+- Recebe: `type` ("receivable" ou "payable"), `data` (descricao, valor, vencimento, etc.), `conta_azul_id` (opcional, para update)
+- Endpoints:
+  - Receber: `POST /v1/financeiro/eventos-financeiros/contas-a-receber`
+  - Pagar: `POST /v1/financeiro/eventos-financeiros/contas-a-pagar`
+  - Update: `PUT` no mesmo endpoint com o ID
+- Retorna o `id` do registro criado/atualizado no Conta Azul
+
+**`confirm-payment`** -- Registra baixa de pagamento no Conta Azul
+- Recebe: `conta_azul_id`, `type`, `paid_at`, `paid_amount`
+- Endpoints:
+  - Receber: `POST .../contas-a-receber/{id}/receber`
+  - Pagar: `POST .../contas-a-pagar/{id}/pagar`
+
+Ambas as actions incluem refresh automatico de token se expirado.
+
+### 2. Helper utilitario `syncToContaAzul`
+
+Criar `src/utils/contaAzulSync.ts` com funcoes reutilizaveis:
+- `syncEntryToContaAzul(type, data, contaAzulId?)` -- cria ou atualiza
+- `syncPaymentToContaAzul(contaAzulId, type, paidAt, paidAmount)` -- registra baixa
+- `isContaAzulConnected()` -- verifica se ha integracao ativa
+
+Cada funcao verifica se a integracao esta ativa antes de fazer a chamada, e retorna silenciosamente se nao estiver.
+
+### 3. Integracao nos pontos de criacao/edicao/baixa
+
+**`AllRecurringChargesPage.tsx`**:
+- `handleSaveReceivable`: apos insert em `company_invoices`, chamar `syncEntryToContaAzul("receivable", ...)` e salvar o `conta_azul_id` retornado
+- `handleSavePayable`: apos insert em `financial_payables`, chamar `syncEntryToContaAzul("payable", ...)` e salvar o `conta_azul_id`
+- `handleBulkConfirmPayables`: apos update de status, chamar `syncPaymentToContaAzul` para cada item com `conta_azul_id`
+
+**`ClientReceivablesPanel.tsx`**:
+- `handleAdd`: sincronizar apos criar
+- `handleEdit`: sincronizar apos editar (se tiver `conta_azul_id`)
+- `handleMarkAsPaid`: registrar baixa no Conta Azul
+
+**`ClientPayablesPanel.tsx`**:
+- `handleAdd`: sincronizar apos criar
+- `handleEdit`: sincronizar apos editar
+- `handleMarkAsPaid`: registrar baixa no Conta Azul
+
+### 4. Arquivos modificados/criados
+
+| Arquivo | Acao |
+|---|---|
+| `supabase/functions/conta-azul-oauth/index.ts` | Adicionar actions `create-entry` e `confirm-payment` |
+| `src/utils/contaAzulSync.ts` | Novo -- funcoes helper reutilizaveis |
+| `src/pages/onboarding-tasks/AllRecurringChargesPage.tsx` | Integrar sync nos handlers de salvar e baixa |
+| `src/components/client-financial/ClientReceivablesPanel.tsx` | Integrar sync nos handlers de criar, editar e baixa |
+| `src/components/client-financial/ClientPayablesPanel.tsx` | Integrar sync nos handlers de criar, editar e baixa |
 
