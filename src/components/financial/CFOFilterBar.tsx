@@ -1,6 +1,11 @@
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { CalendarIcon, Filter } from "lucide-react";
-import { format, subMonths } from "date-fns";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 export interface CFOFilters {
   month: string;       // "all" | "YYYY-MM"
@@ -27,31 +32,53 @@ interface Props {
 }
 
 export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
-  const months: { value: string; label: string }[] = [];
-  const now = new Date();
-  // Generate months: 24 past + current + 12 future
-  for (let i = -12; i <= 24; i++) {
-    const d = subMonths(now, i);
-    const val = format(d, "yyyy-MM");
-    const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-    months.push({ value: val, label: label.charAt(0).toUpperCase() + label.slice(1) });
-  }
-
   const consultants = staff.filter(s => ["consultant", "cs", "admin", "master"].includes(s.role));
+
+  const selectedDate = filters.month !== "all"
+    ? parse(filters.month, "yyyy-MM", new Date())
+    : undefined;
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      onChange({ ...filters, month: format(date, "yyyy-MM") });
+    }
+  };
+
+  const monthLabel = selectedDate
+    ? format(selectedDate, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase())
+    : "Todos os meses";
 
   return (
     <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border bg-card">
       <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
-      <Select value={filters.month} onValueChange={(v) => onChange({ ...filters, month: v })}>
-        <SelectTrigger className="w-[180px] h-9">
-          <CalendarIcon className="h-3.5 w-3.5 mr-2 text-muted-foreground" />
-          <SelectValue placeholder="Mês" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos os meses</SelectItem>
-          {months.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-        </SelectContent>
-      </Select>
+
+      <div className="flex items-center gap-1">
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className={cn("w-[200px] h-9 justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+              <CalendarIcon className="mr-2 h-3.5 w-3.5" />
+              {monthLabel}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="start">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              locale={ptBR}
+              captionLayout="dropdown-buttons"
+              fromYear={2020}
+              toYear={2030}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
+        {filters.month !== "all" && (
+          <Button variant="ghost" size="sm" className="h-9 px-2 text-xs" onClick={() => onChange({ ...filters, month: "all" })}>
+            Limpar
+          </Button>
+        )}
+      </div>
 
       <Select value={filters.consultantId} onValueChange={(v) => onChange({ ...filters, consultantId: v })}>
         <SelectTrigger className="w-[180px] h-9">

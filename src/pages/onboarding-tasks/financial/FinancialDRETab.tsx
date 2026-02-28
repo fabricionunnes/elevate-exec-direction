@@ -1,9 +1,14 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Badge } from "@/components/ui/badge";
-import { FileText, TrendingUp, TrendingDown, Minus } from "lucide-react";
+import { Card, CardContent } from "@/components/ui/card";
+import { FileText } from "lucide-react";
+import { CalendarIcon } from "lucide-react";
+import { format, parse } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { Button } from "@/components/ui/button";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 
 interface Props {
   invoices: any[];
@@ -31,26 +36,6 @@ interface ManualEntry {
   paid_amount_cents: number | null;
 }
 
-const DRE_LINE_ORDER = [
-  "receita_bruta",
-  "deducoes",
-  "despesas_pessoal",
-  "despesas_admin",
-  "despesas_comerciais",
-  "investimentos",
-  "despesas_financeiras",
-];
-
-const DRE_LINE_LABELS: Record<string, string> = {
-  receita_bruta: "Receita Bruta",
-  deducoes: "(-) Deduções sobre Receita",
-  despesas_pessoal: "Despesas com Pessoal",
-  despesas_admin: "Despesas Administrativas",
-  despesas_comerciais: "Despesas Comerciais",
-  investimentos: "Investimentos",
-  despesas_financeiras: "Despesas Financeiras",
-};
-
 export default function FinancialDRETab({ invoices, payables, formatCurrency, formatCurrencyCents }: Props) {
   const [categories, setCategories] = useState<Category[]>([]);
   const [entries, setEntries] = useState<ManualEntry[]>([]);
@@ -70,18 +55,15 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency, fo
     if (entRes.data) setEntries(entRes.data as any);
   };
 
-  // Generate month options
-  const monthOptions = useMemo(() => {
-    const months: { value: string; label: string }[] = [];
-    // 24 months past + 12 months future
-    for (let i = 24; i >= -12; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
-      const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
-      const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
-      months.push({ value: val, label: label.charAt(0).toUpperCase() + label.slice(1) });
+  const selectedDate = parse(selectedMonth, "yyyy-MM", new Date());
+
+  const handleDateSelect = (date: Date | undefined) => {
+    if (date) {
+      setSelectedMonth(format(date, "yyyy-MM"));
     }
-    return months;
-  }, []);
+  };
+
+  const monthLabel = format(selectedDate, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
 
   const dreData = useMemo(() => {
     // 1. Receita bruta from invoices paid in the month
@@ -159,14 +141,26 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency, fo
           </h2>
           <p className="text-sm text-muted-foreground">Visão completa de receitas, custos e resultado</p>
         </div>
-        <Select value={selectedMonth} onValueChange={setSelectedMonth}>
-          <SelectTrigger className="w-[220px]">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            {monthOptions.map(m => <SelectItem key={m.value} value={m.value}>{m.label}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <Popover>
+          <PopoverTrigger asChild>
+            <Button variant="outline" className="w-[220px] justify-start text-left font-normal">
+              <CalendarIcon className="mr-2 h-4 w-4" />
+              {monthLabel}
+            </Button>
+          </PopoverTrigger>
+          <PopoverContent className="w-auto p-0" align="end">
+            <Calendar
+              mode="single"
+              selected={selectedDate}
+              onSelect={handleDateSelect}
+              locale={ptBR}
+              captionLayout="dropdown-buttons"
+              fromYear={2020}
+              toYear={2030}
+              className={cn("p-3 pointer-events-auto")}
+            />
+          </PopoverContent>
+        </Popover>
       </div>
 
       <Card>
