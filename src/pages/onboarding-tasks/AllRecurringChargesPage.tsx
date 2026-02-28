@@ -614,7 +614,7 @@ export default function AllRecurringChargesPage() {
     } else if (activeTab === "recurring") {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em"]];
       filteredInvoices.forEach(inv => {
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments === 0 ? "∞" : inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status), inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : ""]);
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status), inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -889,7 +889,7 @@ export default function AllRecurringChargesPage() {
                               const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
                               const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
                               const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
-                              const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments === 0 ? "∞" : inv.total_installments}`;
+                              const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                               const customerName = inv.company_name || "";
                               const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
                               try {
@@ -1024,7 +1024,7 @@ export default function AllRecurringChargesPage() {
                               </TableCell>
                               <TableCell className="font-medium text-sm">{inv.company_name}</TableCell>
                               <TableCell className="max-w-[200px] truncate text-sm">{inv.description}</TableCell>
-                              <TableCell className="text-center text-sm">{inv.installment_number}/{inv.total_installments === 0 ? "∞" : inv.total_installments}</TableCell>
+                              <TableCell className="text-center text-sm">{inv.installment_number}/{inv.total_installments}</TableCell>
                               <TableCell className="text-right font-semibold">{formatCurrencyCents(displayAmount)}</TableCell>
                               <TableCell className="text-sm">{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
@@ -1051,7 +1051,7 @@ export default function AllRecurringChargesPage() {
                                           const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
                                           const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
                                           const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
-                                          const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments === 0 ? "∞" : inv.total_installments}`;
+                                          const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                                           const customerName = inv.company_name || "";
                                           const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
                                           try {

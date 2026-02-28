@@ -287,101 +287,39 @@ Deno.serve(async (req) => {
 
       if (error || !charge) throw new Error("Cobrança recorrente não encontrada");
 
-      // Delta sync: if there's an Asaas subscription, fetch payments from Asaas
+      // Generate 12 fixed invoices (or less for quarterly/yearly)
       let invoices: any[] = [];
+      let numInvoices = 12;
+      if (charge.recurrence === "quarterly") numInvoices = 4;
+      if (charge.recurrence === "yearly") numInvoices = 1;
 
-      if (charge.pagarme_plan_id && ASAAS_API_KEY) {
-        console.log(`[generate] Delta sync from Asaas subscription ${charge.pagarme_plan_id}`);
+      const startDate = new Date(charge.next_charge_date + "T12:00:00");
 
-        // Get existing invoice due_dates to avoid duplicates
-        const { data: existingInvoices } = await supabase
-          .from("company_invoices")
-          .select("due_date")
-          .eq("recurring_charge_id", recurring_charge_id);
-        const existingDates = new Set((existingInvoices || []).map((i: any) => i.due_date));
-
-        // Fetch ALL payments from Asaas subscription (paginated)
-        let allPayments: any[] = [];
-        let offset = 0;
-        const limit = 100;
-        let hasMore = true;
-
-        while (hasMore) {
-          try {
-            const payments = await asaasRequest(
-              `/subscriptions/${charge.pagarme_plan_id}/payments?offset=${offset}&limit=${limit}`,
-              "GET",
-              ASAAS_API_KEY
-            );
-            if (payments.data?.length > 0) {
-              allPayments = allPayments.concat(payments.data);
-              offset += limit;
-              hasMore = payments.data.length === limit;
-            } else {
-              hasMore = false;
-            }
-          } catch (e) {
-            console.error("Error fetching Asaas payments:", e);
-            hasMore = false;
-          }
+      for (let i = 0; i < numInvoices; i++) {
+        const dueDate = new Date(startDate);
+        if (charge.recurrence === "monthly") {
+          dueDate.setMonth(dueDate.getMonth() + i);
+        } else if (charge.recurrence === "quarterly") {
+          dueDate.setMonth(dueDate.getMonth() + i * 3);
+        } else if (charge.recurrence === "yearly") {
+          dueDate.setFullYear(dueDate.getFullYear() + i);
         }
 
-        console.log(`[generate] Found ${allPayments.length} Asaas payments, ${existingDates.size} existing invoices`);
+        const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
 
-        // Create invoices for new Asaas payments not yet in our system
-        let installmentCounter = existingDates.size;
-        for (const payment of allPayments) {
-          if (!existingDates.has(payment.dueDate)) {
-            installmentCounter++;
-            invoices.push({
-              company_id: charge.company_id,
-              recurring_charge_id: charge.id,
-              description: charge.description,
-              amount_cents: Math.round(payment.value * 100),
-              due_date: payment.dueDate,
-              status: payment.status === "RECEIVED" || payment.status === "CONFIRMED" ? "paid" : "pending",
-              payment_method: charge.payment_method,
-              installment_number: installmentCounter,
-              total_installments: 0, // 0 = indefinite
-              late_fee_percent: 2.0,
-              daily_interest_percent: 1.0,
-            });
-          }
-        }
-      } else {
-        // Fallback: no Asaas subscription, generate 12 fixed invoices
-        let numInvoices = 12;
-        if (charge.recurrence === "quarterly") numInvoices = 4;
-        if (charge.recurrence === "yearly") numInvoices = 1;
-
-        const startDate = new Date(charge.next_charge_date + "T12:00:00");
-
-        for (let i = 0; i < numInvoices; i++) {
-          const dueDate = new Date(startDate);
-          if (charge.recurrence === "monthly") {
-            dueDate.setMonth(dueDate.getMonth() + i);
-          } else if (charge.recurrence === "quarterly") {
-            dueDate.setMonth(dueDate.getMonth() + i * 3);
-          } else if (charge.recurrence === "yearly") {
-            dueDate.setFullYear(dueDate.getFullYear() + i);
-          }
-
-          const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
-
-          invoices.push({
-            company_id: charge.company_id,
-            recurring_charge_id: charge.id,
-            description: charge.description,
-            amount_cents: charge.amount_cents,
-            due_date: dueDateStr,
-            status: "pending",
-            payment_method: charge.payment_method,
-            installment_number: i + 1,
-            total_installments: numInvoices,
-            late_fee_percent: 2.0,
-            daily_interest_percent: 1.0,
-          });
-        }
+        invoices.push({
+          company_id: charge.company_id,
+          recurring_charge_id: charge.id,
+          description: charge.description,
+          amount_cents: charge.amount_cents,
+          due_date: dueDateStr,
+          status: "pending",
+          payment_method: charge.payment_method,
+          installment_number: i + 1,
+          total_installments: numInvoices,
+          late_fee_percent: 2.0,
+          daily_interest_percent: 1.0,
+        });
       }
 
       if (invoices.length === 0) {

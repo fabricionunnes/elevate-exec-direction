@@ -560,7 +560,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                           </Badge>
                           {inv.installment_number && inv.total_installments && (
                             <span className="text-xs text-muted-foreground">
-                              {inv.installment_number}/{inv.total_installments === 0 ? "∞" : inv.total_installments}
+                              {inv.installment_number}/{inv.total_installments}
                             </span>
                           )}
                         </div>
