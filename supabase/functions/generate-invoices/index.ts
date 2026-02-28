@@ -388,8 +388,10 @@ Deno.serve(async (req) => {
 
     // Action: update overdue status and calculate fees
     if (action === "update_fees") {
-      const now = new Date();
-      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      // Use Brazil timezone (UTC-3) to determine "today" so invoices due today
+      // are not prematurely marked as overdue when the server runs in UTC
+      const brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+      const today = `${brNow.getFullYear()}-${String(brNow.getMonth() + 1).padStart(2, "0")}-${String(brNow.getDate()).padStart(2, "0")}`;
 
       const { data: overdueInvoices } = await supabase
         .from("company_invoices")
