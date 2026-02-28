@@ -18,6 +18,7 @@ interface WhatsAppSendButtonProps {
   variant?: "icon" | "button" | "ghost";
   defaultMessage?: string;
   className?: string;
+  instanceName?: string;
 }
 
 export const WhatsAppSendButton = ({
@@ -28,6 +29,7 @@ export const WhatsAppSendButton = ({
   variant = "icon",
   defaultMessage,
   className,
+  instanceName,
 }: WhatsAppSendButtonProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [sending, setSending] = useState(false);
@@ -40,16 +42,22 @@ export const WhatsAppSendButton = ({
   const checkInstance = async () => {
     if (hasInstance !== null) return hasInstance;
     
-    const { data } = await supabase
+    let query = supabase
       .from("whatsapp_instances")
       .select("id")
-      .eq("is_default", true)
-      .eq("status", "connected")
-      .single();
+      .eq("status", "connected");
     
-    const hasDefault = !!data;
-    setHasInstance(hasDefault);
-    return hasDefault;
+    if (instanceName) {
+      query = query.eq("instance_name", instanceName);
+    } else {
+      query = query.eq("is_default", true);
+    }
+    
+    const { data } = await query.single();
+    
+    const found = !!data;
+    setHasInstance(found);
+    return found;
   };
 
   const handleClick = async () => {
@@ -71,12 +79,18 @@ export const WhatsAppSendButton = ({
     setSending(true);
     try {
       // Get default instance
-      const { data: instance } = await supabase
+      let instQuery = supabase
         .from("whatsapp_instances")
         .select("id, instance_name")
-        .eq("is_default", true)
-        .eq("status", "connected")
-        .single();
+        .eq("status", "connected");
+      
+      if (instanceName) {
+        instQuery = instQuery.eq("instance_name", instanceName);
+      } else {
+        instQuery = instQuery.eq("is_default", true);
+      }
+      
+      const { data: instance } = await instQuery.single();
 
       if (!instance) {
         throw new Error("Nenhuma instância conectada");
