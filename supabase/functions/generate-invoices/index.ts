@@ -287,38 +287,108 @@ Deno.serve(async (req) => {
 
       if (error || !charge) throw new Error("Cobrança recorrente não encontrada");
 
-      let numInvoices = 12;
-      if (charge.recurrence === "quarterly") numInvoices = 4;
-      if (charge.recurrence === "yearly") numInvoices = 1;
+      // Delta sync: if there's an Asaas subscription, fetch payments from Asaas
+      let invoices: any[] = [];
 
-      const startDate = new Date(charge.next_charge_date + "T12:00:00");
-      const invoices = [];
+      if (charge.pagarme_plan_id && ASAAS_API_KEY) {
+        console.log(`[generate] Delta sync from Asaas subscription ${charge.pagarme_plan_id}`);
 
-      for (let i = 0; i < numInvoices; i++) {
-        const dueDate = new Date(startDate);
-        if (charge.recurrence === "monthly") {
-          dueDate.setMonth(dueDate.getMonth() + i);
-        } else if (charge.recurrence === "quarterly") {
-          dueDate.setMonth(dueDate.getMonth() + i * 3);
-        } else if (charge.recurrence === "yearly") {
-          dueDate.setFullYear(dueDate.getFullYear() + i);
+        // Get existing invoice due_dates to avoid duplicates
+        const { data: existingInvoices } = await supabase
+          .from("company_invoices")
+          .select("due_date")
+          .eq("recurring_charge_id", recurring_charge_id);
+        const existingDates = new Set((existingInvoices || []).map((i: any) => i.due_date));
+
+        // Fetch ALL payments from Asaas subscription (paginated)
+        let allPayments: any[] = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          try {
+            const payments = await asaasRequest(
+              `/subscriptions/${charge.pagarme_plan_id}/payments?offset=${offset}&limit=${limit}`,
+              "GET",
+              ASAAS_API_KEY
+            );
+            if (payments.data?.length > 0) {
+              allPayments = allPayments.concat(payments.data);
+              offset += limit;
+              hasMore = payments.data.length === limit;
+            } else {
+              hasMore = false;
+            }
+          } catch (e) {
+            console.error("Error fetching Asaas payments:", e);
+            hasMore = false;
+          }
         }
 
-        const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+        console.log(`[generate] Found ${allPayments.length} Asaas payments, ${existingDates.size} existing invoices`);
 
-        invoices.push({
-          company_id: charge.company_id,
-          recurring_charge_id: charge.id,
-          description: charge.description,
-          amount_cents: charge.amount_cents,
-          due_date: dueDateStr,
-          status: "pending",
-          payment_method: charge.payment_method,
-          installment_number: i + 1,
-          total_installments: numInvoices,
-          late_fee_percent: 2.0,
-          daily_interest_percent: 1.0,
-        });
+        // Create invoices for new Asaas payments not yet in our system
+        let installmentCounter = existingDates.size;
+        for (const payment of allPayments) {
+          if (!existingDates.has(payment.dueDate)) {
+            installmentCounter++;
+            invoices.push({
+              company_id: charge.company_id,
+              recurring_charge_id: charge.id,
+              description: charge.description,
+              amount_cents: Math.round(payment.value * 100),
+              due_date: payment.dueDate,
+              status: payment.status === "RECEIVED" || payment.status === "CONFIRMED" ? "paid" : "pending",
+              payment_method: charge.payment_method,
+              installment_number: installmentCounter,
+              total_installments: 0, // 0 = indefinite
+              late_fee_percent: 2.0,
+              daily_interest_percent: 1.0,
+            });
+          }
+        }
+      } else {
+        // Fallback: no Asaas subscription, generate 12 fixed invoices
+        let numInvoices = 12;
+        if (charge.recurrence === "quarterly") numInvoices = 4;
+        if (charge.recurrence === "yearly") numInvoices = 1;
+
+        const startDate = new Date(charge.next_charge_date + "T12:00:00");
+
+        for (let i = 0; i < numInvoices; i++) {
+          const dueDate = new Date(startDate);
+          if (charge.recurrence === "monthly") {
+            dueDate.setMonth(dueDate.getMonth() + i);
+          } else if (charge.recurrence === "quarterly") {
+            dueDate.setMonth(dueDate.getMonth() + i * 3);
+          } else if (charge.recurrence === "yearly") {
+            dueDate.setFullYear(dueDate.getFullYear() + i);
+          }
+
+          const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
+
+          invoices.push({
+            company_id: charge.company_id,
+            recurring_charge_id: charge.id,
+            description: charge.description,
+            amount_cents: charge.amount_cents,
+            due_date: dueDateStr,
+            status: "pending",
+            payment_method: charge.payment_method,
+            installment_number: i + 1,
+            total_installments: numInvoices,
+            late_fee_percent: 2.0,
+            daily_interest_percent: 1.0,
+          });
+        }
+      }
+
+      if (invoices.length === 0) {
+        return new Response(
+          JSON.stringify({ success: true, count: 0, message: "Nenhuma nova parcela para importar" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       const { data: inserted, error: insertError } = await supabase
@@ -343,13 +413,12 @@ Deno.serve(async (req) => {
         if (!firstInvoiceUrl && url) firstInvoiceUrl = url;
       }
 
-      // Send WhatsApp notification for the first invoice only
-      if (firstInvoiceUrl && (inserted?.length || 0) > 0) {
-        const firstInv = inserted![0];
+      // Send WhatsApp notification for the first pending invoice only
+      const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
+      if (firstInvoiceUrl && firstPendingInv) {
         let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
         
-        // Fallback: get phone from company if not on charge
         if (!customerPhone && charge.company_id) {
           const { data: companyData } = await supabase
             .from("onboarding_companies")
@@ -361,11 +430,11 @@ Deno.serve(async (req) => {
         
         if (customerPhone) {
           await sendWhatsAppInvoiceNotification(supabase, {
-            description: firstInv.description,
-            amount_cents: firstInv.amount_cents,
-            due_date: firstInv.due_date,
-            installment_number: firstInv.installment_number,
-            total_installments: firstInv.total_installments,
+            description: firstPendingInv.description,
+            amount_cents: firstPendingInv.amount_cents,
+            due_date: firstPendingInv.due_date,
+            installment_number: firstPendingInv.installment_number,
+            total_installments: firstPendingInv.total_installments,
           }, firstInvoiceUrl, customerPhone, customerName);
         }
       }
@@ -433,7 +502,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Action: auto-renew invoices when the last installment is paid
+    // Action: auto-renew - delta sync from Asaas subscription
     if (action === "auto_renew" && recurring_charge_id) {
       const { data: charge } = await supabase
         .from("company_recurring_charges")
@@ -449,6 +518,130 @@ Deno.serve(async (req) => {
         );
       }
 
+      // Delta sync: if Asaas subscription exists, import new payments
+      if (charge.pagarme_plan_id && ASAAS_API_KEY) {
+        const { data: existingInvoices } = await supabase
+          .from("company_invoices")
+          .select("due_date")
+          .eq("recurring_charge_id", recurring_charge_id);
+        const existingDates = new Set((existingInvoices || []).map((i: any) => i.due_date));
+
+        let allPayments: any[] = [];
+        let offset = 0;
+        const limit = 100;
+        let hasMore = true;
+
+        while (hasMore) {
+          try {
+            const payments = await asaasRequest(
+              `/subscriptions/${charge.pagarme_plan_id}/payments?offset=${offset}&limit=${limit}`,
+              "GET",
+              ASAAS_API_KEY
+            );
+            if (payments.data?.length > 0) {
+              allPayments = allPayments.concat(payments.data);
+              offset += limit;
+              hasMore = payments.data.length === limit;
+            } else {
+              hasMore = false;
+            }
+          } catch (e) {
+            console.error("Error fetching Asaas payments for auto_renew:", e);
+            hasMore = false;
+          }
+        }
+
+        const newPayments = allPayments.filter((p: any) => !existingDates.has(p.dueDate));
+        if (newPayments.length === 0) {
+          console.log(`[auto_renew] No new Asaas payments to import for ${recurring_charge_id}`);
+          return new Response(
+            JSON.stringify({ success: true, count: 0, message: "Sem novas parcelas no Asaas" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+
+        let installmentCounter = existingDates.size;
+        const invoices = newPayments.map((payment: any) => {
+          installmentCounter++;
+          return {
+            company_id: charge.company_id,
+            recurring_charge_id: charge.id,
+            description: charge.description,
+            amount_cents: Math.round(payment.value * 100),
+            due_date: payment.dueDate,
+            status: payment.status === "RECEIVED" || payment.status === "CONFIRMED" ? "paid" : "pending",
+            payment_method: charge.payment_method,
+            installment_number: installmentCounter,
+            total_installments: 0,
+            late_fee_percent: 2.0,
+            daily_interest_percent: 1.0,
+          };
+        });
+
+        const { data: inserted, error: insertError } = await supabase
+          .from("company_invoices")
+          .insert(invoices)
+          .select();
+
+        if (insertError) throw insertError;
+
+        // Create payment links
+        let firstRenewUrl = "";
+        for (const inv of inserted || []) {
+          const url = await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
+            id: inv.id,
+            description: inv.description,
+            amount_cents: inv.amount_cents,
+            company_id: inv.company_id,
+            payment_method: inv.payment_method,
+            due_date: inv.due_date,
+            recurring_charge_id: inv.recurring_charge_id,
+          });
+          if (!firstRenewUrl && url) firstRenewUrl = url;
+        }
+
+        // Send WhatsApp for first pending invoice
+        const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
+        if (firstRenewUrl && firstPendingInv) {
+          let customerPhone = charge.customer_phone || "";
+          const customerName = charge.customer_name || "";
+          if (!customerPhone && charge.company_id) {
+            const { data: companyData } = await supabase
+              .from("onboarding_companies")
+              .select("phone")
+              .eq("id", charge.company_id)
+              .single();
+            if (companyData?.phone) customerPhone = companyData.phone;
+          }
+          if (customerPhone) {
+            await sendWhatsAppInvoiceNotification(supabase, {
+              description: firstPendingInv.description,
+              amount_cents: firstPendingInv.amount_cents,
+              due_date: firstPendingInv.due_date,
+              installment_number: firstPendingInv.installment_number,
+              total_installments: firstPendingInv.total_installments,
+            }, firstRenewUrl, customerPhone, customerName);
+          }
+        }
+
+        // Update next_charge_date
+        if (invoices.length > 0) {
+          const lastDueDate = invoices[invoices.length - 1].due_date;
+          await supabase
+            .from("company_recurring_charges")
+            .update({ next_charge_date: lastDueDate })
+            .eq("id", recurring_charge_id);
+        }
+
+        console.log(`[auto_renew] Delta sync: imported ${inserted?.length || 0} new invoices for ${recurring_charge_id}`);
+
+        return new Response(
+          JSON.stringify({ success: true, count: inserted?.length || 0 }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Fallback: no Asaas subscription, generate next batch
       const { data: pendingInvoices } = await supabase
         .from("company_invoices")
         .select("id")
@@ -491,7 +684,7 @@ Deno.serve(async (req) => {
       if (charge.recurrence === "quarterly") numInvoices = 4;
       if (charge.recurrence === "yearly") numInvoices = 1;
 
-      const invoices = [];
+      const fallbackInvoices = [];
       for (let i = 0; i < numInvoices; i++) {
         const dueDate = new Date(lastDate);
         if (charge.recurrence === "monthly") {
@@ -504,7 +697,7 @@ Deno.serve(async (req) => {
 
         const dueDateStr = `${dueDate.getFullYear()}-${String(dueDate.getMonth() + 1).padStart(2, "0")}-${String(dueDate.getDate()).padStart(2, "0")}`;
 
-        invoices.push({
+        fallbackInvoices.push({
           company_id: charge.company_id,
           recurring_charge_id: charge.id,
           description: charge.description,
@@ -521,12 +714,11 @@ Deno.serve(async (req) => {
 
       const { data: inserted, error: insertError } = await supabase
         .from("company_invoices")
-        .insert(invoices)
+        .insert(fallbackInvoices)
         .select();
 
       if (insertError) throw insertError;
 
-      // Create payment links with Asaas URLs and send WhatsApp for first invoice
       let firstRenewUrl = "";
       for (const inv of inserted || []) {
         const url = await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
@@ -541,12 +733,10 @@ Deno.serve(async (req) => {
         if (!firstRenewUrl && url) firstRenewUrl = url;
       }
 
-      // Send WhatsApp notification for the first renewed invoice
       if (firstRenewUrl && (inserted?.length || 0) > 0) {
         const firstInv = inserted![0];
         let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
-        
         if (!customerPhone && charge.company_id) {
           const { data: companyData } = await supabase
             .from("onboarding_companies")
@@ -555,7 +745,6 @@ Deno.serve(async (req) => {
             .single();
           if (companyData?.phone) customerPhone = companyData.phone;
         }
-        
         if (customerPhone) {
           await sendWhatsAppInvoiceNotification(supabase, {
             description: firstInv.description,
@@ -567,14 +756,13 @@ Deno.serve(async (req) => {
         }
       }
 
-      // Update next_charge_date
-      const firstNewDueDateStr = invoices[0].due_date;
+      const firstNewDueDateStr = fallbackInvoices[0].due_date;
       await supabase
         .from("company_recurring_charges")
         .update({ next_charge_date: firstNewDueDateStr })
         .eq("id", recurring_charge_id);
 
-      console.log(`Auto-renew: generated ${inserted?.length || 0} new invoices for recurring ${recurring_charge_id}`);
+      console.log(`[auto_renew] Fallback: generated ${inserted?.length || 0} new invoices for ${recurring_charge_id}`);
 
       return new Response(
         JSON.stringify({ success: true, count: inserted?.length || 0 }),
