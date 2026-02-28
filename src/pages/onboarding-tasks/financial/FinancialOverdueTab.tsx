@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -9,13 +9,15 @@ import {
   Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import {
-  AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2, Filter,
+  AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
+  Clock, Building2, DollarSign, TrendingDown, Flame,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
+import { motion, AnimatePresence } from "framer-motion";
 
 interface Invoice {
   id: string;
@@ -51,6 +53,13 @@ interface FinancialOverdueTabProps {
   loadData: () => Promise<void>;
 }
 
+const urgencyLevel = (days: number) => {
+  if (days >= 60) return { label: "Crítico", color: "from-red-600 to-rose-700", bg: "bg-red-500/15", text: "text-red-400", border: "border-red-500/30", icon: Flame };
+  if (days >= 30) return { label: "Alto", color: "from-orange-500 to-red-600", bg: "bg-orange-500/15", text: "text-orange-400", border: "border-orange-500/30", icon: AlertTriangle };
+  if (days >= 15) return { label: "Médio", color: "from-amber-500 to-orange-500", bg: "bg-amber-500/15", text: "text-amber-400", border: "border-amber-500/30", icon: Clock };
+  return { label: "Baixo", color: "from-yellow-400 to-amber-500", bg: "bg-yellow-500/15", text: "text-yellow-400", border: "border-yellow-500/30", icon: Clock };
+};
+
 export default function FinancialOverdueTab({
   invoices,
   companies,
@@ -68,12 +77,10 @@ export default function FinancialOverdueTab({
   const ITEMS_PER_PAGE = 10;
 
   const overdueInvoices = useMemo(() => {
-    // Use Brazil timezone to determine "today"
     const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     const todayStr = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, "0")}-${String(nowBR.getDate()).padStart(2, "0")}`;
     return invoices.filter(inv => {
       if (inv.status === "paid") return false;
-      // Strictly past due: due_date must be before today (not today itself)
       const isPastDue = inv.due_date < todayStr;
       if (!isPastDue) return false;
       if (search) {
@@ -89,12 +96,16 @@ export default function FinancialOverdueTab({
   const paginated = overdueInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total_with_fees_cents, 0);
+  const uniqueCompanies = new Set(overdueInvoices.map(i => i.company_id)).size;
+  const avgDays = overdueInvoices.length > 0
+    ? Math.round(overdueInvoices.reduce((s, i) => s + daysOverdue(i.due_date), 0) / overdueInvoices.length)
+    : 0;
 
-  const daysOverdue = (dueDate: string) => {
+  function daysOverdue(dueDate: string) {
     const due = new Date(dueDate + "T12:00:00");
     const today = new Date();
     return Math.floor((today.getTime() - due.getTime()) / 86400000);
-  };
+  }
 
   const copyLink = (url: string | null) => {
     if (!url) { toast.error("Sem link de pagamento"); return; }
@@ -199,186 +210,298 @@ export default function FinancialOverdueTab({
   };
 
   return (
-    <div className="space-y-4">
-      <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-        <h2 className="text-lg font-semibold flex items-center gap-2">
-          <AlertTriangle className="h-5 w-5 text-destructive" />
-          Atrasados
-        </h2>
-        <Badge variant="destructive" className="text-sm px-3 py-1">
-          {overdueInvoices.length} fatura(s) em atraso
-        </Badge>
+    <div className="space-y-6">
+      {/* Header */}
+      <motion.div
+        initial={{ opacity: 0, y: -10 }}
+        animate={{ opacity: 1, y: 0 }}
+        className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3"
+      >
+        <div className="flex items-center gap-3">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-xl bg-gradient-to-br from-red-500 to-rose-600 flex items-center justify-center shadow-lg shadow-red-500/25">
+              <AlertTriangle className="h-6 w-6 text-white" />
+            </div>
+            {overdueInvoices.length > 0 && (
+              <span className="absolute -top-1 -right-1 h-5 w-5 rounded-full bg-red-500 text-white text-[10px] font-bold flex items-center justify-center ring-2 ring-background animate-pulse">
+                {overdueInvoices.length > 99 ? "99+" : overdueInvoices.length}
+              </span>
+            )}
+          </div>
+          <div>
+            <h2 className="text-xl font-bold bg-gradient-to-r from-red-500 to-rose-600 bg-clip-text text-transparent">
+              Faturas em Atraso
+            </h2>
+            <p className="text-sm text-muted-foreground">Gestão de inadimplência e cobranças</p>
+          </div>
+        </div>
+      </motion.div>
+
+      {/* KPI Cards */}
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+        {[
+          {
+            title: "Total em Atraso",
+            value: formatCurrencyCents(totalOverdue),
+            subtitle: `${overdueInvoices.length} parcela(s)`,
+            icon: DollarSign,
+            gradient: "from-red-500 to-rose-600",
+            glow: "shadow-red-500/20",
+          },
+          {
+            title: "Empresas Inadimplentes",
+            value: String(uniqueCompanies),
+            subtitle: "empresas distintas",
+            icon: Building2,
+            gradient: "from-orange-500 to-amber-600",
+            glow: "shadow-orange-500/20",
+          },
+          {
+            title: "Média de Atraso",
+            value: `${avgDays} dias`,
+            subtitle: "tempo médio",
+            icon: Clock,
+            gradient: "from-amber-500 to-yellow-600",
+            glow: "shadow-amber-500/20",
+          },
+          {
+            title: "Ticket Médio Atraso",
+            value: overdueInvoices.length > 0 ? formatCurrencyCents(Math.round(totalOverdue / overdueInvoices.length)) : "R$ 0,00",
+            subtitle: "por fatura",
+            icon: TrendingDown,
+            gradient: "from-rose-500 to-pink-600",
+            glow: "shadow-rose-500/20",
+          },
+        ].map((kpi, idx) => (
+          <motion.div
+            key={kpi.title}
+            initial={{ opacity: 0, y: 20 }}
+            animate={{ opacity: 1, y: 0 }}
+            transition={{ delay: idx * 0.08 }}
+          >
+            <Card className={cn(
+              "relative overflow-hidden border-0 shadow-lg",
+              kpi.glow
+            )}>
+              <div className={cn("absolute inset-0 bg-gradient-to-br opacity-[0.07]", kpi.gradient)} />
+              <CardContent className="p-5 relative">
+                <div className="flex items-start justify-between">
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground uppercase tracking-wider">{kpi.title}</p>
+                    <p className="text-2xl font-bold">{kpi.value}</p>
+                    <p className="text-xs text-muted-foreground">{kpi.subtitle}</p>
+                  </div>
+                  <div className={cn("h-10 w-10 rounded-lg bg-gradient-to-br flex items-center justify-center", kpi.gradient)}>
+                    <kpi.icon className="h-5 w-5 text-white" />
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
       </div>
 
       {/* Filters */}
-      <Card>
-        <CardHeader className="pb-3">
-          <CardTitle className="text-sm flex items-center gap-2">
-            <Filter className="h-4 w-4" />
-            Filtros
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-            <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Buscar empresa ou descrição..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+      <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
+        <Card className="border-dashed">
+          <CardContent className="p-4">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+              <div className="relative">
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                <Input placeholder="Buscar empresa ou descrição..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
+              </div>
+              <Select value={selectedCompany} onValueChange={(v) => { setSelectedCompany(v); setCurrentPage(1); }}>
+                <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as Empresas</SelectItem>
+                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                </SelectContent>
+              </Select>
             </div>
-            <Select value={selectedCompany} onValueChange={(v) => { setSelectedCompany(v); setCurrentPage(1); }}>
-              <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as Empresas</SelectItem>
-                {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-              </SelectContent>
-            </Select>
-          </div>
-        </CardContent>
-      </Card>
-
-      {/* Summary */}
-      <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total em Atraso</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{formatCurrencyCents(totalOverdue)}</div>
-            <p className="text-xs text-muted-foreground">{overdueInvoices.length} parcelas</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Empresas Inadimplentes</CardTitle></CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">{new Set(overdueInvoices.map(i => i.company_id)).size}</div>
-            <p className="text-xs text-muted-foreground">empresas distintas</p>
-          </CardContent>
-        </Card>
-      </div>
+      </motion.div>
 
       {/* Bulk action bar */}
-      {selectedIds.size > 0 && (
-        <Card className="border-red-200 bg-red-50/50">
-          <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-            <span className="text-sm font-medium">{selectedIds.size} fatura(s) selecionada(s)</span>
-            <div className="flex flex-wrap gap-2">
-              <Button variant="outline" size="sm" onClick={() => setSelectedIds(new Set())}>
-                Limpar seleção
-              </Button>
-              <Button size="sm" className="gap-1.5 bg-emerald-600 hover:bg-emerald-700" disabled={isBulkSending} onClick={handleBulkSend}>
-                {isBulkSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
-                Enviar via WhatsApp
-              </Button>
-              {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
-                <Button size="sm" variant="default" className="gap-1.5" disabled={isBulkSending} onClick={handleBulkConfirm}>
-                  <CheckCircle2 className="h-4 w-4" />
-                  Dar Baixa
-                </Button>
-              )}
+      <AnimatePresence>
+        {selectedIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: "auto" }}
+            exit={{ opacity: 0, height: 0 }}
+          >
+            <Card className="border-red-500/30 bg-gradient-to-r from-red-500/5 to-rose-500/5 backdrop-blur-sm">
+              <CardContent className="py-3 px-4 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
+                <div className="flex items-center gap-2">
+                  <div className="h-8 w-8 rounded-full bg-red-500/10 flex items-center justify-center">
+                    <CheckCircle2 className="h-4 w-4 text-red-500" />
+                  </div>
+                  <span className="text-sm font-semibold">{selectedIds.size} fatura(s) selecionada(s)</span>
+                </div>
+                <div className="flex flex-wrap gap-2">
+                  <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())} className="text-muted-foreground">
+                    Limpar
+                  </Button>
+                  <Button size="sm" className="gap-1.5 bg-gradient-to-r from-emerald-500 to-green-600 hover:from-emerald-600 hover:to-green-700 text-white shadow-lg shadow-emerald-500/25 border-0" disabled={isBulkSending} onClick={handleBulkSend}>
+                    {isBulkSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                    WhatsApp
+                  </Button>
+                  {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
+                    <Button size="sm" className="gap-1.5 bg-gradient-to-r from-blue-500 to-indigo-600 hover:from-blue-600 hover:to-indigo-700 text-white shadow-lg shadow-blue-500/25 border-0" disabled={isBulkSending} onClick={handleBulkConfirm}>
+                      <CheckCircle2 className="h-4 w-4" />
+                      Dar Baixa
+                    </Button>
+                  )}
+                </div>
+              </CardContent>
+            </Card>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      {/* Table */}
+      <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.4 }}>
+        <Card className="overflow-hidden border shadow-sm">
+          <CardContent className="p-0">
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="w-10">
+                      <Checkbox
+                        checked={paginated.length > 0 && paginated.every(inv => selectedIds.has(inv.id))}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          paginated.forEach(inv => checked ? next.add(inv.id) : next.delete(inv.id));
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableHead>
+                    <TableHead>Empresa</TableHead>
+                    <TableHead>Descrição</TableHead>
+                    <TableHead className="text-center">Parcela</TableHead>
+                    <TableHead className="text-right">Valor</TableHead>
+                    <TableHead>Vencimento</TableHead>
+                    <TableHead className="text-center">Urgência</TableHead>
+                    <TableHead className="text-right">Ações</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {paginated.length === 0 ? (
+                    <TableRow>
+                      <TableCell colSpan={8} className="text-center py-16">
+                        <motion.div
+                          initial={{ scale: 0.8, opacity: 0 }}
+                          animate={{ scale: 1, opacity: 1 }}
+                          className="flex flex-col items-center gap-3"
+                        >
+                          <div className="h-16 w-16 rounded-2xl bg-gradient-to-br from-emerald-400 to-green-500 flex items-center justify-center shadow-lg shadow-emerald-500/25">
+                            <CheckCircle2 className="h-8 w-8 text-white" />
+                          </div>
+                          <div>
+                            <p className="text-lg font-semibold">Nenhuma fatura em atraso!</p>
+                            <p className="text-sm text-muted-foreground">Todas as cobranças estão em dia 🎉</p>
+                          </div>
+                        </motion.div>
+                      </TableCell>
+                    </TableRow>
+                  ) : paginated.map((inv, idx) => {
+                    const isProcessing = processingInvoiceId === inv.id;
+                    const days = daysOverdue(inv.due_date);
+                    const urgency = urgencyLevel(days);
+                    const UrgencyIcon = urgency.icon;
+                    return (
+                      <motion.tr
+                        key={inv.id}
+                        initial={{ opacity: 0, x: -10 }}
+                        animate={{ opacity: 1, x: 0 }}
+                        transition={{ delay: idx * 0.03 }}
+                        className={cn(
+                          "border-b transition-colors hover:bg-muted/50",
+                          selectedIds.has(inv.id) && "bg-red-500/5"
+                        )}
+                      >
+                        <TableCell>
+                          <Checkbox
+                            checked={selectedIds.has(inv.id)}
+                            onCheckedChange={(checked) => {
+                              const next = new Set(selectedIds);
+                              checked ? next.add(inv.id) : next.delete(inv.id);
+                              setSelectedIds(next);
+                            }}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <span className="font-medium text-sm">{inv.company_name}</span>
+                        </TableCell>
+                        <TableCell className="max-w-[200px] truncate text-sm text-muted-foreground">{inv.description}</TableCell>
+                        <TableCell className="text-center">
+                          <Badge variant="outline" className="text-xs font-mono">
+                            {inv.installment_number}/{inv.total_installments}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right font-bold text-red-500">{formatCurrencyCents(inv.total_with_fees_cents)}</TableCell>
+                        <TableCell className="text-sm">
+                          <div>
+                            <span>{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</span>
+                            <p className="text-xs text-red-400 font-medium">{days}d atraso</p>
+                          </div>
+                        </TableCell>
+                        <TableCell className="text-center">
+                          <Badge className={cn("gap-1 text-xs border", urgency.bg, urgency.text, urgency.border)}>
+                            <UrgencyIcon className="h-3 w-3" />
+                            {urgency.label}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          <div className="flex justify-end gap-1">
+                            {inv.payment_link_url && (
+                              <>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-500" title="Copiar link" onClick={() => copyLink(inv.payment_link_url)}>
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-500/10 hover:text-emerald-500" title="Enviar via WhatsApp" onClick={() => sendWhatsApp(inv)}>
+                                  <Send className="h-3.5 w-3.5" />
+                                </Button>
+                              </>
+                            )}
+                            {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
+                              <Button
+                                variant="ghost"
+                                size="sm"
+                                className="h-8 text-xs gap-1 hover:bg-emerald-500/10 hover:text-emerald-500"
+                                disabled={isProcessing}
+                                onClick={() => setConfirmDialog({
+                                  open: true,
+                                  invoiceId: inv.id,
+                                  action: "confirm",
+                                  description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(inv.total_with_fees_cents)}`
+                                })}
+                              >
+                                {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
+                                Baixa
+                              </Button>
+                            )}
+                          </div>
+                        </TableCell>
+                      </motion.tr>
+                    );
+                  })}
+                </TableBody>
+              </Table>
             </div>
           </CardContent>
         </Card>
-      )}
-
-      {/* Table */}
-      <Card>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead className="w-10">
-                    <Checkbox
-                      checked={paginated.length > 0 && paginated.every(inv => selectedIds.has(inv.id))}
-                      onCheckedChange={(checked) => {
-                        const next = new Set(selectedIds);
-                        paginated.forEach(inv => checked ? next.add(inv.id) : next.delete(inv.id));
-                        setSelectedIds(next);
-                      }}
-                    />
-                  </TableHead>
-                  <TableHead>Empresa</TableHead>
-                  <TableHead>Descrição</TableHead>
-                  <TableHead className="text-center">Parcela</TableHead>
-                  <TableHead className="text-right">Valor</TableHead>
-                  <TableHead>Vencimento</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Ações</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {paginated.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
-                      🎉 Nenhuma fatura em atraso!
-                    </TableCell>
-                  </TableRow>
-                ) : paginated.map(inv => {
-                  const isProcessing = processingInvoiceId === inv.id;
-                  const days = daysOverdue(inv.due_date);
-                  return (
-                    <TableRow key={inv.id} className={cn(selectedIds.has(inv.id) && "bg-red-50/50")}>
-                      <TableCell>
-                        <Checkbox
-                          checked={selectedIds.has(inv.id)}
-                          onCheckedChange={(checked) => {
-                            const next = new Set(selectedIds);
-                            checked ? next.add(inv.id) : next.delete(inv.id);
-                            setSelectedIds(next);
-                          }}
-                        />
-                      </TableCell>
-                      <TableCell className="font-medium text-sm">{inv.company_name}</TableCell>
-                      <TableCell className="max-w-[200px] truncate text-sm">{inv.description}</TableCell>
-                      <TableCell className="text-center text-sm">{inv.installment_number}/{inv.total_installments}</TableCell>
-                      <TableCell className="text-right font-semibold text-destructive">{formatCurrencyCents(inv.total_with_fees_cents)}</TableCell>
-                      <TableCell className="text-sm">
-                        <div>
-                          <span>{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</span>
-                          <p className="text-xs text-destructive font-medium">{days} dia(s) atraso</p>
-                        </div>
-                      </TableCell>
-                      <TableCell>
-                        <Badge className="gap-1 text-xs bg-red-500/10 text-red-600 border-red-500/20">
-                          <AlertTriangle className="h-3.5 w-3.5" />
-                          Vencido
-                        </Badge>
-                      </TableCell>
-                      <TableCell>
-                        <div className="flex justify-end gap-1">
-                          {inv.payment_link_url && (
-                            <>
-                              <Button variant="ghost" size="icon" className="h-7 w-7" title="Copiar link" onClick={() => copyLink(inv.payment_link_url)}>
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
-                              <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp" onClick={() => sendWhatsApp(inv)}>
-                                <Send className="h-3.5 w-3.5" />
-                              </Button>
-                            </>
-                          )}
-                          {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
-                            <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" disabled={isProcessing}
-                              onClick={() => setConfirmDialog({
-                                open: true,
-                                invoiceId: inv.id,
-                                action: "confirm",
-                                description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(inv.total_with_fees_cents)}`
-                              })}>
-                              {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
-                              Baixa
-                            </Button>
-                          )}
-                        </div>
-                      </TableCell>
-                    </TableRow>
-                  );
-                })}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+      </motion.div>
 
       {/* Pagination */}
       {totalPages > 1 && (
-        <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+        <motion.div
+          initial={{ opacity: 0 }}
+          animate={{ opacity: 1 }}
+          transition={{ delay: 0.5 }}
+          className="flex flex-col sm:flex-row items-center justify-between gap-2"
+        >
           <p className="text-sm text-muted-foreground">
             Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, overdueInvoices.length)} de {overdueInvoices.length}
           </p>
@@ -402,7 +525,7 @@ export default function FinancialOverdueTab({
               )}
             <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Próxima</Button>
           </div>
-        </div>
+        </motion.div>
       )}
     </div>
   );
