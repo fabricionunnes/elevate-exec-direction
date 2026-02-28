@@ -20,13 +20,15 @@ import {
   AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
   AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
+import { Sheet, SheetContent, SheetHeader, SheetTitle } from "@/components/ui/sheet";
 import {
   ArrowLeft, Loader2, ShieldAlert, Search, RefreshCw, Filter, Download, Upload,
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu,
 } from "lucide-react";
+import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -118,10 +120,12 @@ const NAV_ITEMS = [
 
 export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
+  const isMobile = useIsMobile();
   const finPerms = useFinancialPermissions();
   const [isLoading, setIsLoading] = useState(!false);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
+  const [sidebarOpen, setSidebarOpen] = useState(false);
 
   // Data state
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
@@ -729,9 +733,78 @@ export default function AllRecurringChargesPage() {
   const hasCfoAccess = NAV_ITEMS.some(item => item.key.startsWith("cfo-") && hasPerm(item.permKey));
 
   return (
-    <div className="min-h-screen bg-background flex">
-      {/* Sidebar Navigation */}
-      <aside className="w-56 border-r bg-card flex flex-col sticky top-0 h-screen">
+    <div className="min-h-screen bg-background flex flex-col md:flex-row">
+      {/* Mobile Header */}
+      {isMobile && (
+        <header className="sticky top-0 z-40 flex items-center justify-between border-b bg-card px-4 py-3">
+          <div className="flex items-center gap-3">
+            <Button variant="ghost" size="icon" className="h-9 w-9" onClick={() => setSidebarOpen(true)}>
+              <Menu className="h-5 w-5" />
+            </Button>
+            <h1 className="text-base font-bold flex items-center gap-2">
+              <Calculator className="h-4 w-4 text-primary" />
+              Financeiro
+            </h1>
+          </div>
+          <div className="flex items-center gap-1">
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={exportCSV}>
+              <Download className="h-3.5 w-3.5" />
+            </Button>
+            <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => { setIsLoading(true); loadData().finally(() => setIsLoading(false)); }}>
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
+        </header>
+      )}
+
+      {/* Mobile Sidebar Drawer */}
+      <Sheet open={sidebarOpen} onOpenChange={setSidebarOpen}>
+        <SheetContent side="left" className="w-64 p-0">
+          <SheetHeader className="p-4 border-b">
+            <SheetTitle className="text-lg font-bold flex items-center gap-2">
+              <Calculator className="h-5 w-5 text-primary" />
+              Financeiro
+            </SheetTitle>
+          </SheetHeader>
+          <nav className="flex-1 p-2 space-y-1 overflow-y-auto max-h-[calc(100vh-120px)]">
+            <Button variant="ghost" size="sm" className="w-full justify-start gap-2 mb-2" onClick={() => { setSidebarOpen(false); navigate("/onboarding-tasks"); }}>
+              <ArrowLeft className="h-4 w-4" />
+              Nexus
+            </Button>
+            {visibleNavItems.map((item, idx) => {
+              const Icon = item.icon;
+              const isActive = activeTab === item.key;
+              const isCfo = item.key.startsWith("cfo-");
+              const prevIsCfo = idx > 0 && visibleNavItems[idx - 1]?.key.startsWith("cfo-");
+              const showSeparator = isCfo && !prevIsCfo;
+              return (
+                <div key={item.key}>
+                  {showSeparator && (
+                    <div className="pt-3 pb-1 px-3">
+                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Dashboard CFO</p>
+                    </div>
+                  )}
+                  <button
+                    onClick={() => { setActiveTab(item.key); resetFilters(); setSidebarOpen(false); }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left",
+                      isActive
+                        ? "bg-primary text-primary-foreground font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate">{item.label}</span>
+                  </button>
+                </div>
+              );
+            })}
+          </nav>
+        </SheetContent>
+      </Sheet>
+
+      {/* Desktop Sidebar */}
+      <aside className="hidden md:flex w-56 border-r bg-card flex-col sticky top-0 h-screen">
         <div className="p-4 border-b">
           <Button variant="ghost" size="sm" className="w-full justify-start gap-2 -ml-2" onClick={() => navigate("/onboarding-tasks")}>
             <ArrowLeft className="h-4 w-4" />
@@ -787,7 +860,7 @@ export default function AllRecurringChargesPage() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-6 max-w-7xl mx-auto space-y-6">
+        <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
           {/* Dashboard */}
           {activeTab === "dashboard" && (
             <FinancialDashboardTab
@@ -802,23 +875,23 @@ export default function AllRecurringChargesPage() {
           {/* Contas a Receber */}
           {activeTab === "recurring" && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <ArrowDownCircle className="h-5 w-5 text-primary" />
                   Contas a Receber
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_create) && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setImportReceivableOpen(true)}>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setImportReceivableOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Importar
                     </Button>
-                    <Button size="sm" onClick={() => {
+                    <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
                       setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
                       setReceivableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Novo Lançamento
+                      Novo
                     </Button>
                   </div>
                 )}
@@ -905,7 +978,7 @@ export default function AllRecurringChargesPage() {
               </Card>
 
               {/* Summary */}
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">A Receber</CardTitle></CardHeader>
                   <CardContent>
@@ -932,9 +1005,9 @@ export default function AllRecurringChargesPage() {
               {/* Bulk action bar */}
               {selectedInvoiceIds.size > 0 && (
                 <Card className="border-emerald-200 bg-emerald-50/50">
-                  <CardContent className="py-3 flex items-center justify-between">
+                  <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedInvoiceIds(new Set())}>
                         Limpar seleção
                       </Button>
@@ -1193,7 +1266,7 @@ export default function AllRecurringChargesPage() {
 
               {/* Pagination */}
               {totalPages > 1 && (
-                <div className="flex items-center justify-between">
+                <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                   <p className="text-sm text-muted-foreground">
                     Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredInvoices.length)} de {filteredInvoices.length}
                   </p>
@@ -1225,23 +1298,23 @@ export default function AllRecurringChargesPage() {
           {/* Contas a Pagar */}
           {activeTab === "payables" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_view) && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <ArrowUpCircle className="h-5 w-5 text-primary" />
                   Contas a Pagar
                 </h2>
                 {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_payables_create) && (
-                  <div className="flex gap-2">
-                    <Button size="sm" variant="outline" onClick={() => setImportPayableOpen(true)}>
+                  <div className="flex gap-2 w-full sm:w-auto">
+                    <Button size="sm" variant="outline" className="flex-1 sm:flex-none" onClick={() => setImportPayableOpen(true)}>
                       <Upload className="h-4 w-4 mr-2" />
                       Importar
                     </Button>
-                    <Button size="sm" onClick={() => {
+                    <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
                       setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
                       setPayableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
-                      Novo Lançamento
+                      Novo
                     </Button>
                   </div>
                 )}
@@ -1308,7 +1381,7 @@ export default function AllRecurringChargesPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-4 md:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total a Pagar</CardTitle></CardHeader>
                   <CardContent>
@@ -1332,9 +1405,9 @@ export default function AllRecurringChargesPage() {
               {/* Bulk action bar - Payables */}
               {selectedPayableIds.size > 0 && (
                 <Card className="border-primary/20 bg-primary/5">
-                  <CardContent className="py-3 flex items-center justify-between">
+                  <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
                     <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
-                    <div className="flex gap-2">
+                    <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedPayableIds(new Set())}>
                         Limpar seleção
                       </Button>
