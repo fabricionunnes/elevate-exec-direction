@@ -29,7 +29,8 @@ interface Props {
 export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
   const months: { value: string; label: string }[] = [];
   const now = new Date();
-  for (let i = 0; i < 12; i++) {
+  // Generate months: 24 past + current + 12 future
+  for (let i = -12; i <= 24; i++) {
     const d = subMonths(now, i);
     const val = format(d, "yyyy-MM");
     const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });

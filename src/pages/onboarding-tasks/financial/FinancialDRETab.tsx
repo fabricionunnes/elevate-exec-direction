@@ -73,7 +73,8 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency, fo
   // Generate month options
   const monthOptions = useMemo(() => {
     const months: { value: string; label: string }[] = [];
-    for (let i = 11; i >= 0; i--) {
+    // 24 months past + 12 months future
+    for (let i = 24; i >= -12; i--) {
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const val = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "long", year: "numeric" });
