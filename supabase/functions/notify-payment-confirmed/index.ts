@@ -85,8 +85,7 @@ Deno.serve(async (req) => {
       .from("whatsapp_instances")
       .select("api_url, api_key, instance_name, is_default")
       .eq("status", "connected")
-      .order("is_default", { ascending: false, nullsFirst: false })
-      .limit(1)
+      .eq("instance_name", "fabricionunnes")
       .single();
 
     if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
