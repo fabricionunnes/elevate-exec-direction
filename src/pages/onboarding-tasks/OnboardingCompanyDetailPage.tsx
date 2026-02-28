@@ -332,26 +332,29 @@ const OnboardingCompanyDetailPage = () => {
         const isNowInactive = inactiveStatuses.includes(form.status);
         
         if (wasActive && isNowInactive && companyId) {
-          // Cancel Pagar.me subscriptions
-          toast.info("Cancelando assinaturas...");
-          try {
-            await supabase.functions.invoke("pagarme-cancel-subscription", {
-              body: { company_id: companyId },
-            });
-            toast.success("Assinaturas canceladas na Pagar.me");
-          } catch (cancelErr) {
-            console.error("Error cancelling subscriptions:", cancelErr);
-          }
-
-          // Deactivate all active recurring charges and cleanup future invoices (30-day rule)
+          // Deactivate all active recurring charges, cancel Asaas subscriptions, and cleanup future invoices (30-day rule)
+          toast.info("Processando cancelamento de recorrências...");
           try {
             const { data: activeCharges } = await supabase
               .from("company_recurring_charges")
-              .select("id")
+              .select("id, pagarme_plan_id")
               .eq("company_id", companyId)
               .eq("is_active", true);
 
             if (activeCharges && activeCharges.length > 0) {
+              // Cancel Asaas subscriptions for each charge that has one
+              for (const charge of activeCharges) {
+                if (charge.pagarme_plan_id) {
+                  try {
+                    await supabase.functions.invoke("asaas-cancel-subscription", {
+                      body: { subscription_id: charge.pagarme_plan_id },
+                    });
+                  } catch (asaasErr) {
+                    console.error(`Error cancelling Asaas subscription ${charge.pagarme_plan_id}:`, asaasErr);
+                  }
+                }
+              }
+
               // Inactivate all recurring charges
               await supabase
                 .from("company_recurring_charges")
