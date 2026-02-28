@@ -321,6 +321,8 @@ Deno.serve(async (req) => {
           total_installments: numInvoices,
           late_fee_percent: 2.0,
           daily_interest_percent: 1.0,
+          category_id: charge.category_id || null,
+          cost_center_id: charge.cost_center_id || null,
         });
       }
 
