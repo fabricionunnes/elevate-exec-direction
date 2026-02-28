@@ -141,7 +141,14 @@ Deno.serve(async (req) => {
 
     // Step 4: Create subscription in Asaas
     const amountValue = amount_cents / 100;
-    const nextDueDate = next_charge_date || new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    // Ensure nextDueDate is never in the past (Asaas rejects past dates)
+    const today = new Date().toISOString().split("T")[0];
+    const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+    let nextDueDate = next_charge_date || tomorrow;
+    if (nextDueDate < today) {
+      nextDueDate = tomorrow;
+      console.log(`Adjusted nextDueDate from ${next_charge_date} to ${nextDueDate} (was in the past)`);
+    }
 
     const subscriptionPayload: Record<string, unknown> = {
       customer: customerId,
