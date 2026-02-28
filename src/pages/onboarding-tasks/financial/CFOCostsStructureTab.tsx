@@ -23,6 +23,14 @@ interface Props {
   formatCurrencyCents: (v: number) => string;
 }
 
+const summaryStyles = [
+  { bg: "from-blue-500/20 via-blue-500/5 to-transparent", border: "border-blue-500/20", text: "text-blue-400", glow: "shadow-blue-500/10" },
+  { bg: "from-amber-500/20 via-amber-500/5 to-transparent", border: "border-amber-500/20", text: "text-amber-400", glow: "shadow-amber-500/10" },
+  { bg: "from-emerald-500/20 via-emerald-500/5 to-transparent", border: "border-emerald-500/20", text: "text-emerald-400", glow: "shadow-emerald-500/10" },
+  { bg: "from-cyan-500/20 via-cyan-500/5 to-transparent", border: "border-cyan-500/20", text: "text-cyan-400", glow: "shadow-cyan-500/10" },
+  { bg: "from-violet-500/20 via-violet-500/5 to-transparent", border: "border-violet-500/20", text: "text-violet-400", glow: "shadow-violet-500/10" },
+];
+
 export default function CFOCostsStructureTab({ invoices, payables, categories, filters, formatCurrency, formatCurrencyCents }: Props) {
   const [employees, setEmployees] = useState<any[]>([]);
   const [empDialog, setEmpDialog] = useState<{ open: boolean; emp: any | null }>({ open: false, emp: null });
@@ -113,51 +121,47 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
     }
   };
 
+  const summaryCards = [
+    { label: "Custos Fixos", value: formatCurrencyCents(costs.fixedCosts) },
+    { label: "Custos Variáveis", value: formatCurrencyCents(costs.variableCosts) },
+    { label: "% Folha/Receita", value: `${costs.folhaPercent.toFixed(1)}%` },
+    { label: "Receita/Colaborador", value: formatCurrencyCents(costs.receitaPorColab) },
+    { label: "Ponto de Equilíbrio", value: formatCurrencyCents(costs.pontoEquilibrio) },
+  ];
+
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Custos & Estrutura</h2>
+      <div>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-indigo-400 to-violet-400 bg-clip-text text-transparent">
+          Custos & Estrutura
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Composição e eficiência operacional</p>
+      </div>
 
       {/* Summary */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-5">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Custos Fixos</p>
-            <p className="text-xl font-bold text-blue-600">{formatCurrencyCents(costs.fixedCosts)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Custos Variáveis</p>
-            <p className="text-xl font-bold text-amber-600">{formatCurrencyCents(costs.variableCosts)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">% Folha/Receita</p>
-            <p className={`text-xl font-bold ${costs.folhaPercent > 50 ? "text-destructive" : "text-emerald-600"}`}>
-              {costs.folhaPercent.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Receita/Colaborador</p>
-            <p className="text-xl font-bold">{formatCurrencyCents(costs.receitaPorColab)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Ponto de Equilíbrio</p>
-            <p className="text-xl font-bold text-violet-600">{formatCurrencyCents(costs.pontoEquilibrio)}</p>
-          </CardContent>
-        </Card>
+        {summaryCards.map((card, idx) => {
+          const s = summaryStyles[idx];
+          return (
+            <Card key={idx} className={`relative overflow-hidden border ${s.border} bg-gradient-to-br ${s.bg} backdrop-blur-xl shadow-lg ${s.glow} hover:scale-[1.02] transition-all duration-300`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+              <CardContent className="pt-4 pb-3 relative">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{card.label}</p>
+                <p className={`text-xl font-bold mt-1 ${s.text}`}>{card.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Pie Chart */}
-        <Card>
+        <Card className="border-blue-500/10 bg-gradient-to-br from-blue-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-blue-500/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Composição dos Custos</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-500" />
+              Composição dos Custos
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {pieData.length > 0 ? (
@@ -166,7 +170,7 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
                   <Pie data={pieData} cx="50%" cy="50%" innerRadius={60} outerRadius={90} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                     {pieData.map((e, i) => <Cell key={i} fill={e.color} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -176,20 +180,25 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
         </Card>
 
         {/* Top Categories */}
-        <Card>
+        <Card className="border-amber-500/10 bg-gradient-to-br from-amber-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-amber-500/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Top Custos por Categoria</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-amber-500" />
+              Top Custos por Categoria
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {costs.byCategory.length > 0 ? (
               <div className="space-y-3">
                 {costs.byCategory.slice(0, 8).map((cat, idx) => (
-                  <div key={idx} className="flex items-center justify-between">
+                  <div key={idx} className="flex items-center justify-between p-2 rounded-lg border border-white/5 bg-white/[0.02] hover:bg-white/[0.04] transition-colors">
                     <div className="flex items-center gap-2">
-                      <Badge variant="outline" className="text-xs">{cat.type === "fixed" ? "Fixo" : "Var."}</Badge>
+                      <Badge variant="outline" className={`text-xs ${cat.type === "fixed" ? "bg-blue-500/15 text-blue-400 border-blue-500/30" : "bg-amber-500/15 text-amber-400 border-amber-500/30"}`}>
+                        {cat.type === "fixed" ? "Fixo" : "Var."}
+                      </Badge>
                       <span className="text-sm">{cat.name}</span>
                     </div>
-                    <span className="text-sm font-medium">{formatCurrencyCents(cat.total)}</span>
+                    <span className="text-sm font-bold">{formatCurrencyCents(cat.total)}</span>
                   </div>
                 ))}
               </div>
@@ -201,12 +210,13 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
       </div>
 
       {/* Employees */}
-      <Card>
+      <Card className="border-indigo-500/10 bg-gradient-to-br from-indigo-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-indigo-500/5">
         <CardHeader className="pb-2 flex flex-row items-center justify-between">
           <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Users className="h-4 w-4" /> Colaboradores ({employees.length})
+            <div className="h-2 w-2 rounded-full bg-indigo-500" />
+            <Users className="h-4 w-4 text-indigo-400" /> Colaboradores ({employees.length})
           </CardTitle>
-          <Button size="sm" variant="outline" onClick={() => {
+          <Button size="sm" variant="outline" className="border-indigo-500/30 hover:bg-indigo-500/10" onClick={() => {
             setEmpForm({ name: "", role: "", department: "", salary: 0, benefits: 0 });
             setEmpDialog({ open: true, emp: null });
           }}>
@@ -218,7 +228,7 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b border-white/5">
                     <th className="text-left p-2 font-medium text-muted-foreground">Nome</th>
                     <th className="text-left p-2 font-medium text-muted-foreground">Cargo</th>
                     <th className="text-left p-2 font-medium text-muted-foreground">Depto</th>
@@ -230,15 +240,15 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
                 </thead>
                 <tbody>
                   {employees.map((emp: any) => (
-                    <tr key={emp.id} className="border-b last:border-0">
+                    <tr key={emp.id} className="border-b border-white/5 last:border-0 hover:bg-white/[0.02] transition-colors">
                       <td className="p-2 font-medium">{emp.name}</td>
-                      <td className="p-2">{emp.role || "—"}</td>
-                      <td className="p-2">{emp.department || "—"}</td>
+                      <td className="p-2 text-muted-foreground">{emp.role || "—"}</td>
+                      <td className="p-2 text-muted-foreground">{emp.department || "—"}</td>
                       <td className="p-2 text-right">{formatCurrencyCents(emp.salary_cents || 0)}</td>
                       <td className="p-2 text-right">{formatCurrencyCents(emp.benefits_cents || 0)}</td>
-                      <td className="p-2 text-right font-medium">{formatCurrencyCents((emp.salary_cents || 0) + (emp.benefits_cents || 0))}</td>
+                      <td className="p-2 text-right font-bold text-indigo-400">{formatCurrencyCents((emp.salary_cents || 0) + (emp.benefits_cents || 0))}</td>
                       <td className="p-2">
-                        <Button size="icon" variant="ghost" className="h-7 w-7" onClick={() => {
+                        <Button size="icon" variant="ghost" className="h-7 w-7 hover:bg-indigo-500/10" onClick={() => {
                           setEmpForm({
                             name: emp.name, role: emp.role || "", department: emp.department || "",
                             salary: (emp.salary_cents || 0) / 100, benefits: (emp.benefits_cents || 0) / 100
