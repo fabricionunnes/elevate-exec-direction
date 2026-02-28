@@ -526,12 +526,34 @@ export function CompanyInvoicesList({ companyId }: Props) {
                 </div>
               )}
               {invoices.map((inv) => {
-                const statusInfo = STATUS_CONFIG[inv.status] || STATUS_CONFIG.pending;
-                const StatusIcon = statusInfo.icon;
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
+                const todayStr = new Date().toLocaleDateString("en-CA");
+                const isDueToday = inv.due_date === todayStr && inv.status === "pending";
                 const dueDate = new Date(inv.due_date + "T12:00:00");
                 const displayAmount = isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
+
+                // Determine badge display
+                let badgeClass = "bg-blue-500/10 text-blue-600 border-blue-500/20";
+                let badgeLabel = "Pendente";
+                let BadgeIcon = Clock;
+                if (isPaid) {
+                  badgeClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
+                  badgeLabel = "Pago";
+                  BadgeIcon = CheckCircle2;
+                } else if (isOverdue) {
+                  badgeClass = "bg-red-500/10 text-red-600 border-red-500/20";
+                  badgeLabel = "Vencida";
+                  BadgeIcon = AlertTriangle;
+                } else if (isDueToday) {
+                  badgeClass = "bg-amber-500/10 text-amber-600 border-amber-500/20";
+                  badgeLabel = "Vence Hoje";
+                  BadgeIcon = Clock;
+                } else if (inv.status === "cancelled") {
+                  badgeClass = "bg-gray-500/10 text-gray-600 border-gray-500/20";
+                  badgeLabel = "Cancelada";
+                  BadgeIcon = XCircle;
+                }
 
                 return (
                   <div
@@ -539,6 +561,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                     className={`p-4 rounded-lg border transition-colors ${
                       isOverdue ? "border-destructive/30 bg-destructive/5" :
                       isPaid ? "border-green-200 dark:border-green-800 bg-green-50/50 dark:bg-green-950/10" :
+                      isDueToday ? "border-amber-300 dark:border-amber-700 bg-amber-50/50 dark:bg-amber-950/10" :
                       "bg-card"
                     }`}
                   >
@@ -554,9 +577,9 @@ export function CompanyInvoicesList({ companyId }: Props) {
                       <div className="space-y-1 flex-1">
                         <div className="flex items-center gap-2 flex-wrap">
                           <p className="font-medium text-sm">{inv.description}</p>
-                          <Badge variant={statusInfo.variant} className="text-xs gap-1">
-                            <StatusIcon className="h-3 w-3" />
-                            {statusInfo.label}
+                          <Badge className={`text-xs gap-1 ${badgeClass}`}>
+                            <BadgeIcon className="h-3 w-3" />
+                            {badgeLabel}
                           </Badge>
                           {inv.installment_number && inv.total_installments && (
                             <span className="text-xs text-muted-foreground">

@@ -359,12 +359,18 @@ export function ReceivablesPanel() {
     }).format(value);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, dueDate?: string) => {
+    const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+    const isDueToday = dueDate === todayStr && status === "pending";
+
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
       case "pending":
-        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
+        if (isDueToday) {
+          return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Vence Hoje</Badge>;
+        }
+        return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
       case "overdue":
         return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
       case "cancelled":
@@ -678,7 +684,7 @@ export function ReceivablesPanel() {
                     <TableCell className="text-right font-medium">
                       {formatCurrency(receivable.amount)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(receivable.status)}</TableCell>
+                    <TableCell>{getStatusBadge(receivable.status, receivable.due_date)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
