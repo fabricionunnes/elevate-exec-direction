@@ -496,8 +496,8 @@ export default function AllRecurringChargesPage() {
         due_date: payableForm.due_date,
         reference_month: refMonth,
         notes: payableForm.notes || null,
-        category_id: payableForm.category_id || null,
-        cost_center_id: payableForm.cost_center_id || null,
+        category_id: payableForm.category_id && payableForm.category_id !== "none" ? payableForm.category_id : null,
+        cost_center_id: payableForm.cost_center_id && payableForm.cost_center_id !== "none" ? payableForm.cost_center_id : null,
         status: "pending",
       } as any);
       if (error) throw error;
@@ -1414,7 +1414,7 @@ export default function AllRecurringChargesPage() {
                 <Select value={payableForm.category_id} onValueChange={(v) => setPayableForm(p => ({ ...p, category_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhuma</SelectItem>
+                    <SelectItem value="none">Nenhuma</SelectItem>
                     {staffCategories.filter(c => c.type === "despesa").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
@@ -1424,7 +1424,7 @@ export default function AllRecurringChargesPage() {
                 <Select value={payableForm.cost_center_id} onValueChange={(v) => setPayableForm(p => ({ ...p, cost_center_id: v }))}>
                   <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Nenhum</SelectItem>
+                    <SelectItem value="none">Nenhum</SelectItem>
                     {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
                   </SelectContent>
                 </Select>
