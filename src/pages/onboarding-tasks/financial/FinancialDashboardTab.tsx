@@ -75,6 +75,26 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
   }, [charges]);
 
+  // MRR Movement (added vs lost this month)
+  const mrrMovement = useMemo(() => {
+    const now = new Date();
+    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+    
+    // MRR added: charges created this month and currently active
+    const added = charges
+      .filter(c => c.is_active && c.created_at?.startsWith(monthStr))
+      .reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+    const addedCount = charges.filter(c => c.is_active && c.created_at?.startsWith(monthStr)).length;
+
+    // MRR lost: charges deactivated this month (is_active=false, updated_at in current month)
+    const lost = charges
+      .filter(c => !c.is_active && c.updated_at?.startsWith(monthStr))
+      .reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
+    const lostCount = charges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr)).length;
+
+    return { added, addedCount, lost, lostCount, net: added - lost };
+  }, [charges]);
+
   // Vendas Novas (standalone invoices created this month)
   const vendasNovas = useMemo(() => {
     const now = new Date();
@@ -186,8 +206,8 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         </Card>
       </div>
 
-      {/* Inadimplência + MRR + Vendas Novas */}
-      <div className="grid gap-4 md:grid-cols-3">
+      {/* Inadimplência + MRR + Movimentação + Vendas Novas */}
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
         <Card className="border-l-4 border-l-destructive">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
@@ -212,7 +232,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
               </div>
             </div>
             <p className="text-xs text-muted-foreground mt-2">
-              {inadimplencia.overdueCount} de {inadimplencia.total} faturas vencidas • {formatCurrencyCents(inadimplencia.overdueValue)} de {formatCurrencyCents(inadimplencia.totalValue)}
+              {inadimplencia.overdueCount} de {inadimplencia.total} faturas • {formatCurrencyCents(inadimplencia.overdueValue)} de {formatCurrencyCents(inadimplencia.totalValue)}
             </p>
           </CardContent>
         </Card>
@@ -221,7 +241,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
               <RefreshCw className="h-3.5 w-3.5 text-primary" />
-              MRR (Receita Recorrente)
+              MRR Atual
             </CardTitle>
           </CardHeader>
           <CardContent>
@@ -238,12 +258,47 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         <Card className="border-l-4 border-l-emerald-500">
           <CardHeader className="pb-2">
             <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <ShoppingCart className="h-3.5 w-3.5 text-emerald-500" />
+              <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
+              MRR Acrescentado
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-emerald-600">+{formatCurrencyCents(mrrMovement.added)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {mrrMovement.addedCount} nova(s) recorrência(s)
+            </p>
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-destructive">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
+              MRR Perdido
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">-{formatCurrencyCents(mrrMovement.lost)}</div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {mrrMovement.lostCount} recorrência(s) encerrada(s)
+            </p>
+            {mrrMovement.net !== 0 && (
+              <p className={`text-xs font-medium mt-1 ${mrrMovement.net >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+                Líquido: {mrrMovement.net >= 0 ? "+" : ""}{formatCurrencyCents(mrrMovement.net)}
+              </p>
+            )}
+          </CardContent>
+        </Card>
+
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
+              <ShoppingCart className="h-3.5 w-3.5 text-amber-500" />
               Vendas Novas (Avulsas)
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">{formatCurrencyCents(vendasNovas.value)}</div>
+            <div className="text-2xl font-bold">{formatCurrencyCents(vendasNovas.value)}</div>
             <p className="text-xs text-muted-foreground mt-1">
               {vendasNovas.count} fatura(s) avulsa(s) no mês
             </p>
