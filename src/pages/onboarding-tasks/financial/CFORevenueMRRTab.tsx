@@ -17,6 +17,15 @@ interface Props {
   formatCurrencyCents: (v: number) => string;
 }
 
+const cardStyles = [
+  { bg: "from-blue-500/20 via-blue-500/5 to-transparent", border: "border-blue-500/20", text: "text-blue-400", icon: "text-blue-500", glow: "shadow-blue-500/10" },
+  { bg: "from-emerald-500/20 via-emerald-500/5 to-transparent", border: "border-emerald-500/20", text: "text-emerald-400", icon: "text-emerald-500", glow: "shadow-emerald-500/10" },
+  { bg: "from-green-500/20 via-green-500/5 to-transparent", border: "border-green-500/20", text: "text-green-400", icon: "text-green-500", glow: "shadow-green-500/10" },
+  { bg: "from-amber-500/20 via-amber-500/5 to-transparent", border: "border-amber-500/20", text: "text-amber-400", icon: "text-amber-500", glow: "shadow-amber-500/10" },
+  { bg: "from-rose-500/20 via-rose-500/5 to-transparent", border: "border-rose-500/20", text: "text-rose-400", icon: "text-rose-500", glow: "shadow-rose-500/10" },
+  { bg: "from-violet-500/20 via-violet-500/5 to-transparent", border: "border-violet-500/20", text: "text-violet-400", icon: "text-violet-500", glow: "shadow-violet-500/10" },
+];
+
 export default function CFORevenueMRRTab({ invoices, companies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
   const refDate = filters.month !== "all"
@@ -95,37 +104,46 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
   }, [invoices]);
 
   const breakdownCards = [
-    { label: "MRR Atual", value: mrrBreakdown.mrrAtual, color: "text-blue-600", icon: DollarSign },
-    { label: "Novo MRR", value: mrrBreakdown.novoMrr, color: "text-emerald-600", icon: ArrowUpRight },
-    { label: "MRR Expansão", value: mrrBreakdown.expansion, color: "text-green-600", icon: TrendingUp },
-    { label: "MRR Contração", value: mrrBreakdown.contraction, color: "text-amber-600", icon: TrendingDown, negative: true },
-    { label: "MRR Churn", value: mrrBreakdown.mrrChurn, color: "text-destructive", icon: ArrowDownRight, negative: true },
-    { label: "Net New MRR", value: mrrBreakdown.netNewMrr, color: mrrBreakdown.netNewMrr >= 0 ? "text-emerald-600" : "text-destructive", icon: TrendingUp },
+    { label: "MRR Atual", value: mrrBreakdown.mrrAtual, icon: DollarSign },
+    { label: "Novo MRR", value: mrrBreakdown.novoMrr, icon: ArrowUpRight },
+    { label: "MRR Expansão", value: mrrBreakdown.expansion, icon: TrendingUp },
+    { label: "MRR Contração", value: mrrBreakdown.contraction, icon: TrendingDown, negative: true },
+    { label: "MRR Churn", value: mrrBreakdown.mrrChurn, icon: ArrowDownRight, negative: true },
+    { label: "Net New MRR", value: mrrBreakdown.netNewMrr, icon: TrendingUp },
   ];
 
   const breakdownPie = [
-    { name: "Novo MRR", value: mrrBreakdown.novoMrr / 100, color: "hsl(142, 76%, 36%)" },
-    { name: "Expansão", value: mrrBreakdown.expansion / 100, color: "hsl(160, 60%, 45%)" },
+    { name: "Novo MRR", value: mrrBreakdown.novoMrr / 100, color: "hsl(160, 84%, 39%)" },
+    { name: "Expansão", value: mrrBreakdown.expansion / 100, color: "hsl(173, 80%, 40%)" },
     { name: "Contração", value: mrrBreakdown.contraction / 100, color: "hsl(38, 92%, 50%)" },
-    { name: "Churn", value: mrrBreakdown.mrrChurn / 100, color: "hsl(var(--destructive))" },
+    { name: "Churn", value: mrrBreakdown.mrrChurn / 100, color: "hsl(350, 89%, 60%)" },
   ].filter(d => d.value > 0);
 
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Receita & MRR</h2>
+      <div>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-blue-400 via-cyan-400 to-emerald-400 bg-clip-text text-transparent">
+          Receita & MRR
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Análise detalhada da receita recorrente e movimentação</p>
+      </div>
 
       {/* MRR Breakdown Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {breakdownCards.map((card, idx) => {
           const Icon = card.icon;
+          const s = cardStyles[idx];
           return (
-            <Card key={idx}>
-              <CardContent className="pt-4 pb-3">
+            <Card key={idx} className={`relative overflow-hidden border ${s.border} bg-gradient-to-br ${s.bg} backdrop-blur-xl shadow-lg ${s.glow} hover:scale-[1.02] transition-all duration-300`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+              <CardContent className="pt-4 pb-3 relative">
                 <div className="flex items-center gap-2 mb-1">
-                  <Icon className={`h-4 w-4 ${card.color}`} />
-                  <p className="text-xs text-muted-foreground">{card.label}</p>
+                  <div className={`p-1 rounded-lg bg-white/5 ${s.icon}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                  <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{card.label}</p>
                 </div>
-                <p className={`text-lg font-bold ${card.color}`}>
+                <p className={`text-lg font-bold ${s.text}`}>
                   {card.negative ? "-" : ""}{formatCurrencyCents(card.value)}
                 </p>
               </CardContent>
@@ -136,57 +154,75 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
 
       {/* Ticket Médio */}
       <div className="grid gap-4 md:grid-cols-2">
-        <Card>
-          <CardContent className="pt-4">
-            <div className="flex items-center gap-2 mb-1">
-              <Users className="h-4 w-4 text-blue-600" />
-              <p className="text-sm text-muted-foreground">Ticket Médio Geral</p>
+        <Card className="border-indigo-500/10 bg-gradient-to-br from-indigo-500/10 via-indigo-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-indigo-500/5">
+          <CardContent className="pt-5">
+            <div className="flex items-center gap-2 mb-2">
+              <div className="p-1.5 rounded-lg bg-indigo-500/10">
+                <Users className="h-4 w-4 text-indigo-400" />
+              </div>
+              <p className="text-sm text-muted-foreground font-medium">Ticket Médio Geral</p>
             </div>
-            <p className="text-2xl font-bold text-blue-600">{formatCurrencyCents(ticketMedio.geral)}</p>
-            <p className="text-xs text-muted-foreground mt-1">{ticketMedio.clientCount} clientes pagantes no mês</p>
+            <p className="text-3xl font-bold text-indigo-400">{formatCurrencyCents(ticketMedio.geral)}</p>
+            <p className="text-xs text-muted-foreground mt-1.5">{ticketMedio.clientCount} clientes pagantes no mês</p>
           </CardContent>
         </Card>
-        <Card>
-          <CardContent className="pt-4">
-            <p className="text-sm text-muted-foreground mb-1">MRR vs Mês Anterior</p>
+        <Card className="border-emerald-500/10 bg-gradient-to-br from-emerald-500/10 via-emerald-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-emerald-500/5">
+          <CardContent className="pt-5">
+            <p className="text-sm text-muted-foreground font-medium mb-2">MRR vs Mês Anterior</p>
             <div className="flex items-center gap-3">
-              <p className="text-2xl font-bold">{formatCurrencyCents(mrrBreakdown.mrrAtual)}</p>
+              <p className="text-3xl font-bold text-emerald-400">{formatCurrencyCents(mrrBreakdown.mrrAtual)}</p>
               {mrrBreakdown.mrrAnterior > 0 && (
-                <Badge variant={mrrBreakdown.mrrAtual >= mrrBreakdown.mrrAnterior ? "default" : "destructive"}>
+                <Badge className={`${mrrBreakdown.mrrAtual >= mrrBreakdown.mrrAnterior ? "bg-emerald-500/20 text-emerald-400 border-emerald-500/30" : "bg-red-500/20 text-red-400 border-red-500/30"}`}>
                   {mrrBreakdown.mrrAtual >= mrrBreakdown.mrrAnterior ? "+" : ""}
                   {(((mrrBreakdown.mrrAtual - mrrBreakdown.mrrAnterior) / mrrBreakdown.mrrAnterior) * 100).toFixed(1)}%
                 </Badge>
               )}
             </div>
-            <p className="text-xs text-muted-foreground mt-1">Anterior: {formatCurrencyCents(mrrBreakdown.mrrAnterior)}</p>
+            <p className="text-xs text-muted-foreground mt-1.5">Anterior: {formatCurrencyCents(mrrBreakdown.mrrAnterior)}</p>
           </CardContent>
         </Card>
       </div>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
+        <Card className="border-blue-500/10 bg-gradient-to-br from-blue-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-blue-500/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">Evolução MRR (6 meses)</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-blue-500 animate-pulse" />
+              Evolução MRR (6 meses)
+            </CardTitle>
           </CardHeader>
           <CardContent>
             <ResponsiveContainer width="100%" height={280}>
               <AreaChart data={mrrTrend}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="label" className="text-xs" />
-                <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} className="text-xs" />
-                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+                <defs>
+                  <linearGradient id="mrrRevGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="hsl(221, 83%, 53%)" stopOpacity={0} />
+                  </linearGradient>
+                  <linearGradient id="nrGrad" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="hsl(270, 80%, 60%)" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="hsl(270, 80%, 60%)" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted) / 0.3)" />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
                 <Legend />
-                <Area type="monotone" dataKey="mrr" name="MRR" stroke="hsl(221, 83%, 53%)" fill="hsl(221, 83%, 53%, 0.15)" strokeWidth={2} />
-                <Area type="monotone" dataKey="naoRecorrente" name="Não Recorrente" stroke="hsl(262, 83%, 58%)" fill="hsl(262, 83%, 58%, 0.1)" strokeWidth={2} />
+                <Area type="monotone" dataKey="mrr" name="MRR" stroke="hsl(221, 83%, 53%)" fill="url(#mrrRevGrad)" strokeWidth={2.5} />
+                <Area type="monotone" dataKey="naoRecorrente" name="Não Recorrente" stroke="hsl(270, 80%, 60%)" fill="url(#nrGrad)" strokeWidth={2.5} />
               </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
+        <Card className="border-violet-500/10 bg-gradient-to-br from-violet-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-violet-500/5">
           <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold">MRR Breakdown</CardTitle>
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-2 w-2 rounded-full bg-violet-500 animate-pulse" />
+              MRR Breakdown
+            </CardTitle>
           </CardHeader>
           <CardContent>
             {breakdownPie.length > 0 ? (
@@ -195,7 +231,7 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
                   <Pie data={breakdownPie} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
                     {breakdownPie.map((entry, i) => <Cell key={i} fill={entry.color} />)}
                   </Pie>
-                  <Tooltip formatter={(v: number) => formatCurrency(v)} />
+                  <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (

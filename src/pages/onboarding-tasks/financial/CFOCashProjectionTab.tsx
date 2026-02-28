@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Wallet, TrendingUp, TrendingDown, Clock, AlertTriangle } from "lucide-react";
+import { Wallet, TrendingUp, TrendingDown, Clock, AlertTriangle, ArrowDownToLine, ArrowUpFromLine } from "lucide-react";
 import {
   AreaChart, Area, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   Legend, ReferenceLine, BarChart, Bar
@@ -17,6 +17,15 @@ interface Props {
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
+
+const summaryStyles = [
+  { bg: "from-cyan-500/20 via-cyan-500/5 to-transparent", border: "border-cyan-500/20", text: "text-cyan-400", glow: "shadow-cyan-500/10", icon: Wallet },
+  { bg: "from-emerald-500/20 via-emerald-500/5 to-transparent", border: "border-emerald-500/20", text: "text-emerald-400", glow: "shadow-emerald-500/10", icon: TrendingUp },
+  { bg: "from-rose-500/20 via-rose-500/5 to-transparent", border: "border-rose-500/20", text: "text-rose-400", glow: "shadow-rose-500/10", icon: TrendingDown },
+  { bg: "from-blue-500/20 via-blue-500/5 to-transparent", border: "border-blue-500/20", text: "text-blue-400", glow: "shadow-blue-500/10", icon: ArrowDownToLine },
+  { bg: "from-orange-500/20 via-orange-500/5 to-transparent", border: "border-orange-500/20", text: "text-orange-400", glow: "shadow-orange-500/10", icon: ArrowUpFromLine },
+  { bg: "from-emerald-500/20 via-emerald-500/5 to-transparent", border: "border-emerald-500/20", text: "text-emerald-400", glow: "shadow-emerald-500/10", icon: Clock },
+];
 
 export default function CFOCashProjectionTab({ invoices, payables, banks, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
@@ -101,92 +110,98 @@ export default function CFOCashProjectionTab({ invoices, payables, banks, filter
     return months;
   }, [invoices, payables, cashFlow]);
 
+  const summaryCards = [
+    { label: "Caixa Atual", value: formatCurrencyCents(cashFlow.caixaAtual) },
+    { label: "Entradas (Mês)", value: formatCurrencyCents(cashFlow.entradasMes) },
+    { label: "Saídas (Mês)", value: formatCurrencyCents(cashFlow.saidasMes) },
+    { label: "A Receber", value: formatCurrencyCents(cashFlow.entradasPrevistas) },
+    { label: "A Pagar", value: formatCurrencyCents(cashFlow.saidasPrevistas) },
+    { label: "Runway", value: cashFlow.runway >= 999 ? "∞" : `${cashFlow.runway.toFixed(1)} meses` },
+  ];
+
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Caixa & Projeção</h2>
+      <div>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-cyan-400 via-blue-400 to-indigo-400 bg-clip-text text-transparent">
+          Caixa & Projeção
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Fluxo de caixa atual e projeção de 12 meses</p>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1"><Wallet className="h-4 w-4 text-blue-600" /></div>
-            <p className="text-xs text-muted-foreground">Caixa Atual</p>
-            <p className="text-xl font-bold text-blue-600">{formatCurrencyCents(cashFlow.caixaAtual)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1"><TrendingUp className="h-4 w-4 text-emerald-600" /></div>
-            <p className="text-xs text-muted-foreground">Entradas (Mês)</p>
-            <p className="text-xl font-bold text-emerald-600">{formatCurrencyCents(cashFlow.entradasMes)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1"><TrendingDown className="h-4 w-4 text-destructive" /></div>
-            <p className="text-xs text-muted-foreground">Saídas (Mês)</p>
-            <p className="text-xl font-bold text-destructive">{formatCurrencyCents(cashFlow.saidasMes)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">A Receber</p>
-            <p className="text-xl font-bold">{formatCurrencyCents(cashFlow.entradasPrevistas)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">A Pagar</p>
-            <p className="text-xl font-bold">{formatCurrencyCents(cashFlow.saidasPrevistas)}</p>
-          </CardContent>
-        </Card>
-        <Card className={cashFlow.runway < 6 ? "border-destructive/50 bg-destructive/5" : ""}>
-          <CardContent className="pt-4 pb-3">
-            <div className="flex items-center gap-2 mb-1">
-              <Clock className={`h-4 w-4 ${cashFlow.runway < 6 ? "text-destructive" : "text-emerald-600"}`} />
-            </div>
-            <p className="text-xs text-muted-foreground">Runway</p>
-            <p className={`text-xl font-bold ${cashFlow.runway < 6 ? "text-destructive" : "text-emerald-600"}`}>
-              {cashFlow.runway >= 999 ? "∞" : `${cashFlow.runway.toFixed(1)} meses`}
-            </p>
-          </CardContent>
-        </Card>
+        {summaryCards.map((card, idx) => {
+          const s = summaryStyles[idx];
+          const Icon = s.icon;
+          const isRunway = idx === 5;
+          const runwayDanger = isRunway && cashFlow.runway < 6;
+          return (
+            <Card key={idx} className={`relative overflow-hidden border ${runwayDanger ? "border-red-500/30" : s.border} bg-gradient-to-br ${runwayDanger ? "from-red-500/20 via-red-500/5 to-transparent" : s.bg} backdrop-blur-xl shadow-lg ${runwayDanger ? "shadow-red-500/10" : s.glow} hover:scale-[1.02] transition-all duration-300`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+              <CardContent className="pt-4 pb-3 relative">
+                <div className="flex items-center gap-2 mb-1">
+                  <div className={`p-1 rounded-lg bg-white/5 ${runwayDanger ? "text-red-500" : s.text}`}>
+                    <Icon className="h-3.5 w-3.5" />
+                  </div>
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{card.label}</p>
+                <p className={`text-xl font-bold mt-0.5 ${runwayDanger ? "text-red-400" : s.text}`}>{card.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Projection Chart */}
-      <Card>
+      <Card className="border-cyan-500/10 bg-gradient-to-br from-cyan-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-cyan-500/5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Projeção de Caixa (12 meses)</CardTitle>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-cyan-500 animate-pulse" />
+            Projeção de Caixa (12 meses)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={350}>
             <AreaChart data={projection}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="label" className="text-xs" />
-              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} className="text-xs" />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+              <defs>
+                <linearGradient id="cashInGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="hsl(160, 84%, 39%)" stopOpacity={0} />
+                </linearGradient>
+                <linearGradient id="cashOutGrad" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="hsl(350, 89%, 60%)" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="hsl(350, 89%, 60%)" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted) / 0.3)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
               <Legend />
-              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="hsl(142, 76%, 36%)" fill="hsl(142, 76%, 36%, 0.1)" strokeWidth={2} />
-              <Area type="monotone" dataKey="saidas" name="Saídas" stroke="hsl(var(--destructive))" fill="hsl(var(--destructive) / 0.1)" strokeWidth={2} />
-              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground))" strokeDasharray="3 3" />
+              <Area type="monotone" dataKey="entradas" name="Entradas" stroke="hsl(160, 84%, 39%)" fill="url(#cashInGrad)" strokeWidth={2.5} />
+              <Area type="monotone" dataKey="saidas" name="Saídas" stroke="hsl(350, 89%, 60%)" fill="url(#cashOutGrad)" strokeWidth={2.5} />
+              <ReferenceLine y={0} stroke="hsl(var(--muted-foreground) / 0.3)" strokeDasharray="3 3" />
             </AreaChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       {/* Cash Flow Bar */}
-      <Card>
+      <Card className="border-indigo-500/10 bg-gradient-to-br from-indigo-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-indigo-500/5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Saldo Acumulado Projetado</CardTitle>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-indigo-500" />
+            Saldo Acumulado Projetado
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={projection.filter((_, i) => i >= 3)}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="label" className="text-xs" />
-              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} className="text-xs" />
-              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
-              <Bar dataKey="saldo" name="Saldo Projetado" fill="hsl(221, 83%, 53%)" radius={[3, 3, 0, 0]} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted) / 0.3)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip formatter={(v: number) => formatCurrency(v)} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
+              <Bar dataKey="saldo" name="Saldo Projetado" fill="hsl(221, 83%, 53%)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>

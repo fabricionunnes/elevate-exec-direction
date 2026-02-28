@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { TrendingDown, Users, Clock, BarChart3 } from "lucide-react";
+import { TrendingDown, Users, Clock, BarChart3, ShieldCheck, Activity } from "lucide-react";
 import {
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, CartesianGrid,
   LineChart, Line, Legend, Area, AreaChart
@@ -17,6 +17,15 @@ interface Props {
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
 }
+
+const summaryStyles = [
+  { bg: "from-rose-500/20 via-rose-500/5 to-transparent", border: "border-rose-500/20", text: "text-rose-400", glow: "shadow-rose-500/10" },
+  { bg: "from-orange-500/20 via-orange-500/5 to-transparent", border: "border-orange-500/20", text: "text-orange-400", glow: "shadow-orange-500/10" },
+  { bg: "from-amber-500/20 via-amber-500/5 to-transparent", border: "border-amber-500/20", text: "text-amber-400", glow: "shadow-amber-500/10" },
+  { bg: "from-blue-500/20 via-blue-500/5 to-transparent", border: "border-blue-500/20", text: "text-blue-400", glow: "shadow-blue-500/10" },
+  { bg: "from-emerald-500/20 via-emerald-500/5 to-transparent", border: "border-emerald-500/20", text: "text-emerald-400", glow: "shadow-emerald-500/10" },
+  { bg: "from-teal-500/20 via-teal-500/5 to-transparent", border: "border-teal-500/20", text: "text-teal-400", glow: "shadow-teal-500/10" },
+];
 
 export default function CFOChurnRetentionTab({ invoices, companies, fullCompanies, filters, formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
@@ -129,85 +138,77 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
     };
   }, [monthlyChurn, cohortRetention]);
 
+  const summaryCards = [
+    { label: "Churn Clientes", value: `${summary.clientChurn.toFixed(1)}%` },
+    { label: "Churn Receita", value: `${summary.revenueChurn.toFixed(1)}%` },
+    { label: "Churn Médio (6m)", value: `${summary.avgChurn.toFixed(1)}%` },
+    { label: "Lifetime Médio", value: `${summary.lifetimeMedio} meses` },
+    { label: "Retenção 3m", value: `${summary.retention3m}%` },
+    { label: "Retenção 6m", value: `${summary.retention6m}%` },
+  ];
+
   return (
     <div className="space-y-6">
-      <h2 className="text-lg font-semibold">Churn & Retenção</h2>
+      <div>
+        <h2 className="text-xl font-bold bg-gradient-to-r from-rose-400 via-orange-400 to-amber-400 bg-clip-text text-transparent">
+          Churn & Retenção
+        </h2>
+        <p className="text-xs text-muted-foreground mt-0.5">Análise de perda e retenção de clientes</p>
+      </div>
 
       {/* Summary Cards */}
       <div className="grid gap-3 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Churn Clientes</p>
-            <p className={`text-xl font-bold ${Number(summary.clientChurn) > 5 ? "text-destructive" : "text-emerald-600"}`}>
-              {summary.clientChurn.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Churn Receita</p>
-            <p className={`text-xl font-bold ${Number(summary.revenueChurn) > 5 ? "text-destructive" : "text-emerald-600"}`}>
-              {summary.revenueChurn.toFixed(1)}%
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Churn Médio (6m)</p>
-            <p className="text-xl font-bold">{summary.avgChurn.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Lifetime Médio</p>
-            <p className="text-xl font-bold text-blue-600">{summary.lifetimeMedio} meses</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Retenção 3m</p>
-            <p className="text-xl font-bold text-emerald-600">{summary.retention3m}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="pt-4 pb-3">
-            <p className="text-xs text-muted-foreground">Retenção 6m</p>
-            <p className="text-xl font-bold text-emerald-600">{summary.retention6m}%</p>
-          </CardContent>
-        </Card>
+        {summaryCards.map((card, idx) => {
+          const s = summaryStyles[idx];
+          return (
+            <Card key={idx} className={`relative overflow-hidden border ${s.border} bg-gradient-to-br ${s.bg} backdrop-blur-xl shadow-lg ${s.glow} hover:scale-[1.02] transition-all duration-300`}>
+              <div className="absolute inset-0 bg-gradient-to-br from-white/[0.03] to-transparent pointer-events-none" />
+              <CardContent className="pt-4 pb-3 relative">
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{card.label}</p>
+                <p className={`text-xl font-bold mt-1 ${s.text}`}>{card.value}</p>
+              </CardContent>
+            </Card>
+          );
+        })}
       </div>
 
       {/* Churn Trend Chart */}
-      <Card>
+      <Card className="border-rose-500/10 bg-gradient-to-br from-rose-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-rose-500/5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Churn Mensal (Clientes vs Receita)</CardTitle>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-rose-500 animate-pulse" />
+            Churn Mensal (Clientes vs Receita)
+          </CardTitle>
         </CardHeader>
         <CardContent>
           <ResponsiveContainer width="100%" height={280}>
             <BarChart data={monthlyChurn}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="label" className="text-xs" />
-              <YAxis unit="%" className="text-xs" />
-              <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }} />
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--muted) / 0.3)" />
+              <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis unit="%" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
+              <Tooltip formatter={(v: number) => `${v.toFixed(1)}%`} contentStyle={{ background: "hsl(var(--card) / 0.95)", border: "1px solid hsl(var(--border))", borderRadius: 12 }} />
               <Legend />
-              <Bar dataKey="clientChurn" name="Churn Clientes %" fill="hsl(var(--destructive))" radius={[3, 3, 0, 0]} />
-              <Bar dataKey="revenueChurn" name="Churn Receita %" fill="hsl(38, 92%, 50%)" radius={[3, 3, 0, 0]} />
+              <Bar dataKey="clientChurn" name="Churn Clientes %" fill="hsl(350, 89%, 60%)" radius={[6, 6, 0, 0]} />
+              <Bar dataKey="revenueChurn" name="Churn Receita %" fill="hsl(25, 95%, 53%)" radius={[6, 6, 0, 0]} />
             </BarChart>
           </ResponsiveContainer>
         </CardContent>
       </Card>
 
       {/* Cohort Retention Table */}
-      <Card>
+      <Card className="border-emerald-500/10 bg-gradient-to-br from-emerald-500/5 to-transparent backdrop-blur-xl shadow-lg shadow-emerald-500/5">
         <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold">Retenção por Cohort</CardTitle>
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+            Retenção por Cohort
+          </CardTitle>
         </CardHeader>
         <CardContent>
           {cohortRetention.length > 0 ? (
             <div className="overflow-x-auto">
               <table className="w-full text-sm">
                 <thead>
-                  <tr className="border-b">
+                  <tr className="border-b border-white/5">
                     <th className="text-left p-2 font-medium text-muted-foreground">Cohort</th>
                     <th className="text-center p-2 font-medium text-muted-foreground">Tamanho</th>
                     {[1, 2, 3, 4, 5, 6].map(m => (
@@ -217,24 +218,26 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
                 </thead>
                 <tbody>
                   {cohortRetention.map((cohort, idx) => (
-                    <tr key={idx} className="border-b last:border-0">
+                    <tr key={idx} className="border-b border-white/5 last:border-0">
                       <td className="p-2 font-medium">{cohort.label}</td>
-                      <td className="text-center p-2">{cohort.size}</td>
+                      <td className="text-center p-2">
+                        <Badge variant="outline" className="bg-white/5 border-white/10">{cohort.size}</Badge>
+                      </td>
                       {[0, 1, 2, 3, 4, 5].map(m => (
                         <td key={m} className="text-center p-2">
                           {cohort.retentionRates[m] !== undefined ? (
                             <Badge
                               variant="outline"
                               className={
-                                cohort.retentionRates[m] >= 80 ? "bg-emerald-500/10 text-emerald-700 border-emerald-500/30" :
-                                cohort.retentionRates[m] >= 60 ? "bg-amber-500/10 text-amber-700 border-amber-500/30" :
-                                "bg-destructive/10 text-destructive border-destructive/30"
+                                cohort.retentionRates[m] >= 80 ? "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" :
+                                cohort.retentionRates[m] >= 60 ? "bg-amber-500/15 text-amber-400 border-amber-500/30" :
+                                "bg-red-500/15 text-red-400 border-red-500/30"
                               }
                             >
                               {cohort.retentionRates[m].toFixed(0)}%
                             </Badge>
                           ) : (
-                            <span className="text-muted-foreground">—</span>
+                            <span className="text-muted-foreground/50">—</span>
                           )}
                         </td>
                       ))}
