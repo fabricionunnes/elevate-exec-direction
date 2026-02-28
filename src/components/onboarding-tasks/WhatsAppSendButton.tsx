@@ -51,9 +51,8 @@ export const WhatsAppSendButton = ({
     if (instanceName) {
       query = query.eq("instance_name", instanceName);
     } else {
-      query = query.eq("is_default", true);
+      query = query.eq("instance_name", "fabricionunnes");
     }
-    
     const { data } = await query.single();
     
     const found = !!data;
@@ -88,9 +87,8 @@ export const WhatsAppSendButton = ({
       if (instanceName) {
         instQuery = instQuery.eq("instance_name", instanceName);
       } else {
-        instQuery = instQuery.eq("is_default", true);
+        instQuery = instQuery.eq("instance_name", "fabricionunnes");
       }
-      
       const { data: instance } = await instQuery.single();
 
       if (!instance) {
