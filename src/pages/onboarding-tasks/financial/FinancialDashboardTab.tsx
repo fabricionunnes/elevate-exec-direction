@@ -92,19 +92,22 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const total = monthInvoices.length;
     const totalValue = monthInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     
-    const refDate = isCurrentMonth 
-      ? now 
-      : new Date(selectedYear, selectedMonth + 1, 0);
-    const todayStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}-${String(refDate.getDate()).padStart(2, "0")}`;
+    // Sempre usar a data de HOJE como referência — só é inadimplente o que já venceu de fato
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
     const overdueCount = overdue.length;
     const overdueValue = overdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    const pctQty = total > 0 ? (overdueCount / total) * 100 : 0;
-    const pctValue = totalValue > 0 ? (overdueValue / totalValue) * 100 : 0;
+    // Base para % = apenas faturas já vencidas (due_date < hoje), não o total do mês inteiro
+    const alreadyDue = monthInvoices.filter(i => i.due_date < todayStr && i.status !== "cancelled");
+    const alreadyDueValue = alreadyDue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
+    const alreadyDueCount = alreadyDue.length;
 
-    return { pctQty, pctValue, overdueCount, total, overdueValue, totalValue };
-  }, [invoices, monthStr, isCurrentMonth, selectedYear, selectedMonth]);
+    const pctQty = alreadyDueCount > 0 ? (overdueCount / alreadyDueCount) * 100 : 0;
+    const pctValue = alreadyDueValue > 0 ? (overdueValue / alreadyDueValue) * 100 : 0;
+
+    return { pctQty, pctValue, overdueCount, total: alreadyDueCount, overdueValue, totalValue: alreadyDueValue };
+  }, [invoices, monthStr]);
 
   // Total em atraso geral (todas as faturas, sem filtro de mês)
   const totalOverdueGeral = useMemo(() => {
