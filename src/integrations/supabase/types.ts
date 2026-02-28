@@ -9737,6 +9737,7 @@ export type Database = {
           bank_id: string | null
           category_id: string | null
           company_id: string
+          conta_azul_id: string | null
           cost_center_id: string | null
           created_at: string
           daily_interest_percent: number
@@ -9767,6 +9768,7 @@ export type Database = {
           bank_id?: string | null
           category_id?: string | null
           company_id: string
+          conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
           daily_interest_percent?: number
@@ -9797,6 +9799,7 @@ export type Database = {
           bank_id?: string | null
           category_id?: string | null
           company_id?: string
+          conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
           daily_interest_percent?: number
