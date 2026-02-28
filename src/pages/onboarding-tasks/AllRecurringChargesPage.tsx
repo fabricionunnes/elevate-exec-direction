@@ -127,6 +127,7 @@ export default function AllRecurringChargesPage() {
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [fullCompanies, setFullCompanies] = useState<any[]>([]);
+  const [projects, setProjects] = useState<any[]>([]);
   const [staffList, setStaffList] = useState<any[]>([]);
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
@@ -226,7 +227,7 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
         supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator, phone").order("name"),
         supabase.from("financial_payables").select("*").order("due_date", { ascending: false }),
@@ -235,6 +236,7 @@ export default function AllRecurringChargesPage() {
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
+        supabase.from("onboarding_projects").select("id, onboarding_company_id, consultant_id, cs_id, status"),
       ]);
       if (chargesRes.error) throw chargesRes.error;
       if (companiesRes.error) throw companiesRes.error;
@@ -252,6 +254,7 @@ export default function AllRecurringChargesPage() {
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
+      setProjects((projectsRes.data as any) || []);
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
@@ -296,15 +299,27 @@ export default function AllRecurringChargesPage() {
     return staffList.filter(s => ["consultant", "cs", "admin", "master"].includes(s.role));
   }, [staffList]);
 
-  // Build company-to-consultant map
+  // Build company-to-consultants map (company → Set of consultant IDs from company + project level)
   const companyConsultantMap = useMemo(() => {
-    const map = new Map<string, string>();
+    const map = new Map<string, Set<string>>();
+    // Company-level assignments
     fullCompanies.forEach((c: any) => {
-      if (c.consultant_id) map.set(c.id, c.consultant_id);
-      else if (c.cs_id) map.set(c.id, c.cs_id);
+      const set = new Set<string>();
+      if (c.consultant_id) set.add(c.consultant_id);
+      if (c.cs_id) set.add(c.cs_id);
+      map.set(c.id, set);
+    });
+    // Project-level assignments (consultant responsible for the project)
+    projects.forEach((p: any) => {
+      if (p.onboarding_company_id) {
+        const set = map.get(p.onboarding_company_id) || new Set<string>();
+        if (p.consultant_id) set.add(p.consultant_id);
+        if (p.cs_id) set.add(p.cs_id);
+        map.set(p.onboarding_company_id, set);
+      }
     });
     return map;
-  }, [fullCompanies]);
+  }, [fullCompanies, projects]);
 
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
@@ -324,8 +339,8 @@ export default function AllRecurringChargesPage() {
       if (dateFrom) { if (inv.due_date < format(dateFrom, "yyyy-MM-dd")) return false; }
       if (dateTo) { if (inv.due_date > format(dateTo, "yyyy-MM-dd")) return false; }
       if (selectedConsultant !== "all") {
-        const consultantId = companyConsultantMap.get(inv.company_id);
-        if (consultantId !== selectedConsultant) return false;
+        const consultantIds = companyConsultantMap.get(inv.company_id);
+        if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
       }
       const invAny = inv as any;
       if (selectedCategory !== "all" && invAny.category_id !== selectedCategory) return false;
