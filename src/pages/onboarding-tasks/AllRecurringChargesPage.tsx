@@ -1317,6 +1317,8 @@ export default function AllRecurringChargesPage() {
             <FinancialOverdueTab
               invoices={invoices}
               companies={companies}
+              consultants={consultants}
+              companyConsultantMap={companyConsultantMap}
               formatCurrencyCents={formatCurrencyCents}
               hasPerm={hasPerm}
               onConfirmPayment={handleManualPayment}
