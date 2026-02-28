@@ -7,7 +7,8 @@ import {
 import { 
   TrendingUp, TrendingDown, DollarSign, AlertTriangle, 
   ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, ShoppingCart, RefreshCw,
-  CalendarIcon, ChevronLeft, ChevronRight
+  CalendarIcon, ChevronLeft, ChevronRight, Banknote, CreditCard, PiggyBank,
+  BarChart3, Activity
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -35,10 +36,27 @@ const toMonthlyMRR = (amountCents: number, recurrence: string): number => {
 
 const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
 
+// Gradient card wrapper component
+const GradientCard = ({ 
+  children, 
+  gradient, 
+  className = "" 
+}: { 
+  children: React.ReactNode; 
+  gradient: string; 
+  className?: string;
+}) => (
+  <div className={`relative overflow-hidden rounded-xl border border-white/10 backdrop-blur-xl shadow-lg ${className}`}
+    style={{ background: gradient }}>
+    <div className="absolute inset-0 bg-gradient-to-br from-white/5 to-transparent pointer-events-none" />
+    <div className="relative">{children}</div>
+  </div>
+);
+
 export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents }: Props) {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
-  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-indexed
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   
   const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
@@ -74,10 +92,9 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const total = monthInvoices.length;
     const totalValue = monthInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     
-    // For current month use today, for past months use last day of month
     const refDate = isCurrentMonth 
       ? now 
-      : new Date(selectedYear, selectedMonth + 1, 0); // last day of selected month
+      : new Date(selectedYear, selectedMonth + 1, 0);
     const todayStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}-${String(refDate.getDate()).padStart(2, "0")}`;
     const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
     const overdueCount = overdue.length;
@@ -89,13 +106,13 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { pctQty, pctValue, overdueCount, total, overdueValue, totalValue };
   }, [invoices, monthStr, isCurrentMonth, selectedYear, selectedMonth]);
 
-  // MRR (from active recurring charges)
+  // MRR
   const mrr = useMemo(() => {
     const activeCharges = charges.filter(c => c.is_active);
     return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
   }, [charges]);
 
-  // MRR Movement (added vs lost in selected month)
+  // MRR Movement
   const mrrMovement = useMemo(() => {
     const added = charges
       .filter(c => c.is_active && c.created_at?.startsWith(monthStr))
@@ -110,7 +127,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { added, addedCount, lost, lostCount, net: added - lost };
   }, [charges, monthStr]);
 
-  // Vendas Novas (standalone invoices created in selected month)
+  // Vendas Novas
   const vendasNovas = useMemo(() => {
     const novas = invoices.filter(i => !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
     const count = novas.length;
@@ -118,7 +135,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { count, value };
   }, [invoices, monthStr]);
 
-  // Monthly chart data (6 months ending at selected month)
+  // Monthly chart data
   const monthlyData = useMemo(() => {
     const months: { month: string; label: string; receita: number; despesa: number; resultado: number }[] = [];
 
@@ -140,31 +157,37 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return months;
   }, [invoices, payables, selectedYear, selectedMonth]);
 
-  // Status distribution for receivables (selected month)
+  // Status distribution
   const statusData = useMemo(() => {
     const monthInv = invoices.filter(i => i.due_date?.startsWith(monthStr));
     const paid = monthInv.filter(i => i.status === "paid").length;
     const pending = monthInv.filter(i => i.status === "pending").length;
     const overdue = monthInv.filter(i => i.status === "overdue").length;
     return [
-      { name: "Recebido", value: paid, color: "hsl(var(--primary))" },
-      { name: "Pendente", value: pending, color: "hsl(var(--muted-foreground))" },
-      { name: "Vencido", value: overdue, color: "hsl(var(--destructive))" },
+      { name: "Recebido", value: paid, color: "#10b981" },
+      { name: "Pendente", value: pending, color: "#f59e0b" },
+      { name: "Vencido", value: overdue, color: "#ef4444" },
     ].filter(d => d.value > 0);
   }, [invoices, monthStr]);
 
   const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
 
+  const inadimplenciaColor = (pct: number) =>
+    pct > 10 ? "#ef4444" : pct > 5 ? "#f59e0b" : "#10b981";
+
   return (
     <div className="space-y-6">
-      {/* Month Picker */}
-      <div className="flex items-center gap-2 flex-wrap">
-        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPrevMonth}>
+      {/* Month Picker — modern glass bar */}
+      <div className="flex items-center gap-3 flex-wrap p-3 rounded-xl border border-border/50 bg-card/50 backdrop-blur-sm">
+        <div className="flex items-center gap-1.5">
+          <CalendarIcon className="h-4 w-4 text-primary" />
+          <span className="text-sm font-semibold text-foreground">Período:</span>
+        </div>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={goToPrevMonth}>
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(Number(v))}>
-          <SelectTrigger className="w-[110px] h-8 text-sm">
+          <SelectTrigger className="w-[110px] h-8 text-sm rounded-lg border-border/50 bg-background/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -174,7 +197,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           </SelectContent>
         </Select>
         <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
-          <SelectTrigger className="w-[90px] h-8 text-sm">
+          <SelectTrigger className="w-[90px] h-8 text-sm rounded-lg border-border/50 bg-background/50">
             <SelectValue />
           </SelectTrigger>
           <SelectContent>
@@ -183,221 +206,264 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             ))}
           </SelectContent>
         </Select>
-        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+        <Button variant="ghost" size="icon" className="h-8 w-8 rounded-lg hover:bg-primary/10" onClick={goToNextMonth}>
           <ChevronRight className="h-4 w-4" />
         </Button>
         {!isCurrentMonth && (
-          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={goToCurrentMonth}>
+          <Button variant="outline" size="sm" className="h-8 text-xs rounded-lg border-primary/30 text-primary hover:bg-primary/10" onClick={goToCurrentMonth}>
             Mês atual
           </Button>
         )}
-        <span className="text-sm font-medium text-muted-foreground ml-1">
+        <div className="ml-auto px-3 py-1 rounded-full bg-primary/10 text-primary text-sm font-bold">
           {MONTH_LABELS[selectedMonth]} {selectedYear}
-        </span>
+        </div>
       </div>
 
-      {/* Summary Cards */}
+      {/* Summary Cards — Vibrant gradients */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Receita Recebida</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-emerald-600">{formatCurrencyCents(summary.receitaRecebida)}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <ArrowUpRight className="h-3 w-3 text-emerald-500" /> Mês atual
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">A Receber</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{formatCurrencyCents(summary.receitaPendente)}</div>
-            <p className="text-xs text-muted-foreground">Pendente no mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Despesas Pagas</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold text-destructive">{formatCurrencyCents(summary.despesaPaga)}</div>
-            <p className="text-xs text-muted-foreground flex items-center gap-1 mt-1">
-              <ArrowDownRight className="h-3 w-3 text-destructive" /> Mês atual
-            </p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">A Pagar</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{formatCurrencyCents(summary.despesaPendente)}</div>
-            <p className="text-xs text-muted-foreground">Pendente no mês</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Resultado</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className={`text-xl font-bold ${summary.resultado >= 0 ? "text-emerald-600" : "text-destructive"}`}>
+        <GradientCard gradient="linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(6,95,70,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Receita Recebida</span>
+            </div>
+            <div className="text-2xl font-bold text-emerald-400">{formatCurrencyCents(summary.receitaRecebida)}</div>
+            <p className="text-[11px] text-emerald-400/70 mt-1">Recebido no mês</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient="linear-gradient(135deg, rgba(99,102,241,0.15) 0%, rgba(67,56,202,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-indigo-500/20 flex items-center justify-center">
+                <CreditCard className="h-4 w-4 text-indigo-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">A Receber</span>
+            </div>
+            <div className="text-2xl font-bold text-indigo-400">{formatCurrencyCents(summary.receitaPendente)}</div>
+            <p className="text-[11px] text-indigo-400/70 mt-1">Pendente no mês</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient="linear-gradient(135deg, rgba(239,68,68,0.15) 0%, rgba(153,27,27,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <ArrowDownRight className="h-4 w-4 text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Despesas Pagas</span>
+            </div>
+            <div className="text-2xl font-bold text-red-400">{formatCurrencyCents(summary.despesaPaga)}</div>
+            <p className="text-[11px] text-red-400/70 mt-1">Pago no mês</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient="linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(146,64,14,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <Banknote className="h-4 w-4 text-amber-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">A Pagar</span>
+            </div>
+            <div className="text-2xl font-bold text-amber-400">{formatCurrencyCents(summary.despesaPendente)}</div>
+            <p className="text-[11px] text-amber-400/70 mt-1">Pendente no mês</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient={`linear-gradient(135deg, ${summary.resultado >= 0 ? "rgba(16,185,129,0.18) 0%, rgba(6,95,70,0.1)" : "rgba(239,68,68,0.18) 0%, rgba(153,27,27,0.1)"} 100%)`}>
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${summary.resultado >= 0 ? "bg-emerald-500/20" : "bg-red-500/20"}`}>
+                <Activity className={`h-4 w-4 ${summary.resultado >= 0 ? "text-emerald-400" : "text-red-400"}`} />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Resultado</span>
+            </div>
+            <div className={`text-2xl font-bold ${summary.resultado >= 0 ? "text-emerald-400" : "text-red-400"}`}>
               {formatCurrencyCents(summary.resultado)}
             </div>
-            <p className="text-xs text-muted-foreground">Receita - Despesa</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium">Saldo Bancário</CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-xl font-bold">{formatCurrencyCents(summary.totalBancos)}</div>
-            <p className="text-xs text-muted-foreground">{banks.length} conta(s)</p>
-          </CardContent>
-        </Card>
+            <p className="text-[11px] text-muted-foreground mt-1">Receita − Despesa</p>
+          </div>
+        </GradientCard>
+
+        <GradientCard gradient="linear-gradient(135deg, rgba(139,92,246,0.15) 0%, rgba(91,33,182,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-violet-500/20 flex items-center justify-center">
+                <PiggyBank className="h-4 w-4 text-violet-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Saldo Bancário</span>
+            </div>
+            <div className="text-2xl font-bold text-violet-400">{formatCurrencyCents(summary.totalBancos)}</div>
+            <p className="text-[11px] text-violet-400/70 mt-1">{banks.length} conta(s)</p>
+          </div>
+        </GradientCard>
       </div>
 
-      {/* Inadimplência + MRR + Movimentação + Vendas Novas */}
+      {/* Inadimplência + MRR + Movimentação + Vendas */}
       <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
-        <Card className="border-l-4 border-l-destructive">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <ShieldAlert className="h-3.5 w-3.5 text-destructive" />
-              Inadimplência Mensal
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+        {/* Inadimplência */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(153,27,27,0.06) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <ShieldAlert className="h-4 w-4 text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Inadimplência Mensal</span>
+            </div>
             <div className="flex items-baseline gap-4">
               <div>
-                <div className={`text-2xl font-bold ${inadimplencia.pctQty > 10 ? "text-destructive" : inadimplencia.pctQty > 5 ? "text-amber-500" : "text-emerald-600"}`}>
+                <div className="text-2xl font-bold" style={{ color: inadimplenciaColor(inadimplencia.pctQty) }}>
                   {inadimplencia.pctQty.toFixed(1)}%
                 </div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">por qtd</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">por qtd</p>
               </div>
-              <div className="h-8 w-px bg-border" />
+              <div className="h-8 w-px bg-white/10" />
               <div>
-                <div className={`text-2xl font-bold ${inadimplencia.pctValue > 10 ? "text-destructive" : inadimplencia.pctValue > 5 ? "text-amber-500" : "text-emerald-600"}`}>
+                <div className="text-2xl font-bold" style={{ color: inadimplenciaColor(inadimplencia.pctValue) }}>
                   {inadimplencia.pctValue.toFixed(1)}%
                 </div>
-                <p className="text-[10px] text-muted-foreground uppercase tracking-wide mt-0.5">por valor</p>
+                <p className="text-[10px] text-muted-foreground uppercase tracking-wider mt-0.5">por valor</p>
               </div>
             </div>
-            <p className="text-xs text-muted-foreground mt-2">
-              {inadimplencia.overdueCount} de {inadimplencia.total} faturas • {formatCurrencyCents(inadimplencia.overdueValue)} de {formatCurrencyCents(inadimplencia.totalValue)}
+            <p className="text-[11px] text-muted-foreground mt-2.5 leading-relaxed">
+              {inadimplencia.overdueCount}/{inadimplencia.total} faturas • {formatCurrencyCents(inadimplencia.overdueValue)} de {formatCurrencyCents(inadimplencia.totalValue)}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </GradientCard>
 
-        <Card className="border-l-4 border-l-primary">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <RefreshCw className="h-3.5 w-3.5 text-primary" />
-              MRR Atual
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyCents(mrr)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
+        {/* MRR */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(59,130,246,0.15) 0%, rgba(29,78,216,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-blue-500/20 flex items-center justify-center">
+                <RefreshCw className="h-4 w-4 text-blue-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">MRR Atual</span>
+            </div>
+            <div className="text-2xl font-bold text-blue-400">{formatCurrencyCents(mrr)}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">
               {charges.filter(c => c.is_active).length} recorrência(s) ativa(s)
             </p>
-            <p className="text-xs text-muted-foreground">
-              ARR: {formatCurrencyCents(mrr * 12)}
-            </p>
-          </CardContent>
-        </Card>
+            <div className="mt-2 px-2 py-1 rounded-md bg-blue-500/10 inline-block">
+              <span className="text-[11px] font-medium text-blue-400">ARR: {formatCurrencyCents(mrr * 12)}</span>
+            </div>
+          </div>
+        </GradientCard>
 
-        <Card className="border-l-4 border-l-emerald-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <ArrowUpRight className="h-3.5 w-3.5 text-emerald-500" />
-              MRR Acrescentado
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-emerald-600">+{formatCurrencyCents(mrrMovement.added)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {mrrMovement.addedCount} nova(s) recorrência(s)
-            </p>
-          </CardContent>
-        </Card>
+        {/* MRR Acrescentado */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(16,185,129,0.15) 0%, rgba(6,95,70,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-emerald-500/20 flex items-center justify-center">
+                <ArrowUpRight className="h-4 w-4 text-emerald-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">MRR Acrescentado</span>
+            </div>
+            <div className="text-2xl font-bold text-emerald-400">+{formatCurrencyCents(mrrMovement.added)}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">{mrrMovement.addedCount} nova(s) recorrência(s)</p>
+          </div>
+        </GradientCard>
 
-        <Card className="border-l-4 border-l-destructive">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <ArrowDownRight className="h-3.5 w-3.5 text-destructive" />
-              MRR Perdido
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-destructive">-{formatCurrencyCents(mrrMovement.lost)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {mrrMovement.lostCount} recorrência(s) encerrada(s)
-            </p>
+        {/* MRR Perdido */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(153,27,27,0.06) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-red-500/20 flex items-center justify-center">
+                <ArrowDownRight className="h-4 w-4 text-red-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">MRR Perdido</span>
+            </div>
+            <div className="text-2xl font-bold text-red-400">-{formatCurrencyCents(mrrMovement.lost)}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">{mrrMovement.lostCount} encerrada(s)</p>
             {mrrMovement.net !== 0 && (
-              <p className={`text-xs font-medium mt-1 ${mrrMovement.net >= 0 ? "text-emerald-600" : "text-destructive"}`}>
-                Líquido: {mrrMovement.net >= 0 ? "+" : ""}{formatCurrencyCents(mrrMovement.net)}
-              </p>
+              <div className={`mt-2 px-2 py-1 rounded-md inline-block ${mrrMovement.net >= 0 ? "bg-emerald-500/10" : "bg-red-500/10"}`}>
+                <span className={`text-[11px] font-medium ${mrrMovement.net >= 0 ? "text-emerald-400" : "text-red-400"}`}>
+                  Líquido: {mrrMovement.net >= 0 ? "+" : ""}{formatCurrencyCents(mrrMovement.net)}
+                </span>
+              </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GradientCard>
 
-        <Card className="border-l-4 border-l-amber-500">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-xs text-muted-foreground font-medium flex items-center gap-1.5">
-              <ShoppingCart className="h-3.5 w-3.5 text-amber-500" />
-              Vendas Novas (Avulsas)
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold">{formatCurrencyCents(vendasNovas.value)}</div>
-            <p className="text-xs text-muted-foreground mt-1">
-              {vendasNovas.count} fatura(s) avulsa(s) no mês
-            </p>
-          </CardContent>
-        </Card>
+        {/* Vendas Novas */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(245,158,11,0.15) 0%, rgba(146,64,14,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-amber-500/20 flex items-center justify-center">
+                <ShoppingCart className="h-4 w-4 text-amber-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Vendas Novas</span>
+            </div>
+            <div className="text-2xl font-bold text-amber-400">{formatCurrencyCents(vendasNovas.value)}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">{vendasNovas.count} fatura(s) avulsa(s)</p>
+          </div>
+        </GradientCard>
       </div>
 
       {/* Charts */}
       <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-2">
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Receitas vs Despesas (6 meses)</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <GradientCard gradient="linear-gradient(135deg, rgba(99,102,241,0.06) 0%, rgba(139,92,246,0.03) 100%)" className="lg:col-span-2">
+          <div className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <BarChart3 className="h-4 w-4 text-indigo-400" />
+              <h3 className="text-sm font-semibold text-foreground">Receitas vs Despesas (6 meses)</h3>
+            </div>
             <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-                <XAxis dataKey="label" className="text-xs" />
-                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" />
+              <BarChart data={monthlyData} barGap={4}>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)} 
                   labelStyle={{ color: "hsl(var(--foreground))" }}
-                  contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                  contentStyle={{ 
+                    background: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                  }}
                 />
-                <Bar dataKey="receita" name="Receita" fill="hsl(142, 76%, 36%)" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
+                <Bar dataKey="receita" name="Receita" fill="#10b981" radius={[6, 6, 0, 0]} />
+                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
               </BarChart>
             </ResponsiveContainer>
-          </CardContent>
-        </Card>
+          </div>
+        </GradientCard>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Status dos Recebíveis</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <GradientCard gradient="linear-gradient(135deg, rgba(245,158,11,0.06) 0%, rgba(239,68,68,0.03) 100%)">
+          <div className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Activity className="h-4 w-4 text-amber-400" />
+              <h3 className="text-sm font-semibold text-foreground">Status dos Recebíveis</h3>
+            </div>
             {statusData.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={statusData} cx="50%" cy="50%" innerRadius={60} outerRadius={100} dataKey="value" label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}>
+                  <Pie 
+                    data={statusData} 
+                    cx="50%" 
+                    cy="50%" 
+                    innerRadius={65} 
+                    outerRadius={105} 
+                    dataKey="value" 
+                    strokeWidth={2}
+                    stroke="hsl(var(--background))"
+                    label={({ name, percent }) => `${name} ${(percent * 100).toFixed(0)}%`}
+                  >
                     {statusData.map((entry, i) => (
                       <Cell key={i} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip 
+                    contentStyle={{ 
+                      background: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px" 
+                    }} 
+                  />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -405,53 +471,66 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 Sem dados para exibir
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GradientCard>
       </div>
 
       {/* Resultado mensal */}
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-sm font-semibold">Resultado Mensal</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <GradientCard gradient="linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(16,185,129,0.03) 100%)">
+        <div className="p-5">
+          <div className="flex items-center gap-2 mb-4">
+            <TrendingUp className="h-4 w-4 text-blue-400" />
+            <h3 className="text-sm font-semibold text-foreground">Resultado Mensal</h3>
+          </div>
           <ResponsiveContainer width="100%" height={250}>
             <AreaChart data={monthlyData}>
-              <CartesianGrid strokeDasharray="3 3" className="stroke-muted" />
-              <XAxis dataKey="label" className="text-xs" />
-              <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} className="text-xs" />
+              <defs>
+                <linearGradient id="gradientResultado" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                </linearGradient>
+              </defs>
+              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
+              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+              <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
               <Tooltip 
                 formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border))" }}
+                contentStyle={{ 
+                  background: "hsl(var(--card))", 
+                  border: "1px solid hsl(var(--border))",
+                  borderRadius: "8px",
+                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                }}
               />
-              <Area type="monotone" dataKey="resultado" name="Resultado" stroke="hsl(var(--primary))" fill="hsl(var(--primary) / 0.1)" strokeWidth={2} />
+              <Area type="monotone" dataKey="resultado" name="Resultado" stroke="#3b82f6" fill="url(#gradientResultado)" strokeWidth={2.5} />
             </AreaChart>
           </ResponsiveContainer>
-        </CardContent>
-      </Card>
+        </div>
+      </GradientCard>
 
       {/* Banks Overview */}
       {banks.length > 0 && (
-        <Card>
-          <CardHeader>
-            <CardTitle className="text-sm font-semibold">Saldos por Conta</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <GradientCard gradient="linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(99,102,241,0.03) 100%)">
+          <div className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <Wallet className="h-4 w-4 text-violet-400" />
+              <h3 className="text-sm font-semibold text-foreground">Saldos por Conta</h3>
+            </div>
             <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
               {banks.map((bank: any) => (
-                <div key={bank.id} className="flex items-center gap-3 p-3 rounded-lg border bg-card">
-                  <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                    <Wallet className="h-5 w-5 text-primary" />
+                <div key={bank.id} className="flex items-center gap-3 p-3.5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
+                  <div className="h-10 w-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
+                    <Wallet className="h-5 w-5 text-violet-400" />
                   </div>
-                  <div>
-                    <p className="text-sm font-medium">{bank.name}</p>
-                    <p className="text-lg font-bold">{formatCurrencyCents(bank.current_balance_cents)}</p>
+                  <div className="min-w-0">
+                    <p className="text-sm font-medium text-foreground truncate">{bank.name}</p>
+                    <p className="text-lg font-bold text-violet-400">{formatCurrencyCents(bank.current_balance_cents)}</p>
                   </div>
                 </div>
               ))}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GradientCard>
       )}
     </div>
   );
