@@ -68,8 +68,14 @@ export default function FinancialOverdueTab({
   const ITEMS_PER_PAGE = 10;
 
   const overdueInvoices = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
     return invoices.filter(inv => {
-      if (inv.status !== "overdue") return false;
+      if (inv.status === "paid") return false;
+      const dueDate = new Date(inv.due_date + "T12:00:00");
+      const isPastDue = dueDate < today;
+      // Show if status is "overdue" OR if due_date is strictly before today and not paid
+      if (inv.status !== "overdue" && !isPastDue) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!inv.description?.toLowerCase().includes(q) && !inv.company_name?.toLowerCase().includes(q)) return false;
