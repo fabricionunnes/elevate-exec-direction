@@ -68,14 +68,14 @@ export default function FinancialOverdueTab({
   const ITEMS_PER_PAGE = 10;
 
   const overdueInvoices = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
+    // Use Brazil timezone to determine "today"
+    const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+    const todayStr = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, "0")}-${String(nowBR.getDate()).padStart(2, "0")}`;
     return invoices.filter(inv => {
       if (inv.status === "paid") return false;
-      const dueDate = new Date(inv.due_date + "T12:00:00");
-      const isPastDue = dueDate < today;
-      // Show if status is "overdue" OR if due_date is strictly before today and not paid
-      if (inv.status !== "overdue" && !isPastDue) return false;
+      // Strictly past due: due_date must be before today (not today itself)
+      const isPastDue = inv.due_date < todayStr;
+      if (!isPastDue) return false;
       if (search) {
         const q = search.toLowerCase();
         if (!inv.description?.toLowerCase().includes(q) && !inv.company_name?.toLowerCase().includes(q)) return false;
