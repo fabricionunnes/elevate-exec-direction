@@ -163,9 +163,13 @@ export default function AllRecurringChargesPage() {
   const [importReceivableOpen, setImportReceivableOpen] = useState(false);
   const [importPayableOpen, setImportPayableOpen] = useState(false);
 
-  // Bulk selection
+  // Bulk selection - Invoices
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
+
+  // Bulk selection - Payables
+  const [selectedPayableIds, setSelectedPayableIds] = useState<Set<string>>(new Set());
+  const [isBulkPayableAction, setIsBulkPayableAction] = useState(false);
 
   // Pagination
   const [currentPage, setCurrentPage] = useState(1);
@@ -444,6 +448,47 @@ export default function AllRecurringChargesPage() {
       toast.success("Banco removido");
       await loadData();
     } catch (err: any) { toast.error("Erro: " + (err.message || "erro")); }
+  };
+
+  // Bulk delete payables
+  const handleBulkDeletePayables = async () => {
+    const selected = payables.filter(p => selectedPayableIds.has(p.id));
+    if (selected.length === 0) return;
+    if (!confirm(`Excluir ${selected.length} lançamento(s) selecionado(s)?`)) return;
+    setIsBulkPayableAction(true);
+    try {
+      const { error } = await supabase.from("financial_payables").delete().in("id", Array.from(selectedPayableIds));
+      if (error) throw error;
+      toast.success(`${selected.length} lançamento(s) excluído(s)`);
+      setSelectedPayableIds(new Set());
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setIsBulkPayableAction(false);
+    }
+  };
+
+  // Bulk confirm payment payables
+  const handleBulkConfirmPayables = async () => {
+    const selected = payables.filter(p => selectedPayableIds.has(p.id) && p.status !== "paid");
+    if (selected.length === 0) { toast.error("Nenhum lançamento pendente selecionado"); return; }
+    if (!confirm(`Dar baixa em ${selected.length} lançamento(s)?`)) return;
+    setIsBulkPayableAction(true);
+    try {
+      const today = new Date().toISOString().split("T")[0];
+      const { error } = await supabase.from("financial_payables")
+        .update({ status: "paid", paid_at: today } as any)
+        .in("id", selected.map(p => p.id));
+      if (error) throw error;
+      toast.success(`${selected.length} lançamento(s) confirmado(s) como pago(s)`);
+      setSelectedPayableIds(new Set());
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setIsBulkPayableAction(false);
+    }
   };
 
   // Save manual receivable
@@ -824,6 +869,48 @@ export default function AllRecurringChargesPage() {
                         {isBulkSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                         Enviar via WhatsApp
                       </Button>
+                      <Button size="sm" variant="default" className="gap-1.5" disabled={isBulkSending}
+                        onClick={async () => {
+                          const selected = filteredInvoices.filter(inv => selectedInvoiceIds.has(inv.id) && inv.status !== "paid" && inv.status !== "cancelled");
+                          if (selected.length === 0) { toast.error("Nenhuma fatura pendente selecionada"); return; }
+                          if (!confirm(`Dar baixa em ${selected.length} fatura(s)?`)) return;
+                          setIsBulkSending(true);
+                          try {
+                            const today = new Date().toISOString().split("T")[0];
+                            for (const inv of selected) {
+                              const paidAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
+                              await supabase.from("company_invoices").update({
+                                status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: 199,
+                              } as any).eq("id", inv.id);
+                            }
+                            toast.success(`${selected.length} fatura(s) confirmada(s) como paga(s)`);
+                            setSelectedInvoiceIds(new Set());
+                            await loadData();
+                          } catch (err: any) { toast.error("Erro: " + (err.message || "erro")); }
+                          finally { setIsBulkSending(false); }
+                        }}>
+                        <CheckCircle2 className="h-4 w-4" />
+                        Dar Baixa
+                      </Button>
+                      {isMaster && (
+                        <Button size="sm" variant="destructive" className="gap-1.5" disabled={isBulkSending}
+                          onClick={async () => {
+                            const ids = Array.from(selectedInvoiceIds);
+                            if (!confirm(`Excluir ${ids.length} fatura(s)?`)) return;
+                            setIsBulkSending(true);
+                            try {
+                              const { error } = await supabase.from("company_invoices").delete().in("id", ids);
+                              if (error) throw error;
+                              toast.success(`${ids.length} fatura(s) excluída(s)`);
+                              setSelectedInvoiceIds(new Set());
+                              await loadData();
+                            } catch (err: any) { toast.error("Erro: " + (err.message || "erro")); }
+                            finally { setIsBulkSending(false); }
+                          }}>
+                          <Trash2 className="h-4 w-4" />
+                          Excluir
+                        </Button>
+                      )}
                     </div>
                   </CardContent>
                 </Card>
@@ -1093,12 +1180,48 @@ export default function AllRecurringChargesPage() {
                 </Card>
               </div>
 
+              {/* Bulk action bar - Payables */}
+              {selectedPayableIds.size > 0 && (
+                <Card className="border-primary/20 bg-primary/5">
+                  <CardContent className="py-3 flex items-center justify-between">
+                    <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setSelectedPayableIds(new Set())}>
+                        Limpar seleção
+                      </Button>
+                      <Button size="sm" variant="default" className="gap-1.5" disabled={isBulkPayableAction} onClick={handleBulkConfirmPayables}>
+                        {isBulkPayableAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <CheckCircle2 className="h-4 w-4" />}
+                        Dar Baixa
+                      </Button>
+                      {isMaster && (
+                        <Button size="sm" variant="destructive" className="gap-1.5" disabled={isBulkPayableAction} onClick={handleBulkDeletePayables}>
+                          {isBulkPayableAction ? <Loader2 className="h-4 w-4 animate-spin" /> : <Trash2 className="h-4 w-4" />}
+                          Excluir
+                        </Button>
+                      )}
+                    </div>
+                  </CardContent>
+                </Card>
+              )}
+
               <Card>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
                     <Table>
                       <TableHeader>
                         <TableRow>
+                          <TableHead className="w-10">
+                            <Checkbox
+                              checked={filteredPayables.length > 0 && filteredPayables.every(p => selectedPayableIds.has(p.id))}
+                              onCheckedChange={(checked) => {
+                                if (checked) {
+                                  setSelectedPayableIds(new Set(filteredPayables.map(p => p.id)));
+                                } else {
+                                  setSelectedPayableIds(new Set());
+                                }
+                              }}
+                            />
+                          </TableHead>
                           <TableHead>Descrição</TableHead>
                           <TableHead className="text-right">Valor</TableHead>
                           <TableHead>Vencimento</TableHead>
@@ -1109,9 +1232,19 @@ export default function AllRecurringChargesPage() {
                       </TableHeader>
                       <TableBody>
                         {filteredPayables.length === 0 ? (
-                          <TableRow><TableCell colSpan={6} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={7} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
                         ) : filteredPayables.map(p => (
-                          <TableRow key={p.id}>
+                          <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
+                            <TableCell>
+                              <Checkbox
+                                checked={selectedPayableIds.has(p.id)}
+                                onCheckedChange={(checked) => {
+                                  const next = new Set(selectedPayableIds);
+                                  if (checked) { next.add(p.id); } else { next.delete(p.id); }
+                                  setSelectedPayableIds(next);
+                                }}
+                              />
+                            </TableCell>
                             <TableCell className="font-medium max-w-[250px] truncate">{p.description}</TableCell>
                             <TableCell className="text-right font-semibold">{formatCurrency(p.amount)}</TableCell>
                             <TableCell>{p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
