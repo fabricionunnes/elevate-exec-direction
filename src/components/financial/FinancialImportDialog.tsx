@@ -213,8 +213,8 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
 
           const catName = getVal(row, "category").toLowerCase().trim();
           const ccName = getVal(row, "cost_center").toLowerCase().trim();
-          const statusRaw = getVal(row, "status").toLowerCase();
-          const status = statusRaw === "pago" || statusRaw === "paid" ? "paid" : statusRaw === "vencido" || statusRaw === "overdue" ? "overdue" : "pending";
+          const statusRaw = getVal(row, "status").toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").trim();
+          const status = ["quitado", "pago", "paid", "recebido", "liquidado"].includes(statusRaw) ? "paid" : ["vencido", "overdue", "em atraso", "atrasado"].includes(statusRaw) ? "overdue" : ["cancelado", "estornado"].includes(statusRaw) ? "cancelled" : "pending";
 
           if (type === "receivable") {
             const companyName = getVal(row, "company_name").toLowerCase().trim();
