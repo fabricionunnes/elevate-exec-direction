@@ -29,13 +29,14 @@ Deno.serve(async (req) => {
     const url = new URL(req.url);
     let action = url.searchParams.get("action");
     let returnUrl = "";
+    let requestBody: any = {};
     
     // Also check request body for action and returnUrl
     if (req.method === "POST") {
       try {
-        const body = await req.json();
-        if (body?.action) action = body.action;
-        if (body?.returnUrl) returnUrl = body.returnUrl;
+        requestBody = await req.json();
+        if (requestBody?.action) action = requestBody.action;
+        if (requestBody?.returnUrl) returnUrl = requestBody.returnUrl;
       } catch {
         // No valid JSON body
       }
@@ -236,6 +237,170 @@ Deno.serve(async (req) => {
           { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
+    }
+
+    // ACTION: Create or update entry in Conta Azul
+    if (action === "create-entry") {
+      const { data: integration } = await supabase
+        .from("financial_integrations")
+        .select("*")
+        .eq("integration_type", "conta_azul")
+        .eq("is_active", true)
+        .single();
+
+      if (!integration) {
+        return new Response(
+          JSON.stringify({ error: "Conta Azul not connected" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const config = integration.config as any;
+      let accessToken = config?.access_token;
+
+      // Refresh token if expired
+      if (config?.expires_at && new Date(config.expires_at) < new Date()) {
+        const refreshResult = await refreshToken(clientId, clientSecret, config.refresh_token);
+        if (refreshResult.error) {
+          return new Response(JSON.stringify({ error: "Token refresh failed" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        accessToken = refreshResult.access_token;
+        await supabase.from("financial_integrations").update({
+          config: { ...config, access_token: refreshResult.access_token, refresh_token: refreshResult.refresh_token || config.refresh_token, expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString() },
+        }).eq("integration_type", "conta_azul");
+      }
+
+      const entryType = requestBody.type; // "receivable" or "payable"
+      const entryData = requestBody.data;
+      const contaAzulId = requestBody.conta_azul_id;
+
+      const baseUrl = entryType === "receivable"
+        ? "https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber"
+        : "https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-pagar";
+
+      const method = contaAzulId ? "PUT" : "POST";
+      const apiUrl = contaAzulId ? `${baseUrl}/${contaAzulId}` : baseUrl;
+
+      const payload: any = {
+        descricao: entryData.description || "Lançamento",
+        valor_bruto: entryData.amount || 0,
+        data_vencimento: entryData.due_date,
+      };
+      if (entryData.client_name) payload.contato_nome = entryData.client_name;
+      if (entryData.supplier_name) payload.contato_nome = entryData.supplier_name;
+
+      console.log(`Conta Azul ${method} ${apiUrl}`, JSON.stringify(payload));
+
+      const response = await fetch(apiUrl, {
+        method,
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      console.log(`Conta Azul create-entry response ${response.status}:`, responseText.substring(0, 500));
+
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: "Conta Azul API error", details: responseText.substring(0, 300) }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      let result: any = {};
+      try { result = JSON.parse(responseText); } catch {}
+
+      return new Response(
+        JSON.stringify({ success: true, conta_azul_id: result.id || contaAzulId }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    // ACTION: Confirm payment (baixa) in Conta Azul
+    if (action === "confirm-payment") {
+      const { data: integration } = await supabase
+        .from("financial_integrations")
+        .select("*")
+        .eq("integration_type", "conta_azul")
+        .eq("is_active", true)
+        .single();
+
+      if (!integration) {
+        return new Response(
+          JSON.stringify({ error: "Conta Azul not connected" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const config = integration.config as any;
+      let accessToken = config?.access_token;
+
+      if (config?.expires_at && new Date(config.expires_at) < new Date()) {
+        const refreshResult = await refreshToken(clientId, clientSecret, config.refresh_token);
+        if (refreshResult.error) {
+          return new Response(JSON.stringify({ error: "Token refresh failed" }), {
+            status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        accessToken = refreshResult.access_token;
+        await supabase.from("financial_integrations").update({
+          config: { ...config, access_token: refreshResult.access_token, refresh_token: refreshResult.refresh_token || config.refresh_token, expires_at: new Date(Date.now() + refreshResult.expires_in * 1000).toISOString() },
+        }).eq("integration_type", "conta_azul");
+      }
+
+      const contaAzulId = requestBody.conta_azul_id;
+      const paymentType = requestBody.type; // "receivable" or "payable"
+      const paidAt = requestBody.paid_at;
+      const paidAmount = requestBody.paid_amount;
+
+      if (!contaAzulId) {
+        return new Response(
+          JSON.stringify({ error: "conta_azul_id is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const baseUrl = paymentType === "receivable"
+        ? `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-receber/${contaAzulId}/receber`
+        : `https://api-v2.contaazul.com/v1/financeiro/eventos-financeiros/contas-a-pagar/${contaAzulId}/pagar`;
+
+      const payload: any = {
+        data_pagamento: paidAt || new Date().toISOString().split("T")[0],
+      };
+      if (paidAmount) payload.valor_pago = paidAmount;
+
+      console.log(`Conta Azul confirm-payment POST ${baseUrl}`, JSON.stringify(payload));
+
+      const response = await fetch(baseUrl, {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${accessToken}`,
+          "Content-Type": "application/json",
+          "Accept": "application/json",
+        },
+        body: JSON.stringify(payload),
+      });
+
+      const responseText = await response.text();
+      console.log(`Conta Azul confirm-payment response ${response.status}:`, responseText.substring(0, 500));
+
+      if (!response.ok) {
+        return new Response(
+          JSON.stringify({ error: "Conta Azul payment API error", details: responseText.substring(0, 300) }),
+          { status: response.status, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
     }
 
     return new Response(
