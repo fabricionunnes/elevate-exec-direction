@@ -65,6 +65,8 @@ export function CompanyRecurringCharges({
   customerDocument: companyDocument,
 }: Props) {
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
+  const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
+  const [costCenters, setCostCenters] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [showDialog, setShowDialog] = useState(false);
   const [saving, setSaving] = useState(false);
@@ -91,11 +93,23 @@ export function CompanyRecurringCharges({
     customerPhone: customerPhone || "",
     customerDocument: companyDocument || "",
     notes: "",
+    categoryId: "",
+    costCenterId: "",
   });
 
   useEffect(() => {
     fetchCharges();
+    fetchCategoriesAndCostCenters();
   }, [companyId]);
+
+  const fetchCategoriesAndCostCenters = async () => {
+    const [catRes, ccRes] = await Promise.all([
+      supabase.from("financial_categories").select("id, name").eq("type", "income").eq("is_active", true).order("sort_order"),
+      supabase.from("staff_financial_cost_centers").select("id, name").eq("is_active", true).order("name"),
+    ]);
+    setCategories(catRes.data || []);
+    setCostCenters(ccRes.data || []);
+  };
 
   const fetchCharges = async () => {
     const { data, error } = await supabase
@@ -141,6 +155,8 @@ export function CompanyRecurringCharges({
         customer_document: form.customerDocument || null,
         notes: form.notes || null,
         created_by: user?.id,
+        category_id: form.categoryId || null,
+        cost_center_id: form.costCenterId || null,
       } as any).select().single();
 
       if (error) throw error;
@@ -377,6 +393,30 @@ export function CompanyRecurringCharges({
                     placeholder="000.000.000-00"
                     required
                   />
+                </div>
+                <div className="grid grid-cols-2 gap-4">
+                  <div className="space-y-2">
+                    <Label>Categoria</Label>
+                    <Select value={form.categoryId} onValueChange={(v) => setForm({ ...form, categoryId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {categories.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="space-y-2">
+                    <Label>Centro de Custo</Label>
+                    <Select value={form.costCenterId} onValueChange={(v) => setForm({ ...form, costCenterId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {costCenters.map((c) => (
+                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
                 </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}

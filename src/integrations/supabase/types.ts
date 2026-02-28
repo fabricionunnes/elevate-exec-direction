@@ -9958,7 +9958,9 @@ export type Database = {
       company_recurring_charges: {
         Row: {
           amount_cents: number
+          category_id: string | null
           company_id: string
+          cost_center_id: string | null
           created_at: string
           created_by: string | null
           customer_document: string | null
@@ -9980,7 +9982,9 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          category_id?: string | null
           company_id: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_document?: string | null
@@ -10002,7 +10006,9 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          category_id?: string | null
           company_id?: string
+          cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_document?: string | null
@@ -10024,10 +10030,24 @@ export type Database = {
         }
         Relationships: [
           {
+            foreignKeyName: "company_recurring_charges_category_id_fkey"
+            columns: ["category_id"]
+            isOneToOne: false
+            referencedRelation: "financial_categories"
+            referencedColumns: ["id"]
+          },
+          {
             foreignKeyName: "company_recurring_charges_company_id_fkey"
             columns: ["company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "company_recurring_charges_cost_center_id_fkey"
+            columns: ["cost_center_id"]
+            isOneToOne: false
+            referencedRelation: "staff_financial_cost_centers"
             referencedColumns: ["id"]
           },
         ]
