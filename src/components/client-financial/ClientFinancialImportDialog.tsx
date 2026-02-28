@@ -169,11 +169,58 @@ function parseNumber(val: any): number {
 
 function mapStatus(raw: string | null): string {
   if (!raw) return "open";
-  const lower = raw.toLowerCase().trim();
-  if (lower === "quitado" || lower === "pago" || lower === "recebido") return "paid";
-  if (lower === "vencido" || lower === "em atraso") return "overdue";
-  if (lower === "cancelado") return "cancelled";
+  const lower = raw.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+  if (["quitado", "pago", "recebido", "liquidado"].includes(lower)) return "paid";
+  if (["vencido", "em atraso", "atrasado"].includes(lower)) return "overdue";
+  if (["cancelado", "estornado"].includes(lower)) return "cancelled";
   return "open";
+}
+
+const STATUS_KEYWORDS = ["quitado", "pendente", "vencido", "pago", "recebido", "em aberto", "cancelado", "liquidado", "atrasado"];
+
+function normalizeHeader(h: string): string {
+  return h.toLowerCase().trim()
+    .normalize("NFD").replace(/[\u0300-\u036f]/g, "")
+    .replace(/[()]/g, "").replace(/\s+/g, " ").trim();
+}
+
+function findColumnKey(normalized: string, columnMap: Record<string, string>): string | undefined {
+  // Level 1: exact match
+  const exactKey = Object.keys(columnMap).find(k => {
+    const nk = normalizeHeader(k);
+    return nk === normalized;
+  });
+  if (exactKey) return exactKey;
+
+  // Level 2: startsWith
+  const startsKey = Object.keys(columnMap).find(k => {
+    const nk = normalizeHeader(k);
+    return normalized.startsWith(nk) || nk.startsWith(normalized);
+  });
+  if (startsKey) return startsKey;
+
+  // Level 3: includes (only if substring >= 6 chars to avoid false positives)
+  const includesKey = Object.keys(columnMap).find(k => {
+    const nk = normalizeHeader(k);
+    if (nk.length < 6 && normalized.length < 6) return false;
+    return (nk.length >= 6 && normalized.includes(nk)) || (normalized.length >= 6 && nk.includes(normalized));
+  });
+  return includesKey;
+}
+
+function detectStatusColumnByContent(rows: Record<string, any>[], mappedFields: Set<string>, rawHeaders: string[]): string | null {
+  const unmappedHeaders = rawHeaders.filter(h => !mappedFields.has(h));
+  for (const header of unmappedHeaders) {
+    const sampleValues = rows.slice(0, Math.min(20, rows.length))
+      .map(r => String(r[header] || "").toLowerCase().trim().normalize("NFD").replace(/[\u0300-\u036f]/g, ""));
+    const matchCount = sampleValues.filter(v => STATUS_KEYWORDS.some(kw => v.includes(kw))).length;
+    if (matchCount >= Math.min(3, sampleValues.length * 0.3)) {
+      console.log(`[Import] Detected status column by content: "${header}"`);
+      return header;
+    }
+  }
+  return null;
 }
 
 export function ClientFinancialImportDialog({ open, onOpenChange, projectId, type, onImported }: Props) {
@@ -205,41 +252,51 @@ export function ClientFinancialImportDialog({ open, onOpenChange, projectId, typ
           return;
         }
 
-        // Map headers
+        // Map headers using improved matching
         const rawHeaders = Object.keys(jsonData[0]);
         const mapped: string[] = [];
         const unmapped: string[] = [];
+        const headerToField = new Map<string, string>();
 
         rawHeaders.forEach((h) => {
-          const normalized = h.toLowerCase().trim()
-            .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-          // Try exact match first, then fuzzy
-          const key = Object.keys(columnMap).find((k) => {
-            const normalizedKey = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            return normalizedKey === normalized || normalized.includes(normalizedKey) || normalizedKey.includes(normalized);
-          });
+          const normalized = normalizeHeader(h);
+          const key = findColumnKey(normalized, columnMap);
           if (key) {
             mapped.push(h);
+            headerToField.set(h, columnMap[key]);
           } else {
             unmapped.push(h);
           }
         });
 
+        // Check if status_raw was mapped
+        const statusMapped = Array.from(headerToField.values()).includes("status_raw");
+        let statusColumnHeader: string | null = null;
+
+        if (!statusMapped) {
+          console.log("[Import] status_raw not mapped via headers, trying content detection...");
+          statusColumnHeader = detectStatusColumnByContent(jsonData, new Set(mapped), rawHeaders);
+          if (statusColumnHeader) {
+            mapped.push(statusColumnHeader);
+            unmapped.splice(unmapped.indexOf(statusColumnHeader), 1);
+            headerToField.set(statusColumnHeader, "status_raw");
+          }
+        }
+
+        if (unmapped.length > 0) {
+          console.log("[Import] Unmapped headers:", unmapped);
+        }
+
         setMappedHeaders(mapped);
         setUnmappedHeaders(unmapped);
 
-        // Parse rows
+        // Parse rows using headerToField map
         const rows = jsonData.map((row) => {
           const parsed: ParsedRow = {};
           rawHeaders.forEach((h) => {
-            const normalized = h.toLowerCase().trim()
-              .normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-            const key = Object.keys(columnMap).find((k) => {
-              const normalizedKey = k.normalize("NFD").replace(/[\u0300-\u036f]/g, "");
-              return normalizedKey === normalized || normalized.includes(normalizedKey) || normalizedKey.includes(normalized);
-            });
-            if (key) {
-              parsed[columnMap[key]] = row[h];
+            const field = headerToField.get(h);
+            if (field) {
+              parsed[field] = row[h];
             }
           });
           return parsed;
@@ -356,7 +413,17 @@ export function ClientFinancialImportDialog({ open, onOpenChange, projectId, typ
             continue;
           }
 
-          const status = mapStatus(row.status_raw as string);
+          let status = mapStatus(row.status_raw as string);
+          
+          // Fallback: infer status from payment evidence
+          if (status === "open") {
+            const paidAmount = parseNumber(row.paid_amount);
+            const paidAt = parseDate(row.paid_at);
+            if (paidAmount > 0 || paidAt) {
+              status = "paid";
+              console.log(`[Import] Inferred status=paid from payment data for row`);
+            }
+          }
           const categoryId = await findCategoryByName(row.category_name as string);
           const costCenterId = await findCostCenterByName(row.cost_center_name as string);
           const paymentMethodId = await findPaymentMethodByName(row.payment_method_name as string);
