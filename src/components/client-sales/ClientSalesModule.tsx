@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { syncEntryToContaAzul } from "@/utils/contaAzulSync";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -415,6 +416,14 @@ export function ClientSalesModule({ projectId, userRole, salespersonId }: Props)
           });
         }
       }
+
+      // Sync sale to Conta Azul as receivable (non-blocking)
+      syncEntryToContaAzul("receivable", {
+        description: `Venda #${sale.id.slice(0, 8)} - ${formData.customer_name || "Cliente"}`,
+        amount: finalAmount,
+        due_date: formData.sale_date,
+        client_name: formData.customer_name || "Cliente",
+      });
 
       toast.success("Venda registrada com sucesso!");
       setShowDialog(false);
