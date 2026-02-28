@@ -1,0 +1,2 @@
+ALTER TABLE company_invoices DROP CONSTRAINT company_invoices_category_id_fkey;
+ALTER TABLE company_invoices ADD CONSTRAINT company_invoices_category_id_fkey FOREIGN KEY (category_id) REFERENCES financial_categories(id);

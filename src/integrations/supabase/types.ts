@@ -9837,7 +9837,7 @@ export type Database = {
             foreignKeyName: "company_invoices_category_id_fkey"
             columns: ["category_id"]
             isOneToOne: false
-            referencedRelation: "staff_financial_categories"
+            referencedRelation: "financial_categories"
             referencedColumns: ["id"]
           },
           {
