@@ -802,7 +802,7 @@ export default function AllRecurringChargesPage() {
                                           const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
                                           const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                                           const customerName = inv.company_name || "";
-                                          const msg = `Olá ${customerName}! 👋\n\nSeja muito bem-vindo(a)! Estamos felizes em tê-lo(a) conosco. 🎉\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\nAcesse o link abaixo para realizar o pagamento:\n\n🔗 ${inv.payment_link_url}\n\nQualquer dúvida, estamos à disposição! ✨`;
+                                          const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
                                           try {
                                             const { data: { session } } = await supabase.auth.getSession();
                                             if (!session) throw new Error("Não autenticado");
