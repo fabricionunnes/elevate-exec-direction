@@ -7684,19 +7684,34 @@ export type Database = {
           attachment_url: string | null
           bank_account_id: string | null
           category_id: string | null
+          competence_date: string | null
           cost_center_id: string | null
           created_at: string
           created_by: string | null
           description: string | null
+          discount_expected: number | null
+          discount_paid: number | null
           due_date: string
+          entity_identifier: string | null
+          expected_date: string | null
           id: string
           installment_number: number | null
+          interest_expected: number | null
+          interest_paid: number | null
+          invoice_number: string | null
           notes: string | null
+          origin: string | null
           paid_amount: number | null
           paid_at: string | null
           parent_id: string | null
           payment_method_id: string | null
+          penalty_expected: number | null
+          penalty_paid: number | null
           project_id: string
+          recurrence_count: number | null
+          recurrence_type: string | null
+          reference_code: string | null
+          scheduled: boolean | null
           status: string
           supplier_name: string
           total_installments: number | null
@@ -7707,19 +7722,34 @@ export type Database = {
           attachment_url?: string | null
           bank_account_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          discount_expected?: number | null
+          discount_paid?: number | null
           due_date: string
+          entity_identifier?: string | null
+          expected_date?: string | null
           id?: string
           installment_number?: number | null
+          interest_expected?: number | null
+          interest_paid?: number | null
+          invoice_number?: string | null
           notes?: string | null
+          origin?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           parent_id?: string | null
           payment_method_id?: string | null
+          penalty_expected?: number | null
+          penalty_paid?: number | null
           project_id: string
+          recurrence_count?: number | null
+          recurrence_type?: string | null
+          reference_code?: string | null
+          scheduled?: boolean | null
           status?: string
           supplier_name: string
           total_installments?: number | null
@@ -7730,19 +7760,34 @@ export type Database = {
           attachment_url?: string | null
           bank_account_id?: string | null
           category_id?: string | null
+          competence_date?: string | null
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           description?: string | null
+          discount_expected?: number | null
+          discount_paid?: number | null
           due_date?: string
+          entity_identifier?: string | null
+          expected_date?: string | null
           id?: string
           installment_number?: number | null
+          interest_expected?: number | null
+          interest_paid?: number | null
+          invoice_number?: string | null
           notes?: string | null
+          origin?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           parent_id?: string | null
           payment_method_id?: string | null
+          penalty_expected?: number | null
+          penalty_paid?: number | null
           project_id?: string
+          recurrence_count?: number | null
+          recurrence_type?: string | null
+          reference_code?: string | null
+          scheduled?: boolean | null
           status?: string
           supplier_name?: string
           total_installments?: number | null
@@ -7895,20 +7940,35 @@ export type Database = {
           bank_account_id: string | null
           category_id: string | null
           client_name: string
+          competence_date: string | null
           cost_center_id: string | null
           created_at: string
           created_by: string | null
           customer_id: string | null
           description: string | null
+          discount_expected: number | null
+          discount_paid: number | null
           due_date: string
+          entity_identifier: string | null
+          expected_date: string | null
           id: string
           installment_number: number | null
+          interest_expected: number | null
+          interest_paid: number | null
+          invoice_number: string | null
           notes: string | null
+          origin: string | null
           paid_amount: number | null
           paid_at: string | null
           parent_id: string | null
           payment_method_id: string | null
+          penalty_expected: number | null
+          penalty_paid: number | null
           project_id: string
+          recurrence_count: number | null
+          recurrence_type: string | null
+          reference_code: string | null
+          scheduled: boolean | null
           status: string
           total_installments: number | null
           updated_at: string
@@ -7919,20 +7979,35 @@ export type Database = {
           bank_account_id?: string | null
           category_id?: string | null
           client_name: string
+          competence_date?: string | null
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           description?: string | null
+          discount_expected?: number | null
+          discount_paid?: number | null
           due_date: string
+          entity_identifier?: string | null
+          expected_date?: string | null
           id?: string
           installment_number?: number | null
+          interest_expected?: number | null
+          interest_paid?: number | null
+          invoice_number?: string | null
           notes?: string | null
+          origin?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           parent_id?: string | null
           payment_method_id?: string | null
+          penalty_expected?: number | null
+          penalty_paid?: number | null
           project_id: string
+          recurrence_count?: number | null
+          recurrence_type?: string | null
+          reference_code?: string | null
+          scheduled?: boolean | null
           status?: string
           total_installments?: number | null
           updated_at?: string
@@ -7943,20 +8018,35 @@ export type Database = {
           bank_account_id?: string | null
           category_id?: string | null
           client_name?: string
+          competence_date?: string | null
           cost_center_id?: string | null
           created_at?: string
           created_by?: string | null
           customer_id?: string | null
           description?: string | null
+          discount_expected?: number | null
+          discount_paid?: number | null
           due_date?: string
+          entity_identifier?: string | null
+          expected_date?: string | null
           id?: string
           installment_number?: number | null
+          interest_expected?: number | null
+          interest_paid?: number | null
+          invoice_number?: string | null
           notes?: string | null
+          origin?: string | null
           paid_amount?: number | null
           paid_at?: string | null
           parent_id?: string | null
           payment_method_id?: string | null
+          penalty_expected?: number | null
+          penalty_paid?: number | null
           project_id?: string
+          recurrence_count?: number | null
+          recurrence_type?: string | null
+          reference_code?: string | null
+          scheduled?: boolean | null
           status?: string
           total_installments?: number | null
           updated_at?: string

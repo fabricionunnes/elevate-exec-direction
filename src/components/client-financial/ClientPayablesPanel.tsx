@@ -48,10 +48,12 @@ import {
   AlertTriangle,
   Clock,
   Split,
+  Upload,
 } from "lucide-react";
 import { format } from "date-fns";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import type { FinancialPayable, FinancialCategory, FinancialPaymentMethod, FinancialCostCenter, FinancialBankAccount } from "./types";
+import { ClientFinancialImportDialog } from "./ClientFinancialImportDialog";
 
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
 const parseDateLocal = (dateStr: string): Date => {
@@ -83,6 +85,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
   const [showPayDialog, setShowPayDialog] = useState(false);
   const [showEditDialog, setShowEditDialog] = useState(false);
   const [showInstallmentDialog, setShowInstallmentDialog] = useState(false);
+  const [showImportDialog, setShowImportDialog] = useState(false);
   const [selectedItem, setSelectedItem] = useState<FinancialPayable | null>(null);
   const [formData, setFormData] = useState({
     supplier_name: "",
@@ -456,10 +459,16 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
           <p className="text-sm text-muted-foreground">Gerencie suas despesas e pagamentos</p>
         </div>
         {canEdit && (
-          <Button onClick={() => setShowAddDialog(true)}>
-            <Plus className="h-4 w-4 mr-2" />
-            Nova Despesa
-          </Button>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={() => setShowImportDialog(true)}>
+              <Upload className="h-4 w-4 mr-2" />
+              Importar
+            </Button>
+            <Button onClick={() => setShowAddDialog(true)}>
+              <Plus className="h-4 w-4 mr-2" />
+              Nova Despesa
+            </Button>
+          </div>
         )}
       </div>
 
@@ -920,6 +929,14 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      <ClientFinancialImportDialog
+        open={showImportDialog}
+        onOpenChange={setShowImportDialog}
+        projectId={projectId}
+        type="payables"
+        onImported={loadData}
+      />
     </div>
   );
 }
