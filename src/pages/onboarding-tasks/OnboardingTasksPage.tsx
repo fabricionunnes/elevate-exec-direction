@@ -1132,6 +1132,11 @@ const OnboardingTasksPage = () => {
         }
       }
       
+      // Hide companies without any projects from the dashboard
+      if (!company.projects || company.projects.length === 0) {
+        return false;
+      }
+      
       // For consultants: only show companies where they are the consultant or CS
       // Check both company-level AND project-level assignments
       if (currentUserRole === "consultant" && currentStaffId) {
