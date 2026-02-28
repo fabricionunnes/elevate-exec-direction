@@ -393,6 +393,13 @@ Deno.serve(async (req) => {
       const brNow = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
       const today = `${brNow.getFullYear()}-${String(brNow.getMonth() + 1).padStart(2, "0")}-${String(brNow.getDate()).padStart(2, "0")}`;
 
+      // First, fix any invoices that were incorrectly marked overdue but are due today or in the future
+      await supabase
+        .from("company_invoices")
+        .update({ status: "pending", late_fee_cents: 0, interest_cents: 0, total_with_fees_cents: 0 })
+        .eq("status", "overdue")
+        .gte("due_date", today);
+
       const { data: overdueInvoices } = await supabase
         .from("company_invoices")
         .select("*")
