@@ -71,6 +71,7 @@ interface Receivable {
   notes: string | null;
   company?: { name: string } | null;
   category?: { name: string; color: string } | null;
+  project_status?: string | null;
 }
 
 interface Company {
@@ -151,7 +152,27 @@ export function ReceivablesPanel() {
         .eq("is_active", true)
         .order("sort_order");
 
-      setReceivables(receivablesData || []);
+      // Load project statuses by company
+      const companyIds = [...new Set((receivablesData || []).map(r => r.company_id).filter(Boolean))];
+      const projectStatusMap: Record<string, string> = {};
+      if (companyIds.length > 0) {
+        const { data: projects } = await supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id, status")
+          .in("onboarding_company_id", companyIds);
+        projects?.forEach(p => {
+          if (p.onboarding_company_id) {
+            projectStatusMap[p.onboarding_company_id] = p.status;
+          }
+        });
+      }
+
+      const enrichedReceivables = (receivablesData || []).map(r => ({
+        ...r,
+        project_status: r.company_id ? projectStatusMap[r.company_id] || null : null
+      }));
+
+      setReceivables(enrichedReceivables);
       setCompanies(companiesData || []);
       setCategories(categoriesData || []);
 
@@ -380,7 +401,21 @@ export function ReceivablesPanel() {
     }
   };
 
-  // Only show recurring receivables from January 2025 onwards
+  const getProjectStatusBadge = (status: string | null | undefined) => {
+    if (!status) return <span className="text-muted-foreground text-xs">—</span>;
+    const map: Record<string, { label: string; className: string }> = {
+      active: { label: "Ativo", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20" },
+      notice: { label: "Aviso", className: "bg-amber-500/10 text-amber-600 border-amber-500/20" },
+      cancellation_signaled: { label: "Cancel. Sinalizado", className: "bg-orange-500/10 text-orange-600 border-orange-500/20" },
+      closed: { label: "Encerrado", className: "bg-red-500/10 text-red-600 border-red-500/20" },
+      completed: { label: "Concluído", className: "bg-blue-500/10 text-blue-600 border-blue-500/20" },
+      paused: { label: "Pausado", className: "bg-gray-500/10 text-gray-600 border-gray-500/20" },
+    };
+    const s = map[status] || { label: status, className: "bg-gray-500/10 text-gray-600 border-gray-500/20" };
+    return <Badge className={`text-[10px] ${s.className}`}>{s.label}</Badge>;
+  };
+
+
   const minDate = "2025-01";
   
   const filteredReceivables = receivables.filter((r) => {
@@ -656,13 +691,14 @@ export function ReceivablesPanel() {
                 <TableHead>Vencimento</TableHead>
                 <TableHead className="text-right">Valor</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Projeto</TableHead>
                 <TableHead className="w-[50px]"></TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
               {filteredReceivables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta a receber encontrada
                   </TableCell>
                 </TableRow>
@@ -685,6 +721,7 @@ export function ReceivablesPanel() {
                       {formatCurrency(receivable.amount)}
                     </TableCell>
                     <TableCell>{getStatusBadge(receivable.status, receivable.due_date)}</TableCell>
+                    <TableCell>{getProjectStatusBadge(receivable.project_status)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
