@@ -963,9 +963,12 @@ Deno.serve(async (req) => {
 
       case 'send-text': {
         // Send text message
-        const { instanceName, number, text, delay } = body;
+        const { instanceName, text, delay } = body;
+        // Normalize BR phone: ensure 55 prefix
+        const rawNumber = String(body.number || '').replace(/\D/g, '');
+        const number = rawNumber.startsWith('55') ? rawNumber : `55${rawNumber}`;
         
-        if (!instanceName || !number || !text) {
+        if (!instanceName || !rawNumber || !text) {
           return new Response(
             JSON.stringify({ error: 'instanceName, number, and text are required' }),
             { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
