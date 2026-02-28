@@ -45,7 +45,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Load all pending/overdue invoices with company info
+    // 3. Load all pending/overdue invoices with company info + recurring charge Asaas link
     const { data: invoices, error: invError } = await supabase
       .from("company_invoices")
       .select(`
@@ -61,7 +61,8 @@ Deno.serve(async (req) => {
         interest_cents,
         installment_number,
         total_installments,
-        company_id
+        company_id,
+        recurring_charge_id
       `)
       .in("status", ["pending", "overdue"]);
 
@@ -71,6 +72,46 @@ Deno.serve(async (req) => {
         JSON.stringify({ sent: 0, message: "No pending invoices" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // 3b. For invoices without an Asaas payment_link_url, try to fetch from Asaas subscription
+    const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY") || "";
+    if (ASAAS_API_KEY) {
+      for (const inv of invoices) {
+        // Skip if already has an Asaas URL
+        if (inv.payment_link_url && inv.payment_link_url.includes("asaas")) continue;
+
+        // Try to get from recurring charge's subscription
+        if (inv.recurring_charge_id) {
+          try {
+            const { data: charge } = await supabase
+              .from("company_recurring_charges")
+              .select("pagarme_plan_id")
+              .eq("id", inv.recurring_charge_id)
+              .single();
+
+            if (charge?.pagarme_plan_id) {
+              const subsResp = await fetch(
+                `https://api.asaas.com/v3/subscriptions/${charge.pagarme_plan_id}/payments?status=PENDING&dueDate=${inv.due_date}`,
+                { headers: { "access_token": ASAAS_API_KEY } }
+              );
+              if (subsResp.ok) {
+                const subsData = await subsResp.json();
+                const payment = subsData.data?.[0];
+                if (payment?.invoiceUrl) {
+                  inv.payment_link_url = payment.invoiceUrl;
+                  // Also persist for future use
+                  await supabase.from("company_invoices")
+                    .update({ payment_link_url: payment.invoiceUrl })
+                    .eq("id", inv.id);
+                }
+              }
+            }
+          } catch (e) {
+            console.error(`[billing-notifications] Error fetching Asaas URL for invoice ${inv.id}:`, e);
+          }
+        }
+      }
     }
 
     // 4. Load companies for phone + name
