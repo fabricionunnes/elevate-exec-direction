@@ -378,6 +378,11 @@ export default function AllRecurringChargesPage() {
       if (fnError) { toast.success("Baixa local realizada (erro ao sincronizar com Asaas)"); }
       else if (data?.skipped) { toast.success("Baixa realizada localmente"); }
       else { toast.success("Baixa realizada e sincronizada com Asaas ✓"); }
+      // Sync payment to Conta Azul
+      const invAny = inv as any;
+      if (invAny?.conta_azul_id) {
+        syncPaymentToContaAzul(invAny.conta_azul_id, "receivable", today, paidAmount ? paidAmount / 100 : undefined);
+      }
       await loadData();
     } catch (err: any) {
       toast.error("Erro ao dar baixa: " + (err.message || "erro"));
@@ -923,6 +928,11 @@ export default function AllRecurringChargesPage() {
                               await supabase.from("company_invoices").update({
                                 status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: 199,
                               } as any).eq("id", inv.id);
+                              // Sync to Conta Azul
+                              const invAny = inv as any;
+                              if (invAny?.conta_azul_id) {
+                                syncPaymentToContaAzul(invAny.conta_azul_id, "receivable", today, paidAmount ? paidAmount / 100 : undefined);
+                              }
                             }
                             toast.success(`${selected.length} fatura(s) confirmada(s) como paga(s)`);
                             setSelectedInvoiceIds(new Set());
