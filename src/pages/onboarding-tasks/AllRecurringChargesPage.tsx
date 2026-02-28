@@ -810,9 +810,9 @@ export default function AllRecurringChargesPage() {
                           {dateFrom ? format(dateFrom, "dd/MM/yyyy") : "De"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} />
-                      </PopoverContent>
+                       <PopoverContent className="w-auto p-0" align="start">
+                         <Calendar mode="single" selected={dateFrom} onSelect={setDateFrom} locale={ptBR} captionLayout="dropdown-buttons" fromYear={2024} toYear={2030} className={cn("p-3 pointer-events-auto")} />
+                       </PopoverContent>
                     </Popover>
                     <Popover>
                       <PopoverTrigger asChild>
@@ -821,9 +821,9 @@ export default function AllRecurringChargesPage() {
                           {dateTo ? format(dateTo, "dd/MM/yyyy") : "Até"}
                         </Button>
                       </PopoverTrigger>
-                      <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} />
-                      </PopoverContent>
+                       <PopoverContent className="w-auto p-0" align="start">
+                         <Calendar mode="single" selected={dateTo} onSelect={setDateTo} locale={ptBR} captionLayout="dropdown-buttons" fromYear={2024} toYear={2030} className={cn("p-3 pointer-events-auto")} />
+                       </PopoverContent>
                     </Popover>
                   </div>
                 </CardContent>
@@ -1199,7 +1199,7 @@ export default function AllRecurringChargesPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={payableDateFrom} onSelect={setPayableDateFrom} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
+                        <Calendar mode="single" selected={payableDateFrom} onSelect={setPayableDateFrom} locale={ptBR} captionLayout="dropdown-buttons" fromYear={2024} toYear={2030} className={cn("p-3 pointer-events-auto")} />
                       </PopoverContent>
                     </Popover>
                     <Popover>
@@ -1210,7 +1210,7 @@ export default function AllRecurringChargesPage() {
                         </Button>
                       </PopoverTrigger>
                       <PopoverContent className="w-auto p-0" align="start">
-                        <Calendar mode="single" selected={payableDateTo} onSelect={setPayableDateTo} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
+                        <Calendar mode="single" selected={payableDateTo} onSelect={setPayableDateTo} locale={ptBR} captionLayout="dropdown-buttons" fromYear={2024} toYear={2030} className={cn("p-3 pointer-events-auto")} />
                       </PopoverContent>
                     </Popover>
                   </div>
