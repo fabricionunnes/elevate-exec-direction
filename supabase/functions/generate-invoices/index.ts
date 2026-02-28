@@ -274,7 +274,8 @@ Deno.serve(async (req) => {
 
     const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY") || null;
 
-    const { recurring_charge_id, company_id, action } = await req.json();
+    const reqBody = await req.json();
+    const { recurring_charge_id, company_id, action } = reqBody;
 
     // Action: generate invoices for a recurring charge
     if (action === "generate" && recurring_charge_id) {
@@ -727,7 +728,7 @@ Deno.serve(async (req) => {
     // Accepts optional signal_date (ISO string) — the date the client signaled cancellation.
     // Invoices due within 30 days of signal_date are kept (they're owed), the rest are deleted.
     if (action === "cleanup_future_invoices" && recurring_charge_id) {
-      const signalDate = body.signal_date ? new Date(body.signal_date) : new Date();
+      const signalDate = reqBody.signal_date ? new Date(reqBody.signal_date) : new Date();
       const cutoffDate = new Date(signalDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
 
