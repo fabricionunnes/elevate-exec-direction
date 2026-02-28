@@ -319,6 +319,22 @@ const OnboardingCompanyDetailPage = () => {
         toast.success("Empresa cadastrada com sucesso");
         navigate(`/onboarding-tasks/companies/${data.id}`);
       } else {
+        // If transitioning to "closed", capture the previous status_changed_at BEFORE saving
+        // (because the trigger will overwrite it with the new date)
+        let cancellationSignalDate: string | null = null;
+        const willClose = form.status === "closed" && originalStatusRef.current !== "closed";
+        if (willClose && companyId) {
+          const { data: prevData } = await supabase
+            .from("onboarding_companies")
+            .select("status_changed_at, status")
+            .eq("id", companyId)
+            .single();
+          // Only use the previous date if company was in cancellation_signaled state
+          if (prevData?.status === "cancellation_signaled" && prevData?.status_changed_at) {
+            cancellationSignalDate = prevData.status_changed_at;
+          }
+        }
+
         const { error } = await supabase
           .from("onboarding_companies")
           .update(payload)
@@ -326,15 +342,17 @@ const OnboardingCompanyDetailPage = () => {
 
         if (error) throw error;
 
-        // If company status changed to closed/inactive/cancellation_signaled, cancel subscriptions + handle recurring charges
-        const inactiveStatuses = ["closed", "inactive", "cancellation_signaled"];
-        const wasActive = !inactiveStatuses.includes(originalStatusRef.current);
-        const isNowInactive = inactiveStatuses.includes(form.status);
+        // Only cancel recurring charges when status changes to "closed"
+        // Use the date the company signaled cancellation as the 30-day reference
+        const wasNotClosed = originalStatusRef.current !== "closed";
+        const isNowClosed = form.status === "closed";
         
-        if (wasActive && isNowInactive && companyId) {
-          // Deactivate all active recurring charges, cancel Asaas subscriptions, and cleanup future invoices (30-day rule)
+        if (wasNotClosed && isNowClosed && companyId) {
           toast.info("Processando cancelamento de recorrências...");
           try {
+            // Use the cancellation signal date if available, otherwise today
+            const signalDate = cancellationSignalDate || new Date().toISOString();
+
             const { data: activeCharges } = await supabase
               .from("company_recurring_charges")
               .select("id, pagarme_plan_id")
@@ -362,13 +380,17 @@ const OnboardingCompanyDetailPage = () => {
                 .eq("company_id", companyId)
                 .eq("is_active", true);
 
-              // Cleanup future invoices for each charge (keeps invoices due within 30 days, deletes the rest)
+              // Cleanup future invoices using the signal date as 30-day reference
               for (const charge of activeCharges) {
                 await supabase.functions.invoke("generate-invoices", {
-                  body: { action: "cleanup_future_invoices", recurring_charge_id: charge.id },
+                  body: { 
+                    action: "cleanup_future_invoices", 
+                    recurring_charge_id: charge.id,
+                    signal_date: signalDate,
+                  },
                 });
               }
-              toast.success(`${activeCharges.length} recorrência(s) inativada(s). Faturas com vencimento > 30 dias excluídas.`);
+              toast.success(`${activeCharges.length} recorrência(s) inativada(s). Faturas após 30 dias da sinalização excluídas.`);
             }
           } catch (recurErr) {
             console.error("Error deactivating recurring charges:", recurErr);

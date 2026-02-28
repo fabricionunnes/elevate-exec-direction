@@ -722,10 +722,14 @@ Deno.serve(async (req) => {
     }
 
     // Action: cleanup future invoices when recurring charge is deactivated
+    // Accepts optional signal_date (ISO string) — the date the client signaled cancellation.
+    // Invoices due within 30 days of signal_date are kept (they're owed), the rest are deleted.
     if (action === "cleanup_future_invoices" && recurring_charge_id) {
-      const now = new Date();
-      const cutoffDate = new Date(now.getTime() + 30 * 24 * 60 * 60 * 1000);
+      const signalDate = body.signal_date ? new Date(body.signal_date) : new Date();
+      const cutoffDate = new Date(signalDate.getTime() + 30 * 24 * 60 * 60 * 1000);
       const cutoffStr = `${cutoffDate.getFullYear()}-${String(cutoffDate.getMonth() + 1).padStart(2, "0")}-${String(cutoffDate.getDate()).padStart(2, "0")}`;
+
+      console.log(`Cleanup: signal_date=${signalDate.toISOString()}, cutoff=${cutoffStr}, recurring=${recurring_charge_id}`);
 
       const { data: deleted, error: delError } = await supabase
         .from("company_invoices")
