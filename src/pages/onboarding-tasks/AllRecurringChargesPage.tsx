@@ -326,23 +326,24 @@ export default function AllRecurringChargesPage() {
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
 
-  const statusLabel = (s: string) => {
-    const map: Record<string, string> = { pending: "Pendente", paid: "Pago", overdue: "Vencido", cancelled: "Cancelado" };
-    return map[s] || s;
+  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
+
+  const getStatusDisplay = (s: string, dueDate?: string) => {
+    const isDueToday = s === "pending" && dueDate === todayStr;
+    if (s === "paid") return { label: "Pago", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: <CheckCircle2 className="h-3.5 w-3.5" /> };
+    if (s === "overdue") return { label: "Vencido", className: "bg-red-500/10 text-red-600 border-red-500/20", icon: <AlertTriangle className="h-3.5 w-3.5" /> };
+    if (isDueToday) return { label: "Vence Hoje", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
+    if (s === "cancelled") return { label: "Cancelado", className: "bg-gray-500/10 text-gray-600 border-gray-500/20", icon: <XCircle className="h-3.5 w-3.5" /> };
+    return { label: "Pendente", className: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
   };
+
+  const statusLabel = (s: string, dueDate?: string) => getStatusDisplay(s, dueDate).label;
 
   const statusVariant = (s: string): "default" | "secondary" | "destructive" | "outline" => {
     if (s === "paid") return "default";
     if (s === "overdue") return "destructive";
     if (s === "cancelled") return "secondary";
     return "outline";
-  };
-
-  const StatusIcon = ({ status }: { status: string }) => {
-    if (status === "paid") return <CheckCircle2 className="h-3.5 w-3.5" />;
-    if (status === "overdue") return <AlertTriangle className="h-3.5 w-3.5" />;
-    if (status === "cancelled") return <XCircle className="h-3.5 w-3.5" />;
-    return <Clock className="h-3.5 w-3.5" />;
   };
 
   const resetFilters = () => {
@@ -1028,10 +1029,15 @@ export default function AllRecurringChargesPage() {
                               <TableCell className="text-right font-semibold">{formatCurrencyCents(displayAmount)}</TableCell>
                               <TableCell className="text-sm">{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
-                                <Badge variant={statusVariant(inv.status)} className="gap-1 text-xs">
-                                  <StatusIcon status={inv.status} />
-                                  {statusLabel(inv.status)}
-                                </Badge>
+                                {(() => {
+                                  const sd = getStatusDisplay(inv.status, inv.due_date);
+                                  return (
+                                    <Badge className={`gap-1 text-xs ${sd.className}`}>
+                                      {sd.icon}
+                                      {sd.label}
+                                    </Badge>
+                                  );
+                                })()}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
@@ -1300,7 +1306,7 @@ export default function AllRecurringChargesPage() {
                             <TableCell className="text-right font-semibold">{formatCurrency(p.amount)}</TableCell>
                             <TableCell>{p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                             <TableCell>{p.reference_month}</TableCell>
-                            <TableCell><Badge variant={statusVariant(p.status)}>{statusLabel(p.status)}</Badge></TableCell>
+                            <TableCell>{(() => { const sd = getStatusDisplay(p.status, p.due_date); return <Badge className={`gap-1 text-xs ${sd.className}`}>{sd.icon}{sd.label}</Badge>; })()}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
                           </TableRow>
                         ))}
