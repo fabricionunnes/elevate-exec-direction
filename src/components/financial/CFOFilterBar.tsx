@@ -49,13 +49,13 @@ export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
     : "Todos os meses";
 
   return (
-    <div className="flex flex-wrap items-center gap-3 p-3 rounded-lg border bg-card">
+    <div className="flex flex-col sm:flex-row flex-wrap items-start sm:items-center gap-3 p-3 rounded-lg border bg-card">
       <Filter className="h-4 w-4 text-muted-foreground shrink-0" />
 
       <div className="flex items-center gap-1">
         <Popover>
           <PopoverTrigger asChild>
-            <Button variant="outline" className={cn("w-[200px] h-9 justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
+            <Button variant="outline" className={cn("w-full sm:w-[200px] h-9 justify-start text-left font-normal", !selectedDate && "text-muted-foreground")}>
               <CalendarIcon className="mr-2 h-3.5 w-3.5" />
               {monthLabel}
             </Button>
@@ -81,7 +81,7 @@ export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
       </div>
 
       <Select value={filters.consultantId} onValueChange={(v) => onChange({ ...filters, consultantId: v })}>
-        <SelectTrigger className="w-[180px] h-9">
+        <SelectTrigger className="w-full sm:w-[180px] h-9">
           <SelectValue placeholder="Consultor" />
         </SelectTrigger>
         <SelectContent>
@@ -91,7 +91,7 @@ export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
       </Select>
 
       <Select value={filters.companyId} onValueChange={(v) => onChange({ ...filters, companyId: v })}>
-        <SelectTrigger className="w-[180px] h-9">
+        <SelectTrigger className="w-full sm:w-[180px] h-9">
           <SelectValue placeholder="Empresa" />
         </SelectTrigger>
         <SelectContent>
