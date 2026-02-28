@@ -114,6 +114,9 @@ Deno.serve(async (req) => {
           matched = true;
           console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
 
+          // Credit Asaas bank account
+          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id);
+
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
               body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
@@ -184,6 +187,9 @@ Deno.serve(async (req) => {
                 console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
                 matched = true;
 
+                // Credit Asaas bank account
+                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id);
+
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
                 }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
@@ -226,6 +232,46 @@ Deno.serve(async (req) => {
   }
 });
 
+async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string) {
+  try {
+    const feeCents = 199; // R$ 1,99
+    const netAmount = amountCents - feeCents;
+    if (netAmount <= 0) return;
+
+    // Find the "Asaas" bank account
+    const { data: banks } = await supabase
+      .from("financial_banks")
+      .select("id")
+      .ilike("name", "%asaas%")
+      .eq("is_active", true)
+      .limit(1);
+
+    if (!banks?.length) {
+      console.log("[Asaas Webhook] No 'Asaas' bank account found, skipping balance credit");
+      return;
+    }
+
+    const bankId = banks[0].id;
+
+    // Increment bank balance
+    await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: netAmount });
+
+    // Record transaction
+    await supabase.from("financial_bank_transactions").insert({
+      bank_id: bankId,
+      type: "credit",
+      amount_cents: netAmount,
+      description: `Recebimento Asaas: ${description} (taxa R$1,99 deduzida)`,
+      reference_type: "invoice",
+      reference_id: invoiceId,
+    });
+
+    console.log(`[Asaas Webhook] Credited bank ${bankId}: ${netAmount} cents (invoice ${invoiceId})`);
+  } catch (err) {
+    console.error("[Asaas Webhook] Error crediting bank:", err);
+  }
+}
+
 async function markInvoicesPaid(supabase: any, orders: any[]) {
   for (const order of orders) {
     if (!order.payment_link_id) continue;
@@ -244,6 +290,24 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
       console.error("[Asaas Webhook] Invoice update error:", error);
     } else {
       console.log(`[Asaas Webhook] Invoice paid via payment_link_id ${order.payment_link_id}`);
+
+      // Credit Asaas bank account
+      const { data: paidInvForBank } = await supabase
+        .from("company_invoices")
+        .select("id, amount_cents, description, installment_number, total_installments")
+        .eq("payment_link_id", order.payment_link_id)
+        .eq("status", "paid")
+        .limit(1)
+        .single();
+
+      if (paidInvForBank) {
+        await creditAsaasBank(
+          supabase, 
+          paidInvForBank.amount_cents, 
+          `Fatura ${paidInvForBank.description || paidInvForBank.id} (${paidInvForBank.installment_number}/${paidInvForBank.total_installments})`,
+          paidInvForBank.id
+        );
+      }
 
       // Send WhatsApp payment confirmation (non-blocking)
       const { data: paidInvForNotif } = await supabase
