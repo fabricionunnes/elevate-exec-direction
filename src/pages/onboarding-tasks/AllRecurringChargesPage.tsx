@@ -167,6 +167,10 @@ export default function AllRecurringChargesPage() {
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
 
+  // Pagination
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
@@ -295,6 +299,12 @@ export default function AllRecurringChargesPage() {
       return true;
     });
   }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo]);
+
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo]);
+
+  const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
+  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -828,12 +838,20 @@ export default function AllRecurringChargesPage() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={filteredInvoices.length > 0 && filteredInvoices.every(inv => selectedInvoiceIds.has(inv.id))}
+                              checked={paginatedInvoices.length > 0 && paginatedInvoices.every(inv => selectedInvoiceIds.has(inv.id))}
                               onCheckedChange={(checked) => {
                                 if (checked) {
-                                  setSelectedInvoiceIds(new Set(filteredInvoices.map(inv => inv.id)));
+                                  setSelectedInvoiceIds(prev => {
+                                    const next = new Set(prev);
+                                    paginatedInvoices.forEach(inv => next.add(inv.id));
+                                    return next;
+                                  });
                                 } else {
-                                  setSelectedInvoiceIds(new Set());
+                                  setSelectedInvoiceIds(prev => {
+                                    const next = new Set(prev);
+                                    paginatedInvoices.forEach(inv => next.delete(inv.id));
+                                    return next;
+                                  });
                                 }
                               }}
                             />
@@ -849,9 +867,9 @@ export default function AllRecurringChargesPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredInvoices.length === 0 ? (
+                        {paginatedInvoices.length === 0 ? (
                           <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
-                        ) : filteredInvoices.map(inv => {
+                        ) : paginatedInvoices.map(inv => {
                           const isProcessing = processingInvoiceId === inv.id;
                           const displayAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
                           return (
@@ -952,6 +970,35 @@ export default function AllRecurringChargesPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between">
+                  <p className="text-sm text-muted-foreground">
+                    Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredInvoices.length)} de {filteredInvoices.length}
+                  </p>
+                  <div className="flex items-center gap-1">
+                    <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
+                    {Array.from({ length: totalPages }, (_, i) => i + 1)
+                      .filter(p => p === 1 || p === totalPages || Math.abs(p - currentPage) <= 1)
+                      .reduce<(number | string)[]>((acc, p, idx, arr) => {
+                        if (idx > 0 && p - (arr[idx - 1] as number) > 1) acc.push("...");
+                        acc.push(p);
+                        return acc;
+                      }, [])
+                      .map((p, i) =>
+                        typeof p === "string" ? (
+                          <span key={`e${i}`} className="px-2 text-muted-foreground">…</span>
+                        ) : (
+                          <Button key={p} variant={p === currentPage ? "default" : "outline"} size="sm" className="h-8 w-8 p-0" onClick={() => setCurrentPage(p)}>
+                            {p}
+                          </Button>
+                        )
+                      )}
+                    <Button variant="outline" size="sm" disabled={currentPage === totalPages} onClick={() => setCurrentPage(p => p + 1)}>Próxima</Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
 
