@@ -55,7 +55,7 @@ import { ptBR } from "date-fns/locale";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import type { FinancialReceivable, FinancialCategory, FinancialPaymentMethod, FinancialBankAccount } from "./types";
 import { ClientFinancialImportDialog } from "./ClientFinancialImportDialog";
-
+import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
 const parseDateLocal = (dateStr: string): Date => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -160,7 +160,7 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
     }
 
     try {
-      const { error } = await supabase.from("client_financial_receivables").insert({
+      const { data: inserted, error } = await supabase.from("client_financial_receivables").insert({
         project_id: projectId,
         client_name: formData.client_name,
         description: formData.description || null,
@@ -171,9 +171,23 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
         bank_account_id: formData.bank_account_id,
         notes: formData.notes || null,
         status: parseDateLocal(formData.due_date) < new Date(new Date().setHours(0, 0, 0, 0)) ? "overdue" : "open",
-      });
+      }).select("id").single();
 
       if (error) throw error;
+
+      // Sync to Conta Azul (non-blocking)
+      syncEntryToContaAzul("receivable", {
+        description: formData.description || formData.client_name,
+        amount: formData.amount,
+        due_date: formData.due_date,
+        client_name: formData.client_name,
+      }).then(contaAzulId => {
+        if (contaAzulId && inserted?.id) {
+          supabase.from("client_financial_receivables")
+            .update({ conta_azul_id: contaAzulId } as any)
+            .eq("id", inserted.id).then(() => {});
+        }
+      });
 
       // Log audit
       await logAudit("create", null, formData);
@@ -211,6 +225,17 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
 
       if (error) throw error;
 
+      // Sync to Conta Azul if has conta_azul_id (non-blocking)
+      const itemAny = selectedItem as any;
+      if (itemAny.conta_azul_id) {
+        syncEntryToContaAzul("receivable", {
+          description: formData.description || formData.client_name,
+          amount: formData.amount,
+          due_date: formData.due_date,
+          client_name: formData.client_name,
+        }, itemAny.conta_azul_id);
+      }
+
       await logAudit("update", selectedItem, formData);
 
       toast.success("Conta atualizada com sucesso");
@@ -238,6 +263,17 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
         .eq("id", selectedItem.id);
 
       if (error) throw error;
+
+      // Sync payment to Conta Azul (non-blocking)
+      const itemAny = selectedItem as any;
+      if (itemAny.conta_azul_id) {
+        syncPaymentToContaAzul(
+          itemAny.conta_azul_id,
+          "receivable",
+          payData.paid_at,
+          payData.paid_amount || selectedItem.amount
+        );
+      }
 
       await logAudit("update", selectedItem, { status: "paid", ...payData });
 

@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -481,6 +482,15 @@ export default function AllRecurringChargesPage() {
         .update({ status: "paid", paid_at: today } as any)
         .in("id", selected.map(p => p.id));
       if (error) throw error;
+
+      // Sync payments to Conta Azul (non-blocking)
+      for (const item of selected) {
+        const itemAny = item as any;
+        if (itemAny.conta_azul_id) {
+          syncPaymentToContaAzul(itemAny.conta_azul_id, "payable", today, item.amount);
+        }
+      }
+
       toast.success(`${selected.length} lançamento(s) confirmado(s) como pago(s)`);
       setSelectedPayableIds(new Set());
       await loadData();
@@ -500,7 +510,7 @@ export default function AllRecurringChargesPage() {
     setSavingReceivable(true);
     try {
       const amountCents = Math.round(receivableForm.amount * 100);
-      const { error } = await supabase.from("company_invoices").insert({
+      const { data: inserted, error } = await supabase.from("company_invoices").insert({
         company_id: receivableForm.company_id,
         description: receivableForm.description,
         amount_cents: amountCents,
@@ -511,8 +521,24 @@ export default function AllRecurringChargesPage() {
         status: "pending",
         installment_number: 1,
         total_installments: 1,
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
+
+      // Sync to Conta Azul (non-blocking)
+      const companyName = companies.find(c => c.id === receivableForm.company_id)?.name || "";
+      syncEntryToContaAzul("receivable", {
+        description: receivableForm.description,
+        amount: receivableForm.amount,
+        due_date: receivableForm.due_date,
+        client_name: companyName,
+      }).then(contaAzulId => {
+        if (contaAzulId && inserted?.id) {
+          supabase.from("company_invoices")
+            .update({ conta_azul_id: contaAzulId } as any)
+            .eq("id", inserted.id).then(() => {});
+        }
+      });
+
       toast.success("Conta a receber lançada com sucesso");
       setReceivableDialog(false);
       setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
@@ -534,7 +560,7 @@ export default function AllRecurringChargesPage() {
     try {
       const now = new Date();
       const refMonth = payableForm.reference_month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const { error } = await supabase.from("financial_payables").insert({
+      const { data: inserted, error } = await supabase.from("financial_payables").insert({
         supplier_name: payableForm.supplier_name,
         description: payableForm.description,
         amount: payableForm.amount,
@@ -544,8 +570,23 @@ export default function AllRecurringChargesPage() {
         category_id: payableForm.category_id && payableForm.category_id !== "none" ? payableForm.category_id : null,
         cost_center_id: payableForm.cost_center_id && payableForm.cost_center_id !== "none" ? payableForm.cost_center_id : null,
         status: "pending",
-      } as any);
+      } as any).select("id").single();
       if (error) throw error;
+
+      // Sync to Conta Azul (non-blocking)
+      syncEntryToContaAzul("payable", {
+        description: payableForm.description,
+        amount: payableForm.amount,
+        due_date: payableForm.due_date,
+        supplier_name: payableForm.supplier_name,
+      }).then(contaAzulId => {
+        if (contaAzulId && inserted?.id) {
+          supabase.from("financial_payables")
+            .update({ conta_azul_id: contaAzulId } as any)
+            .eq("id", inserted.id).then(() => {});
+        }
+      });
+
       toast.success("Conta a pagar lançada com sucesso");
       setPayableDialog(false);
       setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });

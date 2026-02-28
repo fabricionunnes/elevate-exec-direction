@@ -54,7 +54,7 @@ import { format } from "date-fns";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import type { FinancialPayable, FinancialCategory, FinancialPaymentMethod, FinancialCostCenter, FinancialBankAccount } from "./types";
 import { ClientFinancialImportDialog } from "./ClientFinancialImportDialog";
-
+import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 // Parse date string (YYYY-MM-DD) to local Date without timezone shift
 const parseDateLocal = (dateStr: string): Date => {
   const [year, month, day] = dateStr.split('-').map(Number);
@@ -172,7 +172,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
       today.setHours(0, 0, 0, 0);
       const dueDate = parseDateLocal(formData.due_date);
 
-      const { error } = await supabase.from("client_financial_payables").insert({
+      const { data: inserted, error } = await supabase.from("client_financial_payables").insert({
         project_id: projectId,
         supplier_name: formData.supplier_name,
         description: formData.description || null,
@@ -184,9 +184,24 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
         bank_account_id: formData.bank_account_id,
         notes: formData.notes || null,
         status: dueDate < today ? "overdue" : "open",
-      });
+      }).select("id").single();
 
       if (error) throw error;
+
+      // Sync to Conta Azul (non-blocking)
+      syncEntryToContaAzul("payable", {
+        description: formData.description || formData.supplier_name,
+        amount: formData.amount,
+        due_date: formData.due_date,
+        supplier_name: formData.supplier_name,
+      }).then(contaAzulId => {
+        if (contaAzulId && inserted?.id) {
+          supabase.from("client_financial_payables")
+            .update({ conta_azul_id: contaAzulId } as any)
+            .eq("id", inserted.id).then(() => {});
+        }
+      });
+
       await logAudit("create", null, formData);
       toast.success("Conta a pagar criada com sucesso");
       setShowAddDialog(false);
@@ -221,6 +236,18 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
         .eq("id", selectedItem.id);
 
       if (error) throw error;
+
+      // Sync to Conta Azul if has conta_azul_id (non-blocking)
+      const itemAny = selectedItem as any;
+      if (itemAny.conta_azul_id) {
+        syncEntryToContaAzul("payable", {
+          description: formData.description || formData.supplier_name,
+          amount: formData.amount,
+          due_date: formData.due_date,
+          supplier_name: formData.supplier_name,
+        }, itemAny.conta_azul_id);
+      }
+
       await logAudit("update", selectedItem, formData);
       toast.success("Conta atualizada com sucesso");
       setShowEditDialog(false);
@@ -247,6 +274,18 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
         .eq("id", selectedItem.id);
 
       if (error) throw error;
+
+      // Sync payment to Conta Azul (non-blocking)
+      const itemAny = selectedItem as any;
+      if (itemAny.conta_azul_id) {
+        syncPaymentToContaAzul(
+          itemAny.conta_azul_id,
+          "payable",
+          payData.paid_at,
+          payData.paid_amount || selectedItem.amount
+        );
+      }
+
       await logAudit("update", selectedItem, { status: "paid", ...payData });
       toast.success("Marcado como pago");
       setShowPayDialog(false);
