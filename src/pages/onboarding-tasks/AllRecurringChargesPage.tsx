@@ -183,6 +183,12 @@ export default function AllRecurringChargesPage() {
   const [selectedStatus, setSelectedStatus] = useState("all");
   const [selectedMonth, setSelectedMonth] = useState("all");
   const [selectedRecurrence, setSelectedRecurrence] = useState("all");
+  const [selectedConsultant, setSelectedConsultant] = useState("all");
+  const [selectedCategory, setSelectedCategory] = useState("all");
+  const [selectedCostCenter, setSelectedCostCenter] = useState("all");
+  const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
+  const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
+  const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -285,6 +291,21 @@ export default function AllRecurringChargesPage() {
 
   const hasPerm = finPerms.hasFinancialPermission;
 
+  // Build consultant list for filters
+  const consultants = useMemo(() => {
+    return staffList.filter(s => ["consultant", "cs", "admin", "master"].includes(s.role));
+  }, [staffList]);
+
+  // Build company-to-consultant map
+  const companyConsultantMap = useMemo(() => {
+    const map = new Map<string, string>();
+    fullCompanies.forEach((c: any) => {
+      if (c.consultant_id) map.set(c.id, c.consultant_id);
+      else if (c.cs_id) map.set(c.id, c.cs_id);
+    });
+    return map;
+  }, [fullCompanies]);
+
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -302,27 +323,37 @@ export default function AllRecurringChargesPage() {
       }
       if (dateFrom) { if (inv.due_date < format(dateFrom, "yyyy-MM-dd")) return false; }
       if (dateTo) { if (inv.due_date > format(dateTo, "yyyy-MM-dd")) return false; }
+      if (selectedConsultant !== "all") {
+        const consultantId = companyConsultantMap.get(inv.company_id);
+        if (consultantId !== selectedConsultant) return false;
+      }
+      const invAny = inv as any;
+      if (selectedCategory !== "all" && invAny.category_id !== selectedCategory) return false;
+      if (selectedCostCenter !== "all" && invAny.cost_center_id !== selectedCostCenter) return false;
       return true;
     });
-  }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo]);
+  }, [invoices, searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter, companyConsultantMap]);
 
   // Reset page when filters change
-  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo]);
+  useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter]);
 
   const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
   const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
-      if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
+      if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
       if (selectedStatus === "pending" && p.status !== "pending") return false;
       if (selectedStatus === "paid" && p.status !== "paid") return false;
       if (selectedStatus === "overdue" && p.status !== "overdue") return false;
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
+      const pAny = p as any;
+      if (selectedPayableCategory !== "all" && pAny.category_id !== selectedPayableCategory) return false;
+      if (selectedPayableCostCenter !== "all" && pAny.cost_center_id !== selectedPayableCostCenter) return false;
       return true;
     });
-  }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo]);
+  }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo, selectedPayableCategory, selectedPayableCostCenter]);
 
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
@@ -354,6 +385,12 @@ export default function AllRecurringChargesPage() {
     setSelectedStatus("all");
     setSelectedMonth("all");
     setSelectedRecurrence("all");
+    setSelectedConsultant("all");
+    setSelectedCategory("all");
+    setSelectedCostCenter("all");
+    setSelectedPayableCategory("all");
+    setSelectedPayableCostCenter("all");
+    setSelectedPayableConsultant("all");
     setDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
     setDateTo(new Date(now.getFullYear(), now.getMonth() + 1, 0));
     setPayableDateFrom(new Date(now.getFullYear(), now.getMonth(), 1));
@@ -781,7 +818,7 @@ export default function AllRecurringChargesPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -801,6 +838,29 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="paid">Pago</SelectItem>
                         <SelectItem value="overdue">Vencido</SelectItem>
                         <SelectItem value="cancelled">Cancelado</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
+                      <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Consultores</SelectItem>
+                        {consultants.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-3">
+                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
+                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as Categorias</SelectItem>
+                        {staffCategories.filter((c: any) => c.type === "receita").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedCostCenter} onValueChange={setSelectedCostCenter}>
+                      <SelectTrigger><SelectValue placeholder="Centro de Custo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Centros de Custo</SelectItem>
+                        {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <Popover>
@@ -1177,7 +1237,7 @@ export default function AllRecurringChargesPage() {
                   <CardTitle className="text-sm flex items-center gap-2"><Filter className="h-4 w-4" />Filtros</CardTitle>
                 </CardHeader>
                 <CardContent>
-                  <div className="grid gap-3 md:grid-cols-4">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
                     <div className="relative">
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
@@ -1191,6 +1251,22 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="overdue">Vencido</SelectItem>
                       </SelectContent>
                     </Select>
+                    <Select value={selectedPayableCategory} onValueChange={setSelectedPayableCategory}>
+                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todas as Categorias</SelectItem>
+                        {staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                    <Select value={selectedPayableCostCenter} onValueChange={setSelectedPayableCostCenter}>
+                      <SelectTrigger><SelectValue placeholder="Centro de Custo" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="all">Todos os Centros de Custo</SelectItem>
+                        {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-2 mt-3">
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateFrom && "text-muted-foreground")}>
