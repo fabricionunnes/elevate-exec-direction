@@ -203,9 +203,9 @@ export function CompanyInvoicesList({ companyId }: Props) {
   };
 
   const revertPaid = async (invoiceId: string, dueDate: string) => {
-    const today = new Date();
-    const due = new Date(dueDate + "T12:00:00");
-    const newStatus = due < today ? "overdue" : "pending";
+    // Compare date-only to avoid timezone issues - invoice is overdue only if due date is strictly before today
+    const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD format
+    const newStatus = dueDate < todayStr ? "overdue" : "pending";
 
     const { error } = await supabase
       .from("company_invoices")
