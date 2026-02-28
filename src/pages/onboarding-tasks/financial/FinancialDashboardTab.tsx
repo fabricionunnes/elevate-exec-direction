@@ -1,8 +1,13 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import {
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
+} from "@/components/ui/select";
 import { 
   TrendingUp, TrendingDown, DollarSign, AlertTriangle, 
-  ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, ShoppingCart, RefreshCw
+  ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, ShoppingCart, RefreshCw,
+  CalendarIcon, ChevronLeft, ChevronRight
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
@@ -28,15 +33,28 @@ const toMonthlyMRR = (amountCents: number, recurrence: string): number => {
   }
 };
 
+const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "Set", "Out", "Nov", "Dez"];
+
 export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents }: Props) {
-  const currentMonth = new Date().toISOString().substring(0, 7);
-  const currentYear = new Date().getFullYear();
+  const now = new Date();
+  const [selectedYear, setSelectedYear] = useState(now.getFullYear());
+  const [selectedMonth, setSelectedMonth] = useState(now.getMonth()); // 0-indexed
+  
+  const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
+  const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  
+  const goToPrevMonth = () => {
+    if (selectedMonth === 0) { setSelectedYear(y => y - 1); setSelectedMonth(11); }
+    else setSelectedMonth(m => m - 1);
+  };
+  const goToNextMonth = () => {
+    if (selectedMonth === 11) { setSelectedYear(y => y + 1); setSelectedMonth(0); }
+    else setSelectedMonth(m => m + 1);
+  };
+  const goToCurrentMonth = () => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); };
 
   // Summary cards
   const summary = useMemo(() => {
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-
     const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
     const monthPayables = payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr);
 
@@ -48,17 +66,19 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const resultado = receitaRecebida - despesaPaga;
 
     return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado };
-  }, [invoices, payables, banks]);
+  }, [invoices, payables, banks, monthStr]);
 
   // Inadimplência mensal
   const inadimplencia = useMemo(() => {
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
     const total = monthInvoices.length;
     const totalValue = monthInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    // For current month use today, for past months use last day of month
+    const refDate = isCurrentMonth 
+      ? now 
+      : new Date(selectedYear, selectedMonth + 1, 0); // last day of selected month
+    const todayStr = `${refDate.getFullYear()}-${String(refDate.getMonth() + 1).padStart(2, "0")}-${String(refDate.getDate()).padStart(2, "0")}`;
     const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
     const overdueCount = overdue.length;
     const overdueValue = overdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
@@ -67,7 +87,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const pctValue = totalValue > 0 ? (overdueValue / totalValue) * 100 : 0;
 
     return { pctQty, pctValue, overdueCount, total, overdueValue, totalValue };
-  }, [invoices]);
+  }, [invoices, monthStr, isCurrentMonth, selectedYear, selectedMonth]);
 
   // MRR (from active recurring charges)
   const mrr = useMemo(() => {
@@ -75,43 +95,35 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
   }, [charges]);
 
-  // MRR Movement (added vs lost this month)
+  // MRR Movement (added vs lost in selected month)
   const mrrMovement = useMemo(() => {
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-    
-    // MRR added: charges created this month and currently active
     const added = charges
       .filter(c => c.is_active && c.created_at?.startsWith(monthStr))
       .reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
     const addedCount = charges.filter(c => c.is_active && c.created_at?.startsWith(monthStr)).length;
 
-    // MRR lost: charges deactivated this month (is_active=false, updated_at in current month)
     const lost = charges
       .filter(c => !c.is_active && c.updated_at?.startsWith(monthStr))
       .reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
     const lostCount = charges.filter(c => !c.is_active && c.updated_at?.startsWith(monthStr)).length;
 
     return { added, addedCount, lost, lostCount, net: added - lost };
-  }, [charges]);
+  }, [charges, monthStr]);
 
-  // Vendas Novas (standalone invoices created this month)
+  // Vendas Novas (standalone invoices created in selected month)
   const vendasNovas = useMemo(() => {
-    const now = new Date();
-    const monthStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
     const novas = invoices.filter(i => !i.recurring_charge_id && i.created_at?.startsWith(monthStr));
     const count = novas.length;
     const value = novas.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     return { count, value };
-  }, [invoices]);
+  }, [invoices, monthStr]);
 
-  // Monthly chart data (last 6 months)
+  // Monthly chart data (6 months ending at selected month)
   const monthlyData = useMemo(() => {
     const months: { month: string; label: string; receita: number; despesa: number; resultado: number }[] = [];
-    const now = new Date();
 
     for (let i = 5; i >= 0; i--) {
-      const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
+      const d = new Date(selectedYear, selectedMonth - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
@@ -126,22 +138,64 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       months.push({ month: key, label, receita: rec, despesa: desp, resultado: rec - desp });
     }
     return months;
-  }, [invoices, payables]);
+  }, [invoices, payables, selectedYear, selectedMonth]);
 
-  // Status distribution for receivables
+  // Status distribution for receivables (selected month)
   const statusData = useMemo(() => {
-    const paid = invoices.filter(i => i.status === "paid").length;
-    const pending = invoices.filter(i => i.status === "pending").length;
-    const overdue = invoices.filter(i => i.status === "overdue").length;
+    const monthInv = invoices.filter(i => i.due_date?.startsWith(monthStr));
+    const paid = monthInv.filter(i => i.status === "paid").length;
+    const pending = monthInv.filter(i => i.status === "pending").length;
+    const overdue = monthInv.filter(i => i.status === "overdue").length;
     return [
       { name: "Recebido", value: paid, color: "hsl(var(--primary))" },
       { name: "Pendente", value: pending, color: "hsl(var(--muted-foreground))" },
       { name: "Vencido", value: overdue, color: "hsl(var(--destructive))" },
     ].filter(d => d.value > 0);
-  }, [invoices]);
+  }, [invoices, monthStr]);
+
+  const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
 
   return (
     <div className="space-y-6">
+      {/* Month Picker */}
+      <div className="flex items-center gap-2 flex-wrap">
+        <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToPrevMonth}>
+          <ChevronLeft className="h-4 w-4" />
+        </Button>
+        <Select value={String(selectedMonth)} onValueChange={v => setSelectedMonth(Number(v))}>
+          <SelectTrigger className="w-[110px] h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {MONTH_LABELS.map((label, i) => (
+              <SelectItem key={i} value={String(i)}>{label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Select value={String(selectedYear)} onValueChange={v => setSelectedYear(Number(v))}>
+          <SelectTrigger className="w-[90px] h-8 text-sm">
+            <SelectValue />
+          </SelectTrigger>
+          <SelectContent>
+            {years.map(y => (
+              <SelectItem key={y} value={String(y)}>{y}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <Button variant="outline" size="icon" className="h-8 w-8" onClick={goToNextMonth}>
+          <ChevronRight className="h-4 w-4" />
+        </Button>
+        {!isCurrentMonth && (
+          <Button variant="ghost" size="sm" className="h-8 text-xs" onClick={goToCurrentMonth}>
+            Mês atual
+          </Button>
+        )}
+        <span className="text-sm font-medium text-muted-foreground ml-1">
+          {MONTH_LABELS[selectedMonth]} {selectedYear}
+        </span>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3 xl:grid-cols-6">
         <Card>
