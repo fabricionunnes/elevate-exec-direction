@@ -44,6 +44,8 @@ interface Invoice {
 interface FinancialOverdueTabProps {
   invoices: Invoice[];
   companies: { id: string; name: string }[];
+  consultants?: { id: string; name: string; role: string }[];
+  companyConsultantMap?: Map<string, Set<string>>;
   formatCurrencyCents: (cents: number) => string;
   hasPerm: (key: string) => boolean;
   onConfirmPayment: (invoiceId: string, feeCents: number, bankId: string | null) => Promise<void>;
@@ -63,6 +65,8 @@ const urgencyLevel = (days: number) => {
 export default function FinancialOverdueTab({
   invoices,
   companies,
+  consultants = [],
+  companyConsultantMap,
   formatCurrencyCents,
   hasPerm,
   processingInvoiceId,
@@ -71,6 +75,7 @@ export default function FinancialOverdueTab({
 }: FinancialOverdueTabProps) {
   const [search, setSearch] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
+  const [selectedConsultant, setSelectedConsultant] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
@@ -88,9 +93,13 @@ export default function FinancialOverdueTab({
         if (!inv.description?.toLowerCase().includes(q) && !inv.company_name?.toLowerCase().includes(q)) return false;
       }
       if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
+      if (selectedConsultant !== "all" && companyConsultantMap) {
+        const consultantIds = companyConsultantMap.get(inv.company_id);
+        if (!consultantIds || !consultantIds.has(selectedConsultant)) return false;
+      }
       return true;
     });
-  }, [invoices, search, selectedCompany]);
+  }, [invoices, search, selectedCompany, selectedConsultant, companyConsultantMap]);
 
   const totalPages = Math.ceil(overdueInvoices.length / ITEMS_PER_PAGE);
   const paginated = overdueInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -305,7 +314,7 @@ export default function FinancialOverdueTab({
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <Card className="border-dashed">
           <CardContent className="p-4">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar empresa ou descrição..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
@@ -317,6 +326,15 @@ export default function FinancialOverdueTab({
                   {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
                 </SelectContent>
               </Select>
+              {consultants.length > 0 && (
+                <Select value={selectedConsultant} onValueChange={(v) => { setSelectedConsultant(v); setCurrentPage(1); }}>
+                  <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos os Consultores</SelectItem>
+                    {consultants.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              )}
             </div>
           </CardContent>
         </Card>
