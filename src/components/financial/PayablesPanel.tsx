@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import {
   Plus,
   Search,
@@ -39,7 +39,8 @@ import {
   MoreVertical,
   Loader2,
   RefreshCw,
-  Repeat
+  Repeat,
+  CalendarDays
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -89,6 +90,7 @@ export function PayablesPanel() {
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("this_month");
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [selectedPayable, setSelectedPayable] = useState<Payable | null>(null);
@@ -321,18 +323,49 @@ export function PayablesPanel() {
     }
   };
 
+  const getDateRangeFromPeriod = (period: string): { start: Date | null; end: Date | null } => {
+    const now = new Date();
+    switch (period) {
+      case "today":
+        return { start: startOfDay(now), end: endOfDay(now) };
+      case "this_week":
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+      case "this_month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "this_year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      case "last_30_days":
+        return { start: subDays(now, 30), end: now };
+      case "last_12_months":
+        return { start: subMonths(now, 12), end: now };
+      case "all":
+        return { start: null, end: null };
+      default:
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+    }
+  };
+
   const filteredPayables = payables.filter((p) => {
     const matchesSearch = 
       p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || p.status === statusFilter;
-    return matchesSearch && matchesStatus;
+    
+    // Period filter
+    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    let matchesPeriod = true;
+    if (start && end) {
+      const dueDate = parseISO(p.due_date);
+      matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
+    }
+    
+    return matchesSearch && matchesStatus && matchesPeriod;
   });
 
   const totals = {
-    pending: payables.filter(p => p.status === "pending").reduce((sum, p) => sum + Number(p.amount), 0),
-    overdue: payables.filter(p => p.status === "overdue").reduce((sum, p) => sum + Number(p.amount), 0),
-    paid: payables.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0)
+    pending: filteredPayables.filter(p => p.status === "pending").reduce((sum, p) => sum + Number(p.amount), 0),
+    overdue: filteredPayables.filter(p => p.status === "overdue").reduce((sum, p) => sum + Number(p.amount), 0),
+    paid: filteredPayables.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0)
   };
 
   if (isLoading) {
@@ -572,6 +605,21 @@ export function PayablesPanel() {
                 className="pl-10"
               />
             </div>
+            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-[200px]">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="this_week">Esta semana</SelectItem>
+                <SelectItem value="this_month">Este mês</SelectItem>
+                <SelectItem value="this_year">Este ano</SelectItem>
+                <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
+                <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                <SelectItem value="all">Todo o período</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />

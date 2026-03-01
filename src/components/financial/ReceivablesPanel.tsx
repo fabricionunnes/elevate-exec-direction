@@ -28,7 +28,7 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, isAfter, isBefore } from "date-fns";
+import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
   Plus,
@@ -42,7 +42,8 @@ import {
   MoreVertical,
   Loader2,
   RefreshCw,
-  ExternalLink
+  ExternalLink,
+  CalendarDays
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -92,6 +93,7 @@ export function ReceivablesPanel() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
+  const [periodFilter, setPeriodFilter] = useState("this_month");
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
@@ -418,6 +420,28 @@ export function ReceivablesPanel() {
 
   const minDate = "2025-01";
   
+  const getDateRangeFromPeriod = (period: string): { start: Date | null; end: Date | null } => {
+    const now = new Date();
+    switch (period) {
+      case "today":
+        return { start: startOfDay(now), end: endOfDay(now) };
+      case "this_week":
+        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
+      case "this_month":
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+      case "this_year":
+        return { start: startOfYear(now), end: endOfYear(now) };
+      case "last_30_days":
+        return { start: subDays(now, 30), end: now };
+      case "last_12_months":
+        return { start: subMonths(now, 12), end: now };
+      case "all":
+        return { start: null, end: null };
+      default:
+        return { start: startOfMonth(now), end: endOfMonth(now) };
+    }
+  };
+
   const filteredReceivables = receivables.filter((r) => {
     // Only show recurring receivables (from clients without end date and monthly payment)
     if (!r.is_recurring) return false;
@@ -429,16 +453,23 @@ export function ReceivablesPanel() {
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
-    const matchesMonth = !monthFilter || r.due_date.startsWith(monthFilter);
-    return matchesSearch && matchesStatus && matchesMonth;
+    
+    // Period filter
+    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    let matchesPeriod = true;
+    if (start && end) {
+      const dueDate = parseISO(r.due_date);
+      matchesPeriod = dueDate >= startOfDay(start) && dueDate <= endOfDay(end);
+    }
+    
+    return matchesSearch && matchesStatus && matchesPeriod;
   });
 
-  // Calculate totals only for recurring receivables from January 2025 onwards
-  const recurringFromJan = receivables.filter(r => r.is_recurring && r.due_date >= minDate);
+  // Calculate totals based on filtered data
   const totals = {
-    pending: recurringFromJan.filter(r => r.status === "pending").reduce((sum, r) => sum + Number(r.amount), 0),
-    overdue: recurringFromJan.filter(r => r.status === "overdue").reduce((sum, r) => sum + Number(r.amount), 0),
-    paid: recurringFromJan.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
+    pending: filteredReceivables.filter(r => r.status === "pending").reduce((sum, r) => sum + Number(r.amount), 0),
+    overdue: filteredReceivables.filter(r => r.status === "overdue").reduce((sum, r) => sum + Number(r.amount), 0),
+    paid: filteredReceivables.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
   };
 
   if (isLoading) {
@@ -658,12 +689,21 @@ export function ReceivablesPanel() {
                 className="pl-10"
               />
             </div>
-            <Input
-              type="month"
-              value={monthFilter}
-              onChange={(e) => setMonthFilter(e.target.value)}
-              className="w-[180px]"
-            />
+            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+              <SelectTrigger className="w-[200px]">
+                <CalendarDays className="h-4 w-4 mr-2" />
+                <SelectValue placeholder="Período" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="today">Hoje</SelectItem>
+                <SelectItem value="this_week">Esta semana</SelectItem>
+                <SelectItem value="this_month">Este mês</SelectItem>
+                <SelectItem value="this_year">Este ano</SelectItem>
+                <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
+                <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                <SelectItem value="all">Todo o período</SelectItem>
+              </SelectContent>
+            </Select>
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
