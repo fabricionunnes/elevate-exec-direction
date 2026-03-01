@@ -283,10 +283,21 @@ Deno.serve(async (req) => {
       const method = contaAzulId ? "PUT" : "POST";
       const apiUrl = contaAzulId ? `${baseUrl}/${contaAzulId}` : baseUrl;
 
+      const valorBruto = entryData.amount || 0;
+      const dueDate = entryData.due_date || new Date().toISOString().split("T")[0];
+
       const payload: any = {
         descricao: entryData.description || "Lançamento",
-        valor_bruto: entryData.amount || 0,
-        data_vencimento: entryData.due_date,
+        valor_bruto: valorBruto,
+        valor: valorBruto,
+        data_vencimento: dueDate,
+        data_competencia: dueDate,
+        condicao_pagamento: "a_vista",
+        rateio: [
+          {
+            valor: valorBruto,
+          }
+        ],
       };
       if (entryData.client_name) payload.contato_nome = entryData.client_name;
       if (entryData.supplier_name) payload.contato_nome = entryData.supplier_name;
