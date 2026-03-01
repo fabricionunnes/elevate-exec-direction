@@ -26,11 +26,11 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
-import { format } from "date-fns";
+import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import FinancialDashboardTab from "./financial/FinancialDashboardTab";
@@ -123,6 +123,44 @@ const NAV_ITEMS = [
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
 ] as const;
 
+const applyPeriodPreset = (
+  period: string,
+  setFrom: (d: Date | undefined) => void,
+  setTo: (d: Date | undefined) => void
+) => {
+  const now = new Date();
+  switch (period) {
+    case "today":
+      setFrom(startOfDay(now));
+      setTo(endOfDay(now));
+      break;
+    case "this_week":
+      setFrom(startOfWeek(now, { weekStartsOn: 0 }));
+      setTo(endOfWeek(now, { weekStartsOn: 0 }));
+      break;
+    case "this_month":
+      setFrom(startOfMonth(now));
+      setTo(endOfMonth(now));
+      break;
+    case "this_year":
+      setFrom(startOfYear(now));
+      setTo(endOfYear(now));
+      break;
+    case "last_30":
+      setFrom(subDays(now, 30));
+      setTo(now);
+      break;
+    case "last_12_months":
+      setFrom(subMonths(now, 12));
+      setTo(now);
+      break;
+    case "all":
+      setFrom(undefined);
+      setTo(undefined);
+      break;
+  }
+};
+
 export default function AllRecurringChargesPage() {
   const navigate = useNavigate();
   const isMobile = useIsMobile();
@@ -199,6 +237,8 @@ export default function AllRecurringChargesPage() {
   const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
   const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
   const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
+  const [receivablePeriod, setReceivablePeriod] = useState("this_month");
+  const [payablePeriod, setPayablePeriod] = useState("this_month");
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -942,7 +982,22 @@ export default function AllRecurringChargesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-3">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5 mt-3">
+                    <Select value={receivablePeriod} onValueChange={(v) => { setReceivablePeriod(v); applyPeriodPreset(v, setDateFrom, setDateTo); }}>
+                      <SelectTrigger>
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Período" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="today">Hoje</SelectItem>
+                        <SelectItem value="this_week">Esta semana</SelectItem>
+                        <SelectItem value="this_month">Este mês</SelectItem>
+                        <SelectItem value="this_year">Este ano</SelectItem>
+                        <SelectItem value="last_30">Últimos 30 dias</SelectItem>
+                        <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                        <SelectItem value="all">Todo o período</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Select value={selectedCategory} onValueChange={setSelectedCategory}>
                       <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
                       <SelectContent>
@@ -1391,7 +1446,22 @@ export default function AllRecurringChargesPage() {
                       </SelectContent>
                     </Select>
                   </div>
-                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-2 mt-3">
+                  <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
+                    <Select value={payablePeriod} onValueChange={(v) => { setPayablePeriod(v); applyPeriodPreset(v, setPayableDateFrom, setPayableDateTo); }}>
+                      <SelectTrigger>
+                        <CalendarDays className="mr-2 h-4 w-4" />
+                        <SelectValue placeholder="Período" />
+                      </SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="today">Hoje</SelectItem>
+                        <SelectItem value="this_week">Esta semana</SelectItem>
+                        <SelectItem value="this_month">Este mês</SelectItem>
+                        <SelectItem value="this_year">Este ano</SelectItem>
+                        <SelectItem value="last_30">Últimos 30 dias</SelectItem>
+                        <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                        <SelectItem value="all">Todo o período</SelectItem>
+                      </SelectContent>
+                    </Select>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateFrom && "text-muted-foreground")}>
