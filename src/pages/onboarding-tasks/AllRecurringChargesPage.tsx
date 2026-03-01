@@ -51,6 +51,7 @@ import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
+import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 
 interface RecurringCharge {
   id: string;
@@ -190,6 +191,8 @@ export default function AllRecurringChargesPage() {
   const [banks, setBanks] = useState<any[]>([]);
   const [bankDialog, setBankDialog] = useState<{ open: boolean; bank: any | null }>({ open: false, bank: null });
   const [bankForm, setBankForm] = useState({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
+  const [statementBank, setStatementBank] = useState<any>(null);
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
 
   // Categories & Cost Centers for forms
   const [staffCategories, setStaffCategories] = useState<any[]>([]);
@@ -1626,7 +1629,7 @@ export default function AllRecurringChargesPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {banks.map((bank: any) => (
-                  <Card key={bank.id}>
+                  <Card key={bank.id} className="cursor-pointer transition-shadow hover:shadow-md" onClick={() => { setStatementBank(bank); setIsStatementOpen(true); }}>
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <CardTitle className="text-base flex items-center gap-2">
@@ -1634,13 +1637,14 @@ export default function AllRecurringChargesPage() {
                           {bank.name}
                         </CardTitle>
                         <div className="flex gap-1">
-                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => {
+                          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => {
+                            e.stopPropagation();
                             setBankForm({ name: bank.name, bank_code: bank.bank_code || "", agency: bank.agency || "", account_number: bank.account_number || "", initial_balance: (bank.initial_balance_cents / 100).toString() });
                             setBankDialog({ open: true, bank });
                           }}>
                             <Edit2 className="h-3.5 w-3.5" />
                           </Button>
-                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteBank(bank.id)}>
+                          <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={(e) => { e.stopPropagation(); handleDeleteBank(bank.id); }}>
                             <Trash2 className="h-3.5 w-3.5" />
                           </Button>
                         </div>
@@ -1941,6 +1945,12 @@ export default function AllRecurringChargesPage() {
         categories={staffCategories}
         costCenters={staffCostCenters}
         onSuccess={() => { setIsLoading(true); loadData().finally(() => setIsLoading(false)); }}
+      />
+      <BankTransactionsDialog
+        bank={statementBank}
+        open={isStatementOpen}
+        onOpenChange={setIsStatementOpen}
+        formatCurrencyCents={formatCurrencyCents}
       />
     </div>
   );
