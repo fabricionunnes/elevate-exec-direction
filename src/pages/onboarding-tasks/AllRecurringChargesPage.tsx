@@ -813,27 +813,59 @@ export default function AllRecurringChargesPage() {
   };
 
   // Helper: send WhatsApp message via Evolution or Official API
+  const fetchWithRetry = async (url: string, options: RequestInit, retries = 2): Promise<Response> => {
+    for (let i = 0; i <= retries; i++) {
+      try {
+        const response = await fetch(url, options);
+        return response;
+      } catch (err) {
+        if (i === retries) throw err;
+        await new Promise(r => setTimeout(r, 1000 * (i + 1)));
+      }
+    }
+    throw new Error("Falha na conexão após tentativas");
+  };
+
   const sendWhatsAppMessage = async (phone: string, message: string): Promise<void> => {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Try Evolution API first (status can be 'connected' or 'connecting' - both are functional)
-    const { data: evolutionInstance } = await supabase
+    // Try Evolution API first - prefer fabricionunnes, then any connected/connecting
+    let evolutionInstance = null;
+    const { data: preferred } = await supabase
       .from("whatsapp_instances")
       .select("instance_name")
+      .eq("instance_name", "fabricionunnes")
       .in("status", ["connected", "connecting"])
-      .order("is_default", { ascending: false, nullsFirst: false })
-      .limit(1)
       .maybeSingle();
+    
+    if (preferred) {
+      evolutionInstance = preferred;
+    } else {
+      const { data: any_instance } = await supabase
+        .from("whatsapp_instances")
+        .select("instance_name")
+        .in("status", ["connected", "connecting"])
+        .limit(1)
+        .maybeSingle();
+      evolutionInstance = any_instance;
+    }
 
     if (evolutionInstance) {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ instanceName: evolutionInstance.instance_name, number: phone, text: message }),
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
-      return;
+      try {
+        const response = await fetchWithRetry(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          body: JSON.stringify({ instanceName: evolutionInstance.instance_name, number: phone, text: message }),
+        });
+        if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+        return;
+      } catch (err: any) {
+        if (err.name === 'TypeError' && err.message === 'Load failed') {
+          throw new Error("Falha na conexão com o servidor WhatsApp. Tente novamente em alguns segundos.");
+        }
+        throw err;
+      }
     }
 
     // Fallback to Official WhatsApp API
@@ -845,13 +877,20 @@ export default function AllRecurringChargesPage() {
       .maybeSingle();
 
     if (officialInstance) {
-      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-official-api`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ action: 'sendText', instanceId: officialInstance.id, phone, message }),
-      });
-      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
-      return;
+      try {
+        const response = await fetchWithRetry(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-official-api`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+          body: JSON.stringify({ action: 'sendText', instanceId: officialInstance.id, phone, message }),
+        });
+        if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+        return;
+      } catch (err: any) {
+        if (err.name === 'TypeError' && err.message === 'Load failed') {
+          throw new Error("Falha na conexão com o servidor WhatsApp. Tente novamente em alguns segundos.");
+        }
+        throw err;
+      }
     }
 
     throw new Error("Nenhuma instância WhatsApp conectada");
