@@ -305,7 +305,7 @@ export default function AllRecurringChargesPage() {
       const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
         supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator, phone").order("name"),
-        supabase.from("financial_payables").select("*").order("due_date", { ascending: false }),
+        supabase.from("financial_payables").select("*").order("due_date", { ascending: true }),
         supabase.from("company_invoices").select("*").order("due_date", { ascending: true }),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
