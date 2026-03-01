@@ -35,7 +35,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -62,6 +62,7 @@ import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterB
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
+import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
@@ -152,6 +153,7 @@ const NAV_ITEMS = [
   { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard, isSeparator: true },
   { key: "billing-rules", label: "Régua de Cobranças", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
   { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
+  { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
 ] as const;
 
@@ -2036,6 +2038,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "suppliers" && (
             <SuppliersPanel />
+          )}
+          {activeTab === "inbox" && (
+            <FinancialInboxPanel />
           )}
           {activeTab === "whatsapp-instance" && (
             <WhatsAppInstancePanel />
