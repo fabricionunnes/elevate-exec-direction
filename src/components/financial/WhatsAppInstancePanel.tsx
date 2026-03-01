@@ -3,9 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, MessageSquare, Wifi, WifiOff } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Loader2, MessageSquare, Wifi, WifiOff, Download } from "lucide-react";
 import { toast } from "sonner";
 import { invalidateDefaultInstanceCache } from "@/utils/whatsapp-defaults";
+import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
 
 interface WhatsAppInstance {
   id: string;
@@ -19,6 +21,7 @@ export function WhatsAppInstancePanel() {
   const [currentInstance, setCurrentInstance] = useState<string>("");
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
+  const [showImportStevo, setShowImportStevo] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -85,13 +88,21 @@ export function WhatsAppInstancePanel() {
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle className="flex items-center gap-2">
-            <MessageSquare className="h-5 w-5 text-primary" />
-            Instância Padrão de WhatsApp
-          </CardTitle>
-          <CardDescription>
-            Selecione a instância que será usada para envio de mensagens em Contas a Receber, Régua de Cobranças e demais módulos.
-          </CardDescription>
+          <div className="flex items-center justify-between">
+            <div>
+              <CardTitle className="flex items-center gap-2">
+                <MessageSquare className="h-5 w-5 text-primary" />
+                Instância Padrão de WhatsApp
+              </CardTitle>
+              <CardDescription>
+                Selecione a instância que será usada para envio de mensagens em Contas a Receber, Régua de Cobranças e demais módulos.
+              </CardDescription>
+            </div>
+            <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => setShowImportStevo(true)}>
+              <Download className="h-4 w-4" />
+              Importar do STEVO
+            </Button>
+          </div>
         </CardHeader>
         <CardContent className="space-y-4">
           <Select value={currentInstance} onValueChange={handleChange} disabled={isSaving}>
@@ -167,6 +178,16 @@ export function WhatsAppInstancePanel() {
           </div>
         </CardContent>
       </Card>
+
+      <ImportFromStevoModal
+        open={showImportStevo}
+        onOpenChange={setShowImportStevo}
+        existingInstanceNames={instances.map((i) => i.instance_name)}
+        onImported={() => {
+          loadData();
+          setShowImportStevo(false);
+        }}
+      />
     </div>
   );
 }
