@@ -17,7 +17,8 @@ import {
   ArrowLeft,
   Loader2,
   ShieldAlert,
-  Bell
+  Bell,
+  Truck
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -33,6 +34,7 @@ import { FinancialPlanningPanel } from "@/components/financial/FinancialPlanning
 import { CFOInsightsPanel } from "@/components/financial/CFOInsightsPanel";
 import { IntegrationsPanel } from "@/components/financial/IntegrationsPanel";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
+import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 
 const ALLOWED_EMAIL = "fabricio@universidadevendas.com.br";
 
@@ -107,6 +109,7 @@ export default function FinancialModulePage() {
     { id: "cfo", label: "IA CFO", icon: Bot },
     { id: "integrations", label: "Integrações", icon: Link2 },
     { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
+    { id: "suppliers", label: "Fornecedores", icon: Truck },
   ];
 
   return (
@@ -197,6 +200,10 @@ export default function FinancialModulePage() {
 
           <TabsContent value="billing-rules" className="mt-0">
             <BillingRulesPanel />
+          </TabsContent>
+
+          <TabsContent value="suppliers" className="mt-0">
+            <SuppliersPanel />
           </TabsContent>
         </Tabs>
       </main>

@@ -83,11 +83,18 @@ interface BankAccount {
   bank_name: string;
 }
 
+interface Supplier {
+  id: string;
+  name: string;
+  is_active: boolean;
+}
+
 export function PayablesPanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [payables, setPayables] = useState<Payable[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [bankAccounts, setBankAccounts] = useState<BankAccount[]>([]);
+  const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
   const [periodFilter, setPeriodFilter] = useState("this_month");
@@ -149,9 +156,16 @@ export function PayablesPanel() {
         .eq("is_active", true)
         .order("name");
 
+      const { data: suppliersData } = await (supabase as any)
+        .from("financial_suppliers")
+        .select("id, name, is_active")
+        .eq("is_active", true)
+        .order("name");
+
       setPayables(payablesData || []);
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
+      setSuppliers(suppliersData || []);
 
       // Update overdue status
       const today = format(new Date(), "yyyy-MM-dd");
@@ -439,11 +453,27 @@ export function PayablesPanel() {
               <div className="space-y-4 py-4 max-h-[70vh] overflow-y-auto">
                 <div className="space-y-2">
                   <Label>Fornecedor *</Label>
-                  <Input
-                    value={formData.supplier_name}
-                    onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
-                    placeholder="Nome do fornecedor"
-                  />
+                  {suppliers.length > 0 ? (
+                    <Select
+                      value={formData.supplier_name}
+                      onValueChange={(v) => setFormData({ ...formData, supplier_name: v })}
+                    >
+                      <SelectTrigger>
+                        <SelectValue placeholder="Selecione um fornecedor..." />
+                      </SelectTrigger>
+                      <SelectContent>
+                        {suppliers.map((s) => (
+                          <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      value={formData.supplier_name}
+                      onChange={(e) => setFormData({ ...formData, supplier_name: e.target.value })}
+                      placeholder="Nome do fornecedor"
+                    />
+                  )}
                 </div>
 
                 <div className="grid grid-cols-2 gap-4">
