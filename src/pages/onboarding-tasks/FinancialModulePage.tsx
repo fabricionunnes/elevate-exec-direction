@@ -18,7 +18,8 @@ import {
   Loader2,
   ShieldAlert,
   Bell,
-  Truck
+  Truck,
+  MessageSquare
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -35,6 +36,7 @@ import { CFOInsightsPanel } from "@/components/financial/CFOInsightsPanel";
 import { IntegrationsPanel } from "@/components/financial/IntegrationsPanel";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
+import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 
 const ALLOWED_EMAIL = "fabricio@universidadevendas.com.br";
 
@@ -110,6 +112,7 @@ export default function FinancialModulePage() {
     { id: "integrations", label: "Integrações", icon: Link2 },
     { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
     { id: "suppliers", label: "Fornecedores", icon: Truck },
+    { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
   ];
 
   return (
@@ -204,6 +207,10 @@ export default function FinancialModulePage() {
 
           <TabsContent value="suppliers" className="mt-0">
             <SuppliersPanel />
+          </TabsContent>
+
+          <TabsContent value="whatsapp-instance" className="mt-0">
+            <WhatsAppInstancePanel />
           </TabsContent>
         </Tabs>
       </main>
