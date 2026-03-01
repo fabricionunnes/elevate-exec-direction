@@ -12,6 +12,17 @@ import {
   DialogTrigger,
 } from "@/components/ui/dialog";
 import {
+  AlertDialog,
+  AlertDialogContent,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogCancel,
+  AlertDialogAction,
+} from "@/components/ui/alert-dialog";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import {
   Select,
   SelectContent,
   SelectItem,
@@ -39,6 +50,8 @@ import {
   MoreVertical,
   Loader2,
   RefreshCw,
+  RotateCcw,
+  Trash2,
   Repeat,
   CalendarDays
 } from "lucide-react";
@@ -50,6 +63,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
 interface Payable {
   id: string;
@@ -103,6 +117,10 @@ export function PayablesPanel() {
   const [selectedPayable, setSelectedPayable] = useState<Payable | null>(null);
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
+  const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
+  const { isMaster } = useFinancialPermissions();
   const [formData, setFormData] = useState({
     supplier_name: "",
     category_id: "",
@@ -342,6 +360,76 @@ export function PayablesPanel() {
     } catch (error) {
       console.error("Error cancelling payable:", error);
       toast.error("Erro ao cancelar conta");
+    }
+  };
+
+  const handleReopenPayable = async (payable: Payable) => {
+    try {
+      // If there was a bank account linked, reverse the balance
+      const { data: payableData } = await supabase
+        .from("financial_payables")
+        .select("paid_amount, bank_account_id")
+        .eq("id", payable.id)
+        .single();
+
+      if (payableData?.bank_account_id && payableData?.paid_amount) {
+        const { data: bankData } = await supabase
+          .from("financial_bank_accounts")
+          .select("current_balance")
+          .eq("id", payableData.bank_account_id)
+          .single();
+
+        if (bankData) {
+          await supabase
+            .from("financial_bank_accounts")
+            .update({ current_balance: Number(bankData.current_balance) + Number(payableData.paid_amount) })
+            .eq("id", payableData.bank_account_id);
+        }
+      }
+
+      const { error } = await supabase
+        .from("financial_payables")
+        .update({ status: "pending", paid_date: null, paid_amount: null, bank_account_id: null })
+        .eq("id", payable.id);
+
+      if (error) throw error;
+
+      toast.success("Conta reaberta com sucesso!");
+      loadData();
+    } catch (error) {
+      console.error("Error reopening payable:", error);
+      toast.error("Erro ao reabrir conta");
+    }
+  };
+
+  const handleDeletePayable = async () => {
+    if (!deleteTarget) return;
+    try {
+      if (deleteScope === "single") {
+        const { error } = await supabase
+          .from("financial_payables")
+          .delete()
+          .eq("id", deleteTarget.id);
+        if (error) throw error;
+        toast.success("Conta excluída com sucesso!");
+      } else {
+        // Delete this and all future unpaid with same supplier
+        const { error } = await supabase
+          .from("financial_payables")
+          .delete()
+          .eq("supplier_name", deleteTarget.supplier_name)
+          .gte("installment_number", deleteTarget.installment_number || 0)
+          .in("status", ["pending", "overdue", "partial", "cancelled"]);
+        if (error) throw error;
+        toast.success("Contas excluídas com sucesso!");
+      }
+      setIsDeleteDialogOpen(false);
+      setDeleteTarget(null);
+      setDeleteScope("single");
+      loadData();
+    } catch (error) {
+      console.error("Error deleting payable:", error);
+      toast.error("Erro ao excluir conta");
     }
   };
 
@@ -840,6 +928,27 @@ export function PayablesPanel() {
                               Cancelar
                             </DropdownMenuItem>
                           )}
+                          {(payable.status === "paid" || payable.status === "partial" || payable.status === "cancelled") && (
+                            <DropdownMenuItem
+                              onClick={() => handleReopenPayable(payable)}
+                            >
+                              <RotateCcw className="h-4 w-4 mr-2" />
+                              Reabrir
+                            </DropdownMenuItem>
+                          )}
+                          {isMaster && (
+                            <DropdownMenuItem
+                              className="text-red-600"
+                              onClick={() => {
+                                setDeleteTarget(payable);
+                                setDeleteScope("single");
+                                setIsDeleteDialogOpen(true);
+                              }}
+                            >
+                              <Trash2 className="h-4 w-4 mr-2" />
+                              Excluir
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
@@ -951,6 +1060,43 @@ export function PayablesPanel() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation Dialog */}
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir Conta a Pagar</AlertDialogTitle>
+            <AlertDialogDescription>
+              {deleteTarget && (
+                <div className="space-y-4">
+                  <p>
+                    Deseja excluir <strong>{deleteTarget.description}</strong> ({deleteTarget.supplier_name})?
+                  </p>
+                  {deleteTarget.installment_number && deleteTarget.total_installments && deleteTarget.total_installments > 1 && (
+                    <RadioGroup value={deleteScope} onValueChange={(v) => setDeleteScope(v as "single" | "future")}>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="single" id="delete-single" />
+                        <Label htmlFor="delete-single">Somente esta</Label>
+                      </div>
+                      <div className="flex items-center space-x-2">
+                        <RadioGroupItem value="future" id="delete-future" />
+                        <Label htmlFor="delete-future">Esta e todas as futuras não pagas</Label>
+                      </div>
+                    </RadioGroup>
+                  )}
+                  <p className="text-sm text-destructive">Esta ação não pode ser desfeita.</p>
+                </div>
+              )}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancelar</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeletePayable} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
