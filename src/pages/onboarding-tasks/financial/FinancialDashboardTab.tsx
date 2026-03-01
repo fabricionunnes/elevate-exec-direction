@@ -22,6 +22,7 @@ interface Props {
   charges?: any[];
   formatCurrency: (v: number) => string;
   formatCurrencyCents: (v: number) => string;
+  hasPerm?: (key: string) => boolean;
 }
 
 const toMonthlyMRR = (amountCents: number, recurrence: string): number => {
@@ -53,7 +54,7 @@ const GradientCard = ({
   </div>
 );
 
-export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents }: Props) {
+export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents, hasPerm }: Props) {
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -574,7 +575,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       </GradientCard>
 
       {/* Banks Overview */}
-      {banks.length > 0 && (
+      {banks.length > 0 && (!hasPerm || hasPerm("fin_bank_balances")) && (
         <GradientCard gradient="linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(99,102,241,0.03) 100%)">
           <div className="p-5">
             <div className="flex items-center gap-2 mb-4">

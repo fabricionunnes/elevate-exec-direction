@@ -1224,6 +1224,7 @@ export default function AllRecurringChargesPage() {
               charges={charges}
               formatCurrency={formatCurrency}
               formatCurrencyCents={formatCurrencyCents}
+              hasPerm={hasPerm}
             />
           )}
 
