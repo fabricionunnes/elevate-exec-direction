@@ -112,6 +112,7 @@ const OnboardingTasksPage = () => {
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [hasCRMPermission, setHasCRMPermission] = useState<boolean>(false);
+  const [hasFinancialPermission, setHasFinancialPermission] = useState<boolean>(false);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -528,15 +529,25 @@ const OnboardingTasksPage = () => {
           // Check CRM permission - master has automatic access, others need explicit permission
           if (normalizedRole === "master") {
             setHasCRMPermission(true);
+            setHasFinancialPermission(true);
           } else {
-            const { data: crmPermission } = await supabase
-              .from("staff_menu_permissions")
-              .select("id")
-              .eq("staff_id", staffMember.id)
-              .eq("menu_key", "crm")
-              .maybeSingle();
+            const [crmPermRes, finPermRes] = await Promise.all([
+              supabase
+                .from("staff_menu_permissions")
+                .select("id")
+                .eq("staff_id", staffMember.id)
+                .eq("menu_key", "crm")
+                .maybeSingle(),
+              supabase
+                .from("staff_menu_permissions")
+                .select("id")
+                .eq("staff_id", staffMember.id)
+                .eq("menu_key", "financial")
+                .maybeSingle(),
+            ]);
             
-            setHasCRMPermission(!!crmPermission);
+            setHasCRMPermission(!!crmPermRes.data);
+            setHasFinancialPermission(!!finPermRes.data);
           }
         }
       }
@@ -1816,6 +1827,7 @@ const OnboardingTasksPage = () => {
   const canAccessAnalytics = isAdmin || isCS || isConsultant;
   // CRM access: master has automatic access, others need explicit permission in staff_menu_permissions
   const canAccessCRM = hasCRMPermission;
+  const canAccessFinancial = isAdmin || hasFinancialPermission;
 
   if (loading) {
     return (
@@ -1948,16 +1960,16 @@ const OnboardingTasksPage = () => {
                         Análise de Cohort
                       </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
-                        <>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
-                            <Crown className="h-4 w-4 mr-2" />
-                            Painel do CEO
-                          </DropdownMenuItem>
-                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
-                            <Calculator className="h-4 w-4 mr-2" />
-                            Módulo Financeiro
-                          </DropdownMenuItem>
-                        </>
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
+                          <Crown className="h-4 w-4 mr-2" />
+                          Painel do CEO
+                        </DropdownMenuItem>
+                      )}
+                      {canAccessFinancial && (
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                          <Calculator className="h-4 w-4 mr-2" />
+                          Módulo Financeiro
+                        </DropdownMenuItem>
                       )}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => setShowAccessControlPanel(true)}>
@@ -2217,8 +2229,8 @@ const OnboardingTasksPage = () => {
                 CRM Comercial
               </Button>
             )}
-            {/* Financeiro button - visible for admin and master only */}
-            {isAdmin && (
+            {/* Financeiro button - visible for admin, master, and users with financial permission */}
+            {canAccessFinancial && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -2248,12 +2260,16 @@ const OnboardingTasksPage = () => {
                         <Crown className="h-4 w-4 mr-2" />
                         Painel do CEO
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
-                        <Calculator className="h-4 w-4 mr-2" />
-                        Módulo Financeiro
-                      </DropdownMenuItem>
-                      <DropdownMenuSeparator />
                     </>
+                  )}
+                  {canAccessFinancial && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                      <Calculator className="h-4 w-4 mr-2" />
+                      Módulo Financeiro
+                    </DropdownMenuItem>
+                  )}
+                  {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial) && (
+                    <DropdownMenuSeparator />
                   )}
 
                   {/* Leader Panel - For admins except CEO */}
