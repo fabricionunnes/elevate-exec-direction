@@ -274,12 +274,6 @@ const OnboardingProjectPage = () => {
           toast.error(`💰 INADIMPLÊNCIA: ${companyName}`, {
             description: `${totalOverdue} ${totalOverdue === 1 ? 'parcela em atraso' : 'parcelas em atraso'} — até ${maxDaysLate} ${maxDaysLate === 1 ? 'dia' : 'dias'} de atraso`,
             duration: 15000,
-            action: {
-              label: "Ver Financeiro",
-              onClick: () => {
-                window.open("/onboarding-tasks/financeiro/recorrencias", "_blank");
-              },
-            },
           });
         }
       }
