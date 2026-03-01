@@ -239,9 +239,7 @@ export function WhatsAppInstancePanel() {
                 }`} />
                 <div className="flex-1 min-w-0">
                   <p className="text-sm font-medium truncate">{inst.display_name || inst.instance_name}</p>
-                  <p className="text-xs text-muted-foreground">
-                    {isConnected(inst.status) ? "Conectada" : "Desconectada"}
-                  </p>
+                  <p className="text-xs text-muted-foreground font-mono truncate">{inst.instance_name}</p>
                 </div>
                 {inst.instance_name === currentInstance && (
                   <Badge variant="outline" className="text-xs shrink-0">Padrão</Badge>
