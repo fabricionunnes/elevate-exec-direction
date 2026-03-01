@@ -38,6 +38,7 @@ interface BankTransaction {
   reference_type: string | null;
   reference_id: string | null;
   created_at: string;
+  company_name?: string | null;
 }
 
 interface FinancialBank {
@@ -81,14 +82,18 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
 
       const { data, error } = await supabase
         .from("financial_bank_transactions")
-        .select("*")
+        .select("*, company_invoices:reference_id(company_id, onboarding_companies:company_id(name))")
         .eq("bank_id", bank.id)
         .gte("created_at", from + "T00:00:00")
         .lte("created_at", to + "T23:59:59")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setTransactions((data as BankTransaction[]) || []);
+      const mapped = ((data as any[]) || []).map((t: any) => ({
+        ...t,
+        company_name: t.company_invoices?.onboarding_companies?.name || null,
+      }));
+      setTransactions(mapped as BankTransaction[]);
     } catch (err) {
       console.error("Error loading bank transactions:", err);
     } finally {
@@ -208,6 +213,9 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                         )}
                         <div className="min-w-0">
                           <p className="text-sm truncate">{t.description || "Sem descrição"}</p>
+                          {t.company_name && (
+                            <p className="text-xs font-medium text-primary truncate">{t.company_name}</p>
+                          )}
                           <p className="text-xs text-muted-foreground">
                             {format(new Date(t.created_at), "dd/MM/yyyy HH:mm")}
                           </p>
@@ -226,6 +234,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                     <TableRow>
                       <TableHead className="w-[140px]">Data</TableHead>
                       <TableHead>Descrição</TableHead>
+                      <TableHead>Cliente/Fornecedor</TableHead>
                       <TableHead className="w-[80px]">Tipo</TableHead>
                       <TableHead className="text-right w-[130px]">Valor</TableHead>
                     </TableRow>
@@ -237,6 +246,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                           {format(new Date(t.created_at), "dd/MM/yyyy HH:mm")}
                         </TableCell>
                         <TableCell className="text-sm">{t.description || "-"}</TableCell>
+                        <TableCell className="text-sm font-medium">{t.company_name || "-"}</TableCell>
                         <TableCell className="text-sm">
                           {t.reference_type === "invoice" ? "Fatura" : t.reference_type || "-"}
                         </TableCell>
