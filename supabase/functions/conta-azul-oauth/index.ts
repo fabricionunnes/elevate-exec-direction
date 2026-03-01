@@ -287,40 +287,58 @@ Deno.serve(async (req) => {
       const dueDate = entryData.due_date || new Date().toISOString().split("T")[0];
 
       // First, fetch categories to get a default categoryId
+      // Fetch a default category ID from Conta Azul
       let defaultCategoryId: string | null = null;
       try {
-        const catResponse = await fetch("https://api-v2.contaazul.com/v1/financeiro/categorias?pagina=1&tamanhoPagina=1", {
-          headers: { "Authorization": `Bearer ${accessToken}`, "Accept": "application/json" },
-        });
-        if (catResponse.ok) {
-          const catData = await catResponse.json();
-          const items = catData?.itens || catData?.content || catData?.data || catData;
-          if (Array.isArray(items) && items.length > 0) {
-            defaultCategoryId = items[0].id;
+        // Try multiple known endpoints for categories
+        const catUrls = [
+          "https://api-v2.contaazul.com/v1/financeiro/categorias?pagina=1&tamanhoPagina=10",
+          "https://api-v2.contaazul.com/v1/categorias?pagina=1&tamanhoPagina=10",
+        ];
+        for (const catUrl of catUrls) {
+          if (defaultCategoryId) break;
+          try {
+            const catResponse = await fetch(catUrl, {
+              headers: { "Authorization": `Bearer ${accessToken}`, "Accept": "application/json" },
+            });
+            if (catResponse.ok) {
+              const catData = await catResponse.json();
+              const items = catData?.itens || catData?.content || catData?.data || (Array.isArray(catData) ? catData : []);
+              if (Array.isArray(items) && items.length > 0) {
+                defaultCategoryId = items[0].id;
+                console.log("Found category:", defaultCategoryId, "from", catUrl);
+              }
+            } else {
+              const catText = await catResponse.text();
+              console.log("Categories fetch failed:", catResponse.status, catUrl, catText.substring(0, 200));
+            }
+          } catch (e) {
+            console.log("Error fetching categories from", catUrl, e);
           }
-        } else {
-          const catText = await catResponse.text();
-          console.log("Categories fetch failed:", catResponse.status, catText.substring(0, 200));
         }
       } catch (e) {
-        console.log("Error fetching categories:", e);
+        console.log("Error in category fetching:", e);
       }
 
+      // Build payload using Portuguese field names as required by Conta Azul API v2
       const payload: any = {
-        description: entryData.description || "Lançamento",
-        value: valorBruto,
-        dueDate: dueDate,
-        competenceDate: dueDate,
-        paymentCondition: "a_vista",
-        categoriesRatio: [
-          {
-            categoryId: defaultCategoryId || undefined,
-            value: valorBruto,
-          }
-        ],
+        descricao: entryData.description || "Lançamento",
+        valor: valorBruto,
+        dataVencimento: dueDate,
+        dataCompetencia: dueDate,
+        condicaoPagamento: "a_vista",
       };
-      if (entryData.client_name) payload.contactName = entryData.client_name;
-      if (entryData.supplier_name) payload.contactName = entryData.supplier_name;
+
+      // Add category ratio (rateio) - required field
+      if (defaultCategoryId) {
+        payload.rateio = [{ categoriaId: defaultCategoryId, valor: valorBruto }];
+      } else {
+        // If no category found, try sending without rateio and let Conta Azul use default
+        payload.rateio = [];
+      }
+
+      if (entryData.client_name) payload.contatoNome = entryData.client_name;
+      if (entryData.supplier_name) payload.contatoNome = entryData.supplier_name;
 
       console.log(`Conta Azul ${method} ${apiUrl}`, JSON.stringify(payload));
 
