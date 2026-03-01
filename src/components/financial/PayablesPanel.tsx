@@ -285,21 +285,25 @@ export function PayablesPanel() {
     if (!selectedPayable) return;
 
     try {
+      const newPayment = parseFloat(paymentData.paid_amount) || 0;
+      const previouslyPaid = selectedPayable.status === "partial" ? (selectedPayable.paid_amount || 0) : 0;
+      const totalPaid = previouslyPaid + newPayment;
+      const isFullyPaid = totalPaid >= selectedPayable.amount;
+
       const { error } = await supabase
         .from("financial_payables")
         .update({
-          status: "paid",
+          status: isFullyPaid ? "paid" : "partial",
           paid_date: paymentData.paid_date,
-          paid_amount: parseFloat(paymentData.paid_amount) || selectedPayable.amount,
+          paid_amount: totalPaid,
           bank_account_id: paymentData.bank_account_id || null
         })
         .eq("id", selectedPayable.id);
 
       if (error) throw error;
 
-      // Update bank balance manually
-      if (paymentData.bank_account_id) {
-        const paidAmount = parseFloat(paymentData.paid_amount) || selectedPayable.amount;
+      // Update bank balance - debit only the new payment amount
+      if (paymentData.bank_account_id && newPayment > 0) {
         const { data: bankData } = await supabase
           .from("financial_bank_accounts")
           .select("current_balance")
@@ -309,12 +313,12 @@ export function PayablesPanel() {
         if (bankData) {
           await supabase
             .from("financial_bank_accounts")
-            .update({ current_balance: Number(bankData.current_balance) - paidAmount })
+            .update({ current_balance: Number(bankData.current_balance) - newPayment })
             .eq("id", paymentData.bank_account_id);
         }
       }
 
-      toast.success("Pagamento registrado com sucesso!");
+      toast.success(isFullyPaid ? "Pagamento total registrado!" : "Pagamento parcial registrado!");
       setIsPayDialogOpen(false);
       setSelectedPayable(null);
       loadData();
@@ -372,6 +376,8 @@ export function PayablesPanel() {
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
+      case "partial":
+        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><Clock className="h-3 w-3 mr-1" /> Pago Parcial</Badge>;
       case "pending":
         return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
       case "overdue":
@@ -743,6 +749,7 @@ export function PayablesPanel() {
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="partial">Pago Parcial</SelectItem>
                 <SelectItem value="overdue">Atrasados</SelectItem>
                 <SelectItem value="paid">Pagos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
@@ -809,9 +816,12 @@ export function PayablesPanel() {
                             <DropdownMenuItem
                               onClick={() => {
                                 setSelectedPayable(payable);
+                                const remaining = payable.status === "partial"
+                                  ? payable.amount - (payable.paid_amount || 0)
+                                  : payable.amount;
                                 setPaymentData({
                                   paid_date: format(new Date(), "yyyy-MM-dd"),
-                                  paid_amount: String(payable.amount),
+                                  paid_amount: String(remaining),
                                   bank_account_id: ""
                                 });
                                 setIsPayDialogOpen(true);
@@ -881,8 +891,14 @@ export function PayablesPanel() {
             <div className="p-4 bg-muted rounded-lg">
               <p className="font-medium">{selectedPayable?.description}</p>
               <p className="text-sm text-muted-foreground">
-                {selectedPayable?.supplier_name} • {selectedPayable && formatCurrency(selectedPayable.amount)}
+                {selectedPayable?.supplier_name} • Valor total: {selectedPayable && formatCurrency(selectedPayable.amount)}
               </p>
+              {selectedPayable?.status === "partial" && selectedPayable.paid_amount && (
+                <div className="mt-2 text-sm space-y-1">
+                  <p className="text-emerald-600">Já pago: {formatCurrency(selectedPayable.paid_amount)}</p>
+                  <p className="text-orange-600 font-medium">Restante: {formatCurrency(selectedPayable.amount - selectedPayable.paid_amount)}</p>
+                </div>
+              )}
             </div>
             
             <div className="grid grid-cols-2 gap-4">

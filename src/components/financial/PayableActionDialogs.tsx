@@ -58,7 +58,10 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
   // Pre-fill form when dialog opens
   useEffect(() => {
     if (open && payable) {
-      setPaidAmount(payable.amount);
+      const remaining = payable.status === "partial"
+        ? payable.amount - (payable.paid_amount || 0)
+        : payable.amount;
+      setPaidAmount(remaining);
       setPaymentDate(new Date());
       setBankId("none");
     }
@@ -69,13 +72,15 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
     setSaving(true);
     try {
       const dateStr = format(paymentDate, "yyyy-MM-dd");
-      const isPartial = paidAmount > 0 && paidAmount < payable.amount;
+      const previouslyPaid = payable.status === "partial" ? (payable.paid_amount || 0) : 0;
+      const totalPaid = previouslyPaid + paidAmount;
+      const isPartial = totalPaid > 0 && totalPaid < payable.amount;
       const newStatus = isPartial ? "partial" : "paid";
 
       const updateData: any = {
         status: newStatus,
         paid_date: dateStr,
-        paid_amount: paidAmount,
+        paid_amount: totalPaid,
         updated_at: new Date().toISOString(),
       };
       if (bankId !== "none") updateData.bank_id = bankId;
@@ -120,7 +125,12 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
         <DialogHeader>
           <DialogTitle>Registrar Pagamento</DialogTitle>
           <DialogDescription>
-            {payable.description} — {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount)}
+            {payable.description} — Total: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount)}
+            {payable.status === "partial" && payable.paid_amount ? (
+              <span className="block mt-1 text-orange-600">
+                Já pago: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.paid_amount)} • Restante: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount - payable.paid_amount)}
+              </span>
+            ) : null}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
