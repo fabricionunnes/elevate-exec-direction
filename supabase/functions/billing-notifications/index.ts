@@ -30,15 +30,17 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Get WhatsApp instance
-    const { data: whatsappInstance } = await supabase
+    // 2. Get all connected WhatsApp instances (keyed by instance_name)
+    const { data: whatsappInstances } = await supabase
       .from("whatsapp_instances")
       .select("api_url, api_key, instance_name, is_default")
-      .eq("status", "connected")
-      .eq("instance_name", "fabricionunnes")
-      .single();
+      .eq("status", "connected");
 
-    if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
+    const instanceMap = new Map(
+      (whatsappInstances || []).map((i) => [i.instance_name, i])
+    );
+
+    if (instanceMap.size === 0) {
       return new Response(
         JSON.stringify({ sent: 0, error: "No WhatsApp instance connected" }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
@@ -158,6 +160,11 @@ Deno.serve(async (req) => {
         const cleanPhone = company.phone.replace(/\D/g, "");
         if (!cleanPhone || cleanPhone.length < 10) continue;
         const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+        // Resolve WhatsApp instance for this rule
+        const instanceName = rule.whatsapp_instance_name || "fabricionunnes";
+        const whatsappInstance = instanceMap.get(instanceName) || instanceMap.values().next().value;
+        if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) continue;
 
         // Build message from template
         const message = buildMessage(rule, invoice, company, today);

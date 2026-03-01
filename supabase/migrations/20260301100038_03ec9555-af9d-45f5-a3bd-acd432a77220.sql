@@ -1,0 +1,1 @@
+ALTER TABLE public.billing_notification_rules ADD COLUMN IF NOT EXISTS whatsapp_instance_name text DEFAULT 'fabricionunnes';
