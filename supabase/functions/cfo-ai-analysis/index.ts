@@ -26,9 +26,9 @@ serve(async (req) => {
     const startOfYear = new Date(now.getFullYear(), 0, 1).toISOString().split("T")[0];
 
     const [invoicesRes, payablesRes, banksRes, companiesRes, recurringRes] = await Promise.all([
-      supabase.from("company_invoices").select("id, amount_cents, due_date, status, paid_at, paid_amount_cents, late_fee_cents, interest_cents, total_with_fees_cents, company_id, recurring_charge_id").order("due_date", { ascending: false }).limit(500),
-      supabase.from("financial_payables").select("id, description, amount, due_date, status, category, paid_at, paid_amount").order("due_date", { ascending: false }).limit(500),
-      supabase.from("financial_banks").select("id, name, current_balance").eq("is_active", true),
+      supabase.from("company_invoices").select("id, amount_cents, due_date, status, paid_at, paid_amount_cents, late_fee_cents, interest_cents, total_with_fees_cents, company_id, recurring_charge_id").order("due_date", { ascending: false }).limit(2000),
+      supabase.from("financial_payables").select("id, description, amount, due_date, status, category, paid_at, paid_amount").order("due_date", { ascending: false }).limit(2000),
+      supabase.from("financial_banks").select("id, name, current_balance_cents").eq("is_active", true),
       supabase.from("onboarding_companies").select("id, name, status, contract_value, segment").eq("is_simulator", false),
       supabase.from("company_recurring_charges").select("id, amount_cents, recurrence, is_active, company_id").eq("is_active", true),
     ]);
@@ -45,7 +45,7 @@ serve(async (req) => {
     const totalPaidMonth = invoices.filter(i => i.status === "paid" && i.paid_at && i.paid_at >= startOfMonth).reduce((s, i) => s + (i.paid_amount_cents || i.amount_cents || 0), 0) / 100;
     const totalPayables = payables.filter(p => p.status === "pending").reduce((s, p) => s + Number(p.amount || 0), 0);
     const totalPayablesOverdue = payables.filter(p => p.status === "pending" && p.due_date < now.toISOString().split("T")[0]).reduce((s, p) => s + Number(p.amount || 0), 0);
-    const totalBankBalance = banks.reduce((s, b) => s + Number(b.current_balance || 0), 0);
+    const totalBankBalance = banks.reduce((s, b) => s + (Number(b.current_balance_cents || 0) / 100), 0);
     const activeCompanies = companies.filter(c => c.status === "active").length;
     const churnedCompanies = companies.filter(c => c.status === "churned").length;
 
