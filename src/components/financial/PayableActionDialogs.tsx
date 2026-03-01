@@ -380,7 +380,18 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
           <div className="grid grid-cols-2 gap-3">
             <div>
               <Label>Mês Referência</Label>
-              <Input type="month" value={form.reference_month} onChange={(e) => setForm(f => ({ ...f, reference_month: e.target.value }))} />
+              <Select value={form.reference_month || "none"} onValueChange={(v) => setForm(f => ({ ...f, reference_month: v === "none" ? "" : v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {["Janeiro","Fevereiro","Março","Abril","Maio","Junho","Julho","Agosto","Setembro","Outubro","Novembro","Dezembro"].map((m, i) => {
+                    const now = new Date();
+                    const year = now.getFullYear();
+                    const val = `${year}-${String(i + 1).padStart(2, "0")}`;
+                    return <SelectItem key={val} value={val}>{m}</SelectItem>;
+                  })}
+                </SelectContent>
+              </Select>
             </div>
             <div>
               <Label>Tipo de Custo</Label>
