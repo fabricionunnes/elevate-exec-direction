@@ -7,6 +7,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -301,6 +302,19 @@ export default function AllRecurringChargesPage() {
       }
     }
   }, [finPerms.loading, finPerms.hasFinancialAccess]);
+
+  // Refresh categories/cost centers when switching tabs (e.g. after creating new ones in categories tab)
+  useEffect(() => {
+    if (activeTab !== "categories" && userRole) {
+      Promise.all([
+        supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
+      ]).then(([catRes, ccRes]) => {
+        if (!catRes.error) setStaffCategories((catRes.data as any) || []);
+        if (!ccRes.error) setStaffCostCenters((ccRes.data as any) || []);
+      });
+    }
+  }, [activeTab]);
 
   const loadData = async () => {
     try {
@@ -1997,23 +2011,27 @@ export default function AllRecurringChargesPage() {
             <div className="grid grid-cols-2 gap-3">
               <div>
                 <Label>Categoria</Label>
-                <Select value={payableForm.category_id} onValueChange={(v) => setPayableForm(p => ({ ...p, category_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhuma</SelectItem>
-                    {staffCategories.filter(c => c.type === "despesa").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={payableForm.category_id || "none"}
+                  onValueChange={(v) => setPayableForm(p => ({ ...p, category_id: v }))}
+                  options={staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name }))}
+                  placeholder="Pesquisar categoria..."
+                  allowNone
+                  noneLabel="Nenhuma"
+                  emptyMessage="Nenhuma categoria encontrada."
+                />
               </div>
               <div>
                 <Label>Centro de Custo</Label>
-                <Select value={payableForm.cost_center_id} onValueChange={(v) => setPayableForm(p => ({ ...p, cost_center_id: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={payableForm.cost_center_id || "none"}
+                  onValueChange={(v) => setPayableForm(p => ({ ...p, cost_center_id: v }))}
+                  options={staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name }))}
+                  placeholder="Pesquisar centro de custo..."
+                  allowNone
+                  noneLabel="Nenhum"
+                  emptyMessage="Nenhum centro de custo encontrado."
+                />
               </div>
             </div>
             <div>
