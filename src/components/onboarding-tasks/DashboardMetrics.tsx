@@ -87,8 +87,16 @@ interface Company {
   created_at: string;
   payment_method?: string | null;
   consultant_id?: string | null;
+  cs_id?: string | null;
   is_simulator?: boolean;
   renewal_status?: string | null;
+}
+
+interface OverdueCompanyData {
+  company_id: string;
+  name: string;
+  maxDaysLate: number;
+  totalAmountCents: number;
 }
 
 interface DashboardMetricsProps {
@@ -161,6 +169,8 @@ const DashboardMetrics = ({
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
   const [showNotRenewedCompanies, setShowNotRenewedCompanies] = useState(false);
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
+  const [overdueCompaniesData, setOverdueCompaniesData] = useState<OverdueCompanyData[]>([]);
+  const [showOverdueCompanies, setShowOverdueCompanies] = useState(false);
   const npsPerPage = 10;
 
   // Use external data if provided, otherwise use internal state
@@ -182,8 +192,16 @@ const DashboardMetrics = ({
       fetchData();
     } else {
       setLoading(false);
+      fetchOverdueCompanies();
     }
   }, [needsInternalFetch]);
+
+  // Refetch overdue companies when companies list or role changes
+  useEffect(() => {
+    if (companies.length > 0) {
+      fetchOverdueCompanies();
+    }
+  }, [companies, staffRole, currentStaffUserId]);
 
   const fetchData = async () => {
     try {
@@ -247,6 +265,9 @@ const DashboardMetrics = ({
         if (healthResult.error) throw healthResult.error;
         setInternalHealthScores(healthResult.data);
       }
+
+      // Fetch overdue invoices
+      await fetchOverdueCompanies();
     } catch (error) {
       console.error("Error fetching data:", error);
     } finally {
@@ -254,6 +275,58 @@ const DashboardMetrics = ({
     }
   };
 
+  const fetchOverdueCompanies = async () => {
+    try {
+      const todayStr = format(new Date(), "yyyy-MM-dd");
+      const { data: overdueInvoices, error } = await supabase
+        .from("company_invoices")
+        .select("company_id, due_date, amount_cents")
+        .eq("status", "pending")
+        .lt("due_date", todayStr);
+
+      if (error) throw error;
+      if (!overdueInvoices || overdueInvoices.length === 0) {
+        setOverdueCompaniesData([]);
+        return;
+      }
+
+      // Group by company_id
+      const grouped = new Map<string, { maxDaysLate: number; totalAmountCents: number }>();
+      const today = startOfDay(new Date());
+      overdueInvoices.forEach(inv => {
+        const dueDate = new Date(inv.due_date + "T12:00:00");
+        const daysLate = Math.floor((today.getTime() - dueDate.getTime()) / (1000 * 60 * 60 * 24));
+        const existing = grouped.get(inv.company_id) || { maxDaysLate: 0, totalAmountCents: 0 };
+        existing.maxDaysLate = Math.max(existing.maxDaysLate, daysLate);
+        existing.totalAmountCents += inv.amount_cents || 0;
+        grouped.set(inv.company_id, existing);
+      });
+
+      // Cross with companies list and apply role filter
+      const isMasterOrAdmin = staffRole === "master" || staffRole === "admin";
+      const result: OverdueCompanyData[] = [];
+      grouped.forEach((data, companyId) => {
+        const company = companies.find(c => c.id === companyId);
+        if (!company) return;
+        // For consultants, filter to only their companies
+        if (!isMasterOrAdmin && currentStaffUserId) {
+          if (company.consultant_id !== currentStaffUserId && company.cs_id !== currentStaffUserId) return;
+        }
+        result.push({
+          company_id: companyId,
+          name: company.name,
+          maxDaysLate: data.maxDaysLate,
+          totalAmountCents: data.totalAmountCents,
+        });
+      });
+
+      // Sort by days late descending
+      result.sort((a, b) => b.maxDaysLate - a.maxDaysLate);
+      setOverdueCompaniesData(result);
+    } catch (error) {
+      console.error("Error fetching overdue companies:", error);
+    }
+  };
 
   const fetchHealthScores = async () => {
     const { data, error } = await supabase
@@ -1066,7 +1139,7 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-10 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-11 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
@@ -1088,6 +1161,18 @@ const DashboardMetrics = ({
             </Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
             <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
+            <Card 
+              className={cn(
+                "cursor-pointer transition-all hover:shadow-md", 
+                showOverdueCompanies && "ring-2 ring-orange-600"
+              )} 
+              onClick={() => setShowOverdueCompanies(!showOverdueCompanies)}
+            >
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-orange-600">{overdueCompaniesData.length}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Inadimplentes</p>
+              </CardContent>
+            </Card>
           </div>
 
           {/* List of companies not renewed in period */}
@@ -1125,6 +1210,58 @@ const DashboardMetrics = ({
                           <p className="text-[10px] text-muted-foreground truncate">
                             Vence: {company.contract_end_date ? format(new Date(company.contract_end_date), "dd/MM/yyyy") : "-"}
                           </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* List of overdue companies */}
+          {showOverdueCompanies && overdueCompaniesData.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium flex items-center gap-2">
+                  <DollarSign className="h-4 w-4 text-orange-600" />
+                  Empresas inadimplentes ({overdueCompaniesData.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {overdueCompaniesData.map(company => {
+                    const companyProjects = projects.filter(p => getProjectCompanyId(p) === company.company_id && p.status === "active");
+                    const firstProject = companyProjects[0];
+                    const isMasterOrAdmin = staffRole === "master" || staffRole === "admin";
+                    return (
+                      <div 
+                        key={company.company_id} 
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                          firstProject && "cursor-pointer"
+                        )}
+                        onClick={() => {
+                          if (firstProject) {
+                            navigate(`/onboarding-tasks/${firstProject.id}`);
+                          }
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-orange-600/10 flex items-center justify-center shrink-0">
+                          <DollarSign className="h-4 w-4 text-orange-600" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <div className="flex items-center gap-2">
+                            <p className="text-[10px] text-orange-600 font-medium">
+                              {company.maxDaysLate} {company.maxDaysLate === 1 ? "dia" : "dias"} em atraso
+                            </p>
+                            {isMasterOrAdmin && (
+                              <p className="text-[10px] text-muted-foreground">
+                                {(company.totalAmountCents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })}
+                              </p>
+                            )}
+                          </div>
                         </div>
                       </div>
                     );
