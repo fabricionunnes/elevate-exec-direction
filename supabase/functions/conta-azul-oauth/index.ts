@@ -286,21 +286,41 @@ Deno.serve(async (req) => {
       const valorBruto = entryData.amount || 0;
       const dueDate = entryData.due_date || new Date().toISOString().split("T")[0];
 
+      // First, fetch categories to get a default categoryId
+      let defaultCategoryId: string | null = null;
+      try {
+        const catResponse = await fetch("https://api-v2.contaazul.com/v1/financeiro/categorias?pagina=1&tamanhoPagina=1", {
+          headers: { "Authorization": `Bearer ${accessToken}`, "Accept": "application/json" },
+        });
+        if (catResponse.ok) {
+          const catData = await catResponse.json();
+          const items = catData?.itens || catData?.content || catData?.data || catData;
+          if (Array.isArray(items) && items.length > 0) {
+            defaultCategoryId = items[0].id;
+          }
+        } else {
+          const catText = await catResponse.text();
+          console.log("Categories fetch failed:", catResponse.status, catText.substring(0, 200));
+        }
+      } catch (e) {
+        console.log("Error fetching categories:", e);
+      }
+
       const payload: any = {
-        descricao: entryData.description || "Lançamento",
-        valorBruto: valorBruto,
-        valor: valorBruto,
-        dataVencimento: dueDate,
-        dataCompetencia: dueDate,
-        condicaoPagamento: "a_vista",
-        rateio: [
+        description: entryData.description || "Lançamento",
+        value: valorBruto,
+        dueDate: dueDate,
+        competenceDate: dueDate,
+        paymentCondition: "a_vista",
+        categoriesRatio: [
           {
-            valor: valorBruto,
+            categoryId: defaultCategoryId || undefined,
+            value: valorBruto,
           }
         ],
       };
-      if (entryData.client_name) payload.contatoNome = entryData.client_name;
-      if (entryData.supplier_name) payload.contatoNome = entryData.supplier_name;
+      if (entryData.client_name) payload.contactName = entryData.client_name;
+      if (entryData.supplier_name) payload.contactName = entryData.supplier_name;
 
       console.log(`Conta Azul ${method} ${apiUrl}`, JSON.stringify(payload));
 
