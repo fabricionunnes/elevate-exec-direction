@@ -156,16 +156,22 @@ export function PayablesPanel() {
         .eq("is_active", true)
         .order("name");
 
-      const { data: suppliersData } = await (supabase as any)
-        .from("financial_suppliers")
-        .select("id, name, is_active")
-        .eq("is_active", true)
-        .order("name");
+      let suppliersData: any[] = [];
+      try {
+        const { data: sData } = await (supabase as any)
+          .from("financial_suppliers")
+          .select("id, name, is_active")
+          .eq("is_active", true)
+          .order("name");
+        suppliersData = sData || [];
+      } catch (e) {
+        console.warn("Could not load suppliers:", e);
+      }
 
       setPayables(payablesData || []);
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
-      setSuppliers(suppliersData || []);
+      setSuppliers(suppliersData);
 
       // Update overdue status
       const today = format(new Date(), "yyyy-MM-dd");
@@ -249,9 +255,13 @@ export function PayablesPanel() {
         currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
       }
 
+      console.log("Inserting payables:", JSON.stringify(payablesToInsert, null, 2));
       const { error } = await supabase.from("financial_payables").insert(payablesToInsert);
 
-      if (error) throw error;
+      if (error) {
+        console.error("Insert error details:", JSON.stringify(error));
+        throw error;
+      }
 
       toast.success(
         totalEntries > 1
