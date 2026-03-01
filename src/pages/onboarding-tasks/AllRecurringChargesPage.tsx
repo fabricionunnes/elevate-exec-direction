@@ -1,4 +1,11 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
+
+function getLocalDateString(date = new Date()): string {
+  const y = date.getFullYear();
+  const m = String(date.getMonth() + 1).padStart(2, "0");
+  const d = String(date.getDate()).padStart(2, "0");
+  return `${y}-${m}-${d}`;
+}
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { useNavigate } from "react-router-dom";
@@ -519,7 +526,7 @@ export default function AllRecurringChargesPage() {
   const handleManualPayment = async (invoiceId: string, feeCents: number, bankId: string | null) => {
     setProcessingInvoiceId(invoiceId);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const inv = invoices.find(i => i.id === invoiceId);
       const paidAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
       const updateData: any = { status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: feeCents };
@@ -677,7 +684,7 @@ export default function AllRecurringChargesPage() {
     if (!confirm(`Dar baixa em ${selected.length} lançamento(s)?`)) return;
     setIsBulkPayableAction(true);
     try {
-      const today = new Date().toISOString().split("T")[0];
+      const today = getLocalDateString();
       const { error } = await supabase.from("financial_payables")
         .update({ status: "paid", paid_at: today } as any)
         .in("id", selected.map(p => p.id));
@@ -1416,7 +1423,7 @@ export default function AllRecurringChargesPage() {
                           if (!confirm(`Dar baixa em ${selected.length} fatura(s)?`)) return;
                           setIsBulkSending(true);
                           try {
-                            const today = new Date().toISOString().split("T")[0];
+                            const today = getLocalDateString();
                             for (const inv of selected) {
                               const paidAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
                               await supabase.from("company_invoices").update({
