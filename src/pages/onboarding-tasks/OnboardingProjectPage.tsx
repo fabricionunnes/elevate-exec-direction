@@ -352,9 +352,15 @@ const OnboardingProjectPage = () => {
     if (projectId) {
       fetchProjectData();
       fetchStaffList();
-      checkProjectAlerts();
     }
   }, [projectId]);
+
+  // Always check overdue alerts on mount (every time user enters the project)
+  useEffect(() => {
+    if (projectId) {
+      checkProjectAlerts();
+    }
+  }, []);
 
   // Real-time subscription for task updates
   useEffect(() => {
