@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare, Wifi, WifiOff, Download, RefreshCw } from "lucide-react";
+import { Loader2, MessageSquare, Wifi, WifiOff, Download, RefreshCw, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { invalidateDefaultInstanceCache } from "@/utils/whatsapp-defaults";
 import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
@@ -140,6 +141,40 @@ export function WhatsAppInstancePanel() {
     }
   };
 
+  const handleDeleteInstance = async (inst: WhatsAppInstance) => {
+    try {
+      // Try to delete from Evolution API first
+      try {
+        await callEvolutionAPI("delete-instance", {}, { instanceName: inst.instance_name });
+      } catch (err) {
+        console.warn("Could not delete from Evolution (may not exist):", err);
+      }
+
+      const { error } = await supabase
+        .from("whatsapp_instances")
+        .delete()
+        .eq("id", inst.id);
+
+      if (error) throw error;
+
+      // If deleted instance was the default, clear it
+      if (currentInstance === inst.instance_name) {
+        await supabase
+          .from("whatsapp_default_config")
+          .delete()
+          .eq("setting_key", "default_instance");
+        setCurrentInstance("");
+        invalidateDefaultInstanceCache();
+      }
+
+      toast.success("Instância excluída com sucesso");
+      loadData();
+    } catch (error: any) {
+      console.error("Error deleting instance:", error);
+      toast.error(error.message || "Erro ao excluir instância");
+    }
+  };
+
   const isConnected = (status: string | null) =>
     status === "connected" || status === "connecting";
 
@@ -234,7 +269,7 @@ export function WhatsAppInstancePanel() {
                     : "border-border"
                 }`}
               >
-                <div className={`h-2.5 w-2.5 rounded-full ${
+                <div className={`h-2.5 w-2.5 rounded-full shrink-0 ${
                   isConnected(inst.status) ? "bg-emerald-500" : "bg-destructive"
                 }`} />
                 <div className="flex-1 min-w-0">
@@ -244,6 +279,30 @@ export function WhatsAppInstancePanel() {
                 {inst.instance_name === currentInstance && (
                   <Badge variant="outline" className="text-xs shrink-0">Padrão</Badge>
                 )}
+                <AlertDialog>
+                  <AlertDialogTrigger asChild>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 shrink-0 text-destructive hover:text-destructive hover:bg-destructive/10">
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </AlertDialogTrigger>
+                  <AlertDialogContent>
+                    <AlertDialogHeader>
+                      <AlertDialogTitle>Excluir instância</AlertDialogTitle>
+                      <AlertDialogDescription>
+                        Tem certeza que deseja excluir a instância <strong>{inst.display_name || inst.instance_name}</strong>? Esta ação não pode ser desfeita.
+                      </AlertDialogDescription>
+                    </AlertDialogHeader>
+                    <AlertDialogFooter>
+                      <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                      <AlertDialogAction
+                        onClick={() => handleDeleteInstance(inst)}
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                      >
+                        Excluir
+                      </AlertDialogAction>
+                    </AlertDialogFooter>
+                  </AlertDialogContent>
+                </AlertDialog>
               </div>
             ))}
           </div>
