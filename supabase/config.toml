@@ -257,3 +257,6 @@ verify_jwt = false
 
 [functions.cfo-ai-analysis]
 verify_jwt = false
+
+[functions.billing-notifications]
+verify_jwt = false
