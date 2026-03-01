@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -199,8 +199,9 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
 
   const isRecurring = payable?.is_recurring && payable?.total_installments && payable.total_installments > 1;
 
-  const handleOpen = (isOpen: boolean) => {
-    if (isOpen && payable) {
+  // Pre-fill form when dialog opens with payable data
+  useEffect(() => {
+    if (open && payable) {
       setForm({
         supplier_name: payable.supplier_name || "",
         description: payable.description || "",
@@ -213,8 +214,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
       });
       setEditScope("single");
     }
-    onOpenChange(isOpen);
-  };
+  }, [open, payable]);
 
   const handleSave = async () => {
     if (!payable || !form.supplier_name.trim() || !form.description.trim()) {
@@ -303,7 +303,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
   if (!payable) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-lg">
         <DialogHeader>
           <DialogTitle>Editar Lançamento</DialogTitle>
