@@ -136,9 +136,8 @@ export function BillingRulesPanel() {
     const { data } = await supabase
       .from("whatsapp_instances")
       .select("id, instance_name, display_name, status, phone_number")
-      .eq("status", "connected")
       .order("display_name");
-    setInstances(data || []);
+    setInstances((data || []).filter(i => i.status === "connected" || i.status === "open"));
   };
 
   const fetchRules = async () => {
@@ -313,9 +312,9 @@ export function BillingRulesPanel() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-4 sm:space-y-6">
       {/* Header actions */}
-      <div className="flex items-center justify-between">
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
         <p className="text-sm text-muted-foreground">
           Configure regras para enviar notificações automáticas via WhatsApp antes, no dia ou após o vencimento das faturas.
         </p>
@@ -331,11 +330,13 @@ export function BillingRulesPanel() {
             ) : (
               <Play className="h-4 w-4 mr-2" />
             )}
-            Executar Agora
+            <span className="hidden sm:inline">Executar Agora</span>
+            <span className="sm:hidden">Executar</span>
           </Button>
           <Button size="sm" onClick={openCreateDialog}>
             <Plus className="h-4 w-4 mr-2" />
-            Nova Regra
+            <span className="hidden sm:inline">Nova Regra</span>
+            <span className="sm:hidden">Nova</span>
           </Button>
         </div>
       </div>
@@ -343,20 +344,27 @@ export function BillingRulesPanel() {
       {/* WhatsApp Instance Config */}
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="p-4">
-          <div className="flex items-center gap-3">
-            <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
-              <Smartphone className="h-5 w-5 text-primary" />
+          <div className="flex flex-col sm:flex-row sm:items-center gap-3">
+            <div className="flex items-center gap-3 flex-1 min-w-0">
+              <div className="h-9 w-9 rounded-lg bg-primary/10 flex items-center justify-center shrink-0">
+                <Smartphone className="h-5 w-5 text-primary" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <h3 className="text-sm font-medium">Instância de envio</h3>
+                <p className="text-xs text-muted-foreground">Selecione qual conexão WhatsApp será usada para enviar as cobranças</p>
+              </div>
             </div>
-            <div className="flex-1 min-w-0">
-              <h3 className="text-sm font-medium">Instância de envio</h3>
-              <p className="text-xs text-muted-foreground">Selecione qual conexão WhatsApp será usada para enviar as cobranças</p>
-            </div>
-            <div className="flex items-center gap-2 shrink-0">
+            <div className="flex items-center gap-2 w-full sm:w-auto">
               <Select value={globalInstance} onValueChange={setGlobalInstance}>
-                <SelectTrigger className="w-[220px]">
+                <SelectTrigger className="flex-1 sm:w-[240px]">
                   <SelectValue placeholder="Selecione a instância" />
                 </SelectTrigger>
                 <SelectContent>
+                  {instances.length === 0 && (
+                    <SelectItem value="_none" disabled>
+                      Nenhuma instância conectada
+                    </SelectItem>
+                  )}
                   {instances.map((inst) => (
                     <SelectItem key={inst.id} value={inst.instance_name}>
                       <div className="flex items-center gap-2">
@@ -397,11 +405,11 @@ export function BillingRulesPanel() {
         <div className="grid gap-4">
           {rules.map((rule) => (
             <Card key={rule.id} className={!rule.is_active ? "opacity-60" : ""}>
-              <CardContent className="p-5">
-                <div className="flex items-start justify-between gap-4">
+              <CardContent className="p-4 sm:p-5">
+                <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-3 sm:gap-4">
                   <div className="flex-1 min-w-0">
-                    <div className="flex items-center gap-3 mb-2">
-                      <h3 className="font-semibold text-foreground">{rule.name}</h3>
+                    <div className="flex flex-wrap items-center gap-2 sm:gap-3 mb-2">
+                      <h3 className="font-semibold text-foreground text-sm sm:text-base">{rule.name}</h3>
                       <Badge variant="outline" className={getTriggerColor(rule.trigger_type)}>
                         <Clock className="h-3 w-3 mr-1" />
                         {getTriggerLabel(rule.trigger_type, rule.days_offset)}
@@ -410,7 +418,7 @@ export function BillingRulesPanel() {
                         <Badge variant="secondary">Inativa</Badge>
                       )}
                     </div>
-                    <div className="flex flex-wrap gap-2 mt-2">
+                    <div className="flex flex-wrap gap-1.5 sm:gap-2 mt-2">
                       {rule.include_payment_link && (
                         <Badge variant="outline" className="text-xs">🔗 Link de pagamento</Badge>
                       )}
@@ -421,11 +429,11 @@ export function BillingRulesPanel() {
                         <Badge variant="outline" className="text-xs">💚 Desconto</Badge>
                       )}
                     </div>
-                    <pre className="mt-3 text-xs text-muted-foreground whitespace-pre-wrap bg-muted/50 p-3 rounded-lg max-h-32 overflow-y-auto">
+                    <pre className="mt-3 text-xs text-muted-foreground whitespace-pre-wrap bg-muted/50 p-2 sm:p-3 rounded-lg max-h-28 sm:max-h-32 overflow-y-auto">
                       {rule.message_template}
                     </pre>
                   </div>
-                  <div className="flex items-center gap-2 shrink-0">
+                  <div className="flex items-center gap-2 shrink-0 self-end sm:self-start">
                     <Switch
                       checked={rule.is_active}
                       onCheckedChange={() => handleToggleActive(rule)}
