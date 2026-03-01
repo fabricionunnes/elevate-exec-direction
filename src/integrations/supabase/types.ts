@@ -1664,6 +1664,7 @@ export type Database = {
           name: string
           trigger_type: string
           updated_at: string
+          whatsapp_instance_name: string | null
         }
         Insert: {
           created_at?: string
@@ -1677,6 +1678,7 @@ export type Database = {
           name: string
           trigger_type: string
           updated_at?: string
+          whatsapp_instance_name?: string | null
         }
         Update: {
           created_at?: string
@@ -1690,6 +1692,7 @@ export type Database = {
           name?: string
           trigger_type?: string
           updated_at?: string
+          whatsapp_instance_name?: string | null
         }
         Relationships: []
       }

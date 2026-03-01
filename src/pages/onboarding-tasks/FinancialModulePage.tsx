@@ -16,7 +16,8 @@ import {
   Link2,
   ArrowLeft,
   Loader2,
-  ShieldAlert
+  ShieldAlert,
+  Bell
 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -31,6 +32,7 @@ import { FinancialReportsPanel } from "@/components/financial/FinancialReportsPa
 import { FinancialPlanningPanel } from "@/components/financial/FinancialPlanningPanel";
 import { CFOInsightsPanel } from "@/components/financial/CFOInsightsPanel";
 import { IntegrationsPanel } from "@/components/financial/IntegrationsPanel";
+import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 
 const ALLOWED_EMAIL = "fabricio@universidadevendas.com.br";
 
@@ -104,6 +106,7 @@ export default function FinancialModulePage() {
     { id: "planning", label: "Planejamento", icon: Calculator },
     { id: "cfo", label: "IA CFO", icon: Bot },
     { id: "integrations", label: "Integrações", icon: Link2 },
+    { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
   ];
 
   return (
@@ -190,6 +193,10 @@ export default function FinancialModulePage() {
 
           <TabsContent value="integrations" className="mt-0">
             <IntegrationsPanel />
+          </TabsContent>
+
+          <TabsContent value="billing-rules" className="mt-0">
+            <BillingRulesPanel />
           </TabsContent>
         </Tabs>
       </main>
