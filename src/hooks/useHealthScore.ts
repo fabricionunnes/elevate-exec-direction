@@ -372,6 +372,22 @@ export const useHealthScore = (projectId: string | undefined) => {
         totalScore = Math.max(0, totalScore - 30); // -30 points penalty
       }
 
+      // Apply overdue invoice penalty (-20 points if company has overdue invoices)
+      if (companyId) {
+        const todayStr = new Date().toISOString().split("T")[0];
+        const { data: overdueInvoices } = await supabase
+          .from("company_invoices")
+          .select("id")
+          .eq("company_id", companyId)
+          .eq("status", "pending")
+          .lt("due_date", todayStr)
+          .limit(1);
+
+        if (overdueInvoices && overdueInvoices.length > 0) {
+          totalScore = Math.max(0, totalScore - 20); // -20 points for being overdue
+        }
+      }
+
       // Determine risk level
       let riskLevel = "healthy";
       if (isCancellationStatus) {
