@@ -52,6 +52,7 @@ import { FinancialImportDialog } from "@/components/financial/FinancialImportDia
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
+import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 
 interface RecurringCharge {
@@ -1898,16 +1899,12 @@ export default function AllRecurringChargesPage() {
           <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
               <Label>Fornecedor *</Label>
-              {financialSuppliers.length > 0 ? (
-                <Select value={payableForm.supplier_name} onValueChange={(v) => setPayableForm(p => ({ ...p, supplier_name: v }))}>
-                  <SelectTrigger><SelectValue placeholder="Selecione um fornecedor..." /></SelectTrigger>
-                  <SelectContent>
-                    {financialSuppliers.map((s: any) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
-              ) : (
-                <Input value={payableForm.supplier_name} onChange={(e) => setPayableForm(p => ({ ...p, supplier_name: e.target.value }))} placeholder="Ex: Fornecedor XYZ" />
-              )}
+              <SupplierAutocomplete
+                value={payableForm.supplier_name}
+                onChange={(v) => setPayableForm(p => ({ ...p, supplier_name: v }))}
+                suppliers={financialSuppliers}
+                onSupplierCreated={loadData}
+              />
             </div>
             <div>
               <Label>Descrição *</Label>
