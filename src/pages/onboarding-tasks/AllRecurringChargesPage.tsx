@@ -28,7 +28,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -121,16 +121,7 @@ interface Invoice {
   company_phone?: string;
 }
 
-const NAV_ITEMS = [
-  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
-  { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
-  { key: "overdue", label: "Atrasados", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_overdue },
-  { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
-  { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
-  { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
-  { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
-  { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
-  { key: "separator-cfo", label: "── DASHBOARD CFO ──", icon: BarChart3, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive, isSeparator: true },
+const DASHBOARD_CHILDREN = [
   { key: "cfo-executive", label: "Executive Board", icon: BarChart3, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_executive },
   { key: "cfo-mrr", label: "Receita & MRR", icon: TrendingUp, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_mrr },
   { key: "cfo-churn", label: "Churn & Retenção", icon: TrendingDown, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_churn },
@@ -138,6 +129,17 @@ const NAV_ITEMS = [
   { key: "cfo-costs", label: "Custos & Estrutura", icon: Calculator, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_costs },
   { key: "cfo-cash", label: "Caixa & Projeção", icon: Wallet, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_cash },
   { key: "cfo-delinquency", label: "Inadimplência", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_delinquency },
+] as const;
+
+const NAV_ITEMS = [
+  { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard, children: DASHBOARD_CHILDREN },
+  { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
+  { key: "overdue", label: "Atrasados", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_overdue },
+  { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
+  { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
+  { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
+  { key: "dfc", label: "DFC", icon: ArrowRightLeft, permKey: FINANCIAL_PERMISSION_KEYS.fin_dfc },
+  { key: "banks", label: "Bancos", icon: Landmark, permKey: FINANCIAL_PERMISSION_KEYS.fin_banks },
   { key: "separator-cfo-ai", label: "── CFO IA ──", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, isSeparator: true },
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
   { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard, isSeparator: true },
@@ -192,6 +194,7 @@ export default function AllRecurringChargesPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [activeTab, setActiveTab] = useState("dashboard");
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [dashboardMenuOpen, setDashboardMenuOpen] = useState(true);
 
   // Data state
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
@@ -945,7 +948,7 @@ export default function AllRecurringChargesPage() {
   }
 
   const visibleNavItems = NAV_ITEMS.filter(item => !('isSeparator' in item && item.isSeparator) && hasPerm(item.permKey));
-  const hasCfoAccess = NAV_ITEMS.some(item => item.key.startsWith("cfo-") && hasPerm(item.permKey));
+  const hasCfoAccess = DASHBOARD_CHILDREN.some(item => hasPerm(item.permKey));
 
   return (
     <div className="min-h-screen bg-background flex flex-col md:flex-row">
@@ -986,19 +989,64 @@ export default function AllRecurringChargesPage() {
               <ArrowLeft className="h-4 w-4" />
               Nexus
             </Button>
-            {visibleNavItems.map((item, idx) => {
+            {visibleNavItems.map((item) => {
               const Icon = item.icon;
               const isActive = activeTab === item.key;
-              const isCfo = item.key.startsWith("cfo-");
-              const prevIsCfo = idx > 0 && visibleNavItems[idx - 1]?.key.startsWith("cfo-");
-              const showSeparator = isCfo && !prevIsCfo;
+              const hasChildren = 'children' in item && item.children;
+              const isChildActive = hasChildren && (item as any).children.some((c: any) => activeTab === c.key);
+
+              if (hasChildren) {
+                return (
+                  <div key={item.key}>
+                    <button
+                      onClick={() => {
+                        setDashboardMenuOpen(!dashboardMenuOpen);
+                        if (!isChildActive && !isActive) {
+                          setActiveTab(item.key);
+                          resetFilters();
+                          setSidebarOpen(false);
+                        }
+                      }}
+                      className={cn(
+                        "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left",
+                        (isActive || isChildActive)
+                          ? "bg-primary/10 text-primary font-medium"
+                          : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      <span className="truncate flex-1">{item.label}</span>
+                      {dashboardMenuOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                    </button>
+                    {dashboardMenuOpen && (
+                      <div className="ml-3 pl-3 border-l border-border/50 mt-1 space-y-0.5">
+                        {(item as any).children.filter((c: any) => hasPerm(c.permKey)).map((child: any) => {
+                          const ChildIcon = child.icon;
+                          const isChildItemActive = activeTab === child.key;
+                          return (
+                            <button
+                              key={child.key}
+                              onClick={() => { setActiveTab(child.key); resetFilters(); setSidebarOpen(false); }}
+                              className={cn(
+                                "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs transition-colors text-left",
+                                isChildItemActive
+                                  ? "bg-primary text-primary-foreground font-medium"
+                                  : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                              )}
+                            >
+                              <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                              <span className="truncate">{child.label}</span>
+                            </button>
+                          );
+                        })}
+                      </div>
+                    )}
+                  </div>
+                );
+              }
+
               return (
                 <div key={item.key}>
-                  {showSeparator && (
-                    <div className="pt-3 pb-1 px-3">
-                      <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Dashboard CFO</p>
-                    </div>
-                  )}
                   <button
                     onClick={() => { setActiveTab(item.key); resetFilters(); setSidebarOpen(false); }}
                     className={cn(
@@ -1031,19 +1079,63 @@ export default function AllRecurringChargesPage() {
           </h1>
         </div>
         <nav className="flex-1 p-2 space-y-1 overflow-y-auto">
-          {visibleNavItems.map((item, idx) => {
+          {visibleNavItems.map((item) => {
             const Icon = item.icon;
             const isActive = activeTab === item.key;
-            const isCfo = item.key.startsWith("cfo-");
-            const prevIsCfo = idx > 0 && visibleNavItems[idx - 1]?.key.startsWith("cfo-");
-            const showSeparator = isCfo && !prevIsCfo;
+            const hasChildren = 'children' in item && item.children;
+            const isChildActive = hasChildren && (item as any).children.some((c: any) => activeTab === c.key);
+
+            if (hasChildren) {
+              return (
+                <div key={item.key}>
+                  <button
+                    onClick={() => {
+                      setDashboardMenuOpen(!dashboardMenuOpen);
+                      if (!isChildActive && !isActive) {
+                        setActiveTab(item.key);
+                        resetFilters();
+                      }
+                    }}
+                    className={cn(
+                      "w-full flex items-center gap-3 px-3 py-2 rounded-lg text-sm transition-colors text-left",
+                      (isActive || isChildActive)
+                        ? "bg-primary/10 text-primary font-medium"
+                        : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                    )}
+                  >
+                    <Icon className="h-4 w-4 shrink-0" />
+                    <span className="truncate flex-1">{item.label}</span>
+                    {dashboardMenuOpen ? <ChevronDown className="h-3.5 w-3.5 shrink-0" /> : <ChevronRight className="h-3.5 w-3.5 shrink-0" />}
+                  </button>
+                  {dashboardMenuOpen && (
+                    <div className="ml-3 pl-3 border-l border-border/50 mt-1 space-y-0.5">
+                      {(item as any).children.filter((c: any) => hasPerm(c.permKey)).map((child: any) => {
+                        const ChildIcon = child.icon;
+                        const isChildItemActive = activeTab === child.key;
+                        return (
+                          <button
+                            key={child.key}
+                            onClick={() => { setActiveTab(child.key); resetFilters(); }}
+                            className={cn(
+                              "w-full flex items-center gap-3 px-3 py-1.5 rounded-lg text-xs transition-colors text-left",
+                              isChildItemActive
+                                ? "bg-primary text-primary-foreground font-medium"
+                                : "text-muted-foreground hover:bg-muted hover:text-foreground"
+                            )}
+                          >
+                            <ChildIcon className="h-3.5 w-3.5 shrink-0" />
+                            <span className="truncate">{child.label}</span>
+                          </button>
+                        );
+                      })}
+                    </div>
+                  )}
+                </div>
+              );
+            }
+
             return (
               <div key={item.key}>
-                {showSeparator && (
-                  <div className="pt-3 pb-1 px-3">
-                    <p className="text-[10px] font-semibold uppercase tracking-wider text-muted-foreground/70">Dashboard CFO</p>
-                  </div>
-                )}
                 <button
                   onClick={() => { setActiveTab(item.key); resetFilters(); }}
                   className={cn(
