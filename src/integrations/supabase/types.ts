@@ -14548,6 +14548,7 @@ export type Database = {
           conta_azul_id: string | null
           cost_center: string | null
           cost_center_id: string | null
+          cost_type: string | null
           created_at: string
           description: string
           due_date: string
@@ -14573,6 +14574,7 @@ export type Database = {
           conta_azul_id?: string | null
           cost_center?: string | null
           cost_center_id?: string | null
+          cost_type?: string | null
           created_at?: string
           description: string
           due_date: string
@@ -14598,6 +14600,7 @@ export type Database = {
           conta_azul_id?: string | null
           cost_center?: string | null
           cost_center_id?: string | null
+          cost_type?: string | null
           created_at?: string
           description?: string
           due_date?: string

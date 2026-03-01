@@ -117,7 +117,8 @@ export function PayablesPanel() {
     reference_month: format(new Date(), "yyyy-MM"),
     notes: "",
     has_installments: false,
-    total_installments: "1"
+    total_installments: "1",
+    cost_type: "" as "" | "fixed" | "variable"
   });
 
   const [paymentData, setPaymentData] = useState({
@@ -246,7 +247,8 @@ export function PayablesPanel() {
           notes: formData.notes || null,
           installment_number: totalEntries > 1 ? i : null,
           total_installments: totalEntries > 1 ? totalEntries : null,
-          status: "pending"
+          status: "pending",
+          cost_type: formData.cost_type || null
         });
 
         // Advance date
@@ -354,7 +356,8 @@ export function PayablesPanel() {
       reference_month: format(new Date(), "yyyy-MM"),
       notes: "",
       has_installments: false,
-      total_installments: "1"
+      total_installments: "1",
+      cost_type: "" as "" | "fixed" | "variable"
     });
   };
 
@@ -513,6 +516,22 @@ export function PayablesPanel() {
                       placeholder="Ex: Marketing"
                     />
                   </div>
+                </div>
+
+                <div className="space-y-2">
+                  <Label>Tipo de Custo</Label>
+                  <Select
+                    value={formData.cost_type}
+                    onValueChange={(v) => setFormData({ ...formData, cost_type: v as "" | "fixed" | "variable" })}
+                  >
+                    <SelectTrigger>
+                      <SelectValue placeholder="Selecione..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="fixed">Custo Fixo</SelectItem>
+                      <SelectItem value="variable">Custo Variável</SelectItem>
+                    </SelectContent>
+                  </Select>
                 </div>
 
                 <div className="space-y-2">

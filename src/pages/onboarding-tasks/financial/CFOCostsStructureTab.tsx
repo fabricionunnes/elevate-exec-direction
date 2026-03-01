@@ -59,7 +59,8 @@ export default function CFOCostsStructureTab({ invoices, payables, categories, f
     monthPayables.forEach((p: any) => {
       const amount = (p.paid_amount || p.amount || 0) * 100;
       const cat = catMap.get(p.category_id);
-      const costType = cat?.cost_type || "variable";
+      // Prioritize payable-level cost_type, then fall back to category-level
+      const costType = p.cost_type || cat?.cost_type || "variable";
 
       if (costType === "fixed") fixedCosts += amount;
       else variableCosts += amount;
