@@ -26,7 +26,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -50,6 +50,7 @@ import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
+import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 
 interface RecurringCharge {
   id: string;
@@ -121,6 +122,8 @@ const NAV_ITEMS = [
   { key: "cfo-delinquency", label: "Inadimplência", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_delinquency },
   { key: "separator-cfo-ai", label: "── CFO IA ──", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, isSeparator: true },
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
+  { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard, isSeparator: true },
+  { key: "billing-rules", label: "Régua de Cobranças", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
 ] as const;
 
 const applyPeriodPreset = (
@@ -1690,6 +1693,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "cfo-ai" && (
             <CFOAIPanel />
+          )}
+          {activeTab === "billing-rules" && (
+            <BillingRulesPanel />
           )}
         </div>
       </main>
