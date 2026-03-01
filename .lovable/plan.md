@@ -1,29 +1,28 @@
 
 
-## Nova aba "Instancia" no Modulo Financeiro
+## Melhorias no menu de acoes de Contas a Pagar
 
 ### O que sera feito
-Adicionar uma nova aba chamada "Instancia" no menu do modulo financeiro, onde voce podera selecionar qual instancia de WhatsApp sera usada como padrao para envio de mensagens. Ao trocar, a alteracao sera aplicada imediatamente em todo o sistema (Contas a Receber, Regua de Cobrancas, etc.).
 
-### Implementacao
+**1. Opcao "Voltar para Em Aberto" (Reabrir conta)**
+- Adicionar no menu de acoes (dropdown) a opcao "Reabrir" para contas com status `paid`, `partial` ou `cancelled`
+- Ao clicar, o status volta para `pending`, e os campos `paid_date` e `paid_amount` sao zerados
+- Se a conta tinha um banco associado ao pagamento, o saldo do banco sera estornado (devolvido)
 
-**1. Criar componente `WhatsAppInstancePanel`**
-- Novo arquivo: `src/components/financial/WhatsAppInstancePanel.tsx`
-- Lista todas as instancias cadastradas na tabela `whatsapp_instances` em um dropdown
-- Mostra o status de cada instancia (conectada, desconectada) com indicador visual colorido
-- A instancia atualmente configurada fica pre-selecionada
-- Ao trocar, salva automaticamente no banco (`whatsapp_default_config`) e invalida o cache local
-- Exibe confirmacao visual apos a troca
+**2. Opcao "Excluir" com escolha de escopo**
+- Adicionar no menu de acoes a opcao "Excluir"
+- Ao clicar, abre um dialog perguntando:
+  - **"Somente esta"**: exclui apenas o registro selecionado
+  - **"Esta e todas as futuras nao pagas"**: exclui o registro atual e todos os que compartilham o mesmo fornecedor/recorrencia com `installment_number` maior ou igual ao atual e que NAO estejam com status `paid`
+- A exclusao e restrita a usuarios com papel `master` (seguindo o padrao ja existente no sistema)
 
-**2. Adicionar aba no FinancialModulePage**
-- Arquivo: `src/pages/onboarding-tasks/FinancialModulePage.tsx`
-- Nova entrada na lista de tabs com icone `MessageSquare` e label "Instancia"
-- Renderiza o `WhatsAppInstancePanel` no conteudo da aba
+### Detalhes tecnicos
 
-### Como funciona a propagacao
-O sistema ja usa a funcao `getDefaultWhatsAppInstance()` com cache de 1 minuto em todos os pontos de envio. Ao trocar a instancia no painel, o cache e invalidado imediatamente via `invalidateDefaultInstanceCache()`, garantindo que a proxima mensagem enviada (em Contas a Receber ou qualquer outro local) ja use a nova instancia.
-
-### Arquivos
-- `src/components/financial/WhatsAppInstancePanel.tsx` (novo)
-- `src/pages/onboarding-tasks/FinancialModulePage.tsx` (adicionar aba)
+**Arquivos modificados:**
+- `src/components/financial/PayablesPanel.tsx`
+  - Adicionar funcao `handleReopenPayable(id)` que faz UPDATE do status para `pending` e zera `paid_date`/`paid_amount`, com estorno de saldo bancario se aplicavel
+  - Adicionar funcao `handleDeletePayable(payable, scope)` que faz DELETE individual ou em lote (futuras nao pagas)
+  - Adicionar `DropdownMenuItem` "Reabrir" (visivel quando status e `paid`, `partial` ou `cancelled`)
+  - Adicionar `DropdownMenuItem` "Excluir" (sempre visivel)
+  - Adicionar um `AlertDialog` de confirmacao para exclusao com radio de escopo (somente esta / esta e futuras)
 
