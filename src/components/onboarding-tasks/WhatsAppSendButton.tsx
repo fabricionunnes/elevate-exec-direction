@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
 import { MessageSquare, Loader2 } from "lucide-react";
@@ -51,7 +52,8 @@ export const WhatsAppSendButton = ({
     if (instanceName) {
       query = query.eq("instance_name", instanceName);
     } else {
-      query = query.eq("instance_name", "fabricionunnes");
+      const defaultInst = await getDefaultWhatsAppInstance();
+      query = query.eq("instance_name", defaultInst);
     }
     const { data } = await query.single();
     
@@ -87,7 +89,8 @@ export const WhatsAppSendButton = ({
       if (instanceName) {
         instQuery = instQuery.eq("instance_name", instanceName);
       } else {
-        instQuery = instQuery.eq("instance_name", "fabricionunnes");
+        const defaultInst = await getDefaultWhatsAppInstance();
+        instQuery = instQuery.eq("instance_name", defaultInst);
       }
       const { data: instance } = await instQuery.single();
 

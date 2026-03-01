@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from "react";
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
+import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -830,12 +831,13 @@ export default function AllRecurringChargesPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Try Evolution API first - prefer fabricionunnes, then any connected/connecting
+    // Try Evolution API first - prefer configured default, then any connected/connecting
+    const defaultInstanceName = await getDefaultWhatsAppInstance();
     let evolutionInstance = null;
     const { data: preferred } = await supabase
       .from("whatsapp_instances")
       .select("instance_name")
-      .eq("instance_name", "fabricionunnes")
+      .eq("instance_name", defaultInstanceName)
       .in("status", ["connected", "connecting"])
       .maybeSingle();
     

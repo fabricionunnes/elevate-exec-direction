@@ -677,7 +677,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                                 recipientName={companyName}
                                 companyId={companyId}
                                 variant="ghost"
-                                instanceName="fabricionunnes"
+                                /* instanceName will use default from DB */
                                 className="h-7 text-xs px-2"
                                 defaultMessage={(() => {
                                   const valor = formatCurrency(isOverdue ? inv.total_with_fees_cents : inv.amount_cents);
