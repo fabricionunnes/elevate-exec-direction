@@ -1820,31 +1820,31 @@ const OnboardingTasksPage = () => {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-[#0a0e1a]">
+      <div className="min-h-screen bg-background">
         <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
           {/* Skeleton Header */}
           <div className="flex items-center gap-3 mb-6">
-            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-white/5 animate-pulse" />
-            <div className="h-6 w-32 bg-white/5 animate-pulse rounded" />
+            <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-muted animate-pulse" />
+            <div className="h-6 w-32 bg-muted animate-pulse rounded" />
           </div>
           
           {/* Skeleton Filters */}
           <div className="flex gap-2 mb-6">
-            <div className="h-9 w-24 bg-white/5 animate-pulse rounded" />
-            <div className="h-9 flex-1 bg-white/5 animate-pulse rounded" />
+            <div className="h-9 w-24 bg-muted animate-pulse rounded" />
+            <div className="h-9 flex-1 bg-muted animate-pulse rounded" />
           </div>
           
           {/* Skeleton Metrics Cards */}
           <div className="grid grid-cols-2 sm:grid-cols-4 gap-3 mb-6">
             {[1, 2, 3, 4].map((i) => (
-              <div key={i} className="h-24 bg-white/5 animate-pulse rounded-lg" />
+              <div key={i} className="h-24 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
           
           {/* Skeleton Companies List */}
           <div className="space-y-3">
             {[1, 2, 3, 4, 5].map((i) => (
-              <div key={i} className="h-20 bg-white/5 animate-pulse rounded-lg" />
+              <div key={i} className="h-20 bg-muted animate-pulse rounded-lg" />
             ))}
           </div>
         </div>
@@ -1853,32 +1853,26 @@ const OnboardingTasksPage = () => {
   }
 
   return (
-    <div className="min-h-screen bg-[#0a0e1a] relative overflow-hidden">
-      {/* Background ambient glow effects */}
-      <div className="fixed inset-0 pointer-events-none">
-        <div className="absolute top-0 left-1/4 w-96 h-96 bg-blue-500/5 rounded-full blur-3xl" />
-        <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-purple-500/5 rounded-full blur-3xl" />
-        <div className="absolute top-1/2 left-0 w-72 h-72 bg-emerald-500/3 rounded-full blur-3xl" />
-      </div>
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8 relative z-10">
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
         {/* Header */}
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
           {/* Top Row - Logo, Title & Logout */}
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <NexusHeader />
-              <WelcomeHeader className="text-xs sm:text-sm text-white/50 hidden sm:block" />
+              <WelcomeHeader className="text-xs sm:text-sm text-muted-foreground hidden sm:block" />
             </div>
             
             {/* Mobile Actions - Compact */}
             <div className="flex items-center gap-1 sm:hidden">
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="icon" className="h-8 w-8 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white">
+                  <Button variant="outline" size="icon" className="h-8 w-8">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48 bg-[#141825] border-white/10 text-white/90">
+                <DropdownMenuContent align="end" className="w-48">
                   {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
                       <Building2 className="h-4 w-4 mr-2" />
@@ -2008,13 +2002,13 @@ const OnboardingTasksPage = () => {
             {/* Primary Actions */}
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="outline" size="sm" className="border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm">
+                <Button variant="outline" size="sm">
                   <Building2 className="h-4 w-4 mr-2" />
                   Empresas
                   <ChevronDown className="h-4 w-4 ml-2" />
                 </Button>
               </DropdownMenuTrigger>
-              <DropdownMenuContent align="start" className="w-72 bg-[#141825] border-white/10 text-white/90">
+              <DropdownMenuContent align="start" className="w-72">
                 {canCreateCompany && (
                   <>
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
@@ -2103,7 +2097,7 @@ const OnboardingTasksPage = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={() => setShowNPSGlobalDialog(true)}
-                  className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                  className="gap-2"
                 >
                   <TrendingUp className="h-4 w-4" />
                   NPS
@@ -2112,7 +2106,7 @@ const OnboardingTasksPage = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={() => setShowCSATGlobalDialog(true)}
-                  className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                  className="gap-2"
                 >
                   <MessageSquareHeart className="h-4 w-4" />
                   CSAT
@@ -2121,7 +2115,7 @@ const OnboardingTasksPage = () => {
                   variant="outline" 
                   size="sm" 
                   onClick={() => navigate("/onboarding-tasks/hotseat")}
-                  className="gap-2 border-orange-500/30 bg-orange-500/10 text-orange-400 hover:bg-orange-500/20 hover:text-orange-300 backdrop-blur-sm"
+                  className="gap-2 border-orange-300 text-orange-600 hover:bg-orange-50"
                 >
                   <Heart className="h-4 w-4" />
                   Hotseat
@@ -2134,7 +2128,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/contratos?history=true")}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <FileText className="h-4 w-4" />
                 Contratos
@@ -2146,7 +2140,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowMyTasks(true)}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <CheckCircle2 className="h-4 w-4" />
                 Minhas Tarefas
@@ -2158,7 +2152,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowMeetings(true)}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <Video className="h-4 w-4" />
                 Reuniões
@@ -2170,7 +2164,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/onboarding-tasks/results")}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <BarChart3 className="h-4 w-4" />
                 Resultados
@@ -2182,7 +2176,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/circle")}
-                className="gap-2 border-violet-500/30 bg-violet-500/10 text-violet-400 hover:bg-violet-500/20 hover:text-violet-300 backdrop-blur-sm"
+                className="gap-2 border-violet-300 text-violet-600 hover:bg-violet-50"
               >
                 <Sparkles className="h-4 w-4" />
                 UNV Circle
@@ -2194,7 +2188,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/onboarding-tasks/vagas")}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <Briefcase className="h-4 w-4" />
                 Vagas (RH)
@@ -2206,7 +2200,7 @@ const OnboardingTasksPage = () => {
                 variant="outline"
                 size="sm"
                 onClick={() => navigate("/onboarding-tasks/whatsapp")}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <MessageSquare className="h-4 w-4" />
                 UNV Disparador
@@ -2218,7 +2212,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/crm")}
-                className="gap-2 border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm"
+                className="gap-2"
               >
                 <Target className="h-4 w-4" />
                 CRM Comercial
@@ -2230,7 +2224,7 @@ const OnboardingTasksPage = () => {
                 variant="outline" 
                 size="sm" 
                 onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}
-                className="gap-2 border-emerald-500/30 bg-emerald-500/10 text-emerald-400 hover:bg-emerald-500/20 hover:text-emerald-300 backdrop-blur-sm"
+                className="gap-2"
               >
                 <Calculator className="h-4 w-4" />
                 Financeiro
@@ -2241,13 +2235,13 @@ const OnboardingTasksPage = () => {
             {canAccessAnalytics && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
-                  <Button variant="outline" size="sm" className="border-white/10 bg-white/5 text-white/80 hover:bg-white/10 hover:text-white backdrop-blur-sm">
+                  <Button variant="outline" size="sm">
                     <Settings className="h-4 w-4 mr-2" />
                     Administrar
                     <ChevronDown className="h-4 w-4 ml-2" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-56 bg-[#141825] border-white/10 text-white/90">
+                <DropdownMenuContent align="end" className="w-56">
                   {/* CEO Panel - First item for CEO */}
                   {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                     <>
@@ -2426,7 +2420,7 @@ const OnboardingTasksPage = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-8 w-8"
               onClick={() => setShowStaffSettings(true)}
               title="Meu Perfil"
             >
@@ -2435,7 +2429,7 @@ const OnboardingTasksPage = () => {
             <Button 
               variant="ghost" 
               size="icon"
-              className="h-8 w-8 text-white/60 hover:text-white hover:bg-white/10"
+              className="h-8 w-8"
               onClick={async () => {
                 await supabase.auth.signOut();
                 navigate("/onboarding-tasks/login");
@@ -2461,12 +2455,12 @@ const OnboardingTasksPage = () => {
                 onChange={setDateRange} 
               />
               <div className="relative flex-1">
-                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-white/40" />
+                <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input
                   placeholder="Buscar..."
                   value={searchTerm}
                   onChange={(e) => setSearchTerm(e.target.value)}
-                  className="pl-9 h-9 sm:h-10 text-sm bg-white/5 border-white/10 text-white placeholder:text-white/30 focus:border-white/20"
+                  className="pl-9 h-9 sm:h-10 text-sm"
                 />
               </div>
             </div>
@@ -2475,12 +2469,12 @@ const OnboardingTasksPage = () => {
             <div className="flex items-end gap-2 overflow-x-auto pb-1 -mx-2 px-2 sm:mx-0 sm:px-0 sm:overflow-visible">
               {currentUserRole !== "consultant" && (
                 <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
-                  <span className="text-[10px] sm:text-xs text-white/40 font-medium">Consultores</span>
+                  <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Consultores</span>
                   <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                    <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm bg-white/5 border-white/10 text-white/80">
+                    <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                       <SelectValue placeholder="Todos" />
                     </SelectTrigger>
-                    <SelectContent className="bg-[#141825] border-white/10 text-white/90">
+                    <SelectContent>
                       <SelectItem value="all">Todos</SelectItem>
                       {consultants.map((c) => (
                         <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
@@ -2491,12 +2485,12 @@ const OnboardingTasksPage = () => {
               )}
 
               <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
-                <span className="text-[10px] sm:text-xs text-white/40 font-medium">Serviços</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Serviços</span>
                 <Select value={filterService} onValueChange={setFilterService}>
-                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm bg-white/5 border-white/10 text-white/80">
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#141825] border-white/10 text-white/90">
+                  <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     {services.map((s) => (
                       <SelectItem key={s.id} value={s.slug}>{s.name}</SelectItem>
@@ -2506,12 +2500,12 @@ const OnboardingTasksPage = () => {
               </div>
 
               <div className="flex flex-col gap-0.5 min-w-[120px] sm:min-w-[150px]">
-                <span className="text-[10px] sm:text-xs text-white/40 font-medium">Status</span>
+                <span className="text-[10px] sm:text-xs text-muted-foreground font-medium">Status</span>
                 <Select value={filterStatus} onValueChange={setFilterStatus}>
-                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm bg-white/5 border-white/10 text-white/80">
+                  <SelectTrigger className="h-8 sm:h-10 text-xs sm:text-sm">
                     <SelectValue placeholder="Todos" />
                   </SelectTrigger>
-                  <SelectContent className="bg-[#141825] border-white/10 text-white/90">
+                  <SelectContent>
                     <SelectItem value="all">Todos</SelectItem>
                     <SelectItem value="active">Ativo</SelectItem>
                     <SelectItem value="cancellation_signaled">Sinalizou</SelectItem>
@@ -2522,7 +2516,7 @@ const OnboardingTasksPage = () => {
               </div>
 
               {hasActiveFilters && (
-                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 sm:h-10 px-2 shrink-0 text-white/60 hover:text-white hover:bg-white/10">
+                <Button variant="ghost" size="sm" onClick={clearFilters} className="h-8 sm:h-10 px-2 shrink-0">
                   <X className="h-4 w-4" />
                 </Button>
               )}
@@ -2534,12 +2528,10 @@ const OnboardingTasksPage = () => {
         <PendingMeetingsAlert />
 
         {/* Overdue Companies Card */}
-        <div className="mt-4 mb-2">
-          <OverdueCompaniesCard
-            currentUserRole={currentUserRole}
-            currentStaffId={currentStaffId}
-          />
-        </div>
+        <OverdueCompaniesCard
+          currentUserRole={currentUserRole}
+          currentStaffId={currentStaffId}
+        />
 
         {/* Dashboard Metrics */}
         <DashboardMetrics
@@ -2574,16 +2566,16 @@ const OnboardingTasksPage = () => {
 
         {/* Companies List - Hidden when on NPS or Referrals tab */}
         {activeDashboardTab === "nps" || activeDashboardTab === "referrals" ? null : filteredCompanies.length === 0 ? (
-          <Card className="p-12 text-center bg-white/5 border-white/10 backdrop-blur-sm">
-            <Building2 className="h-16 w-16 mx-auto text-white/30 mb-4" />
-            <h3 className="text-xl font-semibold mb-2 text-white">Nenhuma empresa encontrada</h3>
-            <p className="text-white/50 mb-4">
+          <Card className="p-12 text-center">
+            <Building2 className="h-16 w-16 mx-auto text-muted-foreground mb-4" />
+            <h3 className="text-xl font-semibold mb-2">Nenhuma empresa encontrada</h3>
+            <p className="text-muted-foreground mb-4">
               {canCreateCompany
                 ? "Cadastre sua primeira empresa para começar"
                 : "Aguarde o cadastro de empresas pelo CS ou Admin"}
             </p>
             {canCreateCompany && (
-              <Button onClick={() => navigate("/onboarding-tasks/companies/new")} className="bg-blue-600 hover:bg-blue-700">
+              <Button onClick={() => navigate("/onboarding-tasks/companies/new")}>
                 <Plus className="h-4 w-4 mr-2" />
                 Nova Empresa
               </Button>
@@ -2592,7 +2584,7 @@ const OnboardingTasksPage = () => {
         ) : (
           <div className="space-y-2 sm:space-y-4">
             {/* Companies count and pagination info */}
-            <div className="flex items-center justify-between text-xs sm:text-sm text-white/50">
+            <div className="flex items-center justify-between text-xs sm:text-sm text-muted-foreground">
               <span>
                 {((currentPage - 1) * companiesPerPage) + 1}-{Math.min(currentPage * companiesPerPage, filteredCompanies.length)} de {filteredCompanies.length}
               </span>
@@ -2630,18 +2622,18 @@ const OnboardingTasksPage = () => {
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
                 <Card
-                  className="cursor-pointer hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 border-l-4 border-l-blue-500/60 bg-gradient-to-r from-white/[0.07] via-white/[0.04] to-transparent backdrop-blur-sm border-white/10 hover:border-white/20"
+                  className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
                   onClick={() => handleCompanyClick(company.id)}
                 >
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-start sm:items-center justify-between gap-2">
                       <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-gradient-to-br from-blue-500/30 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center shadow-md shrink-0">
-                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-300" />
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-[#0A2240] flex items-center justify-center shadow-md shrink-0">
+                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-white uppercase tracking-wide break-words max-w-full">{company.name}</h3>
+                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#0A2240] uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status)}
                               {/* Tag "Empresa Nova" for companies started within last 30 days.
@@ -2656,7 +2648,7 @@ const OnboardingTasksPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-white/60 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-muted-foreground mt-0.5">
                             {company.segment && <span className="break-words">{company.segment}</span>}
                             <span className="hidden sm:inline">•</span>
                             <span>{company.projects?.length || 0} projetos</span>
@@ -2670,13 +2662,13 @@ const OnboardingTasksPage = () => {
                             ) : null}
                           </div>
                           {/* Mobile: Show CS/Consultant, Health, Goal % and Contract inline */}
-                          <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-white/50 mt-1">
+                          <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-muted-foreground mt-1">
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
                             {/* Contract info */}
-                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-white/10">
-                              <Calendar className="h-2.5 w-2.5 text-white/50" />
-                              <span className="font-medium text-white/60">
+                            <span className="flex items-center gap-0.5 px-1.5 py-0.5 rounded-full bg-slate-100">
+                              <Calendar className="h-2.5 w-2.5 text-slate-600" />
+                              <span className="font-medium text-slate-700">
                                 {company.payment_method === 'monthly'
                                   ? 'Recorr.'
                                   : company.contract_end_date 
@@ -2693,18 +2685,18 @@ const OnboardingTasksPage = () => {
                             <span 
                               className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
                                 companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'bg-white/10' 
+                                  ? 'bg-muted' 
                                   : companyGoalPercent >= 100 
-                                    ? 'bg-green-500/20' 
+                                    ? 'bg-green-100' 
                                     : companyGoalPercent >= 70 
-                                      ? 'bg-yellow-500/20' 
-                                      : 'bg-red-500/20'
+                                      ? 'bg-yellow-100' 
+                                      : 'bg-red-100'
                               }`}
                               title="Projeção da Meta Principal"
                             >
                               <Target className={`h-2.5 w-2.5 ${
                                 companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'text-white/40' 
+                                  ? 'text-muted-foreground' 
                                   : companyGoalPercent >= 100 
                                     ? 'text-green-600' 
                                     : companyGoalPercent >= 70 
@@ -2713,7 +2705,7 @@ const OnboardingTasksPage = () => {
                               }`} />
                               <span className={`font-semibold ${
                                 companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'text-white/40' 
+                                  ? 'text-muted-foreground' 
                                   : companyGoalPercent >= 100 
                                     ? 'text-green-600' 
                                     : companyGoalPercent >= 70 
@@ -2740,40 +2732,40 @@ const OnboardingTasksPage = () => {
                         <div 
                           className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'bg-white/10' 
+                              ? 'bg-muted' 
                               : companyGoalPercent >= 100 
-                                ? 'bg-green-500/20' 
+                                ? 'bg-green-100' 
                                 : companyGoalPercent >= 70 
-                                  ? 'bg-yellow-500/20' 
-                                  : 'bg-red-500/20'
+                                  ? 'bg-yellow-100' 
+                                  : 'bg-red-100'
                           }`}
                           title="Projeção da Meta Principal"
                         >
                           <Target className={`h-3.5 w-3.5 ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-white/40' 
+                              ? 'text-muted-foreground' 
                               : companyGoalPercent >= 100 
-                                ? 'text-green-400' 
+                                ? 'text-green-600' 
                                 : companyGoalPercent >= 70 
-                                  ? 'text-yellow-400' 
-                                  : 'text-red-400'
+                                  ? 'text-yellow-600' 
+                                  : 'text-red-600'
                           }`} />
                           <span className={`text-sm font-semibold ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-white/40' 
+                              ? 'text-muted-foreground' 
                               : companyGoalPercent >= 100 
-                                ? 'text-green-400' 
+                                ? 'text-green-600' 
                                 : companyGoalPercent >= 70 
-                                  ? 'text-yellow-400' 
-                                  : 'text-red-400'
+                                  ? 'text-yellow-600' 
+                                  : 'text-red-600'
                           }`}>
                             {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
                         {/* Contract End Date / Recurring */}
-                        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-white/10">
-                          <Calendar className="h-3.5 w-3.5 text-white/50" />
-                          <span className="text-sm font-medium text-white/60">
+                        <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full bg-slate-100">
+                          <Calendar className="h-3.5 w-3.5 text-slate-600" />
+                          <span className="text-sm font-medium text-slate-700">
                             {company.payment_method === 'monthly'
                               ? 'Recorrente'
                               : company.contract_end_date 
@@ -2783,13 +2775,13 @@ const OnboardingTasksPage = () => {
                         </div>
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
-                          <div className="text-white/60">CS: {company.cs?.name || "—"}</div>
-                          <div className="text-white/60">
+                          <div className="text-muted-foreground">CS: {company.cs?.name || "—"}</div>
+                          <div className="text-muted-foreground">
                             Consultor: {company.consultant?.name || "—"}
                           </div>
                         </div>
                         <ChevronDown
-                          className={`h-4 w-4 sm:h-5 sm:w-5 text-white/50 transition-transform ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 text-[#0A2240] transition-transform ${
                             expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
@@ -2798,9 +2790,9 @@ const OnboardingTasksPage = () => {
 
                     {/* Progress bar */}
                     {company.total_tasks ? (
-                      <div className="mt-2 sm:mt-3 w-full bg-white/10 rounded-full h-1.5 sm:h-2">
+                      <div className="mt-2 sm:mt-3 w-full bg-muted rounded-full h-1.5 sm:h-2">
                         <div
-                          className="bg-gradient-to-r from-blue-500 to-cyan-400 h-1.5 sm:h-2 rounded-full transition-all"
+                          className="bg-[#C41E3A] h-1.5 sm:h-2 rounded-full transition-all"
                           style={{
                             width: `${(company.completed_tasks! / company.total_tasks) * 100}%`,
                           }}
@@ -2812,7 +2804,7 @@ const OnboardingTasksPage = () => {
 
                 {/* Expanded Projects */}
                 {expandedCompanyId === company.id && (
-                  <div className="mt-1 ml-3 sm:ml-6 pl-3 sm:pl-6 border-l-2 border-dashed border-white/10 space-y-2 py-2">
+                  <div className="mt-1 ml-3 sm:ml-6 pl-3 sm:pl-6 border-l-2 border-dashed border-muted-foreground/30 space-y-2 py-2">
                     {company.projects && company.projects.length > 0 ? (
                       company.projects
                         .filter((project) => {
@@ -2825,7 +2817,7 @@ const OnboardingTasksPage = () => {
                         .map((project) => (
                         <Card
                           key={project.id}
-                          className="cursor-pointer hover:shadow-md transition-all bg-white/5 border border-white/10 hover:border-blue-500/30 backdrop-blur-sm"
+                          className="cursor-pointer hover:shadow-md transition-all bg-white border border-muted hover:border-primary/50"
                           onClick={(e) => {
                             e.stopPropagation();
                             navigate(`/onboarding-tasks/${project.id}`);
@@ -2834,15 +2826,15 @@ const OnboardingTasksPage = () => {
                           <CardContent className="p-2 sm:p-3">
                             <div className="flex items-center justify-between gap-2">
                               <div className="flex items-center gap-2 sm:gap-3 min-w-0 flex-1">
-                                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-md bg-blue-500/10 flex items-center justify-center shrink-0">
-                                  <Package className="h-4 w-4 text-blue-400" />
+                                <div className="h-8 w-8 sm:h-9 sm:w-9 rounded-md bg-primary/10 flex items-center justify-center shrink-0">
+                                  <Package className="h-4 w-4 text-primary" />
                                 </div>
                                 <div className="min-w-0 flex-1">
                                   <div className="flex flex-col sm:flex-row sm:items-center gap-0.5 sm:gap-2">
-                                    <span className="text-[10px] sm:text-xs font-medium text-white/40 uppercase tracking-wider">Serviço</span>
-                                    <h4 className="font-semibold text-white text-sm sm:text-base truncate">{project.product_name}</h4>
+                                    <span className="text-[10px] sm:text-xs font-medium text-muted-foreground uppercase tracking-wider">Serviço</span>
+                                    <h4 className="font-semibold text-foreground text-sm sm:text-base truncate">{project.product_name}</h4>
                                   </div>
-                                  <div className="flex items-center gap-2 text-[10px] sm:text-xs text-white/40 mt-0.5">
+                                  <div className="flex items-center gap-2 text-[10px] sm:text-xs text-muted-foreground mt-0.5">
                                     <Calendar className="h-3 w-3 hidden sm:inline" />
                                     <span className="hidden sm:inline">
                                       {format(new Date(project.created_at), "dd MMM yyyy", {
@@ -2858,15 +2850,15 @@ const OnboardingTasksPage = () => {
                               </div>
                               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
                                 {getStatusBadge(project.status)}
-                                <ChevronRight className="h-4 w-4 text-white/30" />
+                                <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
                             </div>
 
                             {/* Project progress */}
                             {project.tasks_count ? (
-                              <div className="mt-2 w-full bg-white/10 rounded-full h-1 sm:h-1.5">
+                              <div className="mt-2 w-full bg-muted rounded-full h-1 sm:h-1.5">
                                 <div
-                                  className="bg-gradient-to-r from-blue-500 to-cyan-400 h-1 sm:h-1.5 rounded-full transition-all"
+                                  className="bg-primary h-1 sm:h-1.5 rounded-full transition-all"
                                   style={{
                                     width: `${
                                       (project.completed_count! / project.tasks_count) * 100
@@ -2879,8 +2871,8 @@ const OnboardingTasksPage = () => {
                         </Card>
                       ))
                     ) : (
-                      <Card className="border-dashed border-white/10 bg-white/5">
-                        <CardContent className="p-3 sm:p-4 text-center text-white/40">
+                      <Card className="border-dashed bg-muted/30">
+                        <CardContent className="p-3 sm:p-4 text-center text-muted-foreground">
                           <p className="text-xs sm:text-sm">Nenhum projeto nesta empresa</p>
                           <Button
                             variant="link"
@@ -2902,7 +2894,7 @@ const OnboardingTasksPage = () => {
                     <Button
                       variant="ghost"
                       size="sm"
-                      className="text-white/40 hover:text-blue-400"
+                      className="text-muted-foreground hover:text-primary"
                       onClick={(e) => {
                         e.stopPropagation();
                         navigate(`/onboarding-tasks/companies/${company.id}`);

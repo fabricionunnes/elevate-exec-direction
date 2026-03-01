@@ -158,19 +158,19 @@ export function OverdueCompaniesCard({ currentUserRole, currentStaffId }: Props)
         transition={{ duration: 0.3 }}
       >
         <Card
-          className="border-red-500/30 bg-gradient-to-r from-red-500/10 via-red-500/5 to-transparent cursor-pointer hover:from-red-500/15 hover:via-red-500/10 transition-all duration-300 backdrop-blur-sm border-white/10"
+          className="border-red-500/30 bg-red-500/5 cursor-pointer hover:bg-red-500/10 transition-colors"
           onClick={() => setShowDialog(true)}
         >
           <CardContent className="p-4 flex items-center justify-between">
             <div className="flex items-center gap-3">
-              <div className="h-10 w-10 rounded-lg bg-gradient-to-br from-red-500/30 to-orange-500/20 border border-red-500/20 flex items-center justify-center">
-                <AlertTriangle className="h-5 w-5 text-red-400" />
+              <div className="h-10 w-10 rounded-lg bg-red-500/15 flex items-center justify-center">
+                <AlertTriangle className="h-5 w-5 text-red-500" />
               </div>
               <div>
-                <p className="text-sm font-medium text-white">
+                <p className="text-sm font-medium text-foreground">
                   Empresas Inadimplentes
                 </p>
-                <p className="text-xs text-white/60">
+                <p className="text-xs text-muted-foreground">
                   {filteredCompanies.length} {filteredCompanies.length === 1 ? "empresa" : "empresas"} com parcelas em atraso
                 </p>
               </div>
@@ -179,7 +179,7 @@ export function OverdueCompaniesCard({ currentUserRole, currentStaffId }: Props)
               <Badge variant="destructive" className="text-lg px-3 py-1">
                 {filteredCompanies.length}
               </Badge>
-              <ChevronRight className="h-4 w-4 text-white/50" />
+              <ChevronRight className="h-4 w-4 text-muted-foreground" />
             </div>
           </CardContent>
         </Card>
