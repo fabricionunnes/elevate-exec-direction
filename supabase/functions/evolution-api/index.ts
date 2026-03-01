@@ -993,15 +993,32 @@ Deno.serve(async (req) => {
 
         console.log(`[evolution-api] send-text using ${sendTextInstance?.api_url ? 'custom' : 'global'} credentials for instance ${instanceName}`);
 
-        const response = await fetch(`${sendTextBaseUrl}/message/sendText/${instanceName}`, {
-          method: 'POST',
-          headers: sendTextHeaders,
-          body: JSON.stringify({
-            number,
-            text,
-            delay: delay || 0,
-          }),
-        });
+        const sendTextController = new AbortController();
+        const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
+        let response: Response;
+        try {
+          response = await fetch(`${sendTextBaseUrl}/message/sendText/${instanceName}`, {
+            method: 'POST',
+            headers: sendTextHeaders,
+            signal: sendTextController.signal,
+            body: JSON.stringify({
+              number,
+              text,
+              delay: delay || 0,
+            }),
+          });
+        } catch (fetchErr: any) {
+          clearTimeout(sendTextTimeout);
+          if (fetchErr.name === 'AbortError') {
+            console.error('[evolution-api] send-text timed out after 25s');
+            return new Response(
+              JSON.stringify({ error: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.' }),
+              { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          throw fetchErr;
+        }
+        clearTimeout(sendTextTimeout);
 
         const data = await response.json();
         console.log('[evolution-api] Send text response:', data);
