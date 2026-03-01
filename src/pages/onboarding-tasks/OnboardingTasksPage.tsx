@@ -2534,10 +2534,12 @@ const OnboardingTasksPage = () => {
         <PendingMeetingsAlert />
 
         {/* Overdue Companies Card */}
-        <OverdueCompaniesCard
-          currentUserRole={currentUserRole}
-          currentStaffId={currentStaffId}
-        />
+        <div className="mt-4 mb-2">
+          <OverdueCompaniesCard
+            currentUserRole={currentUserRole}
+            currentStaffId={currentStaffId}
+          />
+        </div>
 
         {/* Dashboard Metrics */}
         <DashboardMetrics
@@ -2590,7 +2592,7 @@ const OnboardingTasksPage = () => {
         ) : (
           <div className="space-y-2 sm:space-y-4">
             {/* Companies count and pagination info */}
-            <div className="flex items-center justify-between text-xs sm:text-sm text-white/40">
+            <div className="flex items-center justify-between text-xs sm:text-sm text-white/50">
               <span>
                 {((currentPage - 1) * companiesPerPage) + 1}-{Math.min(currentPage * companiesPerPage, filteredCompanies.length)} de {filteredCompanies.length}
               </span>
@@ -2628,18 +2630,18 @@ const OnboardingTasksPage = () => {
               <div key={company.id}>
                 {/* Company Card - Mobile Optimized */}
                 <Card
-                  className="cursor-pointer hover:shadow-lg transition-shadow border-l-4 border-l-[#0A2240] bg-gradient-to-r from-[#0A2240]/5 to-transparent"
+                  className="cursor-pointer hover:shadow-lg hover:shadow-blue-500/10 transition-all duration-300 border-l-4 border-l-blue-500/60 bg-gradient-to-r from-white/[0.07] via-white/[0.04] to-transparent backdrop-blur-sm border-white/10 hover:border-white/20"
                   onClick={() => handleCompanyClick(company.id)}
                 >
                   <CardContent className="p-3 sm:p-4">
                     <div className="flex items-start sm:items-center justify-between gap-2">
                       <div className="flex items-start sm:items-center gap-2 sm:gap-4 flex-1 min-w-0">
-                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-[#0A2240] flex items-center justify-center shadow-md shrink-0">
-                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-white" />
+                        <div className="h-10 w-10 sm:h-12 sm:w-12 rounded-lg bg-gradient-to-br from-blue-500/30 to-cyan-500/20 border border-blue-500/20 flex items-center justify-center shadow-md shrink-0">
+                          <Building2 className="h-5 w-5 sm:h-6 sm:w-6 text-blue-300" />
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#0A2240] uppercase tracking-wide break-words max-w-full">{company.name}</h3>
+                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-white uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status)}
                               {/* Tag "Empresa Nova" for companies started within last 30 days.
@@ -2654,7 +2656,7 @@ const OnboardingTasksPage = () => {
                               )}
                             </div>
                           </div>
-                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-white/50 mt-0.5">
+                          <div className="flex flex-wrap items-center gap-x-2 gap-y-0.5 text-xs sm:text-sm text-white/60 mt-0.5">
                             {company.segment && <span className="break-words">{company.segment}</span>}
                             <span className="hidden sm:inline">•</span>
                             <span>{company.projects?.length || 0} projetos</span>
@@ -2668,7 +2670,7 @@ const OnboardingTasksPage = () => {
                             ) : null}
                           </div>
                           {/* Mobile: Show CS/Consultant, Health, Goal % and Contract inline */}
-                          <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-white/40 mt-1">
+                          <div className="flex sm:hidden flex-wrap items-center gap-x-2 text-[10px] text-white/50 mt-1">
                             <span>CS: {company.cs?.name || "—"}</span>
                             <span>Cons: {company.consultant?.name || "—"}</span>
                             {/* Contract info */}
@@ -2738,32 +2740,32 @@ const OnboardingTasksPage = () => {
                         <div 
                           className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'bg-muted' 
+                              ? 'bg-white/10' 
                               : companyGoalPercent >= 100 
-                                ? 'bg-green-100' 
+                                ? 'bg-green-500/20' 
                                 : companyGoalPercent >= 70 
-                                  ? 'bg-yellow-100' 
-                                  : 'bg-red-100'
+                                  ? 'bg-yellow-500/20' 
+                                  : 'bg-red-500/20'
                           }`}
                           title="Projeção da Meta Principal"
                         >
                           <Target className={`h-3.5 w-3.5 ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-muted-foreground' 
+                              ? 'text-white/40' 
                               : companyGoalPercent >= 100 
-                                ? 'text-green-600' 
+                                ? 'text-green-400' 
                                 : companyGoalPercent >= 70 
-                                  ? 'text-yellow-600' 
-                                  : 'text-red-600'
+                                  ? 'text-yellow-400' 
+                                  : 'text-red-400'
                           }`} />
                           <span className={`text-sm font-semibold ${
                             companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-muted-foreground' 
+                              ? 'text-white/40' 
                               : companyGoalPercent >= 100 
-                                ? 'text-green-600' 
+                                ? 'text-green-400' 
                                 : companyGoalPercent >= 70 
-                                  ? 'text-yellow-600' 
-                                  : 'text-red-600'
+                                  ? 'text-yellow-400' 
+                                  : 'text-red-400'
                           }`}>
                             {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
@@ -2781,13 +2783,13 @@ const OnboardingTasksPage = () => {
                         </div>
                         {/* Desktop: Show CS/Consultant */}
                         <div className="hidden sm:block text-right text-sm">
-                          <div className="text-white/40">CS: {company.cs?.name || "—"}</div>
-                          <div className="text-white/40">
+                          <div className="text-white/60">CS: {company.cs?.name || "—"}</div>
+                          <div className="text-white/60">
                             Consultor: {company.consultant?.name || "—"}
                           </div>
                         </div>
                         <ChevronDown
-                          className={`h-4 w-4 sm:h-5 sm:w-5 text-white/40 transition-transform ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 text-white/50 transition-transform ${
                             expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
