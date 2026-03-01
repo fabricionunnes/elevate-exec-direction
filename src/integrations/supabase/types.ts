@@ -3422,6 +3422,48 @@ export type Database = {
         }
         Relationships: []
       }
+      cfo_ai_insights: {
+        Row: {
+          applied_at: string | null
+          applied_notes: string | null
+          category: string
+          content: string
+          created_at: string
+          created_by: string | null
+          id: string
+          priority: string
+          status: string
+          title: string
+          updated_at: string
+        }
+        Insert: {
+          applied_at?: string | null
+          applied_notes?: string | null
+          category?: string
+          content: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title: string
+          updated_at?: string
+        }
+        Update: {
+          applied_at?: string | null
+          applied_notes?: string | null
+          category?: string
+          content?: string
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          priority?: string
+          status?: string
+          title?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       chat_advisor_leads: {
         Row: {
           created_at: string
