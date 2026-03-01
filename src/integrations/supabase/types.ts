@@ -14631,13 +14631,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "financial_payables_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "financial_categories"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "financial_payables_cost_center_id_fkey"
             columns: ["cost_center_id"]
             isOneToOne: false
