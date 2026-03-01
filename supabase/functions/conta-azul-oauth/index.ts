@@ -288,19 +288,19 @@ Deno.serve(async (req) => {
 
       const payload: any = {
         descricao: entryData.description || "Lançamento",
-        valor_bruto: valorBruto,
+        valorBruto: valorBruto,
         valor: valorBruto,
-        data_vencimento: dueDate,
-        data_competencia: dueDate,
-        condicao_pagamento: "a_vista",
+        dataVencimento: dueDate,
+        dataCompetencia: dueDate,
+        condicaoPagamento: "a_vista",
         rateio: [
           {
             valor: valorBruto,
           }
         ],
       };
-      if (entryData.client_name) payload.contato_nome = entryData.client_name;
-      if (entryData.supplier_name) payload.contato_nome = entryData.supplier_name;
+      if (entryData.client_name) payload.contatoNome = entryData.client_name;
+      if (entryData.supplier_name) payload.contatoNome = entryData.supplier_name;
 
       console.log(`Conta Azul ${method} ${apiUrl}`, JSON.stringify(payload));
 
