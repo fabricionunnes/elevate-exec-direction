@@ -153,9 +153,9 @@ Deno.serve(async (req) => {
     );
 
     let totalSent = 0;
+    const sendQueue: any[] = [];
 
     for (const rule of rules) {
-      // Calculate target date for this rule
       let targetDate: string;
       const d = new Date(today);
 
@@ -172,7 +172,6 @@ Deno.serve(async (req) => {
       const matchingInvoices = invoices.filter((inv: any) => inv.due_date === targetDate);
 
       for (const invoice of matchingInvoices) {
-        // Skip if already sent today
         if (sentKeys.has(`${rule.id}:${invoice.id}`)) continue;
 
         const company = companyMap.get(invoice.company_id);
@@ -182,79 +181,76 @@ Deno.serve(async (req) => {
         if (!cleanPhone || cleanPhone.length < 10) continue;
         const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
 
-        // Resolve WhatsApp instance
         const instanceName = rule.whatsapp_instance_name || "fabricionunnes";
         const whatsappInstance = instanceMap.get(instanceName) || instanceMap.values().next().value;
         if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) continue;
 
         const message = buildMessage(rule, invoice, company, today);
 
-        try {
-          const controller = new AbortController();
-          const timeout = setTimeout(() => controller.abort(), 30000);
-
-          const sendResponse = await fetch(
-            `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`,
-            {
-              method: "POST",
-              headers: {
-                "Content-Type": "application/json",
-                apikey: whatsappInstance.api_key,
-              },
-              body: JSON.stringify({
-                number: formattedPhone,
-                text: message,
-              }),
-              signal: controller.signal,
-            }
-          );
-
-          clearTimeout(timeout);
-
-          const responseText = await sendResponse.text();
-
-          if (sendResponse.ok) {
-            totalSent++;
-            await supabase.from("billing_notification_logs").insert({
-              rule_id: rule.id,
-              invoice_id: invoice.id,
-              company_id: invoice.company_id,
-              phone: formattedPhone,
-              message_sent: message,
-              status: "sent",
-            });
-            console.log(`[billing-notifications] Sent to ${company.name} (${formattedPhone}) - rule: ${rule.name}`);
-          } else {
-            console.error(`Failed to send to ${formattedPhone}:`, responseText);
-            await supabase.from("billing_notification_logs").insert({
-              rule_id: rule.id,
-              invoice_id: invoice.id,
-              company_id: invoice.company_id,
-              phone: formattedPhone,
-              message_sent: message,
-              status: "failed",
-            });
-          }
-        } catch (e: any) {
-          console.error(`Error sending to ${formattedPhone}:`, e?.message || e);
-          try {
-            await supabase.from("billing_notification_logs").insert({
-              rule_id: rule.id,
-              invoice_id: invoice.id,
-              company_id: invoice.company_id,
-              phone: formattedPhone,
-              message_sent: message,
-              status: "failed",
-            });
-          } catch (_) { /* ignore logging errors */ }
-        }
+        sendQueue.push({
+          rule, invoice, company, formattedPhone, message,
+          instanceName: whatsappInstance.instance_name,
+          apiUrl: whatsappInstance.api_url,
+          apiKey: whatsappInstance.api_key,
+        });
       }
     }
 
-    console.log(`[billing-notifications] Total sent: ${totalSent}`);
+    console.log(`[billing-notifications] Queue: ${sendQueue.length} messages to send`);
+
+    // Send in parallel batches of 5, with 10s timeout each
+    const BATCH_SIZE = 5;
+    const TIMEOUT_MS = 10000;
+
+    for (let i = 0; i < sendQueue.length; i += BATCH_SIZE) {
+      const batch = sendQueue.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(
+        batch.map(async (item) => {
+          const controller = new AbortController();
+          const timeout = setTimeout(() => controller.abort(), TIMEOUT_MS);
+          try {
+            const resp = await fetch(
+              `${item.apiUrl}/message/sendText/${item.instanceName}`,
+              {
+                method: "POST",
+                headers: { "Content-Type": "application/json", apikey: item.apiKey },
+                body: JSON.stringify({ number: item.formattedPhone, text: item.message }),
+                signal: controller.signal,
+              }
+            );
+            clearTimeout(timeout);
+            const body = await resp.text();
+            return { ...item, ok: resp.ok, body };
+          } catch (e: any) {
+            clearTimeout(timeout);
+            return { ...item, ok: false, body: e?.message || "timeout" };
+          }
+        })
+      );
+
+      for (const r of results) {
+        const val = r.status === "fulfilled" ? r.value : { ...batch[0], ok: false, body: "rejected" };
+        if (val.ok) {
+          totalSent++;
+          console.log(`[billing-notifications] ✓ Sent to ${val.company.name} (${val.formattedPhone})`);
+        } else {
+          console.error(`[billing-notifications] ✗ Failed ${val.formattedPhone}: ${val.body}`);
+        }
+        await supabase.from("billing_notification_logs").insert({
+          rule_id: val.rule.id,
+          invoice_id: val.invoice.id,
+          company_id: val.invoice.company_id,
+          phone: val.formattedPhone,
+          message_sent: val.message,
+          status: val.ok ? "sent" : "failed",
+        });
+      }
+    }
+
+    console.log(`[billing-notifications] Total sent: ${totalSent}/${sendQueue.length}`);
 
     return new Response(
-      JSON.stringify({ sent: totalSent }),
+      JSON.stringify({ sent: totalSent, total: sendQueue.length }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
