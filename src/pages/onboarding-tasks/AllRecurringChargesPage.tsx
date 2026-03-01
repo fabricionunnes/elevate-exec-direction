@@ -53,6 +53,7 @@ import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterB
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
+import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 
 interface RecurringCharge {
@@ -77,11 +78,21 @@ interface FinancialEntry {
   due_date: string;
   status: string;
   category: string | null;
+  category_id?: string | null;
+  cost_center_id?: string | null;
   reference_month: string;
   paid_amount: number | null;
   paid_at: string | null;
+  paid_date?: string | null;
   created_at: string;
   supplier_name?: string;
+  notes?: string | null;
+  bank_id?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_type?: string | null;
+  installment_number?: number | null;
+  total_installments?: number | null;
+  conta_azul_id?: string | null;
 }
 
 interface Invoice {
@@ -219,6 +230,10 @@ export default function AllRecurringChargesPage() {
   });
   const [financialSuppliers, setFinancialSuppliers] = useState<any[]>([]);
   const [savingPayable, setSavingPayable] = useState(false);
+
+  // Payable action dialogs
+  const [payablePaymentDialog, setPayablePaymentDialog] = useState<{ open: boolean; payable: FinancialEntry | null }>({ open: false, payable: null });
+  const [payableEditDialog, setPayableEditDialog] = useState<{ open: boolean; payable: FinancialEntry | null }>({ open: false, payable: null });
 
   // Import dialogs
   const [importReceivableOpen, setImportReceivableOpen] = useState(false);
@@ -443,6 +458,7 @@ export default function AllRecurringChargesPage() {
   const getStatusDisplay = (s: string, dueDate?: string) => {
     const isDueToday = s === "pending" && dueDate === todayStr;
     if (s === "paid") return { label: "Pago", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: <CheckCircle2 className="h-3.5 w-3.5" /> };
+    if (s === "partial") return { label: "Pago Parcial", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
     if (s === "overdue") return { label: "Vencido", className: "bg-red-500/10 text-red-600 border-red-500/20", icon: <AlertTriangle className="h-3.5 w-3.5" /> };
     if (isDueToday) return { label: "Vence Hoje", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
     if (s === "cancelled") return { label: "Cancelado", className: "bg-gray-500/10 text-gray-600 border-gray-500/20", icon: <XCircle className="h-3.5 w-3.5" /> };
@@ -1591,11 +1607,12 @@ export default function AllRecurringChargesPage() {
                           <TableHead>Mês Ref</TableHead>
                           <TableHead>Status</TableHead>
                           <TableHead>Pago em</TableHead>
+                          <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {filteredPayables.length === 0 ? (
-                          <TableRow><TableCell colSpan={8} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
                         ) : filteredPayables.map(p => (
                           <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
                             <TableCell>
@@ -1614,7 +1631,26 @@ export default function AllRecurringChargesPage() {
                             <TableCell>{p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                             <TableCell>{p.reference_month}</TableCell>
                             <TableCell>{(() => { const sd = getStatusDisplay(p.status, p.due_date); return <Badge className={`gap-1 text-xs ${sd.className}`}>{sd.icon}{sd.label}</Badge>; })()}</TableCell>
-                            <TableCell className="text-sm text-muted-foreground">{p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
+                            <TableCell className="text-sm text-muted-foreground">
+                              {(p.paid_at || (p as any).paid_date) ? format(new Date((p.paid_at || (p as any).paid_date)!), "dd/MM/yyyy") : "-"}
+                              {p.paid_amount && p.paid_amount < p.amount && (
+                                <span className="block text-xs text-amber-600">{formatCurrency(p.paid_amount)} de {formatCurrency(p.amount)}</span>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex items-center justify-end gap-1">
+                                {p.status !== "paid" && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Pagar"
+                                    onClick={() => setPayablePaymentDialog({ open: true, payable: p })}>
+                                    <CheckCircle2 className="h-4 w-4 text-emerald-600" />
+                                  </Button>
+                                )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar"
+                                  onClick={() => setPayableEditDialog({ open: true, payable: p })}>
+                                  <Edit2 className="h-4 w-4" />
+                                </Button>
+                              </div>
+                            </TableCell>
                           </TableRow>
                         ))}
                       </TableBody>
@@ -1622,6 +1658,25 @@ export default function AllRecurringChargesPage() {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Payment & Edit Dialogs */}
+              <PayablePaymentDialog
+                open={payablePaymentDialog.open}
+                onOpenChange={(open) => setPayablePaymentDialog(s => ({ ...s, open }))}
+                payable={payablePaymentDialog.payable}
+                banks={banks}
+                onSuccess={loadData}
+              />
+              <PayableEditDialog
+                open={payableEditDialog.open}
+                onOpenChange={(open) => setPayableEditDialog(s => ({ ...s, open }))}
+                payable={payableEditDialog.payable}
+                categories={staffCategories}
+                costCenters={staffCostCenters}
+                suppliers={financialSuppliers}
+                onSuccess={loadData}
+                onSuppliersRefresh={loadData}
+              />
             </div>
           )}
 

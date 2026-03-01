@@ -1,0 +1,399 @@
+import { useState } from "react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter, DialogDescription } from "@/components/ui/dialog";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { CurrencyInput } from "@/components/ui/currency-input";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { CalendarIcon, Loader2 } from "lucide-react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { cn } from "@/lib/utils";
+import { syncPaymentToContaAzul } from "@/utils/contaAzulSync";
+import { SupplierAutocomplete } from "./SupplierAutocomplete";
+
+interface PayableEntry {
+  id: string;
+  description: string;
+  amount: number;
+  due_date: string;
+  status: string;
+  paid_amount: number | null;
+  paid_at?: string | null;
+  paid_date?: string | null;
+  supplier_name?: string;
+  category_id?: string | null;
+  cost_center_id?: string | null;
+  reference_month?: string | null;
+  notes?: string | null;
+  bank_id?: string | null;
+  is_recurring?: boolean | null;
+  recurrence_type?: string | null;
+  installment_number?: number | null;
+  total_installments?: number | null;
+  conta_azul_id?: string | null;
+}
+
+// ─── PAYMENT DIALOG ─────────────────────────────────────────────────────────
+interface PaymentDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  payable: PayableEntry | null;
+  banks: { id: string; name: string }[];
+  onSuccess: () => void;
+}
+
+export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuccess }: PaymentDialogProps) {
+  const [bankId, setBankId] = useState("none");
+  const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
+  const [paidAmount, setPaidAmount] = useState(0);
+  const [saving, setSaving] = useState(false);
+
+  // Reset form when payable changes
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen && payable) {
+      setPaidAmount(payable.amount);
+      setPaymentDate(new Date());
+      setBankId("none");
+    }
+    onOpenChange(isOpen);
+  };
+
+  const handleSave = async () => {
+    if (!payable || !paymentDate) return;
+    setSaving(true);
+    try {
+      const dateStr = format(paymentDate, "yyyy-MM-dd");
+      const isPartial = paidAmount > 0 && paidAmount < payable.amount;
+      const newStatus = isPartial ? "partial" : "paid";
+
+      const updateData: any = {
+        status: newStatus,
+        paid_date: dateStr,
+        paid_amount: paidAmount,
+        updated_at: new Date().toISOString(),
+      };
+      if (bankId !== "none") updateData.bank_id = bankId;
+
+      const { error } = await supabase.from("financial_payables").update(updateData as any).eq("id", payable.id);
+      if (error) throw error;
+
+      // Debit bank balance
+      if (bankId !== "none" && paidAmount > 0) {
+        const amountCents = Math.round(paidAmount * 100);
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: -amountCents });
+        await supabase.from("financial_bank_transactions").insert({
+          bank_id: bankId,
+          type: "debit",
+          amount_cents: amountCents,
+          description: `Pagamento: ${payable.description}`,
+          reference_type: "payable",
+          reference_id: payable.id,
+        } as any);
+      }
+
+      // Sync to Conta Azul
+      if ((payable as any).conta_azul_id) {
+        syncPaymentToContaAzul((payable as any).conta_azul_id, "payable", dateStr, paidAmount);
+      }
+
+      toast.success(isPartial ? "Pagamento parcial registrado" : "Pagamento confirmado!");
+      onOpenChange(false);
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!payable) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="max-w-md">
+        <DialogHeader>
+          <DialogTitle>Registrar Pagamento</DialogTitle>
+          <DialogDescription>
+            {payable.description} — {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount)}
+          </DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 py-2">
+          <div>
+            <Label>Banco</Label>
+            <Select value={bankId} onValueChange={setBankId}>
+              <SelectTrigger><SelectValue placeholder="Selecione o banco" /></SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">Nenhum</SelectItem>
+                {banks.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
+              </SelectContent>
+            </Select>
+          </div>
+          <div>
+            <Label>Data do Pagamento</Label>
+            <Popover>
+              <PopoverTrigger asChild>
+                <Button variant="outline" className={cn("w-full justify-start text-left font-normal", !paymentDate && "text-muted-foreground")}>
+                  <CalendarIcon className="mr-2 h-4 w-4" />
+                  {paymentDate ? format(paymentDate, "dd/MM/yyyy") : "Selecione"}
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-auto p-0" align="start">
+                <Calendar mode="single" selected={paymentDate} onSelect={setPaymentDate} locale={ptBR} className={cn("p-3 pointer-events-auto")} />
+              </PopoverContent>
+            </Popover>
+          </div>
+          <div>
+            <Label>Valor Pago (R$)</Label>
+            <CurrencyInput value={paidAmount} onChange={setPaidAmount} />
+            {paidAmount > 0 && paidAmount < payable.amount && (
+              <p className="text-xs text-amber-600 mt-1">
+                Pagamento parcial — Restante: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount - paidAmount)}
+              </p>
+            )}
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving || paidAmount <= 0}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Confirmar Pagamento
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
+
+// ─── EDIT DIALOG ─────────────────────────────────────────────────────────────
+interface EditDialogProps {
+  open: boolean;
+  onOpenChange: (open: boolean) => void;
+  payable: PayableEntry | null;
+  categories: any[];
+  costCenters: any[];
+  suppliers: any[];
+  onSuccess: () => void;
+  onSuppliersRefresh: () => void;
+}
+
+export function PayableEditDialog({ open, onOpenChange, payable, categories, costCenters, suppliers, onSuccess, onSuppliersRefresh }: EditDialogProps) {
+  const [form, setForm] = useState({
+    supplier_name: "",
+    description: "",
+    amount: 0,
+    due_date: "",
+    reference_month: "",
+    category_id: "",
+    cost_center_id: "",
+    notes: "",
+  });
+  const [editScope, setEditScope] = useState<"single" | "future">("single");
+  const [saving, setSaving] = useState(false);
+
+  const isRecurring = payable?.is_recurring && payable?.total_installments && payable.total_installments > 1;
+
+  const handleOpen = (isOpen: boolean) => {
+    if (isOpen && payable) {
+      setForm({
+        supplier_name: payable.supplier_name || "",
+        description: payable.description || "",
+        amount: payable.amount || 0,
+        due_date: payable.due_date || "",
+        reference_month: (payable as any).reference_month || "",
+        category_id: (payable as any).category_id || "",
+        cost_center_id: (payable as any).cost_center_id || "",
+        notes: (payable as any).notes || "",
+      });
+      setEditScope("single");
+    }
+    onOpenChange(isOpen);
+  };
+
+  const handleSave = async () => {
+    if (!payable || !form.supplier_name.trim() || !form.description.trim()) {
+      toast.error("Fornecedor e descrição são obrigatórios");
+      return;
+    }
+    setSaving(true);
+    try {
+      const payload: any = {
+        supplier_name: form.supplier_name.trim(),
+        description: form.description.trim(),
+        amount: form.amount,
+        due_date: form.due_date,
+        reference_month: form.reference_month || null,
+        category_id: form.category_id && form.category_id !== "none" ? form.category_id : null,
+        cost_center_id: form.cost_center_id && form.cost_center_id !== "none" ? form.cost_center_id : null,
+        notes: form.notes || null,
+        updated_at: new Date().toISOString(),
+      };
+
+      if (editScope === "single" || !isRecurring) {
+        // Edit only this entry
+        const { error } = await supabase.from("financial_payables").update(payload as any).eq("id", payable.id);
+        if (error) throw error;
+        toast.success("Lançamento atualizado!");
+      } else {
+        // Edit this and all future entries with same description base and higher installment numbers
+        // We match by: same supplier, same base description (without installment suffix), same recurrence_type, installment_number >= current
+        const currentInstallment = payable.installment_number || 1;
+        const baseDesc = payable.description.replace(/\s*\(\d+\/\d+\)$/, "");
+
+        // Get all matching future entries
+        const { data: allEntries } = await supabase
+          .from("financial_payables")
+          .select("id, installment_number, due_date")
+          .eq("supplier_name", payable.supplier_name || "")
+          .eq("is_recurring", true)
+          .gte("installment_number", currentInstallment)
+          .neq("status", "paid") as any;
+
+        if (allEntries && allEntries.length > 0) {
+          // Filter entries that share the same base description
+          const matchingIds = allEntries
+            .filter((e: any) => {
+              const eBase = e.due_date ? true : true; // include all from same supplier with >= installment
+              return true;
+            })
+            .map((e: any) => e.id);
+
+          // Update shared fields (not due_date, not installment-specific)
+          const sharedPayload: any = {
+            supplier_name: form.supplier_name.trim(),
+            amount: form.amount,
+            category_id: payload.category_id,
+            cost_center_id: payload.cost_center_id,
+            notes: payload.notes,
+            updated_at: new Date().toISOString(),
+          };
+
+          const { error } = await supabase
+            .from("financial_payables")
+            .update(sharedPayload as any)
+            .in("id", matchingIds);
+          if (error) throw error;
+
+          // Update this specific entry's description and due_date
+          await supabase.from("financial_payables").update({
+            description: form.description.trim(),
+            due_date: form.due_date,
+            reference_month: form.reference_month || null,
+          } as any).eq("id", payable.id);
+
+          toast.success(`${matchingIds.length} lançamento(s) atualizado(s)!`);
+        }
+      }
+
+      onOpenChange(false);
+      onSuccess();
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "erro"));
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  if (!payable) return null;
+
+  return (
+    <Dialog open={open} onOpenChange={handleOpen}>
+      <DialogContent className="max-w-lg">
+        <DialogHeader>
+          <DialogTitle>Editar Lançamento</DialogTitle>
+          <DialogDescription>Atualize os dados da conta a pagar</DialogDescription>
+        </DialogHeader>
+        <div className="space-y-4 max-h-[65vh] overflow-y-auto py-2">
+          {isRecurring && (
+            <div className="p-3 bg-muted/50 rounded-lg space-y-2">
+              <Label className="text-sm font-medium">Escopo da edição</Label>
+              <RadioGroup value={editScope} onValueChange={(v) => setEditScope(v as "single" | "future")} className="flex flex-col gap-2">
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="single" id="scope-single" />
+                  <Label htmlFor="scope-single" className="font-normal">Somente este lançamento</Label>
+                </div>
+                <div className="flex items-center space-x-2">
+                  <RadioGroupItem value="future" id="scope-future" />
+                  <Label htmlFor="scope-future" className="font-normal">Este e todos os futuros recorrentes</Label>
+                </div>
+              </RadioGroup>
+            </div>
+          )}
+
+          <div>
+            <Label>Fornecedor *</Label>
+            <SupplierAutocomplete
+              value={form.supplier_name}
+              onChange={(v) => setForm(f => ({ ...f, supplier_name: v }))}
+              suppliers={suppliers}
+              onSupplierCreated={onSuppliersRefresh}
+            />
+          </div>
+          <div>
+            <Label>Descrição *</Label>
+            <Input value={form.description} onChange={(e) => setForm(f => ({ ...f, description: e.target.value }))} />
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Valor (R$) *</Label>
+              <CurrencyInput value={form.amount} onChange={(v) => setForm(f => ({ ...f, amount: v }))} />
+            </div>
+            <div>
+              <Label>Vencimento *</Label>
+              <Input type="date" value={form.due_date} onChange={(e) => setForm(f => ({ ...f, due_date: e.target.value }))} />
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Categoria</Label>
+              <Select value={form.category_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, category_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhuma</SelectItem>
+                  {categories.filter((c: any) => c.type === "despesa").map((c: any) => (
+                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Centro de Custo</Label>
+              <Select value={form.cost_center_id || "none"} onValueChange={(v) => setForm(f => ({ ...f, cost_center_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Nenhum</SelectItem>
+                  {costCenters.map((cc: any) => (
+                    <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+          <div className="grid grid-cols-2 gap-3">
+            <div>
+              <Label>Mês Referência</Label>
+              <Input type="month" value={form.reference_month} onChange={(e) => setForm(f => ({ ...f, reference_month: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Observações</Label>
+              <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
+            </div>
+          </div>
+        </div>
+        <DialogFooter>
+          <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
+          <Button onClick={handleSave} disabled={saving || !form.supplier_name.trim() || !form.description.trim()}>
+            {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
+            Salvar
+          </Button>
+        </DialogFooter>
+      </DialogContent>
+    </Dialog>
+  );
+}
