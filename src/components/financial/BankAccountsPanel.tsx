@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { BankStatementDialog } from "./BankStatementDialog";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
@@ -84,6 +85,8 @@ export function BankAccountsPanel() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
+  const [isStatementOpen, setIsStatementOpen] = useState(false);
+  const [statementAccount, setStatementAccount] = useState<BankAccount | null>(null);
 
   const [formData, setFormData] = useState({
     name: "",
@@ -455,7 +458,14 @@ export function BankAccountsPanel() {
       {/* Bank Account Cards */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
         {accounts.map((account) => (
-          <Card key={account.id} className={!account.is_active ? "opacity-50" : ""}>
+          <Card 
+            key={account.id} 
+            className={`cursor-pointer transition-shadow hover:shadow-md ${!account.is_active ? "opacity-50" : ""}`}
+            onClick={() => {
+              setStatementAccount(account);
+              setIsStatementOpen(true);
+            }}
+          >
             <CardHeader className="pb-2">
               <div className="flex items-start justify-between">
                 <div className="flex items-center gap-3">
@@ -469,7 +479,7 @@ export function BankAccountsPanel() {
                 </div>
                 <DropdownMenu>
                   <DropdownMenuTrigger asChild>
-                    <Button variant="ghost" size="icon">
+                    <Button variant="ghost" size="icon" onClick={(e) => e.stopPropagation()}>
                       <MoreVertical className="h-4 w-4" />
                     </Button>
                   </DropdownMenuTrigger>
@@ -723,6 +733,13 @@ export function BankAccountsPanel() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Bank Statement Dialog */}
+      <BankStatementDialog
+        account={statementAccount}
+        open={isStatementOpen}
+        onOpenChange={setIsStatementOpen}
+        formatCurrency={formatCurrency}
+      />
     </div>
   );
 }
