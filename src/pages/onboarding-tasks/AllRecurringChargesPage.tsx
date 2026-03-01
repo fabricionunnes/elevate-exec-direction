@@ -205,7 +205,7 @@ export default function AllRecurringChargesPage() {
   const [payables, setPayables] = useState<FinancialEntry[]>([]);
   const [invoices, setInvoices] = useState<Invoice[]>([]);
   const [processingInvoiceId, setProcessingInvoiceId] = useState<string | null>(null);
-  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert"; description: string }>({
+  const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert" | "revert_payable"; description: string }>({
     open: false, invoiceId: "", action: "confirm", description: "",
   });
   const [manualFee, setManualFee] = useState("1.99");
@@ -577,6 +577,44 @@ export default function AllRecurringChargesPage() {
     } finally {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "revert", description: "" });
+    }
+  };
+
+  // Revert payable payment (estorno contas a pagar)
+  const handleRevertPayable = async (payableId: string) => {
+    setProcessingInvoiceId(payableId);
+    try {
+      const p = payables.find(p => p.id === payableId);
+      const pAny = p as any;
+      const bankId = pAny?.bank_id;
+      const paidAmount = pAny?.paid_amount || pAny?.amount || 0;
+
+      // Revert status to pending
+      const todayStr = new Date().toLocaleDateString("en-CA");
+      const newStatus = p?.due_date && p.due_date < todayStr ? "overdue" : "pending";
+      const { error } = await supabase.from("financial_payables")
+        .update({ status: newStatus, paid_at: null, paid_amount: null, bank_id: null } as any)
+        .eq("id", payableId);
+      if (error) throw error;
+
+      // Revert bank balance if paid via bank
+      if (bankId && paidAmount > 0) {
+        const amountCents = Math.round(paidAmount * 100);
+        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: amountCents });
+        await supabase.from("financial_bank_transactions").insert({
+          bank_id: bankId, type: "credit", amount_cents: amountCents,
+          description: `Estorno Pagável: ${p?.description}`,
+          reference_type: "payable", reference_id: payableId,
+        } as any);
+      }
+
+      toast.success("Estorno de pagável realizado com sucesso!");
+      await loadData();
+    } catch (err: any) {
+      toast.error("Erro ao estornar: " + (err.message || "erro"));
+    } finally {
+      setProcessingInvoiceId(null);
+      setConfirmDialog({ open: false, invoiceId: "", action: "revert_payable", description: "" });
     }
   };
 
@@ -1829,6 +1867,12 @@ export default function AllRecurringChargesPage() {
                                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                                   </Button>
                                 )}
+                                {p.status === "paid" && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Estornar"
+                                    onClick={() => setConfirmDialog({ open: true, invoiceId: p.id, action: "revert_payable", description: `${p.supplier_name || "Sem fornecedor"} - ${p.description} - ${formatCurrency(p.amount)}` })}>
+                                    <Undo2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )}
                                 <Button variant="ghost" size="icon" className="h-8 w-8" title="Editar"
                                   onClick={() => setPayableEditDialog({ open: true, payable: p })}>
                                   <Edit2 className="h-4 w-4" />
@@ -1984,6 +2028,8 @@ export default function AllRecurringChargesPage() {
             <AlertDialogDescription>
               {confirmDialog.action === "confirm"
                 ? "Tem certeza que deseja dar baixa nesta parcela? A ação será sincronizada com o Asaas."
+                : confirmDialog.action === "revert_payable"
+                ? "Tem certeza que deseja estornar este pagamento? O lançamento voltará ao status pendente e o saldo bancário será revertido."
                 : "Tem certeza que deseja estornar esta parcela? A ação será sincronizada com o Asaas."
               }
               <br />
@@ -2013,10 +2059,12 @@ export default function AllRecurringChargesPage() {
             <AlertDialogCancel disabled={!!processingInvoiceId}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
               disabled={!!processingInvoiceId}
-              className={confirmDialog.action === "revert" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
+              className={confirmDialog.action !== "confirm" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
               onClick={() => {
                 if (confirmDialog.action === "confirm") {
                   handleManualPayment(confirmDialog.invoiceId, Math.round(parseFloat(manualFee || "0") * 100), selectedBankId !== "none" ? selectedBankId : null);
+                } else if (confirmDialog.action === "revert_payable") {
+                  handleRevertPayable(confirmDialog.invoiceId);
                 } else {
                   handleRevertPayment(confirmDialog.invoiceId);
                 }
