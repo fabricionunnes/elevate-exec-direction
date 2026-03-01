@@ -104,6 +104,7 @@ export function PayablesPanel() {
     payment_method: "pix",
     is_recurring: false,
     recurrence_type: "monthly",
+    recurring_count: "12",
     cost_center: "",
     reference_month: format(new Date(), "yyyy-MM"),
     notes: "",
@@ -174,35 +175,63 @@ export function PayablesPanel() {
 
   const handleAddPayable = async () => {
     try {
-      const totalInstallments = formData.has_installments ? parseInt(formData.total_installments) : 1;
       const baseAmount = parseFloat(formData.amount);
-      const installmentAmount = baseAmount / totalInstallments;
+      
+      // Determine how many entries to create
+      let totalEntries: number;
+      if (formData.is_recurring) {
+        totalEntries = parseInt(formData.recurring_count) || 12;
+      } else if (formData.has_installments) {
+        totalEntries = parseInt(formData.total_installments) || 1;
+      } else {
+        totalEntries = 1;
+      }
+
+      const entryAmount = formData.has_installments && !formData.is_recurring
+        ? baseAmount / totalEntries
+        : baseAmount;
+
+      // Determine month offset based on recurrence type
+      const getMonthOffset = (recurrenceType: string): number => {
+        switch (recurrenceType) {
+          case "monthly": return 1;
+          case "quarterly": return 3;
+          case "semiannual": return 6;
+          case "annual": return 12;
+          default: return 1;
+        }
+      };
+
+      const monthOffset = formData.is_recurring 
+        ? getMonthOffset(formData.recurrence_type) 
+        : 1;
 
       const payablesToInsert = [];
       let currentDueDate = new Date(formData.due_date);
 
-      for (let i = 1; i <= totalInstallments; i++) {
+      for (let i = 1; i <= totalEntries; i++) {
+        const refMonth = format(currentDueDate, "yyyy-MM");
         payablesToInsert.push({
           supplier_name: formData.supplier_name,
           category_id: formData.category_id || null,
-          description: totalInstallments > 1 
-            ? `${formData.description} (${i}/${totalInstallments})`
+          description: totalEntries > 1
+            ? `${formData.description} (${i}/${totalEntries})`
             : formData.description,
-          amount: installmentAmount,
+          amount: entryAmount,
           due_date: format(currentDueDate, "yyyy-MM-dd"),
           payment_method: formData.payment_method,
           is_recurring: formData.is_recurring,
           recurrence_type: formData.is_recurring ? formData.recurrence_type : null,
           cost_center: formData.cost_center || null,
-          reference_month: formData.reference_month,
+          reference_month: refMonth,
           notes: formData.notes || null,
-          installment_number: totalInstallments > 1 ? i : null,
-          total_installments: totalInstallments > 1 ? totalInstallments : null,
+          installment_number: totalEntries > 1 ? i : null,
+          total_installments: totalEntries > 1 ? totalEntries : null,
           status: "pending"
         });
 
-        // Add one month for next installment
-        currentDueDate.setMonth(currentDueDate.getMonth() + 1);
+        // Advance date
+        currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
       }
 
       const { error } = await supabase.from("financial_payables").insert(payablesToInsert);
@@ -210,8 +239,8 @@ export function PayablesPanel() {
       if (error) throw error;
 
       toast.success(
-        totalInstallments > 1 
-          ? `${totalInstallments} parcelas criadas com sucesso!`
+        totalEntries > 1
+          ? `${totalEntries} lançamentos criados com sucesso!`
           : "Conta a pagar criada com sucesso!"
       );
       setIsAddDialogOpen(false);
@@ -293,6 +322,7 @@ export function PayablesPanel() {
       payment_method: "pix",
       is_recurring: false,
       recurrence_type: "monthly",
+      recurring_count: "12",
       cost_center: "",
       reference_month: format(new Date(), "yyyy-MM"),
       notes: "",
@@ -469,6 +499,7 @@ export function PayablesPanel() {
                   </div>
                 </div>
 
+                {!formData.is_recurring && (
                 <div className="flex items-center space-x-2">
                   <Checkbox
                     id="has_installments"
@@ -479,6 +510,7 @@ export function PayablesPanel() {
                   />
                   <Label htmlFor="has_installments">Parcelar pagamento</Label>
                 </div>
+                )}
 
                 {formData.has_installments && (
                   <div className="space-y-2">
@@ -503,28 +535,46 @@ export function PayablesPanel() {
                     id="is_recurring"
                     checked={formData.is_recurring}
                     onCheckedChange={(checked) => 
-                      setFormData({ ...formData, is_recurring: checked as boolean })
+                      setFormData({ ...formData, is_recurring: checked as boolean, has_installments: false })
                     }
                   />
                   <Label htmlFor="is_recurring">Conta Recorrente</Label>
                 </div>
 
                 {formData.is_recurring && (
-                  <div className="space-y-2">
-                    <Label>Recorrência</Label>
-                    <Select
-                      value={formData.recurrence_type}
-                      onValueChange={(v) => setFormData({ ...formData, recurrence_type: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="monthly">Mensal</SelectItem>
-                        <SelectItem value="quarterly">Trimestral</SelectItem>
-                        <SelectItem value="annual">Anual</SelectItem>
-                      </SelectContent>
-                    </Select>
+                  <div className="space-y-4 pl-6 border-l-2 border-primary/20">
+                    <div className="space-y-2">
+                      <Label>Recorrência</Label>
+                      <Select
+                        value={formData.recurrence_type}
+                        onValueChange={(v) => setFormData({ ...formData, recurrence_type: v })}
+                      >
+                        <SelectTrigger>
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="monthly">Mensal</SelectItem>
+                          <SelectItem value="quarterly">Trimestral</SelectItem>
+                          <SelectItem value="semiannual">Semestral</SelectItem>
+                          <SelectItem value="annual">Anual</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div className="space-y-2">
+                      <Label>Quantidade de lançamentos</Label>
+                      <Input
+                        type="number"
+                        min="2"
+                        max="60"
+                        value={formData.recurring_count}
+                        onChange={(e) => setFormData({ ...formData, recurring_count: e.target.value })}
+                      />
+                      {formData.amount && formData.recurring_count && (
+                        <p className="text-sm text-muted-foreground">
+                          {formData.recurring_count}x de {formatCurrency(parseFloat(formData.amount))} ({formData.recurrence_type === "monthly" ? "mensal" : formData.recurrence_type === "quarterly" ? "trimestral" : formData.recurrence_type === "semiannual" ? "semestral" : "anual"})
+                        </p>
+                      )}
+                    </div>
                   </div>
                 )}
 
