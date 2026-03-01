@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_payables ADD COLUMN IF NOT EXISTS cost_type TEXT DEFAULT NULL CHECK (cost_type IN ('fixed', 'variable'));

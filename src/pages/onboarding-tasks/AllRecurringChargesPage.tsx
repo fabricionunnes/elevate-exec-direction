@@ -228,6 +228,7 @@ export default function AllRecurringChargesPage() {
   const [payableForm, setPayableForm] = useState({
     supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "",
     is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5",
+    cost_type: "" as "" | "fixed" | "variable",
   });
   const [financialSuppliers, setFinancialSuppliers] = useState<any[]>([]);
   const [savingPayable, setSavingPayable] = useState(false);
@@ -730,6 +731,7 @@ export default function AllRecurringChargesPage() {
           notes: payableForm.notes || null,
           category_id: payableForm.category_id && payableForm.category_id !== "none" ? payableForm.category_id : null,
           cost_center_id: payableForm.cost_center_id && payableForm.cost_center_id !== "none" ? payableForm.cost_center_id : null,
+          cost_type: payableForm.cost_type || null,
           is_recurring: payableForm.is_recurring,
           recurrence_type: payableForm.is_recurring ? payableForm.recurrence_type : null,
           installment_number: totalEntries > 1 ? i : null,
@@ -763,7 +765,7 @@ export default function AllRecurringChargesPage() {
 
       toast.success(totalEntries > 1 ? `${totalEntries} lançamentos criados com sucesso` : "Conta a pagar lançada com sucesso");
       setPayableDialog(false);
-      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5" });
+      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5", cost_type: "" as "" | "fixed" | "variable" });
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -1468,7 +1470,7 @@ export default function AllRecurringChargesPage() {
                       Importar
                     </Button>
                     <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
-                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5" });
+                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5", cost_type: "" as "" | "fixed" | "variable" });
                       setPayableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -2013,6 +2015,16 @@ export default function AllRecurringChargesPage() {
                   </SelectContent>
                 </Select>
               </div>
+            </div>
+            <div>
+              <Label>Tipo de Custo</Label>
+              <Select value={payableForm.cost_type} onValueChange={(v) => setPayableForm(p => ({ ...p, cost_type: v as "" | "fixed" | "variable" }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="fixed">Custo Fixo</SelectItem>
+                  <SelectItem value="variable">Custo Variável</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
             <div className="grid grid-cols-2 gap-3">
               <div>
