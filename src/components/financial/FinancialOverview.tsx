@@ -36,6 +36,7 @@ interface FinancialSummary {
   overdueReceivables: number;
   overduePayables: number;
   mrr: number;
+  ticketMedio: number;
   totalCash: number;
   activeContracts: number;
   projectedCash30: number;
@@ -52,6 +53,7 @@ export function FinancialOverview() {
     overdueReceivables: 0,
     overduePayables: 0,
     mrr: 0,
+    ticketMedio: 0,
     totalCash: 0,
     activeContracts: 0,
     projectedCash30: 0,
@@ -199,6 +201,7 @@ export function FinancialOverview() {
       });
 
       const activeContracts = (companies?.length || 0) + (contracts?.length || 0);
+      const ticketMedio = activeContracts > 0 ? mrr / activeContracts : 0;
 
       // Projected cash
       const monthlyNet = mrr - (totalPayables / 6);
@@ -213,6 +216,7 @@ export function FinancialOverview() {
         overdueReceivables,
         overduePayables,
         mrr,
+        ticketMedio,
         totalCash,
         activeContracts,
         projectedCash30,
@@ -284,7 +288,7 @@ export function FinancialOverview() {
       </div>
 
       {/* KPI Cards - Top Row */}
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {/* MRR */}
         <Card className="bg-gradient-to-br from-emerald-500/10 to-emerald-500/5 border-emerald-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
@@ -299,6 +303,24 @@ export function FinancialOverview() {
             </div>
             <p className="text-xs text-muted-foreground mt-1">
               ARR: {formatCurrency(summary.mrr * 12)}
+            </p>
+          </CardContent>
+        </Card>
+
+        {/* Ticket Médio */}
+        <Card className="bg-gradient-to-br from-violet-500/10 to-violet-500/5 border-violet-500/20">
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium text-muted-foreground">
+              Ticket Médio
+            </CardTitle>
+            <DollarSign className="h-4 w-4 text-violet-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-violet-600">
+              {formatCurrency(summary.ticketMedio)}
+            </div>
+            <p className="text-xs text-muted-foreground mt-1">
+              {summary.activeContracts} contratos ativos
             </p>
           </CardContent>
         </Card>
