@@ -137,7 +137,7 @@ export function BillingRulesPanel() {
       .from("whatsapp_instances")
       .select("id, instance_name, display_name, status, phone_number")
       .order("display_name");
-    setInstances((data || []).filter(i => i.status === "connected" || i.status === "open"));
+    setInstances(data || []);
   };
 
   const fetchRules = async () => {
@@ -368,6 +368,7 @@ export function BillingRulesPanel() {
                   {instances.map((inst) => (
                     <SelectItem key={inst.id} value={inst.instance_name}>
                       <div className="flex items-center gap-2">
+                        <span className={`h-2 w-2 rounded-full shrink-0 ${inst.status === "connected" ? "bg-emerald-500" : inst.status === "connecting" ? "bg-amber-500" : "bg-muted-foreground/40"}`} />
                         <span>{inst.display_name}</span>
                         {inst.phone_number && (
                           <span className="text-xs text-muted-foreground">({inst.phone_number})</span>
