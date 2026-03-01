@@ -125,6 +125,13 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return activeCharges.reduce((s, c) => s + toMonthlyMRR(c.amount_cents || 0, c.recurrence || "monthly"), 0);
   }, [charges]);
 
+  // Ticket Médio das recorrências
+  const ticketMedio = useMemo(() => {
+    const activeCharges = charges.filter(c => c.is_active);
+    if (activeCharges.length === 0) return 0;
+    return mrr / activeCharges.length;
+  }, [charges, mrr]);
+
   // MRR Movement
   const mrrMovement = useMemo(() => {
     const added = charges
@@ -345,7 +352,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       </div>
 
       {/* Inadimplência + MRR + Movimentação + Vendas */}
-      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-5">
+      <div className="grid gap-4 md:grid-cols-2 xl:grid-cols-6">
         {/* Inadimplência */}
         <GradientCard gradient="linear-gradient(135deg, rgba(239,68,68,0.12) 0%, rgba(153,27,27,0.06) 100%)">
           <div className="p-4">
@@ -427,6 +434,22 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 </span>
               </div>
             )}
+          </div>
+        </GradientCard>
+
+        {/* Ticket Médio */}
+        <GradientCard gradient="linear-gradient(135deg, rgba(168,85,247,0.15) 0%, rgba(126,34,206,0.08) 100%)">
+          <div className="p-4">
+            <div className="flex items-center gap-2 mb-3">
+              <div className="h-8 w-8 rounded-lg bg-purple-500/20 flex items-center justify-center">
+                <DollarSign className="h-4 w-4 text-purple-400" />
+              </div>
+              <span className="text-xs font-medium text-muted-foreground">Ticket Médio</span>
+            </div>
+            <div className="text-2xl font-bold text-purple-400">{formatCurrencyCents(ticketMedio)}</div>
+            <p className="text-[11px] text-muted-foreground mt-1">
+              {charges.filter(c => c.is_active).length} recorrência(s) ativa(s)
+            </p>
           </div>
         </GradientCard>
 
