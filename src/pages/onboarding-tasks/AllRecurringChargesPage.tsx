@@ -817,11 +817,11 @@ export default function AllRecurringChargesPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Try Evolution API first
+    // Try Evolution API first (status can be 'connected' or 'connecting' - both are functional)
     const { data: evolutionInstance } = await supabase
       .from("whatsapp_instances")
       .select("instance_name")
-      .eq("status", "connected")
+      .in("status", ["connected", "connecting"])
       .order("is_default", { ascending: false, nullsFirst: false })
       .limit(1)
       .maybeSingle();
