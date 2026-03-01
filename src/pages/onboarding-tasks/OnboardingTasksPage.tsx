@@ -44,6 +44,7 @@ import { ReferralsPanel } from "@/components/onboarding-tasks/ReferralsPanel";
 import { MyTasksPanel } from "@/components/onboarding-tasks/MyTasksPanel";
 import { MeetingsPanel } from "@/components/onboarding-tasks/DashboardMeetingsTab";
 import { UnassignedTasksDialog } from "@/components/onboarding-tasks/UnassignedTasksDialog";
+import { OverdueCompaniesCard } from "@/components/onboarding-tasks/OverdueCompaniesCard";
 
 interface Service {
   id: string;
@@ -2525,6 +2526,12 @@ const OnboardingTasksPage = () => {
 
         {/* Pending Meetings Alert */}
         <PendingMeetingsAlert />
+
+        {/* Overdue Companies Card */}
+        <OverdueCompaniesCard
+          currentUserRole={currentUserRole}
+          currentStaffId={currentStaffId}
+        />
 
         {/* Dashboard Metrics */}
         <DashboardMetrics
