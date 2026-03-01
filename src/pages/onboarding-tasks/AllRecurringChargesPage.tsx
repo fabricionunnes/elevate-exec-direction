@@ -104,7 +104,7 @@ interface Invoice {
 const NAV_ITEMS = [
   { key: "dashboard", label: "Dashboard", icon: LayoutDashboard, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
   { key: "recurring", label: "Contas a Receber", icon: ArrowDownCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
-  { key: "overdue", label: "Atrasados", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_receivables_view },
+  { key: "overdue", label: "Atrasados", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_overdue },
   { key: "payables", label: "Contas a Pagar", icon: ArrowUpCircle, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
   { key: "categories", label: "Categorias", icon: FolderTree, permKey: FINANCIAL_PERMISSION_KEYS.fin_categories },
   { key: "dre", label: "DRE", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_dre },
@@ -1313,7 +1313,7 @@ export default function AllRecurringChargesPage() {
           )}
 
           {/* Atrasados */}
-          {activeTab === "overdue" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_view) && (
+          {activeTab === "overdue" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_overdue) && (
             <FinancialOverdueTab
               invoices={invoices}
               companies={companies}
