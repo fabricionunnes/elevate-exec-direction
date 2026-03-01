@@ -23418,6 +23418,30 @@ export type Database = {
           },
         ]
       }
+      whatsapp_default_config: {
+        Row: {
+          id: string
+          setting_key: string
+          setting_value: string
+          updated_at: string
+          updated_by: string | null
+        }
+        Insert: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Update: {
+          id?: string
+          setting_key?: string
+          setting_value?: string
+          updated_at?: string
+          updated_by?: string | null
+        }
+        Relationships: []
+      }
       whatsapp_instance_access: {
         Row: {
           can_send: boolean | null

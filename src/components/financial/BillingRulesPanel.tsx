@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
@@ -121,15 +122,19 @@ export function BillingRulesPanel() {
   const [formIncludeLink, setFormIncludeLink] = useState(true);
   const [formIncludeInterest, setFormIncludeInterest] = useState(true);
   const [formIncludeDiscount, setFormIncludeDiscount] = useState(true);
-  const [formInstanceName, setFormInstanceName] = useState("fabricionunnes");
+  const [formInstanceName, setFormInstanceName] = useState("");
 
   // Global instance config
-  const [globalInstance, setGlobalInstance] = useState<string>("fabricionunnes");
+  const [globalInstance, setGlobalInstance] = useState<string>("");
   const [savingGlobal, setSavingGlobal] = useState(false);
 
   useEffect(() => {
     fetchRules();
     fetchInstances();
+    getDefaultWhatsAppInstance().then(name => {
+      setGlobalInstance(prev => prev || name);
+      setFormInstanceName(prev => prev || name);
+    });
   }, []);
 
   const fetchInstances = async () => {

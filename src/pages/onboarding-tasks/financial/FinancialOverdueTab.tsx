@@ -13,6 +13,7 @@ import {
   Clock, Building2, DollarSign, TrendingDown, Flame,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
+import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { format } from "date-fns";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -134,11 +135,12 @@ export default function FinancialOverdueTab({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
+      const defaultInstName = await getDefaultWhatsAppInstance();
       const { data: instance } = await supabase
         .from("whatsapp_instances")
         .select("instance_name")
         .eq("status", "connected")
-        .eq("instance_name", "fabricionunnes")
+        .eq("instance_name", defaultInstName)
         .single();
       if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
@@ -161,11 +163,12 @@ export default function FinancialOverdueTab({
     try {
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
+      const defaultInstName2 = await getDefaultWhatsAppInstance();
       const { data: instance } = await supabase
         .from("whatsapp_instances")
         .select("instance_name")
         .eq("status", "connected")
-        .eq("instance_name", "fabricionunnes")
+        .eq("instance_name", defaultInstName2)
         .single();
       if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
 
