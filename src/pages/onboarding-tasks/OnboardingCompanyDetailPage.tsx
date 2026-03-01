@@ -560,7 +560,7 @@ const OnboardingCompanyDetailPage = () => {
                   Pontuação
                 </TabsTrigger>
               )}
-              {!isNew && (
+              {!isNew && isMasterOrAdmin && (
                 <TabsTrigger value="financial" className="gap-2">
                   <DollarSign className="h-4 w-4" />
                   Financeiro
@@ -1082,7 +1082,7 @@ const OnboardingCompanyDetailPage = () => {
             )}
 
             {/* Financial Tab */}
-            {!isNew && companyId && (
+            {!isNew && companyId && isMasterOrAdmin && (
               <TabsContent value="financial">
                 <CompanyFinancialPanel
                   companyId={companyId}
