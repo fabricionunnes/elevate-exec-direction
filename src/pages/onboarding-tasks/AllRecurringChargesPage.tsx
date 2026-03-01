@@ -593,7 +593,7 @@ export default function AllRecurringChargesPage() {
       const todayStr = new Date().toLocaleDateString("en-CA");
       const newStatus = p?.due_date && p.due_date < todayStr ? "overdue" : "pending";
       const { error } = await supabase.from("financial_payables")
-        .update({ status: newStatus, paid_at: null, paid_amount: null, bank_id: null } as any)
+        .update({ status: newStatus, paid_amount: null, bank_id: null } as any)
         .eq("id", payableId);
       if (error) throw error;
 
