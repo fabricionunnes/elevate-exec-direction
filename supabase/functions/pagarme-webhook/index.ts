@@ -1,5 +1,78 @@
 import { createClient } from "@supabase/supabase-js";
 
+async function adjustHealthScoreForPayment(
+  supabase: ReturnType<typeof createClient>,
+  companyId: string,
+  dueDate: string,
+  paidAt: string
+) {
+  try {
+    // Find active project for this company
+    const { data: project } = await supabase
+      .from("onboarding_projects")
+      .select("id")
+      .eq("onboarding_company_id", companyId)
+      .eq("status", "active")
+      .limit(1)
+      .single();
+
+    if (!project) return;
+
+    const due = new Date(dueDate);
+    const paid = new Date(paidAt);
+    due.setHours(0, 0, 0, 0);
+    paid.setHours(0, 0, 0, 0);
+
+    let pointsAdjustment: number;
+    let eventDescription: string;
+
+    if (paid < due) {
+      pointsAdjustment = 35;
+      eventDescription = "Fatura paga antes do vencimento (+35 pontos)";
+    } else if (paid.getTime() === due.getTime()) {
+      pointsAdjustment = 20;
+      eventDescription = "Fatura paga na data de vencimento (+20 pontos)";
+    } else {
+      pointsAdjustment = 15;
+      eventDescription = "Fatura paga após atraso (+15 pontos)";
+    }
+
+    // Get current health score
+    const { data: currentScore } = await supabase
+      .from("client_health_scores")
+      .select("id, total_score")
+      .eq("project_id", project.id)
+      .single();
+
+    if (currentScore) {
+      const newTotal = Math.min(100, Math.max(0, Number(currentScore.total_score) + pointsAdjustment));
+      
+      await supabase
+        .from("client_health_scores")
+        .update({
+          total_score: newTotal,
+          last_calculated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        })
+        .eq("id", currentScore.id);
+
+      // Log event
+      await supabase.from("health_score_events").insert({
+        project_id: project.id,
+        event_type: "billing_payment",
+        event_data: { pointsAdjustment, dueDate, paidAt, description: eventDescription },
+        previous_score: Number(currentScore.total_score),
+        new_score: newTotal,
+        triggered_by: "webhook",
+      });
+
+      console.log(`[Pagar.me Webhook] Health score adjusted: ${currentScore.total_score} -> ${newTotal} (${eventDescription})`);
+    }
+  } catch (error) {
+    console.error("[Pagar.me Webhook] Health score adjustment error:", error);
+  }
+}
+
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
@@ -105,18 +178,28 @@ Deno.serve(async (req) => {
                 } else {
                   console.log(`[Pagar.me Webhook] Invoice with payment_link_id ${order.payment_link_id} marked as paid`);
 
-                  // Check if this was the last installment and auto-renew
+                  // Adjust health score based on payment timing
                   const { data: paidInvoice } = await supabase
                     .from("company_invoices")
-                    .select("recurring_charge_id, installment_number, total_installments")
+                    .select("company_id, due_date, recurring_charge_id, installment_number, total_installments")
                     .eq("payment_link_id", order.payment_link_id)
                     .single();
 
-                  if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
-                    console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
-                    await supabase.functions.invoke("generate-invoices", {
-                      body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
-                    });
+                  if (paidInvoice) {
+                    // Adjust health score based on payment timing
+                    await adjustHealthScoreForPayment(
+                      supabase,
+                      paidInvoice.company_id,
+                      paidInvoice.due_date,
+                      new Date().toISOString()
+                    );
+
+                    if (paidInvoice.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
+                      console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
+                      await supabase.functions.invoke("generate-invoices", {
+                        body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
+                      });
+                    }
                   }
                 }
               }
@@ -183,18 +266,27 @@ Deno.serve(async (req) => {
                 } else {
                   console.log(`[Pagar.me Webhook] Invoice with payment_link_id ${order.payment_link_id} marked as paid`);
 
-                  // Check if this was the last installment and auto-renew
+                  // Adjust health score based on payment timing
                   const { data: paidInvoice } = await supabase
                     .from("company_invoices")
-                    .select("recurring_charge_id, installment_number, total_installments")
+                    .select("company_id, due_date, recurring_charge_id, installment_number, total_installments")
                     .eq("payment_link_id", order.payment_link_id)
                     .single();
 
-                  if (paidInvoice?.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
-                    console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
-                    await supabase.functions.invoke("generate-invoices", {
-                      body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
-                    });
+                  if (paidInvoice) {
+                    await adjustHealthScoreForPayment(
+                      supabase,
+                      paidInvoice.company_id,
+                      paidInvoice.due_date,
+                      new Date().toISOString()
+                    );
+
+                    if (paidInvoice.recurring_charge_id && paidInvoice.installment_number === paidInvoice.total_installments) {
+                      console.log(`[Pagar.me Webhook] Last installment paid, triggering auto-renew for ${paidInvoice.recurring_charge_id}`);
+                      await supabase.functions.invoke("generate-invoices", {
+                        body: { action: "auto_renew", recurring_charge_id: paidInvoice.recurring_charge_id },
+                      });
+                    }
                   }
                 }
               }
