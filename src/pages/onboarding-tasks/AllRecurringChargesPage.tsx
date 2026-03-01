@@ -845,12 +845,12 @@ export default function AllRecurringChargesPage() {
     if (activeTab === "payables") {
       rows = [["Descrição", "Valor", "Vencimento", "Status", "Mês Ref", "Pago em"]];
       filteredPayables.forEach(p => {
-        rows.push([p.description, formatCurrency(p.amount), p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(p.status), p.reference_month, p.paid_at ? format(new Date(p.paid_at), "dd/MM/yyyy") : ""]);
+        rows.push([p.description, formatCurrency(p.amount), p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(p.status), p.reference_month, p.paid_at ? format(new Date(p.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
       });
     } else if (activeTab === "recurring") {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em"]];
       filteredInvoices.forEach(inv => {
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status), inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : ""]);
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -1539,7 +1539,7 @@ export default function AllRecurringChargesPage() {
                                   );
                                 })()}
                               </TableCell>
-                              <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at), "dd/MM/yyyy") : "-"}</TableCell>
+                              <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell>
                                 <div className="flex justify-end gap-1">
                                   {inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled" && (
@@ -1861,7 +1861,7 @@ export default function AllRecurringChargesPage() {
                             <TableCell>{p.reference_month}</TableCell>
                             <TableCell>{(() => { const sd = getStatusDisplay(p.status, p.due_date); return <Badge className={`gap-1 text-xs ${sd.className}`}>{sd.icon}{sd.label}</Badge>; })()}</TableCell>
                             <TableCell className="text-sm text-muted-foreground">
-                              {(p.paid_at || (p as any).paid_date) ? format(new Date((p.paid_at || (p as any).paid_date)!), "dd/MM/yyyy") : "-"}
+                              {(p.paid_at || (p as any).paid_date) ? format(new Date(((p.paid_at || (p as any).paid_date)! as string).substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}
                               {p.paid_amount && p.paid_amount < p.amount && (
                                 <span className="block text-xs text-amber-600">{formatCurrency(p.paid_amount)} de {formatCurrency(p.amount)}</span>
                               )}
