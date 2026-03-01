@@ -135,10 +135,7 @@ export function PayablesPanel() {
     try {
       const { data: payablesData, error: payablesError } = await supabase
         .from("financial_payables")
-        .select(`
-          *,
-          category:category_id(name, color)
-        `)
+        .select(`*`)
         .order("due_date", { ascending: true });
 
       if (payablesError) throw payablesError;

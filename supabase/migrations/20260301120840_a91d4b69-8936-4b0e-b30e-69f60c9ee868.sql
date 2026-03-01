@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_payables DROP CONSTRAINT financial_payables_category_id_fkey;

@@ -26,7 +26,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -51,6 +51,7 @@ import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { FinancialImportDialog } from "@/components/financial/FinancialImportDialog";
 import { CFOFilterBar, type CFOFilters } from "@/components/financial/CFOFilterBar";
 import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
+import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 
 interface RecurringCharge {
@@ -125,6 +126,7 @@ const NAV_ITEMS = [
   { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
   { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard, isSeparator: true },
   { key: "billing-rules", label: "Régua de Cobranças", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
+  { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
 ] as const;
 
 const applyPeriodPreset = (
@@ -212,7 +214,9 @@ export default function AllRecurringChargesPage() {
   const [payableDialog, setPayableDialog] = useState(false);
   const [payableForm, setPayableForm] = useState({
     supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "",
+    is_recurring: false, recurrence_type: "monthly", recurring_count: "12",
   });
+  const [financialSuppliers, setFinancialSuppliers] = useState<any[]>([]);
   const [savingPayable, setSavingPayable] = useState(false);
 
   // Import dialogs
@@ -310,6 +314,11 @@ export default function AllRecurringChargesPage() {
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
       setProjects((projectsRes.data as any) || []);
+      // Load financial suppliers
+      try {
+        const { data: suppData } = await (supabase as any).from("financial_suppliers").select("id, name").eq("is_active", true).order("name");
+        setFinancialSuppliers(suppData || []);
+      } catch { setFinancialSuppliers([]); }
     } catch (error) {
       console.error(error);
       toast.error("Erro ao carregar dados");
@@ -673,37 +682,54 @@ export default function AllRecurringChargesPage() {
     setSavingPayable(true);
     try {
       const now = new Date();
-      const refMonth = payableForm.reference_month || `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
-      const { data: inserted, error } = await supabase.from("financial_payables").insert({
-        supplier_name: payableForm.supplier_name,
-        description: payableForm.description,
-        amount: payableForm.amount,
-        due_date: payableForm.due_date,
-        reference_month: refMonth,
-        notes: payableForm.notes || null,
-        category_id: payableForm.category_id && payableForm.category_id !== "none" ? payableForm.category_id : null,
-        cost_center_id: payableForm.cost_center_id && payableForm.cost_center_id !== "none" ? payableForm.cost_center_id : null,
-        status: "pending",
-      } as any).select("id").single();
+      const getMonthOffset = (t: string) => ({ monthly: 1, quarterly: 3, semiannual: 6, annual: 12 }[t] || 1);
+      const totalEntries = payableForm.is_recurring ? (parseInt(payableForm.recurring_count) || 12) : 1;
+      const monthOffset = payableForm.is_recurring ? getMonthOffset(payableForm.recurrence_type) : 1;
+      const payablesToInsert: any[] = [];
+      const currentDueDate = new Date(payableForm.due_date + "T12:00:00");
+
+      for (let i = 1; i <= totalEntries; i++) {
+        const dueStr = `${currentDueDate.getFullYear()}-${String(currentDueDate.getMonth() + 1).padStart(2, "0")}-${String(currentDueDate.getDate()).padStart(2, "0")}`;
+        const refMonth = payableForm.reference_month || `${currentDueDate.getFullYear()}-${String(currentDueDate.getMonth() + 1).padStart(2, "0")}`;
+        payablesToInsert.push({
+          supplier_name: payableForm.supplier_name,
+          description: totalEntries > 1 ? `${payableForm.description} (${i}/${totalEntries})` : payableForm.description,
+          amount: payableForm.amount,
+          due_date: dueStr,
+          reference_month: refMonth,
+          notes: payableForm.notes || null,
+          category_id: payableForm.category_id && payableForm.category_id !== "none" ? payableForm.category_id : null,
+          cost_center_id: payableForm.cost_center_id && payableForm.cost_center_id !== "none" ? payableForm.cost_center_id : null,
+          is_recurring: payableForm.is_recurring,
+          recurrence_type: payableForm.is_recurring ? payableForm.recurrence_type : null,
+          installment_number: totalEntries > 1 ? i : null,
+          total_installments: totalEntries > 1 ? totalEntries : null,
+          status: "pending",
+        });
+        currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
+      }
+
+      const { data: inserted, error } = await supabase.from("financial_payables").insert(payablesToInsert as any).select("id");
       if (error) throw error;
 
       // Sync to Conta Azul (non-blocking)
+      const firstInserted = inserted?.[0];
       syncEntryToContaAzul("payable", {
         description: payableForm.description,
         amount: payableForm.amount,
         due_date: payableForm.due_date,
         supplier_name: payableForm.supplier_name,
       }).then(contaAzulId => {
-        if (contaAzulId && inserted?.id) {
+        if (contaAzulId && firstInserted?.id) {
           supabase.from("financial_payables")
             .update({ conta_azul_id: contaAzulId } as any)
-            .eq("id", inserted.id).then(() => {});
+            .eq("id", firstInserted.id).then(() => {});
         }
       });
 
-      toast.success("Conta a pagar lançada com sucesso");
+      toast.success(totalEntries > 1 ? `${totalEntries} lançamentos criados com sucesso` : "Conta a pagar lançada com sucesso");
       setPayableDialog(false);
-      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
+      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12" });
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -1408,7 +1434,7 @@ export default function AllRecurringChargesPage() {
                       Importar
                     </Button>
                     <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
-                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "" });
+                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12" });
                       setPayableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -1701,6 +1727,9 @@ export default function AllRecurringChargesPage() {
           {activeTab === "billing-rules" && (
             <BillingRulesPanel />
           )}
+          {activeTab === "suppliers" && (
+            <SuppliersPanel />
+          )}
         </div>
       </main>
 
@@ -1866,10 +1895,19 @@ export default function AllRecurringChargesPage() {
           <DialogHeader>
             <DialogTitle>Nova Conta a Pagar</DialogTitle>
           </DialogHeader>
-          <div className="space-y-4">
+          <div className="space-y-4 max-h-[70vh] overflow-y-auto">
             <div>
               <Label>Fornecedor *</Label>
-              <Input value={payableForm.supplier_name} onChange={(e) => setPayableForm(p => ({ ...p, supplier_name: e.target.value }))} placeholder="Ex: Fornecedor XYZ" />
+              {financialSuppliers.length > 0 ? (
+                <Select value={payableForm.supplier_name} onValueChange={(v) => setPayableForm(p => ({ ...p, supplier_name: v }))}>
+                  <SelectTrigger><SelectValue placeholder="Selecione um fornecedor..." /></SelectTrigger>
+                  <SelectContent>
+                    {financialSuppliers.map((s: any) => <SelectItem key={s.id} value={s.name}>{s.name}</SelectItem>)}
+                  </SelectContent>
+                </Select>
+              ) : (
+                <Input value={payableForm.supplier_name} onChange={(e) => setPayableForm(p => ({ ...p, supplier_name: e.target.value }))} placeholder="Ex: Fornecedor XYZ" />
+              )}
             </div>
             <div>
               <Label>Descrição *</Label>
@@ -1917,6 +1955,39 @@ export default function AllRecurringChargesPage() {
                 <Input value={payableForm.notes} onChange={(e) => setPayableForm(p => ({ ...p, notes: e.target.value }))} placeholder="Opcional" />
               </div>
             </div>
+            <div className="flex items-center space-x-2">
+              <Checkbox
+                id="payable_recurring"
+                checked={payableForm.is_recurring}
+                onCheckedChange={(checked) => setPayableForm(p => ({ ...p, is_recurring: checked as boolean }))}
+              />
+              <Label htmlFor="payable_recurring">Conta Recorrente</Label>
+            </div>
+            {payableForm.is_recurring && (
+              <div className="space-y-3 pl-4 border-l-2 border-primary/20">
+                <div>
+                  <Label>Frequência</Label>
+                  <Select value={payableForm.recurrence_type} onValueChange={(v) => setPayableForm(p => ({ ...p, recurrence_type: v }))}>
+                    <SelectTrigger><SelectValue /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="monthly">Mensal</SelectItem>
+                      <SelectItem value="quarterly">Trimestral</SelectItem>
+                      <SelectItem value="semiannual">Semestral</SelectItem>
+                      <SelectItem value="annual">Anual</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label>Quantidade de lançamentos</Label>
+                  <Input type="number" min="2" max="60" value={payableForm.recurring_count} onChange={(e) => setPayableForm(p => ({ ...p, recurring_count: e.target.value }))} />
+                  {payableForm.amount > 0 && payableForm.recurring_count && (
+                    <p className="text-sm text-muted-foreground mt-1">
+                      {payableForm.recurring_count}x de R$ {payableForm.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ({payableForm.recurrence_type === "monthly" ? "mensal" : payableForm.recurrence_type === "quarterly" ? "trimestral" : payableForm.recurrence_type === "semiannual" ? "semestral" : "anual"})
+                    </p>
+                  )}
+                </div>
+              </div>
+            )}
           </div>
           <DialogFooter>
             <Button variant="outline" onClick={() => setPayableDialog(false)}>Cancelar</Button>
