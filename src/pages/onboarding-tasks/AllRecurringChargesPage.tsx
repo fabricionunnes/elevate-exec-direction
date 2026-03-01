@@ -812,6 +812,51 @@ export default function AllRecurringChargesPage() {
     URL.revokeObjectURL(url);
   };
 
+  // Helper: send WhatsApp message via Evolution or Official API
+  const sendWhatsAppMessage = async (phone: string, message: string): Promise<void> => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Não autenticado");
+
+    // Try Evolution API first
+    const { data: evolutionInstance } = await supabase
+      .from("whatsapp_instances")
+      .select("instance_name")
+      .eq("status", "connected")
+      .order("is_default", { ascending: false, nullsFirst: false })
+      .limit(1)
+      .maybeSingle();
+
+    if (evolutionInstance) {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: JSON.stringify({ instanceName: evolutionInstance.instance_name, number: phone, text: message }),
+      });
+      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+      return;
+    }
+
+    // Fallback to Official WhatsApp API
+    const { data: officialInstance } = await supabase
+      .from("whatsapp_official_instances")
+      .select("id")
+      .eq("status", "connected")
+      .limit(1)
+      .maybeSingle();
+
+    if (officialInstance) {
+      const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-official-api`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: JSON.stringify({ action: 'sendText', instanceId: officialInstance.id, phone, message }),
+      });
+      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+      return;
+    }
+
+    throw new Error("Nenhuma instância WhatsApp conectada");
+  };
+
   const financialMonths = useMemo(() => {
     const set = new Set<string>();
     payables.forEach(p => { if (p.reference_month) set.add(p.reference_month); });
@@ -1158,17 +1203,6 @@ export default function AllRecurringChargesPage() {
                         onClick={async () => {
                           setIsBulkSending(true);
                           try {
-                            const { data: { session } } = await supabase.auth.getSession();
-                            if (!session) throw new Error("Não autenticado");
-                            const { data: instance } = await supabase
-                              .from("whatsapp_instances")
-                              .select("instance_name")
-                              .eq("status", "connected")
-                              .order("is_default", { ascending: false, nullsFirst: false })
-                              .limit(1)
-                              .single();
-                            if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
-
                             const selected = filteredInvoices.filter(inv => selectedInvoiceIds.has(inv.id) && inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled");
                             if (selected.length === 0) { toast.error("Nenhuma fatura válida selecionada (precisam ter link e não estar pagas/canceladas)"); return; }
 
@@ -1186,14 +1220,8 @@ export default function AllRecurringChargesPage() {
                               const customerName = inv.company_name || "";
                               const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
                               try {
-                                const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-                                  method: 'POST',
-                                  headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-                                  body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
-                                });
-                                if (!response.ok) throw new Error();
+                                await sendWhatsAppMessage(phone, msg);
                                 sent++;
-                                // Small delay between messages to avoid rate limiting
                                 await new Promise(r => setTimeout(r, 1500));
                               } catch { failed++; }
                             }
@@ -1353,22 +1381,7 @@ export default function AllRecurringChargesPage() {
                                           const customerName = inv.company_name || "";
                                           const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
                                           try {
-                                            const { data: { session } } = await supabase.auth.getSession();
-                                            if (!session) throw new Error("Não autenticado");
-                                            const { data: instance } = await supabase
-                                              .from("whatsapp_instances")
-                                              .select("instance_name")
-                                              .eq("status", "connected")
-                                              .order("is_default", { ascending: false, nullsFirst: false })
-                                              .limit(1)
-                                              .single();
-                                            if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
-                                            const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-                                              method: 'POST',
-                                              headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-                                              body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
-                                            });
-                                            if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+                                            await sendWhatsAppMessage(phone, msg);
                                             toast.success("Link enviado via WhatsApp!");
                                           } catch (err: any) {
                                             console.error("WhatsApp send error:", err);
