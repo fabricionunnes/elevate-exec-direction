@@ -55,6 +55,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
+import { getNthBusinessDayOfMonth, ensureBusinessDay } from "@/lib/businessDays";
 
 interface RecurringCharge {
   id: string;
@@ -226,7 +227,7 @@ export default function AllRecurringChargesPage() {
   const [payableDialog, setPayableDialog] = useState(false);
   const [payableForm, setPayableForm] = useState({
     supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "",
-    is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day",
+    is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5",
   });
   const [financialSuppliers, setFinancialSuppliers] = useState<any[]>([]);
   const [savingPayable, setSavingPayable] = useState(false);
@@ -701,22 +702,23 @@ export default function AllRecurringChargesPage() {
       const now = new Date();
       const isWeekly = payableForm.recurrence_type === "weekly";
       const useBusinessDay = payableForm.due_date_mode === "business_day";
+      const nthBusinessDay = parseInt(payableForm.business_day_number) || 5;
       const getMonthOffset = (t: string) => ({ monthly: 1, quarterly: 3, semiannual: 6, annual: 12 }[t] || 1);
       const totalEntries = payableForm.is_recurring ? (parseInt(payableForm.recurring_count) || 12) : 1;
       const monthOffset = payableForm.is_recurring && !isWeekly ? getMonthOffset(payableForm.recurrence_type) : 1;
       const payablesToInsert: any[] = [];
       const currentDueDate = new Date(payableForm.due_date + "T12:00:00");
 
-      // Helper: move date to next business day (skip weekends)
-      const toBusinessDay = (d: Date): Date => {
-        const day = d.getDay();
-        if (day === 0) d.setDate(d.getDate() + 1); // Sunday -> Monday
-        if (day === 6) d.setDate(d.getDate() + 2); // Saturday -> Monday
-        return d;
-      };
-
       for (let i = 1; i <= totalEntries; i++) {
-        const adjustedDate = useBusinessDay ? toBusinessDay(new Date(currentDueDate)) : new Date(currentDueDate);
+        let adjustedDate: Date;
+        if (useBusinessDay && !isWeekly) {
+          // Use Nth business day of the current month
+          adjustedDate = getNthBusinessDayOfMonth(currentDueDate.getFullYear(), currentDueDate.getMonth(), nthBusinessDay);
+        } else if (useBusinessDay && isWeekly) {
+          adjustedDate = ensureBusinessDay(new Date(currentDueDate));
+        } else {
+          adjustedDate = new Date(currentDueDate);
+        }
         const dueStr = `${adjustedDate.getFullYear()}-${String(adjustedDate.getMonth() + 1).padStart(2, "0")}-${String(adjustedDate.getDate()).padStart(2, "0")}`;
         const refMonth = payableForm.reference_month || `${currentDueDate.getFullYear()}-${String(currentDueDate.getMonth() + 1).padStart(2, "0")}`;
         payablesToInsert.push({
@@ -761,7 +763,7 @@ export default function AllRecurringChargesPage() {
 
       toast.success(totalEntries > 1 ? `${totalEntries} lançamentos criados com sucesso` : "Conta a pagar lançada com sucesso");
       setPayableDialog(false);
-      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day" });
+      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5" });
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -1466,7 +1468,7 @@ export default function AllRecurringChargesPage() {
                       Importar
                     </Button>
                     <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
-                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day" });
+                      setPayableForm({ supplier_name: "", description: "", amount: 0, due_date: "", reference_month: "", category_id: "", cost_center_id: "", notes: "", is_recurring: false, recurrence_type: "monthly", recurring_count: "12", due_date_mode: "calendar" as "calendar" | "business_day", business_day_number: "5" });
                       setPayableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -2051,17 +2053,30 @@ export default function AllRecurringChargesPage() {
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
                       <SelectItem value="calendar">Dia do calendário</SelectItem>
-                      <SelectItem value="business_day">Dia útil (pula fim de semana)</SelectItem>
+                      <SelectItem value="business_day">Dia útil (considera feriados)</SelectItem>
                     </SelectContent>
                   </Select>
                 </div>
+                {payableForm.due_date_mode === "business_day" && payableForm.recurrence_type !== "weekly" && (
+                  <div>
+                    <Label>Vencimento no Xº dia útil do mês</Label>
+                    <Select value={payableForm.business_day_number} onValueChange={(v) => setPayableForm(p => ({ ...p, business_day_number: v }))}>
+                      <SelectTrigger><SelectValue /></SelectTrigger>
+                      <SelectContent>
+                        {Array.from({ length: 25 }, (_, i) => i + 1).map(n => (
+                          <SelectItem key={n} value={String(n)}>{n}º dia útil</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div>
                   <Label>Quantidade de lançamentos</Label>
                   <Input type="number" min="2" max="60" value={payableForm.recurring_count} onChange={(e) => setPayableForm(p => ({ ...p, recurring_count: e.target.value }))} />
                   {payableForm.amount > 0 && payableForm.recurring_count && (
                     <p className="text-sm text-muted-foreground mt-1">
                       {payableForm.recurring_count}x de R$ {payableForm.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ({payableForm.recurrence_type === "weekly" ? "semanal" : payableForm.recurrence_type === "monthly" ? "mensal" : payableForm.recurrence_type === "quarterly" ? "trimestral" : payableForm.recurrence_type === "semiannual" ? "semestral" : "anual"})
-                      {payableForm.due_date_mode === "business_day" && " • dias úteis"}
+                      {payableForm.due_date_mode === "business_day" && ` • ${payableForm.business_day_number}º dia útil`}
                     </p>
                   )}
                 </div>

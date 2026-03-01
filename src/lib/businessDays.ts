@@ -125,6 +125,38 @@ export function ensureBusinessDay(date: Date): Date {
   return getNextBusinessDay(date);
 }
 
+// Helper: Get the Nth business day of a given month/year
+export function getNthBusinessDayOfMonth(year: number, month: number, n: number): Date {
+  let count = 0;
+  const current = new Date(year, month, 1);
+  while (count < n) {
+    if (isBusinessDay(current)) {
+      count++;
+      if (count === n) return new Date(current);
+    }
+    current.setDate(current.getDate() + 1);
+    // Safety: if we go past the month, return last business day found
+    if (current.getMonth() !== month) {
+      current.setDate(current.getDate() - 1);
+      return getNextBusinessDay(new Date(year, month, 1));
+    }
+  }
+  return current;
+}
+
+// Helper: Count which business day of the month a date is (1-indexed)
+export function getBusinessDayNumber(date: Date): number {
+  const year = date.getFullYear();
+  const month = date.getMonth();
+  let count = 0;
+  const current = new Date(year, month, 1);
+  while (current <= date) {
+    if (isBusinessDay(current)) count++;
+    current.setDate(current.getDate() + 1);
+  }
+  return count;
+}
+
 // Helper: Count business days remaining in month (excluding today)
 export function getRemainingBusinessDaysInMonth(fromDate: Date): number {
   const year = fromDate.getFullYear();
@@ -142,5 +174,15 @@ export function getRemainingBusinessDaysInMonth(fromDate: Date): number {
     current.setDate(current.getDate() + 1);
   }
   
+  return count;
+}
+
+// Helper: Count total business days in a month
+export function getTotalBusinessDaysInMonth(year: number, month: number): number {
+  const lastDay = new Date(year, month + 1, 0).getDate();
+  let count = 0;
+  for (let d = 1; d <= lastDay; d++) {
+    if (isBusinessDay(new Date(year, month, d))) count++;
+  }
   return count;
 }
