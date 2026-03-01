@@ -37,6 +37,7 @@ import { useIsMobile } from "@/hooks/use-mobile";
 interface InstanceOption {
   id: string;
   name: string;
+  instanceName: string;
   type: "evolution" | "official";
 }
 
@@ -110,10 +111,10 @@ export function FinancialInboxPanel() {
 
         const opts: InstanceOption[] = [];
         (evolutionInstances || []).forEach((i: any) => {
-          opts.push({ id: i.id, name: i.display_name || i.instance_name, type: "evolution" });
+          opts.push({ id: i.id, name: i.display_name || i.instance_name, instanceName: i.instance_name || "", type: "evolution" });
         });
         (officialInstances || []).forEach((i: any) => {
-          opts.push({ id: `official:${i.id}`, name: i.display_name || `Oficial ${i.phone_number}`, type: "official" });
+          opts.push({ id: `official:${i.id}`, name: i.display_name || `Oficial ${i.phone_number}`, instanceName: i.phone_number || "", type: "official" });
         });
         setInstances(opts);
       } catch (err) {
@@ -275,12 +276,15 @@ export function FinancialInboxPanel() {
                 <SelectItem key={inst.id} value={inst.id}>
                   <div className="flex items-center gap-2">
                     <Badge variant="outline" className={cn(
-                      "h-4 px-1 text-[9px]",
+                      "h-4 px-1 text-[9px] shrink-0",
                       inst.type === "evolution" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30"
                     )}>
                       {inst.type === "evolution" ? "EVO" : "API"}
                     </Badge>
-                    {inst.name}
+                    <div className="flex flex-col leading-tight">
+                      <span className="text-sm">{inst.name}</span>
+                      <span className="text-[10px] text-muted-foreground">{inst.instanceName}</span>
+                    </div>
                   </div>
                 </SelectItem>
               ))}
