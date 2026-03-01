@@ -220,7 +220,8 @@ export function PayablesPanel() {
         }
       };
 
-      const monthOffset = formData.is_recurring 
+      const isWeekly = formData.recurrence_type === "weekly";
+      const monthOffset = formData.is_recurring && !isWeekly
         ? getMonthOffset(formData.recurrence_type) 
         : 1;
 
@@ -249,7 +250,11 @@ export function PayablesPanel() {
         });
 
         // Advance date
-        currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
+        if (isWeekly) {
+          currentDueDate.setDate(currentDueDate.getDate() + 7);
+        } else {
+          currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
+        }
       }
 
       console.log("Inserting payables:", JSON.stringify(payablesToInsert, null, 2));
@@ -594,6 +599,7 @@ export function PayablesPanel() {
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
+                          <SelectItem value="weekly">Semanal</SelectItem>
                           <SelectItem value="monthly">Mensal</SelectItem>
                           <SelectItem value="quarterly">Trimestral</SelectItem>
                           <SelectItem value="semiannual">Semestral</SelectItem>
@@ -612,7 +618,7 @@ export function PayablesPanel() {
                       />
                       {formData.amount && formData.recurring_count && (
                         <p className="text-sm text-muted-foreground">
-                          {formData.recurring_count}x de {formatCurrency(parseFloat(formData.amount))} ({formData.recurrence_type === "monthly" ? "mensal" : formData.recurrence_type === "quarterly" ? "trimestral" : formData.recurrence_type === "semiannual" ? "semestral" : "anual"})
+                          {formData.recurring_count}x de {formatCurrency(parseFloat(formData.amount))} ({formData.recurrence_type === "weekly" ? "semanal" : formData.recurrence_type === "monthly" ? "mensal" : formData.recurrence_type === "quarterly" ? "trimestral" : formData.recurrence_type === "semiannual" ? "semestral" : "anual"})
                         </p>
                       )}
                     </div>

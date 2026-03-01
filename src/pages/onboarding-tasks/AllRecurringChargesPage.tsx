@@ -699,9 +699,10 @@ export default function AllRecurringChargesPage() {
     setSavingPayable(true);
     try {
       const now = new Date();
+      const isWeekly = payableForm.recurrence_type === "weekly";
       const getMonthOffset = (t: string) => ({ monthly: 1, quarterly: 3, semiannual: 6, annual: 12 }[t] || 1);
       const totalEntries = payableForm.is_recurring ? (parseInt(payableForm.recurring_count) || 12) : 1;
-      const monthOffset = payableForm.is_recurring ? getMonthOffset(payableForm.recurrence_type) : 1;
+      const monthOffset = payableForm.is_recurring && !isWeekly ? getMonthOffset(payableForm.recurrence_type) : 1;
       const payablesToInsert: any[] = [];
       const currentDueDate = new Date(payableForm.due_date + "T12:00:00");
 
@@ -723,7 +724,11 @@ export default function AllRecurringChargesPage() {
           total_installments: totalEntries > 1 ? totalEntries : null,
           status: "pending",
         });
-        currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
+        if (isWeekly) {
+          currentDueDate.setDate(currentDueDate.getDate() + 7);
+        } else {
+          currentDueDate.setMonth(currentDueDate.getMonth() + monthOffset);
+        }
       }
 
       const { data: inserted, error } = await supabase.from("financial_payables").insert(payablesToInsert as any).select("id");
@@ -2022,6 +2027,7 @@ export default function AllRecurringChargesPage() {
                   <Select value={payableForm.recurrence_type} onValueChange={(v) => setPayableForm(p => ({ ...p, recurrence_type: v }))}>
                     <SelectTrigger><SelectValue /></SelectTrigger>
                     <SelectContent>
+                      <SelectItem value="weekly">Semanal</SelectItem>
                       <SelectItem value="monthly">Mensal</SelectItem>
                       <SelectItem value="quarterly">Trimestral</SelectItem>
                       <SelectItem value="semiannual">Semestral</SelectItem>
@@ -2034,7 +2040,7 @@ export default function AllRecurringChargesPage() {
                   <Input type="number" min="2" max="60" value={payableForm.recurring_count} onChange={(e) => setPayableForm(p => ({ ...p, recurring_count: e.target.value }))} />
                   {payableForm.amount > 0 && payableForm.recurring_count && (
                     <p className="text-sm text-muted-foreground mt-1">
-                      {payableForm.recurring_count}x de R$ {payableForm.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ({payableForm.recurrence_type === "monthly" ? "mensal" : payableForm.recurrence_type === "quarterly" ? "trimestral" : payableForm.recurrence_type === "semiannual" ? "semestral" : "anual"})
+                      {payableForm.recurring_count}x de R$ {payableForm.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })} ({payableForm.recurrence_type === "weekly" ? "semanal" : payableForm.recurrence_type === "monthly" ? "mensal" : payableForm.recurrence_type === "quarterly" ? "trimestral" : payableForm.recurrence_type === "semiannual" ? "semestral" : "anual"})
                     </p>
                   )}
                 </div>
