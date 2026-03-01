@@ -4,7 +4,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Loader2, MessageSquare, Wifi, WifiOff, Download } from "lucide-react";
+import { Loader2, MessageSquare, Wifi, WifiOff, Download, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import { invalidateDefaultInstanceCache } from "@/utils/whatsapp-defaults";
 import { ImportFromStevoModal } from "@/components/crm/service-config/ImportFromStevoModal";
@@ -22,6 +22,7 @@ export function WhatsAppInstancePanel() {
   const [isLoading, setIsLoading] = useState(true);
   const [isSaving, setIsSaving] = useState(false);
   const [showImportStevo, setShowImportStevo] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
 
   useEffect(() => {
     loadData();
@@ -47,6 +48,72 @@ export function WhatsAppInstancePanel() {
       console.error("Error loading instances:", error);
     } finally {
       setIsLoading(false);
+    }
+  };
+
+  const callEvolutionAPI = async (action: string, body?: any, queryParams?: Record<string, string>) => {
+    const { data: { session } } = await supabase.auth.getSession();
+    if (!session) throw new Error("Não autenticado");
+
+    const params = new URLSearchParams({ action, ...queryParams });
+    const functionUrl = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?${params.toString()}`;
+
+    const response = await fetch(functionUrl, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${session.access_token}`,
+        'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+      },
+      body: JSON.stringify(body || {}),
+    });
+
+    const data = await response.json().catch(() => ({ error: 'Resposta inválida' }));
+    if (!response.ok) {
+      throw new Error(data?.error || `HTTP ${response.status}`);
+    }
+    return data;
+  };
+
+  const handleRefreshAll = async () => {
+    setIsRefreshing(true);
+    let updated = 0;
+    let errors = 0;
+
+    for (const inst of instances) {
+      try {
+        const result = await callEvolutionAPI("status", {}, {
+          instanceName: inst.instance_name,
+        });
+
+        const extracted = result?.instance ?? result;
+        const state = extracted?.state;
+        const newStatus = state === "open" ? "connected" : "disconnected";
+
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: newStatus })
+          .eq("id", inst.id);
+
+        updated++;
+      } catch (err) {
+        console.error(`Error checking status for ${inst.instance_name}:`, err);
+        // Mark as disconnected if we can't reach it
+        await supabase
+          .from("whatsapp_instances")
+          .update({ status: "disconnected" })
+          .eq("id", inst.id);
+        errors++;
+      }
+    }
+
+    await loadData();
+    setIsRefreshing(false);
+
+    if (errors === 0) {
+      toast.success(`Status de ${updated} instância(s) atualizado!`);
+    } else {
+      toast.warning(`${updated} atualizada(s), ${errors} com erro (marcadas como desconectadas)`);
     }
   };
 
@@ -98,10 +165,16 @@ export function WhatsAppInstancePanel() {
                 Selecione a instância que será usada para envio de mensagens em Contas a Receber, Régua de Cobranças e demais módulos.
               </CardDescription>
             </div>
-            <Button variant="outline" size="sm" className="gap-2 shrink-0" onClick={() => setShowImportStevo(true)}>
-              <Download className="h-4 w-4" />
-              Importar do STEVO
-            </Button>
+            <div className="flex items-center gap-2 shrink-0">
+              <Button variant="outline" size="sm" className="gap-2" onClick={handleRefreshAll} disabled={isRefreshing}>
+                <RefreshCw className={`h-4 w-4 ${isRefreshing ? "animate-spin" : ""}`} />
+                Atualizar Status
+              </Button>
+              <Button variant="outline" size="sm" className="gap-2" onClick={() => setShowImportStevo(true)}>
+                <Download className="h-4 w-4" />
+                Importar do STEVO
+              </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
