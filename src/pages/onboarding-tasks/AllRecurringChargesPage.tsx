@@ -1409,6 +1409,7 @@ export default function AllRecurringChargesPage() {
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp"
                                         onClick={async () => {
+                                          console.log("[WhatsApp Send] Button clicked for invoice:", inv.id, "company_phone:", inv.company_phone);
                                           const phoneRaw = inv.company_phone?.replace(/\D/g, "") || "";
                                           if (!phoneRaw) { toast.error("Telefone da empresa não cadastrado"); return; }
                                           const phone = phoneRaw.startsWith("55") ? phoneRaw : `55${phoneRaw}`;
@@ -1419,11 +1420,13 @@ export default function AllRecurringChargesPage() {
                                           const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                                           const customerName = inv.company_name || "";
                                           const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
+                                          console.log("[WhatsApp Send] Sending to:", phone, "msg length:", msg.length);
+                                          toast.info("Enviando mensagem...");
                                           try {
                                             await sendWhatsAppMessage(phone, msg);
                                             toast.success("Link enviado via WhatsApp!");
                                           } catch (err: any) {
-                                            console.error("WhatsApp send error:", err);
+                                            console.error("[WhatsApp Send] Error:", err);
                                             toast.error(err.message || "Erro ao enviar WhatsApp");
                                           }
                                         }}>
