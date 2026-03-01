@@ -55,15 +55,14 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
   const [paidAmount, setPaidAmount] = useState(0);
   const [saving, setSaving] = useState(false);
 
-  // Reset form when payable changes
-  const handleOpen = (isOpen: boolean) => {
-    if (isOpen && payable) {
+  // Pre-fill form when dialog opens
+  useEffect(() => {
+    if (open && payable) {
       setPaidAmount(payable.amount);
       setPaymentDate(new Date());
       setBankId("none");
     }
-    onOpenChange(isOpen);
-  };
+  }, [open, payable]);
 
   const handleSave = async () => {
     if (!payable || !paymentDate) return;
@@ -116,7 +115,7 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
   if (!payable) return null;
 
   return (
-    <Dialog open={open} onOpenChange={handleOpen}>
+    <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Registrar Pagamento</DialogTitle>
