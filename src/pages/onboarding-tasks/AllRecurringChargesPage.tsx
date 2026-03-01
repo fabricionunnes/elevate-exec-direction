@@ -1877,6 +1877,22 @@ export default function AllRecurringChargesPage() {
                                   onClick={() => setPayableEditDialog({ open: true, payable: p })}>
                                   <Edit2 className="h-4 w-4" />
                                 </Button>
+                                {isMaster && (
+                                  <Button variant="ghost" size="icon" className="h-8 w-8" title="Excluir"
+                                    onClick={async () => {
+                                      if (!confirm(`Excluir "${p.description}"?`)) return;
+                                      try {
+                                        const { error } = await supabase.from("financial_payables").delete().eq("id", p.id);
+                                        if (error) throw error;
+                                        toast.success("Lançamento excluído");
+                                        await loadData();
+                                      } catch (err: any) {
+                                        toast.error("Erro ao excluir: " + (err.message || "erro"));
+                                      }
+                                    }}>
+                                    <Trash2 className="h-4 w-4 text-destructive" />
+                                  </Button>
+                                )}
                               </div>
                             </TableCell>
                           </TableRow>
