@@ -352,7 +352,33 @@ export default function FinancialCategoriesTab() {
               </div>
               <div>
                 <label className="text-sm font-medium mb-1 block">Grupo</label>
-                <Input value={form.group_name} onChange={(e) => setForm(p => ({ ...p, group_name: e.target.value }))} placeholder="Ex: Despesas Administrativas" />
+                {(() => {
+                  const existingGroups = [...new Set(categories.map(c => c.group_name).filter(Boolean))].sort();
+                  return (
+                    <Select
+                      value={existingGroups.includes(form.group_name) ? form.group_name : "__custom__"}
+                      onValueChange={(v) => {
+                        if (v === "__new__") {
+                          const newGroup = prompt("Digite o nome do novo grupo:");
+                          if (newGroup?.trim()) setForm(p => ({ ...p, group_name: newGroup.trim() }));
+                        } else if (v !== "__custom__") {
+                          setForm(p => ({ ...p, group_name: v }));
+                        }
+                      }}
+                    >
+                      <SelectTrigger><SelectValue placeholder={form.group_name || "Selecione ou crie"} /></SelectTrigger>
+                      <SelectContent>
+                        {existingGroups.map(g => (
+                          <SelectItem key={g} value={g}>{g}</SelectItem>
+                        ))}
+                        <SelectItem value="__new__">+ Criar novo grupo</SelectItem>
+                        {form.group_name && !existingGroups.includes(form.group_name) && (
+                          <SelectItem value="__custom__">{form.group_name}</SelectItem>
+                        )}
+                      </SelectContent>
+                    </Select>
+                  );
+                })()}
               </div>
             </div>
             <div className="grid grid-cols-2 gap-3">
