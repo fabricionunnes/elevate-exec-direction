@@ -1,39 +1,39 @@
 
-
-# Adicionar Botao de WhatsApp nas Faturas da Empresa
+# Card de Empresas Inadimplentes no Dashboard Principal
 
 ## Objetivo
-Adicionar um botao de envio de mensagem WhatsApp (lembrete/cobranca) em cada fatura na tela de faturas da empresa (`CompanyInvoicesList`), permitindo enviar mensagens diretamente para o cliente com informacoes da fatura.
+Adicionar um card clicavel no dashboard principal (`DashboardMetrics`) mostrando a quantidade de empresas com faturas em atraso. Ao clicar, exibe a lista de empresas inadimplentes com regras de visibilidade por papel.
 
-## O que sera feito
+## Regras de Acesso
+- **Consultores**: veem apenas suas proprias empresas inadimplentes, exibindo somente os **dias em atraso**
+- **Administradores e Master**: veem **todas** as empresas inadimplentes, com **dias em atraso** e **valor**
 
-### 1. Buscar dados da empresa (telefone e nome)
-- O componente ja recebe `companyId`. Sera adicionada uma query para buscar o telefone e nome da empresa na tabela `onboarding_companies` para usar no envio.
+## Implementacao
 
-### 2. Adicionar botao WhatsApp em cada fatura
-- Nas faturas pendentes/vencidas (onde ja aparecem Link, Dar Baixa, Pagar), adicionar um botao com icone de WhatsApp para enviar lembrete.
-- O botao abrira o `WhatsAppMessageDialog` ja existente no sistema.
-- A mensagem padrao sera gerada automaticamente com os dados da fatura: descricao, valor, vencimento e link de pagamento (se houver).
+### 1. Buscar faturas vencidas no DashboardMetrics
+- Adicionar fetch de `company_invoices` com `status = 'pending'` e `due_date < hoje` no `fetchData` do `DashboardMetrics.tsx`
+- Agrupar por `company_id`, calculando: quantidade de faturas, maior atraso em dias, valor total em centavos
+- Cruzar com a lista de `companies` para obter nome e `consultant_id`
+- Para consultores (quando `staffRole` nao e `master` nem `admin`), filtrar apenas empresas onde `consultant_id` ou `cs_id` corresponde ao usuario logado
 
-### 3. Template da mensagem automatica
-A mensagem padrao incluira:
-- Nome da empresa
-- Descricao da fatura
-- Valor (com juros/multa se vencida)
-- Data de vencimento
-- Link de pagamento (quando disponivel)
+### 2. Adicionar card na grid de empresas
+- Inserir um novo card na grid existente (linha 1069-1091 do DashboardMetrics.tsx) com cor vermelha/laranja
+- Exibir o numero de empresas inadimplentes
+- Label: "Inadimplentes"
+- Ao clicar, toggle de um estado `showOverdueCompanies` (similar ao padrao de `showNotRenewedCompanies`)
 
-## Detalhes Tecnicos
+### 3. Painel expandivel ao clicar
+- Abaixo da grid de cards, renderizar um `Card` com a lista das empresas inadimplentes (similar ao bloco de "Nao Renovadas" ja existente)
+- Cada item mostra: nome da empresa, dias em atraso (da fatura mais antiga)
+- Para admin/master: tambem mostra o valor total em atraso formatado em reais
+- Para consultores: mostra apenas dias em atraso
 
-### Arquivo modificado: `src/components/company-financial/CompanyInvoicesList.tsx`
+### Arquivos modificados
+- `src/components/onboarding-tasks/DashboardMetrics.tsx` - Adicionar fetch, estado, card e painel expandivel
 
-1. Importar `WhatsAppSendButton` de `@/components/onboarding-tasks/WhatsAppSendButton`
-2. Adicionar estado e `useEffect` para buscar telefone da empresa via `onboarding_companies`
-3. Na area de botoes de cada fatura (pendente/vencida), adicionar o `WhatsAppSendButton` com:
-   - `phone`: telefone da empresa
-   - `recipientName`: nome da empresa
-   - `companyId`: ID da empresa
-   - `defaultMessage`: mensagem gerada com dados da fatura
-   - `variant="ghost"` para manter consistencia visual
-
-O botao aparecera ao lado dos botoes existentes (Link, Dar Baixa, Pagar) apenas para faturas nao pagas e nao canceladas.
+### Detalhes Tecnicos
+- Novo estado: `overdueCompaniesData` (array com company_id, name, maxDaysLate, totalAmountCents)
+- Novo estado: `showOverdueCompanies` (boolean toggle)
+- Query: `supabase.from("company_invoices").select("company_id, due_date, amount_cents").eq("status", "pending").lt("due_date", todayStr)`
+- Filtragem por papel usando a prop `staffRole` ja disponivel e `currentStaffUserId` cruzado com `consultant_id` das empresas
+- Formatacao de valor: `(centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })`
