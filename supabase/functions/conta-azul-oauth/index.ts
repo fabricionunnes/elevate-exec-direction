@@ -294,6 +294,8 @@ Deno.serve(async (req) => {
         const catUrls = [
           "https://api-v2.contaazul.com/v1/financeiro/categorias?pagina=1&tamanhoPagina=10",
           "https://api-v2.contaazul.com/v1/categorias?pagina=1&tamanhoPagina=10",
+          "https://api-v2.contaazul.com/v1/financial/categories?page=1&size=10",
+          "https://api-v2.contaazul.com/v1/categories?page=1&size=10",
         ];
         for (const catUrl of catUrls) {
           if (defaultCategoryId) break;
@@ -320,8 +322,15 @@ Deno.serve(async (req) => {
         console.log("Error in category fetching:", e);
       }
 
-      // Build payload using Portuguese field names as required by Conta Azul API v2
+      // Build payload - send BOTH English and Portuguese field names for compatibility
       const payload: any = {
+        // English field names (primary)
+        description: entryData.description || "Lançamento",
+        value: valorBruto,
+        dueDate: dueDate,
+        competenceDate: dueDate,
+        paymentCondition: "a_vista",
+        // Portuguese field names (fallback)
         descricao: entryData.description || "Lançamento",
         valor: valorBruto,
         dataVencimento: dueDate,
@@ -329,16 +338,20 @@ Deno.serve(async (req) => {
         condicaoPagamento: "a_vista",
       };
 
-      // Add category ratio (rateio) - required field
+      // Add category ratio in both formats - required field
       if (defaultCategoryId) {
+        payload.categoriesRatio = [{ categoryId: defaultCategoryId, value: valorBruto }];
         payload.rateio = [{ categoriaId: defaultCategoryId, valor: valorBruto }];
       } else {
-        // If no category found, try sending without rateio and let Conta Azul use default
+        // Without a category, we must still provide the structure
+        // Use a placeholder - the API requires at least one category
+        console.log("WARNING: No category found, payload may be rejected");
+        payload.categoriesRatio = [];
         payload.rateio = [];
       }
 
-      if (entryData.client_name) payload.contatoNome = entryData.client_name;
-      if (entryData.supplier_name) payload.contatoNome = entryData.supplier_name;
+      if (entryData.client_name) { payload.contactName = entryData.client_name; payload.contatoNome = entryData.client_name; }
+      if (entryData.supplier_name) { payload.contactName = entryData.supplier_name; payload.contatoNome = entryData.supplier_name; }
 
       console.log(`Conta Azul ${method} ${apiUrl}`, JSON.stringify(payload));
 
