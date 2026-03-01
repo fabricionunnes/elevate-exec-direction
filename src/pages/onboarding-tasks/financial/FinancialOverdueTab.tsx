@@ -12,6 +12,8 @@ import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
   Clock, Building2, DollarSign, TrendingDown, Flame,
 } from "lucide-react";
+import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
+import { startOfMonth, endOfMonth } from "date-fns";
 import { supabase } from "@/integrations/supabase/client";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { format } from "date-fns";
@@ -80,6 +82,7 @@ export default function FinancialOverdueTab({
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
+  const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
   const ITEMS_PER_PAGE = 10;
 
   const overdueInvoices = useMemo(() => {
@@ -89,6 +92,10 @@ export default function FinancialOverdueTab({
       if (inv.status === "paid") return false;
       const isPastDue = inv.due_date < todayStr;
       if (!isPastDue) return false;
+      if (selectedMonthFilter !== "all") {
+        const dueDate = new Date(inv.due_date + "T12:00:00");
+        if (dueDate < selectedMonthFilter.start || dueDate > selectedMonthFilter.end) return false;
+      }
       if (search) {
         const q = search.toLowerCase();
         if (!inv.description?.toLowerCase().includes(q) && !inv.company_name?.toLowerCase().includes(q)) return false;
@@ -100,7 +107,7 @@ export default function FinancialOverdueTab({
       }
       return true;
     });
-  }, [invoices, search, selectedCompany, selectedConsultant, companyConsultantMap]);
+  }, [invoices, search, selectedCompany, selectedConsultant, companyConsultantMap, selectedMonthFilter]);
 
   const totalPages = Math.ceil(overdueInvoices.length / ITEMS_PER_PAGE);
   const paginated = overdueInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
@@ -317,7 +324,7 @@ export default function FinancialOverdueTab({
       <motion.div initial={{ opacity: 0, y: 10 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }}>
         <Card className="border-dashed">
           <CardContent className="p-4">
-            <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+            <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
               <div className="relative">
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar empresa ou descrição..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
@@ -338,6 +345,37 @@ export default function FinancialOverdueTab({
                   </SelectContent>
                 </Select>
               )}
+              <div className="flex items-center gap-2">
+                {selectedMonthFilter === "all" ? (
+                  <Button
+                    variant="outline"
+                    className="w-full justify-start text-left font-normal gap-2"
+                    onClick={() => {
+                      const now = new Date();
+                      setSelectedMonthFilter({ start: startOfMonth(now), end: endOfMonth(now) });
+                      setCurrentPage(1);
+                    }}
+                  >
+                    <Clock className="h-4 w-4 text-muted-foreground" />
+                    Todo período
+                  </Button>
+                ) : (
+                  <div className="flex items-center gap-1 w-full">
+                    <MonthYearPicker
+                      value={selectedMonthFilter.start}
+                      onChange={(range) => { setSelectedMonthFilter(range); setCurrentPage(1); }}
+                    />
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      className="text-xs text-muted-foreground whitespace-nowrap"
+                      onClick={() => { setSelectedMonthFilter("all"); setCurrentPage(1); }}
+                    >
+                      Limpar
+                    </Button>
+                  </div>
+                )}
+              </div>
             </div>
           </CardContent>
         </Card>
