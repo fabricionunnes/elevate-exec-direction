@@ -1,39 +1,30 @@
 
-# Card de Empresas Inadimplentes no Dashboard Principal
+## Corrigir baixa parcial em Contas a Pagar
 
-## Objetivo
-Adicionar um card clicavel no dashboard principal (`DashboardMetrics`) mostrando a quantidade de empresas com faturas em atraso. Ao clicar, exibe a lista de empresas inadimplentes com regras de visibilidade por papel.
+### Problema
+Quando uma conta a pagar recebe um pagamento parcial, o sistema apresenta dois problemas:
+1. O status "partial" nao e reconhecido visualmente -- o badge nao exibe "Pago Parcial" corretamente
+2. Apos um pagamento parcial, a opcao "Marcar como Pago" desaparece, impedindo o usuario de dar baixa no valor restante
+3. O dialogo de pagamento sempre pre-preenche com o valor total, em vez do valor restante
 
-## Regras de Acesso
-- **Consultores**: veem apenas suas proprias empresas inadimplentes, exibindo somente os **dias em atraso**
-- **Administradores e Master**: veem **todas** as empresas inadimplentes, com **dias em atraso** e **valor**
+### Solucao
 
-## Implementacao
+**1. Adicionar status "partial" no badge de status (PayablesPanel.tsx)**
+- Incluir um case `"partial"` no `getStatusBadge` exibindo "Pago Parcial" com cor amarela/amber
+- Garantir que contas com status "partial" aparecem no filtro (adicionar opcao "Pago Parcial" no Select de filtro)
 
-### 1. Buscar faturas vencidas no DashboardMetrics
-- Adicionar fetch de `company_invoices` com `status = 'pending'` e `due_date < hoje` no `fetchData` do `DashboardMetrics.tsx`
-- Agrupar por `company_id`, calculando: quantidade de faturas, maior atraso em dias, valor total em centavos
-- Cruzar com a lista de `companies` para obter nome e `consultant_id`
-- Para consultores (quando `staffRole` nao e `master` nem `admin`), filtrar apenas empresas onde `consultant_id` ou `cs_id` corresponde ao usuario logado
+**2. Permitir nova baixa em contas parcialmente pagas (PayablesPanel.tsx)**
+- Alterar a condicao da linha 808 de `payable.status !== "paid"` para `payable.status !== "paid" && payable.status !== "cancelled"` -- na verdade, a condicao atual ja permite "partial" pois `"partial" !== "paid"` e true. O problema real e se o status foi salvo como "paid" incorretamente. Vamos adicionar uma condicao explicita: mostrar o botao quando status for "partial"
 
-### 2. Adicionar card na grid de empresas
-- Inserir um novo card na grid existente (linha 1069-1091 do DashboardMetrics.tsx) com cor vermelha/laranja
-- Exibir o numero de empresas inadimplentes
-- Label: "Inadimplentes"
-- Ao clicar, toggle de um estado `showOverdueCompanies` (similar ao padrao de `showNotRenewedCompanies`)
+**3. Pre-preencher valor restante no dialogo (PayableActionDialogs.tsx)**
+- No `useEffect` do `PayablePaymentDialog`, ao abrir para uma conta com status "partial", calcular o restante: `payable.amount - (payable.paid_amount || 0)` e pre-preencher com esse valor
+- Exibir informacao do valor ja pago no cabecalho do dialogo
 
-### 3. Painel expandivel ao clicar
-- Abaixo da grid de cards, renderizar um `Card` com a lista das empresas inadimplentes (similar ao bloco de "Nao Renovadas" ja existente)
-- Cada item mostra: nome da empresa, dias em atraso (da fatura mais antiga)
-- Para admin/master: tambem mostra o valor total em atraso formatado em reais
-- Para consultores: mostra apenas dias em atraso
+**4. Acumular pagamentos parciais (PayableActionDialogs.tsx)**
+- No `handleSave`, ao registrar um novo pagamento em conta ja parcialmente paga, somar o `paid_amount` existente ao novo valor pago
+- Se o total acumulado atingir ou ultrapassar o valor original, marcar como "paid"; caso contrario, manter como "partial"
+- Debitar do banco apenas o novo valor pago (nao o acumulado)
 
 ### Arquivos modificados
-- `src/components/onboarding-tasks/DashboardMetrics.tsx` - Adicionar fetch, estado, card e painel expandivel
-
-### Detalhes Tecnicos
-- Novo estado: `overdueCompaniesData` (array com company_id, name, maxDaysLate, totalAmountCents)
-- Novo estado: `showOverdueCompanies` (boolean toggle)
-- Query: `supabase.from("company_invoices").select("company_id, due_date, amount_cents").eq("status", "pending").lt("due_date", todayStr)`
-- Filtragem por papel usando a prop `staffRole` ja disponivel e `currentStaffUserId` cruzado com `consultant_id` das empresas
-- Formatacao de valor: `(centavos / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" })`
+- `src/components/financial/PayablesPanel.tsx` -- badge "Pago Parcial", filtro, condicao do botao de acao
+- `src/components/financial/PayableActionDialogs.tsx` -- logica de valor restante e acumulacao de pagamentos
