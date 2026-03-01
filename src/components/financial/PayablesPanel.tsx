@@ -94,7 +94,8 @@ export function PayablesPanel() {
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [selectedPayable, setSelectedPayable] = useState<Payable | null>(null);
-
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
   const [formData, setFormData] = useState({
     supplier_name: "",
     category_id: "",
@@ -397,6 +398,9 @@ export function PayablesPanel() {
     overdue: filteredPayables.filter(p => p.status === "overdue").reduce((sum, p) => sum + Number(p.amount), 0),
     paid: filteredPayables.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0)
   };
+
+  const totalPages = Math.ceil(filteredPayables.length / pageSize);
+  const paginatedPayables = filteredPayables.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
 
   if (isLoading) {
     return (
@@ -708,7 +712,7 @@ export function PayablesPanel() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredPayables.map((payable) => (
+                paginatedPayables.map((payable) => (
                   <TableRow key={payable.id}>
                     <TableCell>
                       <div className="flex items-center gap-2">
@@ -774,6 +778,36 @@ export function PayablesPanel() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {filteredPayables.length} registro(s)
+        </p>
+        <div className="flex items-center gap-2">
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(0); }}>
+            <SelectTrigger className="w-[130px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 por página</SelectItem>
+              <SelectItem value="50">50 por página</SelectItem>
+              <SelectItem value="100">100 por página</SelectItem>
+            </SelectContent>
+          </Select>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground px-2">{currentPage + 1}/{totalPages}</span>
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>
+                Próximo
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Payment Dialog */}
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>

@@ -101,6 +101,8 @@ export function ReceivablesPanel() {
   const [isGeneratingRecurring, setIsGeneratingRecurring] = useState(false);
   const [selectedReceivable, setSelectedReceivable] = useState<Receivable | null>(null);
   const [editDueDate, setEditDueDate] = useState("");
+  const [pageSize, setPageSize] = useState(10);
+  const [currentPage, setCurrentPage] = useState(0);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -472,6 +474,9 @@ export function ReceivablesPanel() {
     paid: filteredReceivables.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
   };
 
+  const totalPages = Math.ceil(filteredReceivables.length / pageSize);
+  const paginatedReceivables = filteredReceivables.slice(currentPage * pageSize, (currentPage + 1) * pageSize);
+
   if (isLoading) {
     return (
       <div className="flex items-center justify-center h-64">
@@ -743,7 +748,7 @@ export function ReceivablesPanel() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredReceivables.map((receivable) => (
+                paginatedReceivables.map((receivable) => (
                   <TableRow key={receivable.id}>
                     <TableCell>
                       <div>
@@ -824,6 +829,36 @@ export function ReceivablesPanel() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Pagination */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
+        <p className="text-sm text-muted-foreground">
+          {filteredReceivables.length} registro(s)
+        </p>
+        <div className="flex items-center gap-2">
+          <Select value={String(pageSize)} onValueChange={(v) => { setPageSize(Number(v)); setCurrentPage(0); }}>
+            <SelectTrigger className="w-[130px] h-8">
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="10">10 por página</SelectItem>
+              <SelectItem value="50">50 por página</SelectItem>
+              <SelectItem value="100">100 por página</SelectItem>
+            </SelectContent>
+          </Select>
+          {totalPages > 1 && (
+            <div className="flex items-center gap-1">
+              <Button variant="outline" size="sm" disabled={currentPage === 0} onClick={() => setCurrentPage(p => p - 1)}>
+                Anterior
+              </Button>
+              <span className="text-sm text-muted-foreground px-2">{currentPage + 1}/{totalPages}</span>
+              <Button variant="outline" size="sm" disabled={currentPage >= totalPages - 1} onClick={() => setCurrentPage(p => p + 1)}>
+                Próximo
+              </Button>
+            </div>
+          )}
+        </div>
+      </div>
 
       {/* Payment Dialog */}
       <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
