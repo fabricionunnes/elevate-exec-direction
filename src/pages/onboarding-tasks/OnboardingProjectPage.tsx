@@ -244,7 +244,7 @@ const OnboardingProjectPage = () => {
       // Fetch project NPS
       const { data: projectData } = await supabase
         .from("onboarding_projects")
-        .select("current_nps, product_name, onboarding_company:onboarding_companies(name)")
+        .select("current_nps, product_name, onboarding_company_id, onboarding_company:onboarding_companies(name)")
         .eq("id", projectId)
         .single();
 
@@ -252,6 +252,37 @@ const OnboardingProjectPage = () => {
 
       const currentNps = projectData.current_nps;
       const companyName = projectData.onboarding_company?.name || projectData.product_name;
+
+      // Check for overdue invoices
+      if (projectData.onboarding_company_id) {
+        const todayStr = new Date().toLocaleDateString('en-CA', { timeZone: 'America/Sao_Paulo' });
+        const { data: overdueInvoices } = await supabase
+          .from("company_invoices")
+          .select("due_date, description")
+          .eq("company_id", projectData.onboarding_company_id)
+          .eq("status", "pending")
+          .lt("due_date", todayStr)
+          .order("due_date", { ascending: true })
+          .limit(5);
+
+        if (overdueInvoices && overdueInvoices.length > 0) {
+          const today = new Date(todayStr + "T12:00:00");
+          const oldestDue = new Date(overdueInvoices[0].due_date + "T12:00:00");
+          const maxDaysLate = Math.floor((today.getTime() - oldestDue.getTime()) / (1000 * 60 * 60 * 24));
+          const totalOverdue = overdueInvoices.length;
+
+          toast.error(`💰 INADIMPLÊNCIA: ${companyName}`, {
+            description: `${totalOverdue} ${totalOverdue === 1 ? 'parcela em atraso' : 'parcelas em atraso'} — até ${maxDaysLate} ${maxDaysLate === 1 ? 'dia' : 'dias'} de atraso`,
+            duration: 15000,
+            action: {
+              label: "Ver Financeiro",
+              onClick: () => {
+                window.open("/onboarding-tasks/financeiro/recorrencias", "_blank");
+              },
+            },
+          });
+        }
+      }
 
       // Calculate goal projection for current month
       const now = new Date();
