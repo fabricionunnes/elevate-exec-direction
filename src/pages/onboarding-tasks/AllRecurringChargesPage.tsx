@@ -26,7 +26,7 @@ import {
   ArrowUpCircle, Calculator, CheckCircle2, Undo2, Clock, AlertTriangle,
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
-  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu,
+  TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -44,6 +44,7 @@ import CFOUnitEconomicsTab from "./financial/CFOUnitEconomicsTab";
 import CFOCostsStructureTab from "./financial/CFOCostsStructureTab";
 import CFOCashProjectionTab from "./financial/CFOCashProjectionTab";
 import CFODelinquencyTab from "./financial/CFODelinquencyTab";
+import { CFOAIPanel } from "@/components/financial/CFOAIPanel";
 import FinancialOverdueTab from "./financial/FinancialOverdueTab";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
@@ -118,6 +119,8 @@ const NAV_ITEMS = [
   { key: "cfo-costs", label: "Custos & Estrutura", icon: Calculator, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_costs },
   { key: "cfo-cash", label: "Caixa & Projeção", icon: Wallet, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_cash },
   { key: "cfo-delinquency", label: "Inadimplência", icon: AlertTriangle, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_delinquency },
+  { key: "separator-cfo-ai", label: "── CFO IA ──", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, isSeparator: true },
+  { key: "cfo-ai", label: "CFO IA", icon: Brain, permKey: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai },
 ] as const;
 
 export default function AllRecurringChargesPage() {
@@ -1614,6 +1617,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "cfo-delinquency" && (
             <CFODelinquencyTab invoices={cfoInvoices} companies={cfoCompanies} filters={cfoFilters} formatCurrency={formatCurrency} formatCurrencyCents={formatCurrencyCents} />
+          )}
+          {activeTab === "cfo-ai" && (
+            <CFOAIPanel />
           )}
         </div>
       </main>
