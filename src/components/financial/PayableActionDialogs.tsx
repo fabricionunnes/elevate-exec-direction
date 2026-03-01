@@ -192,6 +192,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
     category_id: "",
     cost_center_id: "",
     notes: "",
+    cost_type: "" as "" | "fixed" | "variable",
   });
   const [editScope, setEditScope] = useState<"single" | "future">("single");
   const [saving, setSaving] = useState(false);
@@ -210,6 +211,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         category_id: (payable as any).category_id || "",
         cost_center_id: (payable as any).cost_center_id || "",
         notes: (payable as any).notes || "",
+        cost_type: (payable as any).cost_type || "",
       });
       setEditScope("single");
     }
@@ -231,6 +233,7 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
         category_id: form.category_id && form.category_id !== "none" ? form.category_id : null,
         cost_center_id: form.cost_center_id && form.cost_center_id !== "none" ? form.cost_center_id : null,
         notes: form.notes || null,
+        cost_type: form.cost_type || null,
         updated_at: new Date().toISOString(),
       };
 
@@ -380,9 +383,20 @@ export function PayableEditDialog({ open, onOpenChange, payable, categories, cos
               <Input type="month" value={form.reference_month} onChange={(e) => setForm(f => ({ ...f, reference_month: e.target.value }))} />
             </div>
             <div>
-              <Label>Observações</Label>
-              <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
+              <Label>Tipo de Custo</Label>
+              <Select value={form.cost_type || "none"} onValueChange={(v) => setForm(f => ({ ...f, cost_type: v === "none" ? "" : v as "fixed" | "variable" }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione" /></SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">Não definido</SelectItem>
+                  <SelectItem value="fixed">Custo Fixo</SelectItem>
+                  <SelectItem value="variable">Custo Variável</SelectItem>
+                </SelectContent>
+              </Select>
             </div>
+          </div>
+          <div>
+            <Label>Observações</Label>
+            <Input value={form.notes} onChange={(e) => setForm(f => ({ ...f, notes: e.target.value }))} placeholder="Opcional" />
           </div>
         </div>
         <DialogFooter>
