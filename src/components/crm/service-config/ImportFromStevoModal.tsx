@@ -47,19 +47,20 @@ export const ImportFromStevoModal = ({
   const [selectedInstance, setSelectedInstance] = useState<string | null>(null);
   const [displayName, setDisplayName] = useState("");
   const [error, setError] = useState<string | null>(null);
-  const [apiUrl, setApiUrl] = useState(() => localStorage.getItem("stevo_api_url") || "");
-  const [apiKey, setApiKey] = useState(() => localStorage.getItem("stevo_api_key") || "");
+  const [apiUrl, setApiUrl] = useState("");
+  const [apiKey, setApiKey] = useState("");
   const [showApiKey, setShowApiKey] = useState(false);
 
   useEffect(() => {
     if (open) {
-      loadInstances();
-    } else {
+      // Reset everything when opening — user must input credentials and click "Buscar"
       setInstances([]);
       setSelectedInstance(null);
       setDisplayName("");
       setError(null);
       setShowApiKey(false);
+      setApiUrl("");
+      setApiKey("");
     }
   }, [open]);
 
