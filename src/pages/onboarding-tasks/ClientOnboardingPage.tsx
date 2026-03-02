@@ -1108,6 +1108,7 @@ const ClientOnboardingPage = () => {
         userRole={currentUser?.role}
         projectId={projectId}
         companyId={companyId}
+        canManageUsers={hasPermission(CLIENT_MENU_KEYS.gestao_usuarios)}
       />
 
       {/* Support Button */}
