@@ -1,7 +1,7 @@
 import type { CapacitorConfig } from '@capacitor/cli';
 
 const config: CapacitorConfig = {
-  appId: 'app.lovable.6b53895ec5b64d6f84800691b85d2fa5',
+  appId: 'app.lovable.unvnexus',
   appName: 'UNV Nexus',
   webDir: 'dist',
   server: {
