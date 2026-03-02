@@ -64,6 +64,7 @@ import {
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
+import { sendPaymentNotification } from "@/utils/paymentNotification";
 
 interface Payable {
   id: string;
@@ -335,6 +336,10 @@ export function PayablesPanel() {
             .eq("id", paymentData.bank_account_id);
         }
       }
+
+      // Send payment notification
+      const supplierName = selectedPayable.supplier_name || "Fornecedor não identificado";
+      sendPaymentNotification(supplierName, newPayment, selectedPayable.description);
 
       toast.success(isFullyPaid ? "Pagamento total registrado!" : "Pagamento parcial registrado!");
       setIsPayDialogOpen(false);

@@ -19670,6 +19670,35 @@ export type Database = {
           },
         ]
       }
+      payment_notification_subscribers: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "payment_notification_subscribers_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_audit_logs: {
         Row: {
           action: string
