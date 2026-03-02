@@ -543,11 +543,21 @@ const DashboardMetrics = ({
     const renewalsCount = renewalsInPeriod.length;
     const renewedClientsCount = renewedCompanyIds.size;
 
-    // For percentage, use total ACTIVE companies (not just those with ending contracts)
-    const activeCompaniesCount = filteredCompanies.filter(c => 
-      c.status !== "inactive" && c.status !== "closed"
-    ).length;
-    const renewedPercent = activeCompaniesCount > 0 ? Math.round((renewedClientsCount / activeCompaniesCount) * 100) : 0;
+    // For percentage, use companies whose contracts end in the period as the denominator
+    // This gives the real renewal rate: e.g. 10 contracts ending, 3 renewed = 30%
+    const companiesWithContractEndingInPeriod = filteredCompanies.filter(c => {
+      if (c.payment_method === "monthly") return false;
+      if (!c.contract_end_date) return false;
+      const endDate = new Date(c.contract_end_date);
+      return isWithinInterval(endDate, { start, end });
+    });
+    // Also count renewed companies whose contract ended in the period (they may already be active with new contract)
+    const eligibleCompanyIds = new Set([
+      ...companiesWithContractEndingInPeriod.map(c => c.id),
+      ...renewalsInPeriod.map(r => r.company_id)
+    ]);
+    const eligibleCount = eligibleCompanyIds.size;
+    const renewedPercent = eligibleCount > 0 ? Math.round((renewedClientsCount / eligibleCount) * 100) : 0;
 
 
     // Not renewed (auto) = company had project closed/completed in period + no renewal in period
@@ -573,6 +583,7 @@ const DashboardMetrics = ({
       renewalsCount, 
       renewedClientsCount, 
       renewedPercent, 
+      eligibleCount,
       notRenewedCompanies,
       notRenewedCount: notRenewedCompanies.length
     };
@@ -1146,7 +1157,7 @@ const DashboardMetrics = ({
             <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
             <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount})</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
             <Card 
               className={cn(
                 "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
