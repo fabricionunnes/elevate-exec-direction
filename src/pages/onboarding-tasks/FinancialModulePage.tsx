@@ -53,8 +53,8 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   integrations: null, // always visible
   "billing-rules": "fin_billing_rules",
   suppliers: null, // always visible
-  inbox: null, // always visible
-  "whatsapp-instance": null, // always visible
+  inbox: "fin_inbox",
+  "whatsapp-instance": "fin_whatsapp_instance",
 };
 
 const ALL_TABS = [

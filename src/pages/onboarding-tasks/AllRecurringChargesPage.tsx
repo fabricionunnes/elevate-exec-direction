@@ -153,8 +153,8 @@ const NAV_ITEMS = [
   { key: "separator-billing-rules", label: "── OPERACIONAL ──", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_billing_rules, isSeparator: true },
   { key: "billing-rules", label: "Régua de Cobranças", icon: Bell, permKey: FINANCIAL_PERMISSION_KEYS.fin_billing_rules },
   { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
-  { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
-  { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_dashboard },
+  { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_inbox },
+  { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
 ] as const;
 
 const applyPeriodPreset = (
