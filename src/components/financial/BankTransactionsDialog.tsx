@@ -82,18 +82,14 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
 
       const { data, error } = await supabase
         .from("financial_bank_transactions")
-        .select("*, company_invoices:reference_id(company_id, onboarding_companies:company_id(name))")
+        .select("*")
         .eq("bank_id", bank.id)
         .gte("created_at", from + "T00:00:00")
         .lte("created_at", to + "T23:59:59")
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      const mapped = ((data as any[]) || []).map((t: any) => ({
-        ...t,
-        company_name: t.company_invoices?.onboarding_companies?.name || null,
-      }));
-      setTransactions(mapped as BankTransaction[]);
+      setTransactions((data || []) as BankTransaction[]);
     } catch (err) {
       console.error("Error loading bank transactions:", err);
     } finally {
