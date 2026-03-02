@@ -434,6 +434,14 @@ export default function AllRecurringChargesPage() {
     return map;
   }, [fullCompanies, projects]);
 
+  const todayStr = getLocalDateString(); // YYYY-MM-DD
+
+  const isEffectivelyOverdue = (status: string, dueDate?: string) => {
+    if (status === "overdue") return true;
+    if (status === "pending" && dueDate && dueDate < todayStr) return true;
+    return false;
+  };
+
   // Filtered invoices
   const filteredInvoices = useMemo(() => {
     return invoices.filter(inv => {
@@ -444,10 +452,11 @@ export default function AllRecurringChargesPage() {
       }
       if (selectedCompany !== "all" && inv.company_id !== selectedCompany) return false;
       if (selectedStatus !== "all") {
-        if (selectedStatus === "pending" && inv.status !== "pending") return false;
-        if (selectedStatus === "paid" && inv.status !== "paid") return false;
-        if (selectedStatus === "overdue" && inv.status !== "overdue") return false;
-        if (selectedStatus === "cancelled" && inv.status !== "cancelled") return false;
+        const effectiveStatus = isEffectivelyOverdue(inv.status, inv.due_date) ? "overdue" : inv.status;
+        if (selectedStatus === "pending" && effectiveStatus !== "pending") return false;
+        if (selectedStatus === "paid" && effectiveStatus !== "paid") return false;
+        if (selectedStatus === "overdue" && effectiveStatus !== "overdue") return false;
+        if (selectedStatus === "cancelled" && effectiveStatus !== "cancelled") return false;
       }
       if (dateFrom) { if (inv.due_date < format(dateFrom, "yyyy-MM-dd")) return false; }
       if (dateTo) { if (inv.due_date > format(dateTo, "yyyy-MM-dd")) return false; }
@@ -486,13 +495,11 @@ export default function AllRecurringChargesPage() {
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
 
-  const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
-
   const getStatusDisplay = (s: string, dueDate?: string) => {
     const isDueToday = s === "pending" && dueDate === todayStr;
     if (s === "paid") return { label: "Pago", className: "bg-emerald-500/10 text-emerald-600 border-emerald-500/20", icon: <CheckCircle2 className="h-3.5 w-3.5" /> };
     if (s === "partial") return { label: "Pago Parcial", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
-    if (s === "overdue") return { label: "Vencido", className: "bg-red-500/10 text-red-600 border-red-500/20", icon: <AlertTriangle className="h-3.5 w-3.5" /> };
+    if (isEffectivelyOverdue(s, dueDate)) return { label: "Vencido", className: "bg-red-500/10 text-red-600 border-red-500/20", icon: <AlertTriangle className="h-3.5 w-3.5" /> };
     if (isDueToday) return { label: "Vence Hoje", className: "bg-amber-500/10 text-amber-600 border-amber-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
     if (s === "cancelled") return { label: "Cancelado", className: "bg-gray-500/10 text-gray-600 border-gray-500/20", icon: <XCircle className="h-3.5 w-3.5" /> };
     return { label: "Pendente", className: "bg-blue-500/10 text-blue-600 border-blue-500/20", icon: <Clock className="h-3.5 w-3.5" /> };
@@ -891,7 +898,7 @@ export default function AllRecurringChargesPage() {
     } else if (activeTab === "recurring") {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em"]];
       filteredInvoices.forEach(inv => {
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -996,18 +1003,19 @@ export default function AllRecurringChargesPage() {
   }, [payables]);
 
   const invoiceSummary = useMemo(() => {
+    const effectivelyOverdue = filteredInvoices.filter(i => isEffectivelyOverdue(i.status, i.due_date));
+    const effectivelyPending = filteredInvoices.filter(i => (i.status === "pending" || i.status === "overdue") && !isEffectivelyOverdue(i.status, i.due_date));
     const pending = filteredInvoices.filter(i => i.status === "pending" || i.status === "overdue");
     const paid = filteredInvoices.filter(i => i.status === "paid");
-    const overdue = filteredInvoices.filter(i => i.status === "overdue");
     return {
-      totalPending: pending.reduce((s, i) => s + (i.status === "overdue" ? i.total_with_fees_cents : i.amount_cents), 0),
+      totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
       totalPaid: paid.reduce((s, i) => s + (i.paid_amount_cents || i.amount_cents), 0),
       paidCount: paid.length,
-      totalOverdue: overdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
-      overdueCount: overdue.length,
+      totalOverdue: effectivelyOverdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
+      overdueCount: effectivelyOverdue.length,
     };
-  }, [filteredInvoices]);
+  }, [filteredInvoices, todayStr]);
 
   if (isLoading) {
     return (
