@@ -1945,13 +1945,13 @@ export default function AllRecurringChargesPage() {
                             </TableCell>
                             <TableCell className="text-right">
                               <div className="flex items-center justify-end gap-1">
-                                {p.status !== "paid" && (
+                                {(p.status !== "paid" || (p.status === "paid" && p.paid_amount && p.paid_amount < p.amount)) && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Pagar"
                                     onClick={() => setPayablePaymentDialog({ open: true, payable: p })}>
                                     <CheckCircle2 className="h-4 w-4 text-emerald-600" />
                                   </Button>
                                 )}
-                                {p.status === "paid" && (
+                                {(p.status === "paid" || p.status === "partial") && (
                                   <Button variant="ghost" size="icon" className="h-8 w-8" title="Estornar"
                                     onClick={() => setConfirmDialog({ open: true, invoiceId: p.id, action: "revert_payable", description: `${p.supplier_name || "Sem fornecedor"} - ${p.description} - ${formatCurrency(p.amount)}` })}>
                                     <Undo2 className="h-4 w-4 text-destructive" />
