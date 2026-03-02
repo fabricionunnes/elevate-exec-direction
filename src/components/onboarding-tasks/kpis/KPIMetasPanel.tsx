@@ -154,20 +154,15 @@ export const KPIMetasPanel = ({
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        {canAccessAllTabs && (
-          <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
-            <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="sm:hidden">Lançar</span>
-            <span className="hidden sm:inline">Lançar Vendas</span>
-          </Button>
-        )}
-        {canSeeSalesLinks && !canAccessAllTabs && (
-          <Button variant="outline" size="sm" onClick={() => setShowSalesLinks(true)} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
-            <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
-            <span className="sm:hidden">Links</span>
-            <span className="hidden sm:inline">Links de Lançamento</span>
-          </Button>
-        )}
+        <div className="flex gap-2 w-full sm:w-auto">
+          {(canAccessAllTabs || canSeeSalesLinks) && (
+            <Button variant="outline" size="sm" onClick={() => setShowSalesLinks(true)} className="gap-2 flex-1 sm:flex-initial h-8 sm:h-9 text-xs sm:text-sm">
+              <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+              <span className="sm:hidden">Links</span>
+              <span className="hidden sm:inline">Lançar Vendas</span>
+            </Button>
+          )}
+        </div>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
