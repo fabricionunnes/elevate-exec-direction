@@ -37,6 +37,7 @@ import { MonthlySalesChart } from "./MonthlySalesChart";
 import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
 import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
+import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -2399,6 +2400,16 @@ export const KPIDashboardTab = ({
           })}
         </CardContent>
       </Card>
+
+      {/* Sales Heatmap Charts */}
+      <SalesHeatmapCharts
+        companyId={companyId}
+        kpiIds={kpis.filter(k => k.kpi_type === "monetary").map(k => k.id)}
+        selectedSalesperson={selectedSalesperson}
+        selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
+      />
 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
