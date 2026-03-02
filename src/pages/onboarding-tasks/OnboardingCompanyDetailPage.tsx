@@ -51,6 +51,8 @@ import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsCo
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFinancialPanel";
 import { AddressFields } from "@/components/ui/address-fields";
+import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
+import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 
 interface Staff {
   id: string;
@@ -122,6 +124,7 @@ const OnboardingCompanyDetailPage = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const originalStatusRef = useRef<string>("active");
+  const { hasFinancialPermission, isMaster } = useFinancialPermissions();
   
   const [form, setForm] = useState<CompanyForm>({
     name: "",
@@ -451,6 +454,7 @@ const OnboardingCompanyDetailPage = () => {
   const canEditCS = isMasterOrAdmin;
   const canEditConsultant = isMasterOrAdmin || currentUserRole === "cs";
   const canDeleteCompany = isMasterOrAdmin;
+  const canViewCompanyFinancial = isMasterOrAdmin || hasFinancialPermission(FINANCIAL_PERMISSION_KEYS.fin_company_detail);
 
   const handleDeleteCompany = async () => {
     if (!companyId || isNew) return;
@@ -562,7 +566,7 @@ const OnboardingCompanyDetailPage = () => {
                   Pontuação
                 </TabsTrigger>
               )}
-              {!isNew && isMasterOrAdmin && (
+              {!isNew && canViewCompanyFinancial && (
                 <TabsTrigger value="financial" className="gap-2">
                   <DollarSign className="h-4 w-4" />
                   Financeiro
@@ -1084,7 +1088,7 @@ const OnboardingCompanyDetailPage = () => {
             )}
 
             {/* Financial Tab */}
-            {!isNew && companyId && isMasterOrAdmin && (
+            {!isNew && companyId && canViewCompanyFinancial && (
               <TabsContent value="financial">
                 <CompanyFinancialPanel
                   companyId={companyId}
