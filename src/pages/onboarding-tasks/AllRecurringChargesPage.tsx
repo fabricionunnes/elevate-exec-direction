@@ -2215,7 +2215,11 @@ export default function AllRecurringChargesPage() {
                   const remaining = (baseAmount || 0) - previouslyPaid;
                   const adjustedTotal = remaining - discountCents + interestCents;
                   const customPaid = manualPaidAmount ? Math.round(parseFloat(manualPaidAmount) * 100) : undefined;
-                  handleManualPayment(confirmDialog.invoiceId, feeCents, selectedBankId !== "none" ? selectedBankId : null, discountCents, interestCents, customPaid);
+                  if (selectedBankId === "none") {
+                    toast.error("Selecione um banco para dar baixa");
+                    return;
+                  }
+                  handleManualPayment(confirmDialog.invoiceId, feeCents, selectedBankId, discountCents, interestCents, customPaid);
                 } else if (confirmDialog.action === "revert_payable") {
                   handleRevertPayable(confirmDialog.invoiceId);
                 } else {
