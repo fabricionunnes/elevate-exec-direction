@@ -224,6 +224,8 @@ export default function AllRecurringChargesPage() {
   const [bankForm, setBankForm] = useState({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
   const [statementBank, setStatementBank] = useState<any>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [transferData, setTransferData] = useState({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
 
   // Categories & Cost Centers for forms
   const [staffCategories, setStaffCategories] = useState<any[]>([]);
@@ -658,6 +660,43 @@ export default function AllRecurringChargesPage() {
       toast.success("Banco removido");
       await loadData();
     } catch (err: any) { toast.error("Erro: " + (err.message || "erro")); }
+  };
+
+  const handleBankTransfer = async () => {
+    try {
+      const amountNum = parseFloat(transferData.amount);
+      if (!amountNum || amountNum <= 0) { toast.error("Informe um valor válido"); return; }
+      const amountCents = Math.round(amountNum * 100);
+      const fromBank = banks.find((b: any) => b.id === transferData.from_account_id);
+      const toBank = banks.find((b: any) => b.id === transferData.to_account_id);
+      if (!fromBank || !toBank) return;
+      if (fromBank.id === toBank.id) { toast.error("Selecione bancos diferentes"); return; }
+
+      const descOut = transferData.description || `Transferência para ${toBank.name}`;
+      const descIn = transferData.description || `Transferência de ${fromBank.name}`;
+
+      // Debit from source
+      await supabase.rpc("increment_bank_balance" as any, { p_bank_id: fromBank.id, p_amount: -amountCents });
+      await supabase.from("financial_bank_transactions").insert({
+        bank_id: fromBank.id, type: "debit", amount_cents: amountCents,
+        description: descOut, reference_type: "transfer",
+      } as any);
+
+      // Credit to destination
+      await supabase.rpc("increment_bank_balance" as any, { p_bank_id: toBank.id, p_amount: amountCents });
+      await supabase.from("financial_bank_transactions").insert({
+        bank_id: toBank.id, type: "credit", amount_cents: amountCents,
+        description: descIn, reference_type: "transfer",
+      } as any);
+
+      toast.success("Transferência realizada com sucesso!");
+      setIsTransferDialogOpen(false);
+      setTransferData({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
+      await loadData();
+    } catch (err: any) {
+      console.error("Transfer error:", err);
+      toast.error("Erro ao realizar transferência");
+    }
   };
 
   // Bulk delete payables
@@ -1950,18 +1989,24 @@ export default function AllRecurringChargesPage() {
           {/* Bancos */}
           {activeTab === "banks" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_banks) && (
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
+              <div className="flex items-center justify-between flex-wrap gap-2">
                 <h2 className="text-lg font-semibold flex items-center gap-2">
                   <Landmark className="h-5 w-5 text-primary" />
                   Contas Bancárias
                 </h2>
-                <Button size="sm" onClick={() => {
-                  setBankForm({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
-                  setBankDialog({ open: true, bank: null });
-                }}>
-                  <Plus className="h-4 w-4 mr-2" />
-                  Novo Banco
-                </Button>
+                <div className="flex items-center gap-2">
+                  <Button size="sm" variant="outline" onClick={() => setIsTransferDialogOpen(true)} disabled={banks.length < 2}>
+                    <ArrowRightLeft className="h-4 w-4 mr-2" />
+                    Transferir
+                  </Button>
+                  <Button size="sm" onClick={() => {
+                    setBankForm({ name: "", bank_code: "", agency: "", account_number: "", initial_balance: "" });
+                    setBankDialog({ open: true, bank: null });
+                  }}>
+                    <Plus className="h-4 w-4 mr-2" />
+                    Novo Banco
+                  </Button>
+                </div>
               </div>
               <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
                 {banks.map((bank: any) => (
@@ -2378,6 +2423,59 @@ export default function AllRecurringChargesPage() {
         onOpenChange={setIsStatementOpen}
         formatCurrencyCents={formatCurrencyCents}
       />
+      {/* Transfer Dialog */}
+      <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5" />
+              Transferência entre Contas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Conta de Origem</Label>
+              <Select value={transferData.from_account_id} onValueChange={(v) => setTransferData(d => ({ ...d, from_account_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {banks.filter((b: any) => b.id !== transferData.to_account_id).map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name} ({formatCurrencyCents(b.current_balance_cents)})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Conta de Destino</Label>
+              <Select value={transferData.to_account_id} onValueChange={(v) => setTransferData(d => ({ ...d, to_account_id: v }))}>
+                <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                <SelectContent>
+                  {banks.filter((b: any) => b.id !== transferData.from_account_id).map((b: any) => (
+                    <SelectItem key={b.id} value={b.id}>{b.name} ({formatCurrencyCents(b.current_balance_cents)})</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div>
+              <Label>Valor (R$)</Label>
+              <Input type="number" step="0.01" min="0.01" placeholder="0,00" value={transferData.amount} onChange={(e) => setTransferData(d => ({ ...d, amount: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Data</Label>
+              <Input type="date" value={transferData.transfer_date} onChange={(e) => setTransferData(d => ({ ...d, transfer_date: e.target.value }))} />
+            </div>
+            <div>
+              <Label>Descrição (opcional)</Label>
+              <Input placeholder="Ex: Transferência operacional" value={transferData.description} onChange={(e) => setTransferData(d => ({ ...d, description: e.target.value }))} />
+            </div>
+            <div className="flex justify-end gap-2 pt-2">
+              <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>Cancelar</Button>
+              <Button onClick={handleBankTransfer} disabled={!transferData.from_account_id || !transferData.to_account_id || !transferData.amount}>
+                Transferir
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
