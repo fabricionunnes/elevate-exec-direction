@@ -18832,6 +18832,8 @@ export type Database = {
           product_variables: Json | null
           project_complexity: string | null
           reactivated_at: string | null
+          retention_notes: string | null
+          retention_status: string | null
           status: string
           updated_at: string
         }
@@ -18868,6 +18870,8 @@ export type Database = {
           product_variables?: Json | null
           project_complexity?: string | null
           reactivated_at?: string | null
+          retention_notes?: string | null
+          retention_status?: string | null
           status?: string
           updated_at?: string
         }
@@ -18904,6 +18908,8 @@ export type Database = {
           product_variables?: Json | null
           project_complexity?: string | null
           reactivated_at?: string | null
+          retention_notes?: string | null
+          retention_status?: string | null
           status?: string
           updated_at?: string
         }
