@@ -452,14 +452,17 @@ export const CRMLeadDetailPage = () => {
       // Enviar notificação para o grupo de WhatsApp (não bloqueia o fluxo principal)
       sendWonLeadNotification(lead.id)
         .then((result) => {
+          console.log("[WON NOTIFICATION] Result:", JSON.stringify(result));
           if (result.success) {
             toast.success("📱 Notificação enviada para o grupo!");
           } else if (result.error && result.error !== "Notificações desativadas" && result.error !== "Configuração incompleta") {
-            console.warn("Erro ao enviar notificação:", result.error);
+            console.error("[WON NOTIFICATION] Falha:", result.error);
+            toast.error("Erro ao enviar notificação: " + result.error);
           }
         })
         .catch((e) => {
-          console.warn("Erro ao enviar notificação:", e);
+          console.error("[WON NOTIFICATION] Exception:", e);
+          toast.error("Erro ao enviar notificação para o grupo");
         });
 
       setWonDialogOpen(false);
