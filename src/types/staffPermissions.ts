@@ -57,6 +57,7 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_billing_rules: "fin_billing_rules",
   fin_inbox: "fin_inbox",
   fin_whatsapp_instance: "fin_whatsapp_instance",
+  fin_company_detail: "fin_company_detail",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
@@ -87,6 +88,7 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_billing_rules, label: "Régua de Cobranças", description: "Acessar régua de cobranças automatizada", group: "Operacional" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_inbox, label: "Atendimentos", description: "Acessar inbox de atendimentos financeiros", group: "Operacional" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance, label: "Instância WhatsApp", description: "Gerenciar instâncias de WhatsApp", group: "Operacional" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_company_detail, label: "Financeiro da Empresa", description: "Acessar aba financeira nos detalhes da empresa", group: "Visão Geral" },
 ] as const;
 
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];
