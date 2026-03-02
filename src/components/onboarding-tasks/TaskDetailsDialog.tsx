@@ -405,23 +405,26 @@ export const TaskDetailsDialog = ({
       
       if (canEditAssignee) {
         // Handle assignee changes
-        // Staff (CS/Consultant) assigns to responsible_staff_id, Admin can do both
-        if (editedTask.assignee_id !== task.assignee_id && !updates.responsible_staff_id) {
+        const effectiveOldAssignee = task.responsible_staff?.id || task.assignee_id;
+        if (editedTask.assignee_id !== effectiveOldAssignee && !updates.responsible_staff_id) {
           const oldName = task.responsible_staff?.name || getUserName(task.assignee_id);
           const newName = getUserName(editedTask.assignee_id || null);
           historyPromises.push(logHistory("assign", "responsável", oldName, newName));
           
-          if (isStaffRole && editedTask.assignee_id) {
-            // Staff assigns to responsible_staff_id
-            updates.responsible_staff_id = editedTask.assignee_id;
-          } else if (isAdmin) {
-            // Admin: check if the ID is from staffList or users
+          if (editedTask.assignee_id) {
+            // Check if the selected ID belongs to staff or to a client user
             const isStaffId = staffList.some(s => s.id === editedTask.assignee_id);
             if (isStaffId) {
               updates.responsible_staff_id = editedTask.assignee_id;
+              updates.assignee_id = null; // Clear client assignee when assigning to staff
             } else {
-              updates.assignee_id = editedTask.assignee_id || null;
+              updates.assignee_id = editedTask.assignee_id;
+              updates.responsible_staff_id = null; // Clear staff assignee when delegating to client
             }
+          } else {
+            // Clearing assignee
+            updates.assignee_id = null;
+            updates.responsible_staff_id = null;
           }
         }
       }
