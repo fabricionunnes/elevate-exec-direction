@@ -17,6 +17,6 @@ export default defineConfig(({ mode }) => ({
     dedupe: ["react", "react-dom", "react/jsx-runtime"],
   },
   optimizeDeps: {
-    force: true,
+    include: ["react", "react-dom", "react-router-dom", "react/jsx-runtime"],
   },
 }));
