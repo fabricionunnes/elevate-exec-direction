@@ -14,6 +14,7 @@ export default function CheckoutPage() {
     linkId?: string;
     paymentMethod?: string;
     installments?: number;
+    provider?: string;
   } | null>(null);
 
   const linkId = searchParams.get("link_id");
@@ -21,6 +22,7 @@ export default function CheckoutPage() {
   const directProduct = searchParams.get("product") || "Pagamento";
   const directMethodParam = searchParams.get("method");
   const directInstallments = Number(searchParams.get("installments")) || 1;
+  const directProvider = searchParams.get("provider") || "pagarme";
 
   useEffect(() => {
     const resolveLinkData = async () => {
@@ -29,7 +31,7 @@ export default function CheckoutPage() {
 
         const { data, error } = await supabase
           .from("payment_links")
-          .select("id, description, amount_cents, payment_method, installments")
+          .select("id, description, amount_cents, payment_method, installments, provider")
           .eq("id", linkId)
           .maybeSingle();
 
@@ -40,6 +42,7 @@ export default function CheckoutPage() {
             linkId: (data as any).id,
             paymentMethod: (data as any).payment_method,
             installments: (data as any).installments,
+            provider: (data as any).provider || "pagarme",
           });
           setLoading(false);
           return;
@@ -52,6 +55,7 @@ export default function CheckoutPage() {
             linkId,
             paymentMethod: directMethodParam || undefined,
             installments: directInstallments,
+            provider: directProvider,
           });
         } else {
           setLinkData(null);
@@ -67,6 +71,7 @@ export default function CheckoutPage() {
           amountCents: directAmount,
           paymentMethod: directMethodParam || undefined,
           installments: directInstallments,
+          provider: directProvider,
         });
       } else {
         setLinkData(null);
@@ -74,7 +79,7 @@ export default function CheckoutPage() {
     };
 
     resolveLinkData();
-  }, [linkId, directAmount, directProduct, directMethodParam, directInstallments]);
+  }, [linkId, directAmount, directProduct, directMethodParam, directInstallments, directProvider]);
 
   if (loading) {
     return (
@@ -104,6 +109,7 @@ export default function CheckoutPage() {
         amountCents={linkData.amountCents}
         priceLabel={priceLabel}
         paymentLinkId={linkData.linkId}
+        provider={linkData.provider}
       />
       {!open && (
         <p className="text-muted-foreground">Pagamento fechado. Você pode fechar esta janela.</p>
