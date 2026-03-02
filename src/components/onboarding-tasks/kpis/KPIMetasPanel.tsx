@@ -15,6 +15,7 @@ import { UnitsTab } from "./UnitsTab";
 import { TeamsTab } from "./TeamsTab";
 import { SectorsTab } from "./SectorsTab";
 import { EndomarketingPanel } from "../endomarketing/EndomarketingPanel";
+import { ClientSalesLinksPanel } from "./ClientSalesLinksPanel";
 import { GamificationPanel } from "../gamification/GamificationPanel";
 import {
   DropdownMenu,
@@ -60,6 +61,7 @@ export const KPIMetasPanel = ({
   const [activeTab, setActiveTab] = useState(getDefaultTab());
   const [companyName, setCompanyName] = useState("");
   const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
+  const [showSalesLinks, setShowSalesLinks] = useState(false);
 
   useEffect(() => {
     fetchCompanyName();
@@ -129,6 +131,19 @@ export const KPIMetasPanel = ({
     );
   }
 
+  // Show sales links panel if active
+  if (showSalesLinks) {
+    return (
+      <div className="space-y-4 sm:space-y-6">
+        <ClientSalesLinksPanel
+          companyId={companyId}
+          onBack={() => setShowSalesLinks(false)}
+          canAddSalespeople={canAccessAllTabs || canSeeSalesLinks}
+        />
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-4 sm:space-y-6">
       {/* Header with public link */}
@@ -139,11 +154,18 @@ export const KPIMetasPanel = ({
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        {(canAccessAllTabs || canSeeSalesLinks) && (
+        {canAccessAllTabs && (
           <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
             <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Lançar</span>
             <span className="hidden sm:inline">Lançar Vendas</span>
+          </Button>
+        )}
+        {canSeeSalesLinks && !canAccessAllTabs && (
+          <Button variant="outline" size="sm" onClick={() => setShowSalesLinks(true)} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
+            <Link className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="sm:hidden">Links</span>
+            <span className="hidden sm:inline">Links de Lançamento</span>
           </Button>
         )}
       </div>
