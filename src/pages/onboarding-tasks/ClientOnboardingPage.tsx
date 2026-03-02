@@ -864,6 +864,7 @@ const ClientOnboardingPage = () => {
                 salespersonId={salespersonId}
                 canSeeDashboard={hasPermission(CLIENT_MENU_KEYS.kpis_dashboard)}
                 canSeeEndomarketing={hasPermission(CLIENT_MENU_KEYS.kpis_endomarketing)}
+                canSeeSalesLinks={hasPermission(CLIENT_MENU_KEYS.kpis_sales_links)}
               />
             </motion.div>
           )}
