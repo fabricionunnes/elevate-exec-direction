@@ -53,6 +53,7 @@ import {
 } from "@/components/ui/dropdown-menu";
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
+import { sendPaymentNotification } from "@/utils/paymentNotification";
 
 interface Receivable {
   id: string;
@@ -242,6 +243,11 @@ export function ReceivablesPanel() {
         .eq("id", selectedReceivable.id);
 
       if (error) throw error;
+
+      // Send payment notification to subscribers
+      const companyName = selectedReceivable.company?.name || "Empresa não identificada";
+      const paidAmount = parseFloat(paymentData.paid_amount) || selectedReceivable.amount;
+      sendPaymentNotification(companyName, paidAmount, selectedReceivable.description);
 
       toast.success("Pagamento registrado com sucesso!");
       setIsPayDialogOpen(false);

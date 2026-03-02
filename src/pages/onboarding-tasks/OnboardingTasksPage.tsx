@@ -2329,6 +2329,10 @@ const OnboardingTasksPage = () => {
                           <Upload className="h-4 w-4 mr-2" />
                           Importar
                         </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/payment-notifications")}>
+                          <Bell className="h-4 w-4 mr-2" />
+                          Notificações de Pagamento
+                        </DropdownMenuItem>
                       </DropdownMenuSubContent>
                     </DropdownMenuSub>
                   )}

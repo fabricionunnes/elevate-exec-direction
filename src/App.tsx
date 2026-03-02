@@ -97,6 +97,7 @@ import OnboardingServicesPage from "./pages/onboarding-tasks/OnboardingServicesP
 import OnboardingServiceTemplatesPage from "./pages/onboarding-tasks/OnboardingServiceTemplatesPage";
 import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulkTemplatesPage";
 import OnboardingImportPage from "./pages/onboarding-tasks/OnboardingImportPage";
+import PaymentNotificationsPage from "./pages/onboarding-tasks/PaymentNotificationsPage";
 import VirtualOfficePage from "./pages/onboarding-tasks/VirtualOfficePage";
 import CACFormPage from "./pages/onboarding-tasks/CACFormPage";
 import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
@@ -273,6 +274,7 @@ const App = () => (
               <Route path="/onboarding-tasks/services/bulk" element={<OnboardingBulkTemplatesPage />} />
               <Route path="/onboarding-tasks/services/:serviceSlug/templates" element={<OnboardingServiceTemplatesPage />} />
               <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
+              <Route path="/onboarding-tasks/payment-notifications" element={<PaymentNotificationsPage />} />
               <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
