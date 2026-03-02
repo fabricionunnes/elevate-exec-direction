@@ -218,6 +218,9 @@ export default function AllRecurringChargesPage() {
     open: false, invoiceId: "", action: "confirm", description: "",
   });
   const [manualFee, setManualFee] = useState("1.99");
+  const [manualDiscount, setManualDiscount] = useState("0");
+  const [manualInterest, setManualInterest] = useState("0");
+  const [manualPaidAmount, setManualPaidAmount] = useState("");
   const [selectedBankId, setSelectedBankId] = useState("none");
   const [banks, setBanks] = useState<any[]>([]);
   const [bankDialog, setBankDialog] = useState<{ open: boolean; bank: any | null }>({ open: false, bank: null });
@@ -534,29 +537,37 @@ export default function AllRecurringChargesPage() {
   };
 
   // Manual payment (baixa)
-  const handleManualPayment = async (invoiceId: string, feeCents: number, bankId: string | null) => {
+  const handleManualPayment = async (invoiceId: string, feeCents: number, bankId: string | null, discountCents: number = 0, interestCents: number = 0, customPaidCents?: number) => {
     setProcessingInvoiceId(invoiceId);
     try {
       const today = getLocalDateString();
       const inv = invoices.find(i => i.id === invoiceId);
-      const paidAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
-      const updateData: any = { status: "paid", paid_at: today, paid_amount_cents: paidAmount, payment_fee_cents: feeCents };
+      const baseAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
+      const totalDue = (baseAmount || 0) - discountCents + interestCents;
+      const previouslyPaid = inv?.paid_amount_cents || 0;
+      const paidNow = customPaidCents !== undefined ? customPaidCents : totalDue;
+      const accumulatedPaid = previouslyPaid + paidNow;
+      const isPartial = accumulatedPaid < (baseAmount || 0);
+      const newStatus = isPartial ? "partial" : "paid";
+      const updateData: any = { status: newStatus, paid_at: today, paid_amount_cents: accumulatedPaid, payment_fee_cents: feeCents };
       if (bankId) updateData.bank_id = bankId;
       const { error } = await supabase.from("company_invoices").update(updateData).eq("id", invoiceId);
       if (error) throw error;
-      if (bankId && paidAmount) {
-        const netAmount = paidAmount - feeCents;
-        await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: netAmount });
-        await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: netAmount, description: `Recebimento: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId } as any);
+      if (bankId && paidNow > 0) {
+        const netAmount = paidNow - feeCents;
+        if (netAmount > 0) {
+          await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: netAmount });
+          await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: netAmount, description: `Recebimento${isPartial ? " parcial" : ""}: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId } as any);
+        }
       }
       const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", { body: { invoice_id: invoiceId, action: "confirm" } });
-      if (fnError) { toast.success("Baixa local realizada (erro ao sincronizar com Asaas)"); }
-      else if (data?.skipped) { toast.success("Baixa realizada localmente"); }
-      else { toast.success("Baixa realizada e sincronizada com Asaas ✓"); }
+      if (fnError) { toast.success(isPartial ? "Baixa parcial realizada (erro ao sincronizar com Asaas)" : "Baixa local realizada (erro ao sincronizar com Asaas)"); }
+      else if (data?.skipped) { toast.success(isPartial ? "Baixa parcial realizada localmente" : "Baixa realizada localmente"); }
+      else { toast.success(isPartial ? "Baixa parcial realizada e sincronizada ✓" : "Baixa realizada e sincronizada com Asaas ✓"); }
       // Sync payment to Conta Azul
       const invAny = inv as any;
       if (invAny?.conta_azul_id) {
-        syncPaymentToContaAzul(invAny.conta_azul_id, "receivable", today, paidAmount ? paidAmount / 100 : undefined);
+        syncPaymentToContaAzul(invAny.conta_azul_id, "receivable", today, paidNow ? paidNow / 100 : undefined);
       }
       await loadData();
     } catch (err: any) {
@@ -565,6 +576,9 @@ export default function AllRecurringChargesPage() {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "confirm", description: "" });
       setManualFee("1.99");
+      setManualDiscount("0");
+      setManualInterest("0");
+      setManualPaidAmount("");
       setSelectedBankId("none");
     }
   };
@@ -2112,8 +2126,8 @@ export default function AllRecurringChargesPage() {
       </main>
 
       {/* Confirm Dialog */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { if (!open) { setConfirmDialog(prev => ({ ...prev, open: false })); setManualFee("1.99"); } }}>
-        <AlertDialogContent>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { if (!open) { setConfirmDialog(prev => ({ ...prev, open: false })); setManualFee("1.99"); setManualDiscount("0"); setManualInterest("0"); setManualPaidAmount(""); } }}>
+        <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.action === "confirm" ? "Confirmar Baixa Manual" : "Confirmar Estorno"}</AlertDialogTitle>
             <AlertDialogDescription>
@@ -2127,25 +2141,60 @@ export default function AllRecurringChargesPage() {
               <strong className="block mt-2">{confirmDialog.description}</strong>
             </AlertDialogDescription>
           </AlertDialogHeader>
-          {confirmDialog.action === "confirm" && (
-            <div className="px-6 pb-2 space-y-3">
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Banco (opcional)</label>
-                <Select value={selectedBankId} onValueChange={setSelectedBankId}>
-                  <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o banco" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="none">Nenhum</SelectItem>
-                    {banks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name} ({formatCurrencyCents(b.current_balance_cents)})</SelectItem>)}
-                  </SelectContent>
-                </Select>
+          {confirmDialog.action === "confirm" && (() => {
+            const inv = invoices.find(i => i.id === confirmDialog.invoiceId);
+            const baseAmount = inv?.status === "overdue" ? inv?.total_with_fees_cents : inv?.amount_cents;
+            const previouslyPaid = inv?.paid_amount_cents || 0;
+            const remaining = (baseAmount || 0) - previouslyPaid;
+            const discountCents = Math.round(parseFloat(manualDiscount || "0") * 100);
+            const interestCents = Math.round(parseFloat(manualInterest || "0") * 100);
+            const adjustedTotal = remaining - discountCents + interestCents;
+            return (
+              <div className="px-6 pb-2 space-y-3">
+                {previouslyPaid > 0 && (
+                  <div className="p-2 rounded-md bg-amber-50 dark:bg-amber-950/20 border border-amber-200 dark:border-amber-800 text-xs text-amber-700 dark:text-amber-400">
+                    Já pago anteriormente: <strong>{formatCurrencyCents(previouslyPaid)}</strong> — Saldo restante: <strong>{formatCurrencyCents(remaining)}</strong>
+                  </div>
+                )}
+                <div>
+                  <label className="text-sm font-medium mb-1.5 block">Banco (opcional)</label>
+                  <Select value={selectedBankId} onValueChange={setSelectedBankId}>
+                    <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o banco" /></SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="none">Nenhum</SelectItem>
+                      {banks.map((b: any) => <SelectItem key={b.id} value={b.id}>{b.name} ({formatCurrencyCents(b.current_balance_cents)})</SelectItem>)}
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div className="grid grid-cols-3 gap-2">
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Taxa (R$)</label>
+                    <Input type="number" step="0.01" min="0" value={manualFee} onChange={(e) => setManualFee(e.target.value)} placeholder="0.00" />
+                    <p className="text-xs text-muted-foreground mt-0.5">Padrão: R$ 1,99</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Desconto (R$)</label>
+                    <Input type="number" step="0.01" min="0" value={manualDiscount} onChange={(e) => setManualDiscount(e.target.value)} placeholder="0.00" />
+                    <p className="text-xs text-muted-foreground mt-0.5">Subtrai do valor</p>
+                  </div>
+                  <div>
+                    <label className="text-sm font-medium mb-1.5 block">Juros (R$)</label>
+                    <Input type="number" step="0.01" min="0" value={manualInterest} onChange={(e) => setManualInterest(e.target.value)} placeholder="0.00" />
+                    <p className="text-xs text-muted-foreground mt-0.5">Soma ao valor</p>
+                  </div>
+                </div>
+                <div className="pt-1 border-t">
+                  <div className="flex items-center justify-between text-sm mb-1.5">
+                    <span className="text-muted-foreground">Total ajustado:</span>
+                    <span className="font-bold">{formatCurrencyCents(Math.max(0, adjustedTotal))}</span>
+                  </div>
+                  <label className="text-sm font-medium mb-1.5 block">Valor pago (R$)</label>
+                  <Input type="number" step="0.01" min="0" value={manualPaidAmount} onChange={(e) => setManualPaidAmount(e.target.value)} placeholder={`${(Math.max(0, adjustedTotal) / 100).toFixed(2)} (total)`} />
+                  <p className="text-xs text-muted-foreground mt-0.5">Deixe vazio para baixar o total. Informe um valor menor para baixa parcial.</p>
+                </div>
               </div>
-              <div>
-                <label className="text-sm font-medium mb-1.5 block">Taxa cobrada (R$)</label>
-                <Input type="number" step="0.01" min="0" value={manualFee} onChange={(e) => setManualFee(e.target.value)} placeholder="0.00" className="w-40" />
-                <p className="text-xs text-muted-foreground mt-1">Informe a taxa do boleto/pix (padrão: R$ 1,99)</p>
-              </div>
-            </div>
-          )}
+            );
+          })()}
           <AlertDialogFooter>
             <AlertDialogCancel disabled={!!processingInvoiceId}>Cancelar</AlertDialogCancel>
             <AlertDialogAction
@@ -2153,7 +2202,16 @@ export default function AllRecurringChargesPage() {
               className={confirmDialog.action !== "confirm" ? "bg-destructive text-destructive-foreground hover:bg-destructive/90" : ""}
               onClick={() => {
                 if (confirmDialog.action === "confirm") {
-                  handleManualPayment(confirmDialog.invoiceId, Math.round(parseFloat(manualFee || "0") * 100), selectedBankId !== "none" ? selectedBankId : null);
+                  const feeCents = Math.round(parseFloat(manualFee || "0") * 100);
+                  const discountCents = Math.round(parseFloat(manualDiscount || "0") * 100);
+                  const interestCents = Math.round(parseFloat(manualInterest || "0") * 100);
+                  const inv = invoices.find(i => i.id === confirmDialog.invoiceId);
+                  const baseAmount = inv?.status === "overdue" ? inv?.total_with_fees_cents : inv?.amount_cents;
+                  const previouslyPaid = inv?.paid_amount_cents || 0;
+                  const remaining = (baseAmount || 0) - previouslyPaid;
+                  const adjustedTotal = remaining - discountCents + interestCents;
+                  const customPaid = manualPaidAmount ? Math.round(parseFloat(manualPaidAmount) * 100) : undefined;
+                  handleManualPayment(confirmDialog.invoiceId, feeCents, selectedBankId !== "none" ? selectedBankId : null, discountCents, interestCents, customPaid);
                 } else if (confirmDialog.action === "revert_payable") {
                   handleRevertPayable(confirmDialog.invoiceId);
                 } else {
