@@ -2,6 +2,7 @@ import { createRoot } from "react-dom/client";
 import App from "./App.tsx";
 import "./index.css";
 import { isCircleDomain } from "./lib/domainRouting";
+import { registerServiceWorker } from "./registerSW";
 
 // Redirect non-hash deep links to hash equivalents for public routes.
 // IMPORTANT: some apps (WhatsApp/Instagram) may drop URL fragments (#/...).
@@ -130,3 +131,6 @@ if (publicParam) {
 }
 
 createRoot(document.getElementById("root")!).render(<App />);
+
+// Register PWA Service Worker
+registerServiceWorker();
