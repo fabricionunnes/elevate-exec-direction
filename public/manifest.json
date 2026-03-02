@@ -2,10 +2,13 @@
   "name": "UNV Nexus",
   "short_name": "UNV Nexus",
   "description": "Sistema de Gestão de Onboarding e Customer Success",
-  "start_url": "/onboarding-tasks",
+  "start_url": "/#/onboarding-tasks",
+  "scope": "/",
   "display": "standalone",
+  "orientation": "portrait-primary",
   "background_color": "#0a1628",
   "theme_color": "#0a1628",
+  "categories": ["business", "productivity"],
   "icons": [
     {
       "src": "/icons/icon-192.png",
