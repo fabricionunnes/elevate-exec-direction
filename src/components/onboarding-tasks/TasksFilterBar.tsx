@@ -16,6 +16,7 @@ import {
   ArrowUp,
   ArrowDown,
   X,
+  User,
 } from "lucide-react";
 
 export type TaskStatusFilter = "all" | "pending" | "in_progress" | "completed" | "overdue";
@@ -29,12 +30,20 @@ interface TaskCounts {
   overdue: number;
 }
 
+interface StaffOption {
+  id: string;
+  name: string;
+}
+
 interface TasksFilterBarProps {
   statusFilter: TaskStatusFilter;
   onStatusFilterChange: (filter: TaskStatusFilter) => void;
   sortOrder: TaskSortOrder;
   onSortOrderChange: (order: TaskSortOrder) => void;
   counts: TaskCounts;
+  staffList?: StaffOption[];
+  responsibleFilter?: string;
+  onResponsibleFilterChange?: (staffId: string) => void;
 }
 
 export const TasksFilterBar = ({
@@ -43,6 +52,9 @@ export const TasksFilterBar = ({
   sortOrder,
   onSortOrderChange,
   counts,
+  staffList,
+  responsibleFilter,
+  onResponsibleFilterChange,
 }: TasksFilterBarProps) => {
   const filters: { value: TaskStatusFilter; label: string; icon: React.ReactNode; color: string }[] = [
     { value: "all", label: "Todas", icon: null, color: "bg-primary" },
@@ -53,6 +65,8 @@ export const TasksFilterBar = ({
   ];
 
   const getCount = (filter: TaskStatusFilter) => counts[filter];
+
+  const hasActiveFilters = statusFilter !== "all" || sortOrder !== "due_date_asc" || (responsibleFilter && responsibleFilter !== "all");
 
   return (
     <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3 flex-wrap">
@@ -87,8 +101,25 @@ export const TasksFilterBar = ({
         ))}
       </div>
 
-      {/* Sort order */}
-      <div className="flex items-center gap-2 ml-auto">
+      {/* Sort order + Responsible filter */}
+      <div className="flex items-center gap-2 ml-auto flex-wrap">
+        {/* Responsible filter */}
+        {staffList && staffList.length > 0 && onResponsibleFilterChange && (
+          <Select value={responsibleFilter || "all"} onValueChange={onResponsibleFilterChange}>
+            <SelectTrigger className="w-[180px] h-8 text-xs">
+              <User className="h-3 w-3 mr-1.5" />
+              <SelectValue placeholder="Responsável" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="unassigned">Sem responsável</SelectItem>
+              {staffList.map((s) => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
+
         <Select value={sortOrder} onValueChange={(v) => onSortOrderChange(v as TaskSortOrder)}>
           <SelectTrigger className="w-[180px] h-8 text-xs">
             <ArrowUpDown className="h-3 w-3 mr-1.5" />
@@ -111,7 +142,7 @@ export const TasksFilterBar = ({
         </Select>
 
         {/* Clear filters button */}
-        {(statusFilter !== "all" || sortOrder !== "due_date_asc") && (
+        {hasActiveFilters && (
           <Button
             variant="ghost"
             size="sm"
@@ -119,6 +150,7 @@ export const TasksFilterBar = ({
             onClick={() => {
               onStatusFilterChange("all");
               onSortOrderChange("due_date_asc");
+              onResponsibleFilterChange?.("all");
             }}
           >
             <X className="h-3 w-3 mr-1" />
