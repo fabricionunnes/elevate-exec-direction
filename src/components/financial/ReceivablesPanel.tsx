@@ -180,8 +180,11 @@ export function ReceivablesPanel() {
       setCompanies(companiesData || []);
       setCategories(categoriesData || []);
 
-      // Update overdue status
-      const today = format(new Date(), "yyyy-MM-dd");
+      // Update overdue status using local date to avoid timezone issues
+      const now = new Date();
+      const today = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+      
+      // Mark pending items with due_date BEFORE today as overdue
       const overdueIds = receivablesData
         ?.filter(r => r.status === "pending" && r.due_date < today)
         .map(r => r.id) || [];
@@ -193,11 +196,26 @@ export function ReceivablesPanel() {
           .in("id", overdueIds);
       }
 
-      // Update local state with corrected overdue statuses
+      // Repair: revert items incorrectly marked overdue when due_date is today or future
+      const repairIds = receivablesData
+        ?.filter(r => r.status === "overdue" && r.due_date >= today)
+        .map(r => r.id) || [];
+
+      if (repairIds.length > 0) {
+        await supabase
+          .from("financial_receivables")
+          .update({ status: "pending" })
+          .in("id", repairIds);
+      }
+
+      // Update local state with corrected statuses
       const overdueSet = new Set(overdueIds);
-      const correctedReceivables = enrichedReceivables.map(r =>
-        overdueSet.has(r.id) ? { ...r, status: "overdue" } : r
-      );
+      const repairSet = new Set(repairIds);
+      const correctedReceivables = enrichedReceivables.map(r => {
+        if (repairSet.has(r.id)) return { ...r, status: "pending" };
+        if (overdueSet.has(r.id)) return { ...r, status: "overdue" };
+        return r;
+      });
       setReceivables(correctedReceivables);
 
     } catch (error) {
