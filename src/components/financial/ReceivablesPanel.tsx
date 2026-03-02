@@ -177,7 +177,6 @@ export function ReceivablesPanel() {
         project_status: r.company_id ? projectStatusMap[r.company_id] || null : null
       }));
 
-      setReceivables(enrichedReceivables);
       setCompanies(companiesData || []);
       setCategories(categoriesData || []);
 
@@ -193,6 +192,13 @@ export function ReceivablesPanel() {
           .update({ status: "overdue" })
           .in("id", overdueIds);
       }
+
+      // Update local state with corrected overdue statuses
+      const overdueSet = new Set(overdueIds);
+      const correctedReceivables = enrichedReceivables.map(r =>
+        overdueSet.has(r.id) ? { ...r, status: "overdue" } : r
+      );
+      setReceivables(correctedReceivables);
 
     } catch (error) {
       console.error("Error loading receivables:", error);
