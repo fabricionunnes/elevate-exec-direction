@@ -7,6 +7,7 @@ function getLocalDateString(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
+import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
@@ -569,6 +570,9 @@ export default function AllRecurringChargesPage() {
       if (invAny?.conta_azul_id) {
         syncPaymentToContaAzul(invAny.conta_azul_id, "receivable", today, paidNow ? paidNow / 100 : undefined);
       }
+      // Send payment notification to subscribers
+      const companyName = inv?.company_name || "Empresa";
+      sendPaymentNotification(companyName, paidNow / 100, inv?.description);
       await loadData();
     } catch (err: any) {
       toast.error("Erro ao dar baixa: " + (err.message || "erro"));
