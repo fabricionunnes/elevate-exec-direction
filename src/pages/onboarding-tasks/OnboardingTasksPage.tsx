@@ -1,6 +1,7 @@
 import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { STAFF_MENU_KEYS } from "@/types/staffPermissions";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
@@ -113,6 +114,7 @@ const OnboardingTasksPage = () => {
   const [currentUserEmail, setCurrentUserEmail] = useState<string | null>(null);
   const [hasCRMPermission, setHasCRMPermission] = useState<boolean>(false);
   const [hasFinancialPermission, setHasFinancialPermission] = useState<boolean>(false);
+  const [staffMenuPermissions, setStaffMenuPermissions] = useState<string[]>([]);
   
   // Filter states
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
@@ -526,28 +528,21 @@ const OnboardingTasksPage = () => {
             setFilterConsultant(staffMember.id);
           }
 
-          // Check CRM permission - master has automatic access, others need explicit permission
+          // Check all menu permissions
           if (normalizedRole === "master") {
             setHasCRMPermission(true);
             setHasFinancialPermission(true);
+            setStaffMenuPermissions(Object.values(STAFF_MENU_KEYS));
           } else {
-            const [crmPermRes, finPermRes] = await Promise.all([
-              supabase
-                .from("staff_menu_permissions")
-                .select("id")
-                .eq("staff_id", staffMember.id)
-                .eq("menu_key", "crm")
-                .maybeSingle(),
-              supabase
-                .from("staff_menu_permissions")
-                .select("id")
-                .eq("staff_id", staffMember.id)
-                .eq("menu_key", "financial")
-                .maybeSingle(),
-            ]);
+            const { data: allPerms } = await supabase
+              .from("staff_menu_permissions")
+              .select("menu_key")
+              .eq("staff_id", staffMember.id);
             
-            setHasCRMPermission(!!crmPermRes.data);
-            setHasFinancialPermission(!!finPermRes.data);
+            const permKeys = (allPerms || []).map(p => p.menu_key);
+            setStaffMenuPermissions(permKeys);
+            setHasCRMPermission(permKeys.includes("crm"));
+            setHasFinancialPermission(permKeys.includes("financial"));
           }
         }
       }
@@ -1825,9 +1820,16 @@ const OnboardingTasksPage = () => {
   const isConsultant = currentUserRole === "consultant";
   const canCreateCompany = isAdmin || isCS;
   const canAccessAnalytics = isAdmin || isCS || isConsultant;
-  // CRM access: master has automatic access, others need explicit permission in staff_menu_permissions
+  // Permission helper: master has all, others check staff_menu_permissions
+  const hasMenuPerm = (key: string) => isMaster || staffMenuPermissions.includes(key);
   const canAccessCRM = hasCRMPermission;
   const canAccessFinancial = isAdmin || hasFinancialPermission;
+  const canAccessResults = hasMenuPerm("results");
+  const canAccessCircle = hasMenuPerm("circle");
+  const canAccessCalendar = hasMenuPerm("calendar");
+  const canAccessHR = hasMenuPerm("hr");
+  const canAccessAcademy = hasMenuPerm("academy");
+  const canAccessAnnouncements = hasMenuPerm("announcements");
 
   if (loading) {
     return (
@@ -1985,14 +1987,14 @@ const OnboardingTasksPage = () => {
                       CRM Comercial
                     </DropdownMenuItem>
                   )}
-                  {(currentUserRole === "cs" || currentUserRole === "consultant") && (
+                  {canAccessResults && !isAdmin && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/results")}>
                       <BarChart3 className="h-4 w-4 mr-2" />
                       Resultados
                     </DropdownMenuItem>
                   )}
-                  {/* UNV Circle - visible for all staff */}
-                  {currentUserRole && (
+                  {/* UNV Circle - permission-gated */}
+                  {canAccessCircle && (
                     <DropdownMenuItem onClick={() => navigate("/circle")}>
                       <Sparkles className="h-4 w-4 mr-2" />
                       UNV Circle
@@ -2158,7 +2160,7 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
             {/* Reuniões button - visible for all staff */}
-            {currentUserRole && currentStaffId && (
+            {canAccessCalendar && currentStaffId && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -2169,8 +2171,8 @@ const OnboardingTasksPage = () => {
                 Reuniões
               </Button>
             )}
-            {/* Resultados button - visible for all staff (admin, cs, consultant) */}
-            {currentUserRole && (
+            {/* Resultados button - permission-gated */}
+            {canAccessResults && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -2181,8 +2183,8 @@ const OnboardingTasksPage = () => {
                 Resultados
               </Button>
             )}
-            {/* UNV Circle button - visible for all staff */}
-            {currentUserRole && (
+            {/* UNV Circle button - permission-gated */}
+            {canAccessCircle && (
               <Button 
                 variant="outline" 
                 size="sm" 
@@ -2193,8 +2195,8 @@ const OnboardingTasksPage = () => {
                 UNV Circle
               </Button>
             )}
-            {/* Vagas (RH) button - visible for admin, cs, consultant, rh */}
-            {(isAdmin || isCS || currentUserRole === "consultant" || currentUserRole === "rh") && (
+            {/* Vagas (RH) button - permission-gated */}
+            {canAccessHR && (
               <Button 
                 variant="outline" 
                 size="sm" 
