@@ -1573,7 +1573,16 @@ export default function AllRecurringChargesPage() {
                                   }}
                                 />
                               </TableCell>
-                              <TableCell className="font-medium text-sm">{inv.company_name}</TableCell>
+                              <TableCell className="font-medium text-sm">
+                                <button
+                                  type="button"
+                                  className="text-left hover:text-primary hover:underline transition-colors cursor-pointer"
+                                  onClick={() => inv.company_id && navigate(`/onboarding-tasks/companies/${inv.company_id}?tab=financial`)}
+                                  title="Ver financeiro da empresa"
+                                >
+                                  {inv.company_name}
+                                </button>
+                              </TableCell>
                               <TableCell className="max-w-[200px] truncate text-sm">{inv.description}</TableCell>
                               <TableCell className="text-center text-sm">{inv.installment_number}/{inv.total_installments}</TableCell>
                               <TableCell className="text-right font-semibold">{formatCurrencyCents(displayAmount)}</TableCell>
