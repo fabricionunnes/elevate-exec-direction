@@ -399,11 +399,15 @@ export function ReceivablesPanel() {
   const getStatusBadge = (status: string, dueDate?: string) => {
     const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD
     const isDueToday = dueDate === todayStr && status === "pending";
+    const isPastDue = dueDate && dueDate < todayStr && status === "pending";
 
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
       case "pending":
+        if (isPastDue) {
+          return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
+        }
         if (isDueToday) {
           return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Vence Hoje</Badge>;
         }
@@ -480,9 +484,10 @@ export function ReceivablesPanel() {
   });
 
   // Calculate totals based on filtered data
+  const todayForTotals = format(new Date(), "yyyy-MM-dd");
   const totals = {
-    pending: filteredReceivables.filter(r => r.status === "pending").reduce((sum, r) => sum + Number(r.amount), 0),
-    overdue: filteredReceivables.filter(r => r.status === "overdue").reduce((sum, r) => sum + Number(r.amount), 0),
+    pending: filteredReceivables.filter(r => r.status === "pending" && !(r.due_date < todayForTotals)).reduce((sum, r) => sum + Number(r.amount), 0),
+    overdue: filteredReceivables.filter(r => r.status === "overdue" || (r.status === "pending" && r.due_date < todayForTotals)).reduce((sum, r) => sum + Number(r.amount), 0),
     paid: filteredReceivables.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
   };
 
