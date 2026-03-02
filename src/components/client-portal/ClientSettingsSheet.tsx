@@ -18,6 +18,7 @@ interface ClientSettingsSheetProps {
   userRole?: string;
   projectId?: string;
   companyId?: string;
+  canManageUsers?: boolean;
 }
 
 export const ClientSettingsSheet = ({
@@ -28,6 +29,7 @@ export const ClientSettingsSheet = ({
   userRole,
   projectId,
   companyId,
+  canManageUsers: canManageUsersProp,
 }: ClientSettingsSheetProps) => {
   const [avatarUrl, setAvatarUrl] = useState<string | null>(null);
   const [newPassword, setNewPassword] = useState("");
@@ -35,8 +37,8 @@ export const ClientSettingsSheet = ({
   const [showNewPassword, setShowNewPassword] = useState(false);
   const [loading, setLoading] = useState(false);
 
-  // Only client and gerente can manage users
-  const canManageUsers = userRole === "client" || userRole === "gerente";
+  // Use prop if provided, otherwise fall back to role-based check
+  const canManageUsers = canManageUsersProp !== undefined ? canManageUsersProp : (userRole === "client" || userRole === "gerente");
 
   useEffect(() => {
     if (open) {

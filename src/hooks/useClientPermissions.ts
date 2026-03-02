@@ -18,6 +18,7 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
   const [permissions, setPermissions] = useState<string[]>([]);
   const [projectEnabledMenus, setProjectEnabledMenus] = useState<Set<string> | null>(null);
+  const [projectAllKeys, setProjectAllKeys] = useState<Set<string> | null>(null);
 
   useEffect(() => {
     if (!projectId) {
@@ -51,14 +52,17 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
 
         // Process project-level menu permissions
         if (projectMenuResult.data && projectMenuResult.data.length > 0) {
+          const allKeys = new Set(projectMenuResult.data.map((p) => p.menu_key));
           const enabled = new Set(
             projectMenuResult.data
               .filter((p) => p.is_enabled)
               .map((p) => p.menu_key)
           );
+          setProjectAllKeys(allKeys);
           setProjectEnabledMenus(enabled);
         } else {
           // No config = all menus enabled
+          setProjectAllKeys(null);
           setProjectEnabledMenus(null);
         }
 
@@ -102,8 +106,14 @@ export function useClientPermissions(projectId: string | undefined): UseClientPe
   const hasPermission = (menuKey: ClientMenuKey | string): boolean => {
     if (!currentUser) return false;
     // Check project-level permissions first - if menu is disabled at project level, deny
+    // But only deny if the key was explicitly configured (exists in the saved config)
     if (projectEnabledMenus !== null && !projectEnabledMenus.has(menuKey)) {
-      return false;
+      // If the key was never saved in project config, allow it by default (new keys)
+      // We check if the key exists in any form in the saved data
+      if (projectAllKeys !== null && projectAllKeys.has(menuKey)) {
+        return false;
+      }
+      // Key not in saved config at all - allow by default (new permission added after config was saved)
     }
     // Full access roles
     if (isFullAccess) return true;
