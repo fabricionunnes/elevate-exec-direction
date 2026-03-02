@@ -1662,6 +1662,19 @@ const OnboardingProjectPage = () => {
                 onDeleteTask={handleDeleteTask}
                 canDelete={isAdmin}
                 onPhaseRename={canAddTasks ? handlePhaseRename : undefined}
+                staffList={staffList}
+                onBulkReassign={canAddTasks ? async (taskIds, staffId) => {
+                  const { error } = await supabase
+                    .from("onboarding_tasks")
+                    .update({ responsible_staff_id: staffId })
+                    .in("id", taskIds);
+                  if (error) {
+                    toast.error("Erro ao atualizar responsável");
+                    throw error;
+                  }
+                  toast.success(`${taskIds.length} tarefa(s) atualizada(s)`);
+                  await fetchProjectData();
+                } : undefined}
               />
             )}
 

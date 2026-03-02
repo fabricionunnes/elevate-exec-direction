@@ -2,6 +2,7 @@ import { useState, useRef, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Badge } from "@/components/ui/badge";
 import { Progress } from "@/components/ui/progress";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   CheckCircle2,
   Circle,
@@ -15,6 +16,8 @@ import {
   Pencil,
   AlertCircle,
   User,
+  Users,
+  X,
 } from "lucide-react";
 import { isPast, isToday } from "date-fns";
 import { formatDateLocal, parseDateLocal } from "@/lib/dateUtils";
@@ -25,6 +28,13 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 
 interface OnboardingTask {
   id: string;
@@ -60,6 +70,8 @@ interface TasksListViewProps {
   onDeleteTask?: (taskId: string) => void;
   canDelete?: boolean;
   onPhaseRename?: (oldName: string, newName: string) => void;
+  staffList?: { id: string; name: string; role?: string }[];
+  onBulkReassign?: (taskIds: string[], staffId: string) => Promise<void>;
 }
 
 // Color schemes for different phases
@@ -91,11 +103,51 @@ export const TasksListView = ({
   onStatusChange, 
   onDeleteTask,
   canDelete = false,
-  onPhaseRename
+  onPhaseRename,
+  staffList,
+  onBulkReassign,
 }: TasksListViewProps) => {
   const [editingPhase, setEditingPhase] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
   const editInputRef = useRef<HTMLInputElement>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+  const [bulkStaffId, setBulkStaffId] = useState<string>("");
+  const [isBulkLoading, setIsBulkLoading] = useState(false);
+
+  const bulkEnabled = !!staffList && !!onBulkReassign;
+
+  const toggleTaskSelection = (taskId: string, e?: React.MouseEvent) => {
+    e?.stopPropagation();
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
+
+  const togglePhaseSelection = (phase: TaskPhase, e: React.MouseEvent) => {
+    e.stopPropagation();
+    const phaseTaskIds = phase.tasks.map(t => t.id);
+    const allSelected = phaseTaskIds.every(id => selectedTaskIds.has(id));
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      phaseTaskIds.forEach(id => allSelected ? next.delete(id) : next.add(id));
+      return next;
+    });
+  };
+
+  const handleBulkReassign = async () => {
+    if (!bulkStaffId || selectedTaskIds.size === 0 || !onBulkReassign) return;
+    setIsBulkLoading(true);
+    try {
+      await onBulkReassign(Array.from(selectedTaskIds), bulkStaffId);
+      setSelectedTaskIds(new Set());
+      setBulkStaffId("");
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
 
   useEffect(() => {
     if (editingPhase && editInputRef.current) {
@@ -156,6 +208,52 @@ export const TasksListView = ({
         <Progress value={overallProgress} className="h-1.5 sm:h-2" />
       </motion.div>
 
+      {/* Bulk Action Bar */}
+      <AnimatePresence>
+        {bulkEnabled && selectedTaskIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 sm:p-4 rounded-xl border bg-primary/5 border-primary/20 flex flex-wrap items-center gap-3"
+          >
+            <div className="flex items-center gap-2 text-sm font-medium">
+              <Users className="h-4 w-4 text-primary" />
+              <span>{selectedTaskIds.size} tarefa{selectedTaskIds.size > 1 ? 's' : ''} selecionada{selectedTaskIds.size > 1 ? 's' : ''}</span>
+            </div>
+            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
+              <Select value={bulkStaffId} onValueChange={setBulkStaffId}>
+                <SelectTrigger className="h-8 text-xs w-[200px]">
+                  <SelectValue placeholder="Novo responsável..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {staffList?.map(s => (
+                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <Button
+                size="sm"
+                onClick={handleBulkReassign}
+                disabled={!bulkStaffId || isBulkLoading}
+                className="h-8 text-xs"
+              >
+                {isBulkLoading ? "Aplicando..." : "Aplicar"}
+              </Button>
+            </div>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => { setSelectedTaskIds(new Set()); setBulkStaffId(""); }}
+              className="h-8 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Limpar
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       {/* Phases List */}
       <div className="space-y-3 sm:space-y-4">
         {phases.map((phase, phaseIndex) => {
@@ -184,6 +282,15 @@ export const TasksListView = ({
                 `}
               >
                 <div className="flex items-center gap-2.5 sm:gap-4">
+                  {/* Phase Select All Checkbox */}
+                  {bulkEnabled && (
+                    <Checkbox
+                      checked={phase.tasks.length > 0 && phase.tasks.every(t => selectedTaskIds.has(t.id))}
+                      onCheckedChange={() => {}}
+                      onClick={(e) => togglePhaseSelection(phase, e)}
+                      className="flex-shrink-0"
+                    />
+                  )}
                   {/* Phase Number */}
                   <div className={`
                     w-8 h-8 sm:w-10 sm:h-10 rounded-full flex items-center justify-center font-bold text-white text-sm sm:text-base
@@ -282,6 +389,15 @@ export const TasksListView = ({
                               }
                             `}
                           >
+                            {/* Bulk Selection Checkbox */}
+                            {bulkEnabled && (
+                              <Checkbox
+                                checked={selectedTaskIds.has(task.id)}
+                                onCheckedChange={() => {}}
+                                onClick={(e) => toggleTaskSelection(task.id, e)}
+                                className="flex-shrink-0"
+                              />
+                            )}
                             {/* Status Button */}
                             <motion.button
                               whileHover={{ scale: 1.1 }}
