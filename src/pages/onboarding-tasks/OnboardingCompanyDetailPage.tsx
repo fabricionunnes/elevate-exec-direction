@@ -1,5 +1,5 @@
 import { useState, useEffect, useRef } from "react";
-import { useParams, useNavigate } from "react-router-dom";
+import { useParams, useNavigate, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -117,7 +117,9 @@ const OnboardingCompanyDetailPage = () => {
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
-  const [activeTab, setActiveTab] = useState("info");
+  const [searchParams] = useSearchParams();
+  const initialTab = searchParams.get("tab") || "info";
+  const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const originalStatusRef = useRef<string>("active");
   
