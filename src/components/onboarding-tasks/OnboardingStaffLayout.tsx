@@ -117,11 +117,7 @@ export const OnboardingStaffLayout = () => {
         setStaffRole(null);
         setAuthChecked(true);
 
-        // Redirect commercial roles to CRM as home page
-        const commercialRoles = ["head_comercial", "closer", "sdr"];
-        if (staff && commercialRoles.includes(staff.role) && location.pathname === "/onboarding-tasks") {
-          navigate("/crm");
-        }
+        // Commercial role redirect is now handled at login time
       } catch (error) {
         console.error("Error in checkStaffStatus:", error);
         if (isMounted) {

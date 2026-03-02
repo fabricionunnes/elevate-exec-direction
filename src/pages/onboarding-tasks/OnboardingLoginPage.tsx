@@ -58,12 +58,44 @@ const OnboardingLoginPage = () => {
         if (staffMember) {
           // Staff member found - redirect to appropriate page
           toast.success(`Bem-vindo, ${staffMember.name}!`);
-          // If there's a redirect URL, use it; otherwise go to default
+          // If there's a redirect URL, use it
           if (redirectTo) {
             navigate(redirectTo);
-          } else {
-            navigate("/onboarding-tasks");
+            return;
           }
+
+          // For master/admin, go to default dashboard
+          if (staffMember.role === "master" || staffMember.role === "admin") {
+            navigate("/onboarding-tasks");
+            return;
+          }
+
+          // Query permissions to determine the best landing page
+          const { data: perms } = await supabase
+            .from("staff_menu_permissions")
+            .select("menu_key")
+            .eq("staff_id", staffMember.id);
+
+          const permKeys = (perms || []).map((p: any) => p.menu_key);
+
+          // If ONLY has CRM permission → go to CRM
+          if (permKeys.includes("crm") && !permKeys.includes("financial") && !permKeys.some((k: string) => !["crm"].includes(k))) {
+            navigate("/crm");
+            return;
+          }
+          // If ONLY has financial permission → go to financial
+          if (permKeys.includes("financial") && !permKeys.includes("crm") && !permKeys.some((k: string) => !["financial"].includes(k) && !k.startsWith("fin_"))) {
+            navigate("/onboarding-tasks/financial");
+            return;
+          }
+          // If has CRM among permissions (commercial roles), prefer CRM
+          const commercialRoles = ["head_comercial", "closer", "sdr", "social_setter", "bdr"];
+          if (commercialRoles.includes(staffMember.role) && permKeys.includes("crm")) {
+            navigate("/crm");
+            return;
+          }
+
+          navigate("/onboarding-tasks");
           return;
         }
 
