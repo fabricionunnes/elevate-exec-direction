@@ -1885,7 +1885,7 @@ const OnboardingTasksPage = () => {
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-48">
+                <DropdownMenuContent align="end" className="w-52 max-h-[70vh] overflow-y-auto">
                   {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
                       <Building2 className="h-4 w-4 mr-2" />
