@@ -7,184 +7,10 @@ import { HashRouter, Routes, Route } from "react-router-dom";
 import { ScrollToTop } from "./components/ScrollToTop";
 import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
+import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
+
+// Only HomePage is eager – everything else is lazy
 import HomePage from "./pages/HomePage";
-import HowItWorksPage from "./pages/HowItWorksPage";
-import ProductsPage from "./pages/ProductsPage";
-import SalesAccelerationPage from "./pages/SalesAccelerationPage";
-import CorePage from "./pages/CorePage";
-import ControlPage from "./pages/ControlPage";
-import GrowthRoomPage from "./pages/GrowthRoomPage";
-import PartnersPage from "./pages/PartnersPage";
-import SalesOpsPage from "./pages/SalesOpsPage";
-import AISalesSystemPage from "./pages/AISalesSystemPage";
-import FractionalCROPage from "./pages/FractionalCROPage";
-import ExecutionPartnershipPage from "./pages/ExecutionPartnershipPage";
-import AdsPage from "./pages/AdsPage";
-import SocialPage from "./pages/SocialPage";
-import SalesForcePage from "./pages/SalesForcePage";
-import MastermindPage from "./pages/MastermindPage";
-import MastermindApplyPage from "./pages/MastermindApplyPage";
-import MastermindApplicationsPage from "./pages/MastermindApplicationsPage";
-import LeadershipPage from "./pages/LeadershipPage";
-import LeDesirPage from "./pages/LeDesirPage";
-import FinancePage from "./pages/FinancePage";
-import PeoplePage from "./pages/PeoplePage";
-import SafePage from "./pages/SafePage";
-import ForClosersPage from "./pages/ForClosersPage";
-import ClientDiagnosticPage from "./pages/ClientDiagnosticPage";
-import ApplyPage from "./pages/ApplyPage";
-import FAQPage from "./pages/FAQPage";
-import TermsPage from "./pages/TermsPage";
-import ComparePage from "./pages/ComparePage";
-import PricingPage from "./pages/PricingPage";
-import DiagnosticResponsesPage from "./pages/DiagnosticResponsesPage";
-import AdminSetupPage from "./pages/AdminSetupPage";
-import AdminPage from "./pages/AdminPage";
-import NotFound from "./pages/NotFound";
-import PaymentLinkPage from "./pages/PaymentLinkPage";
-import RecebimentosPage from "./pages/RecebimentosPage";
-import CheckoutPage from "./pages/CheckoutPage";
-import PublicInvoicePage from "./pages/PublicInvoicePage";
-import InstagramOAuthCallback from "./pages/InstagramOAuthCallback";
-import SocialInstagramCallback from "./pages/social/SocialInstagramCallback";
-
-// Portal pages
-import PortalLandingPage from "./pages/portal/PortalLandingPage";
-import PortalLoginPage from "./pages/portal/PortalLoginPage";
-import PortalSignupPage from "./pages/portal/PortalSignupPage";
-import PortalAppLayout from "./pages/portal/PortalAppLayout";
-import PortalHomePage from "./pages/portal/PortalHomePage";
-import PortalPlanningWizard from "./pages/portal/PortalPlanningWizard";
-import PortalDashboardPage from "./pages/portal/PortalDashboardPage";
-import PortalConfigPage from "./pages/portal/PortalConfigPage";
-import PortalCoachPage from "./pages/portal/PortalCoachPage";
-import PortalExecutionPage from "./pages/portal/PortalExecutionPage";
-import PortalAdminPage from "./pages/portal/PortalAdminPage";
-import PortalPlanVersionPage from "./pages/portal/PortalPlanVersionPage";
-import PortalStrategiesPage from "./pages/portal/PortalStrategiesPage";
-
-// System Showcase
-import SystemShowcasePage from "./pages/SystemShowcasePage";
-
-// UNV Circle
-import CircleLayout from "./pages/circle/CircleLayout";
-import CircleFeedPage from "./pages/circle/CircleFeedPage";
-import CircleStoriesPage from "./pages/circle/CircleStoriesPage";
-import CircleCommunitiesPage from "./pages/circle/CircleCommunitiesPage";
-import CircleMarketplacePage from "./pages/circle/CircleMarketplacePage";
-import CircleRankingPage from "./pages/circle/CircleRankingPage";
-import CircleProfilePage from "./pages/circle/CircleProfilePage";
-import CircleNotificationsPage from "./pages/circle/CircleNotificationsPage";
-import CircleCommunityDetailPage from "./pages/circle/CircleCommunityDetailPage";
-import CircleSettingsPage from "./pages/circle/CircleSettingsPage";
-import CircleMessagesPage from "./components/circle/CircleMessagesPage";
-import CircleMentorPage from "./pages/circle/CircleMentorPage";
-import CircleSavedPostsPage from "./pages/circle/CircleSavedPostsPage";
-import CircleAdsPage from "./pages/circle/CircleAdsPage";
-import CircleAuthPage from "./pages/circle/CircleAuthPage";
-// Onboarding pages
-import OnboardingPage from "./pages/OnboardingPage";
-import OnboardingProductPage from "./pages/OnboardingProductPage";
-import OnboardingTasksPage from "./pages/onboarding-tasks/OnboardingTasksPage";
-import OnboardingProjectPage from "./pages/onboarding-tasks/OnboardingProjectPage";
-import OnboardingCompaniesPage from "./pages/onboarding-tasks/OnboardingCompaniesPage";
-import OnboardingCompanyDetailPage from "./pages/onboarding-tasks/OnboardingCompanyDetailPage";
-import OnboardingStaffPage from "./pages/onboarding-tasks/OnboardingStaffPage";
-import ClientOnboardingPage from "./pages/onboarding-tasks/ClientOnboardingPage";
-import OnboardingLoginPage from "./pages/onboarding-tasks/OnboardingLoginPage";
-import OnboardingNewCompanyPage from "./pages/onboarding-tasks/OnboardingNewCompanyPage";
-import OnboardingServicesPage from "./pages/onboarding-tasks/OnboardingServicesPage";
-import OnboardingServiceTemplatesPage from "./pages/onboarding-tasks/OnboardingServiceTemplatesPage";
-import OnboardingBulkTemplatesPage from "./pages/onboarding-tasks/OnboardingBulkTemplatesPage";
-import OnboardingImportPage from "./pages/onboarding-tasks/OnboardingImportPage";
-import PaymentNotificationsPage from "./pages/onboarding-tasks/PaymentNotificationsPage";
-import VirtualOfficePage from "./pages/onboarding-tasks/VirtualOfficePage";
-import CACFormPage from "./pages/onboarding-tasks/CACFormPage";
-import RescheduleTasks from "./pages/onboarding-tasks/RescheduleTasks";
-import KickoffFormPage from "./pages/onboarding-tasks/KickoffFormPage";
-import OnboardingRenewalsPage from "./pages/onboarding-tasks/OnboardingRenewalsPage";
-import OnboardingActivityHistoryPage from "./pages/onboarding-tasks/OnboardingActivityHistoryPage";
-import OnboardingCompaniesReportPage from "./pages/onboarding-tasks/OnboardingCompaniesReportPage";
-import OnboardingResultsPage from "./pages/onboarding-tasks/OnboardingResultsPage";
-import KPIEntryPage from "./pages/onboarding-tasks/KPIEntryPage";
-import NPSSurveyPage from "./pages/NPSSurveyPage";
-import CSATSurveyPage from "./pages/CSATSurveyPage";
-import LegacyDiscRedirect from "./pages/assessments/LegacyDiscRedirect";
-import Assessment360Page from "./pages/assessments/Assessment360Page";
-import AssessmentReportsPage from "./pages/assessments/AssessmentReportsPage";
-import UnifiedAssessmentPage from "./pages/assessments/UnifiedAssessmentPage";
-import HrCandidateDiscPage from "./pages/hr-recruitment/HrCandidateDiscPage";
-import PublicJobApplicationPage from "./pages/hr-recruitment/PublicJobApplicationPage";
-import PublicTalentPoolPage from "./pages/hr-recruitment/PublicTalentPoolPage";
-import CultureFormPage from "./pages/hr-recruitment/CultureFormPage";
-import PublicCareerPlanFormPage from "./pages/hr-recruitment/PublicCareerPlanFormPage";
-import SocialBriefingPublicPage from "./pages/public/SocialBriefingPublicPage";
-import HealthScorePage from "./pages/onboarding-tasks/HealthScorePage";
-import FinancialModulePage from "./pages/onboarding-tasks/FinancialModulePage";
-import AllRecurringChargesPage from "./pages/onboarding-tasks/AllRecurringChargesPage";
-import WhatsAppAdminPage from "./pages/onboarding-tasks/WhatsAppAdminPage";
-import ClientDisparadorPage from "./pages/disparador/ClientDisparadorPage";
-import ChurnPredictionPage from "./pages/onboarding-tasks/ChurnPredictionPage";
-import CohortRetentionPage from "./pages/onboarding-tasks/CohortRetentionPage";
-import ConsultantEngagementPage from "./pages/onboarding-tasks/ConsultantEngagementPage";
-import ExecutiveDashboardPage from "./pages/onboarding-tasks/ExecutiveDashboardPage";
-import CEODashboardPage from "./pages/onboarding-tasks/CEODashboardPage";
-import LeaderDashboardPage from "./pages/onboarding-tasks/LeaderDashboardPage";
-import GlobalJobOpeningsPage from "./pages/onboarding-tasks/GlobalJobOpeningsPage";
-import GlobalTalentPoolResumesPage from "./pages/onboarding-tasks/GlobalTalentPoolResumesPage";
-import HotseatAdminPage from "./pages/onboarding-tasks/HotseatAdminPage";
-import HotseatFormPage from "./pages/HotseatFormPage";
-import ClientAccessReportPage from "./pages/onboarding-tasks/ClientAccessReportPage";
-import BillingRulesPage from "./pages/onboarding-tasks/BillingRulesPage";
-import ContractGeneratorPage from "./pages/onboarding-tasks/ContractGeneratorPage";
-import { OnboardingStaffLayout } from "./components/onboarding-tasks/OnboardingStaffLayout";
-
-// Academy pages
-import AcademyLayout from "./pages/academy/AcademyLayout";
-import AcademyHomePage from "./pages/academy/AcademyHomePage";
-import AcademyTracksPage from "./pages/academy/AcademyTracksPage";
-import AcademyTrackDetailPage from "./pages/academy/AcademyTrackDetailPage";
-import AcademyLessonPage from "./pages/academy/AcademyLessonPage";
-import AcademyProgressPage from "./pages/academy/AcademyProgressPage";
-import AcademyRankingPage from "./pages/academy/AcademyRankingPage";
-import AcademyQuizPage from "./pages/academy/AcademyQuizPage";
-import AcademyQuizzesListPage from "./pages/academy/AcademyQuizzesListPage";
-import AcademyTeamPage from "./pages/academy/AcademyTeamPage";
-import AcademyAdminContentPage from "./pages/academy/admin/AcademyAdminContentPage";
-import AcademyAdminQuizzesPage from "./pages/academy/admin/AcademyAdminQuizzesPage";
-import AcademyAdminGamificationPage from "./pages/academy/admin/AcademyAdminGamificationPage";
-import AcademyAdminAccessPage from "./pages/academy/admin/AcademyAdminAccessPage";
-import AcademyAdminReportsPage from "./pages/academy/admin/AcademyAdminReportsPage";
-import AcademyReportsPage from "./pages/academy/AcademyReportsPage";
-import AcademySettingsPage from "./pages/academy/AcademySettingsPage";
-
-// CRM Pages
-import {
-  CRMLayout,
-  CRMDashboardPage,
-  CRMPipelinePage,
-  CRMLeadsPage,
-  CRMLeadDetailPage,
-  CRMActivitiesPage,
-  CRMReportsPage,
-  CRMSettingsPage,
-  CRMInboxPage,
-  CRMTranscriptionsPage,
-} from "./pages/crm";
-
-// UNV Social Pages
-import { SocialLayout as SocialLayoutPage, SocialPipelinePage as SocialPipelinePageComponent, SocialSettingsPage as SocialSettingsPageComponent, SocialApprovalPage as SocialApprovalPageComponent, SocialStrategyPage as SocialStrategyPageComponent } from "./pages/social";
-
-// Customer Points Pages
-import CustomerPointsLayout from "./pages/customer-points/CustomerPointsLayout";
-import CustomerPointsDashboard from "./pages/customer-points/CustomerPointsDashboard";
-import CustomerPointsClients from "./pages/customer-points/CustomerPointsClients";
-import CustomerPointsRules from "./pages/customer-points/CustomerPointsRules";
-import CustomerPointsTransactions from "./pages/customer-points/CustomerPointsTransactions";
-import CustomerPointsQRCodes from "./pages/customer-points/CustomerPointsQRCodes";
-import CustomerPointsPublicForm from "./pages/customer-points/CustomerPointsPublicForm";
-import CustomerPointsSalespersonForm from "./pages/customer-points/CustomerPointsSalespersonForm";
-import CustomerPointsSalespersonTokens from "./pages/customer-points/CustomerPointsSalespersonTokens";
 
 // Loading fallback component
 const PageLoader = () => (
@@ -192,6 +18,192 @@ const PageLoader = () => (
     <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
   </div>
 );
+
+// ── Lazy page imports ──────────────────────────────────────────────
+const HowItWorksPage = lazy(() => import("./pages/HowItWorksPage"));
+const ProductsPage = lazy(() => import("./pages/ProductsPage"));
+const SalesAccelerationPage = lazy(() => import("./pages/SalesAccelerationPage"));
+const CorePage = lazy(() => import("./pages/CorePage"));
+const ControlPage = lazy(() => import("./pages/ControlPage"));
+const GrowthRoomPage = lazy(() => import("./pages/GrowthRoomPage"));
+const PartnersPage = lazy(() => import("./pages/PartnersPage"));
+const SalesOpsPage = lazy(() => import("./pages/SalesOpsPage"));
+const AISalesSystemPage = lazy(() => import("./pages/AISalesSystemPage"));
+const FractionalCROPage = lazy(() => import("./pages/FractionalCROPage"));
+const ExecutionPartnershipPage = lazy(() => import("./pages/ExecutionPartnershipPage"));
+const AdsPage = lazy(() => import("./pages/AdsPage"));
+const SocialPage = lazy(() => import("./pages/SocialPage"));
+const SalesForcePage = lazy(() => import("./pages/SalesForcePage"));
+const MastermindPage = lazy(() => import("./pages/MastermindPage"));
+const MastermindApplyPage = lazy(() => import("./pages/MastermindApplyPage"));
+const MastermindApplicationsPage = lazy(() => import("./pages/MastermindApplicationsPage"));
+const LeadershipPage = lazy(() => import("./pages/LeadershipPage"));
+const LeDesirPage = lazy(() => import("./pages/LeDesirPage"));
+const FinancePage = lazy(() => import("./pages/FinancePage"));
+const PeoplePage = lazy(() => import("./pages/PeoplePage"));
+const SafePage = lazy(() => import("./pages/SafePage"));
+const ForClosersPage = lazy(() => import("./pages/ForClosersPage"));
+const ClientDiagnosticPage = lazy(() => import("./pages/ClientDiagnosticPage"));
+const ApplyPage = lazy(() => import("./pages/ApplyPage"));
+const FAQPage = lazy(() => import("./pages/FAQPage"));
+const TermsPage = lazy(() => import("./pages/TermsPage"));
+const ComparePage = lazy(() => import("./pages/ComparePage"));
+const PricingPage = lazy(() => import("./pages/PricingPage"));
+const DiagnosticResponsesPage = lazy(() => import("./pages/DiagnosticResponsesPage"));
+const AdminSetupPage = lazy(() => import("./pages/AdminSetupPage"));
+const AdminPage = lazy(() => import("./pages/AdminPage"));
+const NotFound = lazy(() => import("./pages/NotFound"));
+const PaymentLinkPage = lazy(() => import("./pages/PaymentLinkPage"));
+const RecebimentosPage = lazy(() => import("./pages/RecebimentosPage"));
+const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
+const PublicInvoicePage = lazy(() => import("./pages/PublicInvoicePage"));
+const InstagramOAuthCallback = lazy(() => import("./pages/InstagramOAuthCallback"));
+const SocialInstagramCallback = lazy(() => import("./pages/social/SocialInstagramCallback"));
+const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
+const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
+const NPSSurveyPage = lazy(() => import("./pages/NPSSurveyPage"));
+const CSATSurveyPage = lazy(() => import("./pages/CSATSurveyPage"));
+
+// Portal
+const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
+const PortalLoginPage = lazy(() => import("./pages/portal/PortalLoginPage"));
+const PortalSignupPage = lazy(() => import("./pages/portal/PortalSignupPage"));
+const PortalAppLayout = lazy(() => import("./pages/portal/PortalAppLayout"));
+const PortalHomePage = lazy(() => import("./pages/portal/PortalHomePage"));
+const PortalPlanningWizard = lazy(() => import("./pages/portal/PortalPlanningWizard"));
+const PortalDashboardPage = lazy(() => import("./pages/portal/PortalDashboardPage"));
+const PortalConfigPage = lazy(() => import("./pages/portal/PortalConfigPage"));
+const PortalCoachPage = lazy(() => import("./pages/portal/PortalCoachPage"));
+const PortalExecutionPage = lazy(() => import("./pages/portal/PortalExecutionPage"));
+const PortalAdminPage = lazy(() => import("./pages/portal/PortalAdminPage"));
+const PortalPlanVersionPage = lazy(() => import("./pages/portal/PortalPlanVersionPage"));
+const PortalStrategiesPage = lazy(() => import("./pages/portal/PortalStrategiesPage"));
+
+// Circle
+const CircleLayout = lazy(() => import("./pages/circle/CircleLayout"));
+const CircleFeedPage = lazy(() => import("./pages/circle/CircleFeedPage"));
+const CircleStoriesPage = lazy(() => import("./pages/circle/CircleStoriesPage"));
+const CircleCommunitiesPage = lazy(() => import("./pages/circle/CircleCommunitiesPage"));
+const CircleMarketplacePage = lazy(() => import("./pages/circle/CircleMarketplacePage"));
+const CircleRankingPage = lazy(() => import("./pages/circle/CircleRankingPage"));
+const CircleProfilePage = lazy(() => import("./pages/circle/CircleProfilePage"));
+const CircleNotificationsPage = lazy(() => import("./pages/circle/CircleNotificationsPage"));
+const CircleCommunityDetailPage = lazy(() => import("./pages/circle/CircleCommunityDetailPage"));
+const CircleSettingsPage = lazy(() => import("./pages/circle/CircleSettingsPage"));
+const CircleMessagesPage = lazy(() => import("./components/circle/CircleMessagesPage"));
+const CircleMentorPage = lazy(() => import("./pages/circle/CircleMentorPage"));
+const CircleSavedPostsPage = lazy(() => import("./pages/circle/CircleSavedPostsPage"));
+const CircleAdsPage = lazy(() => import("./pages/circle/CircleAdsPage"));
+const CircleAuthPage = lazy(() => import("./pages/circle/CircleAuthPage"));
+
+// Onboarding
+const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
+const OnboardingProductPage = lazy(() => import("./pages/OnboardingProductPage"));
+const OnboardingTasksPage = lazy(() => import("./pages/onboarding-tasks/OnboardingTasksPage"));
+const OnboardingProjectPage = lazy(() => import("./pages/onboarding-tasks/OnboardingProjectPage"));
+const OnboardingCompaniesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesPage"));
+const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompanyDetailPage"));
+const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
+const ClientOnboardingPage = lazy(() => import("./pages/onboarding-tasks/ClientOnboardingPage"));
+const OnboardingLoginPage = lazy(() => import("./pages/onboarding-tasks/OnboardingLoginPage"));
+const OnboardingNewCompanyPage = lazy(() => import("./pages/onboarding-tasks/OnboardingNewCompanyPage"));
+const OnboardingServicesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServicesPage"));
+const OnboardingServiceTemplatesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingServiceTemplatesPage"));
+const OnboardingBulkTemplatesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingBulkTemplatesPage"));
+const OnboardingImportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingImportPage"));
+const PaymentNotificationsPage = lazy(() => import("./pages/onboarding-tasks/PaymentNotificationsPage"));
+const VirtualOfficePage = lazy(() => import("./pages/onboarding-tasks/VirtualOfficePage"));
+const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
+const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
+const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
+const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
+const OnboardingActivityHistoryPage = lazy(() => import("./pages/onboarding-tasks/OnboardingActivityHistoryPage"));
+const OnboardingCompaniesReportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesReportPage"));
+const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingResultsPage"));
+const KPIEntryPage = lazy(() => import("./pages/onboarding-tasks/KPIEntryPage"));
+const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
+const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
+const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
+const WhatsAppAdminPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppAdminPage"));
+const ClientDisparadorPage = lazy(() => import("./pages/disparador/ClientDisparadorPage"));
+const ChurnPredictionPage = lazy(() => import("./pages/onboarding-tasks/ChurnPredictionPage"));
+const CohortRetentionPage = lazy(() => import("./pages/onboarding-tasks/CohortRetentionPage"));
+const ConsultantEngagementPage = lazy(() => import("./pages/onboarding-tasks/ConsultantEngagementPage"));
+const ExecutiveDashboardPage = lazy(() => import("./pages/onboarding-tasks/ExecutiveDashboardPage"));
+const CEODashboardPage = lazy(() => import("./pages/onboarding-tasks/CEODashboardPage"));
+const LeaderDashboardPage = lazy(() => import("./pages/onboarding-tasks/LeaderDashboardPage"));
+const GlobalJobOpeningsPage = lazy(() => import("./pages/onboarding-tasks/GlobalJobOpeningsPage"));
+const GlobalTalentPoolResumesPage = lazy(() => import("./pages/onboarding-tasks/GlobalTalentPoolResumesPage"));
+const HotseatAdminPage = lazy(() => import("./pages/onboarding-tasks/HotseatAdminPage"));
+const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/ClientAccessReportPage"));
+const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
+const ContractGeneratorPage = lazy(() => import("./pages/onboarding-tasks/ContractGeneratorPage"));
+
+// Assessments
+const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
+const Assessment360Page = lazy(() => import("./pages/assessments/Assessment360Page"));
+const AssessmentReportsPage = lazy(() => import("./pages/assessments/AssessmentReportsPage"));
+const UnifiedAssessmentPage = lazy(() => import("./pages/assessments/UnifiedAssessmentPage"));
+
+// HR
+const HrCandidateDiscPage = lazy(() => import("./pages/hr-recruitment/HrCandidateDiscPage"));
+const PublicJobApplicationPage = lazy(() => import("./pages/hr-recruitment/PublicJobApplicationPage"));
+const PublicTalentPoolPage = lazy(() => import("./pages/hr-recruitment/PublicTalentPoolPage"));
+const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPage"));
+const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
+const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
+
+// Academy
+const AcademyLayout = lazy(() => import("./pages/academy/AcademyLayout"));
+const AcademyHomePage = lazy(() => import("./pages/academy/AcademyHomePage"));
+const AcademyTracksPage = lazy(() => import("./pages/academy/AcademyTracksPage"));
+const AcademyTrackDetailPage = lazy(() => import("./pages/academy/AcademyTrackDetailPage"));
+const AcademyLessonPage = lazy(() => import("./pages/academy/AcademyLessonPage"));
+const AcademyProgressPage = lazy(() => import("./pages/academy/AcademyProgressPage"));
+const AcademyRankingPage = lazy(() => import("./pages/academy/AcademyRankingPage"));
+const AcademyQuizPage = lazy(() => import("./pages/academy/AcademyQuizPage"));
+const AcademyQuizzesListPage = lazy(() => import("./pages/academy/AcademyQuizzesListPage"));
+const AcademyTeamPage = lazy(() => import("./pages/academy/AcademyTeamPage"));
+const AcademyAdminContentPage = lazy(() => import("./pages/academy/admin/AcademyAdminContentPage"));
+const AcademyAdminQuizzesPage = lazy(() => import("./pages/academy/admin/AcademyAdminQuizzesPage"));
+const AcademyAdminGamificationPage = lazy(() => import("./pages/academy/admin/AcademyAdminGamificationPage"));
+const AcademyAdminAccessPage = lazy(() => import("./pages/academy/admin/AcademyAdminAccessPage"));
+const AcademyAdminReportsPage = lazy(() => import("./pages/academy/admin/AcademyAdminReportsPage"));
+const AcademyReportsPage = lazy(() => import("./pages/academy/AcademyReportsPage"));
+const AcademySettingsPage = lazy(() => import("./pages/academy/AcademySettingsPage"));
+
+// CRM
+const CRMLayout = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLayout })));
+const CRMDashboardPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMDashboardPage })));
+const CRMPipelinePage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMPipelinePage })));
+const CRMLeadsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLeadsPage })));
+const CRMLeadDetailPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMLeadDetailPage })));
+const CRMActivitiesPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMActivitiesPage })));
+const CRMReportsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMReportsPage })));
+const CRMSettingsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMSettingsPage })));
+const CRMInboxPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMInboxPage })));
+const CRMTranscriptionsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMTranscriptionsPage })));
+
+// Social Pipeline
+const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
+const SocialPipelinePageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialPipelinePage })));
+const SocialSettingsPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialSettingsPage })));
+const SocialApprovalPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialApprovalPage })));
+const SocialStrategyPageComponent = lazy(() => import("./pages/social").then(m => ({ default: m.SocialStrategyPage })));
+
+// Customer Points
+const CustomerPointsLayout = lazy(() => import("./pages/customer-points/CustomerPointsLayout"));
+const CustomerPointsDashboard = lazy(() => import("./pages/customer-points/CustomerPointsDashboard"));
+const CustomerPointsClients = lazy(() => import("./pages/customer-points/CustomerPointsClients"));
+const CustomerPointsRules = lazy(() => import("./pages/customer-points/CustomerPointsRules"));
+const CustomerPointsTransactions = lazy(() => import("./pages/customer-points/CustomerPointsTransactions"));
+const CustomerPointsQRCodes = lazy(() => import("./pages/customer-points/CustomerPointsQRCodes"));
+const CustomerPointsPublicForm = lazy(() => import("./pages/customer-points/CustomerPointsPublicForm"));
+const CustomerPointsSalespersonForm = lazy(() => import("./pages/customer-points/CustomerPointsSalespersonForm"));
+const CustomerPointsSalespersonTokens = lazy(() => import("./pages/customer-points/CustomerPointsSalespersonTokens"));
+
+// OnboardingStaffLayout needs to be lazy too
+const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
 
 const queryClient = new QueryClient({
   defaultOptions: {
@@ -203,9 +215,6 @@ const queryClient = new QueryClient({
   },
 });
 
-// Import ThemeCustomizationProvider
-import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
-
 const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
@@ -216,6 +225,7 @@ const App = () => (
           <HashRouter>
             <ScrollToTop />
             <OAuthRedirectHandler />
+            <Suspense fallback={<PageLoader />}>
             <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
@@ -297,10 +307,8 @@ const App = () => (
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
             
-            {/* Leader Dashboard - Admin Access (except CEO) */}
+            {/* Leader Dashboard */}
             <Route path="/onboarding-tasks/leader" element={<LeaderDashboardPage />} />
-            
-            {/* CEO Dashboard - Exclusive Access */}
             <Route path="/onboarding-tasks/ceo" element={<CEODashboardPage />} />
             
             {/* Hotseat Public Form */}
@@ -362,7 +370,7 @@ const App = () => (
             {/* System Showcase */}
             <Route path="/sistema" element={<SystemShowcasePage />} />
             
-            {/* UNV Circle - Social Network */}
+            {/* UNV Circle */}
             <Route path="/circle/auth" element={<CircleAuthPage />} />
             <Route path="/circle" element={<CircleLayout />}>
               <Route index element={<CircleFeedPage />} />
@@ -381,7 +389,7 @@ const App = () => (
               <Route path="ads" element={<CircleAdsPage />} />
             </Route>
             
-            {/* Portal do Planejamento 2026 */}
+            {/* Portal */}
             <Route path="/portal" element={<PortalLandingPage />} />
             <Route path="/portal/login" element={<PortalLoginPage />} />
             <Route path="/portal/signup" element={<PortalSignupPage />} />
@@ -398,7 +406,7 @@ const App = () => (
               <Route path="estrategias/:planId" element={<PortalStrategiesPage />} />
             </Route>
             
-            {/* UNV Academy */}
+            {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>
               <Route index element={<AcademyHomePage />} />
               <Route path="tracks" element={<AcademyTracksPage />} />
@@ -426,6 +434,7 @@ const App = () => (
             
             <Route path="*" element={<NotFound />} />
           </Routes>
+          </Suspense>
           </HashRouter>
         </TooltipProvider>
       </ThemeCustomizationProvider>
