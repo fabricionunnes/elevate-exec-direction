@@ -3,8 +3,58 @@ import { createClient } from "@supabase/supabase-js";
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
-    "authorization, x-client-info, apikey, content-type",
+    "authorization, x-client-info, apikey, content-type, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
+
+async function createCardToken(
+  accessToken: string,
+  cardNumber: string,
+  cardExpiry: string,
+  cardCvv: string,
+  cardHolder: string,
+  customerDoc: string
+): Promise<string> {
+  const [expMonth, expYear] = cardExpiry.split("/");
+  const fullYear = expYear.length === 2 ? `20${expYear}` : expYear;
+
+  const tokenPayload = {
+    card_number: cardNumber.replace(/\s/g, ""),
+    expiration_month: parseInt(expMonth, 10),
+    expiration_year: parseInt(fullYear, 10),
+    security_code: cardCvv,
+    cardholder: {
+      name: cardHolder,
+      identification: {
+        type: customerDoc.length > 11 ? "CNPJ" : "CPF",
+        number: customerDoc,
+      },
+    },
+  };
+
+  const resp = await fetch("https://api.mercadopago.com/v1/card_tokens", {
+    method: "POST",
+    headers: {
+      "Content-Type": "application/json",
+      Authorization: `Bearer ${accessToken}`,
+    },
+    body: JSON.stringify(tokenPayload),
+  });
+
+  const contentType = resp.headers.get("content-type");
+  if (!contentType?.includes("application/json")) {
+    const text = await resp.text();
+    console.error("Card token non-JSON response:", text.substring(0, 200));
+    throw new Error("Erro ao tokenizar cartão no Mercado Pago");
+  }
+
+  const data = await resp.json();
+  if (!resp.ok) {
+    console.error("Card token error:", JSON.stringify(data));
+    throw new Error(data.message || "Erro ao tokenizar cartão");
+  }
+
+  return data.id;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -40,6 +90,10 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      card_number,
+      card_expiry,
+      card_cvv,
+      card_holder,
       card_token,
       payment_link_id,
     } = body;
@@ -55,7 +109,7 @@ Deno.serve(async (req) => {
     const cleanDoc = (customer_document || "").replace(/\D/g, "");
     const cleanPhone = (customer_phone || "").replace(/\D/g, "");
 
-    // Build payment payload for Mercado Pago v1/payments
+    // Build payment payload
     const mpPayload: Record<string, unknown> = {
       transaction_amount: amountDecimal,
       description: product_name,
@@ -81,15 +135,26 @@ Deno.serve(async (req) => {
       mpPayload.payment_method_id = "bolbradesco";
       mpPayload.date_of_expiration = new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString();
     } else if (payment_method === "credit_card") {
-      if (!card_token) {
+      // Tokenize card server-side if raw card data was sent
+      let resolvedToken = card_token;
+      if (!resolvedToken && card_number && card_expiry && card_cvv && card_holder) {
+        resolvedToken = await createCardToken(
+          ACCESS_TOKEN,
+          card_number,
+          card_expiry,
+          card_cvv,
+          card_holder,
+          cleanDoc
+        );
+      }
+      if (!resolvedToken) {
         return new Response(
-          JSON.stringify({ error: "Token do cartão é obrigatório para Mercado Pago" }),
+          JSON.stringify({ error: "Dados do cartão são obrigatórios" }),
           { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
       }
-      mpPayload.token = card_token;
+      mpPayload.token = resolvedToken;
       mpPayload.installments = installments;
-      mpPayload.payment_method_id = undefined; // auto-detect from token
     }
 
     console.log("Mercado Pago payload:", JSON.stringify(mpPayload));
@@ -103,6 +168,13 @@ Deno.serve(async (req) => {
       },
       body: JSON.stringify(mpPayload),
     });
+
+    const contentType = mpResponse.headers.get("content-type");
+    if (!contentType?.includes("application/json")) {
+      const text = await mpResponse.text();
+      console.error("Mercado Pago non-JSON response:", text.substring(0, 300));
+      throw new Error("Mercado Pago retornou resposta inválida. Tente novamente.");
+    }
 
     const mpData = await mpResponse.json();
 
@@ -140,7 +212,6 @@ Deno.serve(async (req) => {
       payment_link_id: payment_link_id || null,
     };
 
-    // PIX data
     if (payment_method === "pix" && mpData.point_of_interaction?.transaction_data) {
       const txData = mpData.point_of_interaction.transaction_data;
       orderData.pix_qr_code = txData.qr_code;
@@ -148,7 +219,6 @@ Deno.serve(async (req) => {
       orderData.pix_expires_at = mpData.date_of_expiration;
     }
 
-    // Boleto data
     if (payment_method === "boleto" && mpData.transaction_details) {
       orderData.boleto_url = mpData.transaction_details.external_resource_url;
       orderData.boleto_barcode = mpData.barcode?.content;
@@ -157,7 +227,6 @@ Deno.serve(async (req) => {
 
     await supabase.from("pagarme_orders").insert(orderData);
 
-    // If paid immediately (credit card), mark invoice
     if (mpData.status === "approved" && payment_link_id) {
       await supabase
         .from("company_invoices")
