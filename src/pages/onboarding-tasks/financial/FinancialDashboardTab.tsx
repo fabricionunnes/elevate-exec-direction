@@ -62,6 +62,8 @@ const SectionHeader = ({ icon: Icon, title }: { icon: React.ElementType; title: 
 );
 
 export default function FinancialDashboardTab({ invoices, payables, banks, charges = [], formatCurrency, formatCurrencyCents, hasPerm }: Props) {
+  const canSeePayables = !hasPerm || hasPerm("fin_payables_view");
+  const canSeeBanks = !hasPerm || hasPerm("fin_bank_balances");
   const now = new Date();
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
@@ -277,59 +279,67 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             </div>
           </GradientCard>
 
-          <GradientCard gradient="linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)">
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-red-500/15 flex items-center justify-center">
-                  <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />
+          {canSeePayables && (
+            <GradientCard gradient="linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)">
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-red-500/15 flex items-center justify-center">
+                    <ArrowDownRight className="h-3.5 w-3.5 text-red-600" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">Despesas Pagas</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">Despesas Pagas</span>
+                <div className="text-xl font-bold text-red-600">{formatCurrencyCents(summary.despesaPaga)}</div>
+                <p className="text-[11px] text-red-600/60">Pago no mês</p>
               </div>
-              <div className="text-xl font-bold text-red-600">{formatCurrencyCents(summary.despesaPaga)}</div>
-              <p className="text-[11px] text-red-600/60">Pago no mês</p>
-            </div>
-          </GradientCard>
+            </GradientCard>
+          )}
 
-          <GradientCard gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)">
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
-                  <Banknote className="h-3.5 w-3.5 text-amber-600" />
+          {canSeePayables && (
+            <GradientCard gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)">
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                    <Banknote className="h-3.5 w-3.5 text-amber-600" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">A Pagar</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">A Pagar</span>
+                <div className="text-xl font-bold text-amber-600">{formatCurrencyCents(summary.despesaPendente)}</div>
+                <p className="text-[11px] text-amber-600/60">Pendente no mês</p>
               </div>
-              <div className="text-xl font-bold text-amber-600">{formatCurrencyCents(summary.despesaPendente)}</div>
-              <p className="text-[11px] text-amber-600/60">Pendente no mês</p>
-            </div>
-          </GradientCard>
+            </GradientCard>
+          )}
 
-          <GradientCard gradient={summary.resultado >= 0 ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)"}>
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${summary.resultado >= 0 ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
-                  <Activity className={`h-3.5 w-3.5 ${summary.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`} />
+          {canSeePayables && (
+            <GradientCard gradient={summary.resultado >= 0 ? "linear-gradient(135deg, #ecfdf5 0%, #d1fae5 100%)" : "linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)"}>
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className={`h-7 w-7 rounded-lg flex items-center justify-center ${summary.resultado >= 0 ? "bg-emerald-500/15" : "bg-red-500/15"}`}>
+                    <Activity className={`h-3.5 w-3.5 ${summary.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`} />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">Resultado</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">Resultado</span>
+                <div className={`text-xl font-bold ${summary.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`}>
+                  {formatCurrencyCents(summary.resultado)}
+                </div>
+                <p className="text-[11px] text-muted-foreground">Receita − Despesa</p>
               </div>
-              <div className={`text-xl font-bold ${summary.resultado >= 0 ? "text-emerald-600" : "text-red-600"}`}>
-                {formatCurrencyCents(summary.resultado)}
-              </div>
-              <p className="text-[11px] text-muted-foreground">Receita − Despesa</p>
-            </div>
-          </GradientCard>
+            </GradientCard>
+          )}
 
-          <GradientCard gradient="linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)">
-            <div className="p-4 space-y-2">
-              <div className="flex items-center gap-2">
-                <div className="h-7 w-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
-                  <PiggyBank className="h-3.5 w-3.5 text-violet-600" />
+          {canSeeBanks && (
+            <GradientCard gradient="linear-gradient(135deg, #f5f3ff 0%, #ede9fe 100%)">
+              <div className="p-4 space-y-2">
+                <div className="flex items-center gap-2">
+                  <div className="h-7 w-7 rounded-lg bg-violet-500/15 flex items-center justify-center">
+                    <PiggyBank className="h-3.5 w-3.5 text-violet-600" />
+                  </div>
+                  <span className="text-xs font-medium text-muted-foreground">Saldo Bancário</span>
                 </div>
-                <span className="text-xs font-medium text-muted-foreground">Saldo Bancário</span>
+                <div className="text-xl font-bold text-violet-600">{formatCurrencyCents(summary.totalBancos)}</div>
+                <p className="text-[11px] text-violet-600/60">{banks.length} conta(s)</p>
               </div>
-              <div className="text-xl font-bold text-violet-600">{formatCurrencyCents(summary.totalBancos)}</div>
-              <p className="text-[11px] text-violet-600/60">{banks.length} conta(s)</p>
-            </div>
-          </GradientCard>
+            </GradientCard>
+          )}
         </div>
       </div>
 
@@ -481,33 +491,35 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
       {/* ═══ GRÁFICOS ═══ */}
       <div className="grid gap-4 lg:grid-cols-3">
-        <GradientCard gradient="linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)" className="lg:col-span-2">
-          <div className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <BarChart3 className="h-4 w-4 text-indigo-400" />
-              <h3 className="text-sm font-semibold text-foreground">Receitas vs Despesas (6 meses)</h3>
+        {canSeePayables ? (
+          <GradientCard gradient="linear-gradient(135deg, #f8fafc 0%, #f1f5f9 100%)" className="lg:col-span-2">
+            <div className="p-5">
+              <div className="flex items-center gap-2 mb-4">
+                <BarChart3 className="h-4 w-4 text-indigo-400" />
+                <h3 className="text-sm font-semibold text-foreground">Receitas vs Despesas (6 meses)</h3>
+              </div>
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={monthlyData} barGap={4}>
+                  <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <Tooltip 
+                    formatter={(value: number) => formatCurrency(value)} 
+                    labelStyle={{ color: "hsl(var(--foreground))" }}
+                    contentStyle={{ 
+                      background: "hsl(var(--card))", 
+                      border: "1px solid hsl(var(--border))",
+                      borderRadius: "8px",
+                      boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                    }}
+                  />
+                  <Bar dataKey="receita" name="Receita" fill="#10b981" radius={[6, 6, 0, 0]} />
+                  <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
+                </BarChart>
+              </ResponsiveContainer>
             </div>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData} barGap={4}>
-                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-                <Tooltip 
-                  formatter={(value: number) => formatCurrency(value)} 
-                  labelStyle={{ color: "hsl(var(--foreground))" }}
-                  contentStyle={{ 
-                    background: "hsl(var(--card))", 
-                    border: "1px solid hsl(var(--border))",
-                    borderRadius: "8px",
-                    boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
-                  }}
-                />
-                <Bar dataKey="receita" name="Receita" fill="#10b981" radius={[6, 6, 0, 0]} />
-                <Bar dataKey="despesa" name="Despesa" fill="#ef4444" radius={[6, 6, 0, 0]} />
-              </BarChart>
-            </ResponsiveContainer>
-          </div>
-        </GradientCard>
+          </GradientCard>
+        ) : null}
 
         <GradientCard gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)">
           <div className="p-5">
@@ -552,37 +564,39 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       </div>
 
       {/* Resultado mensal */}
-      <GradientCard gradient="linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(16,185,129,0.03) 100%)">
-        <div className="p-5">
-          <div className="flex items-center gap-2 mb-4">
-            <TrendingUp className="h-4 w-4 text-blue-400" />
-            <h3 className="text-sm font-semibold text-foreground">Resultado Mensal</h3>
+      {canSeePayables && (
+        <GradientCard gradient="linear-gradient(135deg, rgba(59,130,246,0.06) 0%, rgba(16,185,129,0.03) 100%)">
+          <div className="p-5">
+            <div className="flex items-center gap-2 mb-4">
+              <TrendingUp className="h-4 w-4 text-blue-400" />
+              <h3 className="text-sm font-semibold text-foreground">Resultado Mensal</h3>
+            </div>
+            <ResponsiveContainer width="100%" height={250}>
+              <AreaChart data={monthlyData}>
+                <defs>
+                  <linearGradient id="gradientResultado" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
+                  </linearGradient>
+                </defs>
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
+                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <Tooltip 
+                  formatter={(value: number) => formatCurrency(value)}
+                  contentStyle={{ 
+                    background: "hsl(var(--card))", 
+                    border: "1px solid hsl(var(--border))",
+                    borderRadius: "8px",
+                    boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
+                  }}
+                />
+                <Area type="monotone" dataKey="resultado" name="Resultado" stroke="#3b82f6" fill="url(#gradientResultado)" strokeWidth={2.5} />
+              </AreaChart>
+            </ResponsiveContainer>
           </div>
-          <ResponsiveContainer width="100%" height={250}>
-            <AreaChart data={monthlyData}>
-              <defs>
-                <linearGradient id="gradientResultado" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.3} />
-                  <stop offset="100%" stopColor="#3b82f6" stopOpacity={0} />
-                </linearGradient>
-              </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-              <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-              <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
-              <Tooltip 
-                formatter={(value: number) => formatCurrency(value)}
-                contentStyle={{ 
-                  background: "hsl(var(--card))", 
-                  border: "1px solid hsl(var(--border))",
-                  borderRadius: "8px",
-                  boxShadow: "0 8px 32px rgba(0,0,0,0.2)"
-                }}
-              />
-              <Area type="monotone" dataKey="resultado" name="Resultado" stroke="#3b82f6" fill="url(#gradientResultado)" strokeWidth={2.5} />
-            </AreaChart>
-          </ResponsiveContainer>
-        </div>
-      </GradientCard>
+        </GradientCard>
+      )}
 
       {/* Banks Overview */}
       {banks.length > 0 && (!hasPerm || hasPerm("fin_bank_balances")) && (

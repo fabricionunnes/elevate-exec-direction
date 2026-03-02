@@ -2395,7 +2395,7 @@ const OnboardingTasksPage = () => {
                             <UserX className="h-4 w-4 mr-2" />
                             Tarefas sem Responsável
                           </DropdownMenuItem>
-                          {isAdmin && (
+                          {(isAdmin || hasMenuPerm("financial")) && (
                             <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/billing-rules")}>
                               <Bell className="h-4 w-4 mr-2" />
                               Régua de Cobranças
