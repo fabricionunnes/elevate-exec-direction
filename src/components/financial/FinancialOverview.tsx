@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
+import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
@@ -44,6 +45,10 @@ interface FinancialSummary {
 }
 
 export function FinancialOverview() {
+  const { isMaster, hasFinancialPermission } = useFinancialPermissions();
+  const canSeePayables = isMaster || hasFinancialPermission("fin_payables_view");
+  const canSeeBanks = isMaster || hasFinancialPermission("fin_bank_balances");
+  const canSeeReceivables = isMaster || hasFinancialPermission("fin_receivables_view");
   const [isLoading, setIsLoading] = useState(true);
   const [summary, setSummary] = useState<FinancialSummary>({
     totalReceivables: 0,
@@ -325,7 +330,7 @@ export function FinancialOverview() {
           </CardContent>
         </Card>
 
-        {/* Saldo Total */}
+        {canSeeBanks && (
         <Card className="bg-gradient-to-br from-blue-500/10 to-blue-500/5 border-blue-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -343,7 +348,9 @@ export function FinancialOverview() {
           </CardContent>
         </Card>
 
-        {/* A Receber */}
+        )}
+
+        {canSeeReceivables && (
         <Card className="bg-gradient-to-br from-amber-500/10 to-amber-500/5 border-amber-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -364,7 +371,9 @@ export function FinancialOverview() {
           </CardContent>
         </Card>
 
-        {/* A Pagar */}
+        )}
+
+        {canSeePayables && (
         <Card className="bg-gradient-to-br from-red-500/10 to-red-500/5 border-red-500/20">
           <CardHeader className="flex flex-row items-center justify-between pb-2">
             <CardTitle className="text-sm font-medium text-muted-foreground">
@@ -384,6 +393,7 @@ export function FinancialOverview() {
             )}
           </CardContent>
         </Card>
+        )}
       </div>
 
       {/* Projection Cards */}
@@ -502,14 +512,18 @@ export function FinancialOverview() {
         </CardHeader>
         <CardContent>
           <div className="flex flex-wrap gap-3">
-            <Button variant="outline" size="sm">
-              <ArrowDownCircle className="h-4 w-4 mr-2" />
-              Nova Conta a Receber
-            </Button>
-            <Button variant="outline" size="sm">
-              <ArrowUpCircle className="h-4 w-4 mr-2" />
-              Nova Conta a Pagar
-            </Button>
+            {canSeeReceivables && (
+              <Button variant="outline" size="sm">
+                <ArrowDownCircle className="h-4 w-4 mr-2" />
+                Nova Conta a Receber
+              </Button>
+            )}
+            {canSeePayables && (
+              <Button variant="outline" size="sm">
+                <ArrowUpCircle className="h-4 w-4 mr-2" />
+                Nova Conta a Pagar
+              </Button>
+            )}
             <Button variant="outline" size="sm">
               <FileText className="h-4 w-4 mr-2" />
               Novo Contrato

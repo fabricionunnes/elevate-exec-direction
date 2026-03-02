@@ -1,6 +1,5 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
-import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { 
@@ -22,7 +21,7 @@ import {
   MessageSquare,
   Headphones
 } from "lucide-react";
-import { toast } from "sonner";
+import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
 // Import financial components
 import { FinancialOverview } from "@/components/financial/FinancialOverview";
@@ -40,42 +39,64 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 
-const ALLOWED_EMAIL = "fabricio@universidadevendas.com.br";
+// Map tab IDs to financial permission keys (null = always visible if user has financial access)
+const TAB_PERMISSION_MAP: Record<string, string | null> = {
+  overview: "fin_dashboard",
+  receivables: "fin_receivables_view",
+  payables: "fin_payables_view",
+  clients: null, // always visible
+  banks: "fin_banks",
+  billing: null, // always visible
+  reports: "fin_dre", // reports group
+  planning: null, // always visible
+  cfo: "fin_cfo_executive",
+  integrations: null, // always visible
+  "billing-rules": null, // always visible
+  suppliers: null, // always visible
+  inbox: null, // always visible
+  "whatsapp-instance": null, // always visible
+};
+
+const ALL_TABS = [
+  { id: "overview", label: "Visão Geral", icon: LayoutDashboard },
+  { id: "receivables", label: "Contas a Receber", icon: ArrowDownCircle },
+  { id: "payables", label: "Contas a Pagar", icon: ArrowUpCircle },
+  { id: "clients", label: "Clientes & Contratos", icon: Users },
+  { id: "banks", label: "Bancos & Saldos", icon: Building2 },
+  { id: "billing", label: "Cobranças", icon: CreditCard },
+  { id: "reports", label: "Relatórios", icon: FileText },
+  { id: "planning", label: "Planejamento", icon: Calculator },
+  { id: "cfo", label: "IA CFO", icon: Bot },
+  { id: "integrations", label: "Integrações", icon: Link2 },
+  { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
+  { id: "suppliers", label: "Fornecedores", icon: Truck },
+  { id: "inbox", label: "Atendimentos", icon: Headphones },
+  { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
+];
 
 export default function FinancialModulePage() {
   const navigate = useNavigate();
-  const [isLoading, setIsLoading] = useState(true);
-  const [hasAccess, setHasAccess] = useState(false);
-  const [activeTab, setActiveTab] = useState("overview");
+  const { loading, hasFinancialAccess, isMaster, hasFinancialPermission } = useFinancialPermissions();
+  
+  const visibleTabs = useMemo(() => {
+    if (isMaster) return ALL_TABS;
+    return ALL_TABS.filter(tab => {
+      const permKey = TAB_PERMISSION_MAP[tab.id];
+      if (permKey === null) return true; // always visible
+      return hasFinancialPermission(permKey);
+    });
+  }, [isMaster, hasFinancialPermission]);
 
+  const [activeTab, setActiveTab] = useState("");
+
+  // Set default tab to first visible tab
   useEffect(() => {
-    checkAccess();
-  }, []);
-
-  const checkAccess = async () => {
-    try {
-      const { data: { user } } = await supabase.auth.getUser();
-      
-      if (!user) {
-        navigate("/onboarding/login");
-        return;
-      }
-
-      if (user.email === ALLOWED_EMAIL) {
-        setHasAccess(true);
-      } else {
-        setHasAccess(false);
-        toast.error("Acesso negado. Este módulo é restrito.");
-      }
-    } catch (error) {
-      console.error("Error checking access:", error);
-      toast.error("Erro ao verificar acesso");
-    } finally {
-      setIsLoading(false);
+    if (!loading && visibleTabs.length > 0 && !activeTab) {
+      setActiveTab(visibleTabs[0].id);
     }
-  };
+  }, [loading, visibleTabs, activeTab]);
 
-  if (isLoading) {
+  if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -83,7 +104,7 @@ export default function FinancialModulePage() {
     );
   }
 
-  if (!hasAccess) {
+  if (!hasFinancialAccess) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
         <div className="text-center space-y-4">
@@ -100,23 +121,6 @@ export default function FinancialModulePage() {
       </div>
     );
   }
-
-  const tabs = [
-    { id: "overview", label: "Visão Geral", icon: LayoutDashboard },
-    { id: "receivables", label: "Contas a Receber", icon: ArrowDownCircle },
-    { id: "payables", label: "Contas a Pagar", icon: ArrowUpCircle },
-    { id: "clients", label: "Clientes & Contratos", icon: Users },
-    { id: "banks", label: "Bancos & Saldos", icon: Building2 },
-    { id: "billing", label: "Cobranças", icon: CreditCard },
-    { id: "reports", label: "Relatórios", icon: FileText },
-    { id: "planning", label: "Planejamento", icon: Calculator },
-    { id: "cfo", label: "IA CFO", icon: Bot },
-    { id: "integrations", label: "Integrações", icon: Link2 },
-    { id: "billing-rules", label: "Régua de Cobranças", icon: Bell },
-    { id: "suppliers", label: "Fornecedores", icon: Truck },
-    { id: "inbox", label: "Atendimentos", icon: Headphones },
-    { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
-  ];
 
   return (
     <div className="min-h-screen bg-background">
@@ -144,10 +148,9 @@ export default function FinancialModulePage() {
       {/* Main Content */}
       <main className="container mx-auto px-4 py-6">
         <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-6">
-          {/* Tabs Navigation - Scrollable on mobile */}
           <div className="overflow-x-auto pb-2">
             <TabsList className="inline-flex h-auto p-1 bg-muted/50">
-              {tabs.map((tab) => {
+              {visibleTabs.map((tab) => {
                 const Icon = tab.icon;
                 return (
                   <TabsTrigger
@@ -163,59 +166,45 @@ export default function FinancialModulePage() {
             </TabsList>
           </div>
 
-          {/* Tab Contents */}
           <TabsContent value="overview" className="mt-0">
             <FinancialOverview />
           </TabsContent>
-
           <TabsContent value="receivables" className="mt-0">
             <ReceivablesPanel />
           </TabsContent>
-
           <TabsContent value="payables" className="mt-0">
             <PayablesPanel />
           </TabsContent>
-
           <TabsContent value="clients" className="mt-0">
             <ClientsContractsPanel />
           </TabsContent>
-
           <TabsContent value="banks" className="mt-0">
             <BankAccountsPanel />
           </TabsContent>
-
           <TabsContent value="billing" className="mt-0">
             <BillingPaymentsPanel />
           </TabsContent>
-
           <TabsContent value="reports" className="mt-0">
             <FinancialReportsPanel />
           </TabsContent>
-
           <TabsContent value="planning" className="mt-0">
             <FinancialPlanningPanel />
           </TabsContent>
-
           <TabsContent value="cfo" className="mt-0">
             <CFOInsightsPanel />
           </TabsContent>
-
           <TabsContent value="integrations" className="mt-0">
             <IntegrationsPanel />
           </TabsContent>
-
           <TabsContent value="billing-rules" className="mt-0">
             <BillingRulesPanel />
           </TabsContent>
-
           <TabsContent value="suppliers" className="mt-0">
             <SuppliersPanel />
           </TabsContent>
-
           <TabsContent value="inbox" className="mt-0">
             <FinancialInboxPanel />
           </TabsContent>
-
           <TabsContent value="whatsapp-instance" className="mt-0">
             <WhatsAppInstancePanel />
           </TabsContent>
