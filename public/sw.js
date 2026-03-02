@@ -1,4 +1,4 @@
-const CACHE_NAME = 'unv-nexus-v1';
+const CACHE_NAME = 'unv-nexus-v2';
 const OFFLINE_URL = '/offline.html';
 
 const PRECACHE_ASSETS = [
