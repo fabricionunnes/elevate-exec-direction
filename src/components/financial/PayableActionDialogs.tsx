@@ -54,25 +54,65 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
   const [paymentDate, setPaymentDate] = useState<Date | undefined>(new Date());
   const [paidAmount, setPaidAmount] = useState(0);
   const [saving, setSaving] = useState(false);
+  const [paymentHistory, setPaymentHistory] = useState<Array<{
+    id: string;
+    amount_cents: number;
+    bank_id: string;
+    bank_name?: string;
+    created_at: string;
+    description: string | null;
+  }>>([]);
+  const [loadingHistory, setLoadingHistory] = useState(false);
 
-  // Pre-fill form when dialog opens
+  // Pre-fill form and load payment history when dialog opens
   useEffect(() => {
     if (open && payable) {
-      const remaining = payable.status === "partial"
+      const remaining = (payable.status === "partial" || (payable.paid_amount && payable.paid_amount > 0 && payable.paid_amount < payable.amount))
         ? payable.amount - (payable.paid_amount || 0)
         : payable.amount;
       setPaidAmount(remaining);
       setPaymentDate(new Date());
       setBankId("none");
+
+      // Load payment history from bank transactions
+      const loadHistory = async () => {
+        setLoadingHistory(true);
+        try {
+          const { data } = await supabase
+            .from("financial_bank_transactions")
+            .select("id, amount_cents, bank_id, created_at, description")
+            .eq("reference_type", "payable")
+            .eq("reference_id", payable.id)
+            .eq("type", "debit")
+            .order("created_at", { ascending: true }) as any;
+          
+          const history = (data || []).map((tx: any) => ({
+            ...tx,
+            bank_name: banks.find(b => b.id === tx.bank_id)?.name || "Banco removido",
+          }));
+          setPaymentHistory(history);
+        } catch {
+          setPaymentHistory([]);
+        } finally {
+          setLoadingHistory(false);
+        }
+      };
+      loadHistory();
+    } else {
+      setPaymentHistory([]);
     }
-  }, [open, payable]);
+  }, [open, payable, banks]);
 
   const handleSave = async () => {
     if (!payable || !paymentDate) return;
+    if (bankId === "none") {
+      toast.error("Selecione um banco para registrar o pagamento");
+      return;
+    }
     setSaving(true);
     try {
       const dateStr = format(paymentDate, "yyyy-MM-dd");
-      const previouslyPaid = payable.status === "partial" ? (payable.paid_amount || 0) : 0;
+      const previouslyPaid = (payable.status === "partial" || (payable.paid_amount && payable.paid_amount > 0)) ? (payable.paid_amount || 0) : 0;
       const totalPaid = previouslyPaid + paidAmount;
       const isPartial = totalPaid > 0 && totalPaid < payable.amount;
       const newStatus = isPartial ? "partial" : "paid";
@@ -119,27 +159,60 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
 
   if (!payable) return null;
 
+  const fmt = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
+  const totalPreviouslyPaid = payable.paid_amount || 0;
+  const remaining = payable.amount - totalPreviouslyPaid;
+  const hasHistory = paymentHistory.length > 0 || totalPreviouslyPaid > 0;
+
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
         <DialogHeader>
           <DialogTitle>Registrar Pagamento</DialogTitle>
           <DialogDescription>
-            {payable.description} — Total: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount)}
-            {payable.status === "partial" && payable.paid_amount ? (
+            {payable.description} — Total: {fmt(payable.amount)}
+            {hasHistory && (
               <span className="block mt-1 text-orange-600">
-                Já pago: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.paid_amount)} • Restante: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount - payable.paid_amount)}
+                Já pago: {fmt(totalPreviouslyPaid)} • Restante: {fmt(remaining)}
               </span>
-            ) : null}
+            )}
           </DialogDescription>
         </DialogHeader>
         <div className="space-y-4 py-2">
+          {/* Payment history */}
+          {hasHistory && (
+            <div className="rounded-lg border bg-muted/30 p-3 space-y-2">
+              <p className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">Histórico de Pagamentos</p>
+              {loadingHistory ? (
+                <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                  <Loader2 className="h-3 w-3 animate-spin" /> Carregando...
+                </div>
+              ) : paymentHistory.length === 0 ? (
+                <p className="text-xs text-muted-foreground">Pagamento anterior registrado sem detalhes bancários</p>
+              ) : (
+                <div className="space-y-1.5">
+                  {paymentHistory.map((tx) => (
+                    <div key={tx.id} className="flex items-center justify-between text-xs bg-background rounded px-2.5 py-1.5 border">
+                      <div className="flex flex-col">
+                        <span className="font-medium">{fmt(tx.amount_cents / 100)}</span>
+                        <span className="text-muted-foreground">{tx.bank_name}</span>
+                      </div>
+                      <span className="text-muted-foreground">
+                        {format(new Date(tx.created_at), "dd/MM/yyyy")}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              )}
+            </div>
+          )}
+
           <div>
-            <Label>Banco</Label>
+            <Label>Banco *</Label>
             <Select value={bankId} onValueChange={setBankId}>
               <SelectTrigger><SelectValue placeholder="Selecione o banco" /></SelectTrigger>
               <SelectContent>
-                <SelectItem value="none">Nenhum</SelectItem>
+                <SelectItem value="none">Selecione...</SelectItem>
                 {banks.map(b => <SelectItem key={b.id} value={b.id}>{b.name}</SelectItem>)}
               </SelectContent>
             </Select>
@@ -159,18 +232,18 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
             </Popover>
           </div>
           <div>
-            <Label>Valor Pago (R$)</Label>
+            <Label>Valor a Pagar (R$)</Label>
             <CurrencyInput value={paidAmount} onChange={setPaidAmount} />
-            {paidAmount > 0 && paidAmount < payable.amount && (
+            {paidAmount > 0 && paidAmount < remaining && (
               <p className="text-xs text-amber-600 mt-1">
-                Pagamento parcial — Restante: {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(payable.amount - paidAmount)}
+                Pagamento parcial — Restará: {fmt(remaining - paidAmount)}
               </p>
             )}
           </div>
         </div>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving || paidAmount <= 0}>
+          <Button onClick={handleSave} disabled={saving || paidAmount <= 0 || bankId === "none"}>
             {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
             Confirmar Pagamento
           </Button>
