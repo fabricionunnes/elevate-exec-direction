@@ -220,6 +220,7 @@ const OnboardingProjectPage = () => {
   const [taskSearchQuery, setTaskSearchQuery] = useState("");
   const [taskStatusFilter, setTaskStatusFilter] = useState<TaskStatusFilter>("all");
   const [taskSortOrder, setTaskSortOrder] = useState<TaskSortOrder>("due_date_asc");
+  const [taskResponsibleFilter, setTaskResponsibleFilter] = useState("all");
   const [showReorganizeDatesDialog, setShowReorganizeDatesDialog] = useState(false);
   const [showChurnDialog, setShowChurnDialog] = useState(false);
   const [showCancellationSignalDialog, setShowCancellationSignalDialog] = useState(false);
@@ -1006,7 +1007,15 @@ const OnboardingProjectPage = () => {
         matchesStatus = true;
     }
     
-    return matchesSearch && matchesStatus;
+    // Responsible filter
+    let matchesResponsible = true;
+    if (taskResponsibleFilter === "unassigned") {
+      matchesResponsible = !task.responsible_staff?.id;
+    } else if (taskResponsibleFilter && taskResponsibleFilter !== "all") {
+      matchesResponsible = task.responsible_staff?.id === taskResponsibleFilter;
+    }
+
+    return matchesSearch && matchesStatus && matchesResponsible;
   });
 
   const groupedTasks = filteredTasks.reduce<Record<string, TaskPhase>>((acc, task) => {
@@ -1526,6 +1535,9 @@ const OnboardingProjectPage = () => {
                 sortOrder={taskSortOrder}
                 onSortOrderChange={setTaskSortOrder}
                 counts={taskCounts}
+                staffList={staffList}
+                responsibleFilter={taskResponsibleFilter}
+                onResponsibleFilterChange={setTaskResponsibleFilter}
               />
               
               <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
