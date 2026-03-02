@@ -16,7 +16,8 @@ import {
   Building2,
   FileText,
   Loader2,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  Percent
 } from "lucide-react";
 import {
   AreaChart,
@@ -393,6 +394,35 @@ export function FinancialOverview() {
             )}
           </CardContent>
         </Card>
+        )}
+
+        {canSeeReceivables && canSeePayables && (
+          <Card className="bg-gradient-to-br from-cyan-500/10 to-cyan-500/5 border-cyan-500/20">
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+              <CardTitle className="text-sm font-medium text-muted-foreground">
+                Margem de Lucro
+              </CardTitle>
+              <Percent className="h-4 w-4 text-cyan-500" />
+            </CardHeader>
+            <CardContent>
+              {(() => {
+                const totalRevenue = summary.totalReceived;
+                const totalExpenses = summary.totalPaid;
+                const margin = totalRevenue > 0 ? ((totalRevenue - totalExpenses) / totalRevenue) * 100 : 0;
+                const isPositive = margin >= 0;
+                return (
+                  <>
+                    <div className={`text-2xl font-bold ${isPositive ? "text-cyan-600" : "text-red-600"}`}>
+                      {margin.toFixed(1)}%
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">
+                      Últimos 6 meses
+                    </p>
+                  </>
+                );
+              })()}
+            </CardContent>
+          </Card>
         )}
       </div>
 
