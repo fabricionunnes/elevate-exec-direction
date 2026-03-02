@@ -41,7 +41,8 @@ import {
   Edit,
   Trash2,
   PiggyBank,
-  CreditCard
+  CreditCard,
+  ArrowRightLeft
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -87,6 +88,14 @@ export function BankAccountsPanel() {
   const [isTransactionDialogOpen, setIsTransactionDialogOpen] = useState(false);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [statementAccount, setStatementAccount] = useState<BankAccount | null>(null);
+  const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
+  const [transferData, setTransferData] = useState({
+    from_account_id: "",
+    to_account_id: "",
+    amount: "",
+    description: "",
+    transfer_date: format(new Date(), "yyyy-MM-dd"),
+  });
 
   const [formData, setFormData] = useState({
     name: "",
@@ -260,6 +269,70 @@ export function BankAccountsPanel() {
     }
   };
 
+  const handleTransfer = async () => {
+    try {
+      const amount = parseFloat(transferData.amount);
+      if (!amount || amount <= 0) {
+        toast.error("Informe um valor válido");
+        return;
+      }
+
+      const fromAccount = accounts.find(a => a.id === transferData.from_account_id);
+      const toAccount = accounts.find(a => a.id === transferData.to_account_id);
+      if (!fromAccount || !toAccount) return;
+
+      const newFromBalance = Number(fromAccount.current_balance) - amount;
+      const newToBalance = Number(toAccount.current_balance) + amount;
+      const desc = transferData.description || `Transferência para ${toAccount.name}`;
+      const descIn = transferData.description || `Transferência de ${fromAccount.name}`;
+
+      // Insert debit transaction on source
+      const { error: e1 } = await supabase.from("financial_transactions").insert({
+        bank_account_id: fromAccount.id,
+        type: "debit",
+        amount,
+        transaction_date: transferData.transfer_date,
+        description: desc,
+        balance_after: newFromBalance,
+        is_reconciled: false,
+      });
+      if (e1) throw e1;
+
+      // Insert credit transaction on destination
+      const { error: e2 } = await supabase.from("financial_transactions").insert({
+        bank_account_id: toAccount.id,
+        type: "credit",
+        amount,
+        transaction_date: transferData.transfer_date,
+        description: descIn,
+        balance_after: newToBalance,
+        is_reconciled: false,
+      });
+      if (e2) throw e2;
+
+      // Update balances
+      const { error: e3 } = await supabase
+        .from("financial_bank_accounts")
+        .update({ current_balance: newFromBalance })
+        .eq("id", fromAccount.id);
+      if (e3) throw e3;
+
+      const { error: e4 } = await supabase
+        .from("financial_bank_accounts")
+        .update({ current_balance: newToBalance })
+        .eq("id", toAccount.id);
+      if (e4) throw e4;
+
+      toast.success("Transferência realizada com sucesso!");
+      setIsTransferDialogOpen(false);
+      setTransferData({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
+      loadData();
+    } catch (error) {
+      console.error("Error transferring:", error);
+      toast.error("Erro ao realizar transferência");
+    }
+  };
+
   const resetForm = () => {
     setFormData({
       name: "",
@@ -331,6 +404,14 @@ export function BankAccountsPanel() {
           <Button variant="outline" size="sm" onClick={loadData}>
             <RefreshCw className="h-4 w-4 mr-2" />
             Atualizar
+          </Button>
+          <Button
+            variant="outline"
+            onClick={() => setIsTransferDialogOpen(true)}
+            disabled={accounts.filter(a => a.is_active).length < 2}
+          >
+            <ArrowRightLeft className="h-4 w-4 mr-2" />
+            Transferir
           </Button>
           <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
             <DialogTrigger asChild>
@@ -728,6 +809,98 @@ export function BankAccountsPanel() {
                 disabled={!transactionData.amount}
               >
                 Registrar
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+      {/* Transfer Dialog */}
+      <Dialog open={isTransferDialogOpen} onOpenChange={setIsTransferDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <ArrowRightLeft className="h-5 w-5 text-primary" />
+              Transferência entre Contas
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            <div className="space-y-2">
+              <Label>Conta de Origem</Label>
+              <Select
+                value={transferData.from_account_id}
+                onValueChange={(v) => setTransferData({ ...transferData, from_account_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta de origem" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => a.is_active && a.id !== transferData.to_account_id).map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({a.bank_name}) — {formatCurrency(Number(a.current_balance))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Conta de Destino</Label>
+              <Select
+                value={transferData.to_account_id}
+                onValueChange={(v) => setTransferData({ ...transferData, to_account_id: v })}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a conta de destino" />
+                </SelectTrigger>
+                <SelectContent>
+                  {accounts.filter(a => a.is_active && a.id !== transferData.from_account_id).map(a => (
+                    <SelectItem key={a.id} value={a.id}>
+                      {a.name} ({a.bank_name}) — {formatCurrency(Number(a.current_balance))}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            <div className="grid grid-cols-2 gap-4">
+              <div className="space-y-2">
+                <Label>Valor</Label>
+                <Input
+                  type="number"
+                  step="0.01"
+                  value={transferData.amount}
+                  onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
+                  placeholder="0,00"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Data</Label>
+                <Input
+                  type="date"
+                  value={transferData.transfer_date}
+                  onChange={(e) => setTransferData({ ...transferData, transfer_date: e.target.value })}
+                />
+              </div>
+            </div>
+
+            <div className="space-y-2">
+              <Label>Descrição (opcional)</Label>
+              <Input
+                value={transferData.description}
+                onChange={(e) => setTransferData({ ...transferData, description: e.target.value })}
+                placeholder="Ex: Transferência para caixa"
+              />
+            </div>
+
+            <div className="flex justify-end gap-2 pt-4">
+              <Button variant="outline" onClick={() => setIsTransferDialogOpen(false)}>
+                Cancelar
+              </Button>
+              <Button
+                onClick={handleTransfer}
+                disabled={!transferData.from_account_id || !transferData.to_account_id || !transferData.amount}
+              >
+                Transferir
               </Button>
             </div>
           </div>
