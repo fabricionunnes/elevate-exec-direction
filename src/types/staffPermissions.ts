@@ -54,6 +54,7 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_cfo_ai: "fin_cfo_ai",
   fin_overdue: "fin_overdue",
   fin_bank_balances: "fin_bank_balances",
+  fin_billing_rules: "fin_billing_rules",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
@@ -81,6 +82,7 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_cfo_ai, label: "CFO IA", description: "Inteligência artificial financeira com insights salvos", group: "Dashboard CFO" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_overdue, label: "Atrasados", description: "Visualizar e gerenciar faturas em atraso", group: "Contas a Receber" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_bank_balances, label: "Saldos por Conta", description: "Visualizar saldos bancários no dashboard", group: "Visão Geral" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_billing_rules, label: "Régua de Cobranças", description: "Acessar régua de cobranças automatizada", group: "Operacional" },
 ] as const;
 
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];

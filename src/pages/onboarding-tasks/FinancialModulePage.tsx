@@ -51,7 +51,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   planning: null, // always visible
   cfo: "fin_cfo_executive",
   integrations: null, // always visible
-  "billing-rules": null, // always visible
+  "billing-rules": "fin_billing_rules",
   suppliers: null, // always visible
   inbox: null, // always visible
   "whatsapp-instance": null, // always visible
