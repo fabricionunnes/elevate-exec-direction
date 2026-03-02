@@ -66,6 +66,7 @@ const OnboardingStaffPage = () => {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [searchTerm, setSearchTerm] = useState("");
+  const [statusFilter, setStatusFilter] = useState<"active" | "inactive" | "all">("active");
   const [showDialog, setShowDialog] = useState(false);
   const [showDeleteDialog, setShowDeleteDialog] = useState(false);
   const [deletingMember, setDeletingMember] = useState<Staff | null>(null);
@@ -338,11 +339,14 @@ const OnboardingStaffPage = () => {
     }
   };
 
-  const filteredStaff = staff.filter(
-    (s) =>
+  const filteredStaff = staff.filter((s) => {
+    const matchesSearch =
       s.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      s.email.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+      s.email.toLowerCase().includes(searchTerm.toLowerCase());
+    const matchesStatus =
+      statusFilter === "all" ? true : statusFilter === "active" ? s.is_active : !s.is_active;
+    return matchesSearch && matchesStatus;
+  });
 
   const getRoleBadge = (role: string) => {
     switch (role) {
@@ -417,15 +421,27 @@ const OnboardingStaffPage = () => {
           </div>
         </div>
 
-        {/* Search */}
-        <div className="relative mb-6">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input
-            placeholder="Buscar por nome ou email..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-            className="pl-10 max-w-md"
-          />
+        {/* Search + Filter */}
+        <div className="flex items-center gap-4 mb-6">
+          <div className="relative flex-1 max-w-md">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Buscar por nome ou email..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+              className="pl-10"
+            />
+          </div>
+          <Select value={statusFilter} onValueChange={(v) => setStatusFilter(v as "active" | "inactive" | "all")}>
+            <SelectTrigger className="w-[160px]">
+              <SelectValue placeholder="Status" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="active">Ativos</SelectItem>
+              <SelectItem value="inactive">Inativos</SelectItem>
+              <SelectItem value="all">Todos</SelectItem>
+            </SelectContent>
+          </Select>
         </div>
 
         {/* Stats */}
