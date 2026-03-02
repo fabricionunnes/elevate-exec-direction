@@ -35,7 +35,7 @@ interface GeneratedLink {
 
 export default function PaymentLinkPage() {
   const navigate = useNavigate();
-  const [provider, setProvider] = useState<PaymentProvider>("pagarme");
+  const [provider, setProvider] = useState<PaymentProvider>("mercadopago");
   const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("pix");
