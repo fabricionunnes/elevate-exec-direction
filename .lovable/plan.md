@@ -1,28 +1,39 @@
 
 
-## Melhorias no menu de acoes de Contas a Pagar
+# Plano: Configurar PWA Completo (Instalavel + Offline + Prompt)
 
-### O que sera feito
+O projeto ja tem um `manifest.json` basico e icones. Faltam: Service Worker, cache offline, e prompt de instalacao.
 
-**1. Opcao "Voltar para Em Aberto" (Reabrir conta)**
-- Adicionar no menu de acoes (dropdown) a opcao "Reabrir" para contas com status `paid`, `partial` ou `cancelled`
-- Ao clicar, o status volta para `pending`, e os campos `paid_date` e `paid_amount` sao zerados
-- Se a conta tinha um banco associado ao pagamento, o saldo do banco sera estornado (devolvido)
+## O que sera feito
 
-**2. Opcao "Excluir" com escolha de escopo**
-- Adicionar no menu de acoes a opcao "Excluir"
-- Ao clicar, abre um dialog perguntando:
-  - **"Somente esta"**: exclui apenas o registro selecionado
-  - **"Esta e todas as futuras nao pagas"**: exclui o registro atual e todos os que compartilham o mesmo fornecedor/recorrencia com `installment_number` maior ou igual ao atual e que NAO estejam com status `paid`
-- A exclusao e restrita a usuarios com papel `master` (seguindo o padrao ja existente no sistema)
+### 1. Criar Service Worker (`public/sw.js`)
+- Cache de assets estaticos (JS, CSS, imagens, fontes) no evento `install`
+- Estrategia "network-first" para navegacao e API, com fallback para cache
+- Estrategia "cache-first" para assets estaticos
+- Pagina offline de fallback quando sem conexao
 
-### Detalhes tecnicos
+### 2. Criar pagina offline (`public/offline.html`)
+- Pagina simples com visual coerente (fundo escuro #0a1628) informando que o usuario esta sem conexao
 
-**Arquivos modificados:**
-- `src/components/financial/PayablesPanel.tsx`
-  - Adicionar funcao `handleReopenPayable(id)` que faz UPDATE do status para `pending` e zera `paid_date`/`paid_amount`, com estorno de saldo bancario se aplicavel
-  - Adicionar funcao `handleDeletePayable(payable, scope)` que faz DELETE individual ou em lote (futuras nao pagas)
-  - Adicionar `DropdownMenuItem` "Reabrir" (visivel quando status e `paid`, `partial` ou `cancelled`)
-  - Adicionar `DropdownMenuItem` "Excluir" (sempre visivel)
-  - Adicionar um `AlertDialog` de confirmacao para exclusao com radio de escopo (somente esta / esta e futuras)
+### 3. Registrar o Service Worker (`src/registerSW.ts`)
+- Registro do SW no `main.tsx` apos o render
+- Tratamento de atualizacoes
+
+### 4. Criar componente de Prompt de Instalacao (`src/components/PWAInstallPrompt.tsx`)
+- Interceptar evento `beforeinstallprompt`
+- Exibir banner/toast convidando o usuario a instalar o app
+- Botao "Instalar" que aciona o prompt nativo
+- Dismissavel e so aparece uma vez por sessao
+- Detectar iOS e mostrar instrucoes manuais ("Adicionar a Tela Inicio")
+
+### 5. Adicionar o prompt no Layout
+- Incluir `<PWAInstallPrompt />` no componente `Layout.tsx`
+
+### 6. Atualizar `manifest.json`
+- Corrigir `start_url` para usar hash router (`/#/onboarding-tasks`)
+- Adicionar `scope`, `orientation`, e `categories`
+
+---
+
+**Tecnico**: Nao sera usada nenhuma dependencia adicional. O Service Worker sera vanilla JS. O prompt usara a Web API `beforeinstallprompt`. Compativel com Chrome, Edge, Samsung Internet (prompt nativo) e iOS Safari (instrucoes manuais).
 
