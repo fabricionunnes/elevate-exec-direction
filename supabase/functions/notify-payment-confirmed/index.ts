@@ -112,11 +112,7 @@ Deno.serve(async (req) => {
       ? new Date(invoice.paid_at).toLocaleDateString("pt-BR")
       : new Date().toLocaleDateString("pt-BR");
 
-    const installmentInfo = invoice.total_installments > 1
-      ? `\n📋 *Parcela:* ${invoice.installment_number}/${invoice.total_installments}`
-      : "";
-
-    const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Fatura"}*\n💰 *Valor:* ${amountFormatted}${installmentInfo}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
+    const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
 
     const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
 
