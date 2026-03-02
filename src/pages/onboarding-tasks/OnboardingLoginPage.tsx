@@ -85,7 +85,7 @@ const OnboardingLoginPage = () => {
           }
           // If ONLY has financial permission → go to financial
           if (permKeys.includes("financial") && !permKeys.includes("crm") && !permKeys.some((k: string) => !["financial"].includes(k) && !k.startsWith("fin_"))) {
-            navigate("/onboarding-tasks/financial");
+            navigate("/onboarding-tasks/financeiro");
             return;
           }
           // If has CRM among permissions (commercial roles), prefer CRM
