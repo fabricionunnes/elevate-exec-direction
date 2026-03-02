@@ -543,9 +543,11 @@ const DashboardMetrics = ({
     const renewalsCount = renewalsInPeriod.length;
     const renewedClientsCount = renewedCompanyIds.size;
 
-    // For percentage, use companies whose contracts end in the period as the denominator
-    // This gives the real renewal rate: e.g. 10 contracts ending, 3 renewed = 30%
-    const companiesWithContractEndingInPeriod = filteredCompanies.filter(c => {
+    // For percentage, use ALL companies (including inactive/closed) whose contracts end in the period
+    // This gives the real renewal rate: e.g. 9 contracts ending, 2 renewed = 22%
+    // We use `companies` (not filteredCompanies) because inactive/closed companies are still eligible
+    const companiesWithContractEndingInPeriod = companies.filter(c => {
+      if (c.is_simulator) return false;
       if (c.payment_method === "monthly") return false;
       if (!c.contract_end_date) return false;
       const endDate = new Date(c.contract_end_date);
