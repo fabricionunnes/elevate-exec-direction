@@ -117,6 +117,7 @@ const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
 const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
 const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
+const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCancellationsPage"));
 const OnboardingActivityHistoryPage = lazy(() => import("./pages/onboarding-tasks/OnboardingActivityHistoryPage"));
 const OnboardingCompaniesReportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesReportPage"));
 const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingResultsPage"));
@@ -288,6 +289,7 @@ const App = () => (
               <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
+              <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />

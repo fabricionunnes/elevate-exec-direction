@@ -7,7 +7,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell } from "lucide-react";
+import { Plus, FolderOpen, Search, ArrowLeft, Users, Calendar, CheckCircle2, Building2, ChevronRight, LogOut, Package, ChevronDown, X, Upload, ChevronLeft, Video, CalendarClock, Megaphone, RefreshCw, Settings, History, FileBarChart, BookOpen, TrendingUp, MessageSquareHeart, BarChart3, Heart, Calculator, MessageSquare, User, Target, TrendingDown, Users2, Award, Database, Activity, Crown, Gift, Briefcase, Eye, Star, GraduationCap, FileText, Sparkles, UserX, Bell, AlertTriangle } from "lucide-react";
 import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAccessControlPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -1936,6 +1936,10 @@ const OnboardingTasksPage = () => {
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations")}>
+                        <AlertTriangle className="h-4 w-4 mr-2" />
+                        Cancelamentos & Retenção
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/activity-history")}>
                         <History className="h-4 w-4 mr-2" />
                         Histórico de Atividades
@@ -2375,6 +2379,10 @@ const OnboardingTasksPage = () => {
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/renewals")}>
                             <RefreshCw className="h-4 w-4 mr-2" />
                             Renovações
+                          </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations")}>
+                            <AlertTriangle className="h-4 w-4 mr-2" />
+                            Cancelamentos & Retenção
                           </DropdownMenuItem>
                           {isAdmin && (
                             <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/reschedule")}>
