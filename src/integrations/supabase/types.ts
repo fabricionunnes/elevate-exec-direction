@@ -19548,6 +19548,7 @@ export type Database = {
           pix_qr_code_url: string | null
           product_id: string
           product_name: string
+          provider: string
           status: string
           updated_at: string
           webhook_event: string | null
@@ -19576,6 +19577,7 @@ export type Database = {
           pix_qr_code_url?: string | null
           product_id: string
           product_name: string
+          provider?: string
           status?: string
           updated_at?: string
           webhook_event?: string | null
@@ -19604,6 +19606,7 @@ export type Database = {
           pix_qr_code_url?: string | null
           product_id?: string
           product_name?: string
+          provider?: string
           status?: string
           updated_at?: string
           webhook_event?: string | null
@@ -19636,6 +19639,7 @@ export type Database = {
           id: string
           installments: number
           payment_method: string
+          provider: string
           url: string
         }
         Insert: {
@@ -19647,6 +19651,7 @@ export type Database = {
           id?: string
           installments?: number
           payment_method: string
+          provider?: string
           url: string
         }
         Update: {
@@ -19658,6 +19663,7 @@ export type Database = {
           id?: string
           installments?: number
           payment_method?: string
+          provider?: string
           url?: string
         }
         Relationships: [

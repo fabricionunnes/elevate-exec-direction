@@ -24,6 +24,7 @@ interface CheckoutModalProps {
   amountCents: number;
   priceLabel: string;
   paymentLinkId?: string;
+  provider?: string;
 }
 
 interface CheckoutResult {
@@ -53,6 +54,7 @@ export function CheckoutModal({
   amountCents,
   priceLabel,
   paymentLinkId,
+  provider = "pagarme",
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
   const [method, setMethod] = useState<PaymentMethod>("credit_card");
@@ -154,7 +156,9 @@ export function CheckoutModal({
         payload.card_holder = cardHolder;
       }
 
-      const { data, error } = await supabase.functions.invoke("pagarme-checkout", {
+      const edgeFunctionName = provider === "mercadopago" ? "mercadopago-checkout" : "pagarme-checkout";
+
+      const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
         body: payload,
       });
 

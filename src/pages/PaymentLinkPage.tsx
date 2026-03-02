@@ -4,13 +4,20 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft, ClipboardList } from "lucide-react";
+import { CreditCard, QrCode, FileText, Loader2, Check, Copy, Link2, ArrowLeft, ClipboardList, Building2 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
 type PaymentMethod = "credit_card" | "pix" | "boleto";
+type PaymentProvider = "pagarme" | "asaas" | "mercadopago";
+
+const providers: { id: PaymentProvider; label: string; description: string; color: string }[] = [
+  { id: "pagarme", label: "Pagar.me", description: "Cartão, PIX e Boleto", color: "hsl(var(--primary))" },
+  { id: "asaas", label: "Asaas", description: "PIX, Boleto e Cartão", color: "hsl(142 76% 36%)" },
+  { id: "mercadopago", label: "Mercado Pago", description: "PIX, Cartão e Boleto", color: "hsl(199 89% 48%)" },
+];
 
 const paymentMethods = [
   { id: "credit_card" as const, label: "Cartão de Crédito", icon: CreditCard },
@@ -28,6 +35,7 @@ interface GeneratedLink {
 
 export default function PaymentLinkPage() {
   const navigate = useNavigate();
+  const [provider, setProvider] = useState<PaymentProvider>("pagarme");
   const [amount, setAmount] = useState<number>(0);
   const [description, setDescription] = useState("");
   const [method, setMethod] = useState<PaymentMethod>("pix");
@@ -68,6 +76,7 @@ export default function PaymentLinkPage() {
         method,
         installments: installments.toString(),
         link_id: tempId,
+        provider,
       });
       const link = `${publishedUrl}/#/checkout?${params.toString()}`;
 
@@ -82,7 +91,8 @@ export default function PaymentLinkPage() {
           installments,
           url: link,
           created_by: user?.id ?? null,
-        });
+          provider,
+        } as any);
 
       if (error) {
         console.error("Insert payment_links error:", JSON.stringify(error));
@@ -149,6 +159,29 @@ export default function PaymentLinkPage() {
             <CardDescription>Configure o valor e a forma de pagamento</CardDescription>
           </CardHeader>
           <CardContent className="space-y-5">
+            {/* Provider Selection */}
+            <div>
+              <Label className="text-sm font-medium mb-2 block">Provedor de Pagamento</Label>
+              <div className="grid grid-cols-3 gap-2">
+                {providers.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setProvider(p.id)}
+                    className={cn(
+                      "flex flex-col items-center gap-1 p-3 rounded-lg border-2 transition-all text-sm",
+                      provider === p.id
+                        ? "border-primary bg-primary/5 text-primary shadow-sm"
+                        : "border-border hover:border-primary/30 text-muted-foreground"
+                    )}
+                  >
+                    <Building2 className="h-5 w-5" />
+                    <span className="font-medium">{p.label}</span>
+                    <span className="text-[10px] text-muted-foreground leading-tight">{p.description}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Description */}
             <div>
               <Label htmlFor="pay-desc">Descrição do Pagamento *</Label>
