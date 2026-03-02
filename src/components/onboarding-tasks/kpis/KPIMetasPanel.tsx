@@ -33,6 +33,7 @@ interface KPIMetasPanelProps {
   salespersonId?: string | null;
   canSeeDashboard?: boolean;
   canSeeEndomarketing?: boolean;
+  canSeeSalesLinks?: boolean;
 }
 
 export const KPIMetasPanel = ({ 
@@ -44,6 +45,7 @@ export const KPIMetasPanel = ({
   salespersonId,
   canSeeDashboard = true,
   canSeeEndomarketing = true,
+  canSeeSalesLinks = false,
 }: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
   
@@ -137,7 +139,7 @@ export const KPIMetasPanel = ({
             Configure e acompanhe os indicadores de performance
           </p>
         </div>
-        {canAccessAllTabs && (
+        {(canAccessAllTabs || canSeeSalesLinks) && (
           <Button variant="outline" size="sm" onClick={openEntryLink} className="gap-2 w-full sm:w-auto h-8 sm:h-9 text-xs sm:text-sm">
             <ExternalLink className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="sm:hidden">Lançar</span>

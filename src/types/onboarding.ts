@@ -52,6 +52,7 @@ export const CLIENT_MENU_KEYS = {
   gestao_agendamentos: "gestao_agendamentos",
   minhas_faturas: "minhas_faturas",
   trafego_pago: "trafego_pago",
+  kpis_sales_links: "kpis_sales_links",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -157,6 +158,11 @@ export const CLIENT_MENU_STRUCTURE = [
     key: CLIENT_MENU_KEYS.trafego_pago,
     label: "Tráfego Pago",
     group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.kpis_sales_links,
+    label: "KPIs > Links de Lançamento",
+    group: "KPIs",
   },
 ] as const;
 
