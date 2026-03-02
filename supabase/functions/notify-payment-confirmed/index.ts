@@ -80,12 +80,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // Get WhatsApp instance
+    // Get default WhatsApp instance from config
+    const { data: defaultConfig } = await supabase
+      .from("whatsapp_default_config")
+      .select("setting_value")
+      .eq("setting_key", "default_instance")
+      .maybeSingle();
+
+    const defaultInstanceName = defaultConfig?.setting_value || "fabricionunnes";
+    console.log(`[notify-payment-confirmed] Using WhatsApp instance: ${defaultInstanceName}`);
+
     const { data: whatsappInstance } = await supabase
       .from("whatsapp_instances")
       .select("api_url, api_key, instance_name, is_default")
       .eq("status", "connected")
-      .eq("instance_name", "fabricionunnes")
+      .eq("instance_name", defaultInstanceName)
       .single();
 
     if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
