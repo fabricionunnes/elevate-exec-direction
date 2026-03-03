@@ -143,6 +143,7 @@ export const EndomarketingPanel = ({ companyId, projectId, isAdmin }: Endomarket
               campaignId={playingBalloonId}
               projectId={projectId}
               companyId={companyId}
+              isAdmin={isAdmin}
               onClose={handlePlayClose}
             />
           )}
