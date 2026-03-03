@@ -26,6 +26,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { TrendingUp, TrendingDown, Target, Users, DollarSign, Percent, Hash, CalendarDays, Building2, Check, Filter, UsersRound, Layers, ExternalLink } from "lucide-react";
 import { parseDateLocal } from "@/lib/dateUtils";
+import { isHoliday } from "@/lib/businessDays";
 import { CampaignDashboardWidget } from "../endomarketing/CampaignDashboardWidget";
 import { GamificationDashboardWidget } from "../gamification/GamificationDashboardWidget";
 import { SalesHistoryDialog } from "./SalesHistoryDialog";
@@ -147,6 +148,7 @@ export const KPIDashboardTab = ({
   const [salesHistoryRefreshKey, setSalesHistoryRefreshKey] = useState(0);
   const [contractStartDate, setContractStartDate] = useState<string | null>(null);
   const [salespersonAccessCode, setSalespersonAccessCode] = useState<string | null>(null);
+  const [daySettings, setDaySettings] = useState({ includeSaturday: false, includeSunday: false, includeHolidays: false });
 
   const applyMonthRange = (monthsAgo: number) => {
     const base = subMonths(new Date(), monthsAgo);
@@ -193,7 +195,7 @@ export const KPIDashboardTab = ({
         entriesQuery = entriesQuery.eq("salesperson_id", salespersonId);
       }
 
-      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes, teamUnitsRes] = await Promise.all([
+      const [kpisRes, salespeopleRes, entriesRes, unitsRes, teamsRes, sectorsRes, companyRes, monthlyTargetsRes, sectorTeamsRes, teamUnitsRes, daySettingsRes] = await Promise.all([
         supabase.from("company_kpis").select("*").eq("company_id", companyId).eq("is_active", true).order("sort_order"),
         salespersonId 
           ? supabase.from("company_salespeople").select("*").eq("id", salespersonId)
@@ -206,6 +208,7 @@ export const KPIDashboardTab = ({
         supabase.from("kpi_monthly_targets").select("*").eq("company_id", companyId).eq("month_year", selectedMonthYear).order("level_order"),
         supabase.from("company_sector_teams").select("sector_id, team_id"),
         supabase.from("company_team_units").select("team_id, unit_id"),
+        supabase.from("company_daily_goal_settings").select("include_saturday, include_sunday, include_holidays").eq("company_id", companyId).maybeSingle(),
       ]);
 
       console.log("[KPIDashboardTab] Results:", {
@@ -267,6 +270,13 @@ export const KPIDashboardTab = ({
       setTeamUnits(teamUnitsRes.data || []);
       if (companyRes.data) {
         setContractStartDate(companyRes.data.contract_start_date);
+      }
+      if (daySettingsRes.data) {
+        setDaySettings({
+          includeSaturday: daySettingsRes.data.include_saturday,
+          includeSunday: daySettingsRes.data.include_sunday,
+          includeHolidays: daySettingsRes.data.include_holidays,
+        });
       }
       // Store access code for the salesperson if we're filtering by one
       if (salespersonId && salespeopleRes.data?.[0]?.access_code) {
@@ -715,6 +725,25 @@ export const KPIDashboardTab = ({
     return { total, target: targetForPeriod, percentage };
   };
 
+  // Helper: check if a date is a working day based on company settings
+  const isWorkingDay = (date: Date): boolean => {
+    const dow = date.getDay();
+    if (dow === 6 && !daySettings.includeSaturday) return false;
+    if (dow === 0 && !daySettings.includeSunday) return false;
+    if (!daySettings.includeHolidays && isHoliday(date)) return false;
+    return true;
+  };
+
+  // Count working days in a month based on company settings
+  const countWorkingDays = (year: number, month: number, upToDay?: number): number => {
+    const lastDay = upToDay ?? new Date(year, month + 1, 0).getDate();
+    let count = 0;
+    for (let d = 1; d <= lastDay; d++) {
+      if (isWorkingDay(new Date(year, month, d))) count++;
+    }
+    return count;
+  };
+
   // Calculate monthly projection
   const getMonthlyProjection = () => {
     const now = new Date();
@@ -728,11 +757,20 @@ export const KPIDashboardTab = ({
     const selectedYear = selectedStartDate.getFullYear();
     const daysInMonth = new Date(selectedYear, selectedMonth + 1, 0).getDate();
     
-    // For time progress: if viewing current month, use current day; otherwise use full month
+    // Calculate working days for the full month and elapsed (excluding today)
+    const totalWorkingDays = countWorkingDays(selectedYear, selectedMonth);
     const isCurrentMonth = now.getMonth() === selectedMonth && now.getFullYear() === selectedYear;
+    // For projection: count only PAST working days (exclude today) so projection = realized / elapsed * total
+    const elapsedWorkingDays = isCurrentMonth 
+      ? countWorkingDays(selectedYear, selectedMonth, now.getDate() - 1)
+      : totalWorkingDays;
+    const remainingWorkingDays = isCurrentMonth
+      ? totalWorkingDays - countWorkingDays(selectedYear, selectedMonth, now.getDate())
+      : 0;
+    
     const currentDay = isCurrentMonth ? now.getDate() : daysInMonth;
-    const daysRemaining = isCurrentMonth ? daysInMonth - currentDay : 0;
-    const timeProgress = currentDay / daysInMonth;
+    const daysRemaining = remainingWorkingDays;
+    const timeProgress = totalWorkingDays > 0 ? elapsedWorkingDays / totalWorkingDays : 0;
 
     // Use the entries already filtered by dateRange from the fetch
     // entries state already contains only entries within dateRange.start to dateRange.end
