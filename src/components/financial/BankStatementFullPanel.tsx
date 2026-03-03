@@ -27,6 +27,10 @@ interface Transaction {
   created_at: string;
   reference_id: string | null;
   reference_type: string | null;
+  client_name: string | null;
+  interest_cents: number;
+  fee_cents: number;
+  discount_cents: number;
 }
 
 interface BankAccount {
@@ -61,18 +65,15 @@ export function BankStatementFullPanel() {
   const loadTransactions = async () => {
     setIsLoading(true);
     try {
-      let query = supabase
-        .from("financial_bank_transactions")
-        .select("id, bank_id, type, amount_cents, description, created_at, reference_id, reference_type")
-        .gte("created_at", `${dateFrom}T00:00:00`)
-        .lte("created_at", `${dateTo}T23:59:59`)
-        .order("created_at", { ascending: false });
-
+      const params: Record<string, unknown> = {
+        p_date_from: `${dateFrom}T00:00:00+00:00`,
+        p_date_to: `${dateTo}T23:59:59+00:00`,
+      };
       if (selectedBank !== "all") {
-        query = query.eq("bank_id", selectedBank);
+        params.p_bank_id = selectedBank;
       }
 
-      const { data, error } = await query;
+      const { data, error } = await supabase.rpc("get_bank_statement_transactions", params as any);
       if (error) throw error;
       setTransactions((data || []) as Transaction[]);
     } catch (err) {
@@ -291,24 +292,33 @@ export function BankStatementFullPanel() {
           <CardContent className="p-0">
             <div className="sm:hidden space-y-0 divide-y">
               {paginatedTransactions.map((t) => (
-                <div key={t.id} className="p-3 flex items-center justify-between gap-2">
-                  <div className="flex items-center gap-2 min-w-0">
-                    {t.type === "credit" ? (
-                      <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
-                    ) : (
-                      <TrendingDown className="h-4 w-4 text-destructive shrink-0" />
-                    )}
-                    <div className="min-w-0">
-                      <p className="text-sm truncate">{t.description || "Sem descrição"}</p>
-                      <p className="text-xs text-muted-foreground">
-                        {format(parseISO(t.created_at), "dd/MM/yyyy HH:mm")}
-                        {bankMap[t.bank_id] && ` • ${bankMap[t.bank_id].name}`}
-                      </p>
+                <div key={t.id} className="p-3 space-y-1">
+                  <div className="flex items-center justify-between gap-2">
+                    <div className="flex items-center gap-2 min-w-0">
+                      {t.type === "credit" ? (
+                        <TrendingUp className="h-4 w-4 text-emerald-500 shrink-0" />
+                      ) : (
+                        <TrendingDown className="h-4 w-4 text-destructive shrink-0" />
+                      )}
+                      <div className="min-w-0">
+                        <p className="text-sm truncate">{t.description || "Sem descrição"}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {format(parseISO(t.created_at), "dd/MM/yyyy HH:mm")}
+                          {bankMap[t.bank_id] && ` • ${bankMap[t.bank_id].name}`}
+                        </p>
+                      </div>
                     </div>
+                    <span className={`text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
+                      {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
+                    </span>
                   </div>
-                  <span className={`text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
-                    {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
-                  </span>
+                  {(t.client_name || t.interest_cents > 0 || t.fee_cents > 0) && (
+                    <div className="flex items-center gap-3 pl-6 text-xs text-muted-foreground">
+                      {t.client_name && <span>Cliente: {t.client_name}</span>}
+                      {t.interest_cents > 0 && <span>Juros: {formatCurrency(t.interest_cents)}</span>}
+                      {t.fee_cents > 0 && <span>Taxa: {formatCurrency(t.fee_cents)}</span>}
+                    </div>
+                  )}
                 </div>
               ))}
             </div>
@@ -318,7 +328,9 @@ export function BankStatementFullPanel() {
                 <TableRow>
                   <TableHead className="w-[140px]">Data</TableHead>
                   <TableHead>Banco</TableHead>
+                  <TableHead>Cliente / Fornecedor</TableHead>
                   <TableHead>Descrição</TableHead>
+                  <TableHead className="text-right w-[100px]">Juros/Taxa</TableHead>
                   <TableHead className="text-right w-[130px]">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -331,7 +343,15 @@ export function BankStatementFullPanel() {
                     <TableCell className="text-sm text-muted-foreground">
                       {bankMap[t.bank_id]?.name || "-"}
                     </TableCell>
+                    <TableCell className="text-sm">
+                      {t.client_name || "-"}
+                    </TableCell>
                     <TableCell className="text-sm">{t.description || "-"}</TableCell>
+                    <TableCell className="text-right text-sm text-muted-foreground">
+                      {(t.interest_cents > 0 || t.fee_cents > 0)
+                        ? formatCurrency(t.interest_cents + t.fee_cents)
+                        : "-"}
+                    </TableCell>
                     <TableCell className={`text-right text-sm font-medium ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                       {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
                     </TableCell>
