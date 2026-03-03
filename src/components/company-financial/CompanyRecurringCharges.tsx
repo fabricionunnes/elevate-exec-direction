@@ -65,6 +65,7 @@ export function CompanyRecurringCharges({
   customerDocument: companyDocument,
 }: Props) {
   const [charges, setCharges] = useState<RecurringCharge[]>([]);
+  const [asaasAccounts, setAsaasAccounts] = useState<{ id: string; name: string; is_default: boolean }[]>([]);
   const [categories, setCategories] = useState<{ id: string; name: string }[]>([]);
   const [costCenters, setCostCenters] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
@@ -95,12 +96,29 @@ export function CompanyRecurringCharges({
     notes: "",
     categoryId: "",
     costCenterId: "",
+    asaasAccountId: "",
   });
 
   useEffect(() => {
     fetchCharges();
     fetchCategoriesAndCostCenters();
+    fetchAsaasAccounts();
   }, [companyId]);
+
+  const fetchAsaasAccounts = async () => {
+    const { data } = await supabase
+      .from("asaas_accounts")
+      .select("id, name, is_default")
+      .eq("is_active", true)
+      .order("is_default", { ascending: false });
+    const accounts = (data as any[]) || [];
+    setAsaasAccounts(accounts);
+    // Set default account in form if not set
+    if (!form.asaasAccountId && accounts.length > 0) {
+      const defaultAcc = accounts.find((a: any) => a.is_default) || accounts[0];
+      setForm(prev => ({ ...prev, asaasAccountId: defaultAcc.id }));
+    }
+  };
 
   const fetchCategoriesAndCostCenters = async () => {
     const [catRes, ccRes] = await Promise.all([
@@ -157,6 +175,7 @@ export function CompanyRecurringCharges({
         created_by: user?.id,
         category_id: form.categoryId || null,
         cost_center_id: form.costCenterId || null,
+        asaas_account_id: form.asaasAccountId || null,
       } as any).select().single();
 
       if (error) throw error;
@@ -178,6 +197,7 @@ export function CompanyRecurringCharges({
           company_id: companyId,
           recurring_charge_id: chargeId,
           next_charge_date: form.nextChargeDate,
+          asaas_account_id: form.asaasAccountId || null,
         },
       });
 
@@ -319,6 +339,21 @@ export function CompanyRecurringCharges({
                 <DialogTitle>Nova Cobrança Recorrente</DialogTitle>
               </DialogHeader>
               <div className="space-y-4">
+                {asaasAccounts.length > 1 && (
+                  <div className="space-y-2">
+                    <Label>Conta Asaas</Label>
+                    <Select value={form.asaasAccountId} onValueChange={(v) => setForm({ ...form, asaasAccountId: v })}>
+                      <SelectTrigger><SelectValue placeholder="Selecione a conta..." /></SelectTrigger>
+                      <SelectContent>
+                        {asaasAccounts.map((acc) => (
+                          <SelectItem key={acc.id} value={acc.id}>
+                            {acc.name} {acc.is_default ? "(Padrão)" : ""}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  </div>
+                )}
                 <div className="space-y-2">
                   <Label>Descrição</Label>
                   <Input
