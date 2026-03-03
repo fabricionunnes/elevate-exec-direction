@@ -1,11 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
+  Table, TableBody, TableCell, TableHead, TableHeader, TableRow,
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,44 +8,31 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
+  Select, SelectContent, SelectItem, SelectTrigger, SelectValue,
 } from "@/components/ui/select";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import {
-  Loader2,
-  TrendingUp,
-  TrendingDown,
-  Search,
-  ArrowLeft,
-  ArrowRight,
-  Building2,
-  Calendar,
-  Filter,
+  Loader2, TrendingUp, TrendingDown, Search, ArrowLeft, ArrowRight,
+  Building2, Calendar,
 } from "lucide-react";
 
 interface Transaction {
   id: string;
-  bank_account_id: string | null;
+  bank_id: string;
   type: string;
-  amount: number;
-  transaction_date: string;
+  amount_cents: number;
   description: string | null;
-  is_reconciled: boolean | null;
-  balance_after: number | null;
   created_at: string;
+  reference_id: string | null;
+  reference_type: string | null;
 }
 
 interface BankAccount {
   id: string;
   name: string;
-  bank_name: string;
-  current_balance: number;
+  current_balance_cents: number;
 }
 
 export function BankStatementFullPanel() {
@@ -64,19 +46,13 @@ export function BankStatementFullPanel() {
   const [page, setPage] = useState(0);
   const PAGE_SIZE = 30;
 
-  useEffect(() => {
-    loadBankAccounts();
-  }, []);
-
-  useEffect(() => {
-    loadTransactions();
-    setPage(0);
-  }, [selectedBank, dateFrom, dateTo]);
+  useEffect(() => { loadBankAccounts(); }, []);
+  useEffect(() => { loadTransactions(); setPage(0); }, [selectedBank, dateFrom, dateTo]);
 
   const loadBankAccounts = async () => {
     const { data } = await supabase
-      .from("financial_bank_accounts")
-      .select("id, name, bank_name, current_balance")
+      .from("financial_banks")
+      .select("id, name, current_balance_cents")
       .eq("is_active", true)
       .order("name");
     setBankAccounts(data || []);
@@ -86,15 +62,14 @@ export function BankStatementFullPanel() {
     setIsLoading(true);
     try {
       let query = supabase
-        .from("financial_transactions")
-        .select("id, bank_account_id, type, amount, transaction_date, description, is_reconciled, balance_after, created_at")
-        .gte("transaction_date", dateFrom)
-        .lte("transaction_date", dateTo)
-        .order("transaction_date", { ascending: false })
+        .from("financial_bank_transactions")
+        .select("id, bank_id, type, amount_cents, description, created_at, reference_id, reference_type")
+        .gte("created_at", `${dateFrom}T00:00:00`)
+        .lte("created_at", `${dateTo}T23:59:59`)
         .order("created_at", { ascending: false });
 
       if (selectedBank !== "all") {
-        query = query.eq("bank_account_id", selectedBank);
+        query = query.eq("bank_id", selectedBank);
       }
 
       const { data, error } = await query;
@@ -122,28 +97,27 @@ export function BankStatementFullPanel() {
 
   const totalCredits = filteredTransactions
     .filter(t => t.type === "credit")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + t.amount_cents, 0);
   const totalDebits = filteredTransactions
     .filter(t => t.type === "debit")
-    .reduce((s, t) => s + t.amount, 0);
+    .reduce((s, t) => s + t.amount_cents, 0);
 
-  // Group by day for daily summary
   const dailySummary = useMemo(() => {
     const grouped: Record<string, { credits: number; debits: number; count: number }> = {};
     filteredTransactions.forEach(t => {
-      const day = t.transaction_date;
+      const day = t.created_at.substring(0, 10);
       if (!grouped[day]) grouped[day] = { credits: 0, debits: 0, count: 0 };
       grouped[day].count++;
-      if (t.type === "credit") grouped[day].credits += t.amount;
-      else grouped[day].debits += t.amount;
+      if (t.type === "credit") grouped[day].credits += t.amount_cents;
+      else grouped[day].debits += t.amount_cents;
     });
     return Object.entries(grouped)
       .sort(([a], [b]) => b.localeCompare(a))
       .map(([date, data]) => ({ date, ...data }));
   }, [filteredTransactions]);
 
-  const formatCurrency = (value: number) =>
-    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+  const formatCurrency = (cents: number) =>
+    new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(cents / 100);
 
   const prevMonth = () => {
     const d = new Date(dateFrom);
@@ -165,7 +139,6 @@ export function BankStatementFullPanel() {
 
   return (
     <div className="space-y-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <h2 className="text-xl font-bold flex items-center gap-2">
           <Building2 className="h-5 w-5 text-primary" />
@@ -173,11 +146,9 @@ export function BankStatementFullPanel() {
         </h2>
       </div>
 
-      {/* Filters */}
       <Card>
         <CardContent className="pt-4 pb-4">
           <div className="flex flex-col sm:flex-row gap-3">
-            {/* Bank filter */}
             <div className="flex-1 min-w-[180px]">
               <label className="text-xs text-muted-foreground mb-1 block">Banco</label>
               <Select value={selectedBank} onValueChange={setSelectedBank}>
@@ -188,14 +159,13 @@ export function BankStatementFullPanel() {
                   <SelectItem value="all">Todos os bancos</SelectItem>
                   {bankAccounts.map(b => (
                     <SelectItem key={b.id} value={b.id}>
-                      {b.name} ({b.bank_name})
+                      {b.name}
                     </SelectItem>
                   ))}
                 </SelectContent>
               </Select>
             </div>
 
-            {/* Month nav */}
             <div className="flex items-end gap-1">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">Período</label>
@@ -211,7 +181,6 @@ export function BankStatementFullPanel() {
               </div>
             </div>
 
-            {/* Custom date range */}
             <div className="flex items-end gap-2">
               <div>
                 <label className="text-xs text-muted-foreground mb-1 block">De</label>
@@ -223,7 +192,6 @@ export function BankStatementFullPanel() {
               </div>
             </div>
 
-            {/* Search */}
             <div className="flex-1 min-w-[180px] flex items-end">
               <div className="relative w-full">
                 <label className="text-xs text-muted-foreground mb-1 block">Buscar</label>
@@ -242,7 +210,6 @@ export function BankStatementFullPanel() {
         </CardContent>
       </Card>
 
-      {/* Summary cards */}
       <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
         <Card>
           <CardContent className="pt-3 pb-3 text-center">
@@ -272,7 +239,6 @@ export function BankStatementFullPanel() {
         </Card>
       </div>
 
-      {/* Daily summary */}
       {dailySummary.length > 0 && (
         <Card>
           <CardHeader className="pb-2 pt-4">
@@ -310,7 +276,6 @@ export function BankStatementFullPanel() {
         </Card>
       )}
 
-      {/* Transactions table */}
       {isLoading ? (
         <div className="flex items-center justify-center py-12">
           <Loader2 className="h-6 w-6 animate-spin text-primary" />
@@ -324,7 +289,6 @@ export function BankStatementFullPanel() {
       ) : (
         <Card>
           <CardContent className="p-0">
-            {/* Mobile cards */}
             <div className="sm:hidden space-y-0 divide-y">
               {paginatedTransactions.map((t) => (
                 <div key={t.id} className="p-3 flex items-center justify-between gap-2">
@@ -337,51 +301,45 @@ export function BankStatementFullPanel() {
                     <div className="min-w-0">
                       <p className="text-sm truncate">{t.description || "Sem descrição"}</p>
                       <p className="text-xs text-muted-foreground">
-                        {format(parseISO(t.transaction_date), "dd/MM/yyyy")}
-                        {bankMap[t.bank_account_id] && ` • ${bankMap[t.bank_account_id].name}`}
+                        {format(parseISO(t.created_at), "dd/MM/yyyy HH:mm")}
+                        {bankMap[t.bank_id] && ` • ${bankMap[t.bank_id].name}`}
                       </p>
                     </div>
                   </div>
                   <span className={`text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
-                    {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount)}
+                    {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
                   </span>
                 </div>
               ))}
             </div>
 
-            {/* Desktop table */}
             <Table className="hidden sm:table">
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[100px]">Data</TableHead>
+                  <TableHead className="w-[140px]">Data</TableHead>
                   <TableHead>Banco</TableHead>
                   <TableHead>Descrição</TableHead>
                   <TableHead className="text-right w-[130px]">Valor</TableHead>
-                  <TableHead className="text-right w-[130px]">Saldo</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedTransactions.map((t) => (
                   <TableRow key={t.id}>
                     <TableCell className="text-sm">
-                      {format(parseISO(t.transaction_date), "dd/MM/yyyy")}
+                      {format(parseISO(t.created_at), "dd/MM/yyyy HH:mm")}
                     </TableCell>
                     <TableCell className="text-sm text-muted-foreground">
-                      {bankMap[t.bank_account_id]?.name || "-"}
+                      {bankMap[t.bank_id]?.name || "-"}
                     </TableCell>
                     <TableCell className="text-sm">{t.description || "-"}</TableCell>
                     <TableCell className={`text-right text-sm font-medium ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
-                      {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount)}
-                    </TableCell>
-                    <TableCell className="text-right text-sm text-muted-foreground">
-                      {t.balance_after != null ? formatCurrency(t.balance_after) : "-"}
+                      {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
                     </TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
 
-            {/* Pagination */}
             {totalPages > 1 && (
               <div className="flex items-center justify-between px-4 py-2 border-t">
                 <p className="text-xs text-muted-foreground">
