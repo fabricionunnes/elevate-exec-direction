@@ -170,25 +170,25 @@ export const BalloonPopGame = ({ campaignId, projectId, companyId, isAdmin, onCl
     return availablePrizes[availablePrizes.length - 1];
   }, [prizes, campaign]);
 
-  const generateBalloons = (count: number, colors: string[]): Balloon[] => {
-    // Generate balloons spread across the area with some randomness
-    const totalBalloons = Math.max(count, 8); // Show at least 8 balloons for visual impact
-    const actualCount = count; // Only this many are poppable
+  const generateBalloons = (_poppableCount: number, colors: string[]): Balloon[] => {
+    // Always show many balloons for visual impact, user picks from them
+    const displayCount = Math.max(12, _poppableCount * 4);
+    const cols = Math.ceil(Math.sqrt(displayCount * 1.3));
+    const rows = Math.ceil(displayCount / cols);
     
-    return Array.from({ length: actualCount }, (_, i) => {
-      const cols = Math.ceil(Math.sqrt(actualCount * 1.5));
+    return Array.from({ length: displayCount }, (_, i) => {
       const row = Math.floor(i / cols);
       const col = i % cols;
-      const cellW = 100 / (cols + 1);
-      const cellH = 100 / (Math.ceil(actualCount / cols) + 1);
+      const cellW = 100 / (cols + 0.5);
+      const cellH = 100 / (rows + 0.5);
       
       return {
         id: i,
         color: colors[i % colors.length],
-        x: cellW * (col + 0.5) + (Math.random() - 0.5) * cellW * 0.6,
-        y: cellH * (row + 0.5) + (Math.random() - 0.5) * cellH * 0.4,
-        size: 65 + Math.random() * 25,
-        delay: Math.random() * 1.5,
+        x: cellW * (col + 0.5) + (Math.random() - 0.5) * cellW * 0.5,
+        y: cellH * (row + 0.5) + (Math.random() - 0.5) * cellH * 0.3,
+        size: 60 + Math.random() * 20,
+        delay: Math.random() * 2,
         popped: false,
       };
     });
@@ -208,7 +208,7 @@ export const BalloonPopGame = ({ campaignId, projectId, companyId, isAdmin, onCl
   };
 
   const popBalloon = async (balloonId: number) => {
-    if (!campaign) return;
+    if (!campaign || balloonsRemaining <= 0) return;
     const balloon = balloons.find(b => b.id === balloonId);
     if (!balloon || balloon.popped) return;
     const prize = pickRandomPrize();
