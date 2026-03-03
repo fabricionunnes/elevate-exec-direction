@@ -24165,6 +24165,23 @@ export type Database = {
           level_name: string
         }[]
       }
+      get_bank_statement_transactions: {
+        Args: { p_bank_id?: string; p_date_from: string; p_date_to: string }
+        Returns: {
+          amount_cents: number
+          bank_id: string
+          client_name: string
+          created_at: string
+          description: string
+          discount_cents: number
+          fee_cents: number
+          id: string
+          interest_cents: number
+          reference_id: string
+          reference_type: string
+          type: string
+        }[]
+      }
       get_circle_profile_id: { Args: never; Returns: string }
       get_circle_profile_id_safe: { Args: never; Returns: string }
       get_current_circle_profile_id: { Args: never; Returns: string }
