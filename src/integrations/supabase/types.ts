@@ -13767,6 +13767,299 @@ export type Database = {
           },
         ]
       }
+      endomarketing_balloon_achievements: {
+        Row: {
+          achieved_value: number | null
+          balloons_earned: number
+          balloons_popped: number
+          campaign_id: string
+          created_at: string
+          goal_value: number | null
+          id: string
+          period_key: string
+          salesperson_id: string
+          salesperson_name: string
+          updated_at: string
+        }
+        Insert: {
+          achieved_value?: number | null
+          balloons_earned?: number
+          balloons_popped?: number
+          campaign_id: string
+          created_at?: string
+          goal_value?: number | null
+          id?: string
+          period_key: string
+          salesperson_id: string
+          salesperson_name: string
+          updated_at?: string
+        }
+        Update: {
+          achieved_value?: number | null
+          balloons_earned?: number
+          balloons_popped?: number
+          campaign_id?: string
+          created_at?: string
+          goal_value?: number | null
+          id?: string
+          period_key?: string
+          salesperson_id?: string
+          salesperson_name?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_balloon_achievements_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_balloon_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_balloon_campaigns: {
+        Row: {
+          all_salespeople: boolean
+          balloon_colors: string[] | null
+          balloons_per_achievement: number
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string
+          goal_source: string
+          goal_type: string
+          goal_value: number | null
+          id: string
+          kpi_id: string | null
+          max_balloons_per_period: number | null
+          name: string
+          prize_mode: string
+          project_id: string
+          start_date: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          all_salespeople?: boolean
+          balloon_colors?: string[] | null
+          balloons_per_achievement?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date: string
+          goal_source?: string
+          goal_type?: string
+          goal_value?: number | null
+          id?: string
+          kpi_id?: string | null
+          max_balloons_per_period?: number | null
+          name: string
+          prize_mode?: string
+          project_id: string
+          start_date: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          all_salespeople?: boolean
+          balloon_colors?: string[] | null
+          balloons_per_achievement?: number
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string
+          goal_source?: string
+          goal_type?: string
+          goal_value?: number | null
+          id?: string
+          kpi_id?: string | null
+          max_balloons_per_period?: number | null
+          name?: string
+          prize_mode?: string
+          project_id?: string
+          start_date?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_balloon_campaigns_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_balloon_campaigns_kpi_id_fkey"
+            columns: ["kpi_id"]
+            isOneToOne: false
+            referencedRelation: "company_kpis"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_balloon_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_balloon_participants: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          id: string
+          salesperson_id: string
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          id?: string
+          salesperson_id: string
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          id?: string
+          salesperson_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_balloon_participants_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_balloon_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_balloon_pops: {
+        Row: {
+          campaign_id: string
+          delivered: boolean
+          delivered_at: string | null
+          delivered_by: string | null
+          goal_value_achieved: number | null
+          id: string
+          period_key: string
+          popped_at: string
+          prize_id: string | null
+          prize_name: string
+          prize_type: string
+          salesperson_id: string
+          salesperson_name: string
+        }
+        Insert: {
+          campaign_id: string
+          delivered?: boolean
+          delivered_at?: string | null
+          delivered_by?: string | null
+          goal_value_achieved?: number | null
+          id?: string
+          period_key: string
+          popped_at?: string
+          prize_id?: string | null
+          prize_name: string
+          prize_type: string
+          salesperson_id: string
+          salesperson_name: string
+        }
+        Update: {
+          campaign_id?: string
+          delivered?: boolean
+          delivered_at?: string | null
+          delivered_by?: string | null
+          goal_value_achieved?: number | null
+          id?: string
+          period_key?: string
+          popped_at?: string
+          prize_id?: string | null
+          prize_name?: string
+          prize_type?: string
+          salesperson_id?: string
+          salesperson_name?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_balloon_pops_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_balloon_campaigns"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_balloon_pops_delivered_by_fkey"
+            columns: ["delivered_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "endomarketing_balloon_pops_prize_id_fkey"
+            columns: ["prize_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_balloon_prizes"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      endomarketing_balloon_prizes: {
+        Row: {
+          campaign_id: string
+          created_at: string
+          description: string | null
+          emoji: string | null
+          id: string
+          is_active: boolean
+          name: string
+          prize_type: string
+          quantity_remaining: number | null
+          sort_order: number
+          total_quantity: number | null
+          value: number | null
+          weight: number
+        }
+        Insert: {
+          campaign_id: string
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          prize_type?: string
+          quantity_remaining?: number | null
+          sort_order?: number
+          total_quantity?: number | null
+          value?: number | null
+          weight?: number
+        }
+        Update: {
+          campaign_id?: string
+          created_at?: string
+          description?: string | null
+          emoji?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          prize_type?: string
+          quantity_remaining?: number | null
+          sort_order?: number
+          total_quantity?: number | null
+          value?: number | null
+          weight?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "endomarketing_balloon_prizes_campaign_id_fkey"
+            columns: ["campaign_id"]
+            isOneToOne: false
+            referencedRelation: "endomarketing_balloon_campaigns"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       endomarketing_campaigns: {
         Row: {
           all_salespeople: boolean
