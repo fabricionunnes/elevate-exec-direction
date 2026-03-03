@@ -31,7 +31,7 @@ export function CompanyFinancialPanel({
   return (
     <div className="space-y-4">
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="grid w-full grid-cols-5">
+        <TabsList className="flex flex-wrap h-auto gap-1 w-full">
           <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">
             <Receipt className="h-4 w-4" />
             <span className="hidden sm:inline">Faturas</span>

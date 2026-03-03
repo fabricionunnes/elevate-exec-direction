@@ -533,7 +533,7 @@ const OnboardingCompanyDetailPage = () => {
 
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6 flex-wrap">
+            <TabsList className="mb-6 flex-wrap h-auto gap-1">
               <TabsTrigger value="info" className="gap-2">
                 <Building2 className="h-4 w-4" />
                 Informações
