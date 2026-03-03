@@ -1430,6 +1430,36 @@ export type Database = {
           },
         ]
       }
+      asaas_accounts: {
+        Row: {
+          api_key_secret_name: string
+          created_at: string
+          id: string
+          is_active: boolean
+          is_default: boolean
+          name: string
+          updated_at: string
+        }
+        Insert: {
+          api_key_secret_name: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name: string
+          updated_at?: string
+        }
+        Update: {
+          api_key_secret_name?: string
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          is_default?: boolean
+          name?: string
+          updated_at?: string
+        }
+        Relationships: []
+      }
       assessment_360_evaluations: {
         Row: {
           additional_comments: string | null
@@ -10003,6 +10033,7 @@ export type Database = {
       company_recurring_charges: {
         Row: {
           amount_cents: number
+          asaas_account_id: string | null
           category_id: string | null
           company_id: string
           cost_center_id: string | null
@@ -10027,6 +10058,7 @@ export type Database = {
         }
         Insert: {
           amount_cents: number
+          asaas_account_id?: string | null
           category_id?: string | null
           company_id: string
           cost_center_id?: string | null
@@ -10051,6 +10083,7 @@ export type Database = {
         }
         Update: {
           amount_cents?: number
+          asaas_account_id?: string | null
           category_id?: string | null
           company_id?: string
           cost_center_id?: string | null
@@ -10074,6 +10107,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "company_recurring_charges_asaas_account_id_fkey"
+            columns: ["asaas_account_id"]
+            isOneToOne: false
+            referencedRelation: "asaas_accounts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "company_recurring_charges_category_id_fkey"
             columns: ["category_id"]
