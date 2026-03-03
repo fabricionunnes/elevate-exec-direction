@@ -42,9 +42,6 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
-    if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY not configured");
-
     const {
       description,
       amount_cents,
@@ -57,7 +54,33 @@ Deno.serve(async (req) => {
       company_id,
       recurring_charge_id,
       next_charge_date,
+      asaas_account_id,
     } = await req.json();
+
+    // Resolve API key: if asaas_account_id is provided, look up the secret name
+    let ASAAS_API_KEY: string | undefined;
+    
+    if (asaas_account_id) {
+      const supabaseAdmin = createClient(
+        Deno.env.get("SUPABASE_URL")!,
+        Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      );
+      const { data: account } = await supabaseAdmin
+        .from("asaas_accounts")
+        .select("api_key_secret_name")
+        .eq("id", asaas_account_id)
+        .single();
+      
+      if (account?.api_key_secret_name) {
+        ASAAS_API_KEY = Deno.env.get(account.api_key_secret_name);
+        console.log(`Using Asaas account: ${account.api_key_secret_name}`);
+      }
+    }
+    
+    if (!ASAAS_API_KEY) {
+      ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
+    }
+    if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY not configured");
 
     if (!description || !amount_cents || !recurrence || !customer_name || !customer_email) {
       return new Response(
