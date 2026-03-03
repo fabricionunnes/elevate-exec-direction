@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { ReceivablePaymentDialog } from "@/components/financial/ReceivablePaymentDialog";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { WhatsAppSendButton } from "@/components/onboarding-tasks/WhatsAppSendButton";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
@@ -86,6 +87,8 @@ export function CompanyInvoicesList({ companyId }: Props) {
   });
   const [companyPhone, setCompanyPhone] = useState("");
   const [companyName, setCompanyName] = useState("");
+  const [payInvoice, setPayInvoice] = useState<Invoice | null>(null);
+  const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
 
   useEffect(() => {
     if (companyId) {
@@ -666,7 +669,10 @@ export function CompanyInvoicesList({ companyId }: Props) {
                               variant="outline"
                               size="sm"
                               className="h-7 text-xs px-2"
-                              onClick={() => markAsPaid(inv.id)}
+                              onClick={() => {
+                                setPayInvoice(inv);
+                                setIsPayDialogOpen(true);
+                              }}
                             >
                               <CheckCircle2 className="h-3 w-3 mr-1" />
                               Dar Baixa
@@ -759,6 +765,39 @@ export function CompanyInvoicesList({ companyId }: Props) {
           )}
         </CardContent>
       </Card>
+
+      {/* Payment Dialog */}
+      <ReceivablePaymentDialog
+        open={isPayDialogOpen}
+        onOpenChange={setIsPayDialogOpen}
+        invoice={payInvoice}
+        onSuccess={() => {
+          setPayInvoice(null);
+          fetchInvoices();
+        }}
+        onAsaasSync={(invoiceId) => {
+          // Asaas sync (non-blocking)
+          supabase.functions.invoke("asaas-confirm-payment", {
+            body: { invoice_id: invoiceId, action: "confirm" },
+          }).then(({ data, error: asaasErr }) => {
+            if (asaasErr) {
+              console.error("Asaas sync error:", asaasErr);
+              toast.warning("Baixa local feita, mas houve erro ao sincronizar com Asaas");
+            } else if (data?.skipped) {
+              console.log("Asaas sync skipped:", data.reason);
+            } else {
+              toast.success("Baixa sincronizada com Asaas ✓");
+            }
+          });
+          // WhatsApp notification (non-blocking)
+          supabase.functions.invoke("notify-payment-confirmed", {
+            body: { invoice_id: invoiceId },
+          }).then(({ data, error: notifErr }) => {
+            if (notifErr) console.error("WhatsApp notify error:", notifErr);
+            else if (!data?.skipped) toast.success("Cliente notificado via WhatsApp ✓");
+          });
+        }}
+      />
     </div>
   );
 }

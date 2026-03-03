@@ -54,6 +54,7 @@ import {
 import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
+import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 
 interface Receivable {
   id: string;
@@ -118,10 +119,7 @@ export function ReceivablesPanel() {
     notes: ""
   });
 
-  const [paymentData, setPaymentData] = useState({
-    paid_date: format(new Date(), "yyyy-MM-dd"),
-    paid_amount: ""
-  });
+  // paymentData removed — now using ReceivablePaymentDialog
 
   useEffect(() => {
     loadData();
@@ -253,34 +251,14 @@ export function ReceivablesPanel() {
     }
   };
 
-  const handleMarkAsPaid = async () => {
-    if (!selectedReceivable) return;
-
-    try {
-      const { error } = await supabase
-        .from("financial_receivables")
-        .update({
-          status: "paid",
-          paid_date: paymentData.paid_date,
-          paid_amount: parseFloat(paymentData.paid_amount) || selectedReceivable.amount
-        })
-        .eq("id", selectedReceivable.id);
-
-      if (error) throw error;
-
-      // Send payment notification to subscribers
+  const handlePaymentSuccess = () => {
+    if (selectedReceivable) {
       const companyName = selectedReceivable.company?.name || "Empresa não identificada";
-      const paidAmount = parseFloat(paymentData.paid_amount) || selectedReceivable.amount;
-      sendPaymentNotification(companyName, paidAmount, selectedReceivable.description);
-
-      toast.success("Pagamento registrado com sucesso!");
-      setIsPayDialogOpen(false);
-      setSelectedReceivable(null);
-      loadData();
-    } catch (error) {
-      console.error("Error marking as paid:", error);
-      toast.error("Erro ao registrar pagamento");
+      sendPaymentNotification(companyName, selectedReceivable.amount, selectedReceivable.description);
     }
+    setIsPayDialogOpen(false);
+    setSelectedReceivable(null);
+    loadData();
   };
 
   const handleCancelReceivable = async (id: string) => {
@@ -813,12 +791,8 @@ export function ReceivablesPanel() {
                           {receivable.status !== "paid" && receivable.status !== "cancelled" && (
                             <>
                               <DropdownMenuItem
-                                onClick={() => {
+                              onClick={() => {
                                   setSelectedReceivable(receivable);
-                                  setPaymentData({
-                                    paid_date: format(new Date(), "yyyy-MM-dd"),
-                                    paid_amount: String(receivable.amount)
-                                  });
                                   setIsPayDialogOpen(true);
                                 }}
                               >
@@ -896,51 +870,12 @@ export function ReceivablesPanel() {
       </div>
 
       {/* Payment Dialog */}
-      <Dialog open={isPayDialogOpen} onOpenChange={setIsPayDialogOpen}>
-        <DialogContent>
-          <DialogHeader>
-            <DialogTitle>Registrar Pagamento</DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4 py-4">
-            <div className="p-4 bg-muted rounded-lg">
-              <p className="font-medium">{selectedReceivable?.description}</p>
-              <p className="text-sm text-muted-foreground">
-                Valor: {selectedReceivable && formatCurrency(selectedReceivable.amount)}
-              </p>
-            </div>
-            
-            <div className="grid grid-cols-2 gap-4">
-              <div className="space-y-2">
-                <Label>Data do Pagamento</Label>
-                <Input
-                  type="date"
-                  value={paymentData.paid_date}
-                  onChange={(e) => setPaymentData({ ...paymentData, paid_date: e.target.value })}
-                />
-              </div>
-              <div className="space-y-2">
-                <Label>Valor Recebido</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={paymentData.paid_amount}
-                  onChange={(e) => setPaymentData({ ...paymentData, paid_amount: e.target.value })}
-                  placeholder={selectedReceivable?.amount.toString()}
-                />
-              </div>
-            </div>
-
-            <div className="flex justify-end gap-2 pt-4">
-              <Button variant="outline" onClick={() => setIsPayDialogOpen(false)}>
-                Cancelar
-              </Button>
-              <Button onClick={handleMarkAsPaid}>
-                Confirmar Pagamento
-              </Button>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
+      <ReceivablePaymentDialog
+        open={isPayDialogOpen}
+        onOpenChange={setIsPayDialogOpen}
+        receivable={selectedReceivable}
+        onSuccess={handlePaymentSuccess}
+      />
 
       {/* Edit Due Date Dialog */}
       <Dialog open={isEditDialogOpen} onOpenChange={setIsEditDialogOpen}>
