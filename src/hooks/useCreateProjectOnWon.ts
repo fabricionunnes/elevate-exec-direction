@@ -14,6 +14,9 @@ interface LeadData {
   city?: string | null;
   state?: string | null;
   segment?: string | null;
+  address?: string | null;
+  zipcode?: string | null;
+  trade_name?: string | null;
 }
 
 interface CreateProjectResult {
@@ -34,7 +37,7 @@ async function fetchLeadWithCustomFields(leadId: string): Promise<{
   // Buscar dados do lead
   const { data: leadData, error: leadError } = await supabase
     .from("crm_leads")
-    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment")
+    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name")
     .eq("id", leadId)
     .single();
 
@@ -130,14 +133,19 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
       await supabase
         .from("onboarding_companies")
         .update({
-          name: lead.company, // Atualizar nome caso tenha mudado
+          name: lead.company,
           phone: lead.phone,
           email: lead.email,
+          cnpj: lead.document,
           segment: lead.segment,
           contract_value: lead.opportunity_value,
           payment_method: paymentMethod,
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
+          address: lead.address,
+          address_city: lead.city,
+          address_state: lead.state,
+          address_zipcode: lead.zipcode,
         })
         .eq("id", companyId);
     } else {
@@ -154,6 +162,10 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           payment_method: paymentMethod,
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
+          address: lead.address,
+          address_city: lead.city,
+          address_state: lead.state,
+          address_zipcode: lead.zipcode,
         })
         .select("id")
         .single();
