@@ -64,6 +64,7 @@ import { BillingRulesPanel } from "@/components/financial/BillingRulesPanel";
 import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
+import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
@@ -156,6 +157,7 @@ const NAV_ITEMS = [
   { key: "suppliers", label: "Fornecedores", icon: Truck, permKey: FINANCIAL_PERMISSION_KEYS.fin_payables_view },
   { key: "inbox", label: "Atendimentos", icon: Headphones, permKey: FINANCIAL_PERMISSION_KEYS.fin_inbox },
   { key: "whatsapp-instance", label: "Instância", icon: MessageSquare, permKey: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance },
+  { key: "bank-statement", label: "Extrato Bancário", icon: FileText, permKey: FINANCIAL_PERMISSION_KEYS.fin_bank_statement },
 ] as const;
 
 const applyPeriodPreset = (
@@ -2125,6 +2127,9 @@ export default function AllRecurringChargesPage() {
           )}
           {activeTab === "whatsapp-instance" && (
             <WhatsAppInstancePanel />
+          )}
+          {activeTab === "bank-statement" && (
+            <BankStatementFullPanel />
           )}
         </div>
       </main>
