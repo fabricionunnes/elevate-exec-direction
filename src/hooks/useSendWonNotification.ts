@@ -266,9 +266,7 @@ function formatWonMessage(lead: any, paymentMethodName: string | null, briefingT
   if (briefingText) {
     lines.push("");
     lines.push("📝 *BRIEFING*");
-    // Truncate if too long
-    const briefing = briefingText.length > 500 ? briefingText.substring(0, 500) + "..." : briefingText;
-    lines.push(briefing);
+    lines.push(briefingText);
   }
 
   return lines.join("\n");
