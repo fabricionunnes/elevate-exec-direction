@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -545,11 +546,10 @@ export const CampaignForm = ({ companyId, projectId, campaignId, onClose }: Camp
             <div className="grid gap-4 md:grid-cols-2">
               <div>
                 <Label>Valor da meta</Label>
-                <Input
-                  type="number"
-                  value={goalValue || ""}
-                  onChange={(e) => setGoalValue(e.target.value ? Number(e.target.value) : null)}
-                  placeholder="Ex: 100000"
+                <CurrencyInput
+                  value={goalValue ?? undefined}
+                  onChange={(v) => setGoalValue(v || null)}
+                  placeholder="0,00"
                 />
               </div>
               <div>
@@ -632,11 +632,10 @@ export const CampaignForm = ({ companyId, projectId, campaignId, onClose }: Camp
                     </div>
                     {prize.prize_type === "money" && (
                       <div>
-                        <Input
-                          type="number"
-                          placeholder="Valor (R$)"
-                          value={prize.value || ""}
-                          onChange={(e) => updatePrize(index, "value", e.target.value ? Number(e.target.value) : null)}
+                        <CurrencyInput
+                          placeholder="0,00"
+                          value={prize.value ?? undefined}
+                          onChange={(v) => updatePrize(index, "value", v || null)}
                         />
                       </div>
                     )}
