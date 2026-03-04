@@ -550,7 +550,7 @@ export default function AllRecurringChargesPage() {
       const previouslyPaid = inv?.paid_amount_cents || 0;
       const paidNow = customPaidCents !== undefined ? customPaidCents : totalDue;
       const accumulatedPaid = previouslyPaid + paidNow;
-      const isPartial = accumulatedPaid < (baseAmount || 0);
+      const isPartial = (accumulatedPaid + discountCents) < (baseAmount || 0);
       const newStatus = isPartial ? "partial" : "paid";
       const updateData: any = { status: newStatus, paid_at: today, paid_amount_cents: accumulatedPaid, payment_fee_cents: feeCents };
       if (bankId) updateData.bank_id = bankId;
