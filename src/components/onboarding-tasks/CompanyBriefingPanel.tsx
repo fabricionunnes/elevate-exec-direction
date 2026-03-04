@@ -42,7 +42,7 @@ import { ptBR } from "date-fns/locale";
 import { KickoffFormDialog } from "./KickoffFormDialog";
 import { GenerateStrategicPlanningDialog } from "./GenerateStrategicPlanningDialog";
 import { formatPhone } from "@/lib/utils";
-import { COMPANY_SEGMENTS } from "@/data/companySegments";
+import { SegmentSelect } from "@/components/ui/segment-select";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 const COMPANY_STATUS_OPTIONS = [
@@ -572,21 +572,11 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
             <div>
               <label className="text-sm text-muted-foreground">Segmento</label>
               {isEditing ? (
-                <Select
+                <SegmentSelect
                   value={formData.segment || ""}
                   onValueChange={(value) => updateField("segment", value)}
-                >
-                  <SelectTrigger className="mt-1">
-                    <SelectValue placeholder="Selecione o segmento" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {COMPANY_SEGMENTS.map((seg) => (
-                      <SelectItem key={seg} value={seg}>
-                        {seg}
-                      </SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                  className="mt-1"
+                />
               ) : (
                 <p className="font-medium">{company.segment || "-"}</p>
               )}

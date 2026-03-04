@@ -46,7 +46,7 @@ import {
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
-import { COMPANY_SEGMENTS } from "@/data/companySegments";
+import { SegmentSelect } from "@/components/ui/segment-select";
 import { ContactsContractsPanel } from "@/components/onboarding-tasks/ContactsContractsPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFinancialPanel";
@@ -632,18 +632,7 @@ const OnboardingCompanyDetailPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Segmento</Label>
-                      <Select value={form.segment} onValueChange={(value) => setForm({ ...form, segment: value })}>
-                        <SelectTrigger>
-                          <SelectValue placeholder="Selecione o segmento" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          {COMPANY_SEGMENTS.map((seg) => (
-                            <SelectItem key={seg} value={seg}>
-                              {seg}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SegmentSelect value={form.segment} onValueChange={(value) => setForm({ ...form, segment: value })} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>
