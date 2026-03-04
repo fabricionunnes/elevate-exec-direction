@@ -29,6 +29,7 @@ export const STAFF_MENU_KEYS = {
   ceo_dashboard: "ceo_dashboard",
   settings: "settings",
   admin_menu: "admin_menu",
+  commercial_actions: "commercial_actions",
 } as const;
 
 // Financial sub-permission keys
@@ -180,6 +181,12 @@ export const STAFF_MENU_STRUCTURE = [
     label: "Configurações", 
     description: "Configurações do sistema",
     group: "Administração" 
+  },
+  { 
+    key: STAFF_MENU_KEYS.commercial_actions, 
+    label: "Ações Comerciais", 
+    description: "Calendário de ações comerciais",
+    group: "Comercial" 
   },
 ] as const;
 
