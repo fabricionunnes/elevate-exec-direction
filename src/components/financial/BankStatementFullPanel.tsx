@@ -312,9 +312,10 @@ export function BankStatementFullPanel() {
                       {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}
                     </span>
                   </div>
-                  {(t.client_name || t.interest_cents > 0 || t.fee_cents > 0) && (
+                  {(t.client_name || t.interest_cents > 0 || t.fee_cents > 0 || t.discount_cents > 0) && (
                     <div className="flex items-center gap-3 pl-6 text-xs text-muted-foreground">
                       {t.client_name && <span>Cliente: {t.client_name}</span>}
+                      {t.discount_cents > 0 && <span className="text-emerald-600">Desconto: -{formatCurrency(t.discount_cents)}</span>}
                       {t.interest_cents > 0 && <span>Juros: {formatCurrency(t.interest_cents)}</span>}
                       {t.fee_cents > 0 && <span>Taxa: {formatCurrency(t.fee_cents)}</span>}
                     </div>
@@ -330,7 +331,7 @@ export function BankStatementFullPanel() {
                   <TableHead>Banco</TableHead>
                   <TableHead>Cliente / Fornecedor</TableHead>
                   <TableHead>Descrição</TableHead>
-                  <TableHead className="text-right w-[100px]">Juros/Taxa</TableHead>
+                  <TableHead className="text-right w-[140px]">Juros/Taxa/Desc.</TableHead>
                   <TableHead className="text-right w-[130px]">Valor</TableHead>
                 </TableRow>
               </TableHeader>
@@ -348,9 +349,12 @@ export function BankStatementFullPanel() {
                     </TableCell>
                     <TableCell className="text-sm">{t.description || "-"}</TableCell>
                     <TableCell className="text-right text-sm text-muted-foreground">
-                      {(t.interest_cents > 0 || t.fee_cents > 0)
-                        ? formatCurrency(t.interest_cents + t.fee_cents)
-                        : "-"}
+                      <div className="flex flex-col items-end gap-0.5">
+                        {t.discount_cents > 0 && <span className="text-emerald-600">-{formatCurrency(t.discount_cents)}</span>}
+                        {t.interest_cents > 0 && <span>+{formatCurrency(t.interest_cents)}</span>}
+                        {t.fee_cents > 0 && <span>{formatCurrency(t.fee_cents)}</span>}
+                        {t.discount_cents === 0 && t.interest_cents === 0 && t.fee_cents === 0 && <span>-</span>}
+                      </div>
                     </TableCell>
                     <TableCell className={`text-right text-sm font-medium ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                       {t.type === "credit" ? "+" : "-"}{formatCurrency(t.amount_cents)}

@@ -14647,7 +14647,10 @@ export type Database = {
           bank_id: string
           created_at: string
           description: string | null
+          discount_cents: number
+          fee_cents: number
           id: string
+          interest_cents: number
           reference_id: string | null
           reference_type: string | null
           type: string
@@ -14657,7 +14660,10 @@ export type Database = {
           bank_id: string
           created_at?: string
           description?: string | null
+          discount_cents?: number
+          fee_cents?: number
           id?: string
+          interest_cents?: number
           reference_id?: string | null
           reference_type?: string | null
           type: string
@@ -14667,7 +14673,10 @@ export type Database = {
           bank_id?: string
           created_at?: string
           description?: string | null
+          discount_cents?: number
+          fee_cents?: number
           id?: string
+          interest_cents?: number
           reference_id?: string | null
           reference_type?: string | null
           type?: string
