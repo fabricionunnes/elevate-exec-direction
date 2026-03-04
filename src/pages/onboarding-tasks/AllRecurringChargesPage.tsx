@@ -220,7 +220,7 @@ export default function AllRecurringChargesPage() {
   const [confirmDialog, setConfirmDialog] = useState<{ open: boolean; invoiceId: string; action: "confirm" | "revert" | "revert_payable"; description: string }>({
     open: false, invoiceId: "", action: "confirm", description: "",
   });
-  const [manualFee, setManualFee] = useState(1.99);
+  const [manualFee, setManualFee] = useState(0);
   const [manualDiscount, setManualDiscount] = useState(0);
   const [manualInterest, setManualInterest] = useState(0);
   const [manualPaidAmount, setManualPaidAmount] = useState<number | undefined>(undefined);
@@ -560,7 +560,7 @@ export default function AllRecurringChargesPage() {
         const netAmount = paidNow - feeCents;
         if (netAmount > 0) {
           await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: netAmount });
-          await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: netAmount, description: `Recebimento${isPartial ? " parcial" : ""}: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId } as any);
+          await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: netAmount, description: `Recebimento${isPartial ? " parcial" : ""}: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId, discount_cents: discountCents, interest_cents: interestCents, fee_cents: feeCents } as any);
         }
       }
       const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", { body: { invoice_id: invoiceId, action: "confirm" } });
@@ -581,7 +581,7 @@ export default function AllRecurringChargesPage() {
     } finally {
       setProcessingInvoiceId(null);
       setConfirmDialog({ open: false, invoiceId: "", action: "confirm", description: "" });
-      setManualFee(1.99);
+      setManualFee(0);
       setManualDiscount(0);
       setManualInterest(0);
       setManualPaidAmount(undefined);
@@ -2135,7 +2135,7 @@ export default function AllRecurringChargesPage() {
       </main>
 
       {/* Confirm Dialog */}
-      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { if (!open) { setConfirmDialog(prev => ({ ...prev, open: false })); setManualFee(1.99); setManualDiscount(0); setManualInterest(0); setManualPaidAmount(undefined); } }}>
+      <AlertDialog open={confirmDialog.open} onOpenChange={(open) => { if (!open) { setConfirmDialog(prev => ({ ...prev, open: false })); setManualFee(0); setManualDiscount(0); setManualInterest(0); setManualPaidAmount(undefined); } }}>
         <AlertDialogContent className="sm:max-w-lg">
           <AlertDialogHeader>
             <AlertDialogTitle>{confirmDialog.action === "confirm" ? "Confirmar Baixa Manual" : "Confirmar Estorno"}</AlertDialogTitle>

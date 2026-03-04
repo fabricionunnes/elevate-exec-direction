@@ -162,6 +162,9 @@ export function ReceivablePaymentDialog({
           description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
           reference_type: "invoice",
           reference_id: entityId,
+          discount_cents: Math.round(discount * 100),
+          interest_cents: Math.round(interest * 100),
+          fee_cents: Math.round(fees * 100),
         } as any);
 
         toast.success("Pagamento confirmado!");
@@ -200,6 +203,9 @@ export function ReceivablePaymentDialog({
           description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
           reference_type: "receivable",
           reference_id: entityId,
+          discount_cents: Math.round(discount * 100),
+          interest_cents: Math.round(interest * 100),
+          fee_cents: Math.round(fees * 100),
         } as any);
 
         toast.success(isPartial ? "Pagamento parcial registrado!" : "Pagamento confirmado!");
