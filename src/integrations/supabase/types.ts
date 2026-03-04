@@ -10085,20 +10085,6 @@ export type Database = {
             referencedColumns: ["id"]
           },
           {
-            foreignKeyName: "company_invoices_category_id_fkey"
-            columns: ["category_id"]
-            isOneToOne: false
-            referencedRelation: "financial_categories"
-            referencedColumns: ["id"]
-          },
-          {
-            foreignKeyName: "company_invoices_cost_center_id_fkey"
-            columns: ["cost_center_id"]
-            isOneToOne: false
-            referencedRelation: "staff_financial_cost_centers"
-            referencedColumns: ["id"]
-          },
-          {
             foreignKeyName: "company_invoices_recurring_charge_id_fkey"
             columns: ["recurring_charge_id"]
             isOneToOne: false
