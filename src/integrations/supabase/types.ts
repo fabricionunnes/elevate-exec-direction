@@ -9771,6 +9771,182 @@ export type Database = {
         }
         Relationships: []
       }
+      commercial_action_templates: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          default_deadline_days: number | null
+          default_goal: string | null
+          default_responsible: string | null
+          description: string | null
+          frequency: string | null
+          id: string
+          is_active: boolean | null
+          month: number | null
+          niche: string | null
+          objective: string | null
+          script: string | null
+          sort_order: number | null
+          step_by_step: string | null
+          title: string
+          updated_at: string
+          week: number | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          default_deadline_days?: number | null
+          default_goal?: string | null
+          default_responsible?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          month?: number | null
+          niche?: string | null
+          objective?: string | null
+          script?: string | null
+          sort_order?: number | null
+          step_by_step?: string | null
+          title: string
+          updated_at?: string
+          week?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          default_deadline_days?: number | null
+          default_goal?: string | null
+          default_responsible?: string | null
+          description?: string | null
+          frequency?: string | null
+          id?: string
+          is_active?: boolean | null
+          month?: number | null
+          niche?: string | null
+          objective?: string | null
+          script?: string | null
+          sort_order?: number | null
+          step_by_step?: string | null
+          title?: string
+          updated_at?: string
+          week?: number | null
+        }
+        Relationships: []
+      }
+      commercial_actions: {
+        Row: {
+          category: string
+          created_at: string
+          created_by: string | null
+          deadline: string | null
+          description: string | null
+          goal: string | null
+          id: string
+          month: number | null
+          objective: string | null
+          priority: string | null
+          project_id: string
+          recurrence: string | null
+          responsible_staff_id: string | null
+          result: string | null
+          script: string | null
+          start_date: string | null
+          status: string
+          step_by_step: string | null
+          task_id: string | null
+          template_id: string | null
+          title: string
+          updated_at: string
+          week: number | null
+          year: number | null
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          goal?: string | null
+          id?: string
+          month?: number | null
+          objective?: string | null
+          priority?: string | null
+          project_id: string
+          recurrence?: string | null
+          responsible_staff_id?: string | null
+          result?: string | null
+          script?: string | null
+          start_date?: string | null
+          status?: string
+          step_by_step?: string | null
+          task_id?: string | null
+          template_id?: string | null
+          title: string
+          updated_at?: string
+          week?: number | null
+          year?: number | null
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          created_by?: string | null
+          deadline?: string | null
+          description?: string | null
+          goal?: string | null
+          id?: string
+          month?: number | null
+          objective?: string | null
+          priority?: string | null
+          project_id?: string
+          recurrence?: string | null
+          responsible_staff_id?: string | null
+          result?: string | null
+          script?: string | null
+          start_date?: string | null
+          status?: string
+          step_by_step?: string | null
+          task_id?: string | null
+          template_id?: string | null
+          title?: string
+          updated_at?: string
+          week?: number | null
+          year?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_actions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_actions_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_actions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_tasks"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_actions_template_id_fkey"
+            columns: ["template_id"]
+            isOneToOne: false
+            referencedRelation: "commercial_action_templates"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_daily_goal_settings: {
         Row: {
           company_id: string

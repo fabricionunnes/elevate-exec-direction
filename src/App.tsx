@@ -101,6 +101,7 @@ const OnboardingPage = lazy(() => import("./pages/OnboardingPage"));
 const OnboardingProductPage = lazy(() => import("./pages/OnboardingProductPage"));
 const OnboardingTasksPage = lazy(() => import("./pages/onboarding-tasks/OnboardingTasksPage"));
 const OnboardingProjectPage = lazy(() => import("./pages/onboarding-tasks/OnboardingProjectPage"));
+const CommercialActionsDashboardPage = lazy(() => import("./pages/onboarding-tasks/CommercialActionsDashboardPage"));
 const OnboardingCompaniesPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesPage"));
 const OnboardingCompanyDetailPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompanyDetailPage"));
 const OnboardingStaffPage = lazy(() => import("./pages/onboarding-tasks/OnboardingStaffPage"));
@@ -306,6 +307,7 @@ const App = () => (
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
+              <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
             </Route>
             

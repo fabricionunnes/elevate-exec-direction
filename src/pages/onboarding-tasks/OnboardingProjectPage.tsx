@@ -81,7 +81,7 @@ import { KPIMetasPanel } from "@/components/onboarding-tasks/kpis/KPIMetasPanel"
 import { CSATConfigPanel } from "@/components/onboarding-tasks/CSATConfigPanel";
 import { HealthScoreWidget } from "@/components/onboarding-tasks/health-score/HealthScoreWidget";
 import { HealthScoreDetailPanel } from "@/components/onboarding-tasks/health-score/HealthScoreDetailPanel";
-import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy, Briefcase, Instagram } from "lucide-react";
+import { TrendingUp, Headphones, Video, Brain, BarChart3, FolderOpen, ExternalLink, Star, Heart, Trophy, Briefcase, Instagram, Target } from "lucide-react";
 import { GoogleDriveConnect } from "@/components/onboarding-tasks/GoogleDriveConnect";
 import { Label } from "@/components/ui/label";
 import { Ticket } from "lucide-react";
@@ -92,6 +92,7 @@ import { ClientAccessHistory } from "@/components/onboarding-tasks/ClientAccessH
 import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/ProjectMenuPermissionsDialog";
 import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
+import { CommercialActionsPanel } from "@/components/commercial-actions/CommercialActionsPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1510,6 +1511,12 @@ const OnboardingProjectPage = () => {
                   <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Acessos
                 </TabsTrigger>
+                {currentUserRole !== "client" && (
+                  <TabsTrigger value="commercial_actions" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                    <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Ações Comerciais
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
           </div>
@@ -1786,6 +1793,18 @@ const OnboardingProjectPage = () => {
               companyId={project.onboarding_company_id || undefined}
             />
           </TabsContent>
+
+          {currentUserRole !== "client" && (
+            <TabsContent value="commercial_actions">
+              <CommercialActionsPanel
+                projectId={projectId!}
+                companyId={project.onboarding_company_id}
+                companySegment={null}
+                consultantStaffId={project.consultant_id}
+                staffList={staffList}
+              />
+            </TabsContent>
+          )}
 
         </Tabs>
       </div>
