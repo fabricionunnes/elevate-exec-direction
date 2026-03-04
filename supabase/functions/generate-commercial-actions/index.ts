@@ -69,7 +69,7 @@ serve(async (req) => {
       }));
     } else {
       // Generate with AI
-      const aiUrl = Deno.env.get("AI_GATEWAY_URL") || `${supabaseUrl}/functions/v1/ai-gateway`;
+      const aiUrl = "https://ai.gateway.lovable.dev/v1/chat/completions";
 
       const prompt = `Gere um calendário anual de ações comerciais para uma empresa do nicho "${niche}".
 
@@ -88,11 +88,14 @@ Para cada ação, retorne um JSON object com:
 
 Retorne APENAS um array JSON válido com as ações. Sem texto adicional.`;
 
+      const lovableApiKey = Deno.env.get("LOVABLE_API_KEY");
+      if (!lovableApiKey) throw new Error("LOVABLE_API_KEY não configurada");
+
       const aiResponse = await fetch(aiUrl, {
         method: "POST",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${supabaseKey}`,
+          "Authorization": `Bearer ${lovableApiKey}`,
         },
         body: JSON.stringify({
           model: "google/gemini-2.5-flash",
