@@ -114,8 +114,12 @@ if (publicParam) {
     // expects project=...
     forceHashRoute("/career-plan", window.location.search);
   } else if (publicParam === "checkout") {
-    // expects link_id=... amount=... product=... method=...
     forceHashRoute("/checkout", window.location.search);
+  } else if (publicParam === "contrato-rotina") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/contrato-rotina/${encodeURIComponent(token)}`, "");
+    }
   }
 } else {
   // Path-based public links

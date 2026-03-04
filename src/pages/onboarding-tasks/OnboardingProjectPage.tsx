@@ -93,6 +93,8 @@ import { ProjectMenuPermissionsDialog } from "@/components/onboarding-tasks/Proj
 import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import { CommercialActionsPanel } from "@/components/commercial-actions/CommercialActionsPanel";
+import { RoutineContractPanel } from "@/components/routine-contract/RoutineContractPanel";
+import { ClipboardList } from "lucide-react";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1511,6 +1513,10 @@ const OnboardingProjectPage = () => {
                   <Eye className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Acessos
                 </TabsTrigger>
+                <TabsTrigger value="routine_contract" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <ClipboardList className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Contrato de Rotina
+                </TabsTrigger>
                 {currentUserRole !== "client" && (
                   <TabsTrigger value="commercial_actions" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                     <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1791,6 +1797,14 @@ const OnboardingProjectPage = () => {
             <ClientAccessHistory 
               projectId={projectId!} 
               companyId={project.onboarding_company_id || undefined}
+            />
+          </TabsContent>
+
+          <TabsContent value="routine_contract">
+            <RoutineContractPanel
+              projectId={projectId!}
+              companyId={project.onboarding_company_id}
+              isAdmin={currentUserRole !== "client"}
             />
           </TabsContent>
 
