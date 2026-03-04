@@ -154,6 +154,7 @@ const PublicTalentPoolPage = lazy(() => import("./pages/hr-recruitment/PublicTal
 const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPage"));
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
+const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
 
 // Academy
 const AcademyLayout = lazy(() => import("./pages/academy/AcademyLayout"));
@@ -334,6 +335,7 @@ const App = () => (
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
+            <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}

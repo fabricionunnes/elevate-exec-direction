@@ -21079,6 +21079,248 @@ export type Database = {
           },
         ]
       }
+      routine_contracts: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          daily_routine: Json | null
+          direct_manager: string | null
+          employee_department: string | null
+          employee_name: string
+          employee_role: string | null
+          form_response_id: string | null
+          generated_by_ai: boolean | null
+          id: string
+          introduction: string | null
+          observations: string | null
+          performance_indicators: Json | null
+          project_id: string
+          responsibilities: string | null
+          status: string | null
+          updated_at: string | null
+          version_number: number | null
+          weekly_routine: Json | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          daily_routine?: Json | null
+          direct_manager?: string | null
+          employee_department?: string | null
+          employee_name: string
+          employee_role?: string | null
+          form_response_id?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          introduction?: string | null
+          observations?: string | null
+          performance_indicators?: Json | null
+          project_id: string
+          responsibilities?: string | null
+          status?: string | null
+          updated_at?: string | null
+          version_number?: number | null
+          weekly_routine?: Json | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          daily_routine?: Json | null
+          direct_manager?: string | null
+          employee_department?: string | null
+          employee_name?: string
+          employee_role?: string | null
+          form_response_id?: string | null
+          generated_by_ai?: boolean | null
+          id?: string
+          introduction?: string | null
+          observations?: string | null
+          performance_indicators?: Json | null
+          project_id?: string
+          responsibilities?: string | null
+          status?: string | null
+          updated_at?: string | null
+          version_number?: number | null
+          weekly_routine?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_contracts_form_response_id_fkey"
+            columns: ["form_response_id"]
+            isOneToOne: false
+            referencedRelation: "routine_form_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_contracts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_form_links: {
+        Row: {
+          access_token: string
+          created_at: string | null
+          created_by: string | null
+          expires_at: string | null
+          id: string
+          is_active: boolean | null
+          project_id: string
+        }
+        Insert: {
+          access_token?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id: string
+        }
+        Update: {
+          access_token?: string
+          created_at?: string | null
+          created_by?: string | null
+          expires_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_form_links_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_form_links_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_form_responses: {
+        Row: {
+          daily_activities: string | null
+          daily_contacts: number | null
+          employee_department: string | null
+          employee_name: string
+          employee_role: string | null
+          employee_tenure: string | null
+          form_link_id: string | null
+          id: string
+          is_processed: boolean | null
+          main_challenges: string | null
+          main_responsibilities: string | null
+          monthly_sales: number | null
+          most_important_activities: string | null
+          productivity_suggestions: string | null
+          project_id: string
+          submitted_at: string | null
+          time_per_activity: string | null
+          weekly_activities: string | null
+          weekly_activities_list: string | null
+          weekly_meetings: number | null
+        }
+        Insert: {
+          daily_activities?: string | null
+          daily_contacts?: number | null
+          employee_department?: string | null
+          employee_name: string
+          employee_role?: string | null
+          employee_tenure?: string | null
+          form_link_id?: string | null
+          id?: string
+          is_processed?: boolean | null
+          main_challenges?: string | null
+          main_responsibilities?: string | null
+          monthly_sales?: number | null
+          most_important_activities?: string | null
+          productivity_suggestions?: string | null
+          project_id: string
+          submitted_at?: string | null
+          time_per_activity?: string | null
+          weekly_activities?: string | null
+          weekly_activities_list?: string | null
+          weekly_meetings?: number | null
+        }
+        Update: {
+          daily_activities?: string | null
+          daily_contacts?: number | null
+          employee_department?: string | null
+          employee_name?: string
+          employee_role?: string | null
+          employee_tenure?: string | null
+          form_link_id?: string | null
+          id?: string
+          is_processed?: boolean | null
+          main_challenges?: string | null
+          main_responsibilities?: string | null
+          monthly_sales?: number | null
+          most_important_activities?: string | null
+          productivity_suggestions?: string | null
+          project_id?: string
+          submitted_at?: string | null
+          time_per_activity?: string | null
+          weekly_activities?: string | null
+          weekly_activities_list?: string | null
+          weekly_meetings?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_form_responses_form_link_id_fkey"
+            columns: ["form_link_id"]
+            isOneToOne: false
+            referencedRelation: "routine_form_links"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "routine_form_responses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      routine_pdf_exports: {
+        Row: {
+          contract_id: string
+          generated_at: string | null
+          generated_by: string | null
+          id: string
+          pdf_url: string | null
+        }
+        Insert: {
+          contract_id: string
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+        }
+        Update: {
+          contract_id?: string
+          generated_at?: string | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "routine_pdf_exports_contract_id_fkey"
+            columns: ["contract_id"]
+            isOneToOne: false
+            referencedRelation: "routine_contracts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salesperson_sectors: {
         Row: {
           created_at: string | null
