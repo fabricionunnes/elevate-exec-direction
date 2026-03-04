@@ -2166,7 +2166,7 @@ export default function AllRecurringChargesPage() {
                   </div>
                 )}
                 <div>
-                  <label className="text-sm font-medium mb-1.5 block">Banco (opcional)</label>
+                  <label className="text-sm font-medium mb-1.5 block">Banco *</label>
                   <Select value={selectedBankId} onValueChange={setSelectedBankId}>
                     <SelectTrigger className="w-full"><SelectValue placeholder="Selecione o banco" /></SelectTrigger>
                     <SelectContent>
