@@ -38,7 +38,7 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
   })();
 
   // Helper: only count as MRR if it's recurring AND has more than 1 installment
-  const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+  const isMRR = (i: any) => (i.total_installments || 1) > 1;
 
   const mrrBreakdown = useMemo(() => {
     // Current MRR: recurring invoices this month with multiple installments

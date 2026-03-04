@@ -31,7 +31,7 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
   }, []);
 
   const metrics = useMemo(() => {
-    const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+    const isMRR = (i: any) => (i.total_installments || 1) > 1;
     const recurringInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr) && isMRR(i));
     const mrr = recurringInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     const activeCompanies = new Set(recurringInvoices.map(i => i.company_id));
@@ -91,7 +91,7 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-      const isMRRTrend = (inv: any) => inv.recurring_charge_id && (inv.total_installments || 1) > 1;
+      const isMRRTrend = (inv: any) => (inv.total_installments || 1) > 1;
       const recurring = invoices.filter(inv => inv.due_date?.startsWith(key) && isMRRTrend(inv));
       const companies = new Set(recurring.map(i => i.company_id));
       const mrr = recurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);

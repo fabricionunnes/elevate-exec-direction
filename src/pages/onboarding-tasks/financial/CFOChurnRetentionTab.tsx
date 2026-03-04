@@ -48,7 +48,7 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
       const prevKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
-      const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+      const isMRR = (i: any) => (i.total_installments || 1) > 1;
       const curCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && isMRR(inv)).map(i => i.company_id));
       const prevCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && isMRR(inv)).map(i => i.company_id));
 
@@ -99,7 +99,7 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
 
       // Companies that started (first invoice) in this cohort month
       const cohortCompanies = new Set<string>();
-      const isMRRCohort = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+      const isMRRCohort = (i: any) => (i.total_installments || 1) > 1;
       invoices.forEach(inv => {
         if (inv.due_date?.startsWith(cohortKey) && isMRRCohort(inv)) {
           // Check if this is their first month
@@ -117,7 +117,7 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
         const checkDate = new Date(cohortDate.getFullYear(), cohortDate.getMonth() + m, 1);
         const checkKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}`;
         const retained = [...cohortCompanies].filter(id =>
-          invoices.some(inv => inv.company_id === id && inv.due_date?.startsWith(checkKey) && inv.recurring_charge_id && (inv.total_installments || 1) > 1)
+          invoices.some(inv => inv.company_id === id && inv.due_date?.startsWith(checkKey) && (inv.total_installments || 1) > 1)
         );
         retentionRates.push((retained.length / cohortCompanies.size) * 100);
       }
