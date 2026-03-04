@@ -159,7 +159,7 @@ interface Project {
   status: string;
   current_nps: number | null;
   onboarding_company_id: string | null;
-  onboarding_company?: { name: string } | null;
+  onboarding_company?: { name: string; segment?: string | null } | null;
   consultant_id: string | null;
   cs_id: string | null;
   crm_link: string | null;
@@ -449,7 +449,7 @@ const OnboardingProjectPage = () => {
       // Fetch project
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
-        .select(`*, onboarding_company_id, current_nps, crm_link, crm_login, crm_password, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, consultant_id, cs_id)`)
+        .select(`*, onboarding_company_id, current_nps, crm_link, crm_login, crm_password, documents_link, consultant_id, cs_id, onboarding_company:onboarding_companies(name, segment, consultant_id, cs_id)`)
         .eq("id", projectId)
         .single();
 
@@ -1799,7 +1799,7 @@ const OnboardingProjectPage = () => {
               <CommercialActionsPanel
                 projectId={projectId!}
                 companyId={project.onboarding_company_id}
-                companySegment={null}
+                companySegment={project.onboarding_company?.segment || null}
                 consultantStaffId={project.consultant_id}
                 staffList={staffList}
               />
