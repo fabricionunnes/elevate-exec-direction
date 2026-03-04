@@ -48,11 +48,21 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
       const prevKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
-      const curCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && inv.recurring_charge_id).map(i => i.company_id));
-      const prevCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id).map(i => i.company_id));
+      const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+      const curCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && isMRR(inv)).map(i => i.company_id));
+      const prevCompanies = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && isMRR(inv)).map(i => i.company_id));
 
       // Invoice-based churn + system churn
-      const invoiceChurned = [...prevCompanies].filter(id => !curCompanies.has(id));
+      // Only count as churn if company cancelled with remaining installments
+      const invoiceChurned = [...prevCompanies].filter(id => {
+        if (curCompanies.has(id)) return false;
+        const lastInv = invoices
+          .filter(i => i.company_id === id && i.due_date?.startsWith(prevKey) && isMRR(i))
+          .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0))
+          .pop();
+        if (lastInv && lastInv.installment_number >= lastInv.total_installments) return false;
+        return true;
+      });
       const systemChurnedInPeriod = fullCompanies.filter((c: any) => {
         if (c.contract_end_date && c.contract_end_date.startsWith(key)) return true;
         if ((c.status === "churned" || c.status === "cancelled") && c.status_changed_at?.startsWith(key)) return true;
@@ -62,12 +72,12 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
       const allChurned = new Set([...invoiceChurned, ...systemChurnedInPeriod]);
       const churnRate = prevCompanies.size > 0 ? (allChurned.size / prevCompanies.size) * 100 : 0;
 
-      // Revenue churn
+      // Revenue churn (only MRR invoices)
       const churnedRevenue = invoices
-        .filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id && allChurned.has(inv.company_id))
+        .filter(inv => inv.due_date?.startsWith(prevKey) && isMRR(inv) && allChurned.has(inv.company_id))
         .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
       const prevRevenue = invoices
-        .filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id)
+        .filter(inv => inv.due_date?.startsWith(prevKey) && isMRR(inv))
         .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
       const revenueChurnRate = prevRevenue > 0 ? (churnedRevenue / prevRevenue) * 100 : 0;
 
@@ -89,11 +99,12 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
 
       // Companies that started (first invoice) in this cohort month
       const cohortCompanies = new Set<string>();
+      const isMRRCohort = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
       invoices.forEach(inv => {
-        if (inv.due_date?.startsWith(cohortKey) && inv.recurring_charge_id) {
+        if (inv.due_date?.startsWith(cohortKey) && isMRRCohort(inv)) {
           // Check if this is their first month
           const hasEarlier = invoices.some(prev => 
-            prev.company_id === inv.company_id && prev.recurring_charge_id && prev.due_date < cohortKey
+            prev.company_id === inv.company_id && isMRRCohort(prev) && prev.due_date < cohortKey
           );
           if (!hasEarlier) cohortCompanies.add(inv.company_id);
         }
@@ -106,7 +117,7 @@ export default function CFOChurnRetentionTab({ invoices, companies, fullCompanie
         const checkDate = new Date(cohortDate.getFullYear(), cohortDate.getMonth() + m, 1);
         const checkKey = `${checkDate.getFullYear()}-${String(checkDate.getMonth() + 1).padStart(2, "0")}`;
         const retained = [...cohortCompanies].filter(id =>
-          invoices.some(inv => inv.company_id === id && inv.due_date?.startsWith(checkKey) && inv.recurring_charge_id)
+          invoices.some(inv => inv.company_id === id && inv.due_date?.startsWith(checkKey) && inv.recurring_charge_id && (inv.total_installments || 1) > 1)
         );
         retentionRates.push((retained.length / cohortCompanies.size) * 100);
       }
