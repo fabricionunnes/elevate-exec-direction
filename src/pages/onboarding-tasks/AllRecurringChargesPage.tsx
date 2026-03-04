@@ -13,6 +13,7 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -20,7 +21,6 @@ import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
-import { CurrencyInput } from "@/components/ui/currency-input";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import {
@@ -231,7 +231,7 @@ export default function AllRecurringChargesPage() {
   const [statementBank, setStatementBank] = useState<any>(null);
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [transferData, setTransferData] = useState({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
+  const [transferData, setTransferData] = useState({ from_account_id: "", to_account_id: "", amount: 0, description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
 
   // Categories & Cost Centers for forms
   const [staffCategories, setStaffCategories] = useState<any[]>([]);
@@ -691,7 +691,7 @@ export default function AllRecurringChargesPage() {
 
   const handleBankTransfer = async () => {
     try {
-      const amountNum = parseFloat(transferData.amount);
+      const amountNum = transferData.amount;
       if (!amountNum || amountNum <= 0) { toast.error("Informe um valor válido"); return; }
       const amountCents = Math.round(amountNum * 100);
       const fromBank = banks.find((b: any) => b.id === transferData.from_account_id);
@@ -718,7 +718,7 @@ export default function AllRecurringChargesPage() {
 
       toast.success("Transferência realizada com sucesso!");
       setIsTransferDialogOpen(false);
-      setTransferData({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
+      setTransferData({ from_account_id: "", to_account_id: "", amount: 0, description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
       await loadData();
     } catch (err: any) {
       console.error("Transfer error:", err);
@@ -2540,7 +2540,7 @@ export default function AllRecurringChargesPage() {
             </div>
             <div>
               <Label>Valor (R$)</Label>
-              <Input type="number" step="0.01" min="0.01" placeholder="0,00" value={transferData.amount} onChange={(e) => setTransferData(d => ({ ...d, amount: e.target.value }))} />
+              <CurrencyInput value={transferData.amount} onChange={(v) => setTransferData(d => ({ ...d, amount: v }))} placeholder="0,00" />
             </div>
             <div>
               <Label>Data</Label>

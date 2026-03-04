@@ -3,6 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { BankStatementDialog } from "./BankStatementDialog";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -89,10 +90,16 @@ export function BankAccountsPanel() {
   const [isStatementOpen, setIsStatementOpen] = useState(false);
   const [statementAccount, setStatementAccount] = useState<BankAccount | null>(null);
   const [isTransferDialogOpen, setIsTransferDialogOpen] = useState(false);
-  const [transferData, setTransferData] = useState({
+  const [transferData, setTransferData] = useState<{
+    from_account_id: string;
+    to_account_id: string;
+    amount: number;
+    description: string;
+    transfer_date: string;
+  }>({
     from_account_id: "",
     to_account_id: "",
-    amount: "",
+    amount: 0,
     description: "",
     transfer_date: format(new Date(), "yyyy-MM-dd"),
   });
@@ -271,7 +278,7 @@ export function BankAccountsPanel() {
 
   const handleTransfer = async () => {
     try {
-      const amount = parseFloat(transferData.amount);
+      const amount = transferData.amount;
       if (!amount || amount <= 0) {
         toast.error("Informe um valor válido");
         return;
@@ -325,7 +332,7 @@ export function BankAccountsPanel() {
 
       toast.success("Transferência realizada com sucesso!");
       setIsTransferDialogOpen(false);
-      setTransferData({ from_account_id: "", to_account_id: "", amount: "", description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
+      setTransferData({ from_account_id: "", to_account_id: "", amount: 0, description: "", transfer_date: format(new Date(), "yyyy-MM-dd") });
       loadData();
     } catch (error) {
       console.error("Error transferring:", error);
@@ -865,11 +872,9 @@ export function BankAccountsPanel() {
             <div className="grid grid-cols-2 gap-4">
               <div className="space-y-2">
                 <Label>Valor</Label>
-                <Input
-                  type="number"
-                  step="0.01"
+                <CurrencyInput
                   value={transferData.amount}
-                  onChange={(e) => setTransferData({ ...transferData, amount: e.target.value })}
+                  onChange={(v) => setTransferData({ ...transferData, amount: v })}
                   placeholder="0,00"
                 />
               </div>
