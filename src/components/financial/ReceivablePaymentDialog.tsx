@@ -137,12 +137,14 @@ export function ReceivablePaymentDialog({
 
       if (isInvoice) {
         // Update company_invoices
+        const totalSettled = previouslyPaid + finalAmount + discount;
+        const invoiceFullyPaid = totalSettled >= originalAmount;
         const { error } = await supabase
           .from("company_invoices")
           .update({
-            status: "paid",
+            status: invoiceFullyPaid ? "paid" : "partial",
             paid_at: new Date().toISOString(),
-            paid_amount_cents: Math.round(finalAmount * 100),
+            paid_amount_cents: Math.round((previouslyPaid + finalAmount) * 100),
           } as any)
           .eq("id", entityId);
         if (error) throw error;
@@ -171,7 +173,8 @@ export function ReceivablePaymentDialog({
       } else {
         // Update financial_receivables
         const totalPaid = previouslyPaid + finalAmount;
-        const isPartial = totalPaid > 0 && totalPaid < originalAmount;
+        const totalSettled = totalPaid + discount;
+        const isPartial = totalSettled > 0 && totalSettled < originalAmount;
         const newStatus = isPartial ? "partial" : "paid";
 
         const { error } = await supabase
