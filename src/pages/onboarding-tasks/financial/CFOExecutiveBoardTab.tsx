@@ -66,8 +66,9 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
     const receitaPrev = prevMonthInvoices.filter(i => i.status === "paid")
       .reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents || 0), 0);
 
-    // MRR: recurring invoices (those linked to recurring_charge_id)
-    const recurringInvoices = monthInvoices.filter(i => i.recurring_charge_id);
+    // MRR: only recurring invoices with more than 1 installment
+    const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+    const recurringInvoices = monthInvoices.filter(isMRR);
     const mrr = recurringInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
     // Non-recurring revenue
@@ -116,17 +117,32 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
       return false;
     });
 
-    // Also detect invoice-based churn: companies that had invoices last month but not this month
-    const prevCompanyIds = new Set(
-      invoices.filter(i => i.status === "paid" && i.due_date?.startsWith(prevMonthStr)).map(i => i.company_id)
+    // Also detect invoice-based MRR churn: only companies that cancelled with remaining installments
+    const prevMRRCompanyIds = new Set(
+      invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1).map(i => i.company_id)
     );
-    const invoiceChurned = [...prevCompanyIds].filter(id => !activeCompanyIds.has(id));
+    const currentMRRCompanyIds = new Set(
+      invoices.filter(i => i.due_date?.startsWith(monthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1).map(i => i.company_id)
+    );
+    const invoiceChurned = [...prevMRRCompanyIds].filter(id => {
+      if (currentMRRCompanyIds.has(id)) return false;
+      // Check if contract ended naturally (last installment reached)
+      const lastInv = invoices
+        .filter(i => i.company_id === id && i.due_date?.startsWith(prevMonthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1)
+        .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0))
+        .pop();
+      if (lastInv && lastInv.installment_number >= lastInv.total_installments) return false; // Natural end, not churn
+      return true;
+    });
     
     // Combine both sources, deduplicate
     const allChurnedIds = new Set([
       ...churnedFromSystem.map((c: any) => c.id),
       ...invoiceChurned
     ]);
+    const prevCompanyIds = new Set(
+      invoices.filter(i => i.status === "paid" && i.due_date?.startsWith(prevMonthStr)).map(i => i.company_id)
+    );
     const churnRate = prevCompanyIds.size > 0 ? (allChurnedIds.size / prevCompanyIds.size) * 100 : 0;
 
     // Delinquency
@@ -164,7 +180,7 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
 
       const rec = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.status === "paid")
         .reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents || 0), 0) / 100;
-      const recurringRec = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.status === "paid" && inv.recurring_charge_id)
+      const recurringRec = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.status === "paid" && inv.recurring_charge_id && (inv.total_installments || 1) > 1)
         .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0) / 100;
       const desp = payables.filter((p: any) => (p.due_date?.startsWith(key) || p.reference_month === key) && p.status === "paid")
         .reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);

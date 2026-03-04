@@ -31,7 +31,8 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
   }, []);
 
   const metrics = useMemo(() => {
-    const recurringInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr) && i.recurring_charge_id);
+    const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+    const recurringInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr) && isMRR(i));
     const mrr = recurringInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     const activeCompanies = new Set(recurringInvoices.map(i => i.company_id));
     const ticketMedio = activeCompanies.size > 0 ? mrr / activeCompanies.size : 0;
@@ -42,9 +43,16 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const prevD = new Date(d.getFullYear(), d.getMonth() - 1, 1);
       const prevKey = `${prevD.getFullYear()}-${String(prevD.getMonth() + 1).padStart(2, "0")}`;
-      const cur = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && inv.recurring_charge_id).map(i => i.company_id));
-      const prev = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && inv.recurring_charge_id).map(i => i.company_id));
-      const churned = [...prev].filter(id => !cur.has(id));
+      const cur = new Set(invoices.filter(inv => inv.due_date?.startsWith(key) && isMRR(inv)).map(i => i.company_id));
+      const prev = new Set(invoices.filter(inv => inv.due_date?.startsWith(prevKey) && isMRR(inv)).map(i => i.company_id));
+      // Only count churn for companies that cancelled (not natural contract end)
+      const churned = [...prev].filter(id => {
+        if (cur.has(id)) return false;
+        const lastInv = invoices.filter(inv => inv.company_id === id && inv.due_date?.startsWith(prevKey) && isMRR(inv))
+          .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0)).pop();
+        if (lastInv && lastInv.installment_number >= lastInv.total_installments) return false;
+        return true;
+      });
       if (prev.size > 0) { totalChurn += churned.length / prev.size; churnMonths++; }
     }
     const avgChurnRate = churnMonths > 0 ? totalChurn / churnMonths : 0;
@@ -52,7 +60,7 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
     const ltv = (ticketMedio / 100) * lifetimeMedio;
     const totalCacCost = cacCosts.reduce((s, c) => s + (c.value || 0), 0);
     const newCompanies = [...activeCompanies].filter(id => {
-      const hasPrev = invoices.some(inv => inv.company_id === id && inv.recurring_charge_id && inv.due_date < monthStr);
+      const hasPrev = invoices.some(inv => inv.company_id === id && isMRR(inv) && inv.due_date < monthStr);
       return !hasPrev;
     });
     const cac = newCompanies.length > 0 ? totalCacCost / newCompanies.length : 0;
@@ -83,7 +91,8 @@ export default function CFOUnitEconomicsTab({ invoices, payables, companies, fil
       const d = new Date(now.getFullYear(), now.getMonth() - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
-      const recurring = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.recurring_charge_id);
+      const isMRRTrend = (inv: any) => inv.recurring_charge_id && (inv.total_installments || 1) > 1;
+      const recurring = invoices.filter(inv => inv.due_date?.startsWith(key) && isMRRTrend(inv));
       const companies = new Set(recurring.map(i => i.company_id));
       const mrr = recurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
       const ticket = companies.size > 0 ? mrr / companies.size / 100 : 0;

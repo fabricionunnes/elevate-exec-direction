@@ -37,13 +37,16 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
     return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
   })();
 
+  // Helper: only count as MRR if it's recurring AND has more than 1 installment
+  const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+
   const mrrBreakdown = useMemo(() => {
-    // Current MRR: recurring invoices this month
-    const currentRecurring = invoices.filter(i => i.due_date?.startsWith(monthStr) && i.recurring_charge_id);
+    // Current MRR: recurring invoices this month with multiple installments
+    const currentRecurring = invoices.filter(i => i.due_date?.startsWith(monthStr) && isMRR(i));
     const mrrAtual = currentRecurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
     // Previous MRR
-    const prevRecurring = invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && i.recurring_charge_id);
+    const prevRecurring = invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && isMRR(i));
     const mrrAnterior = prevRecurring.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
     // New MRR: companies with recurring invoices this month but not last month
@@ -54,8 +57,20 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
     const novoMrr = currentRecurring.filter(i => newCompanies.includes(i.company_id))
       .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // Churn MRR: companies that left
-    const churnedCompanies = [...prevCompanies].filter(id => !currentCompanies.has(id));
+    // Churn MRR: only companies that actively cancelled (not non-renewals)
+    // A company that simply finished all installments is NOT churn
+    const churnedCompanies = [...prevCompanies].filter(id => {
+      if (currentCompanies.has(id)) return false;
+      // Check if this company still has remaining installments that won't be paid
+      const lastInvoice = prevRecurring.filter(i => i.company_id === id)
+        .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0))
+        .pop();
+      if (!lastInvoice) return false;
+      // If the last installment_number equals total_installments, contract ended naturally (not churn)
+      if (lastInvoice.installment_number >= lastInvoice.total_installments) return false;
+      // Otherwise it's a real cancellation - MRR loss
+      return true;
+    });
     const mrrChurn = prevRecurring.filter(i => churnedCompanies.includes(i.company_id))
       .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
@@ -93,9 +108,9 @@ export default function CFORevenueMRRTab({ invoices, companies, filters, formatC
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
 
-      const recurring = invoices.filter(inv => inv.due_date?.startsWith(key) && inv.recurring_charge_id)
+      const recurring = invoices.filter(inv => inv.due_date?.startsWith(key) && isMRR(inv))
         .reduce((s: number, i: any) => s + (i.amount_cents || 0), 0) / 100;
-      const nonRecurring = invoices.filter(inv => inv.due_date?.startsWith(key) && !inv.recurring_charge_id && inv.status === "paid")
+      const nonRecurring = invoices.filter(inv => inv.due_date?.startsWith(key) && !isMRR(inv) && inv.status === "paid")
         .reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents || 0), 0) / 100;
 
       months.push({ label, mrr: recurring, naoRecorrente: nonRecurring, total: recurring + nonRecurring });
