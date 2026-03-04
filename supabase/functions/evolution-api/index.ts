@@ -1108,22 +1108,37 @@ Deno.serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${evolutionBaseUrl}/instance/delete/${instanceName}`, {
+        // Look up instance-specific API credentials from database
+        const supabaseServiceDelete = createClient(
+          Deno.env.get('SUPABASE_URL')!,
+          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+        );
+
+        const { data: delInstance } = await supabaseServiceDelete
+          .from('whatsapp_instances')
+          .select('api_url, api_key')
+          .eq('instance_name', instanceName)
+          .maybeSingle();
+
+        const deleteBaseUrl = delInstance?.api_url ? normalizeBaseUrl(delInstance.api_url) : evolutionBaseUrl;
+        const deleteHeaders = delInstance?.api_key ? buildEvolutionHeaders(delInstance.api_key) : evolutionHeaders;
+
+        const response = await fetch(`${deleteBaseUrl}/instance/delete/${instanceName}`, {
           method: 'DELETE',
-          headers: evolutionHeaders,
+          headers: deleteHeaders,
         });
 
         const data = await response.json();
         console.log('[evolution-api] Delete instance response:', data);
 
-        // If instance doesn't exist in Evolution API (404), still return success
-        // This allows cleaning up stale DB records
-        if (response.status === 404) {
-          console.log('[evolution-api] Instance not found in Evolution API, returning success for DB cleanup');
+        // If instance doesn't exist in Evolution API (404) or auth fails (401/403), still return success
+        // This allows cleaning up stale DB records when credentials are invalid
+        if (response.status === 404 || response.status === 401 || response.status === 403) {
+          console.log(`[evolution-api] Instance returned ${response.status}, returning success for DB cleanup`);
           return new Response(
             JSON.stringify({ 
               status: 'SUCCESS', 
-              message: 'Instance not found in Evolution API (already deleted or never existed)',
+              message: `Evolution API returned ${response.status}. Instance can be deleted from DB.`,
               canDeleteFromDB: true 
             }),
             { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
