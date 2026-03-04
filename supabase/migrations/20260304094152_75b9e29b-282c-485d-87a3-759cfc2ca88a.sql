@@ -1,0 +1,2 @@
+ALTER TABLE company_invoices DROP CONSTRAINT company_invoices_status_check;
+ALTER TABLE company_invoices ADD CONSTRAINT company_invoices_status_check CHECK (status = ANY (ARRAY['pending'::text, 'paid'::text, 'overdue'::text, 'cancelled'::text, 'partial'::text]));
