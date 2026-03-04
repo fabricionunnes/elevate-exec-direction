@@ -2407,6 +2407,10 @@ const OnboardingTasksPage = () => {
                             <UserX className="h-4 w-4 mr-2" />
                             Tarefas sem Responsável
                           </DropdownMenuItem>
+                          <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/segments")}>
+                            <BarChart3 className="h-4 w-4 mr-2" />
+                            Segmentos
+                          </DropdownMenuItem>
                           {(isAdmin || hasMenuPerm("financial")) && (
                             <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/billing-rules")}>
                               <Bell className="h-4 w-4 mr-2" />
