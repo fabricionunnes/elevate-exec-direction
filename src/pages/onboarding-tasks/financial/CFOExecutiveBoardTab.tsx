@@ -67,7 +67,7 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
       .reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents || 0), 0);
 
     // MRR: only recurring invoices with more than 1 installment
-    const isMRR = (i: any) => i.recurring_charge_id && (i.total_installments || 1) > 1;
+    const isMRR = (i: any) => (i.total_installments || 1) > 1;
     const recurringInvoices = monthInvoices.filter(isMRR);
     const mrr = recurringInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
@@ -119,16 +119,16 @@ export default function CFOExecutiveBoardTab({ invoices, payables, banks, compan
 
     // Also detect invoice-based MRR churn: only companies that cancelled with remaining installments
     const prevMRRCompanyIds = new Set(
-      invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1).map(i => i.company_id)
+      invoices.filter(i => i.due_date?.startsWith(prevMonthStr) && (i.total_installments || 1) > 1).map(i => i.company_id)
     );
     const currentMRRCompanyIds = new Set(
-      invoices.filter(i => i.due_date?.startsWith(monthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1).map(i => i.company_id)
+      invoices.filter(i => i.due_date?.startsWith(monthStr) && (i.total_installments || 1) > 1).map(i => i.company_id)
     );
     const invoiceChurned = [...prevMRRCompanyIds].filter(id => {
       if (currentMRRCompanyIds.has(id)) return false;
       // Check if contract ended naturally (last installment reached)
       const lastInv = invoices
-        .filter(i => i.company_id === id && i.due_date?.startsWith(prevMonthStr) && i.recurring_charge_id && (i.total_installments || 1) > 1)
+        .filter(i => i.company_id === id && i.due_date?.startsWith(prevMonthStr) && (i.total_installments || 1) > 1)
         .sort((a: any, b: any) => (a.installment_number || 0) - (b.installment_number || 0))
         .pop();
       if (lastInv && lastInv.installment_number >= lastInv.total_installments) return false; // Natural end, not churn
