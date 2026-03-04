@@ -887,32 +887,67 @@ Deno.serve(async (req) => {
 
       case 'diagnose': {
         // Diagnose Evolution API configuration by testing multiple endpoints and prefixes
-        console.log(`[evolution-api] Running diagnostics on ${evolutionBaseUrl}`);
+        const diagBaseUrl = body.customApiUrl ? normalizeBaseUrl(body.customApiUrl) : evolutionBaseUrl;
+        const diagApiKey = body.customApiKey || EVOLUTION_API_KEY;
+        console.log(`[evolution-api] Running diagnostics on ${diagBaseUrl}`);
+        console.log(`[evolution-api] Using key prefix: ${diagApiKey?.substring(0, 6)}... (len=${diagApiKey?.length})`);
         
         const diagnostics: any = {
-          baseUrl: evolutionBaseUrl,
+          baseUrl: diagBaseUrl,
           version: EVOLUTION_API_FUNC_VERSION,
-          apiKeyPresent: !!EVOLUTION_API_KEY,
+          apiKeyPresent: !!diagApiKey,
+          apiKeyPrefix: diagApiKey?.substring(0, 6),
+          apiKeyLength: diagApiKey?.length,
           tests: [],
+          authTests: [],
         };
 
-        // Test root endpoint
+        // Test root endpoint (no auth needed typically)
         try {
-          const rootRes = await fetch(evolutionBaseUrl, { headers: evolutionHeaders });
+          const rootRes = await fetch(diagBaseUrl, { headers: { 'Content-Type': 'application/json' } });
           diagnostics.tests.push({
             endpoint: '/',
             status: rootRes.status,
             ok: rootRes.ok,
           });
+          await rootRes.text();
         } catch (e) {
           diagnostics.tests.push({ endpoint: '/', error: String(e) });
         }
 
-        // Test different route prefixes with fetchInstances
-        for (const prefix of ROUTE_PREFIXES) {
-          const testEndpoint = `${evolutionBaseUrl}${prefix}/instance/fetchInstances`;
+        // Test different auth header formats individually
+        const authFormats = [
+          { name: 'apikey-only', headers: { 'Content-Type': 'application/json', apikey: diagApiKey! } },
+          { name: 'bearer-only', headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${diagApiKey}` } },
+          { name: 'x-api-key-only', headers: { 'Content-Type': 'application/json', 'x-api-key': diagApiKey! } },
+          { name: 'all-combined', headers: buildEvolutionHeaders(diagApiKey!) },
+        ];
+
+        for (const fmt of authFormats) {
+          const testUrl = `${diagBaseUrl}/instance/fetchInstances`;
           try {
-            const res = await fetch(testEndpoint, { method: 'GET', headers: evolutionHeaders });
+            const res = await fetch(testUrl, { method: 'GET', headers: fmt.headers });
+            const text = await res.text();
+            let parsed: any = null;
+            try { parsed = JSON.parse(text); } catch { parsed = text.substring(0, 200); }
+            diagnostics.authTests.push({
+              format: fmt.name,
+              status: res.status,
+              ok: res.ok,
+              isArray: Array.isArray(parsed),
+              preview: typeof parsed === 'object' ? JSON.stringify(parsed).substring(0, 300) : String(parsed).substring(0, 300),
+            });
+          } catch (e) {
+            diagnostics.authTests.push({ format: fmt.name, error: String(e) });
+          }
+        }
+
+        // Test different route prefixes with fetchInstances
+        const diagHeaders = buildEvolutionHeaders(diagApiKey!);
+        for (const prefix of ROUTE_PREFIXES) {
+          const testEndpoint = `${diagBaseUrl}${prefix}/instance/fetchInstances`;
+          try {
+            const res = await fetch(testEndpoint, { method: 'GET', headers: diagHeaders });
             const text = await res.text();
             let parsed: any = null;
             try { parsed = JSON.parse(text); } catch { parsed = text.substring(0, 200); }
@@ -939,9 +974,9 @@ Deno.serve(async (req) => {
 
         // Also try /instance/list endpoint
         for (const prefix of ROUTE_PREFIXES) {
-          const testEndpoint = `${evolutionBaseUrl}${prefix}/instance/list`;
+          const testEndpoint = `${diagBaseUrl}${prefix}/instance/list`;
           try {
-            const res = await fetch(testEndpoint, { method: 'GET', headers: evolutionHeaders });
+            const res = await fetch(testEndpoint, { method: 'GET', headers: diagHeaders });
             diagnostics.tests.push({
               endpoint: `${prefix}/instance/list`,
               status: res.status,
@@ -950,6 +985,7 @@ Deno.serve(async (req) => {
             if (res.ok && !diagnostics.workingPrefix) {
               diagnostics.workingPrefix = prefix;
             }
+            await res.text();
           } catch (e) {
             diagnostics.tests.push({ endpoint: `${prefix}/instance/list`, error: String(e) });
           }
