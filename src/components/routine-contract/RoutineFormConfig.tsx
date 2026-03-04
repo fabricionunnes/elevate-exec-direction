@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
 import { Plus, Copy, Trash2, Link, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Props {
   projectId: string;
@@ -58,8 +59,8 @@ export const RoutineFormConfig = ({ projectId, isAdmin }: Props) => {
   });
 
   const getPublicUrl = (token: string) => {
-    const base = window.location.origin;
-    return `${base}/#/contrato-rotina/${token}`;
+    const base = getPublicBaseUrl();
+    return `${base}/?public=contrato-rotina&token=${token}`;
   };
 
   const copyLink = (token: string) => {
