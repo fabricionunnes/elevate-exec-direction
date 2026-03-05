@@ -80,6 +80,7 @@ const StaffInvoicePage = () => {
   const [pixKeyType, setPixKeyType] = useState("cpf");
   const [pixKey, setPixKey] = useState("");
   const [uploading, setUploading] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
   // Admin state
@@ -225,14 +226,19 @@ const StaffInvoicePage = () => {
     setAllSalaries(data || []);
   };
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
-    if (!file || !currentStaff) return;
-
+    if (!file) return;
     if (file.type !== "application/pdf") {
       toast.error("Apenas arquivos PDF são aceitos");
+      if (fileInputRef.current) fileInputRef.current.value = "";
       return;
     }
+    setSelectedFile(file);
+  };
+
+  const handleSubmitInvoice = async () => {
+    if (!currentStaff || !selectedFile) return;
 
     if (!pixKey.trim()) {
       toast.error("Informe sua chave PIX antes de enviar");
@@ -250,13 +256,9 @@ const StaffInvoicePage = () => {
       
       const { error: uploadError } = await supabase.storage
         .from("staff-invoices")
-        .upload(filePath, file);
+        .upload(filePath, selectedFile);
 
       if (uploadError) throw uploadError;
-
-      const { data: urlData } = supabase.storage
-        .from("staff-invoices")
-        .getPublicUrl(filePath);
 
       const { error: insertError } = await supabase
         .from("staff_invoices")
@@ -268,12 +270,11 @@ const StaffInvoicePage = () => {
           pix_key: pixKey.trim(),
           pix_key_type: pixKeyType,
           pdf_url: filePath,
-          pdf_file_name: file.name,
+          pdf_file_name: selectedFile.name,
         });
 
       if (insertError) throw insertError;
 
-      // Audit log
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff.id,
         action: "envio",
@@ -281,8 +282,9 @@ const StaffInvoicePage = () => {
       });
 
       toast.success("Nota fiscal enviada com sucesso!");
-      loadMyInvoices();
+      setSelectedFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      loadMyInvoices();
     } catch (err) {
       console.error(err);
       toast.error("Erro ao enviar nota fiscal");
@@ -540,20 +542,34 @@ const StaffInvoicePage = () => {
                       ref={fileInputRef}
                       type="file"
                       accept="application/pdf"
-                      onChange={handleFileUpload}
+                      onChange={handleFileSelect}
                       disabled={uploading || !mySalary}
                       className="cursor-pointer"
                     />
+                    {selectedFile && (
+                      <p className="text-xs text-muted-foreground mt-1">📄 {selectedFile.name}</p>
+                    )}
                     {!mySalary && (
                       <p className="text-xs text-destructive mt-1">Salário não configurado para este mês</p>
                     )}
                   </div>
-                  {uploading && (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                      <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
-                      Enviando...
-                    </div>
-                  )}
+                  <Button 
+                    onClick={handleSubmitInvoice} 
+                    disabled={uploading || !mySalary || !selectedFile || !pixKey.trim()}
+                    className="w-full"
+                  >
+                    {uploading ? (
+                      <span className="flex items-center gap-2">
+                        <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary-foreground" />
+                        Enviando...
+                      </span>
+                    ) : (
+                      <span className="flex items-center gap-2">
+                        <Upload className="h-4 w-4" />
+                        Enviar Nota Fiscal
+                      </span>
+                    )}
+                  </Button>
                 </CardContent>
               </Card>
             </div>
