@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
+import { CurrencyInput } from "@/components/ui/currency-input";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
@@ -93,7 +94,7 @@ const StaffInvoicePage = () => {
   const [salaryStaffId, setSalaryStaffId] = useState("");
   const [salaryMonth, setSalaryMonth] = useState(new Date().getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
-  const [salaryAmount, setSalaryAmount] = useState("");
+  const [salaryAmount, setSalaryAmount] = useState<number>(0);
   const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
   const [savingSalary, setSavingSalary] = useState(false);
 
@@ -337,8 +338,8 @@ const StaffInvoicePage = () => {
     }
     setSavingSalary(true);
     try {
-      const amount = parseFloat(salaryAmount.replace(/[^\d.,]/g, "").replace(",", "."));
-      if (isNaN(amount)) { toast.error("Valor inválido"); setSavingSalary(false); return; }
+      const amount = salaryAmount;
+      if (!amount || amount <= 0) { toast.error("Valor inválido"); setSavingSalary(false); return; }
 
       // Upsert salary
       const { error } = await supabase
@@ -675,7 +676,7 @@ const StaffInvoicePage = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Configuração de Salários</CardTitle>
-                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(""); }}>
+                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); }}>
                     Configurar Salário
                   </Button>
                 </CardHeader>
@@ -703,7 +704,7 @@ const StaffInvoicePage = () => {
                                 setSalaryStaffId(sal.staff_id);
                                 setSalaryMonth(sal.month);
                                 setSalaryYear(sal.year);
-                                setSalaryAmount(sal.amount.toString());
+                                setSalaryAmount(sal.amount);
                                 setSalaryDialogOpen(true);
                               }}>
                                 Editar
@@ -761,10 +762,9 @@ const StaffInvoicePage = () => {
                     </div>
                     <div>
                       <Label>Valor (R$)</Label>
-                      <Input
-                        placeholder="0,00"
+                      <CurrencyInput
                         value={salaryAmount}
-                        onChange={(e) => setSalaryAmount(e.target.value)}
+                        onChange={setSalaryAmount}
                       />
                     </div>
                   </div>
