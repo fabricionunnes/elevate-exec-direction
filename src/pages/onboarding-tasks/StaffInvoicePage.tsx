@@ -11,9 +11,10 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
-import { ArrowLeft, Upload, FileText, DollarSign, History, Settings, Download, Search, Eye } from "lucide-react";
+import { ArrowLeft, Upload, FileText, DollarSign, History, Settings, Download, Search, Eye, Pencil, Trash2 } from "lucide-react";
 
 const MONTHS = [
   { value: 1, label: "Janeiro" },
@@ -103,6 +104,8 @@ const StaffInvoicePage = () => {
   const [salaryCommission, setSalaryCommission] = useState<number>(0);
   const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
   const [savingSalary, setSavingSalary] = useState(false);
+  const [deleteSalaryId, setDeleteSalaryId] = useState<string | null>(null);
+  const [deletingSalary, setDeletingSalary] = useState(false);
 
   useEffect(() => {
     loadInitialData();
@@ -443,6 +446,32 @@ const StaffInvoicePage = () => {
       toast.error(err?.message || "Erro ao salvar salário");
     } finally {
       setSavingSalary(false);
+    }
+  };
+
+  const handleDeleteSalary = async () => {
+    if (!deleteSalaryId) return;
+    setDeletingSalary(true);
+    try {
+      const { error } = await supabase
+        .from("staff_salaries")
+        .delete()
+        .eq("id", deleteSalaryId);
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        action: "salary_delete",
+        details: `Salário excluído (ID: ${deleteSalaryId})`,
+      });
+
+      toast.success("Salário excluído!");
+      setDeleteSalaryId(null);
+      loadAllSalaries();
+    } catch (err: any) {
+      toast.error(err?.message || "Erro ao excluir salário");
+    } finally {
+      setDeletingSalary(false);
     }
   };
 
@@ -867,16 +896,21 @@ const StaffInvoicePage = () => {
                                 : "—"}
                             </TableCell>
                             <TableCell>
-                              <Button size="sm" variant="ghost" onClick={() => {
-                                setSalaryStaffId(sal.staff_id);
-                                setSalaryMonth(sal.month);
-                                setSalaryYear(sal.year);
-                                setSalaryAmount(sal.amount);
-                                setSalaryCommission((sal as any).commission || 0);
-                                setSalaryDialogOpen(true);
-                              }}>
-                                Editar
-                              </Button>
+                              <div className="flex items-center gap-1">
+                                <Button size="sm" variant="ghost" onClick={() => {
+                                  setSalaryStaffId(sal.staff_id);
+                                  setSalaryMonth(sal.month);
+                                  setSalaryYear(sal.year);
+                                  setSalaryAmount(sal.amount);
+                                  setSalaryCommission((sal as any).commission || 0);
+                                  setSalaryDialogOpen(true);
+                                }}>
+                                  <Pencil className="h-4 w-4" />
+                                </Button>
+                                <Button size="sm" variant="ghost" className="text-destructive hover:text-destructive" onClick={() => setDeleteSalaryId(sal.id)}>
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </div>
                             </TableCell>
                           </TableRow>
                         ))}
@@ -952,6 +986,24 @@ const StaffInvoicePage = () => {
                   </DialogFooter>
                 </DialogContent>
               </Dialog>
+
+              {/* Delete Salary Confirmation */}
+              <AlertDialog open={!!deleteSalaryId} onOpenChange={(open) => !open && setDeleteSalaryId(null)}>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir salário configurado?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. O salário configurado será removido permanentemente.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel disabled={deletingSalary}>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteSalary} disabled={deletingSalary} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      {deletingSalary ? "Excluindo..." : "Excluir"}
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </TabsContent>
           )}
         </Tabs>
