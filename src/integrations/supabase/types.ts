@@ -23588,6 +23588,7 @@ export type Database = {
           amount: number
           created_at: string
           id: string
+          invoice_type: string
           month: number
           payment_forecast: string | null
           pdf_file_name: string | null
@@ -23606,6 +23607,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          invoice_type?: string
           month: number
           payment_forecast?: string | null
           pdf_file_name?: string | null
@@ -23624,6 +23626,7 @@ export type Database = {
           amount?: number
           created_at?: string
           id?: string
+          invoice_type?: string
           month?: number
           payment_forecast?: string | null
           pdf_file_name?: string | null
@@ -23697,6 +23700,7 @@ export type Database = {
       staff_salaries: {
         Row: {
           amount: number
+          commission: number | null
           created_at: string
           created_by: string | null
           id: string
@@ -23707,6 +23711,7 @@ export type Database = {
         }
         Insert: {
           amount?: number
+          commission?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
@@ -23717,6 +23722,7 @@ export type Database = {
         }
         Update: {
           amount?: number
+          commission?: number | null
           created_at?: string
           created_by?: string | null
           id?: string
