@@ -133,21 +133,21 @@ const StaffInvoicePage = () => {
       if (!staff) { navigate("/onboarding-tasks"); return; }
       setCurrentStaff(staff);
 
-      // Check nf_manage permission
-      const isMasterAdmin = staff.role === "master" || staff.role === "admin";
-      if (!isMasterAdmin) {
+      // Check nf_manage permission - only master has automatic access
+      const isMaster = staff.role === "master";
+      if (isMaster) {
+        setHasManagePermission(true);
+      } else {
         const { data: perms } = await supabase
           .from("staff_menu_permissions")
           .select("menu_key")
           .eq("staff_id", staff.id)
           .eq("menu_key", "nf_manage");
         setHasManagePermission((perms && perms.length > 0) || false);
-      } else {
-        setHasManagePermission(true);
       }
 
-      // Load all staff for admin
-      if (isMasterAdmin) {
+      // Load all staff for users with manage permission
+      if (isMaster) {
         const { data: staffList } = await supabase
           .from("onboarding_staff")
           .select("id, name, email, role, user_id")
@@ -155,7 +155,6 @@ const StaffInvoicePage = () => {
           .order("name");
         setAllStaff(staffList || []);
       } else {
-        // Check if has permission and load staff list
         const { data: perms } = await supabase
           .from("staff_menu_permissions")
           .select("menu_key")
