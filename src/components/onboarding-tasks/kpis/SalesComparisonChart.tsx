@@ -42,6 +42,7 @@ interface SalesComparisonChartProps {
   refreshKey?: number;
   companyName?: string;
   showAIAnalysis?: boolean;
+  onlyShowIfPositive?: boolean;
 }
 
 export const SalesComparisonChart = ({ 
@@ -51,7 +52,8 @@ export const SalesComparisonChart = ({
   currentMonthRevenue = 0,
   refreshKey = 0,
   companyName = "",
-  showAIAnalysis = true
+  showAIAnalysis = true,
+  onlyShowIfPositive = false
 }: SalesComparisonChartProps) => {
   const [historyData, setHistoryData] = useState<SalesHistoryEntry[]>([]);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -183,6 +185,8 @@ Empresa: "${companyName || 'cliente'}".`;
 
   if (loading || chartData.length === 0) return null;
 
+  // If onlyShowIfPositive (client view), hide chart when average didn't grow
+  if (onlyShowIfPositive && !hasGrowth) return null;
   // Build separated data for dual areas
   const areaData = chartData.map((d) => ({
     ...d,
