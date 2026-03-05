@@ -102,14 +102,28 @@ Deno.serve(async (req) => {
         try {
           const { data: charge } = await supabase
             .from("company_recurring_charges")
-            .select("pagarme_plan_id")
+            .select("pagarme_plan_id, asaas_account_id")
             .eq("id", inv.recurring_charge_id)
             .single();
+
+          // Resolve the correct API key for this charge's Asaas account
+          let apiKeyToUse = ASAAS_API_KEY;
+          if (charge?.asaas_account_id) {
+            const { data: account } = await supabase
+              .from("asaas_accounts")
+              .select("api_key_secret_name")
+              .eq("id", charge.asaas_account_id)
+              .single();
+            if (account?.api_key_secret_name) {
+              const resolvedKey = Deno.env.get(account.api_key_secret_name);
+              if (resolvedKey) apiKeyToUse = resolvedKey;
+            }
+          }
 
           if (charge?.pagarme_plan_id) {
             const subsResp = await fetch(
               `https://api.asaas.com/v3/subscriptions/${charge.pagarme_plan_id}/payments?status=PENDING&dueDate=${inv.due_date}`,
-              { headers: { "access_token": ASAAS_API_KEY } }
+              { headers: { "access_token": apiKeyToUse } }
             );
             if (subsResp.ok) {
               const subsData = await subsResp.json();

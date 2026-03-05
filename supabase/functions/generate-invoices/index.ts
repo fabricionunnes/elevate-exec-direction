@@ -25,6 +25,42 @@ async function asaasRequest(path: string, method: string, apiKey: string, body?:
 }
 
 /**
+ * Resolve the correct Asaas API key for a recurring charge.
+ * If the charge has an asaas_account_id, look up the secret name and get the key.
+ * Otherwise, fall back to the default ASAAS_API_KEY.
+ */
+async function resolveAsaasApiKey(
+  supabase: ReturnType<typeof createClient>,
+  recurringChargeId?: string,
+  fallbackKey?: string | null
+): Promise<string | null> {
+  if (recurringChargeId) {
+    const { data: charge } = await supabase
+      .from("company_recurring_charges")
+      .select("asaas_account_id")
+      .eq("id", recurringChargeId)
+      .single();
+
+    if (charge?.asaas_account_id) {
+      const { data: account } = await supabase
+        .from("asaas_accounts")
+        .select("api_key_secret_name")
+        .eq("id", charge.asaas_account_id)
+        .single();
+
+      if (account?.api_key_secret_name) {
+        const key = Deno.env.get(account.api_key_secret_name);
+        if (key) {
+          console.log(`[resolveAsaasApiKey] Using account: ${account.api_key_secret_name}`);
+          return key;
+        }
+      }
+    }
+  }
+  return fallbackKey || null;
+}
+
+/**
  * For a given invoice, try to find the Asaas payment invoiceUrl via the subscription.
  * If found, use that URL. Otherwise, fall back to a direct Asaas charge creation.
  */
@@ -341,10 +377,13 @@ Deno.serve(async (req) => {
 
       if (insertError) throw insertError;
 
+      // Resolve the correct Asaas API key for this recurring charge (multi-account support)
+      const resolvedApiKey = await resolveAsaasApiKey(supabase, recurring_charge_id, ASAAS_API_KEY);
+
       // Create payment links with Asaas URLs and send WhatsApp for first invoice
       let firstInvoiceUrl = "";
       for (const inv of inserted || []) {
-        const url = await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, {
+        const url = await createPaymentLinkForInvoice(supabase, resolvedApiKey, {
           id: inv.id,
           description: inv.description,
           amount_cents: inv.amount_cents,
@@ -764,10 +803,15 @@ Deno.serve(async (req) => {
 
       let fixed = 0;
       for (const inv of invoicesToFix || []) {
+        // Resolve the correct API key for this invoice's recurring charge
+        const invApiKey = inv.recurring_charge_id
+          ? await resolveAsaasApiKey(supabase, inv.recurring_charge_id, ASAAS_API_KEY)
+          : ASAAS_API_KEY;
+
         // Re-fetch Asaas URL for each invoice individually
-        if (ASAAS_API_KEY && inv.due_date && inv.recurring_charge_id) {
+        if (invApiKey && inv.due_date && inv.recurring_charge_id) {
           try {
-            const asaasUrl = await getOrCreateAsaasPaymentUrl(supabase, ASAAS_API_KEY, inv);
+            const asaasUrl = await getOrCreateAsaasPaymentUrl(supabase, invApiKey, inv);
             if (asaasUrl) {
               // Update the invoice's payment_link_url
               await supabase
@@ -790,7 +834,7 @@ Deno.serve(async (req) => {
           }
         } else if (!inv.payment_link_id) {
           // No payment link at all - create one
-          await createPaymentLinkForInvoice(supabase, ASAAS_API_KEY, inv);
+          await createPaymentLinkForInvoice(supabase, invApiKey, inv);
           fixed++;
         }
       }
