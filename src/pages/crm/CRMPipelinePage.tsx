@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { syncLeadToClint } from "@/hooks/useClintSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
@@ -317,6 +318,9 @@ export const CRMPipelinePage = () => {
         .eq("id", stageMoveDialog.leadId);
 
       if (error) throw error;
+
+      // Sync stage change to Clint in background
+      syncLeadToClint(stageMoveDialog.leadId, "stage_change");
       
       if (stageNote.trim()) {
         await supabase

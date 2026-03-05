@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { syncLeadToClint } from "@/hooks/useClintSync";
 import {
   Dialog,
   DialogContent,
@@ -214,7 +215,7 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
 
       if (!staff) throw new Error("Staff não encontrado");
 
-      const { error } = await supabase
+      const { data: newLead, error } = await supabase
         .from("crm_leads")
         .insert({
           name: formData.name,
@@ -236,9 +237,16 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           owner_staff_id: formData.owner_staff_id || staff.id,
           created_by: staff.id,
           entered_pipeline_at: new Date().toISOString(),
-        });
+        })
+        .select("id")
+        .single();
 
       if (error) throw error;
+
+      // Sync to Clint in background
+      if (newLead?.id) {
+        syncLeadToClint(newLead.id, "create");
+      }
 
       toast.success("Lead criado com sucesso");
       onSuccess();

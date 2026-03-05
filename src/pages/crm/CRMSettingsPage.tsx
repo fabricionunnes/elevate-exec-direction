@@ -50,13 +50,15 @@ import {
   Users,
   TrendingUp,
   ListChecks,
-  Bell
+  Bell,
+  Link2
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
+import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -757,6 +759,10 @@ export const CRMSettingsPage = () => {
           <TabsTrigger value="notifications" className="gap-2">
             <Bell className="h-4 w-4" />
             Notificações
+          </TabsTrigger>
+          <TabsTrigger value="integrations" className="gap-2">
+            <Link2 className="h-4 w-4" />
+            Integrações
           </TabsTrigger>
         </TabsList>
 
@@ -1710,6 +1716,11 @@ export const CRMSettingsPage = () => {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="mt-6">
           <WonNotificationSettings />
+        </TabsContent>
+
+        {/* Integrations Tab */}
+        <TabsContent value="integrations" className="mt-6">
+          <ClintIntegrationTab />
         </TabsContent>
       </Tabs>
 
