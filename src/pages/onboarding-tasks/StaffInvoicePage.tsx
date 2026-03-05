@@ -77,6 +77,7 @@ const StaffInvoicePage = () => {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [mySalary, setMySalary] = useState<Salary | null>(null);
   const [myInvoices, setMyInvoices] = useState<Invoice[]>([]);
+  const [pixKeyType, setPixKeyType] = useState("cpf");
   const [pixKey, setPixKey] = useState("");
   const [uploading, setUploading] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -265,6 +266,7 @@ const StaffInvoicePage = () => {
           year: selectedYear,
           amount: mySalary.amount,
           pix_key: pixKey.trim(),
+          pix_key_type: pixKeyType,
           pdf_url: filePath,
           pdf_file_name: file.name,
         });
@@ -509,13 +511,28 @@ const StaffInvoicePage = () => {
                   </CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div>
-                    <Label>Chave PIX *</Label>
-                    <Input
-                      placeholder="CPF, CNPJ, e-mail, telefone ou chave aleatória"
-                      value={pixKey}
-                      onChange={(e) => setPixKey(e.target.value)}
-                    />
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div>
+                      <Label>Tipo de Chave PIX *</Label>
+                      <Select value={pixKeyType} onValueChange={setPixKeyType}>
+                        <SelectTrigger><SelectValue /></SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="cpf">CPF</SelectItem>
+                          <SelectItem value="cnpj">CNPJ</SelectItem>
+                          <SelectItem value="email">E-mail</SelectItem>
+                          <SelectItem value="telefone">Telefone</SelectItem>
+                          <SelectItem value="aleatoria">Chave Aleatória</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <div>
+                      <Label>Chave PIX *</Label>
+                      <Input
+                        placeholder="Digite sua chave PIX"
+                        value={pixKey}
+                        onChange={(e) => setPixKey(e.target.value)}
+                      />
+                    </div>
                   </div>
                   <div>
                     <Label>Nota Fiscal (PDF) *</Label>
@@ -666,7 +683,9 @@ const StaffInvoicePage = () => {
                                 <TableCell className="font-medium">{staffInfo?.name || "—"}</TableCell>
                                 <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
                                 <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
-                                <TableCell className="text-xs max-w-[140px] truncate">{inv.pix_key}</TableCell>
+                                <TableCell className="text-xs max-w-[180px]">
+                                  <span className="font-medium uppercase">{(inv as any).pix_key_type || "—"}</span>: {inv.pix_key}
+                                </TableCell>
                                 <TableCell>{new Date(inv.submitted_at).toLocaleDateString("pt-BR")}</TableCell>
                                 <TableCell>
                                   <Badge variant={STATUS_MAP[inv.status]?.variant || "default"}>

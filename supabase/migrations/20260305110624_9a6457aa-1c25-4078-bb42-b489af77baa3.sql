@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_invoices ADD COLUMN pix_key_type TEXT DEFAULT 'cpf';
