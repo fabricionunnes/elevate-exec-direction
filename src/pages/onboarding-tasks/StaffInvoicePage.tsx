@@ -86,7 +86,7 @@ const StaffInvoicePage = () => {
   // Admin state
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
   const [allInvoices, setAllInvoices] = useState<Invoice[]>([]);
-  const [adminFilterMonth, setAdminFilterMonth] = useState(new Date().getMonth() + 1);
+  const [adminFilterMonth, setAdminFilterMonth] = useState<number | "all">("all");
   const [adminFilterYear, setAdminFilterYear] = useState(new Date().getFullYear());
   const [adminFilterStaff, setAdminFilterStaff] = useState("all");
   const [adminFilterStatus, setAdminFilterStatus] = useState("all");
@@ -204,9 +204,10 @@ const StaffInvoicePage = () => {
     let query = supabase
       .from("staff_invoices")
       .select("*, onboarding_staff!staff_invoices_staff_id_fkey(name, email)")
-      .eq("month", adminFilterMonth)
-      .eq("year", adminFilterYear)
       .order("submitted_at", { ascending: false });
+    
+    if (adminFilterMonth !== "all") query = query.eq("month", adminFilterMonth);
+    query = query.eq("year", adminFilterYear);
     
     if (adminFilterStaff !== "all") query = query.eq("staff_id", adminFilterStaff);
     if (adminFilterStatus !== "all") query = query.eq("status", adminFilterStatus);
@@ -632,9 +633,10 @@ const StaffInvoicePage = () => {
                 <CardHeader>
                   <CardTitle>Notas Fiscais Recebidas</CardTitle>
                   <div className="flex flex-wrap gap-3 mt-3">
-                    <Select value={String(adminFilterMonth)} onValueChange={(v) => setAdminFilterMonth(Number(v))}>
+                    <Select value={String(adminFilterMonth)} onValueChange={(v) => setAdminFilterMonth(v === "all" ? "all" : Number(v))}>
                       <SelectTrigger className="w-36"><SelectValue /></SelectTrigger>
                       <SelectContent>
+                        <SelectItem value="all">Todos os meses</SelectItem>
                         {MONTHS.map(m => (
                           <SelectItem key={m.value} value={String(m.value)}>{m.label}</SelectItem>
                         ))}
