@@ -1,6 +1,7 @@
 import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
+import { syncLeadToClint } from "@/hooks/useClintSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -332,6 +333,9 @@ export const CRMLeadDetailPage = () => {
         .eq("id", lead.id);
 
       if (error) throw error;
+
+      // Sync stage change to Clint in background
+      syncLeadToClint(lead.id, "stage_change");
 
       // Create automatic activities for this stage
       await createStageActivities(lead.id, stageId);

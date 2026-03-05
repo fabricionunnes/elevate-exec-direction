@@ -10929,6 +10929,110 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_clint_config: {
+        Row: {
+          api_token_secret_name: string
+          created_at: string
+          default_pipeline_id: string | null
+          default_stage_id: string | null
+          id: string
+          last_sync_at: string | null
+          pipeline_mapping: Json | null
+          sync_direction: string
+          sync_enabled: boolean
+          updated_at: string
+          webhook_secret: string | null
+        }
+        Insert: {
+          api_token_secret_name?: string
+          created_at?: string
+          default_pipeline_id?: string | null
+          default_stage_id?: string | null
+          id?: string
+          last_sync_at?: string | null
+          pipeline_mapping?: Json | null
+          sync_direction?: string
+          sync_enabled?: boolean
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Update: {
+          api_token_secret_name?: string
+          created_at?: string
+          default_pipeline_id?: string | null
+          default_stage_id?: string | null
+          id?: string
+          last_sync_at?: string | null
+          pipeline_mapping?: Json | null
+          sync_direction?: string
+          sync_enabled?: boolean
+          updated_at?: string
+          webhook_secret?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_clint_config_default_pipeline_id_fkey"
+            columns: ["default_pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_clint_config_default_stage_id_fkey"
+            columns: ["default_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_clint_sync_log: {
+        Row: {
+          clint_contact_id: string | null
+          clint_deal_id: string | null
+          created_at: string
+          crm_lead_id: string | null
+          error_message: string | null
+          id: string
+          payload: Json | null
+          sync_direction: string
+          sync_status: string
+          synced_at: string
+        }
+        Insert: {
+          clint_contact_id?: string | null
+          clint_deal_id?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          sync_direction: string
+          sync_status?: string
+          synced_at?: string
+        }
+        Update: {
+          clint_contact_id?: string | null
+          clint_deal_id?: string | null
+          created_at?: string
+          crm_lead_id?: string | null
+          error_message?: string | null
+          id?: string
+          payload?: Json | null
+          sync_direction?: string
+          sync_status?: string
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_clint_sync_log_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_custom_field_values: {
         Row: {
           created_at: string
