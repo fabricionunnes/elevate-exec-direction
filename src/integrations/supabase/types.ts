@@ -24815,6 +24815,10 @@ export type Database = {
         Args: never
         Returns: undefined
       }
+      update_company_segment: {
+        Args: { p_company_id: string; p_segment: string }
+        Returns: undefined
+      }
     }
     Enums: {
       app_role: "admin" | "user"
