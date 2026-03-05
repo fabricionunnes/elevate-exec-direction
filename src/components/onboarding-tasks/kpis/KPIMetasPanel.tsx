@@ -35,6 +35,7 @@ interface KPIMetasPanelProps {
   canSeeDashboard?: boolean;
   canSeeEndomarketing?: boolean;
   canSeeSalesLinks?: boolean;
+  isClientView?: boolean;
 }
 
 export const KPIMetasPanel = ({ 
@@ -47,6 +48,7 @@ export const KPIMetasPanel = ({
   canSeeDashboard = true,
   canSeeEndomarketing = true,
   canSeeSalesLinks = false,
+  isClientView = false,
 }: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
   
@@ -313,6 +315,7 @@ export const KPIMetasPanel = ({
               canDeleteEntries={canAccessAllTabs} 
               canEditSalesHistory={!salespersonId} 
               salespersonId={salespersonId}
+              isClientView={isClientView}
             />
           </TabsContent>
         )}

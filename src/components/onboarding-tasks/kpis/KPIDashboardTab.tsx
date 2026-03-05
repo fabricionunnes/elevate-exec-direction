@@ -105,6 +105,7 @@ interface KPIDashboardTabProps {
   canDeleteEntries?: boolean; // Admin, CS, or consultant
   canEditSalesHistory?: boolean; // Admin, CS, consultant, or client
   salespersonId?: string | null; // Filter all data by this salesperson (for vendedor role)
+  isClientView?: boolean;
 }
 
 // Raw monthly targets storage (all scopes: company, unit, salesperson)
@@ -125,6 +126,7 @@ export const KPIDashboardTab = ({
   canDeleteEntries = false, 
   canEditSalesHistory = false,
   salespersonId,
+  isClientView = false,
 }: KPIDashboardTabProps) => {
   const [kpis, setKpis] = useState<KPI[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
@@ -1829,6 +1831,7 @@ export const KPIDashboardTab = ({
         contractStartDate={contractStartDate}
         currentMonthRevenue={calculatedMetrics.totalRevenue}
         refreshKey={salesHistoryRefreshKey}
+        onlyShowIfPositive={isClientView}
       />
 
       {/* CAC Calculator Card */}
