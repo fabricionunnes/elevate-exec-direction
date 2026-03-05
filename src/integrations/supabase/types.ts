@@ -23589,6 +23589,7 @@ export type Database = {
           created_at: string
           id: string
           month: number
+          payment_forecast: string | null
           pdf_file_name: string | null
           pdf_url: string
           pix_key: string
@@ -23605,6 +23606,7 @@ export type Database = {
           created_at?: string
           id?: string
           month: number
+          payment_forecast?: string | null
           pdf_file_name?: string | null
           pdf_url: string
           pix_key: string
@@ -23621,6 +23623,7 @@ export type Database = {
           created_at?: string
           id?: string
           month?: number
+          payment_forecast?: string | null
           pdf_file_name?: string | null
           pdf_url?: string
           pix_key?: string

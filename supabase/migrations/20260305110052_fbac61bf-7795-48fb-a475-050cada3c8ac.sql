@@ -1,0 +1,1 @@
+ALTER TABLE public.staff_invoices ADD COLUMN payment_forecast DATE;
