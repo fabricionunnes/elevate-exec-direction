@@ -30,6 +30,7 @@ export const STAFF_MENU_KEYS = {
   settings: "settings",
   admin_menu: "admin_menu",
   commercial_actions: "commercial_actions",
+  nf_manage: "nf_manage",
 } as const;
 
 // Financial sub-permission keys
@@ -187,6 +188,12 @@ export const STAFF_MENU_STRUCTURE = [
     label: "Ações Comerciais", 
     description: "Calendário de ações comerciais",
     group: "Comercial" 
+  },
+  { 
+    key: STAFF_MENU_KEYS.nf_manage, 
+    label: "Gerenciar Nota Fiscal", 
+    description: "Configurar salários, visualizar NFs e PIX de todos",
+    group: "Administração" 
   },
 ] as const;
 

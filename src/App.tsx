@@ -141,6 +141,7 @@ const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/Clien
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const ContractGeneratorPage = lazy(() => import("./pages/onboarding-tasks/ContractGeneratorPage"));
 const SegmentsAnalysisPage = lazy(() => import("./pages/onboarding-tasks/SegmentsAnalysisPage"));
+const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoicePage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
@@ -309,6 +310,7 @@ const App = () => (
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
               <Route path="/onboarding-tasks/segments" element={<SegmentsAnalysisPage />} />
+              <Route path="/onboarding-tasks/nota-fiscal" element={<StaffInvoicePage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />

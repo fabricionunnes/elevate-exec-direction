@@ -23541,6 +23541,114 @@ export type Database = {
           },
         ]
       }
+      staff_invoice_audit_logs: {
+        Row: {
+          action: string
+          created_at: string
+          details: string | null
+          id: string
+          invoice_id: string | null
+          staff_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          invoice_id?: string | null
+          staff_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          details?: string | null
+          id?: string
+          invoice_id?: string | null
+          staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invoice_audit_logs_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "staff_invoices"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invoice_audit_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_invoices: {
+        Row: {
+          amount: number
+          created_at: string
+          id: string
+          month: number
+          pdf_file_name: string | null
+          pdf_url: string
+          pix_key: string
+          reviewed_at: string | null
+          reviewed_by: string | null
+          staff_id: string
+          status: string
+          submitted_at: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month: number
+          pdf_file_name?: string | null
+          pdf_url: string
+          pix_key: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          id?: string
+          month?: number
+          pdf_file_name?: string | null
+          pdf_url?: string
+          pix_key?: string
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          staff_id?: string
+          status?: string
+          submitted_at?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_invoices_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_invoices_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_menu_permissions: {
         Row: {
           created_at: string
@@ -23573,6 +23681,54 @@ export type Database = {
           },
           {
             foreignKeyName: "staff_menu_permissions_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_salaries: {
+        Row: {
+          amount: number
+          created_at: string
+          created_by: string | null
+          id: string
+          month: number
+          staff_id: string
+          updated_at: string
+          year: number
+        }
+        Insert: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month: number
+          staff_id: string
+          updated_at?: string
+          year: number
+        }
+        Update: {
+          amount?: number
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          month?: number
+          staff_id?: string
+          updated_at?: string
+          year?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_salaries_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_salaries_staff_id_fkey"
             columns: ["staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
@@ -24665,6 +24821,7 @@ export type Database = {
         Args: { days_to_add: number; start_date: string }
         Returns: string
       }
+      get_own_staff_id: { Args: never; Returns: string }
       get_pending_and_overdue_tasks: {
         Args: never
         Returns: {
@@ -24713,6 +24870,7 @@ export type Database = {
         Args: { check_project_id: string }
         Returns: boolean
       }
+      has_nf_manage_permission: { Args: never; Returns: boolean }
       has_role: {
         Args: {
           _role: Database["public"]["Enums"]["app_role"]

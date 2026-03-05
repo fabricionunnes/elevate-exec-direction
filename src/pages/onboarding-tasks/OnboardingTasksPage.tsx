@@ -1909,6 +1909,10 @@ const OnboardingTasksPage = () => {
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/nota-fiscal")}>
+                    <FileText className="h-4 w-4 mr-2" />
+                    Nota Fiscal
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                     <MessageSquare className="h-4 w-4 mr-2" />
                     UNV Disparador
