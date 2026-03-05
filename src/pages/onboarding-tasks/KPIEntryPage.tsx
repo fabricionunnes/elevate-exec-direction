@@ -353,25 +353,41 @@ export default function KPIEntryPage() {
 
     setLoading(true);
     try {
-      // Upsert entries using onConflict to avoid unique constraint violations
-      const entries = kpis.map(kpi => ({
-        company_id: companyId,
-        salesperson_id: salesperson.id,
-        kpi_id: kpi.id,
-        entry_date: entryDate,
-        value: values[kpi.id] || 0,
-        observations: observations,
-        unit_id: selectedUnit || salesperson.unit_id || null,
-        team_id: salesperson.team_id || null,
-        sector_id: kpi.sector_id || (salespersonSectors.length === 1 ? salespersonSectors[0] : null),
-        updated_at: new Date().toISOString(),
-      }));
+      const unitId = selectedUnit && selectedUnit !== "" ? selectedUnit : (salesperson.unit_id || null);
+      const teamId = salesperson.team_id || null;
 
-      const { error } = await supabase
-        .from("kpi_entries")
-        .upsert(entries, { onConflict: "salesperson_id,kpi_id,entry_date" });
+      // Process each KPI entry individually to handle updates vs inserts
+      for (const kpi of kpis) {
+        const entryData = {
+          company_id: companyId,
+          salesperson_id: salesperson.id,
+          kpi_id: kpi.id,
+          entry_date: entryDate,
+          value: values[kpi.id] ?? 0,
+          observations: observations,
+          unit_id: unitId,
+          team_id: teamId,
+          sector_id: kpi.sector_id || (salespersonSectors.length === 1 ? salespersonSectors[0] : null),
+          updated_at: new Date().toISOString(),
+        };
 
-      if (error) throw error;
+        if (existingEntries[kpi.id] !== undefined) {
+          // Update existing entry
+          const { error } = await supabase
+            .from("kpi_entries")
+            .update({ value: entryData.value, observations: entryData.observations, unit_id: entryData.unit_id, updated_at: entryData.updated_at })
+            .eq("salesperson_id", salesperson.id)
+            .eq("kpi_id", kpi.id)
+            .eq("entry_date", entryDate);
+          if (error) throw error;
+        } else {
+          // Insert new entry
+          const { error } = await supabase
+            .from("kpi_entries")
+            .insert(entryData);
+          if (error) throw error;
+        }
+      }
 
       setStep("success");
       toast.success("Lançamento realizado com sucesso!");
