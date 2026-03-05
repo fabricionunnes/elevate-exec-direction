@@ -2256,6 +2256,17 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
+            {/* Nota Fiscal button - visible for all staff */}
+            <Button 
+              variant="outline" 
+              size="sm" 
+              onClick={() => navigate("/onboarding-tasks/nota-fiscal")}
+              className="gap-2"
+            >
+              <FileText className="h-4 w-4" />
+              Nota Fiscal
+            </Button>
+
             {/* Admin/CS/Consultant Actions Menu - Reorganized with submenus */}
             {canAccessAnalytics && (
               <DropdownMenu>
