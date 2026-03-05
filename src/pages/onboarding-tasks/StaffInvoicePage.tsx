@@ -391,9 +391,9 @@ const StaffInvoicePage = () => {
       setSalaryDialogOpen(false);
       loadAllSalaries();
       loadMySalary();
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao salvar salário");
+    } catch (err: any) {
+      console.error("Salary save error:", err, { salaryStaffId, salaryMonth, salaryYear, salaryAmount });
+      toast.error(err?.message || "Erro ao salvar salário");
     } finally {
       setSavingSalary(false);
     }
