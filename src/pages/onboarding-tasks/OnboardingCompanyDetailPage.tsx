@@ -377,7 +377,7 @@ const OnboardingCompanyDetailPage = () => {
 
             const { data: activeCharges } = await supabase
               .from("company_recurring_charges")
-              .select("id, pagarme_plan_id")
+              .select("id, pagarme_plan_id, asaas_account_id")
               .eq("company_id", companyId)
               .eq("is_active", true);
 
@@ -387,7 +387,7 @@ const OnboardingCompanyDetailPage = () => {
                 if (charge.pagarme_plan_id) {
                   try {
                     await supabase.functions.invoke("asaas-cancel-subscription", {
-                      body: { subscription_id: charge.pagarme_plan_id },
+                      body: { subscription_id: charge.pagarme_plan_id, asaas_account_id: (charge as any).asaas_account_id },
                     });
                   } catch (asaasErr) {
                     console.error(`Error cancelling Asaas subscription ${charge.pagarme_plan_id}:`, asaasErr);
