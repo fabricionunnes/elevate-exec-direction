@@ -124,6 +124,7 @@ const OnboardingCompanyDetailPage = () => {
   const [activeTab, setActiveTab] = useState(initialTab);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const originalStatusRef = useRef<string>("active");
+  const formRef = useRef<CompanyForm>(null!);
   const { hasFinancialPermission, isMaster } = useFinancialPermissions();
   
   const [form, setForm] = useState<CompanyForm>({
@@ -158,6 +159,9 @@ const OnboardingCompanyDetailPage = () => {
     notes: "",
     is_simulator: false,
   });
+
+  // Keep ref in sync with latest form state
+  formRef.current = form;
 
   useEffect(() => {
     checkUserPermissions();
@@ -280,37 +284,39 @@ const OnboardingCompanyDetailPage = () => {
     setSaving(true);
 
     try {
+      // Use formRef to get the latest state (avoids stale closures from auto-save race conditions)
+      const currentForm = formRef.current;
       const payload = {
-        name: form.name,
-        cnpj: form.cnpj || null,
-        segment: form.segment || null,
-        website: form.website || null,
-        phone: form.phone || null,
-        email: form.email || null,
-        address: form.address || null,
-        address_number: form.address_number || null,
-        address_complement: form.address_complement || null,
-        address_neighborhood: form.address_neighborhood || null,
-        address_zipcode: form.address_zipcode || null,
-        address_city: form.address_city || null,
-        address_state: form.address_state || null,
-        cs_id: form.cs_id || null,
-        consultant_id: form.consultant_id || null,
-        kickoff_date: form.kickoff_date || null,
-        contract_start_date: form.contract_start_date || null,
-        contract_end_date: form.contract_end_date || null,
-        contract_value: form.contract_value ? parseFloat(form.contract_value) : null,
-        billing_day: form.billing_day ? parseInt(form.billing_day) : null,
-        company_description: form.company_description || null,
-        main_challenges: form.main_challenges || null,
-        goals_short_term: form.goals_short_term || null,
-        goals_long_term: form.goals_long_term || null,
-        target_audience: form.target_audience || null,
-        competitors: form.competitors || null,
-        stakeholders: JSON.parse(JSON.stringify(form.stakeholders)),
-        status: form.status,
-        notes: form.notes || null,
-        is_simulator: form.is_simulator,
+        name: currentForm.name,
+        cnpj: currentForm.cnpj || null,
+        segment: currentForm.segment || null,
+        website: currentForm.website || null,
+        phone: currentForm.phone || null,
+        email: currentForm.email || null,
+        address: currentForm.address || null,
+        address_number: currentForm.address_number || null,
+        address_complement: currentForm.address_complement || null,
+        address_neighborhood: currentForm.address_neighborhood || null,
+        address_zipcode: currentForm.address_zipcode || null,
+        address_city: currentForm.address_city || null,
+        address_state: currentForm.address_state || null,
+        cs_id: currentForm.cs_id || null,
+        consultant_id: currentForm.consultant_id || null,
+        kickoff_date: currentForm.kickoff_date || null,
+        contract_start_date: currentForm.contract_start_date || null,
+        contract_end_date: currentForm.contract_end_date || null,
+        contract_value: currentForm.contract_value ? parseFloat(currentForm.contract_value) : null,
+        billing_day: currentForm.billing_day ? parseInt(currentForm.billing_day) : null,
+        company_description: currentForm.company_description || null,
+        main_challenges: currentForm.main_challenges || null,
+        goals_short_term: currentForm.goals_short_term || null,
+        goals_long_term: currentForm.goals_long_term || null,
+        target_audience: currentForm.target_audience || null,
+        competitors: currentForm.competitors || null,
+        stakeholders: JSON.parse(JSON.stringify(currentForm.stakeholders)),
+        status: currentForm.status,
+        notes: currentForm.notes || null,
+        is_simulator: currentForm.is_simulator,
       };
 
       if (isNew) {
@@ -327,7 +333,7 @@ const OnboardingCompanyDetailPage = () => {
         // If transitioning to "closed", capture the previous status_changed_at BEFORE saving
         // (because the trigger will overwrite it with the new date)
         let cancellationSignalDate: string | null = null;
-        const willClose = form.status === "closed" && originalStatusRef.current !== "closed";
+        const willClose = currentForm.status === "closed" && originalStatusRef.current !== "closed";
         if (willClose && companyId) {
           const { data: prevData } = await supabase
             .from("onboarding_companies")
@@ -350,7 +356,7 @@ const OnboardingCompanyDetailPage = () => {
         // Only cancel recurring charges when status changes to "closed"
         // Use the date the company signaled cancellation as the 30-day reference
         const wasNotClosed = originalStatusRef.current !== "closed";
-        const isNowClosed = form.status === "closed";
+        const isNowClosed = currentForm.status === "closed";
         
         if (wasNotClosed && isNowClosed && companyId) {
           toast.info("Processando cancelamento de recorrências...");
@@ -403,7 +409,7 @@ const OnboardingCompanyDetailPage = () => {
           }
         }
 
-        originalStatusRef.current = form.status;
+        originalStatusRef.current = currentForm.status;
         toast.success("Empresa atualizada com sucesso");
       }
     } catch (error: any) {
