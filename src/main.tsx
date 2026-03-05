@@ -31,6 +31,7 @@ const publicRoutes = [
   "/career-plan",
   "/pagamento",
   "/checkout",
+  "/fatura",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
@@ -120,6 +121,8 @@ if (publicParam) {
     if (token) {
       forceHashRoute(`/contrato-rotina/${encodeURIComponent(token)}`, "");
     }
+  } else if (publicParam === "fatura") {
+    forceHashRoute("/fatura", window.location.search);
   }
 } else {
   // Path-based public links
