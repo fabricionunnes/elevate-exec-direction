@@ -23593,6 +23593,7 @@ export type Database = {
           pdf_file_name: string | null
           pdf_url: string
           pix_key: string
+          pix_key_type: string | null
           reviewed_at: string | null
           reviewed_by: string | null
           staff_id: string
@@ -23610,6 +23611,7 @@ export type Database = {
           pdf_file_name?: string | null
           pdf_url: string
           pix_key: string
+          pix_key_type?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           staff_id: string
@@ -23627,6 +23629,7 @@ export type Database = {
           pdf_file_name?: string | null
           pdf_url?: string
           pix_key?: string
+          pix_key_type?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
           staff_id?: string
