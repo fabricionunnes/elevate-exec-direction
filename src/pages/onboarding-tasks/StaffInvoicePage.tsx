@@ -50,6 +50,7 @@ interface Salary {
   month: number;
   year: number;
   amount: number;
+  commission?: number | null;
 }
 
 interface Invoice {
@@ -81,7 +82,9 @@ const StaffInvoicePage = () => {
   const [pixKey, setPixKey] = useState("");
   const [uploading, setUploading] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [selectedCommissionFile, setSelectedCommissionFile] = useState<File | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
+  const commissionFileInputRef = useRef<HTMLInputElement>(null);
   
   // Admin state
   const [allStaff, setAllStaff] = useState<StaffMember[]>([]);
@@ -97,6 +100,7 @@ const StaffInvoicePage = () => {
   const [salaryMonth, setSalaryMonth] = useState(new Date().getMonth() + 1);
   const [salaryYear, setSalaryYear] = useState(new Date().getFullYear());
   const [salaryAmount, setSalaryAmount] = useState<number>(0);
+  const [salaryCommission, setSalaryCommission] = useState<number>(0);
   const [allSalaries, setAllSalaries] = useState<Salary[]>([]);
   const [savingSalary, setSavingSalary] = useState(false);
 
@@ -237,6 +241,17 @@ const StaffInvoicePage = () => {
     setSelectedFile(file);
   };
 
+  const handleCommissionFileSelect = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Apenas arquivos PDF são aceitos");
+      if (commissionFileInputRef.current) commissionFileInputRef.current.value = "";
+      return;
+    }
+    setSelectedCommissionFile(file);
+  };
+
   const handleSubmitInvoice = async () => {
     if (!currentStaff || !selectedFile) return;
 
@@ -250,14 +265,19 @@ const StaffInvoicePage = () => {
       return;
     }
 
+    const hasCommission = mySalary.commission && mySalary.commission > 0;
+    if (hasCommission && !selectedCommissionFile) {
+      toast.error("Anexe a NF de comissão antes de enviar");
+      return;
+    }
+
     setUploading(true);
     try {
-      const filePath = `${currentStaff.user_id}/${selectedYear}-${String(selectedMonth).padStart(2, "0")}-${Date.now()}.pdf`;
-      
+      // Upload salary NF
+      const filePath = `${currentStaff.user_id}/${selectedYear}-${String(selectedMonth).padStart(2, "0")}-salary-${Date.now()}.pdf`;
       const { error: uploadError } = await supabase.storage
         .from("staff-invoices")
         .upload(filePath, selectedFile);
-
       if (uploadError) throw uploadError;
 
       const { error: insertError } = await supabase
@@ -271,19 +291,45 @@ const StaffInvoicePage = () => {
           pix_key_type: pixKeyType,
           pdf_url: filePath,
           pdf_file_name: selectedFile.name,
-        });
-
+          invoice_type: "salary",
+        } as any);
       if (insertError) throw insertError;
+
+      // Upload commission NF if applicable
+      if (hasCommission && selectedCommissionFile) {
+        const commFilePath = `${currentStaff.user_id}/${selectedYear}-${String(selectedMonth).padStart(2, "0")}-commission-${Date.now()}.pdf`;
+        const { error: commUploadError } = await supabase.storage
+          .from("staff-invoices")
+          .upload(commFilePath, selectedCommissionFile);
+        if (commUploadError) throw commUploadError;
+
+        const { error: commInsertError } = await supabase
+          .from("staff_invoices")
+          .insert({
+            staff_id: currentStaff.id,
+            month: selectedMonth,
+            year: selectedYear,
+            amount: mySalary.commission!,
+            pix_key: pixKey.trim(),
+            pix_key_type: pixKeyType,
+            pdf_url: commFilePath,
+            pdf_file_name: selectedCommissionFile.name,
+            invoice_type: "commission",
+          } as any);
+        if (commInsertError) throw commInsertError;
+      }
 
       await supabase.from("staff_invoice_audit_logs").insert({
         staff_id: currentStaff.id,
         action: "envio",
-        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - R$ ${mySalary.amount.toFixed(2)}`,
+        details: `NF enviada para ${MONTHS[selectedMonth - 1].label}/${selectedYear} - Salário: R$ ${mySalary.amount.toFixed(2)}${hasCommission ? ` + Comissão: R$ ${mySalary.commission!.toFixed(2)}` : ""}`,
       });
 
-      toast.success("Nota fiscal enviada com sucesso!");
+      toast.success("Nota(s) fiscal(is) enviada(s) com sucesso!");
       setSelectedFile(null);
+      setSelectedCommissionFile(null);
       if (fileInputRef.current) fileInputRef.current.value = "";
+      if (commissionFileInputRef.current) commissionFileInputRef.current.value = "";
       loadMyInvoices();
     } catch (err) {
       console.error(err);
@@ -376,8 +422,9 @@ const StaffInvoicePage = () => {
           month: salaryMonth,
           year: salaryYear,
           amount,
+          commission: salaryCommission > 0 ? salaryCommission : null,
           created_by: currentStaff?.id,
-        }, { onConflict: "staff_id,month,year" });
+        } as any, { onConflict: "staff_id,month,year" });
 
       if (error) throw error;
 
@@ -487,11 +534,20 @@ const StaffInvoicePage = () => {
                   </div>
 
                   {mySalary ? (
-                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center">
+                    <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-800 rounded-lg p-6 text-center space-y-2">
                       <p className="text-sm text-muted-foreground mb-1">Mês de referência: {MONTHS[selectedMonth - 1].label}/{selectedYear}</p>
                       <p className="text-3xl font-bold text-green-700 dark:text-green-400">
                         R$ {mySalary.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
                       </p>
+                      <p className="text-xs text-muted-foreground">Salário</p>
+                      {mySalary.commission && mySalary.commission > 0 && (
+                        <>
+                          <p className="text-xl font-bold text-blue-700 dark:text-blue-400">
+                            + R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                          </p>
+                          <p className="text-xs text-muted-foreground">Comissão</p>
+                        </>
+                      )}
                     </div>
                   ) : (
                     <div className="bg-muted rounded-lg p-6 text-center">
@@ -537,7 +593,7 @@ const StaffInvoicePage = () => {
                     </div>
                   </div>
                   <div>
-                    <Label>Nota Fiscal (PDF) *</Label>
+                    <Label>NF do Salário (PDF) *</Label>
                     <Input
                       ref={fileInputRef}
                       type="file"
@@ -553,9 +609,28 @@ const StaffInvoicePage = () => {
                       <p className="text-xs text-destructive mt-1">Salário não configurado para este mês</p>
                     )}
                   </div>
+                  {mySalary?.commission && mySalary.commission > 0 && (
+                    <div>
+                      <Label>NF da Comissão (PDF) *</Label>
+                      <p className="text-xs text-muted-foreground mb-1">
+                        Comissão: R$ {mySalary.commission.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                      </p>
+                      <Input
+                        ref={commissionFileInputRef}
+                        type="file"
+                        accept="application/pdf"
+                        onChange={handleCommissionFileSelect}
+                        disabled={uploading}
+                        className="cursor-pointer"
+                      />
+                      {selectedCommissionFile && (
+                        <p className="text-xs text-muted-foreground mt-1">📄 {selectedCommissionFile.name}</p>
+                      )}
+                    </div>
+                  )}
                   <Button 
                     onClick={handleSubmitInvoice} 
-                    disabled={uploading || !mySalary || !selectedFile || !pixKey.trim()}
+                    disabled={uploading || !mySalary || !selectedFile || !pixKey.trim() || (mySalary?.commission && mySalary.commission > 0 && !selectedCommissionFile)}
                     className="w-full"
                   >
                     {uploading ? (
@@ -566,7 +641,7 @@ const StaffInvoicePage = () => {
                     ) : (
                       <span className="flex items-center gap-2">
                         <Upload className="h-4 w-4" />
-                        Enviar Nota Fiscal
+                        Enviar Nota(s) Fiscal(is)
                       </span>
                     )}
                   </Button>
@@ -589,6 +664,7 @@ const StaffInvoicePage = () => {
                     <TableHeader>
                       <TableRow>
                         <TableHead>Mês</TableHead>
+                        <TableHead>Tipo</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
                         <TableHead>Previsão Pgto</TableHead>
@@ -600,6 +676,11 @@ const StaffInvoicePage = () => {
                       {myInvoices.map((inv) => (
                         <TableRow key={inv.id}>
                           <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
+                          <TableCell>
+                            <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
+                              {(inv as any).invoice_type === "commission" ? "Comissão" : "Salário"}
+                            </Badge>
+                          </TableCell>
                           <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                           <TableCell>
                             <Badge variant={STATUS_MAP[inv.status]?.variant || "default"}>
@@ -683,6 +764,7 @@ const StaffInvoicePage = () => {
                           <TableRow>
                             <TableHead>Usuário</TableHead>
                             <TableHead>Mês</TableHead>
+                            <TableHead>Tipo</TableHead>
                             <TableHead>Valor</TableHead>
                             <TableHead>Chave PIX</TableHead>
                             <TableHead>Data Envio</TableHead>
@@ -699,6 +781,11 @@ const StaffInvoicePage = () => {
                               <TableRow key={inv.id}>
                                 <TableCell className="font-medium">{staffInfo?.name || "—"}</TableCell>
                                 <TableCell>{MONTHS[inv.month - 1]?.label}/{inv.year}</TableCell>
+                                <TableCell>
+                                  <Badge variant={(inv as any).invoice_type === "commission" ? "secondary" : "outline"}>
+                                    {(inv as any).invoice_type === "commission" ? "Comissão" : "Salário"}
+                                  </Badge>
+                                </TableCell>
                                 <TableCell>R$ {inv.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                                 <TableCell className="text-xs max-w-[180px]">
                                   <span className="font-medium uppercase">{(inv as any).pix_key_type || "—"}</span>: {inv.pix_key}
@@ -750,7 +837,7 @@ const StaffInvoicePage = () => {
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between">
                   <CardTitle>Configuração de Salários</CardTitle>
-                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); }}>
+                  <Button onClick={() => { setSalaryDialogOpen(true); setSalaryStaffId(""); setSalaryAmount(0); setSalaryCommission(0); }}>
                     Configurar Salário
                   </Button>
                 </CardHeader>
@@ -764,7 +851,8 @@ const StaffInvoicePage = () => {
                           <TableHead>Colaborador</TableHead>
                           <TableHead>Mês</TableHead>
                           <TableHead>Valor</TableHead>
-                          <TableHead>Ações</TableHead>
+                            <TableHead>Comissão</TableHead>
+                            <TableHead>Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
@@ -774,11 +862,17 @@ const StaffInvoicePage = () => {
                             <TableCell>{MONTHS[sal.month - 1]?.label}/{sal.year}</TableCell>
                             <TableCell>R$ {sal.amount.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}</TableCell>
                             <TableCell>
+                              {(sal as any).commission && (sal as any).commission > 0
+                                ? `R$ ${Number((sal as any).commission).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}`
+                                : "—"}
+                            </TableCell>
+                            <TableCell>
                               <Button size="sm" variant="ghost" onClick={() => {
                                 setSalaryStaffId(sal.staff_id);
                                 setSalaryMonth(sal.month);
                                 setSalaryYear(sal.year);
                                 setSalaryAmount(sal.amount);
+                                setSalaryCommission((sal as any).commission || 0);
                                 setSalaryDialogOpen(true);
                               }}>
                                 Editar
@@ -835,11 +929,19 @@ const StaffInvoicePage = () => {
                       </div>
                     </div>
                     <div>
-                      <Label>Valor (R$)</Label>
+                      <Label>Salário (R$) *</Label>
                       <CurrencyInput
                         value={salaryAmount}
                         onChange={setSalaryAmount}
                       />
+                    </div>
+                    <div>
+                      <Label>Comissão (R$) <span className="text-xs text-muted-foreground">— opcional</span></Label>
+                      <CurrencyInput
+                        value={salaryCommission}
+                        onChange={setSalaryCommission}
+                      />
+                      <p className="text-xs text-muted-foreground mt-1">Se preenchido, o colaborador precisará enviar duas NFs separadas</p>
                     </div>
                   </div>
                   <DialogFooter>
