@@ -578,13 +578,15 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                     updateField("segment", value);
                     if (company?.id) {
                       try {
-                        await supabase
-                          .from("onboarding_companies")
-                          .update({ segment: value })
-                          .eq("id", company.id);
+                        const { error } = await supabase.rpc("update_company_segment", {
+                          p_company_id: company.id,
+                          p_segment: value,
+                        });
+                        if (error) throw error;
                         toast.success("Segmento atualizado");
                       } catch (err) {
                         console.error("Error auto-saving segment:", err);
+                        toast.error("Erro ao salvar segmento");
                       }
                     }
                   }}
