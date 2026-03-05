@@ -346,12 +346,21 @@ const OnboardingCompanyDetailPage = () => {
           }
         }
 
-        const { error } = await supabase
+        console.log("[CompanyDetail] Saving payload segment:", payload.segment, "companyId:", companyId);
+        const { data: updateData, error } = await supabase
           .from("onboarding_companies")
           .update(payload)
-          .eq("id", companyId);
+          .eq("id", companyId)
+          .select("id, segment");
 
         if (error) throw error;
+        console.log("[CompanyDetail] Update returned:", updateData);
+        if (!updateData || updateData.length === 0) {
+          console.error("[CompanyDetail] UPDATE returned 0 rows - possible RLS issue");
+          toast.error("Erro: atualização não foi salva. Verifique permissões.");
+          setSaving(false);
+          return;
+        }
 
         // Only cancel recurring charges when status changes to "closed"
         // Use the date the company signaled cancellation as the 30-day reference
@@ -645,10 +654,15 @@ const OnboardingCompanyDetailPage = () => {
                             .from("onboarding_companies")
                             .update({ segment: value })
                             .eq("id", companyId)
-                            .then(({ error }) => {
+                            .select("id, segment")
+                            .then(({ data, error }) => {
+                              console.log("[SegmentAutoSave] value:", value, "returned:", data, "error:", error);
                               if (error) {
                                 console.error("Error auto-saving segment:", error);
                                 toast.error("Erro ao salvar segmento");
+                              } else if (!data || data.length === 0) {
+                                console.error("[SegmentAutoSave] 0 rows updated - RLS blocking?");
+                                toast.error("Erro: segmento não foi salvo");
                               } else {
                                 toast.success("Segmento atualizado");
                               }
