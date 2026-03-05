@@ -197,9 +197,26 @@ Deno.serve(async (req) => {
 
     let invoiceUrl = "";
     try {
+      // Wait a moment for Asaas to generate the first payment
+      await new Promise(r => setTimeout(r, 2000));
       const payments = await asaasRequest(`/subscriptions/${subscription.id}/payments`, "GET", ASAAS_API_KEY);
       if (payments.data?.length > 0) {
-        invoiceUrl = payments.data[0].invoiceUrl || "";
+        const firstPayment = payments.data[0];
+        // Priority: invoiceUrl > bankSlipUrl > construct from payment id
+        invoiceUrl = firstPayment.invoiceUrl || firstPayment.bankSlipUrl || "";
+        // If still empty, try to get the payment's invoiceUrl directly
+        if (!invoiceUrl && firstPayment.id) {
+          try {
+            const paymentDetail = await asaasRequest(`/payments/${firstPayment.id}/identificationField`, "GET", ASAAS_API_KEY);
+            invoiceUrl = paymentDetail.invoiceUrl || "";
+          } catch (_e) {
+            // Fallback: construct Asaas payment page URL
+            invoiceUrl = `https://www.asaas.com/i/${firstPayment.id}`;
+          }
+        }
+        if (!invoiceUrl && firstPayment.id) {
+          invoiceUrl = `https://www.asaas.com/i/${firstPayment.id}`;
+        }
       }
     } catch (e) {
       console.error("Error getting subscription payments:", e);

@@ -46,6 +46,7 @@ interface RecurringCharge {
   pagarme_plan_id: string | null;
   pagarme_link_id: string | null;
   pagarme_link_url: string | null;
+  asaas_account_id: string | null;
   created_at: string;
 }
 
@@ -243,7 +244,7 @@ export function CompanyRecurringCharges({
       toast.info("Cancelando assinatura no Asaas...");
       try {
         const { data, error } = await supabase.functions.invoke("asaas-cancel-subscription", {
-          body: { subscription_id: charge.pagarme_plan_id },
+          body: { subscription_id: charge.pagarme_plan_id, asaas_account_id: charge.asaas_account_id },
         });
         if (error) console.error("Cancel error:", error);
         else toast.success("Assinatura cancelada no Asaas");
