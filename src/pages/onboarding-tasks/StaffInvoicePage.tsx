@@ -331,6 +331,29 @@ const StaffInvoicePage = () => {
     }
   };
 
+  const handleUpdatePaymentForecast = async (invoiceId: string, date: string) => {
+    try {
+      const { error } = await supabase
+        .from("staff_invoices")
+        .update({ payment_forecast: date || null } as any)
+        .eq("id", invoiceId);
+      if (error) throw error;
+
+      await supabase.from("staff_invoice_audit_logs").insert({
+        staff_id: currentStaff?.id,
+        invoice_id: invoiceId,
+        action: "payment_forecast_change",
+        details: `Previsão de pagamento alterada para ${date ? new Date(date + "T12:00:00").toLocaleDateString("pt-BR") : "—"}`,
+      });
+
+      toast.success("Previsão de pagamento atualizada");
+      loadAdminInvoices();
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao atualizar previsão");
+    }
+  };
+
   const handleSaveSalary = async () => {
     if (!salaryStaffId || !salaryAmount) {
       toast.error("Preencha todos os campos");
@@ -535,6 +558,7 @@ const StaffInvoicePage = () => {
                         <TableHead>Mês</TableHead>
                         <TableHead>Valor</TableHead>
                         <TableHead>Status</TableHead>
+                        <TableHead>Previsão Pgto</TableHead>
                         <TableHead>Data de Envio</TableHead>
                         <TableHead>PDF</TableHead>
                       </TableRow>
@@ -548,6 +572,11 @@ const StaffInvoicePage = () => {
                             <Badge variant={STATUS_MAP[inv.status]?.variant || "default"}>
                               {STATUS_MAP[inv.status]?.label || inv.status}
                             </Badge>
+                          </TableCell>
+                          <TableCell>
+                            {(inv as any).payment_forecast 
+                              ? new Date((inv as any).payment_forecast + "T12:00:00").toLocaleDateString("pt-BR")
+                              : "—"}
                           </TableCell>
                           <TableCell>{new Date(inv.submitted_at).toLocaleDateString("pt-BR")}</TableCell>
                           <TableCell>
@@ -624,6 +653,7 @@ const StaffInvoicePage = () => {
                             <TableHead>Chave PIX</TableHead>
                             <TableHead>Data Envio</TableHead>
                             <TableHead>Status</TableHead>
+                            <TableHead>Previsão Pgto</TableHead>
                             <TableHead>PDF</TableHead>
                             <TableHead>Ações</TableHead>
                           </TableRow>
@@ -642,6 +672,14 @@ const StaffInvoicePage = () => {
                                   <Badge variant={STATUS_MAP[inv.status]?.variant || "default"}>
                                     {STATUS_MAP[inv.status]?.label || inv.status}
                                   </Badge>
+                                </TableCell>
+                                <TableCell>
+                                  <Input
+                                    type="date"
+                                    className="h-8 w-36"
+                                    value={(inv as any).payment_forecast || ""}
+                                    onChange={(e) => handleUpdatePaymentForecast(inv.id, e.target.value)}
+                                  />
                                 </TableCell>
                                 <TableCell>
                                   <Button size="sm" variant="ghost" onClick={() => handleDownloadPdf(inv.pdf_url, inv.pdf_file_name)}>
