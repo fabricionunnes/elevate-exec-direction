@@ -632,7 +632,20 @@ const OnboardingCompanyDetailPage = () => {
                   <div className="grid grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Segmento</Label>
-                      <SegmentSelect value={form.segment} onValueChange={(value) => setForm({ ...form, segment: value })} />
+                      <SegmentSelect value={form.segment} onValueChange={async (value) => {
+                        setForm(prev => ({ ...prev, segment: value }));
+                        if (!isNew && companyId) {
+                          try {
+                            await supabase
+                              .from("onboarding_companies")
+                              .update({ segment: value })
+                              .eq("id", companyId);
+                            toast.success("Segmento atualizado");
+                          } catch (err) {
+                            console.error("Error auto-saving segment:", err);
+                          }
+                        }
+                      }} />
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="website">Website</Label>

@@ -574,7 +574,20 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
               {isEditing ? (
                 <SegmentSelect
                   value={formData.segment || ""}
-                  onValueChange={(value) => updateField("segment", value)}
+                  onValueChange={async (value) => {
+                    updateField("segment", value);
+                    if (company?.id) {
+                      try {
+                        await supabase
+                          .from("onboarding_companies")
+                          .update({ segment: value })
+                          .eq("id", company.id);
+                        toast.success("Segmento atualizado");
+                      } catch (err) {
+                        console.error("Error auto-saving segment:", err);
+                      }
+                    }
+                  }}
                   className="mt-1"
                 />
               ) : (
