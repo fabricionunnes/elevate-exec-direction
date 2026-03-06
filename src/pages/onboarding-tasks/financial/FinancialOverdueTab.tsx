@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
-  Clock, Building2, DollarSign, TrendingDown, Flame,
+  Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -83,7 +83,24 @@ export default function FinancialOverdueTab({
   const [isBulkSending, setIsBulkSending] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
+  const [sortColumn, setSortColumn] = useState<string | null>(null);
+  const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
   const ITEMS_PER_PAGE = 10;
+
+  const toggleSort = (column: string) => {
+    if (sortColumn === column) {
+      setSortDirection(prev => prev === "asc" ? "desc" : "asc");
+    } else {
+      setSortColumn(column);
+      setSortDirection("asc");
+    }
+    setCurrentPage(1);
+  };
+
+  const SortIcon = ({ column }: { column: string }) => {
+    if (sortColumn !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return sortDirection === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
 
   const overdueInvoices = useMemo(() => {
     const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
@@ -109,8 +126,25 @@ export default function FinancialOverdueTab({
     });
   }, [invoices, search, selectedCompany, selectedConsultant, companyConsultantMap, selectedMonthFilter]);
 
-  const totalPages = Math.ceil(overdueInvoices.length / ITEMS_PER_PAGE);
-  const paginated = overdueInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const sortedInvoices = useMemo(() => {
+    if (!sortColumn) return overdueInvoices;
+    return [...overdueInvoices].sort((a, b) => {
+      let cmp = 0;
+      switch (sortColumn) {
+        case "company": cmp = (a.company_name || "").localeCompare(b.company_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "installment": cmp = a.installment_number - b.installment_number; break;
+        case "value": cmp = a.total_with_fees_cents - b.total_with_fees_cents; break;
+        case "due_date": cmp = a.due_date.localeCompare(b.due_date); break;
+        case "urgency": cmp = daysOverdue(a.due_date) - daysOverdue(b.due_date); break;
+        default: cmp = 0;
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+  }, [overdueInvoices, sortColumn, sortDirection]);
+
+  const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
+  const paginated = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total_with_fees_cents, 0);
   const uniqueCompanies = new Set(overdueInvoices.map(i => i.company_id)).size;
@@ -436,12 +470,24 @@ export default function FinancialOverdueTab({
                         }}
                       />
                     </TableHead>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-center">Parcela</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead className="text-center">Urgência</TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("company")}>
+                      <div className="flex items-center">Empresa<SortIcon column="company" /></div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("description")}>
+                      <div className="flex items-center">Descrição<SortIcon column="description" /></div>
+                    </TableHead>
+                    <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("installment")}>
+                      <div className="flex items-center justify-center">Parcela<SortIcon column="installment" /></div>
+                    </TableHead>
+                    <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("value")}>
+                      <div className="flex items-center justify-end">Valor<SortIcon column="value" /></div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("due_date")}>
+                      <div className="flex items-center">Vencimento<SortIcon column="due_date" /></div>
+                    </TableHead>
+                    <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("urgency")}>
+                      <div className="flex items-center justify-center">Urgência<SortIcon column="urgency" /></div>
+                    </TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
@@ -562,7 +608,7 @@ export default function FinancialOverdueTab({
           className="flex flex-col sm:flex-row items-center justify-between gap-2"
         >
           <p className="text-sm text-muted-foreground">
-            Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, overdueInvoices.length)} de {overdueInvoices.length}
+            Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sortedInvoices.length)} de {sortedInvoices.length}
           </p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
