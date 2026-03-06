@@ -254,7 +254,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
                 <SelectValue placeholder="Selecione o produto" />
               </SelectTrigger>
               <SelectContent>
-                {availableProducts.map((product) => (
+                {allProducts.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name}
                   </SelectItem>
