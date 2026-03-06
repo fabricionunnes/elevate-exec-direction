@@ -472,6 +472,65 @@ Deno.serve(async (req) => {
         }
       }
 
+      // Auto-block companies with invoices overdue > 5 days
+      const brNowForBlock = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
+      const fiveDaysAgo = new Date(brNowForBlock);
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      const fiveDaysAgoStr = `${fiveDaysAgo.getFullYear()}-${String(fiveDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(fiveDaysAgo.getDate()).padStart(2, "0")}`;
+
+      // Find companies with overdue invoices > 5 days that are NOT already blocked
+      const { data: overdueCompanies } = await supabase
+        .from("company_invoices")
+        .select("company_id")
+        .eq("status", "overdue")
+        .lt("due_date", fiveDaysAgoStr);
+
+      if (overdueCompanies && overdueCompanies.length > 0) {
+        const companyIds = [...new Set(overdueCompanies.map(i => i.company_id))];
+        for (const cid of companyIds) {
+          await supabase
+            .from("onboarding_companies")
+            .update({
+              is_billing_blocked: true,
+              billing_blocked_at: new Date().toISOString(),
+              billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
+            })
+            .eq("id", cid)
+            .eq("is_billing_blocked", false);
+        }
+      }
+
+      // Auto-unblock companies that no longer have overdue invoices > 5 days
+      // (only those auto-blocked, not manually blocked)
+      const { data: blockedCompanies } = await supabase
+        .from("onboarding_companies")
+        .select("id")
+        .eq("is_billing_blocked", true)
+        .like("billing_blocked_reason", "Bloqueio automático%");
+
+      if (blockedCompanies) {
+        for (const bc of blockedCompanies) {
+          const { data: stillOverdue } = await supabase
+            .from("company_invoices")
+            .select("id")
+            .eq("company_id", bc.id)
+            .eq("status", "overdue")
+            .lt("due_date", fiveDaysAgoStr)
+            .limit(1);
+
+          if (!stillOverdue || stillOverdue.length === 0) {
+            await supabase
+              .from("onboarding_companies")
+              .update({
+                is_billing_blocked: false,
+                billing_blocked_at: null,
+                billing_blocked_reason: null,
+              })
+              .eq("id", bc.id);
+          }
+        }
+      }
+
       return new Response(
         JSON.stringify({ success: true, updated }),
         { headers: { ...corsHeaders, "Content-Type": "application/json" } }
