@@ -608,7 +608,7 @@ export default function FinancialOverdueTab({
           className="flex flex-col sm:flex-row items-center justify-between gap-2"
         >
           <p className="text-sm text-muted-foreground">
-            Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, overdueInvoices.length)} de {overdueInvoices.length}
+            Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sortedInvoices.length)} de {sortedInvoices.length}
           </p>
           <div className="flex items-center gap-1">
             <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
