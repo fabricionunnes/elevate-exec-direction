@@ -105,20 +105,31 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Invoice ${invoice.id} already paid, skipping`);
           matched = true;
         } else if (newStatus === "paid" && invoice.status !== "paid") {
+          // Detect discount: if Asaas paid value < invoice amount, there's a discount
+          const discountCents = paymentValueCents > 0 && paymentValueCents < invoice.amount_cents
+            ? invoice.amount_cents - paymentValueCents
+            : 0;
+          const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoice.amount_cents;
+
           await supabase
             .from("company_invoices")
             .update({
               status: "paid",
               paid_at: new Date().toISOString(),
-              paid_amount_cents: invoice.amount_cents,
+              paid_amount_cents: actualPaidCents,
+              discount_cents: discountCents,
               payment_fee_cents: 199,
             })
             .eq("id", invoice.id);
           matched = true;
-          console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
+          if (discountCents > 0) {
+            console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid with discount: ${discountCents} cents (direct match)`);
+          } else {
+            console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
+          }
 
-          // Credit Asaas bank account
-          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id, invoice.recurring_charge_id);
+          // Credit Asaas bank account with actual paid amount (minus fee)
+          await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${discountCents > 0 ? ` (desconto R$${(discountCents/100).toFixed(2)})` : ''}`, invoice.id, invoice.recurring_charge_id);
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
