@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
 
           // Credit Asaas bank account
-          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id);
+          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id, invoice.recurring_charge_id);
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
                 matched = true;
 
                 // Credit Asaas bank account
-                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id);
+                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id, invoice.recurring_charge_id);
 
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
@@ -232,26 +232,64 @@ Deno.serve(async (req) => {
   }
 });
 
-async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string) {
+async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
     const feeCents = 199; // R$ 1,99
     const netAmount = amountCents - feeCents;
     if (netAmount <= 0) return;
 
-    // Find the "Asaas" bank account
-    const { data: banks } = await supabase
-      .from("financial_banks")
-      .select("id")
-      .ilike("name", "%asaas%")
-      .eq("is_active", true)
-      .limit(1);
+    // Determine which bank to credit based on the Asaas account used
+    let bankId: string | null = null;
 
-    if (!banks?.length) {
-      console.log("[Asaas Webhook] No 'Asaas' bank account found, skipping balance credit");
-      return;
+    if (recurringChargeId) {
+      // Look up which Asaas account this recurring charge uses
+      const { data: charge } = await supabase
+        .from("company_recurring_charges")
+        .select("asaas_account_id")
+        .eq("id", recurringChargeId)
+        .single();
+
+      if (charge?.asaas_account_id) {
+        const { data: account } = await supabase
+          .from("asaas_accounts")
+          .select("name")
+          .eq("id", charge.asaas_account_id)
+          .single();
+
+        if (account?.name) {
+          // Map Asaas account name to bank name
+          // "UNV" -> "Asaas", "UN Social" -> "Asaas UNV Social"
+          const bankSearchName = account.name.toLowerCase().includes("social") ? "Asaas UNV Social" : "Asaas";
+          const { data: banks } = await supabase
+            .from("financial_banks")
+            .select("id")
+            .eq("name", bankSearchName)
+            .eq("is_active", true)
+            .limit(1);
+
+          if (banks?.length) {
+            bankId = banks[0].id;
+            console.log(`[Asaas Webhook] Resolved bank "${bankSearchName}" (${bankId}) for Asaas account "${account.name}"`);
+          }
+        }
+      }
     }
 
-    const bankId = banks[0].id;
+    // Fallback: find default "Asaas" bank
+    if (!bankId) {
+      const { data: banks } = await supabase
+        .from("financial_banks")
+        .select("id")
+        .eq("name", "Asaas")
+        .eq("is_active", true)
+        .limit(1);
+
+      if (!banks?.length) {
+        console.log("[Asaas Webhook] No 'Asaas' bank account found, skipping balance credit");
+        return;
+      }
+      bankId = banks[0].id;
+    }
 
     // Increment bank balance
     await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: netAmount });
@@ -294,7 +332,7 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
       // Credit Asaas bank account
       const { data: paidInvForBank } = await supabase
         .from("company_invoices")
-        .select("id, amount_cents, description, installment_number, total_installments")
+        .select("id, amount_cents, description, installment_number, total_installments, recurring_charge_id")
         .eq("payment_link_id", order.payment_link_id)
         .eq("status", "paid")
         .limit(1)
@@ -305,7 +343,8 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
           supabase, 
           paidInvForBank.amount_cents, 
           `Fatura ${paidInvForBank.description || paidInvForBank.id} (${paidInvForBank.installment_number}/${paidInvForBank.total_installments})`,
-          paidInvForBank.id
+          paidInvForBank.id,
+          paidInvForBank.recurring_charge_id
         );
       }
 
