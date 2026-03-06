@@ -49,6 +49,7 @@ export const KPIMetasPanel = ({
   canSeeDashboard = true,
   canSeeEndomarketing = true,
   canSeeSalesLinks = false,
+  canSeeConfig = false,
   isClientView = false,
 }: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
