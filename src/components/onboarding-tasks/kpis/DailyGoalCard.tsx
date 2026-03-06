@@ -248,25 +248,50 @@ export const DailyGoalCard = ({
     if (mainGoalKpis.length === 0) return null;
     let totalTarget = 0;
     let totalRealized = 0;
-    mainGoalKpis.forEach((kpi) => {
-      totalTarget += getTarget(kpi.id);
-      const kpiEntries = entries.filter((e) => {
-        if (e.kpi_id !== kpi.id) return false;
-        const sp = salespeople.find((s) => s.id === e.salesperson_id);
-        if (!sp) return false;
-        if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
-        if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-        if (selectedSector !== "all" && !salespersonBelongsToSector(sp, selectedSector)) return false;
-        if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
-        return true;
+
+    // When a specific salesperson is selected, use their individual target
+    if (selectedSalesperson !== "all") {
+      mainGoalKpis.forEach((kpi) => {
+        totalTarget += getTarget(kpi.id, selectedSalesperson);
+        const kpiEntries = entries.filter(
+          (e) => e.kpi_id === kpi.id && e.salesperson_id === selectedSalesperson
+        );
+        totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
       });
-      totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
-    });
+    } else {
+      // When filtering by unit/team/sector, sum individual targets for filtered salespeople
+      const hasOrgFilter = selectedUnit !== "all" || selectedTeam !== "all" || selectedSector !== "all";
+      
+      if (hasOrgFilter) {
+        mainGoalKpis.forEach((kpi) => {
+          filteredSalespeople.forEach((sp) => {
+            totalTarget += getTarget(kpi.id, sp.id);
+          });
+          const kpiEntries = entries.filter((e) => {
+            if (e.kpi_id !== kpi.id) return false;
+            const sp = salespeople.find((s) => s.id === e.salesperson_id);
+            if (!sp) return false;
+            if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
+            if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
+            if (selectedSector !== "all" && !salespersonBelongsToSector(sp, selectedSector)) return false;
+            return true;
+          });
+          totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
+        });
+      } else {
+        mainGoalKpis.forEach((kpi) => {
+          totalTarget += getTarget(kpi.id);
+          const kpiEntries = entries.filter((e) => e.kpi_id === kpi.id);
+          totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
+        });
+      }
+    }
+
     const remaining = Math.max(totalTarget - totalRealized, 0);
     const dailyGoal = dayInfo.remaining > 0 ? remaining / dayInfo.remaining : 0;
     const kpiType = mainGoalKpis[0]?.kpi_type;
     return { totalTarget, totalRealized, remaining, dailyGoal, kpiType };
-  }, [mainGoalKpis, entries, dayInfo, salespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
+  }, [mainGoalKpis, entries, dayInfo, salespeople, filteredSalespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
 
   const salespeopleData = useMemo(() => {
     if (mainGoalKpis.length === 0) return [];
