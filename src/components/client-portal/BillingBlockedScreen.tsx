@@ -18,11 +18,16 @@ export function BillingBlockedScreen({ companyId, companyName }: Props) {
 
   useEffect(() => {
     const fetchOverdueInvoice = async () => {
+      const fiveDaysAgo = new Date();
+      fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+      const fiveDaysAgoStr = fiveDaysAgo.toISOString().split("T")[0];
+
       const { data } = await supabase
         .from("company_invoices")
         .select("public_token, payment_link_url")
         .eq("company_id", companyId)
-        .eq("status", "overdue")
+        .in("status", ["pending", "overdue"])
+        .lt("due_date", fiveDaysAgoStr)
         .order("due_date", { ascending: true })
         .limit(1);
 
