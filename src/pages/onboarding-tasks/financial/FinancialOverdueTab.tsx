@@ -10,7 +10,7 @@ import {
 } from "@/components/ui/table";
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
-  Clock, Building2, DollarSign, TrendingDown, Flame,
+  Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
