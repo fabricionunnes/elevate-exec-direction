@@ -37,6 +37,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
+  ArrowUpDown, ArrowUp, ArrowDown,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -277,6 +278,29 @@ export default function AllRecurringChargesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  // Sorting - Receivables
+  const [recSortCol, setRecSortCol] = useState<string | null>(null);
+  const [recSortDir, setRecSortDir] = useState<"asc" | "desc">("asc");
+  // Sorting - Payables
+  const [paySortCol, setPaySortCol] = useState<string | null>(null);
+  const [paySortDir, setPaySortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleRecSort = (col: string) => {
+    if (recSortCol === col) setRecSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setRecSortCol(col); setRecSortDir("asc"); }
+    setCurrentPage(1);
+  };
+  const togglePaySort = (col: string) => {
+    if (paySortCol === col) setPaySortDir(d => d === "asc" ? "desc" : "asc");
+    else { setPaySortCol(col); setPaySortDir("asc"); }
+  };
+  const SortIcon = ({ column, activeCol }: { column: string; activeCol: string | null }) => {
+    if (activeCol !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return activeCol === column ? (
+      (column === recSortCol ? recSortDir : paySortDir) === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />
+    ) : null;
+  };
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
@@ -480,8 +504,26 @@ export default function AllRecurringChargesPage() {
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter]);
 
-  const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
-  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const sortedInvoices = useMemo(() => {
+    if (!recSortCol) return filteredInvoices;
+    return [...filteredInvoices].sort((a, b) => {
+      let cmp = 0;
+      switch (recSortCol) {
+        case "company": cmp = (a.company_name || "").localeCompare(b.company_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "installment": cmp = a.installment_number - b.installment_number; break;
+        case "value": cmp = a.amount_cents - b.amount_cents; break;
+        case "due_date": cmp = (a.due_date || "").localeCompare(b.due_date || ""); break;
+        case "status": cmp = (a.status || "").localeCompare(b.status || ""); break;
+        case "paid_at": cmp = (a.paid_at || "").localeCompare(b.paid_at || ""); break;
+      }
+      return recSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredInvoices, recSortCol, recSortDir]);
+
+
+  const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
+  const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -497,6 +539,24 @@ export default function AllRecurringChargesPage() {
       return true;
     });
   }, [payables, searchTerm, selectedStatus, payableDateFrom, payableDateTo, selectedPayableCategory, selectedPayableCostCenter]);
+
+  const sortedPayables = useMemo(() => {
+    if (!paySortCol) return filteredPayables;
+    return [...filteredPayables].sort((a, b) => {
+      let cmp = 0;
+      switch (paySortCol) {
+        case "supplier": cmp = (a.supplier_name || "").localeCompare(b.supplier_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "value": cmp = a.amount - b.amount; break;
+        case "due_date": cmp = (a.due_date || "").localeCompare(b.due_date || ""); break;
+        case "ref_month": cmp = (a.reference_month || "").localeCompare(b.reference_month || ""); break;
+        case "status": cmp = (a.status || "").localeCompare(b.status || ""); break;
+        case "paid_at": cmp = (a.paid_at || "").localeCompare(b.paid_at || ""); break;
+      }
+      return paySortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredPayables, paySortCol, paySortDir]);
+
 
   const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
@@ -1565,13 +1625,13 @@ export default function AllRecurringChargesPage() {
                               }}
                             />
                           </TableHead>
-                          <TableHead>Empresa</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-center">Parcela</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pago em</TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("company")}><div className="flex items-center">Empresa<SortIcon column="company" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("description")}><div className="flex items-center">Descrição<SortIcon column="description" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("installment")}><div className="flex items-center justify-center">Parcela<SortIcon column="installment" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("value")}><div className="flex items-center justify-end">Valor<SortIcon column="value" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
@@ -1700,7 +1760,7 @@ export default function AllRecurringChargesPage() {
               {totalPages > 1 && (
                 <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
                   <p className="text-sm text-muted-foreground">
-                    Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, filteredInvoices.length)} de {filteredInvoices.length}
+                    Mostrando {(currentPage - 1) * ITEMS_PER_PAGE + 1}–{Math.min(currentPage * ITEMS_PER_PAGE, sortedInvoices.length)} de {sortedInvoices.length}
                   </p>
                   <div className="flex items-center gap-1">
                     <Button variant="outline" size="sm" disabled={currentPage === 1} onClick={() => setCurrentPage(p => p - 1)}>Anterior</Button>
@@ -1898,30 +1958,30 @@ export default function AllRecurringChargesPage() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={filteredPayables.length > 0 && filteredPayables.every(p => selectedPayableIds.has(p.id))}
+                              checked={sortedPayables.length > 0 && sortedPayables.every(p => selectedPayableIds.has(p.id))}
                               onCheckedChange={(checked) => {
                                 if (checked) {
-                                  setSelectedPayableIds(new Set(filteredPayables.map(p => p.id)));
+                                  setSelectedPayableIds(new Set(sortedPayables.map(p => p.id)));
                                 } else {
                                   setSelectedPayableIds(new Set());
                                 }
                               }}
                             />
                           </TableHead>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Mês Ref</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pago em</TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("supplier")}><div className="flex items-center">Fornecedor<SortIcon column="supplier" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("description")}><div className="flex items-center">Descrição<SortIcon column="description" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("value")}><div className="flex items-center justify-end">Valor<SortIcon column="value" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("ref_month")}><div className="flex items-center">Mês Ref<SortIcon column="ref_month" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={paySortCol} /></div></TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredPayables.length === 0 ? (
+                        {sortedPayables.length === 0 ? (
                           <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
-                        ) : filteredPayables.map(p => (
+                        ) : sortedPayables.map(p => (
                           <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
                             <TableCell>
                               <Checkbox
