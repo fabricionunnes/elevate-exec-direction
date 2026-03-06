@@ -18719,6 +18719,8 @@ export type Database = {
           address_state: string | null
           address_zipcode: string | null
           average_ticket: string | null
+          billing_blocked_at: string | null
+          billing_blocked_reason: string | null
           billing_day: number | null
           cnpj: string | null
           commercial_structure: string | null
@@ -18744,6 +18746,7 @@ export type Database = {
           has_structured_process: string | null
           id: string
           instagram: string | null
+          is_billing_blocked: boolean
           is_simulator: boolean
           key_results: string | null
           kickoff_date: string | null
@@ -18783,6 +18786,8 @@ export type Database = {
           address_state?: string | null
           address_zipcode?: string | null
           average_ticket?: string | null
+          billing_blocked_at?: string | null
+          billing_blocked_reason?: string | null
           billing_day?: number | null
           cnpj?: string | null
           commercial_structure?: string | null
@@ -18808,6 +18813,7 @@ export type Database = {
           has_structured_process?: string | null
           id?: string
           instagram?: string | null
+          is_billing_blocked?: boolean
           is_simulator?: boolean
           key_results?: string | null
           kickoff_date?: string | null
@@ -18847,6 +18853,8 @@ export type Database = {
           address_state?: string | null
           address_zipcode?: string | null
           average_ticket?: string | null
+          billing_blocked_at?: string | null
+          billing_blocked_reason?: string | null
           billing_day?: number | null
           cnpj?: string | null
           commercial_structure?: string | null
@@ -18872,6 +18880,7 @@ export type Database = {
           has_structured_process?: string | null
           id?: string
           instagram?: string | null
+          is_billing_blocked?: boolean
           is_simulator?: boolean
           key_results?: string | null
           kickoff_date?: string | null
