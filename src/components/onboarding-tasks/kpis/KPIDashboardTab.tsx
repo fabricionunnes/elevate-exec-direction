@@ -460,6 +460,16 @@ export const KPIDashboardTab = ({
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
+      
+      // When filtering by salesperson and falling back to company target, divide by active salespeople count
+      if (relevantTargets.length > 0 && selectedSalesperson !== "all") {
+        const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
+        const dividedResult: Record<string, number> = {};
+        relevantTargets.forEach(mt => {
+          dividedResult[mt.level_name] = mt.target_value / activeSalespeopleCount;
+        });
+        return dividedResult;
+      }
     }
     
     // If still no targets and we're showing "all", sum targets based on active filters
