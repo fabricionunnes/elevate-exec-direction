@@ -188,7 +188,7 @@ Deno.serve(async (req) => {
                 matched = true;
 
                 // Credit Asaas bank account
-                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id);
+                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id, invoice.recurring_charge_id);
 
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
