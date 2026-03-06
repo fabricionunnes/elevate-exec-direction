@@ -59,6 +59,7 @@ import { ClientAppointmentsModule } from "@/components/client-appointments/Clien
 import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
 import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
+import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedScreen";
 import {
   DropdownMenu,
   DropdownMenuContent,
