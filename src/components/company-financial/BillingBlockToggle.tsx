@@ -45,13 +45,22 @@ export function BillingBlockToggle({ companyId }: Props) {
     setToggling(true);
     const newBlocked = !blocked;
 
+    const updateData: any = {
+      is_billing_blocked: newBlocked,
+      billing_blocked_at: newBlocked ? new Date().toISOString() : null,
+      billing_blocked_reason: newBlocked ? "Bloqueio manual pelo administrador" : null,
+    };
+
+    // When manually unblocking, record the unblock time for grace period
+    if (!newBlocked) {
+      updateData.billing_unblocked_at = new Date().toISOString();
+    } else {
+      updateData.billing_unblocked_at = null;
+    }
+
     const { error } = await supabase
       .from("onboarding_companies")
-      .update({
-        is_billing_blocked: newBlocked,
-        billing_blocked_at: newBlocked ? new Date().toISOString() : null,
-        billing_blocked_reason: newBlocked ? "Bloqueio manual pelo administrador" : null,
-      } as any)
+      .update(updateData)
       .eq("id", companyId);
 
     if (error) {

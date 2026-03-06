@@ -198,7 +198,7 @@ const ClientOnboardingPage = () => {
         // Find onboarding user for this project
         const { data: onboardingUser, error: userError } = await supabase
           .from("onboarding_users")
-          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status, is_billing_blocked))")
+          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status, is_billing_blocked, billing_unblocked_at))")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .maybeSingle();
@@ -238,7 +238,7 @@ const ClientOnboardingPage = () => {
 
         // Check billing block: either from DB flag or by checking overdue invoices > 5 days
         const companyData = onboardingUser.project?.onboarding_company;
-        let billingBlocked = companyData?.is_billing_blocked || false;
+        let billingBlocked = (companyData as any)?.is_billing_blocked || false;
 
         if (!billingBlocked && onboardingUser.project?.onboarding_company_id) {
           // Check if there are invoices overdue > 5 days directly by date
@@ -246,26 +246,38 @@ const ClientOnboardingPage = () => {
           fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
           const fiveDaysAgoStr = fiveDaysAgo.toISOString().split("T")[0];
 
-          const { data: overdueInvoices } = await supabase
-            .from("company_invoices")
-            .select("id")
-            .eq("company_id", onboardingUser.project.onboarding_company_id)
-            .in("status", ["pending", "overdue"])
-            .lt("due_date", fiveDaysAgoStr)
-            .limit(1);
+          // Check grace period: if manually unblocked, only re-block 5 days after unblock
+          const unblockedAt = (companyData as any)?.billing_unblocked_at;
+          let pastGracePeriod = true;
+          if (unblockedAt) {
+            const unblockedDate = new Date(unblockedAt);
+            const gracePeriodEnd = new Date(unblockedDate);
+            gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 5);
+            pastGracePeriod = new Date() >= gracePeriodEnd;
+          }
 
-          if (overdueInvoices && overdueInvoices.length > 0) {
-            billingBlocked = true;
-            // Also update the DB flag
-            await supabase
-              .from("onboarding_companies")
-              .update({
-                is_billing_blocked: true,
-                billing_blocked_at: new Date().toISOString(),
-                billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
-              } as any)
-              .eq("id", onboardingUser.project.onboarding_company_id)
-              .eq("is_billing_blocked", false);
+          if (pastGracePeriod) {
+            const { data: overdueInvoices } = await supabase
+              .from("company_invoices")
+              .select("id")
+              .eq("company_id", onboardingUser.project.onboarding_company_id)
+              .in("status", ["pending", "overdue"])
+              .lt("due_date", fiveDaysAgoStr)
+              .limit(1);
+
+            if (overdueInvoices && overdueInvoices.length > 0) {
+              billingBlocked = true;
+              // Also update the DB flag
+              await supabase
+                .from("onboarding_companies")
+                .update({
+                  is_billing_blocked: true,
+                  billing_blocked_at: new Date().toISOString(),
+                  billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
+                  billing_unblocked_at: null,
+                } as any)
+                .eq("id", onboardingUser.project.onboarding_company_id);
+            }
           }
         }
 
