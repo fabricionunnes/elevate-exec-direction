@@ -82,7 +82,7 @@ Deno.serve(async (req) => {
       matched = true;
       console.log(`[Asaas Webhook] Matched ${orderMatches.length} orders by charge_id`);
       if (newStatus === "paid") {
-        await markInvoicesPaid(supabase, orderMatches);
+        await markInvoicesPaid(supabase, orderMatches, paymentValueCents);
       }
     }
 
