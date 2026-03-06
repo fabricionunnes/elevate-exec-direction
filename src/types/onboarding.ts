@@ -53,6 +53,7 @@ export const CLIENT_MENU_KEYS = {
   minhas_faturas: "minhas_faturas",
   trafego_pago: "trafego_pago",
   kpis_sales_links: "kpis_sales_links",
+  kpis_config: "kpis_config",
   gestao_usuarios: "gestao_usuarios",
 } as const;
 
