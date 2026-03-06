@@ -1625,13 +1625,13 @@ export default function AllRecurringChargesPage() {
                               }}
                             />
                           </TableHead>
-                          <TableHead>Empresa</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-center">Parcela</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pago em</TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("company")}><div className="flex items-center">Empresa<SortIcon column="company" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("description")}><div className="flex items-center">Descrição<SortIcon column="description" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("installment")}><div className="flex items-center justify-center">Parcela<SortIcon column="installment" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("value")}><div className="flex items-center justify-end">Valor<SortIcon column="value" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
