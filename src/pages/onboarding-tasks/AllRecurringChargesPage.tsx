@@ -1958,10 +1958,10 @@ export default function AllRecurringChargesPage() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={filteredPayables.length > 0 && filteredPayables.every(p => selectedPayableIds.has(p.id))}
+                              checked={sortedPayables.length > 0 && sortedPayables.every(p => selectedPayableIds.has(p.id))}
                               onCheckedChange={(checked) => {
                                 if (checked) {
-                                  setSelectedPayableIds(new Set(filteredPayables.map(p => p.id)));
+                                  setSelectedPayableIds(new Set(sortedPayables.map(p => p.id)));
                                 } else {
                                   setSelectedPayableIds(new Set());
                                 }
