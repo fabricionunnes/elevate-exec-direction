@@ -115,7 +115,7 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid (direct match)`);
 
           // Credit Asaas bank account
-          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id);
+          await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id}`, invoice.id, invoice.recurring_charge_id);
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
