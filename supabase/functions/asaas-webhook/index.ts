@@ -332,7 +332,7 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
       // Credit Asaas bank account
       const { data: paidInvForBank } = await supabase
         .from("company_invoices")
-        .select("id, amount_cents, description, installment_number, total_installments")
+        .select("id, amount_cents, description, installment_number, total_installments, recurring_charge_id")
         .eq("payment_link_id", order.payment_link_id)
         .eq("status", "paid")
         .limit(1)
@@ -343,7 +343,8 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
           supabase, 
           paidInvForBank.amount_cents, 
           `Fatura ${paidInvForBank.description || paidInvForBank.id} (${paidInvForBank.installment_number}/${paidInvForBank.total_installments})`,
-          paidInvForBank.id
+          paidInvForBank.id,
+          paidInvForBank.recurring_charge_id
         );
       }
 
