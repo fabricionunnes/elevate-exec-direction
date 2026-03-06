@@ -612,8 +612,17 @@ export const KPIDashboardTab = ({
         if (scope === "salesperson") {
           return kpi.salesperson_id === selectedSalesperson;
         }
-        // Also show company-scoped KPIs when viewing a salesperson
-        return scope === "company";
+        // Also show company-scoped and unit-scoped KPIs when viewing a salesperson
+        if (scope === "company") return true;
+        // Show unit-scoped KPIs if the salesperson belongs to that unit
+        const sp = salespeople.find(s => s.id === selectedSalesperson);
+        if (scope === "unit" && sp && kpi.unit_id === sp.unit_id) return true;
+        if (scope === "team" && sp && kpi.team_id === sp.team_id) return true;
+        // Show sector-scoped KPIs if the salesperson belongs to that sector
+        if (scope === "sector" && sp && kpi.sector_id) {
+          if (salespersonBelongsToSector(sp, kpi.sector_id)) return true;
+        }
+        return false;
       }
       
       // If filtering by team, show:
