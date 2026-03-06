@@ -235,6 +235,7 @@ const ClientOnboardingPage = () => {
         setCurrentUser(onboardingUser);
         setProject(onboardingUser.project);
         setCompany(onboardingUser.project?.onboarding_company);
+        setIsBillingBlocked(onboardingUser.project?.onboarding_company?.is_billing_blocked || false);
 
         await Promise.all([fetchTasks(), fetchUsers()]);
       } catch (error: any) {
