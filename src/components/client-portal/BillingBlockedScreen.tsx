@@ -17,12 +17,13 @@ export function BillingBlockedScreen({ companyId, companyName }: Props) {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    const fetchOverdueInvoice = async () => {
+    const fetchInvoiceLink = async () => {
       const fiveDaysAgo = new Date();
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
       const fiveDaysAgoStr = fiveDaysAgo.toISOString().split("T")[0];
 
-      const { data } = await supabase
+      // First try overdue invoices (5+ days past due)
+      const { data: overdueData } = await supabase
         .from("company_invoices")
         .select("public_token, payment_link_url")
         .eq("company_id", companyId)
@@ -31,17 +32,32 @@ export function BillingBlockedScreen({ companyId, companyName }: Props) {
         .order("due_date", { ascending: true })
         .limit(1);
 
-      if (data && data.length > 0) {
-        if (data[0].payment_link_url) {
-          setPaymentLink(data[0].payment_link_url);
-        } else if (data[0].public_token) {
+      let invoice = overdueData?.[0];
+
+      // If no overdue, get the nearest pending/overdue invoice
+      if (!invoice) {
+        const { data: nearestData } = await supabase
+          .from("company_invoices")
+          .select("public_token, payment_link_url")
+          .eq("company_id", companyId)
+          .in("status", ["pending", "overdue"])
+          .order("due_date", { ascending: true })
+          .limit(1);
+
+        invoice = nearestData?.[0];
+      }
+
+      if (invoice) {
+        if (invoice.payment_link_url) {
+          setPaymentLink(invoice.payment_link_url);
+        } else if (invoice.public_token) {
           const baseUrl = getPublicBaseUrl();
-          setPaymentLink(`${baseUrl}/#/fatura?token=${data[0].public_token}`);
+          setPaymentLink(`${baseUrl}/#/fatura?token=${invoice.public_token}`);
         }
       }
       setLoading(false);
     };
-    fetchOverdueInvoice();
+    fetchInvoiceLink();
   }, [companyId]);
 
   const handleLogout = async () => {
