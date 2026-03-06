@@ -51,6 +51,7 @@ interface Invoice {
   total_installments: number;
   paid_at: string | null;
   paid_amount_cents: number | null;
+  discount_cents: number;
   late_fee_percent: number;
   daily_interest_percent: number;
   created_at: string;
