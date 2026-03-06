@@ -523,6 +523,16 @@ const ClientOnboardingPage = () => {
     );
   }
 
+  // Show billing blocked screen
+  if (isBillingBlocked && project?.onboarding_company_id) {
+    return (
+      <BillingBlockedScreen
+        companyId={project.onboarding_company_id}
+        companyName={company?.name}
+      />
+    );
+  }
+
   // Helper to check if active view is in a submenu
   const isInSubmenu = (submenu: { id: ViewType }[] | undefined) => {
     return submenu?.some(item => item.id === activeView);
