@@ -51,6 +51,7 @@ interface Invoice {
   total_installments: number;
   paid_at: string | null;
   paid_amount_cents: number | null;
+  discount_cents: number;
   late_fee_percent: number;
   daily_interest_percent: number;
   created_at: string;
@@ -644,10 +645,17 @@ export function CompanyInvoicesList({ companyId }: Props) {
                           )}
                         </div>
                         {isPaid && inv.paid_at && (
-                          <p className="text-xs text-green-600 flex items-center gap-1">
-                            <CheckCircle2 className="h-3 w-3" />
-                            Pago em {format(new Date(inv.paid_at), "dd/MM/yyyy")}
-                          </p>
+                          <div className="space-y-0.5">
+                            <p className="text-xs text-green-600 flex items-center gap-1">
+                              <CheckCircle2 className="h-3 w-3" />
+                              Pago em {format(new Date(inv.paid_at), "dd/MM/yyyy")}
+                            </p>
+                            {inv.discount_cents > 0 && (
+                              <p className="text-xs text-emerald-600 font-medium">
+                                Desconto: -{formatCurrency(inv.discount_cents)}
+                              </p>
+                            )}
+                          </div>
                         )}
                       </div>
                       <div className="flex flex-col items-end gap-2">
