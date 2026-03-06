@@ -6,6 +6,7 @@ import { CompanyRecurringCharges } from "./CompanyRecurringCharges";
 import { CompanyPaymentLinks } from "./CompanyPaymentLinks";
 import { CompanyPaymentHistory } from "./CompanyPaymentHistory";
 import { CompanyInvoicesList } from "./CompanyInvoicesList";
+import { BillingBlockToggle } from "./BillingBlockToggle";
 
 interface Props {
   companyId: string;
@@ -30,6 +31,7 @@ export function CompanyFinancialPanel({
 
   return (
     <div className="space-y-4">
+      <BillingBlockToggle companyId={companyId} />
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex flex-wrap h-auto gap-1 w-full">
           <TabsTrigger value="invoices" className="gap-2 text-xs sm:text-sm">

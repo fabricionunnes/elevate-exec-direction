@@ -59,6 +59,7 @@ import { ClientAppointmentsModule } from "@/components/client-appointments/Clien
 import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustomersPanel";
 import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
+import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedScreen";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,6 +115,7 @@ const ClientOnboardingPage = () => {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
+  const [isBillingBlocked, setIsBillingBlocked] = useState(false);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
@@ -196,7 +198,7 @@ const ClientOnboardingPage = () => {
         // Find onboarding user for this project
         const { data: onboardingUser, error: userError } = await supabase
           .from("onboarding_users")
-          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status))")
+          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status, is_billing_blocked))")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .maybeSingle();
@@ -233,6 +235,7 @@ const ClientOnboardingPage = () => {
         setCurrentUser(onboardingUser);
         setProject(onboardingUser.project);
         setCompany(onboardingUser.project?.onboarding_company);
+        setIsBillingBlocked(onboardingUser.project?.onboarding_company?.is_billing_blocked || false);
 
         await Promise.all([fetchTasks(), fetchUsers()]);
       } catch (error: any) {
@@ -517,6 +520,16 @@ const ClientOnboardingPage = () => {
           <Button onClick={() => navigate("/")}>Voltar</Button>
         </div>
       </div>
+    );
+  }
+
+  // Show billing blocked screen
+  if (isBillingBlocked && project?.onboarding_company_id) {
+    return (
+      <BillingBlockedScreen
+        companyId={project.onboarding_company_id}
+        companyName={company?.name}
+      />
     );
   }
 
