@@ -167,6 +167,11 @@ export const CLIENT_MENU_STRUCTURE = [
     group: "KPIs",
   },
   {
+    key: CLIENT_MENU_KEYS.kpis_config,
+    label: "KPIs > Configuração",
+    group: "KPIs",
+  },
+  {
     key: CLIENT_MENU_KEYS.gestao_usuarios,
     label: "Gerenciar Usuários",
     group: null,
