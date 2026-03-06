@@ -535,7 +535,7 @@ Deno.serve(async (req) => {
             .from("company_invoices")
             .select("id")
             .eq("company_id", bc.id)
-            .eq("status", "overdue")
+            .in("status", ["pending", "overdue"])
             .lt("due_date", fiveDaysAgoStr)
             .limit(1);
 
