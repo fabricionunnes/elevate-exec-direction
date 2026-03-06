@@ -115,6 +115,7 @@ const ClientOnboardingPage = () => {
   const [loading, setLoading] = useState(true);
   const [project, setProject] = useState<any>(null);
   const [company, setCompany] = useState<any>(null);
+  const [isBillingBlocked, setIsBillingBlocked] = useState(false);
   const [tasks, setTasks] = useState<OnboardingTask[]>([]);
   const [users, setUsers] = useState<OnboardingUser[]>([]);
   const [currentUser, setCurrentUser] = useState<OnboardingUser | null>(null);
