@@ -553,11 +553,10 @@ const OnboardingTasksPage = () => {
 
   const fetchFiltersData = async () => {
     try {
-      // Fetch consultants with user_id for calendar optimization
+      // Fetch all active staff for consultant filter
       const { data: consultantsData } = await supabase
         .from("onboarding_staff")
         .select("id, name, role, user_id")
-        .eq("role", "consultant")
         .eq("is_active", true)
         .order("name");
       
