@@ -470,12 +470,24 @@ export default function FinancialOverdueTab({
                         }}
                       />
                     </TableHead>
-                    <TableHead>Empresa</TableHead>
-                    <TableHead>Descrição</TableHead>
-                    <TableHead className="text-center">Parcela</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                    <TableHead>Vencimento</TableHead>
-                    <TableHead className="text-center">Urgência</TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("company")}>
+                      <div className="flex items-center">Empresa<SortIcon column="company" /></div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("description")}>
+                      <div className="flex items-center">Descrição<SortIcon column="description" /></div>
+                    </TableHead>
+                    <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("installment")}>
+                      <div className="flex items-center justify-center">Parcela<SortIcon column="installment" /></div>
+                    </TableHead>
+                    <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("value")}>
+                      <div className="flex items-center justify-end">Valor<SortIcon column="value" /></div>
+                    </TableHead>
+                    <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("due_date")}>
+                      <div className="flex items-center">Vencimento<SortIcon column="due_date" /></div>
+                    </TableHead>
+                    <TableHead className="text-center cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleSort("urgency")}>
+                      <div className="flex items-center justify-center">Urgência<SortIcon column="urgency" /></div>
+                    </TableHead>
                     <TableHead className="text-right">Ações</TableHead>
                   </TableRow>
                 </TableHeader>
