@@ -428,9 +428,9 @@ export default function AllRecurringChargesPage() {
       if (c.cs_id) set.add(c.cs_id);
       map.set(c.id, set);
     });
-    // Project-level assignments (only from active/notice projects)
+    // Project-level assignments (exclude only closed/completed projects)
     projects.forEach((p: any) => {
-      if (p.onboarding_company_id && (p.status === 'active' || p.status === 'notice')) {
+      if (p.onboarding_company_id && p.status !== 'closed' && p.status !== 'completed') {
         const set = map.get(p.onboarding_company_id) || new Set<string>();
         if (p.consultant_id) set.add(p.consultant_id);
         if (p.cs_id) set.add(p.cs_id);
