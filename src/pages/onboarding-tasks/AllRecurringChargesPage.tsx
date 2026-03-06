@@ -1979,9 +1979,9 @@ export default function AllRecurringChargesPage() {
                         </TableRow>
                       </TableHeader>
                       <TableBody>
-                        {filteredPayables.length === 0 ? (
+                        {sortedPayables.length === 0 ? (
                           <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhum registro encontrado</TableCell></TableRow>
-                        ) : filteredPayables.map(p => (
+                        ) : sortedPayables.map(p => (
                           <TableRow key={p.id} className={cn(selectedPayableIds.has(p.id) && "bg-primary/5")}>
                             <TableCell>
                               <Checkbox
