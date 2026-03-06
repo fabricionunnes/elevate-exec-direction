@@ -504,8 +504,42 @@ export default function AllRecurringChargesPage() {
   // Reset page when filters change
   useEffect(() => { setCurrentPage(1); }, [searchTerm, selectedCompany, selectedStatus, dateFrom, dateTo, selectedConsultant, selectedCategory, selectedCostCenter]);
 
-  const totalPages = Math.ceil(filteredInvoices.length / ITEMS_PER_PAGE);
-  const paginatedInvoices = filteredInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const sortedInvoices = useMemo(() => {
+    if (!recSortCol) return filteredInvoices;
+    return [...filteredInvoices].sort((a, b) => {
+      let cmp = 0;
+      switch (recSortCol) {
+        case "company": cmp = (a.company_name || "").localeCompare(b.company_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "installment": cmp = a.installment_number - b.installment_number; break;
+        case "value": cmp = a.amount_cents - b.amount_cents; break;
+        case "due_date": cmp = (a.due_date || "").localeCompare(b.due_date || ""); break;
+        case "status": cmp = (a.status || "").localeCompare(b.status || ""); break;
+        case "paid_at": cmp = (a.paid_at || "").localeCompare(b.paid_at || ""); break;
+      }
+      return recSortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredInvoices, recSortCol, recSortDir]);
+
+  const sortedPayables = useMemo(() => {
+    if (!paySortCol) return filteredPayables;
+    return [...filteredPayables].sort((a, b) => {
+      let cmp = 0;
+      switch (paySortCol) {
+        case "supplier": cmp = (a.supplier_name || "").localeCompare(b.supplier_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "value": cmp = a.amount - b.amount; break;
+        case "due_date": cmp = (a.due_date || "").localeCompare(b.due_date || ""); break;
+        case "ref_month": cmp = (a.reference_month || "").localeCompare(b.reference_month || ""); break;
+        case "status": cmp = (a.status || "").localeCompare(b.status || ""); break;
+        case "paid_at": cmp = (a.paid_at || "").localeCompare(b.paid_at || ""); break;
+      }
+      return paySortDir === "asc" ? cmp : -cmp;
+    });
+  }, [filteredPayables, paySortCol, paySortDir]);
+
+  const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
+  const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
