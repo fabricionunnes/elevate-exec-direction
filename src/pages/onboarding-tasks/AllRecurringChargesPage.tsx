@@ -557,6 +557,8 @@ export default function AllRecurringChargesPage() {
     });
   }, [filteredPayables, paySortCol, paySortDir]);
 
+
+  const formatCurrency = (value: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
   const formatCurrencyCents = (cents: number) => formatCurrency(cents / 100);
 
   const getStatusDisplay = (s: string, dueDate?: string) => {
