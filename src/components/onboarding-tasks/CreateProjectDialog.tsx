@@ -134,7 +134,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         return;
       }
 
-      const productName = productDetails[selectedProduct]?.name || selectedProduct;
+      const productName = serviceProducts.find(p => p.id === selectedProduct)?.name || productDetails[selectedProduct]?.name || selectedProduct;
 
       // Create project linked to onboarding_company
       const { data: project, error: projectError } = await supabase
