@@ -1674,6 +1674,7 @@ const OnboardingProjectPage = () => {
                 onStatusChange={handleStatusChange}
                 onDeleteTask={handleDeleteTask}
                 canDelete={isAdmin}
+                isAdmin={isAdmin}
                 onPhaseRename={canAddTasks ? handlePhaseRename : undefined}
                 staffList={staffList}
                 onBulkReassign={canAddTasks ? async (taskIds, staffId) => {
@@ -1686,6 +1687,30 @@ const OnboardingProjectPage = () => {
                     throw error;
                   }
                   toast.success(`${taskIds.length} tarefa(s) atualizada(s)`);
+                  await fetchProjectData();
+                } : undefined}
+                onBulkComplete={canAddTasks ? async (taskIds) => {
+                  const { error } = await supabase
+                    .from("onboarding_tasks")
+                    .update({ status: "completed", completed_at: new Date().toISOString() })
+                    .in("id", taskIds);
+                  if (error) {
+                    toast.error("Erro ao concluir tarefas");
+                    throw error;
+                  }
+                  toast.success(`${taskIds.length} tarefa(s) concluída(s)`);
+                  await fetchProjectData();
+                } : undefined}
+                onBulkDelete={isAdmin ? async (taskIds) => {
+                  const { error } = await supabase
+                    .from("onboarding_tasks")
+                    .delete()
+                    .in("id", taskIds);
+                  if (error) {
+                    toast.error("Erro ao excluir tarefas");
+                    throw error;
+                  }
+                  toast.success(`${taskIds.length} tarefa(s) excluída(s)`);
                   await fetchProjectData();
                 } : undefined}
               />
