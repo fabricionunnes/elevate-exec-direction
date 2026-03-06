@@ -75,6 +75,18 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
     }
   };
 
+  const fetchServiceProducts = async () => {
+    const { data, error } = await supabase
+      .from("onboarding_services")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name");
+
+    if (!error && data) {
+      setServiceProducts(data);
+    }
+  };
+
   const handleCreate = async () => {
     if (!selectedProduct) {
       toast.error("Selecione um produto");
