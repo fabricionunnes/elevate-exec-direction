@@ -72,6 +72,9 @@ interface TasksListViewProps {
   onPhaseRename?: (oldName: string, newName: string) => void;
   staffList?: { id: string; name: string; role?: string }[];
   onBulkReassign?: (taskIds: string[], staffId: string) => Promise<void>;
+  onBulkComplete?: (taskIds: string[]) => Promise<void>;
+  onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  isAdmin?: boolean;
 }
 
 // Color schemes for different phases
@@ -106,6 +109,9 @@ export const TasksListView = ({
   onPhaseRename,
   staffList,
   onBulkReassign,
+  onBulkComplete,
+  onBulkDelete,
+  isAdmin = false,
 }: TasksListViewProps) => {
   const [editingPhase, setEditingPhase] = useState<string | null>(null);
   const [editingValue, setEditingValue] = useState("");
@@ -114,7 +120,7 @@ export const TasksListView = ({
   const [bulkStaffId, setBulkStaffId] = useState<string>("");
   const [isBulkLoading, setIsBulkLoading] = useState(false);
 
-  const bulkEnabled = !!staffList && !!onBulkReassign;
+  const bulkEnabled = !!staffList && (!!onBulkReassign || !!onBulkComplete || !!onBulkDelete);
 
   const toggleTaskSelection = (taskId: string, e?: React.MouseEvent) => {
     e?.stopPropagation();
@@ -144,6 +150,29 @@ export const TasksListView = ({
       await onBulkReassign(Array.from(selectedTaskIds), bulkStaffId);
       setSelectedTaskIds(new Set());
       setBulkStaffId("");
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkComplete = async () => {
+    if (selectedTaskIds.size === 0 || !onBulkComplete) return;
+    setIsBulkLoading(true);
+    try {
+      await onBulkComplete(Array.from(selectedTaskIds));
+      setSelectedTaskIds(new Set());
+    } finally {
+      setIsBulkLoading(false);
+    }
+  };
+
+  const handleBulkDelete = async () => {
+    if (selectedTaskIds.size === 0 || !onBulkDelete) return;
+    if (!confirm(`Tem certeza que deseja excluir ${selectedTaskIds.size} tarefa(s)? Esta ação não pode ser desfeita.`)) return;
+    setIsBulkLoading(true);
+    try {
+      await onBulkDelete(Array.from(selectedTaskIds));
+      setSelectedTaskIds(new Set());
     } finally {
       setIsBulkLoading(false);
     }
@@ -221,25 +250,58 @@ export const TasksListView = ({
               <Users className="h-4 w-4 text-primary" />
               <span>{selectedTaskIds.size} tarefa{selectedTaskIds.size > 1 ? 's' : ''} selecionada{selectedTaskIds.size > 1 ? 's' : ''}</span>
             </div>
-            <div className="flex items-center gap-2 flex-1 min-w-[200px]">
-              <Select value={bulkStaffId} onValueChange={setBulkStaffId}>
-                <SelectTrigger className="h-8 text-xs w-[200px]">
-                  <SelectValue placeholder="Novo responsável..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {staffList?.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Button
-                size="sm"
-                onClick={handleBulkReassign}
-                disabled={!bulkStaffId || isBulkLoading}
-                className="h-8 text-xs"
-              >
-                {isBulkLoading ? "Aplicando..." : "Aplicar"}
-              </Button>
+            <div className="flex items-center gap-2 flex-wrap flex-1">
+              {/* Reassign */}
+              {onBulkReassign && (
+                <div className="flex items-center gap-2">
+                  <Select value={bulkStaffId} onValueChange={setBulkStaffId}>
+                    <SelectTrigger className="h-8 text-xs w-[200px]">
+                      <SelectValue placeholder="Novo responsável..." />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {staffList?.map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                  <Button
+                    size="sm"
+                    onClick={handleBulkReassign}
+                    disabled={!bulkStaffId || isBulkLoading}
+                    className="h-8 text-xs"
+                  >
+                    {isBulkLoading ? "Aplicando..." : "Aplicar"}
+                  </Button>
+                </div>
+              )}
+
+              {/* Bulk Complete */}
+              {onBulkComplete && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkComplete}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs gap-1 border-emerald-300 text-emerald-700 hover:bg-emerald-50"
+                >
+                  <CheckCircle2 className="h-3.5 w-3.5" />
+                  Concluir
+                </Button>
+              )}
+
+              {/* Bulk Delete - Admin only */}
+              {onBulkDelete && isAdmin && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={handleBulkDelete}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs gap-1 border-destructive/30 text-destructive hover:bg-destructive/10"
+                >
+                  <Trash2 className="h-3.5 w-3.5" />
+                  Excluir
+                </Button>
+              )}
             </div>
             <Button
               variant="ghost"
