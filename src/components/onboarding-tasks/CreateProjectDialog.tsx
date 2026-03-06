@@ -20,6 +20,11 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { productDetails } from "@/data/productDetails";
 
+interface ServiceProduct {
+  id: string;
+  name: string;
+}
+
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -42,6 +47,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
 }, ref) => {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
@@ -50,6 +56,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
   useEffect(() => {
     if (open) {
       fetchCompanies();
+      fetchServiceProducts();
       if (preselectedCompanyId) {
         setSelectedCompany(preselectedCompanyId);
         setCreateNewCompany(false);
@@ -65,6 +72,18 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
 
     if (!error && data) {
       setCompanies(data);
+    }
+  };
+
+  const fetchServiceProducts = async () => {
+    const { data, error } = await supabase
+      .from("onboarding_services")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name");
+
+    if (!error && data) {
+      setServiceProducts(data);
     }
   };
 
@@ -115,7 +134,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
         return;
       }
 
-      const productName = productDetails[selectedProduct]?.name || selectedProduct;
+      const productName = serviceProducts.find(p => p.id === selectedProduct)?.name || productDetails[selectedProduct]?.name || selectedProduct;
 
       // Create project linked to onboarding_company
       const { data: project, error: projectError } = await supabase
@@ -206,10 +225,19 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
     }
   };
 
-  const availableProducts = Object.entries(productDetails).map(([id, product]) => ({
+  // Merge hardcoded products with dynamic ones from DB, avoiding duplicates
+  const hardcodedProducts = Object.entries(productDetails).map(([id, product]) => ({
     id,
     name: product.name,
   }));
+  
+  const allProducts = [...hardcodedProducts];
+  for (const sp of serviceProducts) {
+    if (!allProducts.some(p => p.id === sp.id || p.name === sp.name)) {
+      allProducts.push(sp);
+    }
+  }
+  allProducts.sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
@@ -226,7 +254,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
                 <SelectValue placeholder="Selecione o produto" />
               </SelectTrigger>
               <SelectContent>
-                {availableProducts.map((product) => (
+                {allProducts.map((product) => (
                   <SelectItem key={product.id} value={product.id}>
                     {product.name}
                   </SelectItem>
