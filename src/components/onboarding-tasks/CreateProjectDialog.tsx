@@ -47,6 +47,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
 }, ref) => {
   const [loading, setLoading] = useState(false);
   const [companies, setCompanies] = useState<Company[]>([]);
+  const [serviceProducts, setServiceProducts] = useState<ServiceProduct[]>([]);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
