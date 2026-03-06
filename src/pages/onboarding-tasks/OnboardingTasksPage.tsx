@@ -1143,12 +1143,14 @@ const OnboardingTasksPage = () => {
         return false;
       }
       
-      // For consultants: only show companies where they are the consultant or CS
-      // Check both company-level AND project-level assignments
+      // For consultants: only show companies where they have active projects as consultant or CS
       if (currentUserRole === "consultant" && currentStaffId) {
         const isMyCompany = company.consultant_id === currentStaffId || company.cs_id === currentStaffId;
-        const hasMyProject = company.projects?.some(p => p.consultant_id === currentStaffId || p.cs_id === currentStaffId);
-        if (!isMyCompany && !hasMyProject) return false;
+        const hasMyActiveProject = company.projects?.some(p => 
+          (p.consultant_id === currentStaffId || p.cs_id === currentStaffId) && 
+          (p.status === 'active' || p.status === 'notice')
+        );
+        if (!isMyCompany && !hasMyActiveProject) return false;
       }
       
       // Text search filter
@@ -1156,13 +1158,13 @@ const OnboardingTasksPage = () => {
         company.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
         (company.segment && company.segment.toLowerCase().includes(searchTerm.toLowerCase()));
       
-      // Consultant filter - check company's consultant OR project's consultant
+      // Consultant filter - check if consultant has ACTIVE projects in this company
       // Skip for consultants since they already see only their companies
+      const activeProjects = company.projects?.filter(p => p.status === 'active' || p.status === 'notice') || [];
       const matchesConsultant = 
         currentUserRole === "consultant" ||
         filterConsultant === "all" || 
-        company.consultant_id === filterConsultant ||
-        company.projects?.some(p => p.consultant_id === filterConsultant);
+        activeProjects.some(p => p.consultant_id === filterConsultant);
       
       // Service filter - check if company has any project with the selected service (using slug)
       const matchesService = 
