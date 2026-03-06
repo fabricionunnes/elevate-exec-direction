@@ -235,7 +235,41 @@ const ClientOnboardingPage = () => {
         setCurrentUser(onboardingUser);
         setProject(onboardingUser.project);
         setCompany(onboardingUser.project?.onboarding_company);
-        setIsBillingBlocked(onboardingUser.project?.onboarding_company?.is_billing_blocked || false);
+
+        // Check billing block: either from DB flag or by checking overdue invoices > 5 days
+        const companyData = onboardingUser.project?.onboarding_company;
+        let billingBlocked = companyData?.is_billing_blocked || false;
+
+        if (!billingBlocked && onboardingUser.project?.onboarding_company_id) {
+          // Check if there are invoices overdue > 5 days directly by date
+          const fiveDaysAgo = new Date();
+          fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
+          const fiveDaysAgoStr = fiveDaysAgo.toISOString().split("T")[0];
+
+          const { data: overdueInvoices } = await supabase
+            .from("company_invoices")
+            .select("id")
+            .eq("company_id", onboardingUser.project.onboarding_company_id)
+            .in("status", ["pending", "overdue"])
+            .lt("due_date", fiveDaysAgoStr)
+            .limit(1);
+
+          if (overdueInvoices && overdueInvoices.length > 0) {
+            billingBlocked = true;
+            // Also update the DB flag
+            await supabase
+              .from("onboarding_companies")
+              .update({
+                is_billing_blocked: true,
+                billing_blocked_at: new Date().toISOString(),
+                billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
+              } as any)
+              .eq("id", onboardingUser.project.onboarding_company_id)
+              .eq("is_billing_blocked", false);
+          }
+        }
+
+        setIsBillingBlocked(billingBlocked);
 
         await Promise.all([fetchTasks(), fetchUsers()]);
       } catch (error: any) {
