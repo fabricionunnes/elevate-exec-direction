@@ -630,8 +630,10 @@ export const KPIDashboardTab = ({
         }
         // Also show company-scoped KPIs when viewing a salesperson
         if (scope === "company" || !scope) return true;
-        // Show team-scoped KPIs if the salesperson belongs to that team
         const sp = salespeople.find(s => s.id === selectedSalesperson);
+        // Show unit-scoped KPIs if the salesperson belongs to that unit
+        if (scope === "unit" && sp && kpi.unit_id === sp.unit_id) return true;
+        // Show team-scoped KPIs if the salesperson belongs to that team
         if (scope === "team" && sp && kpi.team_id === sp.team_id) return true;
         // Show sector-scoped KPIs if the salesperson belongs to that sector
         if (scope === "sector" && sp && kpi.sector_id) {
