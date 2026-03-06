@@ -198,7 +198,7 @@ const ClientOnboardingPage = () => {
         // Find onboarding user for this project
         const { data: onboardingUser, error: userError } = await supabase
           .from("onboarding_users")
-          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status))")
+          .select("*, project:onboarding_projects(*, onboarding_company:onboarding_companies(name, status, is_billing_blocked))")
           .eq("user_id", user.id)
           .eq("project_id", projectId)
           .maybeSingle();
