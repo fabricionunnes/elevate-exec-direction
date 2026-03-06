@@ -335,16 +335,32 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
   }
 }
 
-async function markInvoicesPaid(supabase: any, orders: any[]) {
+async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents: number = 0) {
   for (const order of orders) {
     if (!order.payment_link_id) continue;
+
+    // First get the invoice to calculate discount
+    const { data: invoiceForDiscount } = await supabase
+      .from("company_invoices")
+      .select("id, amount_cents")
+      .eq("payment_link_id", order.payment_link_id)
+      .neq("status", "paid")
+      .limit(1)
+      .single();
+
+    const invoiceAmountCents = invoiceForDiscount?.amount_cents || order.amount_cents;
+    const discountCents = paymentValueCents > 0 && paymentValueCents < invoiceAmountCents
+      ? invoiceAmountCents - paymentValueCents
+      : 0;
+    const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoiceAmountCents;
 
     const { error } = await supabase
       .from("company_invoices")
       .update({
         status: "paid",
         paid_at: new Date().toISOString(),
-        paid_amount_cents: order.amount_cents,
+        paid_amount_cents: actualPaidCents,
+        discount_cents: discountCents,
         payment_fee_cents: 199,
       })
       .eq("payment_link_id", order.payment_link_id);
@@ -352,12 +368,16 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
     if (error) {
       console.error("[Asaas Webhook] Invoice update error:", error);
     } else {
-      console.log(`[Asaas Webhook] Invoice paid via payment_link_id ${order.payment_link_id}`);
+      if (discountCents > 0) {
+        console.log(`[Asaas Webhook] Invoice paid with discount: ${discountCents} cents via payment_link_id ${order.payment_link_id}`);
+      } else {
+        console.log(`[Asaas Webhook] Invoice paid via payment_link_id ${order.payment_link_id}`);
+      }
 
-      // Credit Asaas bank account
+      // Credit Asaas bank account with actual paid amount
       const { data: paidInvForBank } = await supabase
         .from("company_invoices")
-        .select("id, amount_cents, description, installment_number, total_installments, recurring_charge_id")
+        .select("id, amount_cents, description, installment_number, total_installments, recurring_charge_id, discount_cents")
         .eq("payment_link_id", order.payment_link_id)
         .eq("status", "paid")
         .limit(1)
@@ -366,8 +386,8 @@ async function markInvoicesPaid(supabase: any, orders: any[]) {
       if (paidInvForBank) {
         await creditAsaasBank(
           supabase, 
-          paidInvForBank.amount_cents, 
-          `Fatura ${paidInvForBank.description || paidInvForBank.id} (${paidInvForBank.installment_number}/${paidInvForBank.total_installments})`,
+          actualPaidCents, 
+          `Fatura ${paidInvForBank.description || paidInvForBank.id} (${paidInvForBank.installment_number}/${paidInvForBank.total_installments})${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`,
           paidInvForBank.id,
           paidInvForBank.recurring_charge_id
         );
