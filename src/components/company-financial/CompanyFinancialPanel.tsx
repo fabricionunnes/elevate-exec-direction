@@ -6,6 +6,7 @@ import { CompanyRecurringCharges } from "./CompanyRecurringCharges";
 import { CompanyPaymentLinks } from "./CompanyPaymentLinks";
 import { CompanyPaymentHistory } from "./CompanyPaymentHistory";
 import { CompanyInvoicesList } from "./CompanyInvoicesList";
+import { BillingBlockToggle } from "./BillingBlockToggle";
 
 interface Props {
   companyId: string;
