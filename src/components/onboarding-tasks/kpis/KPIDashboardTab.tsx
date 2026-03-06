@@ -521,7 +521,13 @@ export const KPIDashboardTab = ({
     if (Object.keys(filteredTargets).length > 0) {
       return filteredTargets["Meta"] ?? Object.values(filteredTargets)[0];
     }
-    return kpi.effective_target ?? kpi.target_value;
+    const baseTarget = kpi.effective_target ?? kpi.target_value;
+    // When filtering by salesperson and no specific target found, divide by active salespeople
+    if (selectedSalesperson !== "all") {
+      const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
+      return baseTarget / activeSalespeopleCount;
+    }
+    return baseTarget;
   };
 
   const formatValue = (value: number, type: string) => {
