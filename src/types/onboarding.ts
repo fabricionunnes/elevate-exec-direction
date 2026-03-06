@@ -55,6 +55,9 @@ export const CLIENT_MENU_KEYS = {
   kpis_sales_links: "kpis_sales_links",
   kpis_config: "kpis_config",
   gestao_usuarios: "gestao_usuarios",
+  unv_circle: "unv_circle",
+  unv_disparador: "unv_disparador",
+  crm_unv: "crm_unv",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -175,6 +178,21 @@ export const CLIENT_MENU_STRUCTURE = [
     key: CLIENT_MENU_KEYS.gestao_usuarios,
     label: "Gerenciar Usuários",
     group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.unv_circle,
+    label: "UNV Circle",
+    group: "Integrações",
+  },
+  {
+    key: CLIENT_MENU_KEYS.unv_disparador,
+    label: "UNV Disparador",
+    group: "Integrações",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_unv,
+    label: "CRM UNV",
+    group: "Integrações",
   },
 ] as const;
 

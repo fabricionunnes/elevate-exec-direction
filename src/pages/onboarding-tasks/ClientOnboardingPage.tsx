@@ -670,27 +670,31 @@ const ClientOnboardingPage = () => {
                 </Button>
               )}
 
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
-                onClick={() => navigate("/circle")}
-              >
-                <Users className="h-4 w-4" />
-                <span>UNV Circle</span>
-              </Button>
+              {hasPermission(CLIENT_MENU_KEYS.unv_circle) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                  onClick={() => navigate("/circle")}
+                >
+                  <Users className="h-4 w-4" />
+                  <span>UNV Circle</span>
+                </Button>
+              )}
 
-              <Button 
-                variant="ghost" 
-                size="sm"
-                className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
-                onClick={() => navigate(`/disparador/${projectId}`)}
-              >
-                <Send className="h-4 w-4" />
-                <span>UNV Disparador</span>
-              </Button>
+              {hasPermission(CLIENT_MENU_KEYS.unv_disparador) && (
+                <Button 
+                  variant="ghost" 
+                  size="sm"
+                  className="hidden md:flex gap-2 text-muted-foreground hover:text-primary"
+                  onClick={() => navigate(`/disparador/${projectId}`)}
+                >
+                  <Send className="h-4 w-4" />
+                  <span>UNV Disparador</span>
+                </Button>
+              )}
 
-              {currentUser?.role === "client" && (
+              {hasPermission(CLIENT_MENU_KEYS.crm_unv) && currentUser?.role === "client" && (
                 <Button
                   asChild
                   variant="ghost"
