@@ -232,26 +232,64 @@ Deno.serve(async (req) => {
   }
 });
 
-async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string) {
+async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
     const feeCents = 199; // R$ 1,99
     const netAmount = amountCents - feeCents;
     if (netAmount <= 0) return;
 
-    // Find the "Asaas" bank account
-    const { data: banks } = await supabase
-      .from("financial_banks")
-      .select("id")
-      .ilike("name", "%asaas%")
-      .eq("is_active", true)
-      .limit(1);
+    // Determine which bank to credit based on the Asaas account used
+    let bankId: string | null = null;
 
-    if (!banks?.length) {
-      console.log("[Asaas Webhook] No 'Asaas' bank account found, skipping balance credit");
-      return;
+    if (recurringChargeId) {
+      // Look up which Asaas account this recurring charge uses
+      const { data: charge } = await supabase
+        .from("company_recurring_charges")
+        .select("asaas_account_id")
+        .eq("id", recurringChargeId)
+        .single();
+
+      if (charge?.asaas_account_id) {
+        const { data: account } = await supabase
+          .from("asaas_accounts")
+          .select("name")
+          .eq("id", charge.asaas_account_id)
+          .single();
+
+        if (account?.name) {
+          // Map Asaas account name to bank name
+          // "UNV" -> "Asaas", "UN Social" -> "Asaas UNV Social"
+          const bankSearchName = account.name.toLowerCase().includes("social") ? "Asaas UNV Social" : "Asaas";
+          const { data: banks } = await supabase
+            .from("financial_banks")
+            .select("id")
+            .eq("name", bankSearchName)
+            .eq("is_active", true)
+            .limit(1);
+
+          if (banks?.length) {
+            bankId = banks[0].id;
+            console.log(`[Asaas Webhook] Resolved bank "${bankSearchName}" (${bankId}) for Asaas account "${account.name}"`);
+          }
+        }
+      }
     }
 
-    const bankId = banks[0].id;
+    // Fallback: find default "Asaas" bank
+    if (!bankId) {
+      const { data: banks } = await supabase
+        .from("financial_banks")
+        .select("id")
+        .eq("name", "Asaas")
+        .eq("is_active", true)
+        .limit(1);
+
+      if (!banks?.length) {
+        console.log("[Asaas Webhook] No 'Asaas' bank account found, skipping balance credit");
+        return;
+      }
+      bankId = banks[0].id;
+    }
 
     // Increment bank balance
     await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: netAmount });
