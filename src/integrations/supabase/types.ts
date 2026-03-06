@@ -9993,6 +9993,7 @@ export type Database = {
           created_at: string
           daily_interest_percent: number
           description: string
+          discount_cents: number
           due_date: string
           id: string
           installment_number: number | null
@@ -10024,6 +10025,7 @@ export type Database = {
           created_at?: string
           daily_interest_percent?: number
           description: string
+          discount_cents?: number
           due_date: string
           id?: string
           installment_number?: number | null
@@ -10055,6 +10057,7 @@ export type Database = {
           created_at?: string
           daily_interest_percent?: number
           description?: string
+          discount_cents?: number
           due_date?: string
           id?: string
           installment_number?: number | null
