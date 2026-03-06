@@ -521,22 +521,6 @@ export default function AllRecurringChargesPage() {
     });
   }, [filteredInvoices, recSortCol, recSortDir]);
 
-  const sortedPayables = useMemo(() => {
-    if (!paySortCol) return filteredPayables;
-    return [...filteredPayables].sort((a, b) => {
-      let cmp = 0;
-      switch (paySortCol) {
-        case "supplier": cmp = (a.supplier_name || "").localeCompare(b.supplier_name || ""); break;
-        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
-        case "value": cmp = a.amount - b.amount; break;
-        case "due_date": cmp = (a.due_date || "").localeCompare(b.due_date || ""); break;
-        case "ref_month": cmp = (a.reference_month || "").localeCompare(b.reference_month || ""); break;
-        case "status": cmp = (a.status || "").localeCompare(b.status || ""); break;
-        case "paid_at": cmp = (a.paid_at || "").localeCompare(b.paid_at || ""); break;
-      }
-      return paySortDir === "asc" ? cmp : -cmp;
-    });
-  }, [filteredPayables, paySortCol, paySortDir]);
 
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
