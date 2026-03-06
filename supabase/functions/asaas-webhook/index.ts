@@ -60,8 +60,11 @@ Deno.serve(async (req) => {
     const subscriptionId = payment.subscription;
     const dueDate = payment.dueDate;
     const paymentValue = payment.value;
+    const paymentNetValue = payment.netValue;
+    const paymentDiscount = payment.discount?.value || 0; // discount amount from Asaas
+    const paymentValueCents = Math.round((paymentValue || 0) * 100);
 
-    console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}`);
+    console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
     // Strategy 1: Try matching via pagarme_charge_id (checkout-originated payments)
     let matched = false;
