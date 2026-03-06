@@ -126,8 +126,25 @@ export default function FinancialOverdueTab({
     });
   }, [invoices, search, selectedCompany, selectedConsultant, companyConsultantMap, selectedMonthFilter]);
 
-  const totalPages = Math.ceil(overdueInvoices.length / ITEMS_PER_PAGE);
-  const paginated = overdueInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const sortedInvoices = useMemo(() => {
+    if (!sortColumn) return overdueInvoices;
+    return [...overdueInvoices].sort((a, b) => {
+      let cmp = 0;
+      switch (sortColumn) {
+        case "company": cmp = (a.company_name || "").localeCompare(b.company_name || ""); break;
+        case "description": cmp = (a.description || "").localeCompare(b.description || ""); break;
+        case "installment": cmp = a.installment_number - b.installment_number; break;
+        case "value": cmp = a.total_with_fees_cents - b.total_with_fees_cents; break;
+        case "due_date": cmp = a.due_date.localeCompare(b.due_date); break;
+        case "urgency": cmp = daysOverdue(a.due_date) - daysOverdue(b.due_date); break;
+        default: cmp = 0;
+      }
+      return sortDirection === "asc" ? cmp : -cmp;
+    });
+  }, [overdueInvoices, sortColumn, sortDirection]);
+
+  const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
+  const paginated = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
   const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total_with_fees_cents, 0);
   const uniqueCompanies = new Set(overdueInvoices.map(i => i.company_id)).size;
