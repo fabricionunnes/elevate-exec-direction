@@ -35,6 +35,7 @@ interface KPIMetasPanelProps {
   canSeeDashboard?: boolean;
   canSeeEndomarketing?: boolean;
   canSeeSalesLinks?: boolean;
+  canSeeConfig?: boolean;
   isClientView?: boolean;
 }
 
@@ -48,6 +49,7 @@ export const KPIMetasPanel = ({
   canSeeDashboard = true,
   canSeeEndomarketing = true,
   canSeeSalesLinks = false,
+  canSeeConfig = false,
   isClientView = false,
 }: KPIMetasPanelProps) => {
   const canAccessAllTabs = isStaff || isAdmin;
@@ -232,7 +234,7 @@ export const KPIMetasPanel = ({
             )}
 
             {/* Configuração Dropdown */}
-            {canAccessAllTabs && (
+            {(canAccessAllTabs || canSeeConfig) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
@@ -340,7 +342,7 @@ export const KPIMetasPanel = ({
           <SalespeopleTab companyId={companyId} isAdmin={true} />
         </TabsContent>
 
-        {canAccessAllTabs && (
+        {(canAccessAllTabs || canSeeConfig) && (
           <>
             <TabsContent value="units" className="mt-6">
               <UnitsTab companyId={companyId} isAdmin={true} />
@@ -354,12 +356,14 @@ export const KPIMetasPanel = ({
               <SectorsTab companyId={companyId} isAdmin={true} />
             </TabsContent>
 
-            <TabsContent value="analysis" className="mt-6">
-              <KPIAnalysisTab companyId={companyId} projectId={projectId} />
-            </TabsContent>
+            {canAccessAllTabs && (
+              <TabsContent value="analysis" className="mt-6">
+                <KPIAnalysisTab companyId={companyId} projectId={projectId} />
+              </TabsContent>
+            )}
 
             <TabsContent value="config" className="mt-6">
-              <KPIConfigurationTab companyId={companyId} isAdmin={canAccessAllTabs} isClient={!isStaff} />
+              <KPIConfigurationTab companyId={companyId} isAdmin={canAccessAllTabs || canSeeConfig} isClient={!isStaff} />
             </TabsContent>
           </>
         )}

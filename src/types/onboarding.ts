@@ -53,6 +53,7 @@ export const CLIENT_MENU_KEYS = {
   minhas_faturas: "minhas_faturas",
   trafego_pago: "trafego_pago",
   kpis_sales_links: "kpis_sales_links",
+  kpis_config: "kpis_config",
   gestao_usuarios: "gestao_usuarios",
 } as const;
 
@@ -163,6 +164,11 @@ export const CLIENT_MENU_STRUCTURE = [
   {
     key: CLIENT_MENU_KEYS.kpis_sales_links,
     label: "KPIs > Links de Lançamento",
+    group: "KPIs",
+  },
+  {
+    key: CLIENT_MENU_KEYS.kpis_config,
+    label: "KPIs > Configuração",
     group: "KPIs",
   },
   {
