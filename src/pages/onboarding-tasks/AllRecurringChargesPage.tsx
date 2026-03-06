@@ -1968,13 +1968,13 @@ export default function AllRecurringChargesPage() {
                               }}
                             />
                           </TableHead>
-                          <TableHead>Fornecedor</TableHead>
-                          <TableHead>Descrição</TableHead>
-                          <TableHead className="text-right">Valor</TableHead>
-                          <TableHead>Vencimento</TableHead>
-                          <TableHead>Mês Ref</TableHead>
-                          <TableHead>Status</TableHead>
-                          <TableHead>Pago em</TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("supplier")}><div className="flex items-center">Fornecedor<SortIcon column="supplier" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("description")}><div className="flex items-center">Descrição<SortIcon column="description" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="text-right cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("value")}><div className="flex items-center justify-end">Valor<SortIcon column="value" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("ref_month")}><div className="flex items-center">Mês Ref<SortIcon column="ref_month" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={paySortCol} /></div></TableHead>
+                          <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => togglePaySort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={paySortCol} /></div></TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
