@@ -165,11 +165,17 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
       }
 
       if (!templates || templates.length === 0) {
-        console.error("Nenhum template encontrado para o produto:", selectedProduct);
-        // Regra: nunca "inventar" tarefas. Se não houver template, desfaz criação do projeto.
-        await supabase.from("onboarding_projects").delete().eq("id", project.id);
-        toast.error("Não existe template de tarefas para este produto");
-        throw new Error("Missing task templates");
+        console.log("Nenhum template encontrado para o produto:", selectedProduct, "- projeto criado sem tarefas");
+        toast.success("Projeto criado com sucesso! (sem tarefas pré-definidas)");
+        onOpenChange(false);
+        onProjectCreated?.();
+        onSuccess?.();
+        setSelectedProduct("");
+        setSelectedCompany("");
+        setNewCompanyName("");
+        setCreateNewCompany(false);
+        setLoading(false);
+        return;
       }
 
       const today = new Date();
