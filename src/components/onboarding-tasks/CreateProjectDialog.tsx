@@ -20,6 +20,11 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { productDetails } from "@/data/productDetails";
 
+interface ServiceProduct {
+  id: string;
+  name: string;
+}
+
 interface CreateProjectDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
