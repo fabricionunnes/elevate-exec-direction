@@ -225,10 +225,19 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
     }
   };
 
-  const availableProducts = Object.entries(productDetails).map(([id, product]) => ({
+  // Merge hardcoded products with dynamic ones from DB, avoiding duplicates
+  const hardcodedProducts = Object.entries(productDetails).map(([id, product]) => ({
     id,
     name: product.name,
   }));
+  
+  const allProducts = [...hardcodedProducts];
+  for (const sp of serviceProducts) {
+    if (!allProducts.some(p => p.id === sp.id || p.name === sp.name)) {
+      allProducts.push(sp);
+    }
+  }
+  allProducts.sort((a, b) => a.name.localeCompare(b.name));
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
