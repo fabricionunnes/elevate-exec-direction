@@ -478,25 +478,46 @@ Deno.serve(async (req) => {
       fiveDaysAgo.setDate(fiveDaysAgo.getDate() - 5);
       const fiveDaysAgoStr = `${fiveDaysAgo.getFullYear()}-${String(fiveDaysAgo.getMonth() + 1).padStart(2, "0")}-${String(fiveDaysAgo.getDate()).padStart(2, "0")}`;
 
-      // Find companies with overdue invoices > 5 days that are NOT already blocked
+      // Find companies with overdue invoices > 5 days (check both pending and overdue status)
       const { data: overdueCompanies } = await supabase
         .from("company_invoices")
         .select("company_id")
-        .eq("status", "overdue")
+        .in("status", ["pending", "overdue"])
         .lt("due_date", fiveDaysAgoStr);
 
       if (overdueCompanies && overdueCompanies.length > 0) {
         const companyIds = [...new Set(overdueCompanies.map(i => i.company_id))];
         for (const cid of companyIds) {
-          await supabase
+          // Check if company was recently manually unblocked (grace period of 5 days)
+          const { data: companyData } = await supabase
             .from("onboarding_companies")
-            .update({
-              is_billing_blocked: true,
-              billing_blocked_at: new Date().toISOString(),
-              billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
-            })
+            .select("is_billing_blocked, billing_unblocked_at")
             .eq("id", cid)
-            .eq("is_billing_blocked", false);
+            .single();
+
+          if (companyData && !companyData.is_billing_blocked) {
+            const unblockedAt = (companyData as any).billing_unblocked_at;
+            if (unblockedAt) {
+              const unblockedDate = new Date(unblockedAt);
+              const gracePeriodEnd = new Date(unblockedDate);
+              gracePeriodEnd.setDate(gracePeriodEnd.getDate() + 5);
+              if (new Date() < gracePeriodEnd) {
+                // Still within grace period, skip blocking
+                continue;
+              }
+            }
+
+            await supabase
+              .from("onboarding_companies")
+              .update({
+                is_billing_blocked: true,
+                billing_blocked_at: new Date().toISOString(),
+                billing_blocked_reason: "Bloqueio automático: fatura vencida há mais de 5 dias",
+                billing_unblocked_at: null,
+              })
+              .eq("id", cid)
+              .eq("is_billing_blocked", false);
+          }
         }
       }
 
@@ -514,7 +535,7 @@ Deno.serve(async (req) => {
             .from("company_invoices")
             .select("id")
             .eq("company_id", bc.id)
-            .eq("status", "overdue")
+            .in("status", ["pending", "overdue"])
             .lt("due_date", fiveDaysAgoStr)
             .limit(1);
 
