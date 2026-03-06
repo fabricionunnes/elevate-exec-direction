@@ -342,8 +342,7 @@ export const KPIMetasPanel = ({
           <SalespeopleTab companyId={companyId} isAdmin={true} />
         </TabsContent>
 
-        {canAccessAllTabs && (
-          <>
+        {(canAccessAllTabs || canSeeConfig) && (
             <TabsContent value="units" className="mt-6">
               <UnitsTab companyId={companyId} isAdmin={true} />
             </TabsContent>
