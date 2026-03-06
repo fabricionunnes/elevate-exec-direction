@@ -52,7 +52,7 @@ interface KPI {
   is_individual: boolean;
   is_active: boolean;
   sector_id?: string | null;
-  scope?: "company" | "sector" | "team" | "salesperson" | null;
+  scope?: "company" | "unit" | "sector" | "team" | "salesperson" | null;
   team_id?: string | null;
   salesperson_id?: string | null;
   unit_id?: string | null;
