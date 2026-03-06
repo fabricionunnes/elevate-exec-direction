@@ -56,6 +56,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
   useEffect(() => {
     if (open) {
       fetchCompanies();
+      fetchServiceProducts();
       if (preselectedCompanyId) {
         setSelectedCompany(preselectedCompanyId);
         setCreateNewCompany(false);
