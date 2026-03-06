@@ -278,6 +278,29 @@ export default function AllRecurringChargesPage() {
   const [currentPage, setCurrentPage] = useState(1);
   const ITEMS_PER_PAGE = 10;
 
+  // Sorting - Receivables
+  const [recSortCol, setRecSortCol] = useState<string | null>(null);
+  const [recSortDir, setRecSortDir] = useState<"asc" | "desc">("asc");
+  // Sorting - Payables
+  const [paySortCol, setPaySortCol] = useState<string | null>(null);
+  const [paySortDir, setPaySortDir] = useState<"asc" | "desc">("asc");
+
+  const toggleRecSort = (col: string) => {
+    if (recSortCol === col) setRecSortDir(d => d === "asc" ? "desc" : "asc");
+    else { setRecSortCol(col); setRecSortDir("asc"); }
+    setCurrentPage(1);
+  };
+  const togglePaySort = (col: string) => {
+    if (paySortCol === col) setPaySortDir(d => d === "asc" ? "desc" : "asc");
+    else { setPaySortCol(col); setPaySortDir("asc"); }
+  };
+  const SortIcon = ({ column, activeCol }: { column: string; activeCol: string | null }) => {
+    if (activeCol !== column) return <ArrowUpDown className="h-3 w-3 ml-1 opacity-40" />;
+    return activeCol === column ? (
+      (column === recSortCol ? recSortDir : paySortDir) === "asc" ? <ArrowUp className="h-3 w-3 ml-1" /> : <ArrowDown className="h-3 w-3 ml-1" />
+    ) : null;
+  };
+
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [selectedCompany, setSelectedCompany] = useState("all");
