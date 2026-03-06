@@ -234,7 +234,7 @@ export const KPIMetasPanel = ({
             )}
 
             {/* Configuração Dropdown */}
-            {canAccessAllTabs && (
+            {(canAccessAllTabs || canSeeConfig) && (
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <button
