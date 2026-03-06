@@ -179,6 +179,21 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Gerenciar Usuários",
     group: null,
   },
+  {
+    key: CLIENT_MENU_KEYS.unv_circle,
+    label: "UNV Circle",
+    group: "Integrações",
+  },
+  {
+    key: CLIENT_MENU_KEYS.unv_disparador,
+    label: "UNV Disparador",
+    group: "Integrações",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_unv,
+    label: "CRM UNV",
+    group: "Integrações",
+  },
 ] as const;
 
 // Role labels in Portuguese
