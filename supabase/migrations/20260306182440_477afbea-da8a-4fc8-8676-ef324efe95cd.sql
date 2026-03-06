@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_companies ADD COLUMN IF NOT EXISTS billing_unblocked_at timestamptz;

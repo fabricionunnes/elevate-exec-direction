@@ -18722,6 +18722,7 @@ export type Database = {
           billing_blocked_at: string | null
           billing_blocked_reason: string | null
           billing_day: number | null
+          billing_unblocked_at: string | null
           cnpj: string | null
           commercial_structure: string | null
           company_description: string | null
@@ -18789,6 +18790,7 @@ export type Database = {
           billing_blocked_at?: string | null
           billing_blocked_reason?: string | null
           billing_day?: number | null
+          billing_unblocked_at?: string | null
           cnpj?: string | null
           commercial_structure?: string | null
           company_description?: string | null
@@ -18856,6 +18858,7 @@ export type Database = {
           billing_blocked_at?: string | null
           billing_blocked_reason?: string | null
           billing_day?: number | null
+          billing_unblocked_at?: string | null
           cnpj?: string | null
           commercial_structure?: string | null
           company_description?: string | null
