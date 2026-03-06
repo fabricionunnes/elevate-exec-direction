@@ -460,6 +460,16 @@ export const KPIDashboardTab = ({
       relevantTargets = allMonthlyTargets.filter(
         mt => mt.kpi_id === kpiId && mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
       );
+      
+      // When filtering by salesperson and falling back to company target, divide by active salespeople count
+      if (relevantTargets.length > 0 && selectedSalesperson !== "all") {
+        const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
+        const dividedResult: Record<string, number> = {};
+        relevantTargets.forEach(mt => {
+          dividedResult[mt.level_name] = mt.target_value / activeSalespeopleCount;
+        });
+        return dividedResult;
+      }
     }
     
     // If still no targets and we're showing "all", sum targets based on active filters
@@ -511,7 +521,13 @@ export const KPIDashboardTab = ({
     if (Object.keys(filteredTargets).length > 0) {
       return filteredTargets["Meta"] ?? Object.values(filteredTargets)[0];
     }
-    return kpi.effective_target ?? kpi.target_value;
+    const baseTarget = kpi.effective_target ?? kpi.target_value;
+    // When filtering by salesperson and no specific target found, divide by active salespeople
+    if (selectedSalesperson !== "all") {
+      const activeSalespeopleCount = Math.max(salespeople.filter(sp => sp.is_active).length, 1);
+      return baseTarget / activeSalespeopleCount;
+    }
+    return baseTarget;
   };
 
   const formatValue = (value: number, type: string) => {
@@ -613,7 +629,15 @@ export const KPIDashboardTab = ({
           return kpi.salesperson_id === selectedSalesperson;
         }
         // Also show company-scoped KPIs when viewing a salesperson
-        return scope === "company";
+        if (scope === "company" || !scope) return true;
+        // Show team-scoped KPIs if the salesperson belongs to that team
+        const sp = salespeople.find(s => s.id === selectedSalesperson);
+        if (scope === "team" && sp && kpi.team_id === sp.team_id) return true;
+        // Show sector-scoped KPIs if the salesperson belongs to that sector
+        if (scope === "sector" && sp && kpi.sector_id) {
+          if (salespersonBelongsToSector(sp, kpi.sector_id)) return true;
+        }
+        return false;
       }
       
       // If filtering by team, show:
