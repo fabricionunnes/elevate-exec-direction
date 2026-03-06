@@ -184,12 +184,19 @@ Deno.serve(async (req) => {
             console.log(`[Asaas Webhook] Matched invoice ${invoice.id} (installment ${invoice.installment_number}/${invoice.total_installments})`);
 
             if (newStatus === "paid") {
+              // Detect discount: if Asaas paid value < invoice amount, there's a discount
+              const discountCents = paymentValueCents > 0 && paymentValueCents < invoice.amount_cents
+                ? invoice.amount_cents - paymentValueCents
+                : 0;
+              const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoice.amount_cents;
+
               const { error: updateErr } = await supabase
                 .from("company_invoices")
                 .update({
                   status: "paid",
                   paid_at: new Date().toISOString(),
-                  paid_amount_cents: invoice.amount_cents,
+                  paid_amount_cents: actualPaidCents,
+                  discount_cents: discountCents,
                   pagarme_charge_id: paymentId,
                   payment_fee_cents: 199,
                 })
@@ -198,11 +205,15 @@ Deno.serve(async (req) => {
               if (updateErr) {
                 console.error("[Asaas Webhook] Invoice update error:", updateErr);
               } else {
-                console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
+                if (discountCents > 0) {
+                  console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid with discount: ${discountCents} cents`);
+                } else {
+                  console.log(`[Asaas Webhook] Invoice ${invoice.id} marked as paid`);
+                }
                 matched = true;
 
-                // Credit Asaas bank account
-                await creditAsaasBank(supabase, invoice.amount_cents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})`, invoice.id, invoice.recurring_charge_id);
+                // Credit Asaas bank account with actual paid amount (minus fee)
+                await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
 
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
