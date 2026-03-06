@@ -195,6 +195,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "CRM UNV",
     group: "Integrações",
   },
+  {
+    key: CLIENT_MENU_KEYS.unv_academy,
+    label: "UNV Academy",
+    group: "Integrações",
+  },
 ] as const;
 
 // Role labels in Portuguese

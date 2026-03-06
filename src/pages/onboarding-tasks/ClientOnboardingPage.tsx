@@ -503,7 +503,7 @@ const ClientOnboardingPage = () => {
       { id: "assessments" as ViewType, icon: ClipboardCheck, label: "Testes", menuKey: CLIENT_MENU_KEYS.testes },
       { id: "rh" as ViewType, icon: Users, label: "RH", menuKey: CLIENT_MENU_KEYS.rh },
       { id: "board" as ViewType, icon: Brain, label: "Board", menuKey: CLIENT_MENU_KEYS.board },
-      { id: "academy" as const, icon: GraduationCap, label: "Academy", href: "/academy" },
+      { id: "academy" as const, icon: GraduationCap, label: "Academy", href: "/academy", menuKey: CLIENT_MENU_KEYS.unv_academy },
       { id: "referrals" as ViewType, icon: Gift, label: "Indicar", menuKey: CLIENT_MENU_KEYS.indicar },
       { id: "billing" as ViewType, icon: Receipt, label: "Faturas", menuKey: CLIENT_MENU_KEYS.minhas_faturas },
       { id: "paid_traffic" as ViewType, icon: Megaphone, label: "Tráfego Pago", menuKey: CLIENT_MENU_KEYS.trafego_pago },
