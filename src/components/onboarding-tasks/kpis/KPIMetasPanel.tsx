@@ -35,6 +35,7 @@ interface KPIMetasPanelProps {
   canSeeDashboard?: boolean;
   canSeeEndomarketing?: boolean;
   canSeeSalesLinks?: boolean;
+  canSeeConfig?: boolean;
   isClientView?: boolean;
 }
 
