@@ -24899,6 +24899,10 @@ export type Database = {
         Args: { check_company_id: string }
         Returns: boolean
       }
+      client_has_kpis_config: {
+        Args: { check_company_id: string }
+        Returns: boolean
+      }
       create_social_default_stages: {
         Args: { p_board_id: string }
         Returns: undefined
