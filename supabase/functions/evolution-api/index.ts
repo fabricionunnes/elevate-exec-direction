@@ -65,19 +65,24 @@ Deno.serve(async (req) => {
       );
     }
 
+    const token = authHeader.replace('Bearer ', '');
+
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_ANON_KEY')!,
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    const { data: { user }, error: userError } = await supabase.auth.getUser();
-    if (userError || !user) {
+    // Use getClaims for Lovable Cloud compatibility (signing-keys)
+    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+    if (claimsError || !claimsData?.claims) {
+      console.error('[evolution-api] Auth failed:', claimsError?.message);
       return new Response(
         JSON.stringify({ error: 'Unauthorized' }),
         { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
       );
     }
+    const user = { id: claimsData.claims.sub };
 
     const url = new URL(req.url);
     // Action can come from query param OR from body (frontend sends in body)
