@@ -35,6 +35,12 @@ export function BillingBlockToggle({ companyId }: Props) {
 
   useEffect(() => { fetchStatus(); }, [companyId]);
 
+  // Refetch periodically to stay in sync with auto-blocking
+  useEffect(() => {
+    const interval = setInterval(fetchStatus, 5000);
+    return () => clearInterval(interval);
+  }, [companyId]);
+
   const toggleBlock = async () => {
     setToggling(true);
     const newBlocked = !blocked;
