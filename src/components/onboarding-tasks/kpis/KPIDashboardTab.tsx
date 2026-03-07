@@ -1535,8 +1535,8 @@ export const KPIDashboardTab = ({
             </div>
           )}
           
-          {/* Main consolidated projection card - only show if we DON'T have distinct categories warning */}
-          {!projection.showDistinctCategoriesWarning && projection.target > 0 && (
+          {/* Main consolidated projection card - only show if we DON'T have distinct categories warning AND NOT multiple main goals */}
+          {!projection.showDistinctCategoriesWarning && !projection.hasMultipleMainGoals && projection.target > 0 && (
             <Card className={`border-2 ${
               projection.projectionPercent >= 100 ? 'border-green-500 bg-green-500/5' :
               projection.projectionPercent >= 70 ? 'border-amber-500 bg-amber-500/5' :
@@ -1622,7 +1622,7 @@ export const KPIDashboardTab = ({
                1. There are multiple main goals (hasMultipleMainGoals)
                2. OR there are distinct categories (faturamento vs receita) that need separate display */}
           {(projection.hasMultipleMainGoals || (projection.hasDistinctCategories && projection.individualProjections.length > 0)) && (
-            <div className="grid gap-4 md:grid-cols-2">
+            <div className={`grid gap-4 ${projection.hasMultipleMainGoals && !projection.hasDistinctCategories ? 'md:grid-cols-1' : 'md:grid-cols-2'}`}>
               {projection.individualProjections.map((proj) => {
                 const getScopeLabel = (kpi: KPI) => {
                   if (kpi.scope === 'sector' && kpi.sector_id) {
@@ -1666,8 +1666,8 @@ export const KPIDashboardTab = ({
                     <CardHeader className="pb-2">
                       <div className="flex items-center justify-between">
                         <div className="flex flex-col gap-1">
-                          <CardTitle className="text-sm font-medium flex items-center gap-2">
-                            <Target className="h-4 w-4" />
+                          <CardTitle className={`${projection.hasMultipleMainGoals ? 'text-lg' : 'text-sm'} font-medium flex items-center gap-2`}>
+                            <Target className={projection.hasMultipleMainGoals ? 'h-5 w-5' : 'h-4 w-4'} />
                             {proj.kpi.name}
                           </CardTitle>
                           <div className="flex gap-1 flex-wrap">
@@ -1689,6 +1689,12 @@ export const KPIDashboardTab = ({
                           </div>
                         </div>
                         <div className="flex items-center gap-2">
+                          {projection.hasMultipleMainGoals && (
+                            <Badge variant="outline" className="gap-1">
+                              <CalendarDays className="h-3 w-3" />
+                              Dia {projection.currentDay} de {projection.daysInMonth} ({projection.daysRemaining} restantes)
+                            </Badge>
+                          )}
                           <p className={`text-2xl font-bold ${
                             proj.projectionPercent >= 100 ? 'text-green-600' :
                             proj.projectionPercent >= 70 ? 'text-amber-600' :
@@ -1705,36 +1711,102 @@ export const KPIDashboardTab = ({
                       </div>
                     </CardHeader>
                     <CardContent className="pt-0">
-                      <div className="grid grid-cols-3 gap-2 text-sm">
-                        <div>
-                          <p className="text-xs text-muted-foreground">Realizado</p>
-                          <p className="font-semibold">{formatValue(proj.realized, proj.kpi.kpi_type)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Meta</p>
-                          <p className="font-semibold">{formatValue(proj.target, proj.kpi.kpi_type)}</p>
-                        </div>
-                        <div>
-                          <p className="text-xs text-muted-foreground">Projetado</p>
-                          <p className="font-semibold">{formatValue(proj.projectedValue, proj.kpi.kpi_type)}</p>
-                        </div>
-                      </div>
-                      <div className="mt-3">
-                        <div className="w-full bg-muted rounded-full h-2 relative">
-                          <div 
-                            className="absolute h-full w-0.5 bg-foreground/50 z-10"
-                            style={{ left: `${Math.min(projection.timeProgress, 100)}%` }}
-                          />
-                          <div
-                            className={`h-2 rounded-full transition-all ${
-                              proj.projectionPercent >= 100 ? 'bg-green-500' :
-                              proj.projectionPercent >= 70 ? 'bg-amber-500' :
-                              'bg-destructive'
-                            }`}
-                            style={{ width: `${Math.min((proj.realized / proj.target) * 100, 100)}%` }}
-                          />
-                        </div>
-                      </div>
+                      {projection.hasMultipleMainGoals ? (
+                        <>
+                          <div className="grid gap-4 md:grid-cols-4">
+                            <div>
+                              <p className="text-sm text-muted-foreground">Realizado</p>
+                              <p className="text-2xl font-bold">{formatValue(proj.realized, proj.kpi.kpi_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Meta do Mês</p>
+                              <p className="text-2xl font-bold">{formatValue(proj.target, proj.kpi.kpi_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Valor Projetado</p>
+                              <p className="text-2xl font-bold">{formatValue(proj.projectedValue, proj.kpi.kpi_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-sm text-muted-foreground">Projeção</p>
+                              <div className="flex items-center gap-2">
+                                <p className={`text-2xl font-bold ${
+                                  proj.projectionPercent >= 100 ? 'text-green-600' :
+                                  proj.projectionPercent >= 70 ? 'text-amber-600' :
+                                  'text-destructive'
+                                }`}>
+                                  {proj.projectionPercent.toFixed(0)}%
+                                </p>
+                                {proj.projectionPercent >= 100 ? (
+                                  <TrendingUp className="h-5 w-5 text-green-600" />
+                                ) : (
+                                  <TrendingDown className="h-5 w-5 text-destructive" />
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                          <div className="mt-4">
+                            <div className="flex justify-between text-xs text-muted-foreground mb-1">
+                              <span>Progresso do mês: {projection.timeProgress.toFixed(0)}%</span>
+                              <span>Atingimento: {proj.target > 0 ? ((proj.realized / proj.target) * 100).toFixed(0) : 0}%</span>
+                            </div>
+                            <div className="w-full bg-muted rounded-full h-3 relative">
+                              <div 
+                                className="absolute h-full w-0.5 bg-foreground/50 z-10"
+                                style={{ left: `${Math.min(projection.timeProgress, 100)}%` }}
+                              />
+                              <div
+                                className={`h-3 rounded-full transition-all ${
+                                  proj.projectionPercent >= 100 ? 'bg-green-500' :
+                                  proj.projectionPercent >= 70 ? 'bg-amber-500' :
+                                  'bg-destructive'
+                                }`}
+                                style={{ width: `${Math.min(proj.target > 0 ? (proj.realized / proj.target) * 100 : 0, 100)}%` }}
+                              />
+                            </div>
+                            <p className="text-xs text-muted-foreground mt-2 text-center">
+                              {proj.projectionPercent >= 100 
+                                ? "✅ No ritmo para bater a meta!"
+                                : proj.projectionPercent >= 70
+                                ? "⚠️ Atenção: a projeção está abaixo da meta esperada"
+                                : "🚨 Alerta: a empresa está bem abaixo do ritmo necessário"
+                              }
+                            </p>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="grid grid-cols-3 gap-2 text-sm">
+                            <div>
+                              <p className="text-xs text-muted-foreground">Realizado</p>
+                              <p className="font-semibold">{formatValue(proj.realized, proj.kpi.kpi_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Meta</p>
+                              <p className="font-semibold">{formatValue(proj.target, proj.kpi.kpi_type)}</p>
+                            </div>
+                            <div>
+                              <p className="text-xs text-muted-foreground">Projetado</p>
+                              <p className="font-semibold">{formatValue(proj.projectedValue, proj.kpi.kpi_type)}</p>
+                            </div>
+                          </div>
+                          <div className="mt-3">
+                            <div className="w-full bg-muted rounded-full h-2 relative">
+                              <div 
+                                className="absolute h-full w-0.5 bg-foreground/50 z-10"
+                                style={{ left: `${Math.min(projection.timeProgress, 100)}%` }}
+                              />
+                              <div
+                                className={`h-2 rounded-full transition-all ${
+                                  proj.projectionPercent >= 100 ? 'bg-green-500' :
+                                  proj.projectionPercent >= 70 ? 'bg-amber-500' :
+                                  'bg-destructive'
+                                }`}
+                                style={{ width: `${Math.min(proj.target > 0 ? (proj.realized / proj.target) * 100 : 0, 100)}%` }}
+                              />
+                            </div>
+                          </div>
+                        </>
+                      )}
                     </CardContent>
                   </Card>
                 );
