@@ -862,23 +862,25 @@ export const KPIDashboardTab = ({
       // Determine category for this KPI
       const category = kpi.kpi_type === "monetary" ? categorizeMonetaryKpi(kpi) : undefined;
 
-      // Only sum to totals if we DON'T have distinct categories
-      // OR if the KPI is a main goal (which means user explicitly wants it in the consolidated view)
-      if (!hasDistinctCategories || kpi.is_main_goal) {
+      // Check how many main goals we have in the projection set
+      const mainGoalCount = kpisForProjection.filter(k => k.is_main_goal).length;
+      const hasMultipleMainGoalsInSet = mainGoalCount > 1;
+
+      // Only sum to totals if we DON'T have multiple main goals
+      // When there are multiple main goals, each gets its own card - no consolidated view
+      if (!hasMultipleMainGoalsInSet && (!hasDistinctCategories || kpi.is_main_goal)) {
         totalRealized += kpiTotal;
         totalTarget += monthlyTarget;
       }
 
       // Store individual projection for:
-      // 1. KPIs explicitly marked as main goal
+      // 1. KPIs explicitly marked as main goal (ALWAYS, even if target is 0)
       // 2. When we have distinct monetary categories (faturamento vs receita) - show each separately
-      // Note: Always show individual cards when hasDistinctCategories, even if target is 0 (to show realized)
       const shouldShowIndividual = kpi.is_main_goal || 
         (hasDistinctCategories && kpi.kpi_type === "monetary" && (category === "faturamento" || category === "receita"));
       
-      // Show card even without target (monthlyTarget === 0) when we have distinct categories
-      // This ensures Faturamento and Receita are always visible
-      if (shouldShowIndividual && (monthlyTarget > 0 || hasDistinctCategories)) {
+      // Always show main goal KPIs as individual cards, even without target
+      if (shouldShowIndividual) {
         const kpiProjectionPercent = timeProgress > 0 && monthlyTarget > 0 
           ? ((kpiTotal / monthlyTarget) / timeProgress) * 100 
           : 0;
