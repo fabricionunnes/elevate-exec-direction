@@ -1528,7 +1528,7 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Monthly Projection Card - Shows individual main goals when there are multiple */}
-      {(projection.target > 0 || projection.hasDistinctCategories) && (
+      {(projection.target > 0 || projection.hasDistinctCategories || projection.hasMultipleMainGoals) && (
         <div className="space-y-4">
           {/* Warning when we have distinct categories (faturamento vs receita) that shouldn't be summed */}
           {projection.showDistinctCategoriesWarning && projection.individualProjections.length > 0 && (
