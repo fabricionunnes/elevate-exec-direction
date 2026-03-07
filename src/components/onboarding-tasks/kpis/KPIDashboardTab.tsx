@@ -1628,7 +1628,7 @@ export const KPIDashboardTab = ({
                1. There are multiple main goals (hasMultipleMainGoals)
                2. OR there are distinct categories (faturamento vs receita) that need separate display */}
           {(projection.hasMultipleMainGoals || (projection.hasDistinctCategories && projection.individualProjections.length > 0)) && (
-            <div className={`grid gap-4 ${projection.hasMultipleMainGoals && !projection.hasDistinctCategories ? 'md:grid-cols-1' : 'md:grid-cols-2'}`}>
+            <div className={`grid gap-4 ${projection.individualProjections.length === 1 ? 'md:grid-cols-1' : projection.individualProjections.length === 2 ? 'md:grid-cols-2' : projection.individualProjections.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
               {projection.individualProjections.map((proj) => {
                 const getScopeLabel = (kpi: KPI) => {
                   if (kpi.scope === 'sector' && kpi.sector_id) {
