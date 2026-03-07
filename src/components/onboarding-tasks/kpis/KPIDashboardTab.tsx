@@ -1535,8 +1535,8 @@ export const KPIDashboardTab = ({
             </div>
           )}
           
-          {/* Main consolidated projection card - only show if we DON'T have distinct categories warning */}
-          {!projection.showDistinctCategoriesWarning && projection.target > 0 && (
+          {/* Main consolidated projection card - only show if we DON'T have distinct categories warning AND NOT multiple main goals */}
+          {!projection.showDistinctCategoriesWarning && !projection.hasMultipleMainGoals && projection.target > 0 && (
             <Card className={`border-2 ${
               projection.projectionPercent >= 100 ? 'border-green-500 bg-green-500/5' :
               projection.projectionPercent >= 70 ? 'border-amber-500 bg-amber-500/5' :
