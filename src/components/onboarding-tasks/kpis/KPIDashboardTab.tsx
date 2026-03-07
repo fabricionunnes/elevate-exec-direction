@@ -379,23 +379,26 @@ export const KPIDashboardTab = ({
       selectedSector !== "all" ||
       selectedSalesperson !== "all";
 
+    // If there are multiple main goals, ALWAYS return ALL of them (regardless of type)
+    // Each one gets its own projection card
+    const allMainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
+    if (allMainGoalKpis.length > 1) {
+      return allMainGoalKpis;
+    }
+
     const monetaryKpis = filteredKpis.filter((k) => k.kpi_type === "monetary");
     
     // FALLBACK: If there are NO monetary KPIs at all, use the main goal KPI (even if numeric)
-    // This ensures companies with only numeric KPIs still get projection cards
     if (monetaryKpis.length === 0) {
-      const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
-      return mainGoalKpis;
+      return allMainGoalKpis;
     }
 
-    // When filtering by Sector (but not by a specific Team/Salesperson), users expect the
-    // sector total to reflect the SUM of all teams inside that sector, not a single "main goal" KPI.
+    // When filtering by Sector (but not by a specific Team/Salesperson)
     if (
       selectedSector !== "all" &&
       selectedTeam === "all" &&
       selectedSalesperson === "all"
     ) {
-      // But check if we have distinct categories - if so, prefer main goals
       if (hasDistinctMonetaryCategories(filteredKpis)) {
         const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
         if (mainGoalKpis.length > 0) return mainGoalKpis;
@@ -404,22 +407,16 @@ export const KPIDashboardTab = ({
     }
 
     if (!hasAnyOrgFilter) {
-      // NEW: Check if there are distinct monetary categories (faturamento vs receita)
-      // If so, DON'T sum them together - show main goals separately instead
       if (hasDistinctMonetaryCategories(filteredKpis)) {
         const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
         if (mainGoalKpis.length > 0) return mainGoalKpis;
-        // If no main goals, return all monetary but they'll be shown separately in the UI
       }
-      // When there are main goal KPIs, prefer those over all monetary KPIs
-      // This prevents summing unrelated monetary KPIs (e.g., Faturamento + Cash collected)
       const mainGoalMonetary = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
       if (mainGoalMonetary.length > 0) return mainGoalMonetary;
       return monetaryKpis;
     }
 
-    const mainGoalKpis = filteredKpis.filter((k) => k.is_main_goal);
-    return mainGoalKpis.length > 0 ? mainGoalKpis : monetaryKpis;
+    return allMainGoalKpis.length > 0 ? allMainGoalKpis : monetaryKpis;
   };
 
   // Helper function to get targets based on current filter (unit, team, sector, or salesperson)
@@ -1628,7 +1625,7 @@ export const KPIDashboardTab = ({
                1. There are multiple main goals (hasMultipleMainGoals)
                2. OR there are distinct categories (faturamento vs receita) that need separate display */}
           {(projection.hasMultipleMainGoals || (projection.hasDistinctCategories && projection.individualProjections.length > 0)) && (
-            <div className={`grid gap-4 ${projection.individualProjections.length === 1 ? 'md:grid-cols-1' : projection.individualProjections.length === 2 ? 'md:grid-cols-2' : projection.individualProjections.length === 3 ? 'md:grid-cols-3' : 'md:grid-cols-2 lg:grid-cols-4'}`}>
+            <div className={`grid gap-4 ${projection.individualProjections.length <= 2 ? 'md:grid-cols-2' : 'md:grid-cols-2 lg:grid-cols-3'}`}>
               {projection.individualProjections.map((proj) => {
                 const getScopeLabel = (kpi: KPI) => {
                   if (kpi.scope === 'sector' && kpi.sector_id) {
