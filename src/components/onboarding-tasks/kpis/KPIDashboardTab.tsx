@@ -411,6 +411,10 @@ export const KPIDashboardTab = ({
         if (mainGoalKpis.length > 0) return mainGoalKpis;
         // If no main goals, return all monetary but they'll be shown separately in the UI
       }
+      // When there are main goal KPIs, prefer those over all monetary KPIs
+      // This prevents summing unrelated monetary KPIs (e.g., Faturamento + Cash collected)
+      const mainGoalMonetary = filteredKpis.filter((k) => k.is_main_goal && k.kpi_type === "monetary");
+      if (mainGoalMonetary.length > 0) return mainGoalMonetary;
       return monetaryKpis;
     }
 
