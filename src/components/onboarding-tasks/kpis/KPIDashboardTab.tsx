@@ -1919,31 +1919,71 @@ export const KPIDashboardTab = ({
         />
       )}
 
-      <MonthlySalesChart 
-        companyId={companyId}
-        projectId={projectId}
-        salespeople={salespeople.map(sp => ({
-          id: sp.id,
-          team_id: sp.team_id,
-          sector_id: sp.sector_id,
-          unit_id: sp.unit_id,
-        }))}
-        sectorTeams={sectorTeams}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-        selectedSalesperson={selectedSalesperson}
-      />
+      {/* Monthly Sales Chart */}
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <MonthlySalesChart
+            key={`monthly-${kpi.id}`}
+            companyId={companyId}
+            projectId={projectId}
+            salespeople={salespeople.map(sp => ({
+              id: sp.id,
+              team_id: sp.team_id,
+              sector_id: sp.sector_id,
+              unit_id: sp.unit_id,
+            }))}
+            sectorTeams={sectorTeams}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            selectedSalesperson={selectedSalesperson}
+            filterKpiIds={[kpi.id]}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <MonthlySalesChart 
+          companyId={companyId}
+          projectId={projectId}
+          salespeople={salespeople.map(sp => ({
+            id: sp.id,
+            team_id: sp.team_id,
+            sector_id: sp.sector_id,
+            unit_id: sp.unit_id,
+          }))}
+          sectorTeams={sectorTeams}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+          selectedSalesperson={selectedSalesperson}
+        />
+      )}
 
       {/* Term Vision Card - QTR/YTD/MAT */}
-      <ProjectTermVisionCard
-        companyId={companyId}
-        projectId={projectId}
-        selectedSalesperson={selectedSalesperson}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <ProjectTermVisionCard
+            key={`term-${kpi.id}`}
+            companyId={companyId}
+            projectId={projectId}
+            selectedSalesperson={selectedSalesperson}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            filterKpiIds={[kpi.id]}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <ProjectTermVisionCard
+          companyId={companyId}
+          projectId={projectId}
+          selectedSalesperson={selectedSalesperson}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+        />
+      )}
 
       {/* Sales Comparison Chart - Before vs After UNV */}
       <SalesComparisonChart 
