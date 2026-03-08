@@ -222,7 +222,7 @@ export const SalespeopleComparisonTable = ({
               <Trophy className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Comparativo de Vendedores</CardTitle>
+              <CardTitle className="text-base">Comparativo de Vendedores{titleSuffix ? ` — ${titleSuffix}` : ""}</CardTitle>
               <p className="text-xs text-muted-foreground">
                 {salespeopleData.length} vendedor{salespeopleData.length !== 1 ? "es" : ""}
               </p>
