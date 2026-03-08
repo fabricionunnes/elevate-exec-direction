@@ -1840,19 +1840,40 @@ export const KPIDashboardTab = ({
       />
 
       {/* Salespeople Comparison Table */}
-      <SalespeopleComparisonTable
-        kpis={kpis}
-        salespeople={salespeople}
-        entries={entries}
-        units={units}
-        teams={teams}
-        sectors={sectors}
-        sectorTeams={sectorTeams}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-        selectedSalesperson={selectedSalesperson}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <SalespeopleComparisonTable
+            key={`comparison-${kpi.id}`}
+            kpis={kpis}
+            salespeople={salespeople}
+            entries={entries}
+            units={units}
+            teams={teams}
+            sectors={sectors}
+            sectorTeams={sectorTeams}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            selectedSalesperson={selectedSalesperson}
+            filterKpiId={kpi.id}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <SalespeopleComparisonTable
+          kpis={kpis}
+          salespeople={salespeople}
+          entries={entries}
+          units={units}
+          teams={teams}
+          sectors={sectors}
+          sectorTeams={sectorTeams}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+          selectedSalesperson={selectedSalesperson}
+        />
+      )}
 
       {/* Performance Comparison Card - Compare by units, sectors, teams, or salespeople */}
       {(teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
