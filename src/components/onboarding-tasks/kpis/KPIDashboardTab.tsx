@@ -968,23 +968,23 @@ export const KPIDashboardTab = ({
       }));
   };
 
-  // Get target vs realized chart data - PRIORITIZE main goal KPIs, fallback to monetary
-  const getTargetVsRealizedData = () => {
+  // Get target vs realized chart data - per KPI when multiple main goals
+  const getTargetVsRealizedData = (forKpiId?: string) => {
     const filteredKpis = getFilteredKpis();
     
-    const targetKpis = getRevenueKpisForContext(filteredKpis);
+    const targetKpis = forKpiId 
+      ? filteredKpis.filter(k => k.id === forKpiId)
+      : getRevenueKpisForContext(filteredKpis);
     const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
     
     const targetKpiIds = targetKpis.map(k => k.id);
     
-    // Filter entries to only include target KPIs and apply unit/team/salesperson filter
     const filteredEntries = entries.filter(e => {
       if (!targetKpiIds.includes(e.kpi_id)) return false;
       const dims = getEntryDimensions(e);
       const sp = salespeopleById.get(e.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
@@ -994,7 +994,6 @@ export const KPIDashboardTab = ({
       return true;
     });
 
-    // Group entries by date
     const groupedByDate: Record<string, number> = {};
     filteredEntries.forEach(entry => {
       if (!groupedByDate[entry.entry_date]) {
@@ -1003,15 +1002,12 @@ export const KPIDashboardTab = ({
       groupedByDate[entry.entry_date] += entry.value;
     });
 
-    // Sort dates
     const sortedDates = Object.keys(groupedByDate).sort();
     if (sortedDates.length === 0) return { data: [], targetLevels: [], kpiType: "monetary" };
 
-    // Calculate target levels - aggregate all target KPI targets using filtered targets
     let targetLevelsMap: Record<string, number> = {};
     
     targetKpis.forEach(kpi => {
-      // Get targets based on current unit/salesperson filter
       const filteredTargets = getFilteredTargetsForKpi(kpi.id);
       
       if (Object.keys(filteredTargets).length > 0) {
@@ -1030,11 +1026,8 @@ export const KPIDashboardTab = ({
 
     const targetLevelNames = Object.keys(targetLevelsMap);
     const totalDays = sortedDates.length;
-
-    // Determine KPI type for formatting
     const kpiType = targetKpis[0]?.kpi_type ?? (mainGoalKpis[0]?.kpi_type ?? "monetary");
 
-    // Build cumulative chart data
     let cumulativeValue = 0;
     const chartData = sortedDates.map((date, index) => {
       cumulativeValue += groupedByDate[date];
@@ -1045,7 +1038,6 @@ export const KPIDashboardTab = ({
         realizado: cumulativeValue,
       };
 
-      // Add each target level as a line (proportional to progress)
       targetLevelNames.forEach(levelName => {
         dataPoint[levelName] = targetLevelsMap[levelName] * dayProgress;
       });
