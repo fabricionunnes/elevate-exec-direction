@@ -924,8 +924,8 @@ export const KPIDashboardTab = ({
 
   const projection = getMonthlyProjection();
 
-  // Prepare chart data - Daily evolution - PRIORITIZE main goal KPIs, sum if multiple
-  const getDailyChartData = () => {
+  // Prepare chart data - Daily evolution - per KPI when multiple main goals
+  const getDailyChartData = (forKpiId?: string) => {
     const filteredKpis = getFilteredKpis();
     
     const targetKpis = getRevenueKpisForContext(filteredKpis);
@@ -933,6 +933,8 @@ export const KPIDashboardTab = ({
     // If a specific KPI is selected, use that instead
     const kpiIdsToUse = selectedKpi !== "all" 
       ? [selectedKpi] 
+      : forKpiId
+      ? [forKpiId]
       : targetKpis.map(k => k.id);
     
     const filteredEntries = entries.filter(e => {
@@ -942,7 +944,6 @@ export const KPIDashboardTab = ({
       if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
