@@ -14,6 +14,7 @@ interface SalesHeatmapChartsProps {
   selectedUnit?: string;
   selectedTeam?: string;
   selectedSector?: string;
+  titleSuffix?: string;
 }
 
 interface EntryRow {
