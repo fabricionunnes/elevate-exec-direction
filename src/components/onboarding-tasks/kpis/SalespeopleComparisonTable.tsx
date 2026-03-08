@@ -129,10 +129,11 @@ export const SalespeopleComparisonTable = ({
   }, [kpis]);
 
   const mainGoalKpiIds = useMemo(() => {
+    if (filterKpiId) return [filterKpiId];
     if (allMonetaryKpis.length > 0) return allMonetaryKpis.map(k => k.id);
     if (mainGoalKpi) return [mainGoalKpi.id];
     return [];
-  }, [allMonetaryKpis, mainGoalKpi]);
+  }, [allMonetaryKpis, mainGoalKpi, filterKpiId]);
 
   const salespeopleData = useMemo(() => {
     const data = filteredSalespeople.map((sp) => {
