@@ -266,6 +266,7 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       y += 3;
     } else if (clause.id === "investimento") {
       // Add payment details to investment clause
+      // Use custom clause content if edited, otherwise generate dynamic content
       const paymentMethodLabels = {
         card: "Cartão de Crédito",
         pix: "PIX",
@@ -273,17 +274,13 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
       };
       
       if (formData.isRecurring) {
-        // Recurring payment
         addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)} mensais, com cobrança recorrente.`, 10);
         y += 2;
-        
         addText(`II. O pagamento será realizado mensalmente via ${paymentMethodLabels[formData.paymentMethod]}, de forma recorrente.`, 10);
         y += 2;
       } else {
-        // Regular installments
         addText(`I. O valor do presente contrato será de ${formatCurrencyWithWords(formData.contractValue)}.`, 10);
         y += 2;
-        
         if (formData.installments === 1) {
           addText(`II. O pagamento será realizado à vista via ${paymentMethodLabels[formData.paymentMethod]}.`, 10);
         } else {
@@ -297,19 +294,18 @@ export async function generateContractPDF({ formData, customClauses }: GenerateP
         y += 2;
       }
       
-      addText(`III. Em caso de atraso no pagamento, incidirão:
-• Multa moratória de 2%
-• Juros de mora de 1% ao dia`, 10);
-      y += 2;
-      
-      // Conditional clause IV based on payment type
-      if (formData.isRecurring) {
-        // Recurring payment - cancellation clause
-        addText("IV. A rescisão poderá ser feita com aviso prévio de 30 dias do vencimento da próxima parcela.", 10);
-      } else if (formData.paymentMethod === "card") {
-        // Credit card installments - payment obligation clause
-        addText("IV. Este contrato caracteriza-se como prestação de serviço com pagamento parcelado. O não uso dos serviços não isenta a CONTRATANTE do pagamento das parcelas acordadas.", 10);
-      }
+      // Use the clause content (which may have been edited by the user) for the remaining items
+      // Parse remaining content from the custom clause (items III onwards)
+      const clauseContent = clause.content;
+      const remainingLines = wrapText(clauseContent, contentWidth, 10);
+      remainingLines.forEach((line) => {
+        checkPageBreak(6);
+        doc.setFontSize(10);
+        doc.setFont("helvetica", "normal");
+        doc.setTextColor(0, 0, 0);
+        doc.text(line, margin, y);
+        y += 5;
+      });
       y += 3;
     } else {
       // Regular clause
