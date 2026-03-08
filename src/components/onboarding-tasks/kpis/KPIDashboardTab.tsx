@@ -1287,6 +1287,10 @@ export const KPIDashboardTab = ({
     );
   }
 
+  // Determine if we should show per-KPI charts
+  const mainGoalKpisForCharts = kpis.filter(k => k.is_main_goal);
+  const hasMultipleMainGoalsForCharts = mainGoalKpisForCharts.length > 1 && selectedKpi === "all";
+
   const dailyData = getDailyChartData();
   const rankingData = getRankingData();
   const targetVsRealized = getTargetVsRealizedData();
