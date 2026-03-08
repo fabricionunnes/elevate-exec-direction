@@ -190,7 +190,7 @@ export const SalesHeatmapCharts = ({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Flame className="h-4 w-4 text-emerald-500" />
-              Vendas por Dia da Semana
+              Vendas por Dia da Semana{titleSuffix ? ` — ${titleSuffix}` : ""}
             </CardTitle>
             <p className="text-xs text-muted-foreground">Média de vendas nos últimos 6 meses</p>
           </CardHeader>
