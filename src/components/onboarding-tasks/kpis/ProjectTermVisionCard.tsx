@@ -52,7 +52,7 @@ export const ProjectTermVisionCard = ({
 
   useEffect(() => {
     loadData();
-  }, [companyId, selectedSalesperson, selectedUnit, selectedTeam, selectedSector]);
+  }, [companyId, selectedSalesperson, selectedUnit, selectedTeam, selectedSector, filterKpiIds]);
 
   const loadData = async () => {
     setLoading(true);
