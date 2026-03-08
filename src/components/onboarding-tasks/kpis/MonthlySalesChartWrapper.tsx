@@ -85,27 +85,42 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
     );
   }
 
+  // If filterKpiIds is provided, only use those specific KPIs
+  const effectiveKpis = filterKpiIds && filterKpiIds.length > 0
+    ? monetaryKpis.filter(k => filterKpiIds.includes(k.id))
+    : monetaryKpis;
+
+  if (effectiveKpis.length === 0) return null;
+
+  // If filtering to specific KPIs (per main goal), render a single chart
+  if (filterKpiIds && filterKpiIds.length > 0) {
+    const mainKpi = effectiveKpis[0];
+    return (
+      <SingleMonthlySalesChart
+        companyId={companyId}
+        kpiIds={effectiveKpis.map(k => k.id)}
+        kpiName={titleSuffix ? `Vendas Mês a Mês — ${titleSuffix}` : mainKpi.name}
+        kpiTargetValue={mainKpi.target_value}
+        {...rest}
+      />
+    );
+  }
+
   // Detect Faturamento and Receita KPIs
   const isFaturamento = (name: string) => /faturamento|vendas?|pedido|contrato/i.test(name) && !/receit|dinheiro|caixa|recebid/i.test(name);
   const isReceita = (name: string) => /receita|dinheiro|caixa|recebid/i.test(name);
 
   // Group KPIs by type
-  const faturamentoKpis = monetaryKpis.filter(k => isFaturamento(k.name));
-  const receitaKpis = monetaryKpis.filter(k => isReceita(k.name));
+  const faturamentoKpis = effectiveKpis.filter(k => isFaturamento(k.name));
+  const receitaKpis = effectiveKpis.filter(k => isReceita(k.name));
   
   // KPIs that don't match either pattern - treat as faturamento
-  const otherKpis = monetaryKpis.filter(k => !isFaturamento(k.name) && !isReceita(k.name));
+  const otherKpis = effectiveKpis.filter(k => !isFaturamento(k.name) && !isReceita(k.name));
   const allFaturamentoKpis = [...faturamentoKpis, ...otherKpis];
 
   const hasBothTypes = allFaturamentoKpis.length > 0 && receitaKpis.length > 0;
 
-  console.log("MonthlySalesChartWrapper - Monetary KPIs:", monetaryKpis.map(k => ({ id: k.id, name: k.name })));
-  console.log("MonthlySalesChartWrapper - Faturamento KPIs:", allFaturamentoKpis.map(k => k.name));
-  console.log("MonthlySalesChartWrapper - Receita KPIs:", receitaKpis.map(k => k.name));
-  console.log("MonthlySalesChartWrapper - Has both types:", hasBothTypes);
-
   if (hasBothTypes) {
-    // Render two separate charts
     const mainFaturamento = allFaturamentoKpis.find(k => k.is_main_goal) || allFaturamentoKpis[0];
     const mainReceita = receitaKpis.find(k => k.is_main_goal) || receitaKpis[0];
     
@@ -130,11 +145,11 @@ export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) =
   }
 
   // Single chart for all monetary KPIs combined
-  const mainKpi = monetaryKpis.find(k => k.is_main_goal) || monetaryKpis[0];
+  const mainKpi = effectiveKpis.find(k => k.is_main_goal) || effectiveKpis[0];
   return (
     <SingleMonthlySalesChart
       companyId={companyId}
-      kpiIds={monetaryKpis.map(k => k.id)}
+      kpiIds={effectiveKpis.map(k => k.id)}
       kpiName={mainKpi?.name || "Vendas"}
       kpiTargetValue={mainKpi?.target_value || 0}
       {...rest}
