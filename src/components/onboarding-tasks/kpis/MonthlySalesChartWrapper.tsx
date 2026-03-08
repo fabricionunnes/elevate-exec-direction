@@ -43,7 +43,7 @@ interface MonetaryKpi {
  * and renders separate charts for each. Otherwise, renders a single combined chart.
  */
 export const MonthlySalesChartWrapper = (props: MonthlySalesChartWrapperProps) => {
-  const { companyId, ...rest } = props;
+  const { companyId, filterKpiIds, titleSuffix, ...rest } = props;
   const [loading, setLoading] = useState(true);
   const [monetaryKpis, setMonetaryKpis] = useState<MonetaryKpi[]>([]);
 
