@@ -68,9 +68,15 @@ export const ProjectTermVisionCard = ({
       const { data: allKpis } = await kpiQuery;
       if (!allKpis || allKpis.length === 0) { setLoading(false); return; }
 
-      let targetKpis = allKpis.filter(k => k.is_main_goal && k.kpi_type === "monetary");
-      if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.kpi_type === "monetary");
-      if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.is_main_goal);
+      // If filterKpiIds is provided, use only those KPIs
+      let targetKpis: typeof allKpis;
+      if (filterKpiIds && filterKpiIds.length > 0) {
+        targetKpis = allKpis.filter(k => filterKpiIds.includes(k.id));
+      } else {
+        targetKpis = allKpis.filter(k => k.is_main_goal && k.kpi_type === "monetary");
+        if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.kpi_type === "monetary");
+        if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.is_main_goal);
+      }
       if (targetKpis.length === 0) { setLoading(false); return; }
 
       const kpiIds = targetKpis.map(k => k.id);

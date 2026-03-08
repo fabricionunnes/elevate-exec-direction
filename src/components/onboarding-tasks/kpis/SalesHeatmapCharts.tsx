@@ -242,7 +242,7 @@ export const SalesHeatmapCharts = ({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-violet-500" />
-              Vendas por Dia do Mês
+              Vendas por Dia do Mês{titleSuffix ? ` — ${titleSuffix}` : ""}
             </CardTitle>
             <p className="text-xs text-muted-foreground">Comparativo dos últimos 6 meses</p>
           </CardHeader>
