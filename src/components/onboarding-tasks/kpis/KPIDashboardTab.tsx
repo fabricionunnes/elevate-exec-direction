@@ -2592,7 +2592,8 @@ export const KPIDashboardTab = ({
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Detailed KPI Table */}
       <Card className="relative overflow-hidden border-0 shadow-xl">
