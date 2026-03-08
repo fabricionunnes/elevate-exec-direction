@@ -227,7 +227,7 @@ export const ProjectTermVisionCard = ({
             <Activity className="h-5 w-5 text-purple-300" />
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Visão de Curto, Médio e Longo Prazo</h3>
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Visão de Curto, Médio e Longo Prazo{titleSuffix ? ` — ${titleSuffix}` : ""}</h3>
             <p className="text-[11px] text-white/40 font-medium">Análise de tendência • Últimos 12 meses</p>
           </div>
         </div>

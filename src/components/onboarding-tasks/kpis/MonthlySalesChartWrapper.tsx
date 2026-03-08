@@ -26,6 +26,8 @@ interface MonthlySalesChartWrapperProps {
   selectedTeam?: string;
   selectedSector?: string;
   selectedSalesperson?: string;
+  filterKpiIds?: string[];
+  titleSuffix?: string;
 }
 
 interface MonetaryKpi {
