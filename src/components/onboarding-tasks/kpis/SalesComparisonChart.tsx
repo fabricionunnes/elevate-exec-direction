@@ -127,9 +127,48 @@ export const SalesComparisonChart = ({
   const preUnvAvg = preUnvData.length > 0
     ? preUnvData.reduce((sum, d) => sum + d.revenue, 0) / preUnvData.length
     : 0;
-  const postUnvAvg = postUnvData.length > 0
-    ? postUnvData.reduce((sum, d) => sum + d.revenue, 0) / postUnvData.length
-    : 0;
+
+  // For the "Depois" average, project the current (incomplete) month
+  const postUnvAvgProjected = (() => {
+    if (postUnvData.length === 0) return 0;
+    const now = new Date();
+    const currentMonthStart = startOfMonth(now);
+
+    // Count business days for projection
+    const getBusinessDayInfo = () => {
+      const year = now.getFullYear();
+      const month = now.getMonth();
+      const today = now.getDate();
+      const lastDay = new Date(year, month + 1, 0).getDate();
+      let totalBizDays = 0;
+      let elapsedBizDays = 0;
+      for (let d = 1; d <= lastDay; d++) {
+        const date = new Date(year, month, d);
+        const dow = date.getDay();
+        if (dow === 0 || dow === 6) continue; // skip weekends
+        if (isHoliday(date)) continue;
+        totalBizDays++;
+        if (d <= today) elapsedBizDays++;
+      }
+      return { totalBizDays, elapsedBizDays };
+    };
+
+    const { totalBizDays, elapsedBizDays } = getBusinessDayInfo();
+
+    let projectedTotal = 0;
+    postUnvData.forEach((d) => {
+      const isCurrentMonth = isSameMonth(parseISO(d.month), currentMonthStart);
+      if (isCurrentMonth && elapsedBizDays > 0 && elapsedBizDays < totalBizDays) {
+        // Project: realized / elapsed * total
+        projectedTotal += (d.revenue / elapsedBizDays) * totalBizDays;
+      } else {
+        projectedTotal += d.revenue;
+      }
+    });
+    return projectedTotal / postUnvData.length;
+  })();
+
+  const postUnvAvg = postUnvAvgProjected;
   const growthPercent = preUnvAvg > 0 ? ((postUnvAvg - preUnvAvg) / preUnvAvg) * 100 : 0;
   const hasGrowth = growthPercent > 0;
 
