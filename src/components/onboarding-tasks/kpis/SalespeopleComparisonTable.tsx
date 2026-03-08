@@ -68,6 +68,8 @@ interface SalespeopleComparisonTableProps {
   selectedTeam: string;
   selectedSector: string;
   selectedSalesperson: string;
+  filterKpiId?: string;
+  titleSuffix?: string;
 }
 
 export const SalespeopleComparisonTable = ({
