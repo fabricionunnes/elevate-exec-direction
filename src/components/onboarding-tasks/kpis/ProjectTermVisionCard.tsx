@@ -40,6 +40,8 @@ export const ProjectTermVisionCard = ({
   selectedTeam = "all",
   selectedSector = "all",
   className,
+  filterKpiIds,
+  titleSuffix,
 }: ProjectTermVisionCardProps) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
