@@ -28,6 +28,8 @@ interface ProjectTermVisionCardProps {
   selectedTeam?: string;
   selectedSector?: string;
   className?: string;
+  filterKpiIds?: string[];
+  titleSuffix?: string;
 }
 
 export const ProjectTermVisionCard = ({
@@ -38,6 +40,8 @@ export const ProjectTermVisionCard = ({
   selectedTeam = "all",
   selectedSector = "all",
   className,
+  filterKpiIds,
+  titleSuffix,
 }: ProjectTermVisionCardProps) => {
   const [loading, setLoading] = useState(true);
   const [chartData, setChartData] = useState<ChartDataPoint[]>([]);
@@ -48,7 +52,7 @@ export const ProjectTermVisionCard = ({
 
   useEffect(() => {
     loadData();
-  }, [companyId, selectedSalesperson, selectedUnit, selectedTeam, selectedSector]);
+  }, [companyId, selectedSalesperson, selectedUnit, selectedTeam, selectedSector, filterKpiIds]);
 
   const loadData = async () => {
     setLoading(true);
@@ -64,9 +68,15 @@ export const ProjectTermVisionCard = ({
       const { data: allKpis } = await kpiQuery;
       if (!allKpis || allKpis.length === 0) { setLoading(false); return; }
 
-      let targetKpis = allKpis.filter(k => k.is_main_goal && k.kpi_type === "monetary");
-      if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.kpi_type === "monetary");
-      if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.is_main_goal);
+      // If filterKpiIds is provided, use only those KPIs
+      let targetKpis: typeof allKpis;
+      if (filterKpiIds && filterKpiIds.length > 0) {
+        targetKpis = allKpis.filter(k => filterKpiIds.includes(k.id));
+      } else {
+        targetKpis = allKpis.filter(k => k.is_main_goal && k.kpi_type === "monetary");
+        if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.kpi_type === "monetary");
+        if (targetKpis.length === 0) targetKpis = allKpis.filter(k => k.is_main_goal);
+      }
       if (targetKpis.length === 0) { setLoading(false); return; }
 
       const kpiIds = targetKpis.map(k => k.id);
@@ -217,7 +227,7 @@ export const ProjectTermVisionCard = ({
             <Activity className="h-5 w-5 text-purple-300" />
           </div>
           <div>
-            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Visão de Curto, Médio e Longo Prazo</h3>
+            <h3 className="text-base sm:text-lg font-bold text-white tracking-tight">Visão de Curto, Médio e Longo Prazo{titleSuffix ? ` — ${titleSuffix}` : ""}</h3>
             <p className="text-[11px] text-white/40 font-medium">Análise de tendência • Últimos 12 meses</p>
           </div>
         </div>

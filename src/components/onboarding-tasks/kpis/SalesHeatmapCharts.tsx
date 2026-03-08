@@ -14,6 +14,7 @@ interface SalesHeatmapChartsProps {
   selectedUnit?: string;
   selectedTeam?: string;
   selectedSector?: string;
+  titleSuffix?: string;
 }
 
 interface EntryRow {
@@ -59,6 +60,7 @@ export const SalesHeatmapCharts = ({
   selectedUnit,
   selectedTeam,
   selectedSector,
+  titleSuffix,
 }: SalesHeatmapChartsProps) => {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<EntryRow[]>([]);
@@ -188,7 +190,7 @@ export const SalesHeatmapCharts = ({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <Flame className="h-4 w-4 text-emerald-500" />
-              Vendas por Dia da Semana
+              Vendas por Dia da Semana{titleSuffix ? ` — ${titleSuffix}` : ""}
             </CardTitle>
             <p className="text-xs text-muted-foreground">Média de vendas nos últimos 6 meses</p>
           </CardHeader>
@@ -240,7 +242,7 @@ export const SalesHeatmapCharts = ({
           <CardHeader className="pb-3">
             <CardTitle className="text-base flex items-center gap-2">
               <CalendarDays className="h-4 w-4 text-violet-500" />
-              Vendas por Dia do Mês
+              Vendas por Dia do Mês{titleSuffix ? ` — ${titleSuffix}` : ""}
             </CardTitle>
             <p className="text-xs text-muted-foreground">Comparativo dos últimos 6 meses</p>
           </CardHeader>

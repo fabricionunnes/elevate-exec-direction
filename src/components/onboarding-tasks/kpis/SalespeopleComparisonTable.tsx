@@ -68,6 +68,8 @@ interface SalespeopleComparisonTableProps {
   selectedTeam: string;
   selectedSector: string;
   selectedSalesperson: string;
+  filterKpiId?: string;
+  titleSuffix?: string;
 }
 
 export const SalespeopleComparisonTable = ({
@@ -82,6 +84,8 @@ export const SalespeopleComparisonTable = ({
   selectedTeam,
   selectedSector,
   selectedSalesperson,
+  filterKpiId,
+  titleSuffix,
 }: SalespeopleComparisonTableProps) => {
   const teamIdsBySectorId = useMemo(() => {
     const map: Record<string, Set<string>> = {};
@@ -114,8 +118,9 @@ export const SalespeopleComparisonTable = ({
   const allMonetaryKpis = useMemo(() => kpis.filter((k) => k.kpi_type === "monetary"), [kpis]);
 
   const mainGoalKpi = useMemo(() => {
+    if (filterKpiId) return kpis.find(k => k.id === filterKpiId);
     return kpis.find((k) => k.is_main_goal) || kpis.find((k) => k.kpi_type === "monetary");
-  }, [kpis]);
+  }, [kpis, filterKpiId]);
 
   const salesKpi = useMemo(() => {
     return kpis.find((k) =>
@@ -124,10 +129,11 @@ export const SalespeopleComparisonTable = ({
   }, [kpis]);
 
   const mainGoalKpiIds = useMemo(() => {
+    if (filterKpiId) return [filterKpiId];
     if (allMonetaryKpis.length > 0) return allMonetaryKpis.map(k => k.id);
     if (mainGoalKpi) return [mainGoalKpi.id];
     return [];
-  }, [allMonetaryKpis, mainGoalKpi]);
+  }, [allMonetaryKpis, mainGoalKpi, filterKpiId]);
 
   const salespeopleData = useMemo(() => {
     const data = filteredSalespeople.map((sp) => {
@@ -216,7 +222,7 @@ export const SalespeopleComparisonTable = ({
               <Trophy className="h-4 w-4" />
             </div>
             <div>
-              <CardTitle className="text-base">Comparativo de Vendedores</CardTitle>
+              <CardTitle className="text-base">Comparativo de Vendedores{titleSuffix ? ` — ${titleSuffix}` : ""}</CardTitle>
               <p className="text-xs text-muted-foreground">
                 {salespeopleData.length} vendedor{salespeopleData.length !== 1 ? "es" : ""}
               </p>

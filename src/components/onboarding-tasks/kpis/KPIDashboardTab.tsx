@@ -1840,19 +1840,40 @@ export const KPIDashboardTab = ({
       />
 
       {/* Salespeople Comparison Table */}
-      <SalespeopleComparisonTable
-        kpis={kpis}
-        salespeople={salespeople}
-        entries={entries}
-        units={units}
-        teams={teams}
-        sectors={sectors}
-        sectorTeams={sectorTeams}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-        selectedSalesperson={selectedSalesperson}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <SalespeopleComparisonTable
+            key={`comparison-${kpi.id}`}
+            kpis={kpis}
+            salespeople={salespeople}
+            entries={entries}
+            units={units}
+            teams={teams}
+            sectors={sectors}
+            sectorTeams={sectorTeams}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            selectedSalesperson={selectedSalesperson}
+            filterKpiId={kpi.id}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <SalespeopleComparisonTable
+          kpis={kpis}
+          salespeople={salespeople}
+          entries={entries}
+          units={units}
+          teams={teams}
+          sectors={sectors}
+          sectorTeams={sectorTeams}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+          selectedSalesperson={selectedSalesperson}
+        />
+      )}
 
       {/* Performance Comparison Card - Compare by units, sectors, teams, or salespeople */}
       {(teams.length > 1 || units.length > 1 || sectors.length > 1 || salespeople.length > 1) && (
@@ -1898,31 +1919,71 @@ export const KPIDashboardTab = ({
         />
       )}
 
-      <MonthlySalesChart 
-        companyId={companyId}
-        projectId={projectId}
-        salespeople={salespeople.map(sp => ({
-          id: sp.id,
-          team_id: sp.team_id,
-          sector_id: sp.sector_id,
-          unit_id: sp.unit_id,
-        }))}
-        sectorTeams={sectorTeams}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-        selectedSalesperson={selectedSalesperson}
-      />
+      {/* Monthly Sales Chart */}
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <MonthlySalesChart
+            key={`monthly-${kpi.id}`}
+            companyId={companyId}
+            projectId={projectId}
+            salespeople={salespeople.map(sp => ({
+              id: sp.id,
+              team_id: sp.team_id,
+              sector_id: sp.sector_id,
+              unit_id: sp.unit_id,
+            }))}
+            sectorTeams={sectorTeams}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            selectedSalesperson={selectedSalesperson}
+            filterKpiIds={[kpi.id]}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <MonthlySalesChart 
+          companyId={companyId}
+          projectId={projectId}
+          salespeople={salespeople.map(sp => ({
+            id: sp.id,
+            team_id: sp.team_id,
+            sector_id: sp.sector_id,
+            unit_id: sp.unit_id,
+          }))}
+          sectorTeams={sectorTeams}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+          selectedSalesperson={selectedSalesperson}
+        />
+      )}
 
       {/* Term Vision Card - QTR/YTD/MAT */}
-      <ProjectTermVisionCard
-        companyId={companyId}
-        projectId={projectId}
-        selectedSalesperson={selectedSalesperson}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.map((kpi) => (
+          <ProjectTermVisionCard
+            key={`term-${kpi.id}`}
+            companyId={companyId}
+            projectId={projectId}
+            selectedSalesperson={selectedSalesperson}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            filterKpiIds={[kpi.id]}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <ProjectTermVisionCard
+          companyId={companyId}
+          projectId={projectId}
+          selectedSalesperson={selectedSalesperson}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+        />
+      )}
 
       {/* Sales Comparison Chart - Before vs After UNV */}
       <SalesComparisonChart 
@@ -2667,14 +2728,29 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Sales Heatmap Charts */}
-      <SalesHeatmapCharts
-        companyId={companyId}
-        kpiIds={kpis.filter(k => k.kpi_type === "monetary").map(k => k.id)}
-        selectedSalesperson={selectedSalesperson}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.filter(k => k.kpi_type === "monetary").map((kpi) => (
+          <SalesHeatmapCharts
+            key={`heatmap-${kpi.id}`}
+            companyId={companyId}
+            kpiIds={[kpi.id]}
+            selectedSalesperson={selectedSalesperson}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <SalesHeatmapCharts
+          companyId={companyId}
+          kpiIds={kpis.filter(k => k.kpi_type === "monetary").map(k => k.id)}
+          selectedSalesperson={selectedSalesperson}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+        />
+      )}
 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
