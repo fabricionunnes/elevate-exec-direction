@@ -118,8 +118,9 @@ export const SalespeopleComparisonTable = ({
   const allMonetaryKpis = useMemo(() => kpis.filter((k) => k.kpi_type === "monetary"), [kpis]);
 
   const mainGoalKpi = useMemo(() => {
+    if (filterKpiId) return kpis.find(k => k.id === filterKpiId);
     return kpis.find((k) => k.is_main_goal) || kpis.find((k) => k.kpi_type === "monetary");
-  }, [kpis]);
+  }, [kpis, filterKpiId]);
 
   const salesKpi = useMemo(() => {
     return kpis.find((k) =>
