@@ -1,10 +1,9 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Switch } from "@/components/ui/switch";
 import { Badge } from "@/components/ui/badge";
 import {
   Dialog,
@@ -21,8 +20,15 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { toast } from "sonner";
-import { Plus, Copy, ExternalLink, Link2, ArrowLeft } from "lucide-react";
+import { Plus, Copy, ExternalLink, Link2, ArrowLeft, Filter } from "lucide-react";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Salesperson {
@@ -32,6 +38,14 @@ interface Salesperson {
   phone: string | null;
   access_code: string;
   is_active: boolean;
+  unit_id: string | null;
+  team_id: string | null;
+  sector_id: string | null;
+}
+
+interface OrgEntity {
+  id: string;
+  name: string;
 }
 
 interface ClientSalesLinksPanelProps {
@@ -51,27 +65,120 @@ export const ClientSalesLinksPanel = ({
   const [saving, setSaving] = useState(false);
   const [formData, setFormData] = useState({ name: "", email: "", phone: "" });
 
+  // Filters
+  const [filterUnit, setFilterUnit] = useState("all");
+  const [filterSector, setFilterSector] = useState("all");
+  const [filterTeam, setFilterTeam] = useState("all");
+
+  // Org data
+  const [units, setUnits] = useState<OrgEntity[]>([]);
+  const [sectors, setSectors] = useState<OrgEntity[]>([]);
+  const [teams, setTeams] = useState<OrgEntity[]>([]);
+  const [sectorTeams, setSectorTeams] = useState<{ sector_id: string; team_id: string }[]>([]);
+
   useEffect(() => {
-    fetchSalespeople();
+    fetchData();
   }, [companyId]);
 
-  const fetchSalespeople = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
-        .from("company_salespeople")
-        .select("id, name, email, phone, access_code, is_active")
-        .eq("company_id", companyId)
-        .order("name");
+      const [spRes, unitsRes, sectorsRes, teamsRes, stRes] = await Promise.all([
+        supabase
+          .from("company_salespeople")
+          .select("id, name, email, phone, access_code, is_active, unit_id, team_id, sector_id")
+          .eq("company_id", companyId)
+          .order("name"),
+        supabase
+          .from("company_units")
+          .select("id, name")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_sectors")
+          .select("id, name")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_teams")
+          .select("id, name")
+          .eq("company_id", companyId)
+          .eq("is_active", true)
+          .order("name"),
+        supabase
+          .from("company_sector_teams")
+          .select("sector_id, team_id"),
+      ]);
 
-      if (error) throw error;
-      setSalespeople(data || []);
+      if (spRes.error) throw spRes.error;
+      setSalespeople(spRes.data || []);
+      setUnits(unitsRes.data || []);
+      setSectors(sectorsRes.data || []);
+      setTeams(teamsRes.data || []);
+      setSectorTeams(stRes.data || []);
     } catch (error) {
-      console.error("Error fetching salespeople:", error);
-      toast.error("Erro ao carregar vendedores");
+      console.error("Error fetching data:", error);
+      toast.error("Erro ao carregar dados");
     } finally {
       setLoading(false);
     }
   };
+
+  // Build sector→teams map for cascading filter
+  const teamIdsBySectorId = useMemo(() => {
+    const map: Record<string, Set<string>> = {};
+    sectorTeams.forEach(({ sector_id, team_id }) => {
+      if (!map[sector_id]) map[sector_id] = new Set();
+      map[sector_id].add(team_id);
+    });
+    return map;
+  }, [sectorTeams]);
+
+  // Available sectors filtered by unit (sectors that have salespeople in the selected unit)
+  const filteredSectors = useMemo(() => {
+    if (filterUnit === "all") return sectors;
+    // Show sectors whose salespeople belong to the selected unit
+    const sectorIds = new Set(
+      salespeople
+        .filter((sp) => sp.is_active && sp.unit_id === filterUnit && sp.sector_id)
+        .map((sp) => sp.sector_id!)
+    );
+    return sectors.filter((s) => sectorIds.has(s.id));
+  }, [sectors, filterUnit, salespeople]);
+
+  // Available teams filtered by sector
+  const filteredTeams = useMemo(() => {
+    if (filterSector === "all") return teams;
+    const teamIds = teamIdsBySectorId[filterSector] || new Set();
+    return teams.filter((t) => teamIds.has(t.id));
+  }, [teams, filterSector, teamIdsBySectorId]);
+
+  // Reset cascading filters
+  useEffect(() => {
+    setFilterSector("all");
+    setFilterTeam("all");
+  }, [filterUnit]);
+
+  useEffect(() => {
+    setFilterTeam("all");
+  }, [filterSector]);
+
+  const filteredSalespeople = useMemo(() => {
+    return salespeople.filter((sp) => {
+      if (!sp.is_active) return false;
+      if (filterUnit !== "all" && sp.unit_id !== filterUnit) return false;
+      if (filterSector !== "all") {
+        // Direct match or via team
+        const sectorTeamIds = teamIdsBySectorId[filterSector] || new Set();
+        const matchesDirect = sp.sector_id === filterSector;
+        const matchesViaTeam = sp.team_id ? sectorTeamIds.has(sp.team_id) : false;
+        if (!matchesDirect && !matchesViaTeam) return false;
+      }
+      if (filterTeam !== "all" && sp.team_id !== filterTeam) return false;
+      return true;
+    });
+  }, [salespeople, filterUnit, filterSector, filterTeam, teamIdsBySectorId]);
 
   const getEntryLink = (accessCode: string) => {
     return `${getPublicBaseUrl()}/#/kpi-entry/${companyId}?code=${accessCode}`;
@@ -110,7 +217,7 @@ export const ClientSalesLinksPanel = ({
       toast.success("Vendedor cadastrado!");
       setShowAddDialog(false);
       setFormData({ name: "", email: "", phone: "" });
-      fetchSalespeople();
+      fetchData();
     } catch (error: any) {
       console.error("Error adding salesperson:", error);
       toast.error(error.message || "Erro ao cadastrar vendedor");
@@ -119,7 +226,7 @@ export const ClientSalesLinksPanel = ({
     }
   };
 
-  const activeSalespeople = salespeople.filter((sp) => sp.is_active);
+  const hasFilters = units.length > 0 || sectors.length > 0 || teams.length > 0;
 
   if (loading) {
     return (
@@ -157,12 +264,58 @@ export const ClientSalesLinksPanel = ({
         )}
       </div>
 
+      {/* Filters */}
+      {hasFilters && (
+        <div className="flex flex-wrap items-center gap-3">
+          <Filter className="h-4 w-4 text-muted-foreground" />
+          {units.length > 0 && (
+            <Select value={filterUnit} onValueChange={setFilterUnit}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Unidade" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Unidades</SelectItem>
+                {units.map((u) => (
+                  <SelectItem key={u.id} value={u.id}>{u.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {sectors.length > 0 && (
+            <Select value={filterSector} onValueChange={setFilterSector}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Setor" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos Setores</SelectItem>
+                {filteredSectors.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+          {teams.length > 0 && (
+            <Select value={filterTeam} onValueChange={setFilterTeam}>
+              <SelectTrigger className="w-[180px] h-9">
+                <SelectValue placeholder="Equipe" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas Equipes</SelectItem>
+                {filteredTeams.map((t) => (
+                  <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+      )}
+
       {/* Salespeople list */}
-      {activeSalespeople.length === 0 ? (
+      {filteredSalespeople.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center text-muted-foreground">
-            <p>Nenhum vendedor ativo cadastrado.</p>
-            {canAddSalespeople && (
+            <p>Nenhum vendedor ativo encontrado.</p>
+            {canAddSalespeople && filterUnit === "all" && filterSector === "all" && filterTeam === "all" && (
               <Button
                 variant="outline"
                 className="mt-4"
@@ -186,7 +339,7 @@ export const ClientSalesLinksPanel = ({
               </TableRow>
             </TableHeader>
             <TableBody>
-              {activeSalespeople.map((person) => (
+              {filteredSalespeople.map((person) => (
                 <TableRow key={person.id}>
                   <TableCell className="font-medium">{person.name}</TableCell>
                   <TableCell className="hidden sm:table-cell text-muted-foreground">
