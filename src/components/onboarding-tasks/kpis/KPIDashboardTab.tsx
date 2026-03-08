@@ -1048,14 +1048,12 @@ export const KPIDashboardTab = ({
     return { data: chartData, targetLevels: targetLevelNames, kpiType };
   };
 
-  // Prepare ranking data
-  const getRankingData = () => {
-    // Filter salespeople by all active filters
+  // Prepare ranking data - per KPI when multiple main goals
+  const getRankingData = (forKpiId?: string) => {
     const filteredSalespeople = salespeople.filter(sp => {
       if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-      // Sector filter: check if salesperson belongs to sector (directly or via team)
       if (selectedSector !== "all") {
         if (!salespersonBelongsToSector(sp, selectedSector)) return false;
       }
@@ -1069,12 +1067,16 @@ export const KPIDashboardTab = ({
     });
 
     entries.forEach(entry => {
-      if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return;
+      // When forKpiId is provided, filter to that KPI only
+      if (forKpiId) {
+        if (entry.kpi_id !== forKpiId) return;
+      } else if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) {
+        return;
+      }
       const dims = getEntryDimensions(entry);
       const sp = salespeopleById.get(entry.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
