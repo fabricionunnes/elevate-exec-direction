@@ -2728,14 +2728,29 @@ export const KPIDashboardTab = ({
       </Card>
 
       {/* Sales Heatmap Charts */}
-      <SalesHeatmapCharts
-        companyId={companyId}
-        kpiIds={kpis.filter(k => k.kpi_type === "monetary").map(k => k.id)}
-        selectedSalesperson={selectedSalesperson}
-        selectedUnit={selectedUnit}
-        selectedTeam={selectedTeam}
-        selectedSector={selectedSector}
-      />
+      {hasMultipleMainGoalsForCharts ? (
+        mainGoalKpisForCharts.filter(k => k.kpi_type === "monetary").map((kpi) => (
+          <SalesHeatmapCharts
+            key={`heatmap-${kpi.id}`}
+            companyId={companyId}
+            kpiIds={[kpi.id]}
+            selectedSalesperson={selectedSalesperson}
+            selectedUnit={selectedUnit}
+            selectedTeam={selectedTeam}
+            selectedSector={selectedSector}
+            titleSuffix={kpi.name}
+          />
+        ))
+      ) : (
+        <SalesHeatmapCharts
+          companyId={companyId}
+          kpiIds={kpis.filter(k => k.kpi_type === "monetary").map(k => k.id)}
+          selectedSalesperson={selectedSalesperson}
+          selectedUnit={selectedUnit}
+          selectedTeam={selectedTeam}
+          selectedSector={selectedSector}
+        />
+      )}
 
       {/* Endomarketing Campaigns Widget */}
       {projectId && (
