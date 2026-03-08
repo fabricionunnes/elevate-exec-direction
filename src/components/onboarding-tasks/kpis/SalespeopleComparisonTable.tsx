@@ -84,6 +84,8 @@ export const SalespeopleComparisonTable = ({
   selectedTeam,
   selectedSector,
   selectedSalesperson,
+  filterKpiId,
+  titleSuffix,
 }: SalespeopleComparisonTableProps) => {
   const teamIdsBySectorId = useMemo(() => {
     const map: Record<string, Set<string>> = {};
