@@ -60,6 +60,7 @@ export const SalesHeatmapCharts = ({
   selectedUnit,
   selectedTeam,
   selectedSector,
+  titleSuffix,
 }: SalesHeatmapChartsProps) => {
   const [loading, setLoading] = useState(true);
   const [entries, setEntries] = useState<EntryRow[]>([]);
