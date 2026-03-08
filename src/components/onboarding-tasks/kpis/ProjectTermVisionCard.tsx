@@ -28,6 +28,8 @@ interface ProjectTermVisionCardProps {
   selectedTeam?: string;
   selectedSector?: string;
   className?: string;
+  filterKpiIds?: string[];
+  titleSuffix?: string;
 }
 
 export const ProjectTermVisionCard = ({
