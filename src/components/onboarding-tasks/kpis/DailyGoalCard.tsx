@@ -244,26 +244,24 @@ export const DailyGoalCard = ({
     return kpi?.effective_target ?? kpi?.target_value ?? 0;
   };
 
-  const companyData = useMemo(() => {
-    if (mainGoalKpis.length === 0) return null;
-    let totalTarget = 0;
-    let totalRealized = 0;
+  // Build per-KPI data instead of summing across KPIs
+  const perKpiData = useMemo(() => {
+    if (mainGoalKpis.length === 0) return [];
 
-    // When a specific salesperson is selected, use their individual target
-    if (selectedSalesperson !== "all") {
-      mainGoalKpis.forEach((kpi) => {
-        totalTarget += getTarget(kpi.id, selectedSalesperson);
+    return mainGoalKpis.map((kpi) => {
+      let totalTarget = 0;
+      let totalRealized = 0;
+
+      if (selectedSalesperson !== "all") {
+        totalTarget = getTarget(kpi.id, selectedSalesperson);
         const kpiEntries = entries.filter(
           (e) => e.kpi_id === kpi.id && e.salesperson_id === selectedSalesperson
         );
-        totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
-      });
-    } else {
-      // When filtering by unit/team/sector, sum individual targets for filtered salespeople
-      const hasOrgFilter = selectedUnit !== "all" || selectedTeam !== "all" || selectedSector !== "all";
-      
-      if (hasOrgFilter) {
-        mainGoalKpis.forEach((kpi) => {
+        totalRealized = kpiEntries.reduce((sum, e) => sum + e.value, 0);
+      } else {
+        const hasOrgFilter = selectedUnit !== "all" || selectedTeam !== "all" || selectedSector !== "all";
+
+        if (hasOrgFilter) {
           filteredSalespeople.forEach((sp) => {
             totalTarget += getTarget(kpi.id, sp.id);
           });
@@ -276,50 +274,50 @@ export const DailyGoalCard = ({
             if (selectedSector !== "all" && !salespersonBelongsToSector(sp, selectedSector)) return false;
             return true;
           });
-          totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
-        });
-      } else {
-        mainGoalKpis.forEach((kpi) => {
-          totalTarget += getTarget(kpi.id);
+          totalRealized = kpiEntries.reduce((sum, e) => sum + e.value, 0);
+        } else {
+          totalTarget = getTarget(kpi.id);
           const kpiEntries = entries.filter((e) => e.kpi_id === kpi.id);
-          totalRealized += kpiEntries.reduce((sum, e) => sum + e.value, 0);
-        });
+          totalRealized = kpiEntries.reduce((sum, e) => sum + e.value, 0);
+        }
       }
-    }
 
-    const remaining = Math.max(totalTarget - totalRealized, 0);
-    const dailyGoal = dayInfo.remaining > 0 ? remaining / dayInfo.remaining : 0;
-    const kpiType = mainGoalKpis[0]?.kpi_type;
-    return { totalTarget, totalRealized, remaining, dailyGoal, kpiType };
-  }, [mainGoalKpis, entries, dayInfo, salespeople, filteredSalespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
+      const remaining = Math.max(totalTarget - totalRealized, 0);
+      const dailyGoal = dayInfo.remaining > 0 ? remaining / dayInfo.remaining : 0;
 
-  const salespeopleData = useMemo(() => {
-    if (mainGoalKpis.length === 0) return [];
-    return filteredSalespeople
-      .map((sp) => {
-        let totalTarget = 0;
-        let totalRealized = 0;
-        mainGoalKpis.forEach((kpi) => {
-          totalTarget += getTarget(kpi.id, sp.id);
+      // Per-salesperson data for THIS KPI only
+      const spData = filteredSalespeople
+        .map((sp) => {
+          const spTarget = getTarget(kpi.id, sp.id);
           const spEntries = entries.filter(
             (e) => e.kpi_id === kpi.id && e.salesperson_id === sp.id
           );
-          totalRealized += spEntries.reduce((sum, e) => sum + e.value, 0);
-        });
-        const remaining = Math.max(totalTarget - totalRealized, 0);
-        const dailyGoal = dayInfo.remaining > 0 ? remaining / dayInfo.remaining : 0;
-        return {
-          id: sp.id,
-          name: sp.name,
-          totalTarget,
-          totalRealized,
-          remaining,
-          dailyGoal,
-          percentage: totalTarget > 0 ? (totalRealized / totalTarget) * 100 : 0,
-        };
-      })
-      .sort((a, b) => b.percentage - a.percentage);
-  }, [mainGoalKpis, filteredSalespeople, entries, dayInfo]);
+          const spRealized = spEntries.reduce((sum, e) => sum + e.value, 0);
+          const spRemaining = Math.max(spTarget - spRealized, 0);
+          const spDailyGoal = dayInfo.remaining > 0 ? spRemaining / dayInfo.remaining : 0;
+          return {
+            id: sp.id,
+            name: sp.name,
+            totalTarget: spTarget,
+            totalRealized: spRealized,
+            remaining: spRemaining,
+            dailyGoal: spDailyGoal,
+            percentage: spTarget > 0 ? (spRealized / spTarget) * 100 : 0,
+          };
+        })
+        .sort((a, b) => b.percentage - a.percentage);
+
+      return {
+        kpi,
+        totalTarget,
+        totalRealized,
+        remaining,
+        dailyGoal,
+        kpiType: kpi.kpi_type,
+        salespeopleData: spData,
+      };
+    });
+  }, [mainGoalKpis, entries, dayInfo, salespeople, filteredSalespeople, selectedUnit, selectedTeam, selectedSector, selectedSalesperson]);
 
   const formatValue = (value: number, kpiType?: string) => {
     if (kpiType === "monetary") {
