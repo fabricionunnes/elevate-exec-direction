@@ -924,8 +924,8 @@ export const KPIDashboardTab = ({
 
   const projection = getMonthlyProjection();
 
-  // Prepare chart data - Daily evolution - PRIORITIZE main goal KPIs, sum if multiple
-  const getDailyChartData = () => {
+  // Prepare chart data - Daily evolution - per KPI when multiple main goals
+  const getDailyChartData = (forKpiId?: string) => {
     const filteredKpis = getFilteredKpis();
     
     const targetKpis = getRevenueKpisForContext(filteredKpis);
@@ -933,6 +933,8 @@ export const KPIDashboardTab = ({
     // If a specific KPI is selected, use that instead
     const kpiIdsToUse = selectedKpi !== "all" 
       ? [selectedKpi] 
+      : forKpiId
+      ? [forKpiId]
       : targetKpis.map(k => k.id);
     
     const filteredEntries = entries.filter(e => {
@@ -942,7 +944,6 @@ export const KPIDashboardTab = ({
       if (selectedSalesperson !== "all" && dims.salesperson_id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
@@ -967,23 +968,23 @@ export const KPIDashboardTab = ({
       }));
   };
 
-  // Get target vs realized chart data - PRIORITIZE main goal KPIs, fallback to monetary
-  const getTargetVsRealizedData = () => {
+  // Get target vs realized chart data - per KPI when multiple main goals
+  const getTargetVsRealizedData = (forKpiId?: string) => {
     const filteredKpis = getFilteredKpis();
     
-    const targetKpis = getRevenueKpisForContext(filteredKpis);
+    const targetKpis = forKpiId 
+      ? filteredKpis.filter(k => k.id === forKpiId)
+      : getRevenueKpisForContext(filteredKpis);
     const mainGoalKpis = filteredKpis.filter(k => k.is_main_goal);
     
     const targetKpiIds = targetKpis.map(k => k.id);
     
-    // Filter entries to only include target KPIs and apply unit/team/salesperson filter
     const filteredEntries = entries.filter(e => {
       if (!targetKpiIds.includes(e.kpi_id)) return false;
       const dims = getEntryDimensions(e);
       const sp = salespeopleById.get(e.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return false;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
@@ -993,7 +994,6 @@ export const KPIDashboardTab = ({
       return true;
     });
 
-    // Group entries by date
     const groupedByDate: Record<string, number> = {};
     filteredEntries.forEach(entry => {
       if (!groupedByDate[entry.entry_date]) {
@@ -1002,15 +1002,12 @@ export const KPIDashboardTab = ({
       groupedByDate[entry.entry_date] += entry.value;
     });
 
-    // Sort dates
     const sortedDates = Object.keys(groupedByDate).sort();
     if (sortedDates.length === 0) return { data: [], targetLevels: [], kpiType: "monetary" };
 
-    // Calculate target levels - aggregate all target KPI targets using filtered targets
     let targetLevelsMap: Record<string, number> = {};
     
     targetKpis.forEach(kpi => {
-      // Get targets based on current unit/salesperson filter
       const filteredTargets = getFilteredTargetsForKpi(kpi.id);
       
       if (Object.keys(filteredTargets).length > 0) {
@@ -1029,11 +1026,8 @@ export const KPIDashboardTab = ({
 
     const targetLevelNames = Object.keys(targetLevelsMap);
     const totalDays = sortedDates.length;
-
-    // Determine KPI type for formatting
     const kpiType = targetKpis[0]?.kpi_type ?? (mainGoalKpis[0]?.kpi_type ?? "monetary");
 
-    // Build cumulative chart data
     let cumulativeValue = 0;
     const chartData = sortedDates.map((date, index) => {
       cumulativeValue += groupedByDate[date];
@@ -1044,7 +1038,6 @@ export const KPIDashboardTab = ({
         realizado: cumulativeValue,
       };
 
-      // Add each target level as a line (proportional to progress)
       targetLevelNames.forEach(levelName => {
         dataPoint[levelName] = targetLevelsMap[levelName] * dayProgress;
       });
@@ -1055,14 +1048,12 @@ export const KPIDashboardTab = ({
     return { data: chartData, targetLevels: targetLevelNames, kpiType };
   };
 
-  // Prepare ranking data
-  const getRankingData = () => {
-    // Filter salespeople by all active filters
+  // Prepare ranking data - per KPI when multiple main goals
+  const getRankingData = (forKpiId?: string) => {
     const filteredSalespeople = salespeople.filter(sp => {
       if (selectedSalesperson !== "all" && sp.id !== selectedSalesperson) return false;
       if (selectedUnit !== "all" && sp.unit_id !== selectedUnit) return false;
       if (selectedTeam !== "all" && sp.team_id !== selectedTeam) return false;
-      // Sector filter: check if salesperson belongs to sector (directly or via team)
       if (selectedSector !== "all") {
         if (!salespersonBelongsToSector(sp, selectedSector)) return false;
       }
@@ -1076,12 +1067,16 @@ export const KPIDashboardTab = ({
     });
 
     entries.forEach(entry => {
-      if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) return;
+      // When forKpiId is provided, filter to that KPI only
+      if (forKpiId) {
+        if (entry.kpi_id !== forKpiId) return;
+      } else if (selectedKpi !== "all" && entry.kpi_id !== selectedKpi) {
+        return;
+      }
       const dims = getEntryDimensions(entry);
       const sp = salespeopleById.get(entry.salesperson_id);
       if (selectedUnit !== "all" && dims.unit_id !== selectedUnit) return;
       if (selectedTeam !== "all" && dims.team_id !== selectedTeam) return;
-      // Sector filter: check direct match OR via salesperson's team
       if (selectedSector !== "all") {
         const directMatch = dims.sector_id === selectedSector;
         const viaSalesperson = sp ? salespersonBelongsToSector(sp, selectedSector) : false;
@@ -1291,6 +1286,10 @@ export const KPIDashboardTab = ({
       </Card>
     );
   }
+
+  // Determine if we should show per-KPI charts
+  const mainGoalKpisForCharts = kpis.filter(k => k.is_main_goal);
+  const hasMultipleMainGoalsForCharts = mainGoalKpisForCharts.length > 1 && selectedKpi === "all";
 
   const dailyData = getDailyChartData();
   const rankingData = getRankingData();
@@ -2322,81 +2321,204 @@ export const KPIDashboardTab = ({
         </CardContent>
       </Card>
 
-      {/* Target vs Realized Chart */}
-      <Card className="relative overflow-hidden border-0 shadow-xl">
-        <div className="absolute inset-0 bg-gradient-to-br from-teal-900/[0.03] via-transparent to-cyan-900/[0.04] dark:from-teal-800/20 dark:via-transparent dark:to-cyan-900/15" />
-        <CardHeader className="relative pb-3">
-          <div className="flex items-center justify-between flex-wrap gap-2">
-            <div className="flex items-center gap-3">
-              <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/20">
-                <Target className="h-4 w-4" />
+      {/* Target vs Realized Chart - per KPI when multiple main goals */}
+      {hasMultipleMainGoalsForCharts ? (
+        <div className="space-y-4">
+          {mainGoalKpisForCharts.map((kpi) => {
+            const kpiTvR = getTargetVsRealizedData(kpi.id);
+            return (
+              <Card key={`tvr-${kpi.id}`} className="relative overflow-hidden border-0 shadow-xl">
+                <div className="absolute inset-0 bg-gradient-to-br from-teal-900/[0.03] via-transparent to-cyan-900/[0.04] dark:from-teal-800/20 dark:via-transparent dark:to-cyan-900/15" />
+                <CardHeader className="relative pb-3">
+                  <div className="flex items-center justify-between flex-wrap gap-2">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/20">
+                        <Target className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Meta x Realizado — {kpi.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">Evolução cumulativa</p>
+                      </div>
+                    </div>
+                  </div>
+                </CardHeader>
+                <CardContent className="relative">
+                  {kpiTvR.data.length > 0 && kpiTvR.targetLevels.length > 0 ? (
+                    <ResponsiveContainer width="100%" height={350}>
+                      <LineChart data={kpiTvR.data}>
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                        <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <YAxis tickFormatter={(value) => kpiTvR.kpiType === "monetary" ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value) : value.toLocaleString("pt-BR")} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                        <Tooltip formatter={(value: number, name: string) => [formatValue(value, kpiTvR.kpiType || "monetary"), name === "realizado" ? "Realizado" : name]} />
+                        <Legend />
+                        <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                        {kpiTvR.targetLevels.map((levelName, index) => (
+                          <Line key={levelName} type="monotone" dataKey={levelName} name={levelName} stroke={targetLevelColors[index % targetLevelColors.length]} strokeWidth={2} strokeDasharray="5 5" dot={false} />
+                        ))}
+                      </LineChart>
+                    </ResponsiveContainer>
+                  ) : (
+                    <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
+                      <Target className="h-12 w-12 mb-4 opacity-20" />
+                      <p className="font-medium">Nenhum dado para o período selecionado</p>
+                    </div>
+                  )}
+                </CardContent>
+              </Card>
+            );
+          })}
+        </div>
+      ) : (
+        <Card className="relative overflow-hidden border-0 shadow-xl">
+          <div className="absolute inset-0 bg-gradient-to-br from-teal-900/[0.03] via-transparent to-cyan-900/[0.04] dark:from-teal-800/20 dark:via-transparent dark:to-cyan-900/15" />
+          <CardHeader className="relative pb-3">
+            <div className="flex items-center justify-between flex-wrap gap-2">
+              <div className="flex items-center gap-3">
+                <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-teal-500 to-cyan-600 text-white shadow-lg shadow-teal-500/20">
+                  <Target className="h-4 w-4" />
+                </div>
+                <div>
+                  <CardTitle className="text-base">Meta x Realizado</CardTitle>
+                  <p className="text-xs text-muted-foreground">Evolução cumulativa</p>
+                </div>
               </div>
-              <div>
-                <CardTitle className="text-base">Meta x Realizado</CardTitle>
-                <p className="text-xs text-muted-foreground">Evolução cumulativa</p>
-              </div>
+              <Badge variant="outline" className="gap-1 border-0 bg-muted/60 px-3 py-1 text-xs font-medium">
+                {targetVsRealized.kpiType === "monetary" ? (
+                  <><DollarSign className="h-3 w-3" /> Faturamento</>
+                ) : targetVsRealized.kpiType === "percentage" ? (
+                  <><Percent className="h-3 w-3" /> Percentual</>
+                ) : (
+                  <><Hash className="h-3 w-3" /> Quantidade</>
+                )}
+              </Badge>
             </div>
-            <Badge variant="outline" className="gap-1 border-0 bg-muted/60 px-3 py-1 text-xs font-medium">
-              {targetVsRealized.kpiType === "monetary" ? (
-                <><DollarSign className="h-3 w-3" /> Faturamento</>
-              ) : targetVsRealized.kpiType === "percentage" ? (
-                <><Percent className="h-3 w-3" /> Percentual</>
-              ) : (
-                <><Hash className="h-3 w-3" /> Quantidade</>
-              )}
-            </Badge>
-          </div>
-        </CardHeader>
-        <CardContent className="relative">
-          {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 ? (
-            <ResponsiveContainer width="100%" height={350}>
-              <LineChart data={targetVsRealized.data}>
-                <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
-                <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
-                <YAxis 
-                  tickFormatter={(value) => 
-                    targetVsRealized.kpiType === "monetary" 
-                      ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
-                      : targetVsRealized.kpiType === "percentage"
-                        ? `${value.toFixed(0)}%`
-                        : value.toLocaleString("pt-BR")
-                  }
-                  tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false}
-                />
-                <Tooltip 
-                  formatter={(value: number, name: string) => [
-                    formatValue(value, targetVsRealized.kpiType || "monetary"),
-                    name === "realizado" ? "Realizado" : name
-                  ]}
-                />
-                <Legend />
-                <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
-                {targetVsRealized.targetLevels.map((levelName, index) => (
-                  <Line 
-                    key={levelName}
-                    type="monotone" 
-                    dataKey={levelName} 
-                    name={levelName}
-                    stroke={targetLevelColors[index % targetLevelColors.length]} 
-                    strokeWidth={2}
-                    strokeDasharray="5 5"
-                    dot={false}
+          </CardHeader>
+          <CardContent className="relative">
+            {targetVsRealized.data.length > 0 && targetVsRealized.targetLevels.length > 0 ? (
+              <ResponsiveContainer width="100%" height={350}>
+                <LineChart data={targetVsRealized.data}>
+                  <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                  <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                  <YAxis 
+                    tickFormatter={(value) => 
+                      targetVsRealized.kpiType === "monetary" 
+                        ? new Intl.NumberFormat("pt-BR", { notation: "compact", compactDisplay: "short" }).format(value)
+                        : targetVsRealized.kpiType === "percentage"
+                          ? `${value.toFixed(0)}%`
+                          : value.toLocaleString("pt-BR")
+                    }
+                    tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false}
                   />
-                ))}
-              </LineChart>
-            </ResponsiveContainer>
-          ) : (
-            <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
-              <Target className="h-12 w-12 mb-4 opacity-20" />
-              <p className="font-medium">Nenhum dado para o período selecionado</p>
-              <p className="text-sm">Lance valores nos KPIs para comparar com as metas</p>
-            </div>
-          )}
-        </CardContent>
-      </Card>
+                  <Tooltip 
+                    formatter={(value: number, name: string) => [
+                      formatValue(value, targetVsRealized.kpiType || "monetary"),
+                      name === "realizado" ? "Realizado" : name
+                    ]}
+                  />
+                  <Legend />
+                  <Line type="monotone" dataKey="realizado" name="Realizado" stroke="hsl(var(--primary))" strokeWidth={3} dot={{ fill: "hsl(var(--primary))", r: 3, stroke: "#fff", strokeWidth: 2 }} />
+                  {targetVsRealized.targetLevels.map((levelName, index) => (
+                    <Line 
+                      key={levelName}
+                      type="monotone" 
+                      dataKey={levelName} 
+                      name={levelName}
+                      stroke={targetLevelColors[index % targetLevelColors.length]} 
+                      strokeWidth={2}
+                      strokeDasharray="5 5"
+                      dot={false}
+                    />
+                  ))}
+                </LineChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[200px] flex flex-col items-center justify-center text-muted-foreground">
+                <Target className="h-12 w-12 mb-4 opacity-20" />
+                <p className="font-medium">Nenhum dado para o período selecionado</p>
+                <p className="text-sm">Lance valores nos KPIs para comparar com as metas</p>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
 
       {/* Charts Row - Daily Evolution + Ranking */}
-      <div className="grid gap-6 lg:grid-cols-2">
+      {hasMultipleMainGoalsForCharts ? (
+        <div className="space-y-4">
+          {mainGoalKpisForCharts.map((kpi) => {
+            const kpiDailyData = getDailyChartData(kpi.id);
+            const kpiRankingData = getRankingData(kpi.id);
+            return (
+              <div key={`charts-${kpi.id}`} className="grid gap-6 lg:grid-cols-2">
+                <Card className="relative overflow-hidden border-0 shadow-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-sky-900/[0.03] via-transparent to-blue-900/[0.04] dark:from-sky-800/20 dark:via-transparent dark:to-blue-900/15" />
+                  <CardHeader className="relative pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-sky-500 to-blue-600 text-white shadow-lg shadow-sky-500/20">
+                        <TrendingUp className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Evolução Diária — {kpi.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">Desempenho dia a dia</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    {kpiDailyData.length > 0 ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <LineChart data={kpiDailyData}>
+                          <CartesianGrid strokeDasharray="3 3" vertical={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                          <XAxis dataKey="date" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip formatter={(value: number) => [formatValue(value, kpi.kpi_type), "Valor"]} />
+                          <Line type="monotone" dataKey="value" stroke="hsl(var(--primary))" strokeWidth={2.5} dot={{ r: 3, fill: "hsl(var(--primary))", stroke: "#fff", strokeWidth: 2 }} />
+                        </LineChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        Nenhum dado para o período selecionado
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+
+                <Card className="relative overflow-hidden border-0 shadow-xl">
+                  <div className="absolute inset-0 bg-gradient-to-br from-orange-900/[0.03] via-transparent to-rose-900/[0.04] dark:from-orange-800/20 dark:via-transparent dark:to-rose-900/15" />
+                  <CardHeader className="relative pb-3">
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center justify-center h-9 w-9 rounded-lg bg-gradient-to-br from-orange-500 to-rose-600 text-white shadow-lg shadow-orange-500/20">
+                        <Users className="h-4 w-4" />
+                      </div>
+                      <div>
+                        <CardTitle className="text-base">Ranking — {kpi.name}</CardTitle>
+                        <p className="text-xs text-muted-foreground">Por performance no período</p>
+                      </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="relative">
+                    {kpiRankingData.length > 0 && kpiRankingData.some(r => r.total > 0) ? (
+                      <ResponsiveContainer width="100%" height={300}>
+                        <BarChart data={kpiRankingData} layout="vertical">
+                          <CartesianGrid strokeDasharray="3 3" horizontal={false} stroke="hsl(var(--border))" strokeOpacity={0.5} />
+                          <XAxis type="number" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <YAxis dataKey="name" type="category" width={100} tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} tickLine={false} axisLine={false} />
+                          <Tooltip formatter={(value: number) => [formatValue(value, kpi.kpi_type), "Total"]} />
+                          <Bar dataKey="total" fill="hsl(var(--primary))" radius={[0, 6, 6, 0]} />
+                        </BarChart>
+                      </ResponsiveContainer>
+                    ) : (
+                      <div className="h-[300px] flex items-center justify-center text-muted-foreground">
+                        Nenhum dado para o período selecionado
+                      </div>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            );
+          })}
+        </div>
+      ) : (
+        <div className="grid gap-6 lg:grid-cols-2">
         <Card className="relative overflow-hidden border-0 shadow-xl">
           <div className="absolute inset-0 bg-gradient-to-br from-sky-900/[0.03] via-transparent to-blue-900/[0.04] dark:from-sky-800/20 dark:via-transparent dark:to-blue-900/15" />
           <CardHeader className="relative pb-3">
@@ -2470,7 +2592,8 @@ export const KPIDashboardTab = ({
             )}
           </CardContent>
         </Card>
-      </div>
+        </div>
+      )}
 
       {/* Detailed KPI Table */}
       <Card className="relative overflow-hidden border-0 shadow-xl">
