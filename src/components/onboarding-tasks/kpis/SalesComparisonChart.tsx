@@ -14,8 +14,9 @@ import {
   ReferenceLine,
 } from "recharts";
 import { TrendingUp, TrendingDown, ArrowRight, BarChart3, Sparkles, Loader2 } from "lucide-react";
-import { format, parseISO, startOfMonth } from "date-fns";
+import { format, parseISO, startOfMonth, endOfMonth, isSameMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { isHoliday } from "@/lib/businessDays";
 import { motion } from "framer-motion";
 
 interface SalesHistoryEntry {
