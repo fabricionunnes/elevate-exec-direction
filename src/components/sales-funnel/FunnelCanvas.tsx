@@ -398,7 +398,7 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
             <Sparkles className="h-4 w-4 mr-1" /> IA Otimização
           </Button>
           <Button size="sm" variant="outline" onClick={handlePrint}>
-            <Printer className="h-4 w-4 mr-1" /> Imprimir
+            <Printer className="h-4 w-4 mr-1" /> Exportar PDF
           </Button>
           <div className="flex gap-1">
             <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setZoom(z => Math.min(2, z + 0.1))}><ZoomIn className="h-3.5 w-3.5" /></Button>
