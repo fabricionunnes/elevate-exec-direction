@@ -1,7 +1,7 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, RadialBarChart, RadialBar, Legend,
 } from "recharts";
 import { differenceInMonths, parseISO } from "date-fns";
 
@@ -11,7 +11,35 @@ interface Props {
   retentionAttempts: any[];
 }
 
-const COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#10b981", "#6b7280", "#ec4899", "#14b8a6"];
+const GRADIENT_COLORS = [
+  { start: "#f43f5e", end: "#fb7185" },
+  { start: "#f97316", end: "#fdba74" },
+  { start: "#8b5cf6", end: "#a78bfa" },
+  { start: "#06b6d4", end: "#67e8f9" },
+  { start: "#10b981", end: "#6ee7b7" },
+  { start: "#ec4899", end: "#f9a8d4" },
+  { start: "#eab308", end: "#fde047" },
+  { start: "#6366f1", end: "#a5b4fc" },
+];
+
+const GradientDefs = () => (
+  <defs>
+    {GRADIENT_COLORS.map((c, i) => (
+      <linearGradient key={i} id={`chartGrad${i}`} x1="0" y1="0" x2="0" y2="1">
+        <stop offset="0%" stopColor={c.start} stopOpacity={0.95} />
+        <stop offset="100%" stopColor={c.end} stopOpacity={0.7} />
+      </linearGradient>
+    ))}
+    {GRADIENT_COLORS.map((c, i) => (
+      <linearGradient key={`h${i}`} id={`chartGradH${i}`} x1="0" y1="0" x2="1" y2="0">
+        <stop offset="0%" stopColor={c.start} stopOpacity={0.95} />
+        <stop offset="100%" stopColor={c.end} stopOpacity={0.7} />
+      </linearGradient>
+    ))}
+  </defs>
+);
+
+const tooltipStyle = { borderRadius: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.12)", fontSize: 13 };
 
 export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
   const cancelled = projects.filter(p => p.status === "closed" && p.churn_date);
@@ -26,7 +54,7 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
     });
     return Object.entries(map)
       .map(([seg, d]) => ({
-        segment: seg.length > 15 ? seg.substring(0, 15) + "..." : seg,
+        segment: seg.length > 18 ? seg.substring(0, 18) + "..." : seg,
         churn: d.active + d.churned > 0 ? parseFloat(((d.churned / (d.active + d.churned)) * 100).toFixed(1)) : 0,
         total: d.active + d.churned,
       }))
@@ -49,7 +77,7 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
     });
     return Object.entries(map)
       .map(([name, d]) => ({
-        name: name.length > 12 ? name.substring(0, 12) + "..." : name,
+        name: name.length > 14 ? name.substring(0, 14) + "..." : name,
         churn: (d.churned + d.total) > 0 ? parseFloat(((d.churned / (d.churned + d.total)) * 100).toFixed(1)) : 0,
       }))
       .sort((a, b) => b.churn - a.churn)
@@ -65,10 +93,11 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
       if (r.result === "retained") map[name].retained++;
     });
     return Object.entries(map)
-      .map(([name, d]) => ({
-        name: name.length > 12 ? name.substring(0, 12) + "..." : name,
+      .map(([name, d], i) => ({
+        name: name.length > 14 ? name.substring(0, 14) + "..." : name,
         rate: d.total > 0 ? parseFloat(((d.retained / d.total) * 100).toFixed(1)) : 0,
         total: d.total,
+        fill: `url(#chartGradH${i % GRADIENT_COLORS.length})`,
       }))
       .sort((a, b) => b.rate - a.rate)
       .slice(0, 10);
@@ -107,101 +136,165 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
     return Object.entries(buckets).map(([faixa, count]) => ({ faixa, count }));
   }, [cancelled, companies]);
 
-  const getBarColor = (val: number) => {
-    if (val >= 60) return "#ef4444";
-    if (val >= 30) return "#f59e0b";
+  const getBarColor = (val: number, idx: number) => {
+    if (val >= 60) return "#f43f5e";
+    if (val >= 30) return "#f97316";
     return "#10b981";
   };
 
   return (
     <div className="space-y-6">
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Churn por Segmento (%)</CardTitle></CardHeader>
+        {/* Churn por Segmento - 3D perspective */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-rose-500 to-orange-400" />
+              Churn por Segmento (%)
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={churnBySegment} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="segment" type="category" width={120} className="text-xs" />
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Bar dataKey="churn" radius={[0, 4, 4, 0]} maxBarSize={25}>
-                  {churnBySegment.map((e, i) => <Cell key={i} fill={getBarColor(e.churn)} />)}
-                  <LabelList dataKey="churn" position="right" formatter={(v: number) => `${v}%`} className="text-xs" />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ perspective: "800px" }}>
+              <div style={{ transform: "rotateY(3deg)", transformOrigin: "left center" }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={churnBySegment} layout="vertical" barGap={4}>
+                    <GradientDefs />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="segment" type="category" width={130} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: number) => `${v}%`} contentStyle={tooltipStyle} />
+                    <Bar dataKey="churn" radius={[0, 8, 8, 0]} maxBarSize={28}>
+                      {churnBySegment.map((e, i) => (
+                        <Cell key={i} fill={getBarColor(e.churn, i)} style={{ filter: "drop-shadow(2px 3px 4px rgba(0,0,0,0.15))" }} />
+                      ))}
+                      <LabelList dataKey="churn" position="right" formatter={(v: number) => `${v}%`} style={{ fontSize: 11, fontWeight: 600 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Churn por Consultor (%)</CardTitle></CardHeader>
+        {/* Churn por Consultor */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-500 to-pink-400" />
+              Churn por Consultor (%)
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={churnByConsultant} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={100} className="text-xs" />
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Bar dataKey="churn" radius={[0, 4, 4, 0]} maxBarSize={25}>
-                  {churnByConsultant.map((e, i) => <Cell key={i} fill={getBarColor(e.churn)} />)}
-                  <LabelList dataKey="churn" position="right" formatter={(v: number) => `${v}%`} className="text-xs" />
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ perspective: "800px" }}>
+              <div style={{ transform: "rotateY(-3deg)", transformOrigin: "right center" }}>
+                <ResponsiveContainer width="100%" height={320}>
+                  <BarChart data={churnByConsultant} layout="vertical" barGap={4}>
+                    <GradientDefs />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip formatter={(v: number) => `${v}%`} contentStyle={tooltipStyle} />
+                    <Bar dataKey="churn" radius={[0, 8, 8, 0]} maxBarSize={28}>
+                      {churnByConsultant.map((e, i) => (
+                        <Cell key={i} fill={getBarColor(e.churn, i)} style={{ filter: "drop-shadow(2px 3px 4px rgba(0,0,0,0.15))" }} />
+                      ))}
+                      <LabelList dataKey="churn" position="right" formatter={(v: number) => `${v}%`} style={{ fontSize: 11, fontWeight: 600 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 md:grid-cols-3">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Retenção por Consultor (%)</CardTitle></CardHeader>
+        {/* Retenção por Consultor */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-indigo-500 to-blue-400" />
+              Retenção por Consultor (%)
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
+            <ResponsiveContainer width="100%" height={280}>
               <BarChart data={retentionByConsultant} layout="vertical">
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis type="number" domain={[0, 100]} />
-                <YAxis dataKey="name" type="category" width={100} className="text-xs" />
-                <Tooltip formatter={(v: number) => `${v}%`} />
-                <Bar dataKey="rate" fill="hsl(var(--primary))" radius={[0, 4, 4, 0]} maxBarSize={20}>
-                  <LabelList dataKey="rate" position="right" formatter={(v: number) => `${v}%`} className="text-xs" />
+                <GradientDefs />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(v: number) => `${v}%`} contentStyle={tooltipStyle} />
+                <Bar dataKey="rate" radius={[0, 8, 8, 0]} maxBarSize={22}>
+                  {retentionByConsultant.map((_, i) => (
+                    <Cell key={i} fill={`url(#chartGradH${i % GRADIENT_COLORS.length})`} style={{ filter: "drop-shadow(2px 3px 4px rgba(0,0,0,0.1))" }} />
+                  ))}
+                  <LabelList dataKey="rate" position="right" formatter={(v: number) => `${v}%`} style={{ fontSize: 11, fontWeight: 600 }} />
                 </Bar>
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Cancelamentos por Tempo de Cliente</CardTitle></CardHeader>
+        {/* Cancelamentos por Tempo de Cliente - 3D bars */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-cyan-500 to-teal-400" />
+              Por Tempo de Cliente
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={churnByClientTime}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="period" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Bar dataKey="count" name="Cancelamentos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]}>
-                  {churnByClientTime.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ perspective: "800px" }}>
+              <div style={{ transform: "rotateX(5deg)", transformOrigin: "center bottom" }}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={churnByClientTime} barGap={6}>
+                    <GradientDefs />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <XAxis dataKey="period" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" name="Cancelamentos" radius={[8, 8, 4, 4]} maxBarSize={40}>
+                      {churnByClientTime.map((_, i) => (
+                        <Cell key={i} fill={`url(#chartGrad${i % GRADIENT_COLORS.length})`} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} />
+                      ))}
+                      <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 700 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Churn por Faixa de Ticket</CardTitle></CardHeader>
+        {/* Churn por Faixa de Ticket - 3D bars */}
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-amber-500 to-yellow-400" />
+              Por Faixa de Ticket
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={250}>
-              <BarChart data={churnByTicket}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="faixa" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Bar dataKey="count" name="Cancelamentos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]}>
-                  {churnByTicket.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
-                </Bar>
-              </BarChart>
-            </ResponsiveContainer>
+            <div style={{ perspective: "800px" }}>
+              <div style={{ transform: "rotateX(5deg)", transformOrigin: "center bottom" }}>
+                <ResponsiveContainer width="100%" height={280}>
+                  <BarChart data={churnByTicket} barGap={6}>
+                    <GradientDefs />
+                    <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.4} />
+                    <XAxis dataKey="faixa" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                    <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                    <Tooltip contentStyle={tooltipStyle} />
+                    <Bar dataKey="count" name="Cancelamentos" radius={[8, 8, 4, 4]} maxBarSize={40}>
+                      {churnByTicket.map((_, i) => (
+                        <Cell key={i} fill={`url(#chartGrad${(i + 3) % GRADIENT_COLORS.length})`} style={{ filter: "drop-shadow(0 4px 6px rgba(0,0,0,0.15))" }} />
+                      ))}
+                      <LabelList dataKey="count" position="top" style={{ fontSize: 12, fontWeight: 700 }} />
+                    </Bar>
+                  </BarChart>
+                </ResponsiveContainer>
+              </div>
+            </div>
           </CardContent>
         </Card>
       </div>
