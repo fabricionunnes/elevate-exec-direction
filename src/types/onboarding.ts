@@ -201,6 +201,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "UNV Academy",
     group: "Integrações",
   },
+  {
+    key: CLIENT_MENU_KEYS.funil_vendas,
+    label: "Funil de Vendas",
+    group: null,
+  },
 ] as const;
 
 // Role labels in Portuguese
