@@ -225,26 +225,149 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
   const handlePrint = async () => {
     if (!canvasRef.current) return;
     try {
-      toast.info("Gerando imagem para impressão...");
-      const canvas = await html2canvas(canvasRef.current, {
+      toast.info("Gerando PDF do funil...");
+
+      // Capture canvas
+      const canvasImg = await html2canvas(canvasRef.current, {
         backgroundColor: "#ffffff",
         scale: 2,
         useCORS: true,
       });
-      const dataUrl = canvas.toDataURL("image/png");
-      const printWindow = window.open("", "_blank");
-      if (!printWindow) {
-        toast.error("Popup bloqueado. Permita popups para imprimir.");
-        return;
+      const funnelDataUrl = canvasImg.toDataURL("image/png");
+
+      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
+      const pageWidth = pdf.internal.pageSize.getWidth();
+      const pageHeight = pdf.internal.pageSize.getHeight();
+
+      // Brand colors
+      const MARINHO = [10, 25, 49]; // #0A1931
+      const VERMELHO = [200, 30, 30]; // brand red
+
+      // Header bar
+      pdf.setFillColor(MARINHO[0], MARINHO[1], MARINHO[2]);
+      pdf.rect(0, 0, pageWidth, 28, "F");
+
+      // Red accent line
+      pdf.setFillColor(VERMELHO[0], VERMELHO[1], VERMELHO[2]);
+      pdf.rect(0, 28, pageWidth, 1.5, "F");
+
+      // Logo
+      try {
+        const logoImg = new Image();
+        logoImg.crossOrigin = "anonymous";
+        await new Promise<void>((resolve, reject) => {
+          logoImg.onload = () => resolve();
+          logoImg.onerror = reject;
+          logoImg.src = logoUnv;
+        });
+        const tmpCanvas = document.createElement("canvas");
+        tmpCanvas.width = logoImg.naturalWidth;
+        tmpCanvas.height = logoImg.naturalHeight;
+        const ctx = tmpCanvas.getContext("2d");
+        if (ctx) {
+          ctx.drawImage(logoImg, 0, 0);
+          const logoData = tmpCanvas.toDataURL("image/png");
+          const logoW = 45;
+          const logoH = (logoImg.naturalHeight / logoImg.naturalWidth) * logoW;
+          pdf.addImage(logoData, "PNG", 10, 4, logoW, logoH);
+        }
+      } catch {
+        // fallback text if logo fails
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("UNIVERSIDADE NACIONAL DE VENDAS", 10, 16);
       }
-      printWindow.document.write(`
-        <html><head><title>${funnel?.name || "Funil de Vendas"}</title>
-        <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}@media print{body{margin:0}}</style>
-        </head><body><img src="${dataUrl}" onload="window.print();window.close();" /></body></html>
-      `);
-      printWindow.document.close();
-    } catch {
-      toast.error("Erro ao gerar impressão");
+
+      // Title on header
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(18);
+      pdf.setFont("helvetica", "bold");
+      pdf.text(funnel?.name || "Funil de Vendas", pageWidth - 10, 12, { align: "right" });
+
+      // Subtitle
+      pdf.setFontSize(9);
+      pdf.setFont("helvetica", "normal");
+      pdf.setTextColor(200, 200, 220);
+      pdf.text(funnel?.description || "Mapa visual do processo comercial", pageWidth - 10, 19, { align: "right" });
+
+      // Date
+      pdf.setFontSize(8);
+      pdf.text(`Gerado em: ${new Date().toLocaleDateString("pt-BR")}`, pageWidth - 10, 25, { align: "right" });
+
+      // Funnel image
+      const imgW = pageWidth - 20;
+      const imgH = (canvasImg.height / canvasImg.width) * imgW;
+      const maxImgH = pageHeight - 45;
+      const finalH = Math.min(imgH, maxImgH);
+      const yStart = 34;
+      pdf.addImage(funnelDataUrl, "PNG", 10, yStart, imgW, finalH);
+
+      // Footer bar
+      pdf.setFillColor(MARINHO[0], MARINHO[1], MARINHO[2]);
+      pdf.rect(0, pageHeight - 10, pageWidth, 10, "F");
+      pdf.setFillColor(VERMELHO[0], VERMELHO[1], VERMELHO[2]);
+      pdf.rect(0, pageHeight - 10, pageWidth, 1, "F");
+      pdf.setTextColor(150, 160, 180);
+      pdf.setFontSize(7);
+      pdf.text("UNV Nexus • Universidade Nacional de Vendas • Direção Comercial como Serviço", pageWidth / 2, pageHeight - 4, { align: "center" });
+
+      // Stats summary on a second page if stages exist
+      if (stages.length > 0) {
+        pdf.addPage();
+        pdf.setFillColor(MARINHO[0], MARINHO[1], MARINHO[2]);
+        pdf.rect(0, 0, pageWidth, 22, "F");
+        pdf.setFillColor(VERMELHO[0], VERMELHO[1], VERMELHO[2]);
+        pdf.rect(0, 22, pageWidth, 1.5, "F");
+
+        pdf.setTextColor(255, 255, 255);
+        pdf.setFontSize(14);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Resumo das Etapas do Funil", 10, 14);
+
+        let y = 32;
+        pdf.setFontSize(9);
+
+        // Table header
+        pdf.setFillColor(240, 240, 245);
+        pdf.rect(10, y - 4, pageWidth - 20, 8, "F");
+        pdf.setTextColor(MARINHO[0], MARINHO[1], MARINHO[2]);
+        pdf.setFont("helvetica", "bold");
+        pdf.text("Etapa", 14, y);
+        pdf.text("Tipo", 90, y);
+        pdf.text("Conversão Esperada", 140, y);
+        pdf.text("Tempo Médio (dias)", 200, y);
+        y += 10;
+
+        pdf.setFont("helvetica", "normal");
+        pdf.setTextColor(60, 60, 60);
+        stages.forEach((stage) => {
+          if (y > pageHeight - 20) {
+            pdf.addPage();
+            y = 20;
+          }
+          pdf.text(stage.name, 14, y);
+          pdf.text(stage.stage_type, 90, y);
+          pdf.text(stage.expected_conversion_rate ? `${stage.expected_conversion_rate}%` : "—", 140, y);
+          pdf.text(stage.expected_avg_time_days ? `${stage.expected_avg_time_days}d` : "—", 200, y);
+          y += 7;
+        });
+
+        // Footer
+        pdf.setFillColor(MARINHO[0], MARINHO[1], MARINHO[2]);
+        pdf.rect(0, pageHeight - 10, pageWidth, 10, "F");
+        pdf.setFillColor(VERMELHO[0], VERMELHO[1], VERMELHO[2]);
+        pdf.rect(0, pageHeight - 10, pageWidth, 1, "F");
+        pdf.setTextColor(150, 160, 180);
+        pdf.setFontSize(7);
+        pdf.text("UNV Nexus • Universidade Nacional de Vendas • Direção Comercial como Serviço", pageWidth / 2, pageHeight - 4, { align: "center" });
+      }
+
+      pdf.save(`funil-${funnel?.name?.replace(/\s+/g, "-").toLowerCase() || "vendas"}.pdf`);
+      toast.success("PDF gerado com sucesso!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar PDF");
     }
   };
 
