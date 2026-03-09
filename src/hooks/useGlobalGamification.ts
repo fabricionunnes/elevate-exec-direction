@@ -206,7 +206,7 @@ export function useGlobalGamification() {
       // 6. Calculate achievement for each salesperson
       const mappedParticipants: GlobalParticipant[] = [];
 
-      salespeopleData.forEach((sp: any) => {
+      filteredSalespeople.forEach((sp: any) => {
         const company = companyMap.get(sp.company_id);
         const companyKpis = companyKpiMap.get(sp.company_id) || [];
         
