@@ -1962,7 +1962,12 @@ const OnboardingTasksPage = () => {
                         <BarChart3 className="h-4 w-4 mr-2" />
                         Resultados
                       </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/gamificacao-geral")}>
+                        <Gamepad2 className="h-4 w-4 mr-2" />
+                        Gamificação Geral
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/commercial-actions")}>
+
                         <Target className="h-4 w-4 mr-2" />
                         Ações Comerciais
                       </DropdownMenuItem>
