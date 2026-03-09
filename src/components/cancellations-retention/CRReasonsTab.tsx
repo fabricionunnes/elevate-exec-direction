@@ -22,9 +22,13 @@ const REASON_LABELS: Record<string, string> = {
 
 const COLORS = ["#ef4444", "#f59e0b", "#3b82f6", "#8b5cf6", "#10b981", "#6b7280"];
 
+const percentTooltipFormatter = (value: number) => `${value.toFixed(1)}%`;
+
 export function CRReasonsTab({ projects, companies }: Props) {
   const cancelled = projects.filter(p => p.status === "closed" && p.churn_reason);
+  const totalCancelled = cancelled.length;
 
+  // Pie chart: show percentage
   const reasonFrequency = useMemo(() => {
     const map: Record<string, number> = {};
     cancelled.forEach(p => {
@@ -32,28 +36,37 @@ export function CRReasonsTab({ projects, companies }: Props) {
       map[r] = (map[r] || 0) + 1;
     });
     return Object.entries(map)
-      .map(([reason, count]) => ({ reason: REASON_LABELS[reason] || reason, count }))
+      .map(([reason, count]) => ({
+        reason: REASON_LABELS[reason] || reason,
+        count,
+        percent: totalCancelled > 0 ? (count / totalCancelled) * 100 : 0,
+      }))
       .sort((a, b) => b.count - a.count);
-  }, [cancelled]);
+  }, [cancelled, totalCancelled]);
 
-  const reasonByMonth = useMemo(() => {
-    const months: any[] = [];
-    for (let i = 11; i >= 0; i--) {
-      const d = subMonths(new Date(), i);
-      const key = format(d, "yyyy-MM");
-      const label = format(d, "MMM/yy", { locale: ptBR });
-
-      const monthCancelled = cancelled.filter(p => p.churn_date?.startsWith(key));
-      const entry: any = { label };
-      monthCancelled.forEach(p => {
-        const r = REASON_LABELS[p.churn_reason] || p.churn_reason || "Outro";
-        entry[r] = (entry[r] || 0) + 1;
+  // By consultant: convert to percentage within each consultant
+  const reasonByConsultant = useMemo(() => {
+    const map: Record<string, Record<string, number>> = {};
+    cancelled.forEach(p => {
+      const name = p.consultant_name || p.cs_name || "Sem consultor";
+      const reason = REASON_LABELS[p.churn_reason] || p.churn_reason || "Outro";
+      if (!map[name]) map[name] = {};
+      map[name][reason] = (map[name][reason] || 0) + 1;
+    });
+    return Object.entries(map).map(([name, reasons]) => {
+      const total = Object.values(reasons).reduce((s, v) => s + v, 0);
+      const entry: any = {
+        name: name.length > 15 ? name.substring(0, 15) + "..." : name,
+        total,
+      };
+      Object.entries(reasons).forEach(([r, count]) => {
+        entry[r] = total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
       });
-      months.push(entry);
-    }
-    return months;
+      return entry;
+    }).sort((a, b) => b.total - a.total).slice(0, 10);
   }, [cancelled]);
 
+  // By segment: convert to percentage within each segment
   const reasonBySegment = useMemo(() => {
     const map: Record<string, Record<string, number>> = {};
     cancelled.forEach(p => {
@@ -63,26 +76,41 @@ export function CRReasonsTab({ projects, companies }: Props) {
       if (!map[segment]) map[segment] = {};
       map[segment][reason] = (map[segment][reason] || 0) + 1;
     });
-    return Object.entries(map).map(([segment, reasons]) => ({
-      segment: segment.length > 20 ? segment.substring(0, 20) + "..." : segment,
-      ...reasons,
-      total: Object.values(reasons).reduce((s, v) => s + v, 0),
-    })).sort((a, b) => b.total - a.total).slice(0, 10);
+    return Object.entries(map).map(([segment, reasons]) => {
+      const total = Object.values(reasons).reduce((s, v) => s + v, 0);
+      const entry: any = {
+        segment: segment.length > 20 ? segment.substring(0, 20) + "..." : segment,
+        total,
+      };
+      Object.entries(reasons).forEach(([r, count]) => {
+        entry[r] = total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
+      });
+      return entry;
+    }).sort((a, b) => b.total - a.total).slice(0, 10);
   }, [cancelled, companies]);
 
-  const reasonByConsultant = useMemo(() => {
-    const map: Record<string, Record<string, number>> = {};
-    cancelled.forEach(p => {
-      const name = p.consultant_name || p.cs_name || "Sem consultor";
-      const reason = REASON_LABELS[p.churn_reason] || p.churn_reason || "Outro";
-      if (!map[name]) map[name] = {};
-      map[name][reason] = (map[name][reason] || 0) + 1;
-    });
-    return Object.entries(map).map(([name, reasons]) => ({
-      name: name.length > 15 ? name.substring(0, 15) + "..." : name,
-      ...reasons,
-      total: Object.values(reasons).reduce((s, v) => s + v, 0),
-    })).sort((a, b) => b.total - a.total).slice(0, 10);
+  // By month: convert to percentage within each month
+  const reasonByMonth = useMemo(() => {
+    const months: any[] = [];
+    for (let i = 11; i >= 0; i--) {
+      const d = subMonths(new Date(), i);
+      const key = format(d, "yyyy-MM");
+      const label = format(d, "MMM/yy", { locale: ptBR });
+
+      const monthCancelled = cancelled.filter(p => p.churn_date?.startsWith(key));
+      const total = monthCancelled.length;
+      const entry: any = { label };
+      const countMap: Record<string, number> = {};
+      monthCancelled.forEach(p => {
+        const r = REASON_LABELS[p.churn_reason] || p.churn_reason || "Outro";
+        countMap[r] = (countMap[r] || 0) + 1;
+      });
+      Object.entries(countMap).forEach(([r, count]) => {
+        entry[r] = total > 0 ? parseFloat(((count / total) * 100).toFixed(1)) : 0;
+      });
+      months.push(entry);
+    }
+    return months;
   }, [cancelled]);
 
   const allReasons = [...new Set(cancelled.map(p => REASON_LABELS[p.churn_reason] || p.churn_reason || "Outro"))];
@@ -96,10 +124,18 @@ export function CRReasonsTab({ projects, companies }: Props) {
             {reasonFrequency.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <PieChart>
-                  <Pie data={reasonFrequency} dataKey="count" nameKey="reason" cx="50%" cy="50%" outerRadius={100} label={({ reason, count }) => `${reason}: ${count}`}>
+                  <Pie
+                    data={reasonFrequency}
+                    dataKey="percent"
+                    nameKey="reason"
+                    cx="50%"
+                    cy="50%"
+                    outerRadius={100}
+                    label={({ reason, percent }) => `${reason}: ${percent.toFixed(1)}%`}
+                  >
                     {reasonFrequency.map((_, i) => <Cell key={i} fill={COLORS[i % COLORS.length]} />)}
                   </Pie>
-                  <Tooltip />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
@@ -109,15 +145,15 @@ export function CRReasonsTab({ projects, companies }: Props) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Motivos por Consultor</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Motivos por Consultor (%)</CardTitle></CardHeader>
           <CardContent>
             {reasonByConsultant.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={reasonByConsultant} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" />
+                  <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} />
                   <YAxis dataKey="name" type="category" width={100} className="text-xs" />
-                  <Tooltip />
+                  <Tooltip formatter={percentTooltipFormatter} />
                   <Legend />
                   {allReasons.map((r, i) => (
                     <Bar key={r} dataKey={r} stackId="a" fill={COLORS[i % COLORS.length]} />
@@ -133,15 +169,15 @@ export function CRReasonsTab({ projects, companies }: Props) {
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
-          <CardHeader><CardTitle className="text-sm">Motivos por Segmento</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Motivos por Segmento (%)</CardTitle></CardHeader>
           <CardContent>
             {reasonBySegment.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={reasonBySegment} layout="vertical">
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                  <XAxis type="number" />
+                  <XAxis type="number" domain={[0, 100]} tickFormatter={v => `${v}%`} />
                   <YAxis dataKey="segment" type="category" width={120} className="text-xs" />
-                  <Tooltip />
+                  <Tooltip formatter={percentTooltipFormatter} />
                   <Legend />
                   {allReasons.map((r, i) => (
                     <Bar key={r} dataKey={r} stackId="a" fill={COLORS[i % COLORS.length]} />
@@ -155,15 +191,15 @@ export function CRReasonsTab({ projects, companies }: Props) {
         </Card>
 
         <Card>
-          <CardHeader><CardTitle className="text-sm">Evolução dos Motivos ao Longo do Tempo</CardTitle></CardHeader>
+          <CardHeader><CardTitle className="text-sm">Evolução dos Motivos ao Longo do Tempo (%)</CardTitle></CardHeader>
           <CardContent>
             {reasonByMonth.length > 0 ? (
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={reasonByMonth}>
                   <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
                   <XAxis dataKey="label" className="text-xs" />
-                  <YAxis className="text-xs" />
-                  <Tooltip />
+                  <YAxis domain={[0, 100]} tickFormatter={v => `${v}%`} className="text-xs" />
+                  <Tooltip formatter={percentTooltipFormatter} />
                   <Legend />
                   {allReasons.map((r, i) => (
                     <Bar key={r} dataKey={r} stackId="a" fill={COLORS[i % COLORS.length]} />
