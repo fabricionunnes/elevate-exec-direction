@@ -185,7 +185,6 @@ export function PayablesPanel() {
         console.warn("Could not load suppliers:", e);
       }
 
-      setPayables(payablesData || []);
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
@@ -202,6 +201,13 @@ export function PayablesPanel() {
           .update({ status: "overdue" })
           .in("id", overdueIds);
       }
+
+      // Update local state with corrected overdue statuses
+      const overdueSet = new Set(overdueIds);
+      const correctedPayables = (payablesData || []).map(p => 
+        overdueSet.has(p.id) ? { ...p, status: "overdue" } : p
+      );
+      setPayables(correctedPayables);
 
     } catch (error) {
       console.error("Error loading payables:", error);
