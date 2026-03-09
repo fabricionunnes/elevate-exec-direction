@@ -261,8 +261,8 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
       {/* Canvas */}
       <div
         ref={canvasRef}
-        className="relative border rounded-xl bg-muted/30 overflow-hidden"
-        style={{ height: "600px", cursor: dragging ? "grabbing" : "default" }}
+        className="relative border rounded-xl bg-muted/30 overflow-auto"
+        style={{ height: "calc(100vh - 280px)", minHeight: "500px", cursor: dragging ? "grabbing" : "default" }}
         onMouseMove={handleMouseMove}
         onMouseUp={handleMouseUp}
         onMouseLeave={handleMouseUp}
