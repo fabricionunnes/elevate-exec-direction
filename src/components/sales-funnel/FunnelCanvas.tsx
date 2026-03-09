@@ -7,7 +7,8 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { ArrowLeft, Plus, Trash2, Sparkles, ZoomIn, ZoomOut, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { ArrowLeft, Plus, Trash2, Sparkles, ZoomIn, ZoomOut, AlertTriangle, CheckCircle2, AlertCircle, Printer } from "lucide-react";
+import html2canvas from "html2canvas";
 import { toast } from "sonner";
 import { FunnelBottleneckAnalysis } from "./FunnelBottleneckAnalysis";
 import { FunnelAIOptimizer } from "./FunnelAIOptimizer";
@@ -219,6 +220,32 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
     return <CheckCircle2 className="h-3 w-3 text-green-500" />;
   };
 
+  const handlePrint = async () => {
+    if (!canvasRef.current) return;
+    try {
+      toast.info("Gerando imagem para impressão...");
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Popup bloqueado. Permita popups para imprimir.");
+        return;
+      }
+      printWindow.document.write(`
+        <html><head><title>${funnel?.name || "Funil de Vendas"}</title>
+        <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}@media print{body{margin:0}}</style>
+        </head><body><img src="${dataUrl}" onload="window.print();window.close();" /></body></html>
+      `);
+      printWindow.document.close();
+    } catch {
+      toast.error("Erro ao gerar impressão");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
@@ -244,6 +271,9 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
           </Button>
           <Button size="sm" variant="outline" onClick={() => setShowAIOptimizer(true)}>
             <Sparkles className="h-4 w-4 mr-1" /> IA Otimização
+          </Button>
+          <Button size="sm" variant="outline" onClick={handlePrint}>
+            <Printer className="h-4 w-4 mr-1" /> Imprimir
           </Button>
           <div className="flex gap-1">
             <Button size="icon" variant="outline" className="h-8 w-8" onClick={() => setZoom(z => Math.min(2, z + 0.1))}><ZoomIn className="h-3.5 w-3.5" /></Button>
