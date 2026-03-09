@@ -267,6 +267,10 @@ export default function AllRecurringChargesPage() {
   const [importReceivableOpen, setImportReceivableOpen] = useState(false);
   const [importPayableOpen, setImportPayableOpen] = useState(false);
 
+  // Daily summary dialog
+  const [dailySummaryOpen, setDailySummaryOpen] = useState(false);
+  const dailySummaryTriggered = useRef(false);
+
   // Bulk selection - Invoices
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
