@@ -9,6 +9,7 @@ interface Props {
   projects: any[];
   companies: any[];
   retentionAttempts: any[];
+  staff?: any[];
 }
 
 const GRADIENT_COLORS = [
