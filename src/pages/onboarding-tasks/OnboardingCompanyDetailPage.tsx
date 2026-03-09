@@ -116,6 +116,7 @@ const OnboardingCompanyDetailPage = () => {
   const [loading, setLoading] = useState(!isNew);
   const [saving, setSaving] = useState(false);
   const [deleting, setDeleting] = useState(false);
+  const [loadingCnpj, setLoadingCnpj] = useState(false);
   const [staffList, setStaffList] = useState<Staff[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
   const [showCreateProject, setShowCreateProject] = useState(false);
