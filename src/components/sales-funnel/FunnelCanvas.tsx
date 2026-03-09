@@ -220,6 +220,32 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
     return <CheckCircle2 className="h-3 w-3 text-green-500" />;
   };
 
+  const handlePrint = async () => {
+    if (!canvasRef.current) return;
+    try {
+      toast.info("Gerando imagem para impressão...");
+      const canvas = await html2canvas(canvasRef.current, {
+        backgroundColor: "#ffffff",
+        scale: 2,
+        useCORS: true,
+      });
+      const dataUrl = canvas.toDataURL("image/png");
+      const printWindow = window.open("", "_blank");
+      if (!printWindow) {
+        toast.error("Popup bloqueado. Permita popups para imprimir.");
+        return;
+      }
+      printWindow.document.write(`
+        <html><head><title>${funnel?.name || "Funil de Vendas"}</title>
+        <style>body{margin:0;display:flex;justify-content:center;align-items:center;min-height:100vh}img{max-width:100%;height:auto}@media print{body{margin:0}}</style>
+        </head><body><img src="${dataUrl}" onload="window.print();window.close();" /></body></html>
+      `);
+      printWindow.document.close();
+    } catch {
+      toast.error("Erro ao gerar impressão");
+    }
+  };
+
   return (
     <div className="space-y-4">
       {/* Header */}
