@@ -43,6 +43,7 @@ import {
   UserCircle,
   Trophy,
   DollarSign,
+  Loader2,
 } from "lucide-react";
 import { format } from "date-fns";
 import { CreateProjectDialog } from "@/components/onboarding-tasks/CreateProjectDialog";
