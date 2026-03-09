@@ -119,6 +119,7 @@ const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTa
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
 const OnboardingRenewalsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingRenewalsPage"));
 const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCancellationsPage"));
+const CancellationsRetentionModulePage = lazy(() => import("./pages/onboarding-tasks/CancellationsRetentionModulePage"));
 const OnboardingActivityHistoryPage = lazy(() => import("./pages/onboarding-tasks/OnboardingActivityHistoryPage"));
 const OnboardingCompaniesReportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesReportPage"));
 const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingResultsPage"));
