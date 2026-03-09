@@ -196,7 +196,7 @@ export function useGlobalGamification() {
         const companyWide = targets.find((t) => !t.salesperson_id && !t.team_id && !t.sector_id && !t.unit_id);
         if (companyWide) {
           // Divide by number of active salespeople in company
-          const salespeopleInCompany = salespeopleData.filter((s) => s.company_id === companyId);
+          const salespeopleInCompany = filteredSalespeople.filter((s) => s.company_id === companyId);
           return (companyWide.target_value || 0) / Math.max(salespeopleInCompany.length, 1);
         }
 
