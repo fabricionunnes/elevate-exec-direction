@@ -822,11 +822,11 @@ export function PayablesPanel() {
               <Input
                 placeholder="Buscar por descrição ou fornecedor..."
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(0); }}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(0); }e); setCurrentPage(0); }}
                 className="pl-10"
               />
             </div>
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
+            <Select value={perio(v) => { setPeriodFilter(v); setCurrentPage(0); }eChange={setPeriodFilter}>
               <SelectTrigger className="w-[200px]">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Período" />
