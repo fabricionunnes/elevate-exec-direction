@@ -129,6 +129,27 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     };
   }, [invoices]);
 
+  // Contas a pagar em atraso no período
+  const payablesOverduePeriod = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const monthPayables = payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr);
+    const overdue = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
+    return {
+      count: overdue.length,
+      value: overdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
+    };
+  }, [payables, monthStr]);
+
+  // Total contas a pagar em atraso geral
+  const payablesOverdueGeral = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const allOverdue = payables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
+    return {
+      count: allOverdue.length,
+      value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
+    };
+  }, [payables]);
+
   // MRR
   const mrr = useMemo(() => {
     const activeCharges = charges.filter(c => c.is_active);
@@ -345,7 +366,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
       {/* ═══ ATRASOS ═══ */}
       <div>
-        <SectionHeader icon={AlertTriangle} title="Atrasos" />
+        <SectionHeader icon={AlertTriangle} title="Atrasos - Contas a Receber" />
         <div className="grid gap-3 md:grid-cols-2 mt-3">
           <GradientCard gradient="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)">
             <div className="p-5 space-y-2">
@@ -353,7 +374,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 <div className="h-8 w-8 rounded-lg bg-orange-500/15 flex items-center justify-center">
                   <AlertTriangle className="h-4 w-4 text-orange-600" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Em Atraso no Período</span>
+                <span className="text-sm font-medium text-muted-foreground">Recebíveis em Atraso no Período</span>
               </div>
               <div className="text-2xl font-bold text-orange-600">{formatCurrencyCents(inadimplencia.overdueValue)}</div>
               <p className="text-xs text-orange-600/60">{inadimplencia.overdueCount} fatura(s) vencida(s) em {MONTH_LABELS[selectedMonth]}/{selectedYear}</p>
@@ -366,7 +387,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 <div className="h-8 w-8 rounded-lg bg-red-500/15 flex items-center justify-center">
                   <ShieldAlert className="h-4 w-4 text-red-600" />
                 </div>
-                <span className="text-sm font-medium text-muted-foreground">Total em Atraso (Geral)</span>
+                <span className="text-sm font-medium text-muted-foreground">Total Recebíveis em Atraso (Geral)</span>
               </div>
               <div className="text-2xl font-bold text-red-600">{formatCurrencyCents(totalOverdueGeral.value)}</div>
               <p className="text-xs text-red-600/60">{totalOverdueGeral.count} fatura(s) vencida(s) no total</p>
@@ -374,6 +395,40 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           </GradientCard>
         </div>
       </div>
+
+      {/* ═══ ATRASOS - CONTAS A PAGAR ═══ */}
+      {canSeePayables && (
+      <div>
+        <SectionHeader icon={ArrowUpRight} title="Atrasos - Contas a Pagar" />
+        <div className="grid gap-3 md:grid-cols-2 mt-3">
+          <GradientCard gradient="linear-gradient(135deg, #fefce8 0%, #fde68a 100%)">
+            <div className="p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-amber-500/15 flex items-center justify-center">
+                  <Wallet className="h-4 w-4 text-amber-600" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">Pagáveis em Atraso no Período</span>
+              </div>
+              <div className="text-2xl font-bold text-amber-600">{formatCurrencyCents(payablesOverduePeriod.value)}</div>
+              <p className="text-xs text-amber-600/60">{payablesOverduePeriod.count} conta(s) vencida(s) em {MONTH_LABELS[selectedMonth]}/{selectedYear}</p>
+            </div>
+          </GradientCard>
+
+          <GradientCard gradient="linear-gradient(135deg, #fdf2f8 0%, #fbcfe8 100%)">
+            <div className="p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className="h-8 w-8 rounded-lg bg-pink-500/15 flex items-center justify-center">
+                  <ShieldAlert className="h-4 w-4 text-pink-600" />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">Total Pagáveis em Atraso (Geral)</span>
+              </div>
+              <div className="text-2xl font-bold text-pink-600">{formatCurrencyCents(payablesOverdueGeral.value)}</div>
+              <p className="text-xs text-pink-600/60">{payablesOverdueGeral.count} conta(s) vencida(s) no total</p>
+            </div>
+          </GradientCard>
+        </div>
+      </div>
+      )}
 
       {/* ═══ INDICADORES DE RECORRÊNCIA ═══ */}
       <div>
