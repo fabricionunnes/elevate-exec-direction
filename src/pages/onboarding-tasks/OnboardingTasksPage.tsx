@@ -2299,7 +2299,13 @@ const OnboardingTasksPage = () => {
                       Módulo Financeiro
                     </DropdownMenuItem>
                   )}
-                  {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial) && (
+                  {isAdmin && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
+                      <AlertTriangle className="h-4 w-4 mr-2" />
+                      Cancelamentos & Retenção
+                    </DropdownMenuItem>
+                  )}
+                  {(currentUserEmail === "fabricio@universidadevendas.com.br" || canAccessFinancial || isAdmin) && (
                     <DropdownMenuSeparator />
                   )}
 

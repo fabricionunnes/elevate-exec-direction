@@ -21219,6 +21219,67 @@ export type Database = {
           },
         ]
       }
+      retention_attempts: {
+        Row: {
+          attempt_date: string
+          company_id: string | null
+          created_at: string
+          id: string
+          notes: string | null
+          project_id: string
+          result: string
+          staff_id: string | null
+          strategy: string | null
+          updated_at: string
+        }
+        Insert: {
+          attempt_date?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id: string
+          result?: string
+          staff_id?: string | null
+          strategy?: string | null
+          updated_at?: string
+        }
+        Update: {
+          attempt_date?: string
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          notes?: string | null
+          project_id?: string
+          result?: string
+          staff_id?: string | null
+          strategy?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "retention_attempts_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_attempts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "retention_attempts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       routine_contracts: {
         Row: {
           created_at: string | null
