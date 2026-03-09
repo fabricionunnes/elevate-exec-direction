@@ -830,6 +830,7 @@ export function PayablesPanel() {
               <SelectTrigger className="w-[200px]">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Período" />
+              </SelectTrigger>
               <SelectContent>
                 <SelectItem value="today">Hoje</SelectItem>
                 <SelectItem value="this_week">Esta semana</SelectItem>
