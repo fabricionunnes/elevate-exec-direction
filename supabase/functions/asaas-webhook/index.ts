@@ -156,8 +156,8 @@ Deno.serve(async (req) => {
         const invoice = directMatch[0];
         console.log(`[Asaas Webhook] Direct match by pagarme_charge_id: invoice ${invoice.id} (status: ${invoice.status})`);
 
-        if (newStatus === "paid" && invoice.status === "paid") {
-          console.log(`[Asaas Webhook] Invoice ${invoice.id} already paid, skipping`);
+        if (newStatus === "paid" && (invoice.status === "paid" || invoice.status === "partial")) {
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} already has payment (status: ${invoice.status}), skipping`);
           matched = true;
         } else if (newStatus === "paid" && invoice.status !== "paid") {
           // Detect discount: if Asaas paid value < invoice amount, there's a discount
