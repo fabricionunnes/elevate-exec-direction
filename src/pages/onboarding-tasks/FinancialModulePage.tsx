@@ -39,6 +39,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
 
 // Map tab IDs to financial permission keys (null = always visible if user has financial access)
 const TAB_PERMISSION_MAP: Record<string, string | null> = {
@@ -57,6 +58,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   inbox: "fin_inbox",
   "whatsapp-instance": "fin_whatsapp_instance",
   "bank-statement": "fin_bank_statement",
+  "general-statement": null, // always visible
 };
 
 const ALL_TABS = [
@@ -75,6 +77,7 @@ const ALL_TABS = [
   { id: "inbox", label: "Atendimentos", icon: Headphones },
   { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
+  { id: "general-statement", label: "Extrato Geral", icon: FileText },
 ];
 
 export default function FinancialModulePage() {
@@ -213,6 +216,9 @@ export default function FinancialModulePage() {
           </TabsContent>
           <TabsContent value="bank-statement" className="mt-0">
             <BankStatementFullPanel />
+          </TabsContent>
+          <TabsContent value="general-statement" className="mt-0">
+            <GeneralStatementPanel />
           </TabsContent>
         </Tabs>
       </main>
