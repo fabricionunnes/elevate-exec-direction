@@ -99,7 +99,7 @@ export function useGlobalGamification() {
       }
 
       // 2. Get company info
-      const companyIds = [...new Set(salespeopleData.map((s) => s.company_id))];
+      const companyIds = [...new Set(filteredSalespeople.map((s) => s.company_id))];
       const { data: companiesData } = await supabase
         .from("onboarding_companies")
         .select("id, name, segment")
