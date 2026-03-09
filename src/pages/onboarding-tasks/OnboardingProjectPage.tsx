@@ -94,7 +94,8 @@ import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import { CommercialActionsPanel } from "@/components/commercial-actions/CommercialActionsPanel";
 import { RoutineContractPanel } from "@/components/routine-contract/RoutineContractPanel";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Filter as FunnelIcon } from "lucide-react";
+import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
