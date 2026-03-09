@@ -359,6 +359,7 @@ const ClientOnboardingPage = () => {
         appointments: "Agendamentos",
         billing: "Minhas Faturas",
         paid_traffic: "Tráfego Pago",
+        sales_funnel: "Funil de Vendas",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
