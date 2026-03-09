@@ -60,16 +60,38 @@ export function useGlobalGamification() {
       const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
       const monthYear = format(selectedMonth, "yyyy-MM");
 
-      // 1. Get all active salespeople with company info
+      // 1. Get staff emails to exclude them from gamification
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("email")
+        .eq("is_active", true);
+
+      const staffEmails = new Set(
+        (staffData || []).map((s: any) => s.email?.toLowerCase()).filter(Boolean)
+      );
+
+      // 2. Get all active salespeople with company info
       const { data: salespeopleData } = await supabase
         .from("company_salespeople")
         .select(`
-          id, name, company_id,
+          id, name, company_id, email,
           unit_id, sector_id, team_id
         `)
         .eq("is_active", true);
 
       if (!salespeopleData?.length) {
+        setParticipants([]);
+        setCompanies([]);
+        setLoading(false);
+        return;
+      }
+
+      // Filter out salespeople who are staff members (by email)
+      const filteredSalespeople = salespeopleData.filter(
+        (sp: any) => !sp.email || !staffEmails.has(sp.email?.toLowerCase())
+      );
+
+      if (!filteredSalespeople.length) {
         setParticipants([]);
         setCompanies([]);
         setLoading(false);
