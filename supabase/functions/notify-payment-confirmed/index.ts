@@ -134,6 +134,43 @@ Deno.serve(async (req) => {
       console.error("[notify-payment-confirmed] WhatsApp send failed:", await sendResponse.text());
     }
 
+    // Send internal notifications to staff with receivables access
+    try {
+      // Get master/admin staff
+      const { data: masterStaff } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("is_active", true)
+        .in("role", ["master", "admin"]);
+
+      // Get staff with fin_receivables_view permission
+      const { data: permStaff } = await supabase
+        .from("staff_financial_permissions")
+        .select("staff_id")
+        .eq("permission_key", "fin_receivables_view");
+
+      const staffIds = new Set<string>();
+      (masterStaff || []).forEach((s: any) => staffIds.add(s.id));
+      (permStaff || []).forEach((s: any) => staffIds.add(s.staff_id));
+
+      if (staffIds.size > 0) {
+        const title = `💰 Pagamento confirmado: ${companyName}`;
+        const notifMessage = `Pagamento de ${amountFormatted} confirmado - ${invoice.description || "Mensalidade"} para ${companyName}.`;
+
+        const notifications = Array.from(staffIds).map(staffId => ({
+          staff_id: staffId,
+          type: "payment_confirmed",
+          title,
+          message: notifMessage,
+        }));
+
+        await supabase.from("onboarding_notifications").insert(notifications);
+        console.log(`[notify-payment-confirmed] Internal notifications sent to ${staffIds.size} staff`);
+      }
+    } catch (notifErr) {
+      console.error("[notify-payment-confirmed] Error sending internal notifications:", notifErr);
+    }
+
     return new Response(JSON.stringify({ success: true }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });

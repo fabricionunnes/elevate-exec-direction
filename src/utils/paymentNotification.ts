@@ -1,7 +1,8 @@
 import { supabase } from "@/integrations/supabase/client";
 
 /**
- * Sends payment confirmation notifications to all subscribed staff members.
+ * Sends payment confirmation notifications to all staff members
+ * who have fin_receivables_view permission or are master/admin.
  */
 export async function sendPaymentNotification(
   companyName: string,
@@ -9,13 +10,32 @@ export async function sendPaymentNotification(
   description?: string
 ) {
   try {
-    // Get all active subscribers
-    const { data: subscribers } = await supabase
-      .from("payment_notification_subscribers")
-      .select("staff_id")
-      .eq("is_active", true);
+    // Get all active staff with master/admin roles (they have full access)
+    const { data: masterStaff } = await supabase
+      .from("onboarding_staff")
+      .select("id, role")
+      .eq("is_active", true)
+      .in("role", ["master", "admin"]);
 
-    if (!subscribers || subscribers.length === 0) return;
+    // Get staff with fin_receivables_view permission
+    const { data: permStaff } = await supabase
+      .from("staff_financial_permissions")
+      .select("staff_id")
+      .eq("permission_key", "fin_receivables_view");
+
+    // Also check staff with financial menu permission
+    const { data: menuStaff } = await supabase
+      .from("staff_menu_permissions")
+      .select("staff_id")
+      .eq("menu_key", "financial");
+
+    // Combine unique staff IDs
+    const staffIds = new Set<string>();
+    (masterStaff || []).forEach(s => staffIds.add(s.id));
+    (permStaff || []).forEach(s => staffIds.add(s.staff_id));
+    (menuStaff || []).forEach(s => staffIds.add(s.staff_id));
+
+    if (staffIds.size === 0) return;
 
     const formattedAmount = new Intl.NumberFormat("pt-BR", {
       style: "currency",
@@ -25,9 +45,8 @@ export async function sendPaymentNotification(
     const title = `💰 Pagamento confirmado: ${companyName}`;
     const message = `Pagamento de ${formattedAmount} confirmado${description ? ` - ${description}` : ""} para ${companyName}.`;
 
-    // Insert notifications for all subscribers
-    const notifications = subscribers.map(sub => ({
-      staff_id: sub.staff_id,
+    const notifications = Array.from(staffIds).map(staffId => ({
+      staff_id: staffId,
       type: "payment_confirmed",
       title,
       message,
