@@ -60,11 +60,21 @@ export function useGlobalGamification() {
       const monthEnd = format(endOfMonth(selectedMonth), "yyyy-MM-dd");
       const monthYear = format(selectedMonth, "yyyy-MM");
 
-      // 1. Get all active salespeople with company info
+      // 1. Get staff emails to exclude them from gamification
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("email")
+        .eq("is_active", true);
+
+      const staffEmails = new Set(
+        (staffData || []).map((s: any) => s.email?.toLowerCase()).filter(Boolean)
+      );
+
+      // 2. Get all active salespeople with company info
       const { data: salespeopleData } = await supabase
         .from("company_salespeople")
         .select(`
-          id, name, company_id,
+          id, name, company_id, email,
           unit_id, sector_id, team_id
         `)
         .eq("is_active", true);
@@ -76,8 +86,20 @@ export function useGlobalGamification() {
         return;
       }
 
+      // Filter out salespeople who are staff members (by email)
+      const filteredSalespeople = salespeopleData.filter(
+        (sp: any) => !sp.email || !staffEmails.has(sp.email?.toLowerCase())
+      );
+
+      if (!filteredSalespeople.length) {
+        setParticipants([]);
+        setCompanies([]);
+        setLoading(false);
+        return;
+      }
+
       // 2. Get company info
-      const companyIds = [...new Set(salespeopleData.map((s) => s.company_id))];
+      const companyIds = [...new Set(filteredSalespeople.map((s) => s.company_id))];
       const { data: companiesData } = await supabase
         .from("onboarding_companies")
         .select("id, name, segment")
@@ -174,7 +196,7 @@ export function useGlobalGamification() {
         const companyWide = targets.find((t) => !t.salesperson_id && !t.team_id && !t.sector_id && !t.unit_id);
         if (companyWide) {
           // Divide by number of active salespeople in company
-          const salespeopleInCompany = salespeopleData.filter((s) => s.company_id === companyId);
+          const salespeopleInCompany = filteredSalespeople.filter((s) => s.company_id === companyId);
           return (companyWide.target_value || 0) / Math.max(salespeopleInCompany.length, 1);
         }
 
@@ -184,7 +206,7 @@ export function useGlobalGamification() {
       // 6. Calculate achievement for each salesperson
       const mappedParticipants: GlobalParticipant[] = [];
 
-      salespeopleData.forEach((sp: any) => {
+      filteredSalespeople.forEach((sp: any) => {
         const company = companyMap.get(sp.company_id);
         const companyKpis = companyKpiMap.get(sp.company_id) || [];
         
