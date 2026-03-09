@@ -129,6 +129,27 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     };
   }, [invoices]);
 
+  // Contas a pagar em atraso no período
+  const payablesOverduePeriod = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const monthPayables = payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr);
+    const overdue = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
+    return {
+      count: overdue.length,
+      value: overdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
+    };
+  }, [payables, monthStr]);
+
+  // Total contas a pagar em atraso geral
+  const payablesOverdueGeral = useMemo(() => {
+    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
+    const allOverdue = payables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
+    return {
+      count: allOverdue.length,
+      value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
+    };
+  }, [payables]);
+
   // MRR
   const mrr = useMemo(() => {
     const activeCharges = charges.filter(c => c.is_active);
