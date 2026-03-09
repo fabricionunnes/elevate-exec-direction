@@ -66,6 +66,40 @@ Deno.serve(async (req) => {
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
+    // Idempotency: check if this exact webhook event was already processed
+    if (newStatus === "paid") {
+      const { data: existingCredit } = await supabase
+        .from("financial_bank_transactions")
+        .select("id")
+        .eq("description", `Recebimento Asaas: Fatura %%`)
+        .limit(1);
+      
+      // More precise: check if any invoice already has this payment ID and is paid
+      const { data: alreadyPaid } = await supabase
+        .from("company_invoices")
+        .select("id")
+        .eq("pagarme_charge_id", paymentId)
+        .eq("status", "paid")
+        .limit(1);
+
+      if (alreadyPaid?.length) {
+        // Check if bank transaction already exists for this payment
+        const { data: existingBankTx } = await supabase
+          .from("financial_bank_transactions")
+          .select("id")
+          .ilike("description", `%${paymentId}%`)
+          .eq("type", "credit")
+          .limit(1);
+
+        if (existingBankTx?.length) {
+          console.log(`[Asaas Webhook] Payment ${paymentId} already fully processed (invoice paid + bank credited), skipping duplicate`);
+          return new Response(JSON.stringify({ received: true, matched: true, deduplicated: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+
     // Strategy 1: Try matching via pagarme_charge_id (checkout-originated payments)
     let matched = false;
     const { data: orderMatches, error: orderErr } = await supabase
