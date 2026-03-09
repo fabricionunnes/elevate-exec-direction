@@ -70,6 +70,7 @@ import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplet
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 import { getNthBusinessDayOfMonth, ensureBusinessDay } from "@/lib/businessDays";
+import { DailyFinancialSummaryDialog, shouldShowDailySummary, markDailySummaryShown } from "@/components/financial/DailyFinancialSummaryDialog";
 
 interface RecurringCharge {
   id: string;
