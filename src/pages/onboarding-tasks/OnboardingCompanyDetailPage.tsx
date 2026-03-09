@@ -612,20 +612,86 @@ const OnboardingCompanyDetailPage = () => {
                     </div>
                     <div className="space-y-2">
                       <Label htmlFor="cnpj">CNPJ</Label>
-                      <Input
-                        id="cnpj"
-                        value={form.cnpj}
-                        placeholder="00.000.000/0000-00"
-                        onChange={(e) => {
-                          const raw = e.target.value.replace(/\D/g, "").slice(0, 14);
-                          const masked = raw
-                            .replace(/^(\d{2})(\d)/, "$1.$2")
-                            .replace(/^(\d{2}\.\d{3})(\d)/, "$1.$2")
-                            .replace(/^(\d{2}\.\d{3}\.\d{3})(\d)/, "$1/$2")
-                            .replace(/^(\d{2}\.\d{3}\.\d{3}\/\d{4})(\d)/, "$1-$2");
-                          setForm({ ...form, cnpj: masked });
-                        }}
-                      />
+                      <div className="relative">
+                        <Input
+                          id="cnpj"
+                          value={form.cnpj}
+                          placeholder="00.000.000/0000-00"
+                          onChange={async (e) => {
+                            const raw = e.target.value.replace(/\D/g, "").slice(0, 14);
+                            const masked = raw
+                              .replace(/^(\d{2})(\d)/, "$1.$2")
+                              .replace(/^(\d{2}\.\d{3})(\d)/, "$1.$2")
+                              .replace(/^(\d{2}\.\d{3}\.\d{3})(\d)/, "$1/$2")
+                              .replace(/^(\d{2}\.\d{3}\.\d{3}\/\d{4})(\d)/, "$1-$2");
+                            setForm(prev => ({ ...prev, cnpj: masked }));
+
+                            // Auto-lookup when CNPJ is complete (14 digits)
+                            if (raw.length === 14) {
+                              // Validate CNPJ first
+                              if (/^(\d)\1{13}$/.test(raw)) return;
+                              const calc = (slice: string, weights: number[]) => {
+                                const sum = slice.split("").reduce((s, d, i) => s + parseInt(d) * weights[i], 0);
+                                const r = sum % 11;
+                                return r < 2 ? 0 : 11 - r;
+                              };
+                              const w1 = [5,4,3,2,9,8,7,6,5,4,3,2];
+                              const w2 = [6,5,4,3,2,9,8,7,6,5,4,3,2];
+                              const d1 = calc(raw.slice(0,12), w1);
+                              const d2 = calc(raw.slice(0,13), w2);
+                              if (d1 !== parseInt(raw[12]) || d2 !== parseInt(raw[13])) return;
+
+                              setLoadingCnpj(true);
+                              try {
+                                const res = await fetch(`https://brasilapi.com.br/api/cnpj/v1/${raw}`);
+                                if (!res.ok) {
+                                  toast.error("CNPJ não encontrado na base da Receita");
+                                  return;
+                                }
+                                const data = await res.json();
+                                setForm(prev => ({
+                                  ...prev,
+                                  cnpj: masked,
+                                  name: prev.name || data.razao_social || "",
+                                  phone: prev.phone || (() => {
+                                    const ddd = data.ddd_telefone_1?.replace(/\D/g, "") || "";
+                                    if (ddd.length >= 10) {
+                                      return ddd.length === 11
+                                        ? `(${ddd.slice(0,2)}) ${ddd.slice(2,7)}-${ddd.slice(7)}`
+                                        : `(${ddd.slice(0,2)}) ${ddd.slice(2,6)}-${ddd.slice(6)}`;
+                                    }
+                                    return "";
+                                  })(),
+                                  email: prev.email || data.email || "",
+                                  address: prev.address || data.logradouro || "",
+                                  address_number: prev.address_number || data.numero || "",
+                                  address_complement: prev.address_complement || data.complemento || "",
+                                  address_neighborhood: prev.address_neighborhood || data.bairro || "",
+                                  address_zipcode: prev.address_zipcode || (() => {
+                                    const cep = (data.cep || "").replace(/\D/g, "");
+                                    return cep.length === 8 ? `${cep.slice(0,5)}-${cep.slice(5)}` : cep;
+                                  })(),
+                                  address_city: prev.address_city || data.municipio || "",
+                                  address_state: prev.address_state || data.uf || "",
+                                  company_description: prev.company_description || (() => {
+                                    const fantasia = data.nome_fantasia ? `Nome Fantasia: ${data.nome_fantasia}` : "";
+                                    const atividade = data.cnae_fiscal_descricao ? `Atividade: ${data.cnae_fiscal_descricao}` : "";
+                                    return [fantasia, atividade].filter(Boolean).join("\n");
+                                  })(),
+                                }));
+                                toast.success("Dados do CNPJ preenchidos automaticamente");
+                              } catch {
+                                toast.error("Erro ao consultar CNPJ");
+                              } finally {
+                                setLoadingCnpj(false);
+                              }
+                            }
+                          }}
+                        />
+                        {loadingCnpj && (
+                          <Loader2 className="absolute right-3 top-2.5 h-4 w-4 animate-spin text-muted-foreground" />
+                        )}
+                      </div>
                       {form.cnpj && form.cnpj.replace(/\D/g, "").length > 0 && form.cnpj.replace(/\D/g, "").length < 14 && (
                         <p className="text-xs text-destructive">CNPJ incompleto</p>
                       )}
