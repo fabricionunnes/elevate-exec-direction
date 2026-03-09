@@ -73,16 +73,31 @@ Deno.serve(async (req) => {
       { global: { headers: { Authorization: authHeader } } }
     );
 
-    // Use getClaims for Lovable Cloud compatibility (signing-keys)
-    const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
-    if (claimsError || !claimsData?.claims) {
-      console.error('[evolution-api] Auth failed:', claimsError?.message);
-      return new Response(
-        JSON.stringify({ error: 'Unauthorized' }),
-        { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
-      );
+    // Try getClaims first (fast, no network call), fallback to getUser
+    let userId: string | undefined;
+    try {
+      const { data: claimsData, error: claimsError } = await supabase.auth.getClaims(token);
+      if (!claimsError && claimsData?.claims?.sub) {
+        userId = claimsData.claims.sub as string;
+      }
+    } catch (e) {
+      console.warn('[evolution-api] getClaims failed, trying getUser fallback:', e);
     }
-    const user = { id: claimsData.claims.sub };
+
+    if (!userId) {
+      // Fallback to getUser (handles token refresh edge cases)
+      const { data: userData, error: userError } = await supabase.auth.getUser(token);
+      if (userError || !userData?.user) {
+        console.error('[evolution-api] Auth failed (both getClaims and getUser):', userError?.message);
+        return new Response(
+          JSON.stringify({ error: 'Unauthorized' }),
+          { status: 401, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+      userId = userData.user.id;
+    }
+
+    const user = { id: userId };
 
     const url = new URL(req.url);
     // Action can come from query param OR from body (frontend sends in body)
