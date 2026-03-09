@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-    }
 
     // Strategy 1: Try matching via pagarme_charge_id (checkout-originated payments)
     let matched = false;
