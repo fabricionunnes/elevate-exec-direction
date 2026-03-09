@@ -201,12 +201,13 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Found recurring_charge: ${recurringChargeId}`);
 
           // Find matching invoice by recurring_charge_id + due_date
+          // Skip invoices that are already paid, partial (manual payment), or cancelled
           const { data: invoices, error: invErr } = await supabase
             .from("company_invoices")
-            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at")
             .eq("recurring_charge_id", recurringChargeId)
             .eq("due_date", dueDate)
-            .neq("status", "paid");
+            .not("status", "in", '("paid","partial","cancelled")');
 
           if (!invErr && invoices?.length) {
             const invoice = invoices[0];
