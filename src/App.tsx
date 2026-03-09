@@ -142,6 +142,7 @@ const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRule
 const ContractGeneratorPage = lazy(() => import("./pages/onboarding-tasks/ContractGeneratorPage"));
 const SegmentsAnalysisPage = lazy(() => import("./pages/onboarding-tasks/SegmentsAnalysisPage"));
 const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoicePage"));
+const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
