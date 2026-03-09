@@ -285,26 +285,48 @@ export function FunnelCanvas({ funnelId, projectId, canEdit, onBack }: FunnelCan
             const x2 = toStage.position_x + STAGE_WIDTH / 2;
             const y2 = toStage.position_y;
             const midY = (y1 + y2) / 2;
+            const midX = (x1 + x2) / 2;
             return (
-              <g key={conn.id}>
+              <g key={conn.id} className="group/conn">
+                {/* Invisible wider path for easier clicking */}
+                <path
+                  d={`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`}
+                  stroke="transparent"
+                  strokeWidth="16"
+                  fill="none"
+                  className="pointer-events-auto cursor-pointer"
+                  onClick={() => canEdit && handleDeleteConnection(conn.id)}
+                />
+                {/* Visible path */}
                 <path
                   d={`M ${x1} ${y1} C ${x1} ${midY}, ${x2} ${midY}, ${x2} ${y2}`}
                   stroke="hsl(var(--primary))"
                   strokeWidth="2"
                   fill="none"
                   markerEnd="url(#arrowhead)"
-                  className="pointer-events-auto cursor-pointer"
-                  onClick={() => canEdit && handleDeleteConnection(conn.id)}
+                  className="pointer-events-none"
                 />
                 {conn.label && (
-                  <text x={(x1 + x2) / 2} y={midY - 5} textAnchor="middle" className="fill-muted-foreground text-[10px]">
+                  <text x={midX} y={midY - 5} textAnchor="middle" className="fill-muted-foreground text-[10px] pointer-events-none">
                     {conn.label}
                   </text>
                 )}
                 {conn.conversion_rate && (
-                  <text x={(x1 + x2) / 2} y={midY + 12} textAnchor="middle" className="fill-primary text-[10px] font-medium">
+                  <text x={midX} y={midY + 12} textAnchor="middle" className="fill-primary text-[10px] font-medium pointer-events-none">
                     {conn.conversion_rate}%
                   </text>
+                )}
+                {/* Delete button on hover */}
+                {canEdit && (
+                  <g
+                    className="pointer-events-auto cursor-pointer opacity-0 hover:opacity-100"
+                    onClick={() => handleDeleteConnection(conn.id)}
+                    style={{ transition: "opacity 0.15s" }}
+                  >
+                    <circle cx={midX} cy={midY} r="10" fill="hsl(var(--destructive))" opacity="0.9" />
+                    <line x1={midX - 4} y1={midY - 4} x2={midX + 4} y2={midY + 4} stroke="white" strokeWidth="2" />
+                    <line x1={midX + 4} y1={midY - 4} x2={midX - 4} y2={midY + 4} stroke="white" strokeWidth="2" />
+                  </g>
                 )}
               </g>
             );
