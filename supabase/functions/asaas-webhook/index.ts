@@ -66,6 +66,36 @@ Deno.serve(async (req) => {
 
     console.log(`[Asaas Webhook] Event: ${event}, Payment: ${paymentId}, Status: ${paymentStatus} -> ${newStatus}, Subscription: ${subscriptionId}, DueDate: ${dueDate}, Value: ${paymentValue}, Discount: ${paymentDiscount}`);
 
+    // Idempotency: if payment is already confirmed and bank was credited, skip
+    if (newStatus === "paid") {
+      const { data: alreadyPaid } = await supabase
+        .from("company_invoices")
+        .select("id")
+        .eq("pagarme_charge_id", paymentId)
+        .eq("status", "paid")
+        .limit(1);
+
+      if (alreadyPaid?.length) {
+        const invoiceId = alreadyPaid[0].id;
+        const { data: existingBankTx } = await supabase
+          .from("financial_bank_transactions")
+          .select("id")
+          .eq("reference_id", invoiceId)
+          .eq("reference_type", "invoice")
+          .eq("type", "credit")
+          .ilike("description", "Recebimento Asaas:%")
+          .limit(1);
+
+        if (existingBankTx?.length) {
+          console.log(`[Asaas Webhook] Payment ${paymentId} already processed for invoice ${invoiceId}, skipping duplicate`);
+          return new Response(JSON.stringify({ received: true, matched: true, deduplicated: true }), {
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+      }
+    }
+    }
+
     // Strategy 1: Try matching via pagarme_charge_id (checkout-originated payments)
     let matched = false;
     const { data: orderMatches, error: orderErr } = await supabase
