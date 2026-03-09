@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Award } from "lucide-react";
+import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Target, Percent, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -10,14 +10,16 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { useGlobalGamification, type GlobalParticipant, type LeagueEntry, type CompanySummary } from "@/hooks/useGlobalGamification";
 import { motion, AnimatePresence } from "framer-motion";
+import { format, addMonths, subMonths } from "date-fns";
+import { ptBR } from "date-fns/locale";
 
 // ─── Stats Cards ────────────────────────────────────────────────────────
-function StatsCards({ stats }: { stats: { total: number; totalPoints: number; avgPoints: number; activeCompanies: number; recentLogs: number } }) {
+function StatsCards({ stats }: { stats: { total: number; avgPercent: number; activeCompanies: number; above100: number } }) {
   const cards = [
-    { label: "Participantes", value: stats.total, icon: Users, color: "text-blue-600" },
-    { label: "Pontos Totais", value: stats.totalPoints.toLocaleString("pt-BR"), icon: Zap, color: "text-amber-500" },
-    { label: "Média de Pontos", value: stats.avgPoints.toLocaleString("pt-BR"), icon: TrendingUp, color: "text-emerald-600" },
-    { label: "Empresas Ativas", value: stats.activeCompanies, icon: Building2, color: "text-violet-600" },
+    { label: "Vendedores", value: stats.total, icon: Users, color: "text-blue-600" },
+    { label: "Média Geral", value: `${stats.avgPercent.toFixed(1)}%`, icon: Percent, color: "text-emerald-600" },
+    { label: "Empresas", value: stats.activeCompanies, icon: Building2, color: "text-violet-600" },
+    { label: "Bateram Meta", value: stats.above100, icon: Target, color: "text-amber-500" },
   ];
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
@@ -47,11 +49,20 @@ function RankingTable({ participants }: { participants: GlobalParticipant[] }) {
     return <span className="text-sm font-bold text-muted-foreground w-8 text-center">{pos + 1}º</span>;
   };
 
+  const getPercentColor = (percent: number) => {
+    if (percent >= 120) return "text-cyan-600 bg-cyan-50";
+    if (percent >= 100) return "text-emerald-600 bg-emerald-50";
+    if (percent >= 80) return "text-amber-600 bg-amber-50";
+    if (percent >= 50) return "text-orange-600 bg-orange-50";
+    return "text-red-600 bg-red-50";
+  };
+
   if (!participants.length) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Trophy className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p>Nenhum participante encontrado</p>
+        <p>Nenhum vendedor com metas configuradas</p>
+        <p className="text-xs mt-1">Configure KPIs como "Meta Principal" nos projetos</p>
       </div>
     );
   }
@@ -75,13 +86,14 @@ function RankingTable({ participants }: { participants: GlobalParticipant[] }) {
             <p className="font-semibold text-sm truncate">{p.salesperson_name}</p>
             <p className="text-xs text-muted-foreground truncate">{p.company_name}</p>
           </div>
-          <Badge variant="outline" className="text-xs shrink-0">
-            {p.level_name}
-          </Badge>
-          <div className="text-right shrink-0">
-            <p className="font-bold text-sm">{p.total_points.toLocaleString("pt-BR")}</p>
-            <p className="text-xs text-muted-foreground">pts</p>
+          <div className="text-right shrink-0 hidden sm:block">
+            <p className="text-xs text-muted-foreground">
+              {p.total_achieved.toLocaleString("pt-BR", { maximumFractionDigits: 0 })} / {p.total_target.toLocaleString("pt-BR", { maximumFractionDigits: 0 })}
+            </p>
           </div>
+          <Badge className={`shrink-0 ${getPercentColor(p.achievement_percent)}`}>
+            {p.achievement_percent.toFixed(1)}%
+          </Badge>
         </motion.div>
       ))}
     </div>
@@ -111,7 +123,7 @@ function LeaguesView({ leagues }: { leagues: LeagueEntry[] }) {
                     {league.participants.length} vendedor{league.participants.length !== 1 ? "es" : ""}
                   </Badge>
                   <span className="text-xs opacity-80">
-                    {league.min_points.toLocaleString("pt-BR")}+ pts
+                    {league.min_percent}%+
                   </span>
                 </div>
               </div>
@@ -133,7 +145,7 @@ function LeaguesView({ leagues }: { leagues: LeagueEntry[] }) {
                         <p className="text-sm font-medium truncate">{p.salesperson_name}</p>
                         <p className="text-xs text-muted-foreground truncate">{p.company_name}</p>
                       </div>
-                      <p className="text-sm font-bold">{p.total_points.toLocaleString("pt-BR")} pts</p>
+                      <p className="text-sm font-bold">{p.achievement_percent.toFixed(1)}%</p>
                     </div>
                   ))}
                   {league.participants.length > 20 && (
@@ -183,7 +195,7 @@ function HallOfFame({ participants }: { participants: GlobalParticipant[] }) {
             </div>
             <div className="w-24 bg-gradient-to-t from-gray-300 to-gray-200 rounded-t-lg flex flex-col items-center justify-end py-3 h-24">
               <span className="text-2xl">🥈</span>
-              <p className="text-xs font-bold">{top3[1].total_points.toLocaleString("pt-BR")}</p>
+              <p className="text-xs font-bold">{top3[1].achievement_percent.toFixed(1)}%</p>
             </div>
           </motion.div>
         )}
@@ -201,7 +213,7 @@ function HallOfFame({ participants }: { participants: GlobalParticipant[] }) {
             </div>
             <div className="w-28 bg-gradient-to-t from-amber-400 to-yellow-300 rounded-t-lg flex flex-col items-center justify-end py-3 h-32 shadow-lg">
               <span className="text-3xl">🏆</span>
-              <p className="text-sm font-bold">{top3[0].total_points.toLocaleString("pt-BR")}</p>
+              <p className="text-sm font-bold">{top3[0].achievement_percent.toFixed(1)}%</p>
             </div>
           </motion.div>
         )}
@@ -219,7 +231,7 @@ function HallOfFame({ participants }: { participants: GlobalParticipant[] }) {
             </div>
             <div className="w-24 bg-gradient-to-t from-orange-400 to-orange-300 rounded-t-lg flex flex-col items-center justify-end py-3 h-20">
               <span className="text-2xl">🥉</span>
-              <p className="text-xs font-bold">{top3[2].total_points.toLocaleString("pt-BR")}</p>
+              <p className="text-xs font-bold">{top3[2].achievement_percent.toFixed(1)}%</p>
             </div>
           </motion.div>
         )}
@@ -236,7 +248,7 @@ function HallOfFame({ participants }: { participants: GlobalParticipant[] }) {
                 <p className="text-sm font-semibold truncate">{p.salesperson_name}</p>
                 <p className="text-xs text-muted-foreground truncate">{p.company_name}</p>
               </div>
-              <p className="text-sm font-bold">{p.total_points.toLocaleString("pt-BR")} pts</p>
+              <p className="text-sm font-bold">{p.achievement_percent.toFixed(1)}%</p>
             </div>
           ))}
         </div>
@@ -251,10 +263,16 @@ function CompaniesRanking({ companies }: { companies: CompanySummary[] }) {
     return (
       <div className="text-center py-12 text-muted-foreground">
         <Building2 className="h-12 w-12 mx-auto mb-3 opacity-30" />
-        <p>Nenhuma empresa com gamificação ativa</p>
+        <p>Nenhuma empresa com metas configuradas</p>
       </div>
     );
   }
+
+  const getPercentColor = (percent: number) => {
+    if (percent >= 100) return "text-emerald-600";
+    if (percent >= 80) return "text-amber-600";
+    return "text-red-600";
+  };
 
   return (
     <div className="space-y-2">
@@ -277,13 +295,32 @@ function CompaniesRanking({ companies }: { companies: CompanySummary[] }) {
             </div>
           </div>
           <div className="text-right shrink-0">
-            <p className="font-bold text-sm">{c.total_points.toLocaleString("pt-BR")} pts</p>
+            <p className={`font-bold text-sm ${getPercentColor(c.avg_percent)}`}>
+              {c.avg_percent.toFixed(1)}%
+            </p>
             <p className="text-xs text-muted-foreground">
-              ⭐ {c.top_salesperson} ({c.top_points.toLocaleString("pt-BR")})
+              ⭐ {c.top_salesperson} ({c.top_percent.toFixed(0)}%)
             </p>
           </div>
         </motion.div>
       ))}
+    </div>
+  );
+}
+
+// ─── Month Selector ─────────────────────────────────────────────────────
+function MonthSelector({ value, onChange }: { value: Date; onChange: (d: Date) => void }) {
+  return (
+    <div className="flex items-center gap-1 border rounded-lg px-2 py-1">
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onChange(subMonths(value, 1))}>
+        <ChevronLeft className="h-4 w-4" />
+      </Button>
+      <span className="text-sm font-medium min-w-[100px] text-center capitalize">
+        {format(value, "MMM yyyy", { locale: ptBR })}
+      </span>
+      <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => onChange(addMonths(value, 1))}>
+        <ChevronRight className="h-4 w-4" />
+      </Button>
     </div>
   );
 }
@@ -303,6 +340,8 @@ export default function GlobalGamificationPage() {
     setSelectedCompanyId,
     selectedSegment,
     setSelectedSegment,
+    selectedMonth,
+    setSelectedMonth,
     refetch,
   } = useGlobalGamification();
 
@@ -338,10 +377,13 @@ export default function GlobalGamificationPage() {
                 <Gamepad2 className="h-5 w-5 text-primary" />
                 Gamificação Geral
               </h1>
-              <p className="text-xs text-muted-foreground">Ranking global de todas as empresas</p>
+              <p className="text-xs text-muted-foreground">Ranking por % de meta atingida</p>
             </div>
           </div>
           <div className="flex items-center gap-2 flex-wrap">
+            {/* Month selector */}
+            <MonthSelector value={selectedMonth} onChange={setSelectedMonth} />
+            
             {/* Filters */}
             <Select
               value={selectedCompanyId || "all"}
@@ -412,7 +454,7 @@ export default function GlobalGamificationPage() {
                   <Trophy className="h-4 w-4 text-amber-500" />
                   Ranking Global de Vendedores
                 </CardTitle>
-                <CardDescription>Top 50 vendedores por pontuação total</CardDescription>
+                <CardDescription>Ordenado por % de meta atingida no mês</CardDescription>
               </CardHeader>
               <CardContent>
                 <RankingTable participants={participants} />
@@ -431,7 +473,7 @@ export default function GlobalGamificationPage() {
                   <Crown className="h-4 w-4 text-amber-500" />
                   Hall da Fama
                 </CardTitle>
-                <CardDescription>Os 10 maiores pontuadores de todos os tempos</CardDescription>
+                <CardDescription>Os 10 maiores % de meta do mês</CardDescription>
               </CardHeader>
               <CardContent>
                 <HallOfFame participants={hallOfFame} />
@@ -446,7 +488,7 @@ export default function GlobalGamificationPage() {
                   <Building2 className="h-4 w-4 text-violet-500" />
                   Ranking por Empresa
                 </CardTitle>
-                <CardDescription>Empresas ordenadas por pontuação total acumulada</CardDescription>
+                <CardDescription>Média de % de meta atingida por empresa</CardDescription>
               </CardHeader>
               <CardContent>
                 <CompaniesRanking companies={companies} />
