@@ -31,8 +31,6 @@ export function FunnelTemplateLibrary({ projectId, canEdit, onFunnelCreated }: P
     supabase.from("sales_funnel_templates").select("*").eq("is_active", true).order("category")
       .then(({ data }) => { setTemplates((data || []).map((d: any) => ({ ...d, stages_json: d.stages_json as any[] || [], connections_json: d.connections_json as any[] || [] }))); setLoading(false); });
   }, []);
-      .then(({ data }) => { setTemplates(data || []); setLoading(false); });
-  }, []);
 
   const handleImport = async (template: Template) => {
     if (!canEdit) return;
