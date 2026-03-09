@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
 
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
+      // Check 1: invoice matched by pagarme_charge_id
       const { data: alreadyPaid } = await supabase
         .from("company_invoices")
         .select("id")
@@ -83,7 +84,6 @@ Deno.serve(async (req) => {
           .eq("reference_id", invoiceId)
           .eq("reference_type", "invoice")
           .eq("type", "credit")
-          .ilike("description", "Recebimento Asaas:%")
           .limit(1);
 
         if (existingBankTx?.length) {
@@ -91,6 +91,32 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ received: true, matched: true, deduplicated: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+      }
+
+      // Check 2: if subscription+dueDate matches an invoice that is already paid or partial (manual payment)
+      if (subscriptionId && dueDate) {
+        const { data: manuallyPaidCharges } = await supabase
+          .from("company_recurring_charges")
+          .select("id")
+          .eq("pagarme_plan_id", subscriptionId);
+
+        if (manuallyPaidCharges?.length) {
+          const { data: manuallyPaidInv } = await supabase
+            .from("company_invoices")
+            .select("id, status, paid_at")
+            .eq("recurring_charge_id", manuallyPaidCharges[0].id)
+            .eq("due_date", dueDate)
+            .in("status", ["paid", "partial"])
+            .not("paid_at", "is", null)
+            .limit(1);
+
+          if (manuallyPaidInv?.length) {
+            console.log(`[Asaas Webhook] Invoice ${manuallyPaidInv[0].id} already has manual payment (status: ${manuallyPaidInv[0].status}), skipping webhook processing`);
+            return new Response(JSON.stringify({ received: true, matched: true, manual_payment: true }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
     }
