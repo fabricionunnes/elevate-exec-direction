@@ -39,6 +39,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
 
 // Map tab IDs to financial permission keys (null = always visible if user has financial access)
 const TAB_PERMISSION_MAP: Record<string, string | null> = {
