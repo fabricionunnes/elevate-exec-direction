@@ -1850,6 +1850,16 @@ const OnboardingProjectPage = () => {
             </TabsContent>
           )}
 
+          <TabsContent value="sales_funnel">
+            <SalesFunnelPanel
+              projectId={projectId!}
+              companyId={project.onboarding_company_id}
+              companySegment={project.onboarding_company?.segment || null}
+              isStaff={currentUserRole !== "client"}
+              canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant"}
+            />
+          </TabsContent>
+
         </Tabs>
       </div>
 
