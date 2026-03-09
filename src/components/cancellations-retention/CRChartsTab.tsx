@@ -9,6 +9,7 @@ interface Props {
   projects: any[];
   companies: any[];
   retentionAttempts: any[];
+  staff?: any[];
 }
 
 const GRADIENT_COLORS = [
@@ -41,8 +42,21 @@ const GradientDefs = () => (
 
 const tooltipStyle = { borderRadius: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.12)", fontSize: 13 };
 
-export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
+export function CRChartsTab({ projects, companies, retentionAttempts, staff = [] }: Props) {
   const cancelled = projects.filter(p => p.status === "closed" && p.churn_date);
+
+  // Set of admin/master staff IDs to exclude from consultant charts
+  const adminStaffIds = useMemo(() => {
+    return new Set(
+      staff.filter(s => s.role === "admin" || s.role === "master").map(s => s.id)
+    );
+  }, [staff]);
+
+  const adminStaffNames = useMemo(() => {
+    return new Set(
+      staff.filter(s => s.role === "admin" || s.role === "master").map(s => s.name)
+    );
+  }, [staff]);
 
   const churnBySegment = useMemo(() => {
     const map: Record<string, { churned: number; active: number }> = {};
@@ -67,11 +81,15 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
     const map: Record<string, { churned: number; total: number }> = {};
     cancelled.forEach(p => {
       const name = p.consultant_name || p.cs_name || "Sem consultor";
+      // Skip admin/master users
+      if (adminStaffNames.has(name)) return;
       if (!map[name]) map[name] = { churned: 0, total: 0 };
       map[name].churned++;
     });
     companies.filter(c => c.status === "active").forEach(c => {
       const name = c.consultant?.name || c.cs?.name || "Sem consultor";
+      // Skip admin/master users
+      if (adminStaffNames.has(name)) return;
       if (!map[name]) map[name] = { churned: 0, total: 0 };
       map[name].total++;
     });
@@ -82,7 +100,7 @@ export function CRChartsTab({ projects, companies, retentionAttempts }: Props) {
       }))
       .sort((a, b) => b.churn - a.churn)
       .slice(0, 10);
-  }, [cancelled, companies]);
+  }, [cancelled, companies, adminStaffNames]);
 
   const retentionByConsultant = useMemo(() => {
     const map: Record<string, { retained: number; total: number }> = {};

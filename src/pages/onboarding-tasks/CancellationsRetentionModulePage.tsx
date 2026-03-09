@@ -243,7 +243,7 @@ export default function CancellationsRetentionModulePage() {
               <CRReasonsTab projects={projects} companies={companies} />
             </TabsContent>
             <TabsContent value="charts">
-              <CRChartsTab projects={projects} companies={companies} retentionAttempts={retentionAttempts} />
+              <CRChartsTab projects={projects} companies={companies} retentionAttempts={retentionAttempts} staff={staff} />
             </TabsContent>
             <TabsContent value="ai">
               <CRAIInsightsTab projects={projects} companies={companies} retentionAttempts={retentionAttempts} />
