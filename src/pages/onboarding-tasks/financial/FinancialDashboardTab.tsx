@@ -428,7 +428,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           </GradientCard>
         </div>
       </div>
-      )
+      )}
 
       {/* ═══ INDICADORES DE RECORRÊNCIA ═══ */}
       <div>
