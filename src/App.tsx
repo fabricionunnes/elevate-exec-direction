@@ -296,6 +296,7 @@ const App = () => (
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
               <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
+              <Route path="/onboarding-tasks/cancellations-retention" element={<CancellationsRetentionModulePage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
