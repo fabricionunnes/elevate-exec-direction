@@ -622,6 +622,10 @@ export const KPIDashboardTab = ({
     return kpis.filter(kpi => {
       const scope = kpi.scope || "company";
       
+      // Main goal KPIs are ALWAYS shown regardless of scope/salesperson filter
+      // They represent the company's primary metrics and should be visible for every salesperson
+      if (kpi.is_main_goal) return true;
+      
       // If filtering by salesperson, show:
       // - KPIs scoped to that specific salesperson
       // - KPIs scoped to company (shared across all)
