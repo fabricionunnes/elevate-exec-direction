@@ -217,6 +217,9 @@ export default function FinancialModulePage() {
           <TabsContent value="bank-statement" className="mt-0">
             <BankStatementFullPanel />
           </TabsContent>
+          <TabsContent value="general-statement" className="mt-0">
+            <GeneralStatementPanel />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
