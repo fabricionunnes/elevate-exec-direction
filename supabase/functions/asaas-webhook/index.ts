@@ -68,6 +68,7 @@ Deno.serve(async (req) => {
 
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
+      // Check 1: invoice matched by pagarme_charge_id
       const { data: alreadyPaid } = await supabase
         .from("company_invoices")
         .select("id")
@@ -83,7 +84,6 @@ Deno.serve(async (req) => {
           .eq("reference_id", invoiceId)
           .eq("reference_type", "invoice")
           .eq("type", "credit")
-          .ilike("description", "Recebimento Asaas:%")
           .limit(1);
 
         if (existingBankTx?.length) {
@@ -91,6 +91,32 @@ Deno.serve(async (req) => {
           return new Response(JSON.stringify({ received: true, matched: true, deduplicated: true }), {
             headers: { ...corsHeaders, "Content-Type": "application/json" },
           });
+        }
+      }
+
+      // Check 2: if subscription+dueDate matches an invoice that is already paid or partial (manual payment)
+      if (subscriptionId && dueDate) {
+        const { data: manuallyPaidCharges } = await supabase
+          .from("company_recurring_charges")
+          .select("id")
+          .eq("pagarme_plan_id", subscriptionId);
+
+        if (manuallyPaidCharges?.length) {
+          const { data: manuallyPaidInv } = await supabase
+            .from("company_invoices")
+            .select("id, status, paid_at")
+            .eq("recurring_charge_id", manuallyPaidCharges[0].id)
+            .eq("due_date", dueDate)
+            .in("status", ["paid", "partial"])
+            .not("paid_at", "is", null)
+            .limit(1);
+
+          if (manuallyPaidInv?.length) {
+            console.log(`[Asaas Webhook] Invoice ${manuallyPaidInv[0].id} already has manual payment (status: ${manuallyPaidInv[0].status}), skipping webhook processing`);
+            return new Response(JSON.stringify({ received: true, matched: true, manual_payment: true }), {
+              headers: { ...corsHeaders, "Content-Type": "application/json" },
+            });
+          }
         }
       }
     }
@@ -130,8 +156,8 @@ Deno.serve(async (req) => {
         const invoice = directMatch[0];
         console.log(`[Asaas Webhook] Direct match by pagarme_charge_id: invoice ${invoice.id} (status: ${invoice.status})`);
 
-        if (newStatus === "paid" && invoice.status === "paid") {
-          console.log(`[Asaas Webhook] Invoice ${invoice.id} already paid, skipping`);
+        if (newStatus === "paid" && (invoice.status === "paid" || invoice.status === "partial")) {
+          console.log(`[Asaas Webhook] Invoice ${invoice.id} already has payment (status: ${invoice.status}), skipping`);
           matched = true;
         } else if (newStatus === "paid" && invoice.status !== "paid") {
           // Detect discount: if Asaas paid value < invoice amount, there's a discount
@@ -201,12 +227,13 @@ Deno.serve(async (req) => {
           console.log(`[Asaas Webhook] Found recurring_charge: ${recurringChargeId}`);
 
           // Find matching invoice by recurring_charge_id + due_date
+          // Skip invoices that are already paid, partial (manual payment), or cancelled
           const { data: invoices, error: invErr } = await supabase
             .from("company_invoices")
-            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at")
             .eq("recurring_charge_id", recurringChargeId)
             .eq("due_date", dueDate)
-            .neq("status", "paid");
+            .not("status", "in", '("paid","partial","cancelled")');
 
           if (!invErr && invoices?.length) {
             const invoice = invoices[0];
@@ -292,18 +319,17 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
     const netAmount = amountCents - feeCents;
     if (netAmount <= 0) return;
 
-    // Deduplication: check if Asaas credit already exists for this invoice
+    // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
     const { data: existingTx } = await supabase
       .from("financial_bank_transactions")
       .select("id")
       .eq("reference_id", invoiceId)
       .eq("reference_type", "invoice")
       .eq("type", "credit")
-      .ilike("description", "Recebimento Asaas:%")
       .limit(1);
 
     if (existingTx?.length) {
-      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId}, skipping duplicate`);
+      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId} (may be manual), skipping duplicate`);
       return;
     }
 
