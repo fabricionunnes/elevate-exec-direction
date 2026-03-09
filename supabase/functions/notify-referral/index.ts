@@ -51,7 +51,7 @@ Deno.serve(async (req) => {
     const { data: staffMembers, error: staffError } = await supabase
       .from("onboarding_staff")
       .select("id, name, role")
-      .in("role", ["admin", "cs"])
+      .in("role", ["master", "admin", "cs"])
       .eq("is_active", true);
 
     if (staffError) {
