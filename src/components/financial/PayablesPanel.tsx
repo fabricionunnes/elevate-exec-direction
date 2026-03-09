@@ -822,7 +822,7 @@ export function PayablesPanel() {
               <Input
                 placeholder="Buscar por descrição ou fornecedor..."
                 value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(0); }}
                 className="pl-10"
               />
             </div>
