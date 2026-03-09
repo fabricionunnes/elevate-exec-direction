@@ -2639,6 +2639,14 @@ export default function AllRecurringChargesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Daily Financial Summary Dialog */}
+      <DailyFinancialSummaryDialog
+        invoices={invoices}
+        payables={payables}
+        companies={companies}
+        open={dailySummaryOpen}
+        onOpenChange={setDailySummaryOpen}
+      />
     </div>
   );
 }
