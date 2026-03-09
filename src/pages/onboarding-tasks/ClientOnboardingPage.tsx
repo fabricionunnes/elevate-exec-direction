@@ -1158,6 +1158,22 @@ const ClientOnboardingPage = () => {
               <ClientPaidTrafficPanel projectId={projectId || ""} />
             </motion.div>
           )}
+
+          {activeView === "sales_funnel" && (
+            <motion.div
+              key="sales_funnel"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <SalesFunnelPanel
+                projectId={projectId || ""}
+                companyId={companyId || undefined}
+                isStaff={false}
+                canEdit={currentUser?.role === "client" || currentUser?.role === "gerente"}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
