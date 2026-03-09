@@ -1562,15 +1562,27 @@ export default function ContractGeneratorPage() {
                                       Pendente
                                     </Badge>
                                     {signer.signUrl && (
-                                      <a
-                                        href={signer.signUrl}
-                                        target="_blank"
-                                        rel="noopener noreferrer"
-                                        className="text-xs text-primary hover:underline flex items-center gap-1"
-                                      >
-                                        Link para assinar
-                                        <ExternalLink className="h-3 w-3" />
-                                      </a>
+                                      <div className="flex items-center gap-2">
+                                        <button
+                                          onClick={() => {
+                                            navigator.clipboard.writeText(signer.signUrl!);
+                                            toast.success("Link copiado!");
+                                          }}
+                                          className="text-xs text-muted-foreground hover:text-foreground flex items-center gap-1"
+                                          title="Copiar link"
+                                        >
+                                          <Copy className="h-3 w-3" />
+                                        </button>
+                                        <a
+                                          href={signer.signUrl}
+                                          target="_blank"
+                                          rel="noopener noreferrer"
+                                          className="text-xs text-primary hover:underline flex items-center gap-1"
+                                        >
+                                          Link para assinar
+                                          <ExternalLink className="h-3 w-3" />
+                                        </a>
+                                      </div>
                                     )}
                                   </div>
                                 )}
