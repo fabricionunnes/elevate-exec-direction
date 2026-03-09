@@ -70,6 +70,7 @@ import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplet
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
 import { getNthBusinessDayOfMonth, ensureBusinessDay } from "@/lib/businessDays";
+import { DailyFinancialSummaryDialog, shouldShowDailySummary, markDailySummaryShown } from "@/components/financial/DailyFinancialSummaryDialog";
 
 interface RecurringCharge {
   id: string;
@@ -266,6 +267,10 @@ export default function AllRecurringChargesPage() {
   const [importReceivableOpen, setImportReceivableOpen] = useState(false);
   const [importPayableOpen, setImportPayableOpen] = useState(false);
 
+  // Daily summary dialog
+  const [dailySummaryOpen, setDailySummaryOpen] = useState(false);
+  const dailySummaryTriggered = useRef(false);
+
   // Bulk selection - Invoices
   const [selectedInvoiceIds, setSelectedInvoiceIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
@@ -349,6 +354,21 @@ export default function AllRecurringChargesPage() {
       }
     }
   }, [finPerms.loading, finPerms.hasFinancialAccess]);
+
+  // Show daily financial summary on first access of the day (only for users with payables permission)
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !dailySummaryTriggered.current &&
+      userRole &&
+      (finPerms.isMaster || finPerms.hasFinancialPermission(FINANCIAL_PERMISSION_KEYS.fin_payables_view)) &&
+      shouldShowDailySummary()
+    ) {
+      dailySummaryTriggered.current = true;
+      setDailySummaryOpen(true);
+      markDailySummaryShown();
+    }
+  }, [isLoading, userRole, finPerms.isMaster]);
 
   // Refresh categories/cost centers when switching tabs (e.g. after creating new ones in categories tab)
   useEffect(() => {
@@ -2619,6 +2639,14 @@ export default function AllRecurringChargesPage() {
           </div>
         </DialogContent>
       </Dialog>
+      {/* Daily Financial Summary Dialog */}
+      <DailyFinancialSummaryDialog
+        invoices={invoices}
+        payables={payables}
+        companies={companies}
+        open={dailySummaryOpen}
+        onOpenChange={setDailySummaryOpen}
+      />
     </div>
   );
 }
