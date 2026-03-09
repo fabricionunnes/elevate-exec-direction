@@ -355,6 +355,21 @@ export default function AllRecurringChargesPage() {
     }
   }, [finPerms.loading, finPerms.hasFinancialAccess]);
 
+  // Show daily financial summary on first access of the day (only for users with payables permission)
+  useEffect(() => {
+    if (
+      !isLoading &&
+      !dailySummaryTriggered.current &&
+      userRole &&
+      (finPerms.isMaster || finPerms.hasFinancialPermission(FINANCIAL_PERMISSION_KEYS.fin_payables_view)) &&
+      shouldShowDailySummary()
+    ) {
+      dailySummaryTriggered.current = true;
+      setDailySummaryOpen(true);
+      markDailySummaryShown();
+    }
+  }, [isLoading, userRole, finPerms.isMaster]);
+
   // Refresh categories/cost centers when switching tabs (e.g. after creating new ones in categories tab)
   useEffect(() => {
     if (activeTab !== "categories" && userRole) {
