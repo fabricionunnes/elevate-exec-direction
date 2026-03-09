@@ -822,11 +822,11 @@ export function PayablesPanel() {
               <Input
                 placeholder="Buscar por descrição ou fornecedor..."
                 value={searchTerm}
-                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(0); }e); setCurrentPage(0); }}
+                onChange={(e) => { setSearchTerm(e.target.value); setCurrentPage(0); }e); setCurrentPage(0); }e); setCurrentPage(0); }}
                 className="pl-10"
               />
             </div>
-            <Select value={perio(v) => { setPeriodFilter(v); setCurrentPage(0); }eChange={setPeriodFilter}>
+        (v) => { setPeriodFilter(v); setCurrentPage(0); }ue={perio(v) => { setPeriodFilter(v); setCurrentPage(0); }eChange={setPeriodFilter}>
               <SelectTrigger className="w-[200px]">
                 <CalendarDays className="h-4 w-4 mr-2" />
                 <SelectValue placeholder="Período" />
@@ -840,8 +840,7 @@ export function PayablesPanel() {
                 <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
                 <SelectItem value="all">Todo o período</SelectItem>
               </SelectContent>
-            </Select>
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
+            </Select(v) => { setStatusFilter(v); setCurrentPage(0); }Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
