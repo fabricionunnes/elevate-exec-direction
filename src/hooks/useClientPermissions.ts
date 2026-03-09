@@ -155,4 +155,5 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   appointments: CLIENT_MENU_KEYS.gestao_agendamentos,
   billing: CLIENT_MENU_KEYS.minhas_faturas,
   paid_traffic: CLIENT_MENU_KEYS.trafego_pago,
+  sales_funnel: CLIENT_MENU_KEYS.funil_vendas,
 };

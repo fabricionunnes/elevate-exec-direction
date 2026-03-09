@@ -94,7 +94,8 @@ import { Wallet, Eye, LayoutGrid, Megaphone } from "lucide-react";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import { CommercialActionsPanel } from "@/components/commercial-actions/CommercialActionsPanel";
 import { RoutineContractPanel } from "@/components/routine-contract/RoutineContractPanel";
-import { ClipboardList } from "lucide-react";
+import { ClipboardList, Filter as FunnelIcon } from "lucide-react";
+import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1523,6 +1524,10 @@ const OnboardingProjectPage = () => {
                     Ações Comerciais
                   </TabsTrigger>
                 )}
+                <TabsTrigger value="sales_funnel" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <FunnelIcon className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Funil de Vendas
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -1844,6 +1849,16 @@ const OnboardingProjectPage = () => {
               />
             </TabsContent>
           )}
+
+          <TabsContent value="sales_funnel">
+            <SalesFunnelPanel
+              projectId={projectId!}
+              companyId={project.onboarding_company_id}
+              companySegment={project.onboarding_company?.segment || null}
+              isStaff={currentUserRole !== "client"}
+              canEdit={isAdmin || currentUserRole === "cs" || currentUserRole === "consultant"}
+            />
+          </TabsContent>
 
         </Tabs>
       </div>

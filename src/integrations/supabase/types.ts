@@ -21522,6 +21522,327 @@ export type Database = {
           },
         ]
       }
+      sales_funnel_connections: {
+        Row: {
+          conversion_rate: number | null
+          created_at: string
+          from_stage_id: string
+          funnel_id: string
+          id: string
+          label: string | null
+          to_stage_id: string
+        }
+        Insert: {
+          conversion_rate?: number | null
+          created_at?: string
+          from_stage_id: string
+          funnel_id: string
+          id?: string
+          label?: string | null
+          to_stage_id: string
+        }
+        Update: {
+          conversion_rate?: number | null
+          created_at?: string
+          from_stage_id?: string
+          funnel_id?: string
+          id?: string
+          label?: string | null
+          to_stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_funnel_connections_from_stage_id_fkey"
+            columns: ["from_stage_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnel_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_funnel_connections_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_funnel_connections_to_stage_id_fkey"
+            columns: ["to_stage_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_funnel_insights: {
+        Row: {
+          created_at: string
+          description: string
+          funnel_id: string
+          generated_at: string
+          id: string
+          insight_type: string
+          is_dismissed: boolean
+          severity: string
+          title: string
+        }
+        Insert: {
+          created_at?: string
+          description: string
+          funnel_id: string
+          generated_at?: string
+          id?: string
+          insight_type?: string
+          is_dismissed?: boolean
+          severity?: string
+          title: string
+        }
+        Update: {
+          created_at?: string
+          description?: string
+          funnel_id?: string
+          generated_at?: string
+          id?: string
+          insight_type?: string
+          is_dismissed?: boolean
+          severity?: string
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_funnel_insights_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_funnel_metrics: {
+        Row: {
+          avg_time_days: number | null
+          converted_count: number
+          created_at: string
+          funnel_id: string
+          id: string
+          leads_count: number
+          lost_count: number
+          period_end: string
+          period_start: string
+          revenue_cents: number | null
+          stage_id: string
+        }
+        Insert: {
+          avg_time_days?: number | null
+          converted_count?: number
+          created_at?: string
+          funnel_id: string
+          id?: string
+          leads_count?: number
+          lost_count?: number
+          period_end: string
+          period_start: string
+          revenue_cents?: number | null
+          stage_id: string
+        }
+        Update: {
+          avg_time_days?: number | null
+          converted_count?: number
+          created_at?: string
+          funnel_id?: string
+          id?: string
+          leads_count?: number
+          lost_count?: number
+          period_end?: string
+          period_start?: string
+          revenue_cents?: number | null
+          stage_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_funnel_metrics_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnels"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_funnel_metrics_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnel_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_funnel_stages: {
+        Row: {
+          color: string | null
+          created_at: string
+          crm_stage_id: string | null
+          description: string | null
+          expected_avg_time_days: number | null
+          expected_conversion_rate: number | null
+          funnel_id: string
+          id: string
+          indicators: string | null
+          name: string
+          position_x: number
+          position_y: number
+          required_tasks: string | null
+          responsible: string | null
+          sort_order: number
+          stage_type: string
+          updated_at: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          crm_stage_id?: string | null
+          description?: string | null
+          expected_avg_time_days?: number | null
+          expected_conversion_rate?: number | null
+          funnel_id: string
+          id?: string
+          indicators?: string | null
+          name: string
+          position_x?: number
+          position_y?: number
+          required_tasks?: string | null
+          responsible?: string | null
+          sort_order?: number
+          stage_type?: string
+          updated_at?: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          crm_stage_id?: string | null
+          description?: string | null
+          expected_avg_time_days?: number | null
+          expected_conversion_rate?: number | null
+          funnel_id?: string
+          id?: string
+          indicators?: string | null
+          name?: string
+          position_x?: number
+          position_y?: number
+          required_tasks?: string | null
+          responsible?: string | null
+          sort_order?: number
+          stage_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_funnel_stages_crm_stage_id_fkey"
+            columns: ["crm_stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_funnel_stages_funnel_id_fkey"
+            columns: ["funnel_id"]
+            isOneToOne: false
+            referencedRelation: "sales_funnels"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sales_funnel_templates: {
+        Row: {
+          category: string
+          connections_json: Json
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          segment: string | null
+          stages_json: Json
+        }
+        Insert: {
+          category?: string
+          connections_json?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          segment?: string | null
+          stages_json?: Json
+        }
+        Update: {
+          category?: string
+          connections_json?: Json
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          segment?: string | null
+          stages_json?: Json
+        }
+        Relationships: []
+      }
+      sales_funnels: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_template: boolean
+          name: string
+          objective: string | null
+          project_id: string
+          responsible_staff_id: string | null
+          status: string
+          template_category: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean
+          name: string
+          objective?: string | null
+          project_id: string
+          responsible_staff_id?: string | null
+          status?: string
+          template_category?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_template?: boolean
+          name?: string
+          objective?: string | null
+          project_id?: string
+          responsible_staff_id?: string | null
+          status?: string
+          template_category?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sales_funnels_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "sales_funnels_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       salesperson_sectors: {
         Row: {
           created_at: string | null
