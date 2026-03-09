@@ -59,6 +59,7 @@ export const CLIENT_MENU_KEYS = {
   unv_disparador: "unv_disparador",
   crm_unv: "crm_unv",
   unv_academy: "unv_academy",
+  funil_vendas: "funil_vendas",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
