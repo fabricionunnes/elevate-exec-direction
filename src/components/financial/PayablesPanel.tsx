@@ -837,7 +837,8 @@ export function PayablesPanel() {
                 <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
                 <SelectItem value="all">Todo o período</SelectItem>
               </SelectContent>
-            </Select(v) => { setStatusFilter(v); setCurrentPage(0); }Select value={statusFilter} onValueChange={setStatusFilter}>
+            </Select>
+            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
               </SelectTrigger>
