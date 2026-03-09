@@ -2262,6 +2262,19 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
+            {/* Cancelamentos & Retenção - Admin/CS only, menu principal separado */}
+            {(isAdmin || isCS) && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/onboarding-tasks/cancellations-retention")}
+                className="gap-2 border-red-300 text-red-600 hover:bg-red-50"
+              >
+                <AlertTriangle className="h-4 w-4" />
+                Cancelamentos
+              </Button>
+            )}
+
             {/* Nota Fiscal button - visible for all staff */}
             <Button 
               variant="outline" 
