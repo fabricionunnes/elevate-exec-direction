@@ -1,12 +1,12 @@
 import { useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import {
-  Building2, AlertTriangle, ShieldAlert, ShieldCheck, XCircle, TrendingDown, TrendingUp, Users,
+  Building2, AlertTriangle, ShieldCheck, XCircle, TrendingDown, TrendingUp,
 } from "lucide-react";
 import {
-  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, PieChart, Pie, Cell,
+  BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, LineChart, Line, Legend, Area, AreaChart,
 } from "recharts";
-import { format, subMonths, parseISO } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
 interface Props {
@@ -15,6 +15,27 @@ interface Props {
   retentionAttempts: any[];
   filters: { period: string; consultant: string; segment: string; reason: string };
 }
+
+const GradientDefs = () => (
+  <defs>
+    <linearGradient id="gradCancel" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#fb7185" stopOpacity={0.6} />
+    </linearGradient>
+    <linearGradient id="gradRetain" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#6366f1" stopOpacity={0.9} />
+      <stop offset="100%" stopColor="#818cf8" stopOpacity={0.6} />
+    </linearGradient>
+    <linearGradient id="gradChurn" x1="0" y1="0" x2="1" y2="0">
+      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.8} />
+      <stop offset="100%" stopColor="#e11d48" stopOpacity={1} />
+    </linearGradient>
+    <linearGradient id="gradChurnArea" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0%" stopColor="#f43f5e" stopOpacity={0.3} />
+      <stop offset="100%" stopColor="#f43f5e" stopOpacity={0.02} />
+    </linearGradient>
+  </defs>
+);
 
 export function CRDashboardTab({ projects, companies, retentionAttempts, filters }: Props) {
   const stats = useMemo(() => {
@@ -25,7 +46,6 @@ export function CRDashboardTab({ projects, companies, retentionAttempts, filters
     const totalAttempts = retentionAttempts.length;
     const retentionRate = totalAttempts > 0 ? ((retained / totalAttempts) * 100).toFixed(1) : "0";
     const churnRate = (activeCompanies + cancelled) > 0 ? ((cancelled / (activeCompanies + cancelled)) * 100).toFixed(1) : "0";
-
     return { activeCompanies, inNotice, cancelled, retained, totalAttempts, retentionRate, churnRate };
   }, [projects, companies, retentionAttempts]);
 
@@ -35,10 +55,8 @@ export function CRDashboardTab({ projects, companies, retentionAttempts, filters
       const d = subMonths(new Date(), i);
       const key = format(d, "yyyy-MM");
       const label = format(d, "MMM/yy", { locale: ptBR });
-
       const cancelledInMonth = projects.filter(p => p.churn_date?.startsWith(key)).length;
       const retainedInMonth = retentionAttempts.filter(r => r.attempt_date?.startsWith(key) && r.result === "retained").length;
-
       months.push({ label, cancelamentos: cancelledInMonth, retencoes: retainedInMonth });
     }
     return months;
@@ -50,41 +68,40 @@ export function CRDashboardTab({ projects, companies, retentionAttempts, filters
       const d = subMonths(new Date(), i);
       const key = format(d, "yyyy-MM");
       const label = format(d, "MMM/yy", { locale: ptBR });
-
       const activeAtMonth = companies.filter(c => {
         const created = c.created_at?.substring(0, 7);
         return created && created <= key && (c.status === "active" || (c.status_changed_at && c.status_changed_at.substring(0, 7) >= key));
       }).length;
       const cancelledInMonth = projects.filter(p => p.churn_date?.startsWith(key)).length;
       const rate = activeAtMonth > 0 ? ((cancelledInMonth / activeAtMonth) * 100) : 0;
-
       months.push({ label, taxa: parseFloat(rate.toFixed(1)) });
     }
     return months;
   }, [projects, companies]);
 
   const cards = [
-    { label: "Empresas Ativas", value: stats.activeCompanies, icon: Building2, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Em Aviso", value: stats.inNotice, icon: AlertTriangle, color: "text-amber-500", bg: "bg-amber-500/10" },
-    { label: "Cancelamentos", value: stats.cancelled, icon: XCircle, color: "text-rose-500", bg: "bg-rose-500/10" },
-    { label: "Retenções", value: stats.retained, icon: ShieldCheck, color: "text-blue-500", bg: "bg-blue-500/10" },
-    { label: "Taxa de Retenção", value: `${stats.retentionRate}%`, icon: TrendingUp, color: "text-emerald-500", bg: "bg-emerald-500/10" },
-    { label: "Taxa de Churn", value: `${stats.churnRate}%`, icon: TrendingDown, color: "text-rose-500", bg: "bg-rose-500/10" },
+    { label: "Empresas Ativas", value: stats.activeCompanies, icon: Building2, gradient: "from-emerald-500 to-teal-400", shadow: "shadow-emerald-500/20" },
+    { label: "Em Aviso", value: stats.inNotice, icon: AlertTriangle, gradient: "from-amber-500 to-orange-400", shadow: "shadow-amber-500/20" },
+    { label: "Cancelamentos", value: stats.cancelled, icon: XCircle, gradient: "from-rose-500 to-pink-400", shadow: "shadow-rose-500/20" },
+    { label: "Retenções", value: stats.retained, icon: ShieldCheck, gradient: "from-indigo-500 to-violet-400", shadow: "shadow-indigo-500/20" },
+    { label: "Taxa Retenção", value: `${stats.retentionRate}%`, icon: TrendingUp, gradient: "from-cyan-500 to-blue-400", shadow: "shadow-cyan-500/20" },
+    { label: "Taxa Churn", value: `${stats.churnRate}%`, icon: TrendingDown, gradient: "from-red-500 to-rose-400", shadow: "shadow-red-500/20" },
   ];
 
   return (
     <div className="space-y-6">
       <div className="grid gap-4 grid-cols-2 md:grid-cols-3 lg:grid-cols-6">
         {cards.map((card) => (
-          <Card key={card.label}>
-            <CardContent className="p-4">
-              <div className="flex items-center gap-3">
-                <div className={`p-2 rounded-lg ${card.bg}`}>
-                  <card.icon className={`h-5 w-5 ${card.color}`} />
+          <Card key={card.label} className={`relative overflow-hidden border-0 shadow-lg ${card.shadow} hover:scale-[1.03] transition-transform duration-200`}>
+            <div className={`absolute inset-0 bg-gradient-to-br ${card.gradient} opacity-[0.08]`} />
+            <CardContent className="p-4 relative">
+              <div className="flex flex-col gap-2">
+                <div className={`p-2.5 rounded-xl bg-gradient-to-br ${card.gradient} w-fit shadow-md`}>
+                  <card.icon className="h-4 w-4 text-white" />
                 </div>
                 <div>
-                  <p className="text-xs text-muted-foreground">{card.label}</p>
-                  <p className="text-2xl font-bold">{card.value}</p>
+                  <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{card.label}</p>
+                  <p className="text-2xl font-black tracking-tight">{card.value}</p>
                 </div>
               </div>
             </CardContent>
@@ -93,34 +110,51 @@ export function CRDashboardTab({ projects, companies, retentionAttempts, filters
       </div>
 
       <div className="grid gap-6 md:grid-cols-2">
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Cancelamentos vs Retenções por Mês</CardTitle></CardHeader>
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-rose-500 to-indigo-500" />
+              Cancelamentos vs Retenções por Mês
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={monthlyData}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="label" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Legend />
-                <Bar dataKey="cancelamentos" name="Cancelamentos" fill="hsl(var(--destructive))" radius={[4, 4, 0, 0]} />
-                <Bar dataKey="retencoes" name="Retenções" fill="hsl(var(--primary))" radius={[4, 4, 0, 0]} />
+            <ResponsiveContainer width="100%" height={320}>
+              <BarChart data={monthlyData} barGap={4}>
+                <GradientDefs />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <Tooltip
+                  contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.12)", fontSize: 13 }}
+                />
+                <Legend iconType="circle" wrapperStyle={{ fontSize: 12 }} />
+                <Bar dataKey="cancelamentos" name="Cancelamentos" fill="url(#gradCancel)" radius={[8, 8, 4, 4]} maxBarSize={35} />
+                <Bar dataKey="retencoes" name="Retenções" fill="url(#gradRetain)" radius={[8, 8, 4, 4]} maxBarSize={35} />
               </BarChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader><CardTitle className="text-sm">Evolução da Taxa de Churn (%)</CardTitle></CardHeader>
+        <Card className="border-0 shadow-xl overflow-hidden">
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <div className="h-3 w-3 rounded-full bg-gradient-to-r from-rose-500 to-red-600" />
+              Evolução da Taxa de Churn (%)
+            </CardTitle>
+          </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <LineChart data={churnEvolution}>
-                <CartesianGrid strokeDasharray="3 3" className="stroke-border" />
-                <XAxis dataKey="label" className="text-xs" />
-                <YAxis className="text-xs" />
-                <Tooltip />
-                <Line type="monotone" dataKey="taxa" name="Churn %" stroke="hsl(var(--destructive))" strokeWidth={2} dot={{ r: 3 }} />
-              </LineChart>
+            <ResponsiveContainer width="100%" height={320}>
+              <AreaChart data={churnEvolution}>
+                <GradientDefs />
+                <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" opacity={0.5} />
+                <XAxis dataKey="label" tick={{ fontSize: 11 }} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 11 }} axisLine={false} tickLine={false} tickFormatter={v => `${v}%`} />
+                <Tooltip
+                  formatter={(v: number) => `${v}%`}
+                  contentStyle={{ borderRadius: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.12)", fontSize: 13 }}
+                />
+                <Area type="monotone" dataKey="taxa" name="Churn %" stroke="#f43f5e" strokeWidth={3} fill="url(#gradChurnArea)" dot={{ r: 5, fill: "#f43f5e", strokeWidth: 2, stroke: "#fff" }} activeDot={{ r: 7, stroke: "#f43f5e", strokeWidth: 2, fill: "#fff" }} />
+              </AreaChart>
             </ResponsiveContainer>
           </CardContent>
         </Card>
