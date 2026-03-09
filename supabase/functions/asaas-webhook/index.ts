@@ -319,18 +319,17 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
     const netAmount = amountCents - feeCents;
     if (netAmount <= 0) return;
 
-    // Deduplication: check if Asaas credit already exists for this invoice
+    // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
     const { data: existingTx } = await supabase
       .from("financial_bank_transactions")
       .select("id")
       .eq("reference_id", invoiceId)
       .eq("reference_type", "invoice")
       .eq("type", "credit")
-      .ilike("description", "Recebimento Asaas:%")
       .limit(1);
 
     if (existingTx?.length) {
-      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId}, skipping duplicate`);
+      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId} (may be manual), skipping duplicate`);
       return;
     }
 
