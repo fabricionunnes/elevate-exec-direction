@@ -94,7 +94,6 @@ Deno.serve(async (req) => {
         }
       }
     }
-    }
 
     // Strategy 1: Try matching via pagarme_charge_id (checkout-originated payments)
     let matched = false;
@@ -292,6 +291,21 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
     const feeCents = 199; // R$ 1,99
     const netAmount = amountCents - feeCents;
     if (netAmount <= 0) return;
+
+    // Deduplication: check if Asaas credit already exists for this invoice
+    const { data: existingTx } = await supabase
+      .from("financial_bank_transactions")
+      .select("id")
+      .eq("reference_id", invoiceId)
+      .eq("reference_type", "invoice")
+      .eq("type", "credit")
+      .ilike("description", "Recebimento Asaas:%")
+      .limit(1);
+
+    if (existingTx?.length) {
+      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId}, skipping duplicate`);
+      return;
+    }
 
     // Determine which bank to credit based on the Asaas account used
     let bankId: string | null = null;
