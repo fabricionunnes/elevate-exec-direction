@@ -70,6 +70,14 @@ export default function SlideGeneratorPage() {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
+      // Get staff_id
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
       // Duplicate presentation
       const { data: newPres, error: presError } = await supabase
         .from("slide_presentations")
@@ -81,6 +89,7 @@ export default function SlideGeneratorPage() {
           duration_minutes: presentation.duration_minutes,
           content_level: presentation.content_level,
           created_by: user.user.id,
+          staff_id: staffData?.id || null,
           slide_count: presentation.slide_count,
         } as any)
         .select()
