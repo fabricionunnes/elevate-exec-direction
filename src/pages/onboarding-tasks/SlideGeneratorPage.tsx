@@ -1,18 +1,20 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Presentation, FolderOpen, Trash2, Copy, Sparkles } from "lucide-react";
+import { ArrowLeft, Plus, Presentation, FolderOpen, Trash2, Copy, Sparkles, Search, ChevronLeft, ChevronRight } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Input } from "@/components/ui/input";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { SlideCreationForm } from "@/components/slide-generator/SlideCreationForm";
 import { SlideViewer } from "@/components/slide-generator/SlideViewer";
 import { SlideTemplateLibrary } from "@/components/slide-generator/SlideTemplateLibrary";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-interface Presentation {
+interface PresentationItem {
   id: string;
   title: string;
   description: string | null;
@@ -27,18 +29,32 @@ interface Presentation {
   created_at: string;
   updated_at: string;
   created_by: string | null;
+  creator_name?: string;
+}
+
+interface StaffOption {
+  user_id: string;
+  name: string;
 }
 
 type ViewMode = "library" | "create" | "view" | "templates";
 
+const ITEMS_PER_PAGE = 10;
+
 export default function SlideGeneratorPage() {
   const navigate = useNavigate();
-  const [presentations, setPresentations] = useState<Presentation[]>([]);
+  const [presentations, setPresentations] = useState<PresentationItem[]>([]);
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("library");
   const [selectedPresentationId, setSelectedPresentationId] = useState<string | null>(null);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+
+  // Filters
+  const [searchQuery, setSearchQuery] = useState("");
+  const [selectedStaffId, setSelectedStaffId] = useState<string>("all");
+  const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [currentPage, setCurrentPage] = useState(1);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -60,7 +76,19 @@ export default function SlideGeneratorPage() {
 
   useEffect(() => {
     loadPresentations();
+    loadStaffOptions();
   }, []);
+
+  const loadStaffOptions = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("user_id, name")
+      .eq("is_active", true)
+      .order("name");
+    if (data) {
+      setStaffOptions(data as StaffOption[]);
+    }
+  };
 
   const loadPresentations = async () => {
     try {
@@ -71,7 +99,24 @@ export default function SlideGeneratorPage() {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      setPresentations((data as unknown as Presentation[]) || []);
+
+      const items = (data as unknown as PresentationItem[]) || [];
+
+      // Enrich with creator names
+      const creatorIds = [...new Set(items.map(p => p.created_by).filter(Boolean))] as string[];
+      if (creatorIds.length > 0) {
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("user_id, name")
+          .in("user_id", creatorIds);
+        
+        const nameMap = new Map((staffData || []).map((s: any) => [s.user_id, s.name]));
+        items.forEach(p => {
+          if (p.created_by) p.creator_name = nameMap.get(p.created_by) || undefined;
+        });
+      }
+
+      setPresentations(items);
     } catch (err) {
       console.error("Error loading presentations:", err);
       toast.error("Erro ao carregar apresentações");
@@ -80,18 +125,45 @@ export default function SlideGeneratorPage() {
     }
   };
 
+  // Filtered & paginated
+  const filtered = useMemo(() => {
+    let result = presentations;
+    if (searchQuery.trim()) {
+      const q = searchQuery.toLowerCase();
+      result = result.filter(p =>
+        p.title.toLowerCase().includes(q) ||
+        p.topic.toLowerCase().includes(q) ||
+        (p.description || "").toLowerCase().includes(q)
+      );
+    }
+    if (selectedStaffId !== "all") {
+      result = result.filter(p => p.created_by === selectedStaffId);
+    }
+    return result;
+  }, [presentations, searchQuery, selectedStaffId]);
+
+  const totalPages = Math.max(1, Math.ceil(filtered.length / ITEMS_PER_PAGE));
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return filtered.slice(start, start + ITEMS_PER_PAGE);
+  }, [filtered, currentPage]);
+
+  // Reset page when filters change
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [searchQuery, selectedStaffId]);
+
   const handlePresentationCreated = (id: string) => {
     setSelectedPresentationId(id);
     setViewMode("view");
     loadPresentations();
   };
 
-  const handleDuplicate = async (presentation: Presentation) => {
+  const handleDuplicate = async (presentation: PresentationItem) => {
     try {
       const { data: user } = await supabase.auth.getUser();
       if (!user.user) return;
 
-      // Get staff_id
       const { data: staffData } = await supabase
         .from("onboarding_staff")
         .select("id")
@@ -99,7 +171,6 @@ export default function SlideGeneratorPage() {
         .eq("is_active", true)
         .maybeSingle();
 
-      // Duplicate presentation
       const { data: newPres, error: presError } = await supabase
         .from("slide_presentations")
         .insert({
@@ -118,7 +189,6 @@ export default function SlideGeneratorPage() {
 
       if (presError) throw presError;
 
-      // Duplicate slides
       const { data: slides } = await supabase
         .from("slide_items")
         .select("*")
@@ -197,7 +267,7 @@ export default function SlideGeneratorPage() {
           <Button variant="ghost" onClick={() => setViewMode("library")} className="mb-4 gap-2">
             <ArrowLeft className="h-4 w-4" /> Voltar
           </Button>
-          <SlideTemplateLibrary onSelect={(topic) => {
+          <SlideTemplateLibrary onSelect={() => {
             setViewMode("create");
           }} />
         </div>
@@ -236,91 +306,155 @@ export default function SlideGeneratorPage() {
           </div>
         </div>
 
+        {/* Search & Filters */}
+        <div className="flex flex-col sm:flex-row gap-3">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+            <Input
+              placeholder="Pesquisar por título ou tema..."
+              value={searchQuery}
+              onChange={(e) => setSearchQuery(e.target.value)}
+              className="pl-9"
+            />
+          </div>
+          <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+            <SelectTrigger className="w-full sm:w-[220px]">
+              <SelectValue placeholder="Filtrar por consultor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os consultores</SelectItem>
+              {staffOptions.map((s) => (
+                <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+
         {/* Library */}
         {loading ? (
           <div className="flex items-center justify-center py-20">
             <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
           </div>
-        ) : presentations.length === 0 ? (
+        ) : filtered.length === 0 ? (
           <Card className="border-dashed">
             <CardContent className="flex flex-col items-center justify-center py-16 text-center">
               <div className="w-16 h-16 rounded-full bg-primary/10 flex items-center justify-center mb-4">
                 <Sparkles className="h-8 w-8 text-primary" />
               </div>
-              <h3 className="text-lg font-semibold mb-2">Nenhuma apresentação ainda</h3>
+              <h3 className="text-lg font-semibold mb-2">
+                {presentations.length === 0 ? "Nenhuma apresentação ainda" : "Nenhum resultado encontrado"}
+              </h3>
               <p className="text-muted-foreground mb-6 max-w-md">
-                Crie sua primeira apresentação profissional com IA. Basta informar o tema e deixar a inteligência artificial fazer o resto.
+                {presentations.length === 0
+                  ? "Crie sua primeira apresentação profissional com IA."
+                  : "Tente ajustar os filtros ou buscar por outro termo."}
               </p>
-              <Button onClick={() => setViewMode("create")} className="gap-2">
-                <Sparkles className="h-4 w-4" />
-                Criar Primeira Apresentação
-              </Button>
+              {presentations.length === 0 && (
+                <Button onClick={() => setViewMode("create")} className="gap-2">
+                  <Sparkles className="h-4 w-4" />
+                  Criar Primeira Apresentação
+                </Button>
+              )}
             </CardContent>
           </Card>
         ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-            {presentations.map((p) => (
-              <Card
-                key={p.id}
-                className="group hover:shadow-lg transition-all cursor-pointer border-border/50 hover:border-primary/30"
-                onClick={() => {
-                  setSelectedPresentationId(p.id);
-                  setViewMode("view");
-                }}
-              >
-                {/* Thumbnail area */}
-                <div className="h-36 bg-gradient-to-br from-[#0A1931] to-[#1a2f50] rounded-t-lg flex items-center justify-center relative overflow-hidden">
-                  <div className="absolute top-0 left-0 w-full h-1 bg-[#C81E1E]" />
-                  <div className="text-center px-4">
-                    <Presentation className="h-8 w-8 text-white/60 mx-auto mb-2" />
-                    <p className="text-white/90 text-sm font-medium line-clamp-2">{p.title}</p>
+          <>
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+              {paginated.map((p) => (
+                <Card
+                  key={p.id}
+                  className="group hover:shadow-lg transition-all cursor-pointer border-border/50 hover:border-primary/30"
+                  onClick={() => {
+                    setSelectedPresentationId(p.id);
+                    setViewMode("view");
+                  }}
+                >
+                  <div className="h-36 bg-gradient-to-br from-[#0A1931] to-[#1a2f50] rounded-t-lg flex items-center justify-center relative overflow-hidden">
+                    <div className="absolute top-0 left-0 w-full h-1 bg-[#C81E1E]" />
+                    <div className="text-center px-4">
+                      <Presentation className="h-8 w-8 text-white/60 mx-auto mb-2" />
+                      <p className="text-white/90 text-sm font-medium line-clamp-2">{p.title}</p>
+                    </div>
+                    <div className="absolute bottom-2 right-2">
+                      <Badge variant="secondary" className="text-[10px] bg-white/20 text-white border-0">
+                        {p.slide_count || 0} slides
+                      </Badge>
+                    </div>
                   </div>
-                  <div className="absolute bottom-2 right-2">
-                    <Badge variant="secondary" className="text-[10px] bg-white/20 text-white border-0">
-                      {p.slide_count || 0} slides
-                    </Badge>
-                  </div>
-                </div>
-                <CardContent className="p-4">
-                  <h3 className="font-semibold text-sm line-clamp-1 mb-1">{p.title}</h3>
-                  {p.description && (
-                    <p className="text-xs text-muted-foreground line-clamp-2 mb-3">{p.description}</p>
-                  )}
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs text-muted-foreground">
-                      {format(new Date(p.created_at), "dd/MM/yyyy", { locale: ptBR })}
-                    </span>
-                    <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDuplicate(p);
-                        }}
-                      >
-                        <Copy className="h-3.5 w-3.5" />
-                      </Button>
-                      {isAdmin && (
+                  <CardContent className="p-4">
+                    <h3 className="font-semibold text-sm line-clamp-1 mb-1">{p.title}</h3>
+                    {p.description && (
+                      <p className="text-xs text-muted-foreground line-clamp-2 mb-2">{p.description}</p>
+                    )}
+                    <div className="flex items-center justify-between">
+                      <div className="flex flex-col">
+                        <span className="text-xs text-muted-foreground">
+                          {format(new Date(p.created_at), "dd/MM/yyyy", { locale: ptBR })}
+                        </span>
+                        {p.creator_name && (
+                          <span className="text-[10px] text-muted-foreground/70">
+                            por {p.creator_name}
+                          </span>
+                        )}
+                      </div>
+                      <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
                         <Button
                           variant="ghost"
                           size="icon"
-                          className="h-7 w-7 text-destructive"
+                          className="h-7 w-7"
                           onClick={(e) => {
                             e.stopPropagation();
-                            handleDelete(p.id);
+                            handleDuplicate(p);
                           }}
                         >
-                          <Trash2 className="h-3.5 w-3.5" />
+                          <Copy className="h-3.5 w-3.5" />
                         </Button>
-                      )}
+                        {isAdmin && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7 text-destructive"
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              handleDelete(p.id);
+                            }}
+                          >
+                            <Trash2 className="h-3.5 w-3.5" />
+                          </Button>
+                        )}
+                      </div>
                     </div>
-                  </div>
-                </CardContent>
-              </Card>
-            ))}
-          </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-center gap-2 pt-4">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage <= 1}
+                  onClick={() => setCurrentPage((p) => p - 1)}
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
+                <span className="text-sm text-muted-foreground">
+                  Página {currentPage} de {totalPages}
+                  <span className="ml-2 text-xs">({filtered.length} apresentações)</span>
+                </span>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  disabled={currentPage >= totalPages}
+                  onClick={() => setCurrentPage((p) => p + 1)}
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+            )}
+          </>
         )}
       </div>
     </div>
