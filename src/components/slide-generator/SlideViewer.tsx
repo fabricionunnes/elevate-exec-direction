@@ -52,6 +52,30 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (staff && ["admin", "master"].includes(staff.role)) {
+        setIsAdmin(true);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  const isOwner = presentation?.created_by === currentUserId;
+  const canEdit = isAdmin || isOwner;
+  const canDelete = isAdmin;
 
   useEffect(() => {
     loadData();
