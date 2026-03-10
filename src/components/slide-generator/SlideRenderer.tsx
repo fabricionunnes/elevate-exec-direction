@@ -553,14 +553,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.highlight || content.text || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 48, fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 36, color: colors.text }}
+          style={{ fontSize: fs("quote_text", 48), fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 36, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("quote_text", s)}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 26, color: colors.accent, fontWeight: 600 }}
+          style={{ fontSize: fs("quote_author", 26), color: colors.accent, fontWeight: 600 }}
           placeholder="Autor..."
+          onFontSizeChange={(s) => setFontSize("quote_author", s)}
         />
       </div>
       {logoFooter("right")}
