@@ -48,6 +48,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [editing, setEditing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [pendingChanges, setPendingChanges] = useState<Record<string, Partial<SlideItem>>>({});
+  const [editingTitle, setEditingTitle] = useState(false);
+  const [titleDraft, setTitleDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
