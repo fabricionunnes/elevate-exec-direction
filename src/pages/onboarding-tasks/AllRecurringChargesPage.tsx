@@ -245,8 +245,9 @@ export default function AllRecurringChargesPage() {
   // New receivable dialog
   const [receivableDialog, setReceivableDialog] = useState(false);
   const [receivableForm, setReceivableForm] = useState({
-    company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "",
+    company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "",
   });
+  const [showCustomReceiverRecv, setShowCustomReceiverRecv] = useState(false);
   const [savingReceivable, setSavingReceivable] = useState(false);
 
   // New payable dialog
@@ -858,7 +859,7 @@ export default function AllRecurringChargesPage() {
 
   // Save manual receivable
   const handleSaveReceivable = async () => {
-    if (!receivableForm.company_id || !receivableForm.description || !receivableForm.amount || !receivableForm.due_date) {
+    if ((!receivableForm.company_id && !receivableForm.custom_receiver_name) || !receivableForm.description || !receivableForm.amount || !receivableForm.due_date) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
@@ -866,7 +867,7 @@ export default function AllRecurringChargesPage() {
     try {
       const amountCents = Math.round(receivableForm.amount * 100);
       const { data: inserted, error } = await supabase.from("company_invoices").insert({
-        company_id: receivableForm.company_id,
+        company_id: receivableForm.company_id || null,
         description: receivableForm.description,
         amount_cents: amountCents,
         due_date: receivableForm.due_date,
@@ -880,7 +881,7 @@ export default function AllRecurringChargesPage() {
       if (error) throw error;
 
       // Sync to Conta Azul (non-blocking)
-      const companyName = companies.find(c => c.id === receivableForm.company_id)?.name || "";
+      const companyName = companies.find(c => c.id === receivableForm.company_id)?.name || receivableForm.custom_receiver_name || "";
       syncEntryToContaAzul("receivable", {
         description: receivableForm.description,
         amount: receivableForm.amount,
@@ -896,7 +897,8 @@ export default function AllRecurringChargesPage() {
 
       toast.success("Conta a receber lançada com sucesso");
       setReceivableDialog(false);
-      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+      setReceivableForm({ company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+      setShowCustomReceiverRecv(false);
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
@@ -1390,7 +1392,8 @@ export default function AllRecurringChargesPage() {
                       Importar
                     </Button>
                     <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
-                      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+                      setReceivableForm({ company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+                      setShowCustomReceiverRecv(false);
                       setReceivableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
@@ -2358,13 +2361,40 @@ export default function AllRecurringChargesPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Empresa *</Label>
-              <Select value={receivableForm.company_id} onValueChange={(v) => setReceivableForm(p => ({ ...p, company_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                <SelectContent>
-                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Recebedor / Empresa *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto py-0.5 px-2 text-xs"
+                  onClick={() => {
+                    setShowCustomReceiverRecv(!showCustomReceiverRecv);
+                    if (!showCustomReceiverRecv) {
+                      setReceivableForm(p => ({ ...p, company_id: "", custom_receiver_name: "" }));
+                    } else {
+                      setReceivableForm(p => ({ ...p, custom_receiver_name: "" }));
+                    }
+                  }}
+                >
+                  {showCustomReceiverRecv ? "Selecionar empresa" : "+ Novo recebedor"}
+                </Button>
+              </div>
+              {showCustomReceiverRecv ? (
+                <Input
+                  value={receivableForm.custom_receiver_name}
+                  onChange={(e) => setReceivableForm(p => ({ ...p, custom_receiver_name: e.target.value, company_id: "" }))}
+                  placeholder="Digite o nome do recebedor"
+                />
+              ) : (
+                <SearchableSelect
+                  value={receivableForm.company_id}
+                  onValueChange={(v) => setReceivableForm(p => ({ ...p, company_id: v }))}
+                  options={companies.map(c => ({ value: c.id, label: c.name }))}
+                  placeholder="Pesquisar empresa..."
+                  emptyMessage="Nenhuma empresa encontrada."
+                />
+              )}
             </div>
             <div>
               <Label>Descrição *</Label>
