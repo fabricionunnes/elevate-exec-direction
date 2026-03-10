@@ -120,6 +120,7 @@ function EditableBullets({
   colors,
   fontSize = 26,
   bulletStyle = "dot",
+  visibleCount,
 }: {
   bullets: string[];
   onChange: (bullets: string[]) => void;
@@ -127,6 +128,7 @@ function EditableBullets({
   colors: any;
   fontSize?: number;
   bulletStyle?: "dot" | "number" | "check";
+  visibleCount?: number;
 }) {
   const handleBulletChange = (index: number, newVal: string) => {
     const updated = [...bullets];
@@ -134,29 +136,44 @@ function EditableBullets({
     onChange(updated);
   };
 
+  const showAll = visibleCount === undefined || visibleCount < 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: bulletStyle === "dot" ? 24 : 20 }}>
-      {bullets.map((bullet, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: bulletStyle === "dot" ? 16 : 12 }}>
-          {bulletStyle === "dot" && (
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
-          )}
-          {bulletStyle === "number" && (
-            <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
-              {i + 1}
-            </div>
-          )}
-          {bulletStyle === "check" && (
-            <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
-          )}
-          <EditableText
-            value={bullet}
-            onChange={(val) => handleBulletChange(i, val)}
-            editable={editable}
-            style={{ fontSize, lineHeight: 1.4, color: colors.text }}
-          />
-        </div>
-      ))}
+      {bullets.map((bullet, i) => {
+        const isVisible = showAll || i < visibleCount;
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: bulletStyle === "dot" ? 16 : 12,
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.5s ease, transform 0.5s ease",
+            }}
+          >
+            {bulletStyle === "dot" && (
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
+            )}
+            {bulletStyle === "number" && (
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
+                {i + 1}
+              </div>
+            )}
+            {bulletStyle === "check" && (
+              <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+            )}
+            <EditableText
+              value={bullet}
+              onChange={(val) => handleBulletChange(i, val)}
+              editable={editable}
+              style={{ fontSize, lineHeight: 1.4, color: colors.text }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
