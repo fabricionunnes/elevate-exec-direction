@@ -1,7 +1,8 @@
 import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
-  ArrowRight, Zap, Star, MessageCircle, BarChart3, Users 
+  ArrowRight, Zap, Star, MessageCircle, BarChart3, Users,
+  Plus, Minus
 } from "lucide-react";
 import unvLogo from "@/assets/unv-logo-slides.png";
 
@@ -59,7 +60,8 @@ function EditableText({
   editable, 
   style, 
   tag = "span",
-  placeholder = "Clique para editar..."
+  placeholder = "Clique para editar...",
+  onFontSizeChange,
 }: { 
   value: string; 
   onChange: (val: string) => void; 
@@ -67,11 +69,13 @@ function EditableText({
   style: React.CSSProperties; 
   tag?: string;
   placeholder?: string;
+  onFontSizeChange?: (newSize: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isFocused = useRef(false);
+  const [showControls, setShowControls] = useState(false);
+  const currentFontSize = typeof style.fontSize === "number" ? style.fontSize : parseInt(String(style.fontSize) || "24", 10);
   
-  // Set initial content and sync from external changes only when not focused
   useEffect(() => {
     if (ref.current && !isFocused.current) {
       ref.current.innerText = value || "";
@@ -87,7 +91,14 @@ function EditableText({
         onChange(newText);
       }
     }
+    // Delay hiding controls so button clicks register
+    setTimeout(() => setShowControls(false), 200);
   }, [value, onChange]);
+
+  const changeFontSize = (delta: number) => {
+    const newSize = Math.max(12, Math.min(120, currentFontSize + delta));
+    onFontSizeChange?.(newSize);
+  };
 
   const editableStyle: React.CSSProperties = editable ? {
     ...style,
@@ -108,18 +119,56 @@ function EditableText({
   }
 
   return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onBlur={handleBlur}
-      onFocus={(e) => {
-        isFocused.current = true;
-        (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
-      }}
-      style={editableStyle}
-      data-placeholder={!value ? placeholder : undefined}
-    />
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {showControls && onFontSizeChange && (
+        <div
+          style={{
+            position: "absolute",
+            top: -36,
+            right: 0,
+            display: "flex",
+            gap: 4,
+            background: "rgba(10,25,49,0.9)",
+            borderRadius: 6,
+            padding: "3px 6px",
+            zIndex: 50,
+            alignItems: "center",
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <button
+            onMouseDown={(e) => { e.preventDefault(); changeFontSize(-2); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+            title="Diminuir fonte"
+          >
+            <Minus size={14} />
+          </button>
+          <span style={{ color: "#fff", fontSize: 12, minWidth: 28, textAlign: "center", userSelect: "none" }}>
+            {currentFontSize}
+          </span>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); changeFontSize(2); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+            title="Aumentar fonte"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      )}
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={handleBlur}
+        onFocus={(e) => {
+          isFocused.current = true;
+          setShowControls(true);
+          (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
+        }}
+        style={editableStyle}
+        data-placeholder={!value ? placeholder : undefined}
+      />
+    </div>
   );
 }
 
@@ -132,6 +181,7 @@ function EditableBullets({
   fontSize = 26,
   bulletStyle = "dot",
   visibleCount,
+  onFontSizeChange,
 }: {
   bullets: string[];
   onChange: (bullets: string[]) => void;
@@ -140,6 +190,7 @@ function EditableBullets({
   fontSize?: number;
   bulletStyle?: "dot" | "number" | "check";
   visibleCount?: number;
+  onFontSizeChange?: (newSize: number) => void;
 }) {
   const handleBulletChange = (index: number, newVal: string) => {
     const updated = [...bullets];
@@ -181,6 +232,7 @@ function EditableBullets({
               onChange={(val) => handleBulletChange(i, val)}
               editable={editable}
               style={{ fontSize, lineHeight: 1.4, color: colors.text }}
+              onFontSizeChange={onFontSizeChange}
             />
           </div>
         );
@@ -193,11 +245,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   const colors = getSlideColors(slide.slide_type);
   const content = slide.content || {};
   const vb = visibleBullets;
+  const fontSizes: Record<string, number> = content._fontSizes || {};
   const updateTitle = (title: string) => onUpdate?.({ title });
   const updateSubtitle = (subtitle: string) => onUpdate?.({ subtitle });
   const updateContent = (key: string, value: any) => {
     onUpdate?.({ content: { ...content, [key]: value } });
   };
+  const setFontSize = (key: string, size: number) => {
+    updateContent("_fontSizes", { ...fontSizes, [key]: size });
+  };
+  const fs = (key: string, defaultSize: number) => fontSizes[key] || defaultSize;
 
   const containerStyle: React.CSSProperties = {
     width: 1920,
@@ -245,14 +302,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.1, marginBottom: 28, maxWidth: 1400 }}
+          style={{ fontSize: fs("cover_title", 84), fontWeight: 800, lineHeight: 1.1, marginBottom: 28, maxWidth: 1400 }}
+          onFontSizeChange={(s) => setFontSize("cover_title", s)}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 36, opacity: 0.8, maxWidth: 1100, lineHeight: 1.4 }}
+          style={{ fontSize: fs("cover_subtitle", 36), opacity: 0.8, maxWidth: 1100, lineHeight: 1.4 }}
           placeholder="Subtítulo..."
+          onFontSizeChange={(s) => setFontSize("cover_subtitle", s)}
         />
         <div style={{ position: "absolute", bottom: 60, left: 120, right: 120, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ width: 80, height: 4, background: colors.accent }} />
@@ -270,14 +329,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.highlight || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.2, marginBottom: 36 }}
+          style={{ fontSize: fs("highlight_title", 76), fontWeight: 800, lineHeight: 1.2, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("highlight_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1200 }}
+          style={{ fontSize: fs("highlight_text", 32), opacity: 0.85, maxWidth: 1200 }}
           placeholder="Texto adicional..."
+          onFontSizeChange={(s) => setFontSize("highlight_text", s)}
         />
         <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.5)", marginTop: 48 }} />
       </div>
@@ -293,14 +354,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.question || slide.title || ""}
           onChange={(val) => updateContent("question", val)}
           editable={editable}
-          style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.3, marginBottom: 36 }}
+          style={{ fontSize: fs("question_title", 68), fontWeight: 700, lineHeight: 1.3, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("question_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 30, opacity: 0.7, maxWidth: 1000 }}
+          style={{ fontSize: fs("question_text", 30), opacity: 0.7, maxWidth: 1000 }}
           placeholder="Texto complementar..."
+          onFontSizeChange={(s) => setFontSize("question_text", s)}
         />
       </div>
       {logoFooter("left")}
@@ -316,7 +379,8 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.framework_name || slide.title || ""}
           onChange={(val) => updateContent("framework_name", val)}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: fs("framework_title", 60), fontWeight: 800, marginBottom: 48, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("framework_title", s)}
         />
         {content.framework_steps?.length ? (
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
@@ -354,9 +418,10 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             onChange={(b) => updateContent("bullets", b)}
             editable={editable}
             colors={colors}
-            fontSize={30}
+            fontSize={fs("framework_bullets", 30)}
             bulletStyle="number"
             visibleCount={vb}
+            onFontSizeChange={(s) => setFontSize("framework_bullets", s)}
           />
         ) : null}
       </div>
@@ -377,14 +442,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.exercise_title || slide.title || ""}
           onChange={(val) => updateContent("exercise_title", val)}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 36 }}
+          style={{ fontSize: fs("exercise_title", 60), fontWeight: 800, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("exercise_title", s)}
         />
         <EditableText
           value={content.exercise_instructions || ""}
           onChange={(val) => updateContent("exercise_instructions", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1400, lineHeight: 1.6, marginBottom: 36 }}
+          style={{ fontSize: fs("exercise_text", 32), opacity: 0.85, maxWidth: 1400, lineHeight: 1.6, marginBottom: 36 }}
           placeholder="Instruções do exercício..."
+          onFontSizeChange={(s) => setFontSize("exercise_text", s)}
         />
         {content.bullets?.length && (
           <EditableBullets
@@ -392,9 +459,10 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             onChange={(b) => updateContent("bullets", b)}
             editable={editable}
             colors={colors}
-            fontSize={28}
+            fontSize={fs("exercise_bullets", 28)}
             bulletStyle="check"
             visibleCount={vb}
+            onFontSizeChange={(s) => setFontSize("exercise_bullets", s)}
           />
         )}
       </div>
@@ -411,14 +479,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             value={slide.subtitle}
             onChange={updateSubtitle}
             editable={editable}
-            style={{ fontSize: 20, letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
+            style={{ fontSize: fs("content_subtitle", 20), letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
+            onFontSizeChange={(s) => setFontSize("content_subtitle", s)}
           />
         )}
         <EditableText
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: fs("content_title", 60), fontWeight: 800, marginBottom: 48, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("content_title", s)}
         />
         
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -428,17 +498,19 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               onChange={(b) => updateContent("bullets", b)}
               editable={editable}
               colors={colors}
-              fontSize={34}
+              fontSize={fs("content_bullets", 34)}
               bulletStyle="dot"
               visibleCount={vb}
+              onFontSizeChange={(s) => setFontSize("content_bullets", s)}
             />
           ) : (
             <EditableText
               value={content.text || ""}
               onChange={(val) => updateContent("text", val)}
               editable={editable}
-              style={{ fontSize: 34, lineHeight: 1.6, maxWidth: 1500, color: colors.text }}
+              style={{ fontSize: fs("content_text", 34), lineHeight: 1.6, maxWidth: 1500, color: colors.text }}
               placeholder="Conteúdo do slide..."
+              onFontSizeChange={(s) => setFontSize("content_text", s)}
             />
           )}
         </div>
@@ -460,14 +532,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={slide.title || "Obrigado!"}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 72, fontWeight: 800, marginBottom: 28 }}
+          style={{ fontSize: fs("closing_title", 72), fontWeight: 800, marginBottom: 28 }}
+          onFontSizeChange={(s) => setFontSize("closing_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.8, maxWidth: 1000, marginBottom: 44 }}
+          style={{ fontSize: fs("closing_text", 32), opacity: 0.8, maxWidth: 1000, marginBottom: 44 }}
           placeholder="Mensagem final..."
+          onFontSizeChange={(s) => setFontSize("closing_text", s)}
         />
       </div>
     </div>
@@ -481,14 +555,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.highlight || content.text || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 48, fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 36, color: colors.text }}
+          style={{ fontSize: fs("quote_text", 48), fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 36, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("quote_text", s)}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 26, color: colors.accent, fontWeight: 600 }}
+          style={{ fontSize: fs("quote_author", 26), color: colors.accent, fontWeight: 600 }}
           placeholder="Autor..."
+          onFontSizeChange={(s) => setFontSize("quote_author", s)}
         />
       </div>
       {logoFooter("right")}
