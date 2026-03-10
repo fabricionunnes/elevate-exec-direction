@@ -721,10 +721,9 @@ const OnboardingCompanyDetailPage = () => {
                           supabase
                             .rpc("update_company_segment", { 
                               p_company_id: companyId, 
-                              p_segment: value 
+                              p_segment: value || null
                             })
                             .then(({ error }) => {
-                              console.log("[SegmentAutoSave] RPC result, error:", error);
                               if (error) {
                                 console.error("Error auto-saving segment:", error);
                                 toast.error("Erro ao salvar segmento");
