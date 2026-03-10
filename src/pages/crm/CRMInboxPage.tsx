@@ -70,6 +70,8 @@ import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
+import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const CRMInboxPage = () => {
