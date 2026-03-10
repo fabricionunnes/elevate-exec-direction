@@ -881,7 +881,7 @@ export default function AllRecurringChargesPage() {
       if (error) throw error;
 
       // Sync to Conta Azul (non-blocking)
-      const companyName = companies.find(c => c.id === receivableForm.company_id)?.name || "";
+      const companyName = companies.find(c => c.id === receivableForm.company_id)?.name || receivableForm.custom_receiver_name || "";
       syncEntryToContaAzul("receivable", {
         description: receivableForm.description,
         amount: receivableForm.amount,
