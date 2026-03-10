@@ -419,6 +419,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               colors={colors}
               fontSize={26}
               bulletStyle="dot"
+              visibleCount={vb}
             />
           ) : (
             <EditableText
