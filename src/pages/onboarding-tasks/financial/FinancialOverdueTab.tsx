@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
   Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
 
 interface Invoice {
   id: string;
