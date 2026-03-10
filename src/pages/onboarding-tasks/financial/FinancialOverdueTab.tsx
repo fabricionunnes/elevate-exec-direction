@@ -283,6 +283,36 @@ export default function FinancialOverdueTab({
 
       const companyMap = new Map((companiesData).map((c: any) => [c.id, c]));
 
+      // For invoices without company_id, try to match by custom_receiver_name
+      const unmatchedNames = [...new Set(
+        sortedInvoices
+          .filter(i => !i.company_id && i.custom_receiver_name)
+          .map(i => i.custom_receiver_name!.trim().toLowerCase())
+      )];
+      if (unmatchedNames.length > 0) {
+        const { data: extraCompanies } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id");
+        if (extraCompanies) {
+          const nameToCompany = new Map<string, any>();
+          for (const c of extraCompanies) {
+            nameToCompany.set(c.name.trim().toLowerCase(), c);
+          }
+          for (const inv of sortedInvoices) {
+            if (!inv.company_id && inv.custom_receiver_name) {
+              const matched = nameToCompany.get(inv.custom_receiver_name.trim().toLowerCase());
+              if (matched && !companyMap.has(`custom_${inv.id}`)) {
+                companyMap.set(`custom_${inv.id}`, matched);
+                // Also collect consultant IDs
+                if (matched.consultant_id && !consultantMap.has(matched.consultant_id)) {
+                  // Will be fetched below if not already
+                }
+              }
+            }
+          }
+        }
+      }
+
       // Fetch recurring charge descriptions (service name)
       const recurringIds = [...new Set(sortedInvoices.map(i => i.recurring_charge_id).filter(Boolean))] as string[];
       let chargeMap = new Map<string, string>();
