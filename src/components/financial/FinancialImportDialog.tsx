@@ -217,15 +217,12 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
           const status = ["quitado", "pago", "paid", "recebido", "liquidado"].includes(statusRaw) ? "paid" : ["vencido", "overdue", "em atraso", "atrasado"].includes(statusRaw) ? "overdue" : ["cancelado", "estornado"].includes(statusRaw) ? "cancelled" : "pending";
 
           if (type === "receivable") {
-            const companyName = getVal(row, "company_name").toLowerCase().trim();
-            const companyId = companyMap.get(companyName);
-            if (!companyId) {
-              errors++;
-              errorMsgs.push(`Linha ${lineNum}: empresa "${getVal(row, "company_name")}" não encontrada`);
-              continue;
-            }
+            const rawCompanyName = getVal(row, "company_name");
+            const companyNameKey = rawCompanyName.toLowerCase().trim();
+            const companyId = companyMap.get(companyNameKey) || null;
             const record: any = {
               company_id: companyId,
+              custom_receiver_name: companyId ? null : (rawCompanyName || null),
               description,
               amount_cents: Math.round(amount * 100),
               due_date: dueDate,
