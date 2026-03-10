@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users,
-  Plus, Minus
+  Plus, Minus, Trash2, Type, GripVertical
 } from "lucide-react";
 import unvLogo from "@/assets/unv-logo-slides.png";
 
