@@ -76,10 +76,16 @@ export function CompanyFinancialSidePanel({
         if (error) throw error;
       } else {
         // Fallback: use default instance
-        const { data: defaultConfig } = await supabase.from("whatsapp_default_config").select("instance_name").limit(1).maybeSingle();
-        if (!defaultConfig?.instance_name) { toast.error("Nenhuma instância configurada"); return; }
+        const { data: defaultConfig } = await supabase
+          .from("whatsapp_default_config")
+          .select("setting_value")
+          .eq("setting_key", "default_instance")
+          .limit(1)
+          .maybeSingle();
+        const instanceName = (defaultConfig as any)?.setting_value;
+        if (!instanceName) { toast.error("Nenhuma instância configurada"); return; }
         
-        const { data: inst } = await supabase.from("whatsapp_instances").select("id").eq("instance_name", defaultConfig.instance_name).maybeSingle();
+        const { data: inst } = await supabase.from("whatsapp_instances").select("id").eq("instance_name", instanceName).maybeSingle();
         if (!inst) { toast.error("Instância não encontrada"); return; }
 
         const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
