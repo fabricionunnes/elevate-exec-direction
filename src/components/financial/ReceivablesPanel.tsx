@@ -230,6 +230,7 @@ export function ReceivablesPanel() {
     try {
       const { error } = await supabase.from("financial_receivables").insert({
         company_id: formData.company_id || null,
+        custom_receiver_name: !formData.company_id && formData.custom_receiver_name ? formData.custom_receiver_name : null,
         category_id: formData.category_id || null,
         description: formData.description,
         amount: parseFloat(formData.amount),
