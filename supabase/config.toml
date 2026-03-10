@@ -269,3 +269,6 @@ verify_jwt = false
 
 [functions.clint-sync]
 verify_jwt = false
+
+[functions.analyze-payment-receipt]
+verify_jwt = false
