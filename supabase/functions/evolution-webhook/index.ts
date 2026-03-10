@@ -436,7 +436,36 @@ async function handleIncomingMessage(
     .eq('id', conversation.id);
 
   console.log('Message processed successfully:', { phone, content: content.substring(0, 50), type, fromMe });
+
+  // Fire-and-forget: check for cancellation intent on inbound text messages
+  if (!fromMe && type === 'text' && content.length > 5) {
+    detectCancellationIntent(supabase, content, phone).catch((err) =>
+      console.error('[evolution-webhook] Cancellation detection error (non-blocking):', err)
+    );
+  }
 }
+
+async function detectCancellationIntent(supabase: any, messageContent: string, phone: string) {
+  try {
+    const supabaseUrl = Deno.env.get('SUPABASE_URL') ?? '';
+    const serviceRoleKey = Deno.env.get('SUPABASE_SERVICE_ROLE_KEY') ?? '';
+
+    const response = await fetch(`${supabaseUrl}/functions/v1/detect-cancellation-intent`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'Authorization': `Bearer ${serviceRoleKey}`,
+      },
+      body: JSON.stringify({ messageContent, phone }),
+    });
+
+    const result = await response.json();
+    if (result.detected) {
+      console.log('[evolution-webhook] Cancellation detected!', result);
+    }
+  } catch (err) {
+    console.error('[evolution-webhook] Error calling cancellation detection:', err);
+  }
 
 async function handleMessageStatusUpdate(supabase: any, data: any) {
   console.log('Processing message status update:', JSON.stringify(data, null, 2));

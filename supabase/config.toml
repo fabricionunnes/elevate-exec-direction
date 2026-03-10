@@ -272,3 +272,6 @@ verify_jwt = false
 
 [functions.analyze-payment-receipt]
 verify_jwt = false
+
+[functions.detect-cancellation-intent]
+verify_jwt = false
