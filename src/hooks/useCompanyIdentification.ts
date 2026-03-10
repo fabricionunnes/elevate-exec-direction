@@ -134,7 +134,7 @@ export function useCompanyIdentification({ phone, cnpj }: UseCompanyIdentificati
         .from("company_invoices")
         .select("id, description, amount_cents, due_date, status, paid_at, paid_amount_cents, discount_cents, interest_cents, late_fee_cents, payment_link_url, public_token")
         .eq("company_id", companyId)
-        .in("status", ["pending", "overdue", "parcial"])
+        .in("status", ["pending", "overdue", "parcial", "paid"])
         .order("due_date", { ascending: true });
 
       if (invError) throw invError;

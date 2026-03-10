@@ -71,6 +71,8 @@ export function CompanyFinancialSidePanel({
 
   const overdueInvoices = invoices.filter(inv => inv.status === "overdue" || (inv.status === "pending" && isPast(parseISO(inv.due_date))));
   const pendingInvoices = invoices.filter(inv => inv.status === "pending" && !isPast(parseISO(inv.due_date)));
+  const paidInvoices = invoices.filter(inv => inv.status === "paid");
+  const openInvoices = invoices.filter(inv => inv.status !== "paid");
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -169,7 +171,7 @@ export function CompanyFinancialSidePanel({
           <button className="w-full p-4 border-b border-border flex items-center justify-between hover:bg-muted/50 transition-colors">
             <span className="flex items-center gap-2 text-sm font-medium">
               <Receipt className="h-4 w-4" />
-              Faturas em Aberto
+              Faturas
               {invoices.length > 0 && (
                 <Badge variant="outline" className="h-5 px-1.5 text-[10px]">
                   {invoices.length}
@@ -180,48 +182,66 @@ export function CompanyFinancialSidePanel({
           </button>
         </CollapsibleTrigger>
         <CollapsibleContent className="border-b border-border">
-          <div className="p-3 space-y-2 max-h-[300px] overflow-y-auto">
+          <div className="p-3 space-y-2 max-h-[400px] overflow-y-auto">
             {loadingInvoices ? (
               <div className="flex items-center justify-center py-4">
                 <RefreshCw className="h-4 w-4 animate-spin text-muted-foreground" />
               </div>
             ) : invoices.length === 0 ? (
               <p className="text-xs text-muted-foreground text-center py-2">
-                Nenhuma fatura em aberto
+                Nenhuma fatura encontrada
               </p>
             ) : (
-              invoices.map((invoice) => (
-                <div
-                  key={invoice.id}
-                  className="p-2 rounded-lg border bg-card space-y-1"
-                >
-                  <div className="flex items-center justify-between">
-                    <p className="text-xs font-medium truncate flex-1 mr-2">
-                      {invoice.description}
-                    </p>
-                    {getStatusBadge(invoice)}
+              <>
+                {/* Open invoices first */}
+                {openInvoices.length > 0 && (
+                  <div className="space-y-2">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Em aberto ({openInvoices.length})</p>
+                    {openInvoices.map((invoice) => (
+                      <div key={invoice.id} className="p-2 rounded-lg border bg-card space-y-1">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium truncate flex-1 mr-2">{invoice.description}</p>
+                          {getStatusBadge(invoice)}
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Venc: {format(parseISO(invoice.due_date), "dd/MM/yyyy")}</span>
+                          <span className="font-medium">{formatCurrency(invoice.amount_cents)}</span>
+                        </div>
+                        {invoice.payment_link_url && (
+                          <a href={invoice.payment_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
+                            <ExternalLink className="h-3 w-3" />
+                            Link de pagamento
+                          </a>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  <div className="flex items-center justify-between text-xs">
-                    <span className="text-muted-foreground">
-                      Venc: {format(parseISO(invoice.due_date), "dd/MM/yyyy")}
-                    </span>
-                    <span className="font-medium">
-                      {formatCurrency(invoice.amount_cents)}
-                    </span>
+                )}
+
+                {/* Paid invoices */}
+                {paidInvoices.length > 0 && (
+                  <div className="space-y-2 mt-3">
+                    <p className="text-[10px] font-semibold text-muted-foreground uppercase tracking-wider">Pagas ({paidInvoices.length})</p>
+                    {paidInvoices.map((invoice) => (
+                      <div key={invoice.id} className="p-2 rounded-lg border bg-card/50 space-y-1 opacity-75">
+                        <div className="flex items-center justify-between">
+                          <p className="text-xs font-medium truncate flex-1 mr-2">{invoice.description}</p>
+                          {getStatusBadge(invoice)}
+                        </div>
+                        <div className="flex items-center justify-between text-xs">
+                          <span className="text-muted-foreground">Venc: {format(parseISO(invoice.due_date), "dd/MM/yyyy")}</span>
+                          <span className="font-medium">{formatCurrency(invoice.amount_cents)}</span>
+                        </div>
+                        {invoice.paid_at && (
+                          <p className="text-[10px] text-muted-foreground">
+                            Pago em: {format(parseISO(invoice.paid_at), "dd/MM/yyyy")}
+                          </p>
+                        )}
+                      </div>
+                    ))}
                   </div>
-                  {invoice.payment_link_url && (
-                    <a
-                      href={invoice.payment_link_url}
-                      target="_blank"
-                      rel="noopener noreferrer"
-                      className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline"
-                    >
-                      <ExternalLink className="h-3 w-3" />
-                      Link de pagamento
-                    </a>
-                  )}
-                </div>
-              ))
+                )}
+              </>
             )}
           </div>
         </CollapsibleContent>
