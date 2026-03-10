@@ -349,12 +349,10 @@ const OnboardingCompanyDetailPage = () => {
         }
 
         // Save segment via RPC (security definer) to bypass RLS issues
-        if (currentForm.segment) {
-          await supabase.rpc("update_company_segment", {
-            p_company_id: companyId,
-            p_segment: currentForm.segment,
-          });
-        }
+        await supabase.rpc("update_company_segment", {
+          p_company_id: companyId,
+          p_segment: currentForm.segment || null,
+        });
 
         console.log("[CompanyDetail] Saving payload, companyId:", companyId);
         const { data: updateData, error } = await supabase
