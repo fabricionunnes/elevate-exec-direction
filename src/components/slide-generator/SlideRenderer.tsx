@@ -3,6 +3,7 @@ import {
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users 
 } from "lucide-react";
+import unvLogo from "@/assets/unv-logo-slides.png";
 
 interface SlideItem {
   slide_type: string;
