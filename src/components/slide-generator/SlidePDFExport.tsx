@@ -77,7 +77,16 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
         pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH);
       }
 
-      pdf.save(`${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`);
+      // Use Blob + anchor for reliable download in iframe/preview environments
+      const pdfBlob = pdf.output("blob");
+      const url = URL.createObjectURL(pdfBlob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast.success("PDF exportado com sucesso!");
     } catch (err) {
       console.error("PDF export error:", err);
