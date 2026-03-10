@@ -474,14 +474,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             value={slide.subtitle}
             onChange={updateSubtitle}
             editable={editable}
-            style={{ fontSize: 20, letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
+            style={{ fontSize: fs("content_subtitle", 20), letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
+            onFontSizeChange={(s) => setFontSize("content_subtitle", s)}
           />
         )}
         <EditableText
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: fs("content_title", 60), fontWeight: 800, marginBottom: 48, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("content_title", s)}
         />
         
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -491,17 +493,19 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               onChange={(b) => updateContent("bullets", b)}
               editable={editable}
               colors={colors}
-              fontSize={34}
+              fontSize={fs("content_bullets", 34)}
               bulletStyle="dot"
               visibleCount={vb}
+              onFontSizeChange={(s) => setFontSize("content_bullets", s)}
             />
           ) : (
             <EditableText
               value={content.text || ""}
               onChange={(val) => updateContent("text", val)}
               editable={editable}
-              style={{ fontSize: 34, lineHeight: 1.6, maxWidth: 1500, color: colors.text }}
+              style={{ fontSize: fs("content_text", 34), lineHeight: 1.6, maxWidth: 1500, color: colors.text }}
               placeholder="Conteúdo do slide..."
+              onFontSizeChange={(s) => setFontSize("content_text", s)}
             />
           )}
         </div>
