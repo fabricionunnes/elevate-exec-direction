@@ -291,7 +291,7 @@ const OnboardingCompanyDetailPage = () => {
       const payload = {
         name: currentForm.name,
         cnpj: currentForm.cnpj || null,
-        // segment is saved via RPC (security definer) to avoid RLS issues
+        segment: currentForm.segment || null,
         website: currentForm.website || null,
         phone: currentForm.phone || null,
         email: currentForm.email || null,
@@ -348,11 +348,7 @@ const OnboardingCompanyDetailPage = () => {
           }
         }
 
-        // Save segment via RPC (security definer) to bypass RLS issues
-        await supabase.rpc("update_company_segment", {
-          p_company_id: companyId,
-          p_segment: currentForm.segment || null,
-        });
+        // segment is now included in the payload directly
 
         console.log("[CompanyDetail] Saving payload, companyId:", companyId);
         const { data: updateData, error } = await supabase
@@ -719,15 +715,15 @@ const OnboardingCompanyDetailPage = () => {
                         setForm(prev => ({ ...prev, segment: value }));
                         if (!isNew && companyId) {
                           supabase
-                            .rpc("update_company_segment", { 
-                              p_company_id: companyId, 
-                              p_segment: value || null
-                            })
+                            .from("onboarding_companies")
+                            .update({ segment: value || null })
+                            .eq("id", companyId)
                             .then(({ error }) => {
                               if (error) {
                                 console.error("Error auto-saving segment:", error);
                                 toast.error("Erro ao salvar segmento");
                               } else {
+                                console.log("[CompanyDetail] Segment saved:", value);
                                 toast.success("Segmento atualizado");
                               }
                             });
