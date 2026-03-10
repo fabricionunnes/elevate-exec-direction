@@ -178,10 +178,10 @@ function EditableBullets({
   );
 }
 
-export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
+export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets }: Props) {
   const colors = getSlideColors(slide.slide_type);
   const content = slide.content || {};
-
+  const vb = visibleBullets;
   const updateTitle = (title: string) => onUpdate?.({ title });
   const updateSubtitle = (subtitle: string) => onUpdate?.({ subtitle });
   const updateContent = (key: string, value: any) => {
