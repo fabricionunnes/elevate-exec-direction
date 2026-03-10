@@ -453,6 +453,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
           placeholder="Autor..."
         />
       </div>
+      {logoFooter("right")}
     </div>
   );
 
