@@ -45,12 +45,14 @@ interface InstanceOption {
 
 export function FinancialInboxPanel() {
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("all");
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingInstances, setLoadingInstances] = useState(true);
+  const [financialInstanceName, setFinancialInstanceName] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
@@ -107,12 +109,15 @@ export function FinancialInboxPanel() {
 
         const { data: staff } = await supabase
           .from("onboarding_staff")
-          .select("id")
+          .select("id, role")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
 
-        if (staff) setStaffId(staff.id);
+        if (staff) {
+          setStaffId(staff.id);
+          setIsMaster((staff as any).role === "master");
+        }
 
         // Load all instances
         const [{ data: evolutionInstances }, { data: officialInstances }] = await Promise.all([
@@ -121,13 +126,25 @@ export function FinancialInboxPanel() {
         ]);
 
         const opts: InstanceOption[] = [];
+        let financialId: string | null = null;
+
         (evolutionInstances || []).forEach((i: any) => {
           opts.push({ id: i.id, name: i.display_name || i.instance_name, instanceName: i.instance_name || "", type: "evolution" });
+          // Auto-select the financial instance
+          if (i.instance_name === "financeiro-unv" || (i.display_name || "").toLowerCase().includes("financeiro")) {
+            financialId = i.id;
+            setFinancialInstanceName(i.display_name || i.instance_name);
+          }
         });
         (officialInstances || []).forEach((i: any) => {
           opts.push({ id: `official:${i.id}`, name: i.display_name || `Oficial ${i.phone_number}`, instanceName: i.phone_number || "", type: "official" });
         });
         setInstances(opts);
+
+        // For non-master users, lock to the financial instance
+        if (financialId) {
+          setSelectedInstanceId(financialId);
+        }
       } catch (err) {
         console.error("Error loading instances:", err);
       } finally {
@@ -277,30 +294,34 @@ export function FinancialInboxPanel() {
         {/* Instance Selector Header */}
         <div className="p-3 border-b bg-muted/30 flex items-center gap-3">
           <Headphones className="h-5 w-5 text-primary shrink-0" />
-          <Select value={selectedInstanceId} onValueChange={(v) => { setSelectedInstanceId(v); setSelectedConversation(null); }}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecione uma instância" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as instâncias</SelectItem>
-              {instances.map((inst) => (
-                <SelectItem key={inst.id} value={inst.id}>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={cn(
-                      "h-4 px-1 text-[9px] shrink-0",
-                      inst.type === "evolution" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                    )}>
-                      {inst.type === "evolution" ? "EVO" : "API"}
-                    </Badge>
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-sm">{inst.name}</span>
-                      <span className="text-[10px] text-muted-foreground">{inst.instanceName}</span>
+          {isMaster ? (
+            <Select value={selectedInstanceId} onValueChange={(v) => { setSelectedInstanceId(v); setSelectedConversation(null); }}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Selecione uma instância" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as instâncias</SelectItem>
+                {instances.map((inst) => (
+                  <SelectItem key={inst.id} value={inst.id}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "h-4 px-1 text-[9px] shrink-0",
+                        inst.type === "evolution" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                      )}>
+                        {inst.type === "evolution" ? "EVO" : "API"}
+                      </Badge>
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-sm">{inst.name}</span>
+                        <span className="text-[10px] text-muted-foreground">{inst.instanceName}</span>
+                      </div>
                     </div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-sm font-medium">{financialInstanceName || "Financeiro"}</span>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => refetchConversations()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
