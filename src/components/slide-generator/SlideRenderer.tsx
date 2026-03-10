@@ -376,7 +376,8 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.framework_name || slide.title || ""}
           onChange={(val) => updateContent("framework_name", val)}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: fs("framework_title", 60), fontWeight: 800, marginBottom: 48, color: colors.text }}
+          onFontSizeChange={(s) => setFontSize("framework_title", s)}
         />
         {content.framework_steps?.length ? (
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
