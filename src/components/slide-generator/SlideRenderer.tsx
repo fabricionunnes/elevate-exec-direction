@@ -360,6 +360,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
           />
         )}
       </div>
+      {logoFooter("left")}
     </div>
   );
 
