@@ -24,6 +24,7 @@ interface Props {
   scale: number;
   editable?: boolean;
   onUpdate?: (update: SlideUpdate) => void;
+  visibleBullets?: number; // -1 or undefined = show all
 }
 
 const ICON_MAP: Record<string, any> = {
