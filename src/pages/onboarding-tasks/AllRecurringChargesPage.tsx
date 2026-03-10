@@ -2361,13 +2361,40 @@ export default function AllRecurringChargesPage() {
           </DialogHeader>
           <div className="space-y-4">
             <div>
-              <Label>Empresa *</Label>
-              <Select value={receivableForm.company_id} onValueChange={(v) => setReceivableForm(p => ({ ...p, company_id: v }))}>
-                <SelectTrigger><SelectValue placeholder="Selecione a empresa" /></SelectTrigger>
-                <SelectContent>
-                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <div className="flex items-center justify-between mb-1">
+                <Label>Recebedor / Empresa *</Label>
+                <Button
+                  type="button"
+                  variant="ghost"
+                  size="sm"
+                  className="h-auto py-0.5 px-2 text-xs"
+                  onClick={() => {
+                    setShowCustomReceiverRecv(!showCustomReceiverRecv);
+                    if (!showCustomReceiverRecv) {
+                      setReceivableForm(p => ({ ...p, company_id: "", custom_receiver_name: "" }));
+                    } else {
+                      setReceivableForm(p => ({ ...p, custom_receiver_name: "" }));
+                    }
+                  }}
+                >
+                  {showCustomReceiverRecv ? "Selecionar empresa" : "+ Novo recebedor"}
+                </Button>
+              </div>
+              {showCustomReceiverRecv ? (
+                <Input
+                  value={receivableForm.custom_receiver_name}
+                  onChange={(e) => setReceivableForm(p => ({ ...p, custom_receiver_name: e.target.value, company_id: "" }))}
+                  placeholder="Digite o nome do recebedor"
+                />
+              ) : (
+                <SearchableSelect
+                  value={receivableForm.company_id}
+                  onValueChange={(v) => setReceivableForm(p => ({ ...p, company_id: v }))}
+                  options={companies.map(c => ({ value: c.id, label: c.name }))}
+                  placeholder="Pesquisar empresa..."
+                  emptyMessage="Nenhuma empresa encontrada."
+                />
+              )}
             </div>
             <div>
               <Label>Descrição *</Label>
