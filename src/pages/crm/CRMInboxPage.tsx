@@ -70,6 +70,8 @@ import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
+import { ReceiptAnalysisButton } from "@/components/crm/inbox/ReceiptAnalysisButton";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 export const CRMInboxPage = () => {
@@ -138,6 +140,14 @@ export const CRMInboxPage = () => {
     sendMedia,
     refetch: refetchMessages,
   } = useWhatsAppMessages(selectedConversation?.id || null);
+
+  // Company identification for receipt analysis
+  const {
+    company: identifiedCompany,
+    invoices: companyInvoices,
+  } = useCompanyIdentification({
+    phone: selectedConversation?.contact?.phone,
+  });
 
   // Fetch allowed instances for this user
   useEffect(() => {
@@ -843,6 +853,14 @@ export const CRMInboxPage = () => {
                           </div>
                           {message.content && message.content !== "[Imagem]" && (
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
+                          )}
+                          {/* Receipt analysis button for inbound images when company has open invoices */}
+                          {message.direction === "inbound" && identifiedCompany && companyInvoices.length > 0 && (
+                            <ReceiptAnalysisButton
+                              mediaUrl={message.media_url!}
+                              invoices={companyInvoices}
+                              companyName={identifiedCompany.name}
+                            />
                           )}
                         </div>
                       ) : message.type === "video" && message.media_url ? (

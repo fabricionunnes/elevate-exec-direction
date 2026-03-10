@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
 import { useLinkedLeads } from "@/hooks/useLinkedLeads";
 import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
+import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
 
 interface CRMStaff {
   id: string;
@@ -74,6 +76,17 @@ export function ConversationSidebar({
   
   // Linked leads based on phone
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
+    phone: conversation.contact?.phone,
+  });
+
+  // Company identification by phone
+  const { 
+    company: identifiedCompany, 
+    invoices: companyInvoices, 
+    loading: loadingCompany, 
+    loadingInvoices: loadingCompanyInvoices,
+    refetchInvoices,
+  } = useCompanyIdentification({
     phone: conversation.contact?.phone,
   });
   
@@ -593,7 +606,14 @@ export function ConversationSidebar({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Linked Leads Section - Show if there are linked leads */}
+      {/* Company Financial Panel */}
+      <CompanyFinancialSidePanel
+        company={identifiedCompany}
+        invoices={companyInvoices}
+        loading={loadingCompany}
+        loadingInvoices={loadingCompanyInvoices}
+      />
+
       {(linkedLeads.length > 0 || loadingLinkedLeads) && (
         <LinkedLeadsSection 
           leads={linkedLeads} 
