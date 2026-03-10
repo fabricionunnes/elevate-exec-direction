@@ -226,8 +226,50 @@ export function SlideViewer({ presentationId, onBack }: Props) {
           <Button variant="ghost" size="icon" onClick={onBack}>
             <ArrowLeft className="h-4 w-4" />
           </Button>
-          <div>
-            <h2 className="text-sm font-semibold line-clamp-1">{presentation?.title}</h2>
+          <div className="flex items-center gap-2">
+            {editingTitle ? (
+              <form
+                className="flex items-center gap-1"
+                onSubmit={async (e) => {
+                  e.preventDefault();
+                  if (!titleDraft.trim() || !presentation) return;
+                  try {
+                    const { error } = await supabase
+                      .from("slide_presentations")
+                      .update({ title: titleDraft.trim() } as any)
+                      .eq("id", presentation.id);
+                    if (error) throw error;
+                    setPresentation({ ...presentation, title: titleDraft.trim() });
+                    toast.success("Título atualizado");
+                  } catch {
+                    toast.error("Erro ao atualizar título");
+                  }
+                  setEditingTitle(false);
+                }}
+              >
+                <Input
+                  autoFocus
+                  value={titleDraft}
+                  onChange={(e) => setTitleDraft(e.target.value)}
+                  className="h-7 text-sm w-48 sm:w-64"
+                  onKeyDown={(e) => { if (e.key === "Escape") setEditingTitle(false); }}
+                />
+                <Button type="submit" variant="ghost" size="icon" className="h-7 w-7">
+                  <Check className="h-3.5 w-3.5" />
+                </Button>
+                <Button type="button" variant="ghost" size="icon" className="h-7 w-7" onClick={() => setEditingTitle(false)}>
+                  <X className="h-3.5 w-3.5" />
+                </Button>
+              </form>
+            ) : (
+              <div
+                className="group/title flex items-center gap-1 cursor-pointer"
+                onClick={() => { setTitleDraft(presentation?.title || ""); setEditingTitle(true); }}
+              >
+                <h2 className="text-sm font-semibold line-clamp-1">{presentation?.title}</h2>
+                <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity" />
+              </div>
+            )}
             <p className="text-xs text-muted-foreground">{slides.length} slides</p>
           </div>
         </div>
