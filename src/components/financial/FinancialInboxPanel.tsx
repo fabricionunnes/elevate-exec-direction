@@ -294,30 +294,34 @@ export function FinancialInboxPanel() {
         {/* Instance Selector Header */}
         <div className="p-3 border-b bg-muted/30 flex items-center gap-3">
           <Headphones className="h-5 w-5 text-primary shrink-0" />
-          <Select value={selectedInstanceId} onValueChange={(v) => { setSelectedInstanceId(v); setSelectedConversation(null); }}>
-            <SelectTrigger className="w-[280px]">
-              <SelectValue placeholder="Selecione uma instância" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todas as instâncias</SelectItem>
-              {instances.map((inst) => (
-                <SelectItem key={inst.id} value={inst.id}>
-                  <div className="flex items-center gap-2">
-                    <Badge variant="outline" className={cn(
-                      "h-4 px-1 text-[9px] shrink-0",
-                      inst.type === "evolution" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30"
-                    )}>
-                      {inst.type === "evolution" ? "EVO" : "API"}
-                    </Badge>
-                    <div className="flex flex-col leading-tight">
-                      <span className="text-sm">{inst.name}</span>
-                      <span className="text-[10px] text-muted-foreground">{inst.instanceName}</span>
+          {isMaster ? (
+            <Select value={selectedInstanceId} onValueChange={(v) => { setSelectedInstanceId(v); setSelectedConversation(null); }}>
+              <SelectTrigger className="w-[280px]">
+                <SelectValue placeholder="Selecione uma instância" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todas as instâncias</SelectItem>
+                {instances.map((inst) => (
+                  <SelectItem key={inst.id} value={inst.id}>
+                    <div className="flex items-center gap-2">
+                      <Badge variant="outline" className={cn(
+                        "h-4 px-1 text-[9px] shrink-0",
+                        inst.type === "evolution" ? "bg-green-500/10 text-green-600 border-green-500/30" : "bg-blue-500/10 text-blue-600 border-blue-500/30"
+                      )}>
+                        {inst.type === "evolution" ? "EVO" : "API"}
+                      </Badge>
+                      <div className="flex flex-col leading-tight">
+                        <span className="text-sm">{inst.name}</span>
+                        <span className="text-[10px] text-muted-foreground">{inst.instanceName}</span>
+                      </div>
                     </div>
-                  </div>
-                </SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <span className="text-sm font-medium">{financialInstanceName || "Financeiro"}</span>
+          )}
           <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => refetchConversations()}>
             <RefreshCw className="h-4 w-4" />
           </Button>
