@@ -45,12 +45,14 @@ interface InstanceOption {
 
 export function FinancialInboxPanel() {
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [isMaster, setIsMaster] = useState(false);
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [selectedInstanceId, setSelectedInstanceId] = useState<string>("all");
   const [selectedConversation, setSelectedConversation] = useState<WhatsAppConversation | null>(null);
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [loadingInstances, setLoadingInstances] = useState(true);
+  const [financialInstanceName, setFinancialInstanceName] = useState<string | null>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
