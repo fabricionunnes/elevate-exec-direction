@@ -351,14 +351,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.question || slide.title || ""}
           onChange={(val) => updateContent("question", val)}
           editable={editable}
-          style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.3, marginBottom: 36 }}
+          style={{ fontSize: fs("question_title", 68), fontWeight: 700, lineHeight: 1.3, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("question_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 30, opacity: 0.7, maxWidth: 1000 }}
+          style={{ fontSize: fs("question_text", 30), opacity: 0.7, maxWidth: 1000 }}
           placeholder="Texto complementar..."
+          onFontSizeChange={(s) => setFontSize("question_text", s)}
         />
       </div>
       {logoFooter("left")}
