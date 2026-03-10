@@ -478,9 +478,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     </Button>
                   )}
                 </div>
-              )}
-                </div>
-              )}
+            </div>
             </div>
 
             {currentSlide?.speaker_notes && (
