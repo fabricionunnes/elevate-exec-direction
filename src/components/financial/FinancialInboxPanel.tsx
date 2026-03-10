@@ -508,6 +508,18 @@ export function FinancialInboxPanel() {
               </div>
             </div>
           )}
+
+          {/* Right Sidebar - Company Financial Info */}
+          {selectedConversation && !isMobile && (
+            <div className="w-[280px] shrink-0 border-l border-border overflow-y-auto bg-card">
+              <CompanyFinancialSidePanel
+                company={identifiedCompany}
+                invoices={companyInvoices}
+                loading={loadingCompany}
+                loadingInvoices={loadingCompanyInvoices}
+              />
+            </div>
+          )}
         </div>
       </div>
     </div>
