@@ -81,7 +81,7 @@ export function SegmentSelect({
   }
 
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value || "none"} onValueChange={(v) => onValueChange(v === "none" ? "" : v)}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
