@@ -37,6 +37,26 @@ export default function SlideGeneratorPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("library");
   const [selectedPresentationId, setSelectedPresentationId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (staff && ["admin", "master"].includes(staff.role)) {
+        setIsAdmin(true);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   useEffect(() => {
     loadPresentations();
