@@ -189,6 +189,7 @@ function EditableBullets({
   fontSize?: number;
   bulletStyle?: "dot" | "number" | "check";
   visibleCount?: number;
+  onFontSizeChange?: (newSize: number) => void;
 }) {
   const handleBulletChange = (index: number, newVal: string) => {
     const updated = [...bullets];
@@ -230,6 +231,7 @@ function EditableBullets({
               onChange={(val) => handleBulletChange(i, val)}
               editable={editable}
               style={{ fontSize, lineHeight: 1.4, color: colors.text }}
+              onFontSizeChange={onFontSizeChange}
             />
           </div>
         );
