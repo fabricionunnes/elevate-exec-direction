@@ -42,15 +42,39 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
       for (let i = 0; i < slideElements.length; i++) {
         if (i > 0) pdf.addPage();
 
-        const canvas = await html2canvas(slideElements[i] as HTMLElement, {
+        const el = slideElements[i] as HTMLElement;
+
+        const canvas = await html2canvas(el, {
           scale: 2,
-          backgroundColor: null,
+          backgroundColor: "#ffffff",
           useCORS: true,
           logging: false,
+          width: el.scrollWidth,
+          height: el.scrollHeight,
+          windowWidth: el.scrollWidth,
+          windowHeight: el.scrollHeight,
         });
 
         const imgData = canvas.toDataURL("image/png");
-        pdf.addImage(imgData, "PNG", 0, 0, pageWidth, pageHeight);
+        const canvasRatio = canvas.width / canvas.height;
+        const pageRatio = pageWidth / pageHeight;
+
+        let imgW = pageWidth;
+        let imgH = pageHeight;
+        let offsetX = 0;
+        let offsetY = 0;
+
+        if (canvasRatio > pageRatio) {
+          imgH = pageWidth / canvasRatio;
+          offsetY = (pageHeight - imgH) / 2;
+        } else {
+          imgW = pageHeight * canvasRatio;
+          offsetX = (pageWidth - imgW) / 2;
+        }
+
+        pdf.setFillColor(255, 255, 255);
+        pdf.rect(0, 0, pageWidth, pageHeight, "F");
+        pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH);
       }
 
       pdf.save(`${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`);
