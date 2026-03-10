@@ -340,7 +340,16 @@ export default function FinancialOverdueTab({
       }));
       ws["!cols"] = colWidths;
 
-      XLSX.writeFile(wb, `faturas_atrasadas_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      const wbout = XLSX.write(wb, { bookType: "xlsx", type: "array" });
+      const blob = new Blob([wbout], { type: "application/octet-stream" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `faturas_atrasadas_${format(new Date(), "yyyy-MM-dd")}.xlsx`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
       toast.success("Planilha exportada com sucesso!");
     } catch (err: any) {
       console.error("Export error:", err);
