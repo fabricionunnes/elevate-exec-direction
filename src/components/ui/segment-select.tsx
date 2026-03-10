@@ -81,11 +81,12 @@ export function SegmentSelect({
   }
 
   return (
-    <Select value={value} onValueChange={onValueChange}>
+    <Select value={value || "none"} onValueChange={(v) => onValueChange(v === "none" ? "" : v)}>
       <SelectTrigger className={className}>
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="none">Sem segmento</SelectItem>
         {segments.map((seg) => (
           <SelectItem key={seg} value={seg}>
             {seg}
