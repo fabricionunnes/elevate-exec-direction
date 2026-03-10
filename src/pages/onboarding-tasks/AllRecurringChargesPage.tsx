@@ -245,8 +245,9 @@ export default function AllRecurringChargesPage() {
   // New receivable dialog
   const [receivableDialog, setReceivableDialog] = useState(false);
   const [receivableForm, setReceivableForm] = useState({
-    company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "",
+    company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "",
   });
+  const [showCustomReceiverRecv, setShowCustomReceiverRecv] = useState(false);
   const [savingReceivable, setSavingReceivable] = useState(false);
 
   // New payable dialog
