@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ExternalLink,
   Sparkles,
+  Send,
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -27,6 +28,9 @@ interface CompanyFinancialSidePanelProps {
   loading: boolean;
   loadingInvoices: boolean;
   onAnalyzeReceipt?: (invoiceId: string, mediaUrl: string) => void;
+  contactPhone?: string | null;
+  instanceId?: string | null;
+  officialInstanceId?: string | null;
 }
 
 export function CompanyFinancialSidePanel({
@@ -35,9 +39,71 @@ export function CompanyFinancialSidePanel({
   loading,
   loadingInvoices,
   onAnalyzeReceipt,
+  contactPhone,
+  instanceId,
+  officialInstanceId,
 }: CompanyFinancialSidePanelProps) {
   const [companyOpen, setCompanyOpen] = useState(true);
   const [invoicesOpen, setInvoicesOpen] = useState(true);
+  const [sendingLinkId, setSendingLinkId] = useState<string | null>(null);
+
+  const handleResendLink = async (invoice: CompanyInvoice) => {
+    if (!contactPhone || !invoice.payment_link_url) return;
+    
+    setSendingLinkId(invoice.id);
+    try {
+      const amountFormatted = new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(invoice.amount_cents / 100);
+      const dueDateFormatted = format(parseISO(invoice.due_date), "dd/MM/yyyy");
+      const companyName = company?.name || "";
+      
+      const msg = `Olá ${companyName}!\n\nSegue o link de pagamento da sua fatura:\n\n📄 *${invoice.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}\n\n🔗 ${invoice.payment_link_url}`;
+
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Sessão expirada"); return; }
+
+      // Try Evolution API first, then Official
+      if (instanceId) {
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ instanceId, phone: contactPhone, message: msg }),
+        });
+        if (!response.ok) throw new Error("Erro ao enviar");
+      } else if (officialInstanceId) {
+        const { error } = await supabase.functions.invoke("whatsapp-official-api", {
+          body: { action: "sendText", instanceId: officialInstanceId, phone: contactPhone, message: msg },
+        });
+        if (error) throw error;
+      } else {
+        // Fallback: use default instance
+        const { data: defaultConfig } = await supabase
+          .from("whatsapp_default_config")
+          .select("setting_value")
+          .eq("setting_key", "default_instance")
+          .limit(1)
+          .maybeSingle();
+        const instanceName = (defaultConfig as any)?.setting_value;
+        if (!instanceName) { toast.error("Nenhuma instância configurada"); return; }
+        
+        const { data: inst } = await supabase.from("whatsapp_instances").select("id").eq("instance_name", instanceName).maybeSingle();
+        if (!inst) { toast.error("Instância não encontrada"); return; }
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+          method: "POST",
+          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
+          body: JSON.stringify({ instanceId: inst.id, phone: contactPhone, message: msg }),
+        });
+        if (!response.ok) throw new Error("Erro ao enviar");
+      }
+
+      toast.success("Link enviado por WhatsApp!");
+    } catch (err: any) {
+      console.error("Error resending link:", err);
+      toast.error(err.message || "Erro ao enviar link");
+    } finally {
+      setSendingLinkId(null);
+    }
+  };
 
   if (loading) {
     return (
@@ -208,10 +274,26 @@ export function CompanyFinancialSidePanel({
                           <span className="font-medium">{formatCurrency(invoice.amount_cents)}</span>
                         </div>
                         {invoice.payment_link_url && (
-                          <a href={invoice.payment_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
-                            <ExternalLink className="h-3 w-3" />
-                            Link de pagamento
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a href={invoice.payment_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
+                              <ExternalLink className="h-3 w-3" />
+                              Link de pagamento
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 shrink-0"
+                              title="Reenviar link por WhatsApp"
+                              disabled={sendingLinkId === invoice.id}
+                              onClick={() => handleResendLink(invoice)}
+                            >
+                              {sendingLinkId === invoice.id ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Send className="h-3 w-3 text-green-600" />
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}

@@ -612,6 +612,9 @@ export function ConversationSidebar({
         invoices={companyInvoices}
         loading={loadingCompany}
         loadingInvoices={loadingCompanyInvoices}
+        contactPhone={conversation.contact?.phone}
+        instanceId={conversation.instance_id}
+        officialInstanceId={conversation.official_instance_id}
       />
 
       {(linkedLeads.length > 0 || loadingLinkedLeads) && (
