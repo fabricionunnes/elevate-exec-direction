@@ -15330,6 +15330,7 @@ export type Database = {
           conta_azul_id: string | null
           contract_id: string | null
           created_at: string
+          custom_receiver_name: string | null
           description: string
           due_date: string
           id: string
@@ -15351,6 +15352,7 @@ export type Database = {
           conta_azul_id?: string | null
           contract_id?: string | null
           created_at?: string
+          custom_receiver_name?: string | null
           description: string
           due_date: string
           id?: string
@@ -15372,6 +15374,7 @@ export type Database = {
           conta_azul_id?: string | null
           contract_id?: string | null
           created_at?: string
+          custom_receiver_name?: string | null
           description?: string
           due_date?: string
           id?: string

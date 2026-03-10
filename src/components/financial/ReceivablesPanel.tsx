@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Receivable {
   id: string;
@@ -72,6 +73,7 @@ interface Receivable {
   payment_link: string | null;
   reference_month: string | null;
   notes: string | null;
+  custom_receiver_name?: string | null;
   company?: { name: string } | null;
   category?: { name: string; color: string } | null;
   project_status?: string | null;
@@ -109,6 +111,7 @@ export function ReceivablesPanel() {
   // Form state
   const [formData, setFormData] = useState({
     company_id: "",
+    custom_receiver_name: "",
     category_id: "",
     description: "",
     amount: "",
@@ -118,6 +121,7 @@ export function ReceivablesPanel() {
     reference_month: format(new Date(), "yyyy-MM"),
     notes: ""
   });
+  const [showCustomReceiver, setShowCustomReceiver] = useState(false);
 
   // paymentData removed — now using ReceivablePaymentDialog
 
@@ -228,6 +232,7 @@ export function ReceivablesPanel() {
     try {
       const { error } = await supabase.from("financial_receivables").insert({
         company_id: formData.company_id || null,
+        custom_receiver_name: !formData.company_id && formData.custom_receiver_name ? formData.custom_receiver_name : null,
         category_id: formData.category_id || null,
         description: formData.description,
         amount: parseFloat(formData.amount),
@@ -253,7 +258,7 @@ export function ReceivablesPanel() {
 
   const handlePaymentSuccess = () => {
     if (selectedReceivable) {
-      const companyName = selectedReceivable.company?.name || "Empresa não identificada";
+      const companyName = selectedReceivable.company?.name || selectedReceivable.custom_receiver_name || "Empresa não identificada";
       sendPaymentNotification(companyName, selectedReceivable.amount, selectedReceivable.description);
     }
     setIsPayDialogOpen(false);
@@ -374,6 +379,7 @@ export function ReceivablesPanel() {
   const resetForm = () => {
     setFormData({
       company_id: "",
+      custom_receiver_name: "",
       category_id: "",
       description: "",
       amount: "",
@@ -383,6 +389,7 @@ export function ReceivablesPanel() {
       reference_month: format(new Date(), "yyyy-MM"),
       notes: ""
     });
+    setShowCustomReceiver(false);
   };
 
   const formatCurrency = (value: number) => {
@@ -465,7 +472,8 @@ export function ReceivablesPanel() {
     
     const matchesSearch =
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     
     // Period filter
@@ -537,23 +545,43 @@ export function ReceivablesPanel() {
                 <DialogTitle>Nova Conta a Receber</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Cliente</Label>
-                    <Select
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Recebedor / Empresa *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto py-0.5 px-2 text-xs"
+                      onClick={() => {
+                        setShowCustomReceiver(!showCustomReceiver);
+                        if (!showCustomReceiver) {
+                          setFormData({ ...formData, company_id: "", custom_receiver_name: "" });
+                        } else {
+                          setFormData({ ...formData, custom_receiver_name: "" });
+                        }
+                      }}
+                    >
+                      {showCustomReceiver ? "Selecionar empresa" : "+ Novo recebedor"}
+                    </Button>
+                  </div>
+                  {showCustomReceiver ? (
+                    <Input
+                      value={formData.custom_receiver_name}
+                      onChange={(e) => setFormData({ ...formData, custom_receiver_name: e.target.value, company_id: "" })}
+                      placeholder="Digite o nome do recebedor"
+                    />
+                  ) : (
+                    <SearchableSelect
                       value={formData.company_id}
                       onValueChange={(v) => setFormData({ ...formData, company_id: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                      placeholder="Pesquisar empresa..."
+                      emptyMessage="Nenhuma empresa encontrada."
+                    />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Categoria</Label>
                     <Select
@@ -771,7 +799,7 @@ export function ReceivablesPanel() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{receivable.company?.name || "-"}</TableCell>
+                    <TableCell>{receivable.company?.name || receivable.custom_receiver_name || "-"}</TableCell>
                     <TableCell>
                       {format(parseISO(receivable.due_date), "dd/MM/yyyy")}
                     </TableCell>
