@@ -109,6 +109,7 @@ export function ReceivablesPanel() {
   // Form state
   const [formData, setFormData] = useState({
     company_id: "",
+    custom_receiver_name: "",
     category_id: "",
     description: "",
     amount: "",
@@ -118,6 +119,7 @@ export function ReceivablesPanel() {
     reference_month: format(new Date(), "yyyy-MM"),
     notes: ""
   });
+  const [showCustomReceiver, setShowCustomReceiver] = useState(false);
 
   // paymentData removed — now using ReceivablePaymentDialog
 
