@@ -459,9 +459,10 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             onChange={(b) => updateContent("bullets", b)}
             editable={editable}
             colors={colors}
-            fontSize={28}
+            fontSize={fs("exercise_bullets", 28)}
             bulletStyle="check"
             visibleCount={vb}
+            onFontSizeChange={(s) => setFontSize("exercise_bullets", s)}
           />
         )}
       </div>
