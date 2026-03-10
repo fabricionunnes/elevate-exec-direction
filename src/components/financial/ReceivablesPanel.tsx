@@ -542,23 +542,43 @@ export function ReceivablesPanel() {
                 <DialogTitle>Nova Conta a Receber</DialogTitle>
               </DialogHeader>
               <div className="space-y-4 py-4">
-                <div className="grid grid-cols-2 gap-4">
-                  <div className="space-y-2">
-                    <Label>Cliente</Label>
-                    <Select
+                <div className="space-y-2">
+                  <div className="flex items-center justify-between">
+                    <Label>Recebedor / Empresa *</Label>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-auto py-0.5 px-2 text-xs"
+                      onClick={() => {
+                        setShowCustomReceiver(!showCustomReceiver);
+                        if (!showCustomReceiver) {
+                          setFormData({ ...formData, company_id: "", custom_receiver_name: "" });
+                        } else {
+                          setFormData({ ...formData, custom_receiver_name: "" });
+                        }
+                      }}
+                    >
+                      {showCustomReceiver ? "Selecionar empresa" : "+ Novo recebedor"}
+                    </Button>
+                  </div>
+                  {showCustomReceiver ? (
+                    <Input
+                      value={formData.custom_receiver_name}
+                      onChange={(e) => setFormData({ ...formData, custom_receiver_name: e.target.value, company_id: "" })}
+                      placeholder="Digite o nome do recebedor"
+                    />
+                  ) : (
+                    <SearchableSelect
                       value={formData.company_id}
                       onValueChange={(v) => setFormData({ ...formData, company_id: v })}
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
+                      options={companies.map((c) => ({ value: c.id, label: c.name }))}
+                      placeholder="Pesquisar empresa..."
+                      emptyMessage="Nenhuma empresa encontrada."
+                    />
+                  )}
+                </div>
+                <div className="grid grid-cols-2 gap-4">
                   <div className="space-y-2">
                     <Label>Categoria</Label>
                     <Select
