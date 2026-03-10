@@ -26,6 +26,7 @@ interface Presentation {
   template_category: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
 }
 
 type ViewMode = "library" | "create" | "view" | "templates";
