@@ -854,6 +854,14 @@ export const CRMInboxPage = () => {
                           {message.content && message.content !== "[Imagem]" && (
                             <p className="text-sm whitespace-pre-wrap">{message.content}</p>
                           )}
+                          {/* Receipt analysis button for inbound images when company has open invoices */}
+                          {message.direction === "inbound" && identifiedCompany && companyInvoices.length > 0 && (
+                            <ReceiptAnalysisButton
+                              mediaUrl={message.media_url!}
+                              invoices={companyInvoices}
+                              companyName={identifiedCompany.name}
+                            />
+                          )}
                         </div>
                       ) : message.type === "video" && message.media_url ? (
                         <div className="space-y-2">
