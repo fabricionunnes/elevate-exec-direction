@@ -2464,8 +2464,12 @@ const OnboardingTasksPage = () => {
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
-                      {/* UNV Academy */}
+                      {/* UNV Academy & Tools */}
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/slide-generator")}>
+                        <Presentation className="h-4 w-4 mr-2" />
+                        Gerador de Slides
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/academy")}>
                         <GraduationCap className="h-4 w-4 mr-2" />
                         UNV Academy
