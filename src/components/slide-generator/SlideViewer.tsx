@@ -30,6 +30,7 @@ interface PresentationData {
   description: string | null;
   topic: string;
   slide_count: number | null;
+  created_by: string | null;
 }
 
 interface Props {
