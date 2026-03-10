@@ -798,7 +798,7 @@ export function ReceivablesPanel() {
                         )}
                       </div>
                     </TableCell>
-                    <TableCell>{receivable.company?.name || "-"}</TableCell>
+                    <TableCell>{receivable.company?.name || receivable.custom_receiver_name || "-"}</TableCell>
                     <TableCell>
                       {format(parseISO(receivable.due_date), "dd/MM/yyyy")}
                     </TableCell>
