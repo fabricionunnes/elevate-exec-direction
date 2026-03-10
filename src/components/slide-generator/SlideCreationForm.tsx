@@ -65,6 +65,14 @@ export function SlideCreationForm({ onCreated, defaultTopic }: Props) {
 
       const { title, description, slides } = data;
 
+      // Get staff_id for the current user
+      const { data: staffData } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+
       // Save presentation
       const { data: presentation, error: presError } = await supabase
         .from("slide_presentations")
@@ -76,6 +84,7 @@ export function SlideCreationForm({ onCreated, defaultTopic }: Props) {
           duration_minutes: duration,
           content_level: level,
           created_by: user.user.id,
+          staff_id: staffData?.id || null,
           slide_count: slides.length,
           status: "draft",
         } as any)

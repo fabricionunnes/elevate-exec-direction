@@ -25468,6 +25468,10 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: string
       }
+      get_staff_id_for_user: {
+        Args: { check_user_id: string }
+        Returns: string
+      }
       get_task_metrics_by_project: {
         Args: never
         Returns: {
@@ -25555,6 +25559,14 @@ export type Database = {
       }
       is_project_client: {
         Args: { check_project_id: string }
+        Returns: boolean
+      }
+      is_slide_created_by_admin: {
+        Args: { pres_staff_id: string }
+        Returns: boolean
+      }
+      is_staff_admin_or_master: {
+        Args: { check_user_id: string }
         Returns: boolean
       }
       record_ad_click: {
