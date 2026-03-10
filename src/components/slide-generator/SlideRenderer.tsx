@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users 
@@ -69,9 +69,19 @@ function EditableText({
   placeholder?: string;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const isFocused = useRef(false);
+  
+  // Set initial content and sync from external changes only when not focused
+  useEffect(() => {
+    if (ref.current && !isFocused.current) {
+      ref.current.innerText = value || "";
+    }
+  }, [value]);
   
   const handleBlur = useCallback(() => {
+    isFocused.current = false;
     if (ref.current) {
+      ref.current.style.boxShadow = "none";
       const newText = ref.current.innerText.trim();
       if (newText !== value) {
         onChange(newText);
@@ -89,26 +99,27 @@ function EditableText({
     minHeight: "1em",
   } : style;
 
+  if (!editable) {
+    return (
+      <div style={style}>
+        {value || ""}
+      </div>
+    );
+  }
+
   return (
     <div
       ref={ref}
-      contentEditable={editable}
+      contentEditable
       suppressContentEditableWarning
       onBlur={handleBlur}
       onFocus={(e) => {
-        if (editable) {
-          (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
-        }
-      }}
-      onMouseOut={() => {}}
-      onBlurCapture={(e) => {
-        (e.target as HTMLElement).style.boxShadow = "none";
+        isFocused.current = true;
+        (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
       }}
       style={editableStyle}
       data-placeholder={!value ? placeholder : undefined}
-    >
-      {value || (editable ? placeholder : "")}
-    </div>
+    />
   );
 }
 
