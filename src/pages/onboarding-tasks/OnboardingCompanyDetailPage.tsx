@@ -291,7 +291,7 @@ const OnboardingCompanyDetailPage = () => {
       const payload = {
         name: currentForm.name,
         cnpj: currentForm.cnpj || null,
-        // segment is saved via RPC (security definer) to avoid RLS issues
+        segment: currentForm.segment || null,
         website: currentForm.website || null,
         phone: currentForm.phone || null,
         email: currentForm.email || null,
