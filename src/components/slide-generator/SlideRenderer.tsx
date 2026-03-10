@@ -60,7 +60,8 @@ function EditableText({
   editable, 
   style, 
   tag = "span",
-  placeholder = "Clique para editar..."
+  placeholder = "Clique para editar...",
+  onFontSizeChange,
 }: { 
   value: string; 
   onChange: (val: string) => void; 
@@ -68,11 +69,13 @@ function EditableText({
   style: React.CSSProperties; 
   tag?: string;
   placeholder?: string;
+  onFontSizeChange?: (newSize: number) => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isFocused = useRef(false);
+  const [showControls, setShowControls] = useState(false);
+  const currentFontSize = typeof style.fontSize === "number" ? style.fontSize : parseInt(String(style.fontSize) || "24", 10);
   
-  // Set initial content and sync from external changes only when not focused
   useEffect(() => {
     if (ref.current && !isFocused.current) {
       ref.current.innerText = value || "";
@@ -88,7 +91,14 @@ function EditableText({
         onChange(newText);
       }
     }
+    // Delay hiding controls so button clicks register
+    setTimeout(() => setShowControls(false), 200);
   }, [value, onChange]);
+
+  const changeFontSize = (delta: number) => {
+    const newSize = Math.max(12, Math.min(120, currentFontSize + delta));
+    onFontSizeChange?.(newSize);
+  };
 
   const editableStyle: React.CSSProperties = editable ? {
     ...style,
@@ -109,18 +119,56 @@ function EditableText({
   }
 
   return (
-    <div
-      ref={ref}
-      contentEditable
-      suppressContentEditableWarning
-      onBlur={handleBlur}
-      onFocus={(e) => {
-        isFocused.current = true;
-        (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
-      }}
-      style={editableStyle}
-      data-placeholder={!value ? placeholder : undefined}
-    />
+    <div style={{ position: "relative", display: "inline-block" }}>
+      {showControls && onFontSizeChange && (
+        <div
+          style={{
+            position: "absolute",
+            top: -36,
+            right: 0,
+            display: "flex",
+            gap: 4,
+            background: "rgba(10,25,49,0.9)",
+            borderRadius: 6,
+            padding: "3px 6px",
+            zIndex: 50,
+            alignItems: "center",
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <button
+            onMouseDown={(e) => { e.preventDefault(); changeFontSize(-2); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+            title="Diminuir fonte"
+          >
+            <Minus size={14} />
+          </button>
+          <span style={{ color: "#fff", fontSize: 12, minWidth: 28, textAlign: "center", userSelect: "none" }}>
+            {currentFontSize}
+          </span>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); changeFontSize(2); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+            title="Aumentar fonte"
+          >
+            <Plus size={14} />
+          </button>
+        </div>
+      )}
+      <div
+        ref={ref}
+        contentEditable
+        suppressContentEditableWarning
+        onBlur={handleBlur}
+        onFocus={(e) => {
+          isFocused.current = true;
+          setShowControls(true);
+          (e.target as HTMLElement).style.boxShadow = "0 0 0 2px rgba(200,30,30,0.5)";
+        }}
+        style={editableStyle}
+        data-placeholder={!value ? placeholder : undefined}
+      />
+    </div>
   );
 }
 
