@@ -65,24 +65,12 @@ export function useCompanyIdentification({ phone, cnpj }: UseCompanyIdentificati
     setError(null);
 
     try {
-      // Build query conditions
-      const conditions: string[] = [];
-      
-      if (cleanedPhone) {
-        // Match last 8 digits to handle cases where WhatsApp strips the 9
-        const last8 = cleanedPhone.slice(-8);
-        conditions.push(`phone.ilike.%${last8}%`);
-      }
-      
-      if (cleanedCnpj) {
-        conditions.push(`cnpj.ilike.%${cleanedCnpj}%`);
-      }
-
+      // Build query - fetch all companies and match in JS since phone is stored with mask
+      // We need to clean phone numbers for comparison which can't be done in ilike
       const { data, error: fetchError } = await supabase
         .from("onboarding_companies")
         .select("id, name, cnpj, phone, email, status, contract_value, billing_day, is_billing_blocked, segment")
-        .or(conditions.join(","))
-        .limit(5);
+        .limit(1000);
 
       if (fetchError) throw fetchError;
 
