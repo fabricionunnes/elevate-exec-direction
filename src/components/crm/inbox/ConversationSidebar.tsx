@@ -34,6 +34,8 @@ import { toast } from "sonner";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
 import { useLinkedLeads } from "@/hooks/useLinkedLeads";
 import { LinkedLeadsSection } from "@/components/crm/LinkedLeadsSection";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
+import { CompanyFinancialSidePanel } from "./CompanyFinancialSidePanel";
 
 interface CRMStaff {
   id: string;
