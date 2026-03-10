@@ -467,14 +467,18 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{currentSlide.slide_type}</span>
                 )}
               </div>
-              {currentSlide && (
+              {currentSlide && canEdit && (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => handleDuplicateSlide(currentSlide)} className="gap-1 text-xs">
                     <Copy className="h-3.5 w-3.5" /> Duplicar
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteSlide(currentSlide.id)} className="gap-1 text-xs text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" /> Remover
-                  </Button>
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteSlide(currentSlide.id)} className="gap-1 text-xs text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" /> Remover
+                    </Button>
+                  )}
+                </div>
+              )}
                 </div>
               )}
             </div>
