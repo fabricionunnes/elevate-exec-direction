@@ -1,0 +1,1 @@
+ALTER TABLE public.company_invoices ALTER COLUMN company_id DROP NOT NULL;

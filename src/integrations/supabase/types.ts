@@ -9987,7 +9987,7 @@ export type Database = {
           amount_cents: number
           bank_id: string | null
           category_id: string | null
-          company_id: string
+          company_id: string | null
           conta_azul_id: string | null
           cost_center_id: string | null
           created_at: string
@@ -10019,7 +10019,7 @@ export type Database = {
           amount_cents: number
           bank_id?: string | null
           category_id?: string | null
-          company_id: string
+          company_id?: string | null
           conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
@@ -10051,7 +10051,7 @@ export type Database = {
           amount_cents?: number
           bank_id?: string | null
           category_id?: string | null
-          company_id?: string
+          company_id?: string | null
           conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
