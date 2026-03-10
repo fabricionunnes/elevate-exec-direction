@@ -33,6 +33,8 @@ import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
+import { CompanyFinancialSidePanel } from "@/components/crm/inbox/CompanyFinancialSidePanel";
 
 interface InstanceOption {
   id: string;
@@ -52,6 +54,15 @@ export function FinancialInboxPanel() {
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
+
+  const {
+    company: identifiedCompany,
+    invoices: companyInvoices,
+    loading: loadingCompany,
+    loadingInvoices: loadingCompanyInvoices,
+  } = useCompanyIdentification({
+    phone: selectedConversation?.contact?.phone,
+  });
 
   // Parse instance filter for the hook
   const instanceIdForHook = selectedInstanceId === "all" ? undefined
@@ -495,6 +506,18 @@ export function FinancialInboxPanel() {
                 <MessageSquare className="h-12 w-12 mx-auto text-muted-foreground/50" />
                 <p className="mt-2 text-muted-foreground">Selecione uma conversa</p>
               </div>
+            </div>
+          )}
+
+          {/* Right Sidebar - Company Financial Info */}
+          {selectedConversation && !isMobile && (
+            <div className="w-[280px] shrink-0 border-l border-border overflow-y-auto bg-card">
+              <CompanyFinancialSidePanel
+                company={identifiedCompany}
+                invoices={companyInvoices}
+                loading={loadingCompany}
+                loadingInvoices={loadingCompanyInvoices}
+              />
             </div>
           )}
         </div>
