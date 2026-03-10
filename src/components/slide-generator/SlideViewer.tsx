@@ -445,12 +445,13 @@ export function SlideViewer({ presentationId, onBack }: Props) {
               )}
               <div
                 key={currentSlide?.id}
-                className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+                ref={slideContainerRef}
+                className="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl"
                 style={{
                   animation: "slideIn 0.4s ease-out",
                 }}
               >
-                {currentSlide && <SlideRenderer slide={currentSlide} scale={1} />}
+                {currentSlide && <SlideRenderer slide={currentSlide} scale={slideViewScale} />}
               </div>
               <style>{`
                 @keyframes slideIn {
