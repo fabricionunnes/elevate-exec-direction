@@ -189,6 +189,21 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
     position: "relative",
   };
 
+  const logoFooter = (position: "left" | "right" = "left") => (
+    <img 
+      src={unvLogo} 
+      alt="UNV" 
+      style={{ 
+        position: "absolute", 
+        bottom: position === "left" ? 30 : 30, 
+        [position]: 40, 
+        height: 60, 
+        objectFit: "contain",
+        opacity: 0.7,
+      }} 
+    />
+  );
+
   const renderCover = () => (
     <div style={containerStyle}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
@@ -196,9 +211,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
       <div style={{ position: "absolute", right: 50, bottom: -50, width: 300, height: 300, borderRadius: "50%", background: "rgba(200,30,30,0.1)" }} />
       
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", padding: "0 120px" }}>
-        <div style={{ fontSize: 18, letterSpacing: 6, textTransform: "uppercase", color: colors.accent, marginBottom: 32, fontWeight: 700 }}>
-          Universidade Nacional de Vendas
-        </div>
+        <img src={unvLogo} alt="Universidade Nacional de Vendas" style={{ height: 100, objectFit: "contain", alignSelf: "flex-start", marginBottom: 32 }} />
         <EditableText
           value={slide.title || ""}
           onChange={updateTitle}
