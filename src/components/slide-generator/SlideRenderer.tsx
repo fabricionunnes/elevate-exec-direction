@@ -1,4 +1,4 @@
-import { useState, useRef, useCallback } from "react";
+import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users 
