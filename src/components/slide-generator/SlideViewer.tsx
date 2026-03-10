@@ -322,9 +322,12 @@ export function SlideViewer({ presentationId, onBack }: Props) {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
-                <Edit3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Editar</span>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
+                  <Edit3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Editar</span>
+                </Button>
+              )}
               </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowGrid(!showGrid)} className="gap-1.5">
                 <Grid3X3 className="h-4 w-4" />
