@@ -466,6 +466,7 @@ async function detectCancellationIntent(supabase: any, messageContent: string, p
   } catch (err) {
     console.error('[evolution-webhook] Error calling cancellation detection:', err);
   }
+}
 
 async function handleMessageStatusUpdate(supabase: any, data: any) {
   console.log('Processing message status update:', JSON.stringify(data, null, 2));
