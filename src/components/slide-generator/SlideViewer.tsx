@@ -288,11 +288,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
               </form>
             ) : (
               <div
-                className="group/title flex items-center gap-1 cursor-pointer"
-                onClick={() => { setTitleDraft(presentation?.title || ""); setEditingTitle(true); }}
+                className={`group/title flex items-center gap-1 ${canEdit ? "cursor-pointer" : ""}`}
+                onClick={() => { if (canEdit) { setTitleDraft(presentation?.title || ""); setEditingTitle(true); } }}
               >
                 <h2 className="text-sm font-semibold line-clamp-1">{presentation?.title}</h2>
-                <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity" />
+                {canEdit && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity" />}
               </div>
             )}
             <p className="text-xs text-muted-foreground">{slides.length} slides</p>
