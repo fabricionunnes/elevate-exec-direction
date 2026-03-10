@@ -69,8 +69,9 @@ export function useCompanyIdentification({ phone, cnpj }: UseCompanyIdentificati
       const conditions: string[] = [];
       
       if (cleanedPhone) {
-        // Match last 9 digits of phone
-        conditions.push(`phone.ilike.%${cleanedPhone.slice(-9)}%`);
+        // Match last 8 digits to handle cases where WhatsApp strips the 9
+        const last8 = cleanedPhone.slice(-8);
+        conditions.push(`phone.ilike.%${last8}%`);
       }
       
       if (cleanedCnpj) {
@@ -85,12 +86,16 @@ export function useCompanyIdentification({ phone, cnpj }: UseCompanyIdentificati
 
       if (fetchError) throw fetchError;
 
-      // Filter for actual matches
+      // Filter for actual matches using last 8 digits (handles missing 9 and country code differences)
       const matched = (data || []).filter(comp => {
         const compPhone = cleanPhone(comp.phone);
         const compCnpj = cleanDocument(comp.cnpj);
 
-        if (cleanedPhone && compPhone && compPhone.slice(-9) === cleanedPhone.slice(-9)) return true;
+        if (cleanedPhone && compPhone) {
+          const phoneLast8 = cleanedPhone.slice(-8);
+          const compLast8 = compPhone.slice(-8);
+          if (phoneLast8 === compLast8) return true;
+        }
         if (cleanedCnpj && compCnpj === cleanedCnpj) return true;
         return false;
       });
