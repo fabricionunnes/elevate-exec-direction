@@ -83,6 +83,7 @@ export default function FinancialOverdueTab({
   const [selectedConsultant, setSelectedConsultant] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
