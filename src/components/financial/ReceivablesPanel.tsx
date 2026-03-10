@@ -376,6 +376,7 @@ export function ReceivablesPanel() {
   const resetForm = () => {
     setFormData({
       company_id: "",
+      custom_receiver_name: "",
       category_id: "",
       description: "",
       amount: "",
@@ -385,6 +386,7 @@ export function ReceivablesPanel() {
       reference_month: format(new Date(), "yyyy-MM"),
       notes: ""
     });
+    setShowCustomReceiver(false);
   };
 
   const formatCurrency = (value: number) => {
