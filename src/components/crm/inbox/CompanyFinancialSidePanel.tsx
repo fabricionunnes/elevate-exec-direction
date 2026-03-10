@@ -71,6 +71,8 @@ export function CompanyFinancialSidePanel({
 
   const overdueInvoices = invoices.filter(inv => inv.status === "overdue" || (inv.status === "pending" && isPast(parseISO(inv.due_date))));
   const pendingInvoices = invoices.filter(inv => inv.status === "pending" && !isPast(parseISO(inv.due_date)));
+  const paidInvoices = invoices.filter(inv => inv.status === "paid");
+  const openInvoices = invoices.filter(inv => inv.status !== "paid");
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
