@@ -202,7 +202,13 @@ export function CompanyFinancialSidePanel({
         <CollapsibleContent className="border-b border-border">
           <div className="p-4 space-y-2">
             <div className="flex items-center justify-between">
-              <p className="font-medium text-sm">{company.name}</p>
+              <a
+                href={`/#/onboarding-tasks/companies/${company.id}?tab=financial`}
+                className="font-medium text-sm text-primary hover:underline cursor-pointer truncate"
+                title="Ver detalhes da empresa"
+              >
+                {company.name}
+              </a>
               <Badge variant={company.status === "active" ? "default" : "secondary"} className="text-[10px] h-5">
                 {company.status === "active" ? "Ativo" : company.status}
               </Badge>
