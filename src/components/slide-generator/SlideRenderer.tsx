@@ -213,9 +213,9 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       alt="UNV" 
       style={{ 
         position: "absolute", 
-        bottom: position === "left" ? 30 : 30, 
+        bottom: 30, 
         [position]: 40, 
-        height: 60, 
+        height: 80, 
         objectFit: "contain",
         opacity: 0.7,
       }} 
@@ -224,28 +224,28 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderCover = () => (
     <div style={containerStyle}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 10, background: colors.accent }} />
       <div style={{ position: "absolute", right: -100, top: -100, width: 500, height: 500, borderRadius: "50%", background: "rgba(200,30,30,0.15)" }} />
       <div style={{ position: "absolute", right: 50, bottom: -50, width: 300, height: 300, borderRadius: "50%", background: "rgba(200,30,30,0.1)" }} />
       
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", padding: "0 120px" }}>
-        <img src={unvLogo} alt="Universidade Nacional de Vendas" style={{ height: 100, objectFit: "contain", alignSelf: "flex-start", marginBottom: 32 }} />
+        <img src={unvLogo} alt="Universidade Nacional de Vendas" style={{ height: 120, objectFit: "contain", alignSelf: "flex-start", marginBottom: 40 }} />
         <EditableText
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 72, fontWeight: 800, lineHeight: 1.1, marginBottom: 24, maxWidth: 1200 }}
+          style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.1, marginBottom: 28, maxWidth: 1400 }}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 28, opacity: 0.8, maxWidth: 900, lineHeight: 1.4 }}
+          style={{ fontSize: 36, opacity: 0.8, maxWidth: 1100, lineHeight: 1.4 }}
           placeholder="Subtítulo..."
         />
         <div style={{ position: "absolute", bottom: 60, left: 120, right: 120, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ width: 80, height: 4, background: colors.accent }} />
-          <span style={{ fontSize: 14, opacity: 0.5 }}>unv.com.br</span>
+          <span style={{ fontSize: 18, opacity: 0.5 }}>unv.com.br</span>
         </div>
       </div>
     </div>
@@ -253,19 +253,19 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderHighlight = () => (
     <div style={containerStyle}>
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 160px", textAlign: "center" }}>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 140px", textAlign: "center" }}>
         <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.5)", marginBottom: 48 }} />
         <EditableText
           value={content.highlight || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 64, fontWeight: 800, lineHeight: 1.2, marginBottom: 32 }}
+          style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.2, marginBottom: 36 }}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 24, opacity: 0.85, maxWidth: 900 }}
+          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1200 }}
           placeholder="Texto adicional..."
         />
         <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.5)", marginTop: 48 }} />
@@ -276,19 +276,19 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderQuestion = () => (
     <div style={containerStyle}>
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 160px", textAlign: "center" }}>
-        <HelpCircle size={80} color={colors.accent} style={{ marginBottom: 40 }} />
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 140px", textAlign: "center" }}>
+        <HelpCircle size={96} color={colors.accent} style={{ marginBottom: 48 }} />
         <EditableText
           value={content.question || slide.title || ""}
           onChange={(val) => updateContent("question", val)}
           editable={editable}
-          style={{ fontSize: 56, fontWeight: 700, lineHeight: 1.3, marginBottom: 32 }}
+          style={{ fontSize: 68, fontWeight: 700, lineHeight: 1.3, marginBottom: 36 }}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 22, opacity: 0.7, maxWidth: 800 }}
+          style={{ fontSize: 30, opacity: 0.7, maxWidth: 1000 }}
           placeholder="Texto complementar..."
         />
       </div>
@@ -298,14 +298,14 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderFramework = () => (
     <div style={containerStyle}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: colors.accent }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
       <div style={{ padding: "80px 120px" }}>
-        <div style={{ fontSize: 14, letterSpacing: 4, textTransform: "uppercase", color: colors.accent, marginBottom: 16, fontWeight: 700 }}>Framework</div>
+        <div style={{ fontSize: 20, letterSpacing: 4, textTransform: "uppercase", color: colors.accent, marginBottom: 16, fontWeight: 700 }}>Framework</div>
         <EditableText
           value={content.framework_name || slide.title || ""}
           onChange={(val) => updateContent("framework_name", val)}
           editable={editable}
-          style={{ fontSize: 48, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
         />
         {content.framework_steps?.length ? (
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
@@ -313,14 +313,14 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               const isVisible = vb === undefined || vb < 0 || i < vb;
               return (
                 <div key={i} style={{
-                  flex: "1 1 200px", padding: 32,
+                  flex: "1 1 250px", padding: 36,
                   background: i % 2 === 0 ? "#F1F5F9" : "#EEF2FF",
-                  borderRadius: 16, borderLeft: `4px solid ${colors.accent}`, minWidth: 200,
+                  borderRadius: 16, borderLeft: `5px solid ${colors.accent}`, minWidth: 250,
                   opacity: isVisible ? 1 : 0,
                   transform: isVisible ? "translateY(0)" : "translateY(20px)",
                   transition: "opacity 0.5s ease, transform 0.5s ease",
                 }}>
-                  <div style={{ fontSize: 36, fontWeight: 800, color: colors.accent, marginBottom: 12 }}>
+                  <div style={{ fontSize: 42, fontWeight: 800, color: colors.accent, marginBottom: 14 }}>
                     {String(i + 1).padStart(2, "0")}
                   </div>
                   <EditableText
@@ -331,7 +331,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
                       updateContent("framework_steps", updated);
                     }}
                     editable={editable}
-                    style={{ fontSize: 20, fontWeight: 600, color: colors.text }}
+                    style={{ fontSize: 28, fontWeight: 600, color: colors.text }}
                   />
                 </div>
               );
@@ -343,7 +343,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             onChange={(b) => updateContent("bullets", b)}
             editable={editable}
             colors={colors}
-            fontSize={22}
+            fontSize={30}
             bulletStyle="number"
             visibleCount={vb}
           />
@@ -356,23 +356,23 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   const renderExercise = () => (
     <div style={containerStyle}>
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", height: "100%", padding: "0 120px" }}>
-        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 32 }}>
-          <div style={{ width: 56, height: 56, borderRadius: 12, background: colors.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <BookOpen size={28} color="#fff" />
+        <div style={{ display: "flex", alignItems: "center", gap: 16, marginBottom: 36 }}>
+          <div style={{ width: 64, height: 64, borderRadius: 14, background: colors.accent, display: "flex", alignItems: "center", justifyContent: "center" }}>
+            <BookOpen size={32} color="#fff" />
           </div>
-          <div style={{ fontSize: 14, letterSpacing: 4, textTransform: "uppercase", color: colors.accent, fontWeight: 700 }}>Exercício Prático</div>
+          <div style={{ fontSize: 20, letterSpacing: 4, textTransform: "uppercase", color: colors.accent, fontWeight: 700 }}>Exercício Prático</div>
         </div>
         <EditableText
           value={content.exercise_title || slide.title || ""}
           onChange={(val) => updateContent("exercise_title", val)}
           editable={editable}
-          style={{ fontSize: 48, fontWeight: 800, marginBottom: 32 }}
+          style={{ fontSize: 60, fontWeight: 800, marginBottom: 36 }}
         />
         <EditableText
           value={content.exercise_instructions || ""}
           onChange={(val) => updateContent("exercise_instructions", val)}
           editable={editable}
-          style={{ fontSize: 24, opacity: 0.85, maxWidth: 1200, lineHeight: 1.6, marginBottom: 32 }}
+          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1400, lineHeight: 1.6, marginBottom: 36 }}
           placeholder="Instruções do exercício..."
         />
         {content.bullets?.length && (
@@ -381,7 +381,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             onChange={(b) => updateContent("bullets", b)}
             editable={editable}
             colors={colors}
-            fontSize={20}
+            fontSize={28}
             bulletStyle="check"
             visibleCount={vb}
           />
@@ -393,21 +393,21 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderContent = () => (
     <div style={containerStyle}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 6, background: colors.accent }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
       <div style={{ padding: "80px 120px", height: "100%", display: "flex", flexDirection: "column" }}>
         {slide.subtitle && (
           <EditableText
             value={slide.subtitle}
             onChange={updateSubtitle}
             editable={editable}
-            style={{ fontSize: 14, letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 12, fontWeight: 600 }}
+            style={{ fontSize: 20, letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
           />
         )}
         <EditableText
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 48, fontWeight: 800, marginBottom: 48, color: colors.text }}
+          style={{ fontSize: 60, fontWeight: 800, marginBottom: 48, color: colors.text }}
         />
         
         <div style={{ flex: 1, display: "flex", flexDirection: "column", justifyContent: "center" }}>
@@ -417,7 +417,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               onChange={(b) => updateContent("bullets", b)}
               editable={editable}
               colors={colors}
-              fontSize={26}
+              fontSize={34}
               bulletStyle="dot"
               visibleCount={vb}
             />
@@ -426,15 +426,15 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
               value={content.text || ""}
               onChange={(val) => updateContent("text", val)}
               editable={editable}
-              style={{ fontSize: 26, lineHeight: 1.6, maxWidth: 1400, color: colors.text }}
+              style={{ fontSize: 34, lineHeight: 1.6, maxWidth: 1500, color: colors.text }}
               placeholder="Conteúdo do slide..."
             />
           )}
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-          <img src={unvLogo} alt="UNV" style={{ height: 40, objectFit: "contain" }} />
-          <span style={{ fontSize: 12, opacity: 0.4 }}>universidadevendas.com.br</span>
+          <img src={unvLogo} alt="UNV" style={{ height: 56, objectFit: "contain" }} />
+          <span style={{ fontSize: 16, opacity: 0.4 }}>universidadevendas.com.br</span>
         </div>
       </div>
     </div>
@@ -442,20 +442,20 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderClosing = () => (
     <div style={containerStyle}>
-      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
+      <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 10, background: colors.accent }} />
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 160px", textAlign: "center" }}>
-        <img src={unvLogo} alt="UNV" style={{ height: 100, objectFit: "contain", marginBottom: 40 }} />
+        <img src={unvLogo} alt="UNV" style={{ height: 120, objectFit: "contain", marginBottom: 48 }} />
         <EditableText
           value={slide.title || "Obrigado!"}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 56, fontWeight: 800, marginBottom: 24 }}
+          style={{ fontSize: 72, fontWeight: 800, marginBottom: 28 }}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 24, opacity: 0.8, maxWidth: 800, marginBottom: 40 }}
+          style={{ fontSize: 32, opacity: 0.8, maxWidth: 1000, marginBottom: 44 }}
           placeholder="Mensagem final..."
         />
       </div>
@@ -464,19 +464,19 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   const renderQuote = () => (
     <div style={containerStyle}>
-      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 200px", textAlign: "center" }}>
-        <div style={{ fontSize: 120, color: colors.accent, lineHeight: 0.8, marginBottom: 32 }}>"</div>
+      <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 180px", textAlign: "center" }}>
+        <div style={{ fontSize: 140, color: colors.accent, lineHeight: 0.8, marginBottom: 36 }}>"</div>
         <EditableText
           value={content.highlight || content.text || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 36, fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 32, color: colors.text }}
+          style={{ fontSize: 48, fontWeight: 600, lineHeight: 1.5, fontStyle: "italic", marginBottom: 36, color: colors.text }}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 18, color: colors.accent, fontWeight: 600 }}
+          style={{ fontSize: 26, color: colors.accent, fontWeight: 600 }}
           placeholder="Autor..."
         />
       </div>
