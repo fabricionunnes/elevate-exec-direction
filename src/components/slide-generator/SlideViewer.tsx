@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
-  Edit3, Trash2, Copy, Plus, Maximize, Eye, Loader2
+  Edit3, Trash2, Copy, Plus, Loader2, Save, X
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SlideRenderer } from "./SlideRenderer";
@@ -45,6 +45,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [presenterMode, setPresenterMode] = useState(false);
   const [showPDFExport, setShowPDFExport] = useState(false);
   const [editing, setEditing] = useState(false);
+  const [saving, setSaving] = useState(false);
+  const [pendingChanges, setPendingChanges] = useState<Record<string, Partial<SlideItem>>>({});
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -57,10 +59,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
         supabase.from("slide_presentations").select("*").eq("id", presentationId).single(),
         supabase.from("slide_items").select("*").eq("presentation_id", presentationId).order("sort_order"),
       ]);
-
       if (presRes.error) throw presRes.error;
       if (slidesRes.error) throw slidesRes.error;
-
       setPresentation(presRes.data as unknown as PresentationData);
       setSlides((slidesRes.data as unknown as SlideItem[]) || []);
     } catch (err) {
@@ -87,6 +87,54 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  const handleSlideUpdate = (slideId: string, update: { title?: string; subtitle?: string; content?: any }) => {
+    // Update local state immediately
+    setSlides(prev => prev.map(s => {
+      if (s.id !== slideId) return s;
+      return {
+        ...s,
+        title: update.title !== undefined ? update.title : s.title,
+        subtitle: update.subtitle !== undefined ? update.subtitle : s.subtitle,
+        content: update.content !== undefined ? update.content : s.content,
+      };
+    }));
+    // Track pending changes
+    setPendingChanges(prev => ({
+      ...prev,
+      [slideId]: {
+        ...prev[slideId],
+        ...(update.title !== undefined && { title: update.title }),
+        ...(update.subtitle !== undefined && { subtitle: update.subtitle }),
+        ...(update.content !== undefined && { content: update.content }),
+      },
+    }));
+  };
+
+  const handleSaveAll = async () => {
+    const entries = Object.entries(pendingChanges);
+    if (entries.length === 0) {
+      toast.info("Nenhuma alteração para salvar");
+      setEditing(false);
+      return;
+    }
+    setSaving(true);
+    try {
+      await Promise.all(
+        entries.map(([id, changes]) =>
+          supabase.from("slide_items").update(changes as any).eq("id", id)
+        )
+      );
+      setPendingChanges({});
+      toast.success(`${entries.length} slide(s) salvo(s)`);
+      setEditing(false);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao salvar alterações");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const handleDeleteSlide = async (slideId: string) => {
     if (!confirm("Remover este slide?")) return;
@@ -119,7 +167,6 @@ export function SlideViewer({ presentationId, onBack }: Props) {
         } as any)
         .select()
         .single();
-
       if (error) throw error;
       const newSlides = [...slides];
       newSlides.splice(currentIndex + 1, 0, data as unknown as SlideItem);
@@ -161,6 +208,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   }
 
   const currentSlide = slides[currentIndex];
+  const hasChanges = Object.keys(pendingChanges).length > 0;
 
   return (
     <div className="min-h-screen bg-background flex flex-col" ref={containerRef}>
@@ -176,22 +224,92 @@ export function SlideViewer({ presentationId, onBack }: Props) {
           </div>
         </div>
         <div className="flex items-center gap-1">
-          <Button variant="ghost" size="sm" onClick={() => setShowGrid(!showGrid)} className="gap-1.5">
-            <Grid3X3 className="h-4 w-4" />
-            <span className="hidden sm:inline">Visão Geral</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setPresenterMode(true)} className="gap-1.5">
-            <Play className="h-4 w-4" />
-            <span className="hidden sm:inline">Apresentar</span>
-          </Button>
-          <Button variant="ghost" size="sm" onClick={() => setShowPDFExport(true)} className="gap-1.5">
-            <Download className="h-4 w-4" />
-            <span className="hidden sm:inline">PDF</span>
-          </Button>
+          {editing ? (
+            <>
+              <Button
+                variant="outline"
+                size="sm"
+                onClick={() => { setEditing(false); setPendingChanges({}); loadData(); }}
+                className="gap-1.5"
+              >
+                <X className="h-4 w-4" />
+                <span className="hidden sm:inline">Cancelar</span>
+              </Button>
+              <Button
+                size="sm"
+                onClick={handleSaveAll}
+                disabled={saving || !hasChanges}
+                className="gap-1.5"
+              >
+                {saving ? <Loader2 className="h-4 w-4 animate-spin" /> : <Save className="h-4 w-4" />}
+                <span className="hidden sm:inline">Salvar {hasChanges ? `(${Object.keys(pendingChanges).length})` : ""}</span>
+              </Button>
+            </>
+          ) : (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
+                <Edit3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Editar</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowGrid(!showGrid)} className="gap-1.5">
+                <Grid3X3 className="h-4 w-4" />
+                <span className="hidden sm:inline">Visão Geral</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setPresenterMode(true)} className="gap-1.5">
+                <Play className="h-4 w-4" />
+                <span className="hidden sm:inline">Apresentar</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => setShowPDFExport(true)} className="gap-1.5">
+                <Download className="h-4 w-4" />
+                <span className="hidden sm:inline">PDF</span>
+              </Button>
+            </>
+          )}
         </div>
       </div>
 
-      {showGrid ? (
+      {editing ? (
+        /* Edit Mode - Full slide list */
+        <div className="flex-1 overflow-auto">
+          <div className="max-w-6xl mx-auto py-6 px-4 space-y-8">
+            {slides.map((slide, i) => (
+              <div key={slide.id} className="space-y-2">
+                <div className="flex items-center justify-between">
+                  <div className="flex items-center gap-2">
+                    <span className="text-xs font-bold text-muted-foreground bg-muted rounded-full w-7 h-7 flex items-center justify-center">
+                      {i + 1}
+                    </span>
+                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+                      {slide.slide_type}
+                    </span>
+                    {pendingChanges[slide.id] && (
+                      <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
+                        editado
+                      </span>
+                    )}
+                  </div>
+                  <div className="flex gap-1">
+                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicateSlide(slide)}>
+                      <Copy className="h-3.5 w-3.5" />
+                    </Button>
+                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSlide(slide.id)}>
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  </div>
+                </div>
+                <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
+                  <SlideRenderer
+                    slide={slide}
+                    scale={Math.min((typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1100) : 1100) / 1920, 0.58)}
+                    editable
+                    onUpdate={(update) => handleSlideUpdate(slide.id, update)}
+                  />
+                </div>
+              </div>
+            ))}
+          </div>
+        </div>
+      ) : showGrid ? (
         /* Grid View */
         <div className="flex-1 overflow-auto p-4">
           <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 xl:grid-cols-5 gap-4">
@@ -201,10 +319,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                 className={`cursor-pointer rounded-lg overflow-hidden border-2 transition-all hover:shadow-lg ${
                   i === currentIndex ? "border-primary shadow-md" : "border-border/50"
                 }`}
-                onClick={() => {
-                  setCurrentIndex(i);
-                  setShowGrid(false);
-                }}
+                onClick={() => { setCurrentIndex(i); setShowGrid(false); }}
               >
                 <div className="aspect-video">
                   <SlideRenderer slide={slide} scale={0.15} />
@@ -220,7 +335,6 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       ) : (
         /* Slide View */
         <div className="flex-1 flex">
-          {/* Thumbnail sidebar */}
           <div className="w-48 border-r bg-muted/30 overflow-y-auto hidden lg:block">
             {slides.map((slide, i) => (
               <div
@@ -238,72 +352,42 @@ export function SlideViewer({ presentationId, onBack }: Props) {
             ))}
           </div>
 
-          {/* Main slide area */}
           <div className="flex-1 flex flex-col">
             <div className="flex-1 flex items-center justify-center p-4 bg-muted/20 relative">
-              {/* Nav buttons */}
               {currentIndex > 0 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute left-2 z-10 bg-card/80 shadow-sm"
-                  onClick={() => setCurrentIndex((i) => i - 1)}
-                >
+                <Button variant="ghost" size="icon" className="absolute left-2 z-10 bg-card/80 shadow-sm" onClick={() => setCurrentIndex((i) => i - 1)}>
                   <ChevronLeft className="h-5 w-5" />
                 </Button>
               )}
               {currentIndex < slides.length - 1 && (
-                <Button
-                  variant="ghost"
-                  size="icon"
-                  className="absolute right-2 z-10 bg-card/80 shadow-sm"
-                  onClick={() => setCurrentIndex((i) => i + 1)}
-                >
+                <Button variant="ghost" size="icon" className="absolute right-2 z-10 bg-card/80 shadow-sm" onClick={() => setCurrentIndex((i) => i + 1)}>
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               )}
-
-              {/* Slide */}
               <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl">
                 {currentSlide && <SlideRenderer slide={currentSlide} scale={1} />}
               </div>
             </div>
 
-            {/* Bottom bar */}
             <div className="border-t bg-card px-4 py-2 flex items-center justify-between">
               <div className="flex items-center gap-2">
-                <span className="text-sm font-medium">
-                  {currentIndex + 1} / {slides.length}
-                </span>
+                <span className="text-sm font-medium">{currentIndex + 1} / {slides.length}</span>
                 {currentSlide && (
-                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">
-                    {currentSlide.slide_type}
-                  </span>
+                  <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{currentSlide.slide_type}</span>
                 )}
               </div>
               {currentSlide && (
                 <div className="flex gap-1">
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDuplicateSlide(currentSlide)}
-                    className="gap-1 text-xs"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleDuplicateSlide(currentSlide)} className="gap-1 text-xs">
                     <Copy className="h-3.5 w-3.5" /> Duplicar
                   </Button>
-                  <Button
-                    variant="ghost"
-                    size="sm"
-                    onClick={() => handleDeleteSlide(currentSlide.id)}
-                    className="gap-1 text-xs text-destructive"
-                  >
+                  <Button variant="ghost" size="sm" onClick={() => handleDeleteSlide(currentSlide.id)} className="gap-1 text-xs text-destructive">
                     <Trash2 className="h-3.5 w-3.5" /> Remover
                   </Button>
                 </div>
               )}
             </div>
 
-            {/* Speaker notes */}
             {currentSlide?.speaker_notes && (
               <div className="border-t bg-muted/30 px-4 py-3">
                 <p className="text-xs font-medium text-muted-foreground mb-1">Notas do Apresentador</p>
