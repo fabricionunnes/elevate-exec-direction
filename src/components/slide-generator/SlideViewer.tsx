@@ -3,8 +3,9 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
-  Edit3, Trash2, Copy, Plus, Loader2, Save, X
+  Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check
 } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { SlideRenderer } from "./SlideRenderer";
 import { SlidePresenterMode } from "./SlidePresenterMode";
