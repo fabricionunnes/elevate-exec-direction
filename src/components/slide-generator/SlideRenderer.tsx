@@ -326,14 +326,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.highlight || slide.title || ""}
           onChange={(val) => updateContent("highlight", val)}
           editable={editable}
-          style={{ fontSize: 76, fontWeight: 800, lineHeight: 1.2, marginBottom: 36 }}
+          style={{ fontSize: fs("highlight_title", 76), fontWeight: 800, lineHeight: 1.2, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("highlight_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1200 }}
+          style={{ fontSize: fs("highlight_text", 32), opacity: 0.85, maxWidth: 1200 }}
           placeholder="Texto adicional..."
+          onFontSizeChange={(s) => setFontSize("highlight_text", s)}
         />
         <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.5)", marginTop: 48 }} />
       </div>
