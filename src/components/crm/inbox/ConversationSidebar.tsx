@@ -78,6 +78,17 @@ export function ConversationSidebar({
   const { leads: linkedLeads, loading: loadingLinkedLeads, refetch: refetchLinkedLeads } = useLinkedLeads({
     phone: conversation.contact?.phone,
   });
+
+  // Company identification by phone
+  const { 
+    company: identifiedCompany, 
+    invoices: companyInvoices, 
+    loading: loadingCompany, 
+    loadingInvoices: loadingCompanyInvoices,
+    refetchInvoices,
+  } = useCompanyIdentification({
+    phone: conversation.contact?.phone,
+  });
   
   // CRM Staff for assignment
   const [crmStaff, setCrmStaff] = useState<CRMStaff[]>([]);
