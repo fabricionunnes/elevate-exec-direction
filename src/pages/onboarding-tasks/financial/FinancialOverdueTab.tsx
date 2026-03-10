@@ -314,7 +314,7 @@ export default function FinancialOverdueTab({
 
         return {
           "CNPJ/CPF": company.cnpj || "",
-          "NOME DO DEVEDOR": company.name || inv.company_name || "",
+          "NOME DO DEVEDOR": company.name || inv.company_name || inv.custom_receiver_name || "",
           "ENDEREÇO": fullAddress || "",
           "CEP": company.address_zipcode || "",
           "BAIRRO": company.address_neighborhood || "",
