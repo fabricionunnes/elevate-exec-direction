@@ -73,6 +73,7 @@ interface Receivable {
   payment_link: string | null;
   reference_month: string | null;
   notes: string | null;
+  custom_receiver_name?: string | null;
   company?: { name: string } | null;
   category?: { name: string; color: string } | null;
   project_status?: string | null;
