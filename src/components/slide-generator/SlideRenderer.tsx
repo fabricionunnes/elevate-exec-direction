@@ -309,27 +309,33 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
         />
         {content.framework_steps?.length ? (
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {content.framework_steps.map((step: string, i: number) => (
-              <div key={i} style={{
-                flex: "1 1 200px", padding: 32,
-                background: i % 2 === 0 ? "#F1F5F9" : "#EEF2FF",
-                borderRadius: 16, borderLeft: `4px solid ${colors.accent}`, minWidth: 200,
-              }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: colors.accent, marginBottom: 12 }}>
-                  {String(i + 1).padStart(2, "0")}
+            {content.framework_steps.map((step: string, i: number) => {
+              const isVisible = vb === undefined || vb < 0 || i < vb;
+              return (
+                <div key={i} style={{
+                  flex: "1 1 200px", padding: 32,
+                  background: i % 2 === 0 ? "#F1F5F9" : "#EEF2FF",
+                  borderRadius: 16, borderLeft: `4px solid ${colors.accent}`, minWidth: 200,
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? "translateY(0)" : "translateY(20px)",
+                  transition: "opacity 0.5s ease, transform 0.5s ease",
+                }}>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: colors.accent, marginBottom: 12 }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <EditableText
+                    value={step}
+                    onChange={(val) => {
+                      const updated = [...content.framework_steps];
+                      updated[i] = val;
+                      updateContent("framework_steps", updated);
+                    }}
+                    editable={editable}
+                    style={{ fontSize: 20, fontWeight: 600, color: colors.text }}
+                  />
                 </div>
-                <EditableText
-                  value={step}
-                  onChange={(val) => {
-                    const updated = [...content.framework_steps];
-                    updated[i] = val;
-                    updateContent("framework_steps", updated);
-                  }}
-                  editable={editable}
-                  style={{ fontSize: 20, fontWeight: 600, color: colors.text }}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : content.bullets?.length ? (
           <EditableBullets
@@ -339,6 +345,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             colors={colors}
             fontSize={22}
             bulletStyle="number"
+            visibleCount={vb}
           />
         ) : null}
       </div>
