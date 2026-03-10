@@ -109,12 +109,15 @@ export function FinancialInboxPanel() {
 
         const { data: staff } = await supabase
           .from("onboarding_staff")
-          .select("id")
+          .select("id, role")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
 
-        if (staff) setStaffId(staff.id);
+        if (staff) {
+          setStaffId(staff.id);
+          setIsMaster((staff as any).role === "master");
+        }
 
         // Load all instances
         const [{ data: evolutionInstances }, { data: officialInstances }] = await Promise.all([
@@ -123,13 +126,25 @@ export function FinancialInboxPanel() {
         ]);
 
         const opts: InstanceOption[] = [];
+        let financialId: string | null = null;
+
         (evolutionInstances || []).forEach((i: any) => {
           opts.push({ id: i.id, name: i.display_name || i.instance_name, instanceName: i.instance_name || "", type: "evolution" });
+          // Auto-select the financial instance
+          if (i.instance_name === "financeiro-unv" || (i.display_name || "").toLowerCase().includes("financeiro")) {
+            financialId = i.id;
+            setFinancialInstanceName(i.display_name || i.instance_name);
+          }
         });
         (officialInstances || []).forEach((i: any) => {
           opts.push({ id: `official:${i.id}`, name: i.display_name || `Oficial ${i.phone_number}`, instanceName: i.phone_number || "", type: "official" });
         });
         setInstances(opts);
+
+        // For non-master users, lock to the financial instance
+        if (financialId) {
+          setSelectedInstanceId(financialId);
+        }
       } catch (err) {
         console.error("Error loading instances:", err);
       } finally {
