@@ -328,7 +328,6 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                   <span className="hidden sm:inline">Editar</span>
                 </Button>
               )}
-              </Button>
               <Button variant="ghost" size="sm" onClick={() => setShowGrid(!showGrid)} className="gap-1.5">
                 <Grid3X3 className="h-4 w-4" />
                 <span className="hidden sm:inline">Visão Geral</span>
