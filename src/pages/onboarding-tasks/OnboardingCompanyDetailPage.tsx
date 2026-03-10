@@ -715,15 +715,15 @@ const OnboardingCompanyDetailPage = () => {
                         setForm(prev => ({ ...prev, segment: value }));
                         if (!isNew && companyId) {
                           supabase
-                            .rpc("update_company_segment", { 
-                              p_company_id: companyId, 
-                              p_segment: value || null
-                            })
+                            .from("onboarding_companies")
+                            .update({ segment: value || null })
+                            .eq("id", companyId)
                             .then(({ error }) => {
                               if (error) {
                                 console.error("Error auto-saving segment:", error);
                                 toast.error("Erro ao salvar segmento");
                               } else {
+                                console.log("[CompanyDetail] Segment saved:", value);
                                 toast.success("Segmento atualizado");
                               }
                             });
