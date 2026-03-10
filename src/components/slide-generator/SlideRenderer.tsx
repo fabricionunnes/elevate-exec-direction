@@ -438,14 +438,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={content.exercise_title || slide.title || ""}
           onChange={(val) => updateContent("exercise_title", val)}
           editable={editable}
-          style={{ fontSize: 60, fontWeight: 800, marginBottom: 36 }}
+          style={{ fontSize: fs("exercise_title", 60), fontWeight: 800, marginBottom: 36 }}
+          onFontSizeChange={(s) => setFontSize("exercise_title", s)}
         />
         <EditableText
           value={content.exercise_instructions || ""}
           onChange={(val) => updateContent("exercise_instructions", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.85, maxWidth: 1400, lineHeight: 1.6, marginBottom: 36 }}
+          style={{ fontSize: fs("exercise_text", 32), opacity: 0.85, maxWidth: 1400, lineHeight: 1.6, marginBottom: 36 }}
           placeholder="Instruções do exercício..."
+          onFontSizeChange={(s) => setFontSize("exercise_text", s)}
         />
         {content.bullets?.length && (
           <EditableBullets
