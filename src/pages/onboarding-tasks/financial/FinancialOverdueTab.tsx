@@ -271,11 +271,15 @@ export default function FinancialOverdueTab({
     setIsExporting(true);
     try {
       // Fetch full company details
-      const companyIds = [...new Set(sortedInvoices.map(i => i.company_id))];
-      const { data: companiesData } = await supabase
-        .from("onboarding_companies")
-        .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id")
-        .in("id", companyIds);
+      const companyIds = [...new Set(sortedInvoices.map(i => i.company_id).filter(Boolean))];
+      let companiesData: any[] = [];
+      if (companyIds.length > 0) {
+        const { data } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id")
+          .in("id", companyIds);
+        companiesData = data || [];
+      }
 
       const companyMap = new Map((companiesData || []).map((c: any) => [c.id, c]));
 
