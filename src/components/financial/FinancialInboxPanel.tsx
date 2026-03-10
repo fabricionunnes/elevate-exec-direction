@@ -33,6 +33,8 @@ import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
 import { MediaUploadButton } from "@/components/crm/inbox/MediaUploadButton";
 import { AudioRecorder } from "@/components/crm/inbox/AudioRecorder";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { useCompanyIdentification } from "@/hooks/useCompanyIdentification";
+import { CompanyFinancialSidePanel } from "@/components/crm/inbox/CompanyFinancialSidePanel";
 
 interface InstanceOption {
   id: string;
