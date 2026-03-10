@@ -405,7 +405,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
         </div>
 
         <div style={{ display: "flex", justifyContent: "space-between", alignItems: "center", paddingTop: 24, borderTop: "1px solid rgba(0,0,0,0.08)" }}>
-          <span style={{ fontSize: 12, color: colors.accent, fontWeight: 600, letterSpacing: 2 }}>UNV</span>
+          <img src={unvLogo} alt="UNV" style={{ height: 40, objectFit: "contain" }} />
           <span style={{ fontSize: 12, opacity: 0.4 }}>universidadevendas.com.br</span>
         </div>
       </div>
