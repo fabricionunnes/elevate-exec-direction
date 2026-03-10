@@ -86,6 +86,7 @@ export function SegmentSelect({
         <SelectValue placeholder={placeholder} />
       </SelectTrigger>
       <SelectContent>
+        <SelectItem value="none">Sem segmento</SelectItem>
         {segments.map((seg) => (
           <SelectItem key={seg} value={seg}>
             {seg}
