@@ -13,6 +13,7 @@ import {
   RefreshCw,
   ExternalLink,
   Sparkles,
+  Send,
 } from "lucide-react";
 import { format, isPast, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
