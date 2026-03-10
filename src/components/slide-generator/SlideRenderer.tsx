@@ -2,7 +2,7 @@ import { useState, useRef, useCallback, useEffect } from "react";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users,
-  Plus, Minus
+  Plus, Minus, Trash2, Type, GripVertical
 } from "lucide-react";
 import unvLogo from "@/assets/unv-logo-slides.png";
 
@@ -584,9 +584,204 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
     }
   };
 
+  // Extra text blocks overlay
+  const extraTexts: Array<{ id: string; text: string; x: number; y: number; fontSize: number }> = content._extraTexts || [];
+
+  const addExtraText = () => {
+    const newBlock = {
+      id: Date.now().toString(),
+      text: "Novo texto",
+      x: 200,
+      y: 500,
+      fontSize: 32,
+    };
+    updateContent("_extraTexts", [...extraTexts, newBlock]);
+  };
+
+  const updateExtraText = (id: string, updates: Partial<typeof extraTexts[0]>) => {
+    updateContent("_extraTexts", extraTexts.map(t => t.id === id ? { ...t, ...updates } : t));
+  };
+
+  const removeExtraText = (id: string) => {
+    updateContent("_extraTexts", extraTexts.filter(t => t.id !== id));
+  };
+
   return (
     <div style={wrapperStyle}>
       {renderSlide()}
+      {/* Extra text blocks overlay */}
+      {extraTexts.map((block) => (
+        <DraggableTextBlock
+          key={block.id}
+          block={block}
+          scale={scale}
+          editable={editable}
+          colors={colors}
+          onUpdate={(updates) => updateExtraText(block.id, updates)}
+          onRemove={() => removeExtraText(block.id)}
+        />
+      ))}
+      {/* Add text button */}
+      {editable && (
+        <button
+          onClick={addExtraText}
+          style={{
+            position: "absolute",
+            bottom: 8,
+            right: 8,
+            display: "flex",
+            alignItems: "center",
+            gap: 4,
+            background: "rgba(10,25,49,0.85)",
+            color: "#fff",
+            border: "none",
+            borderRadius: 6,
+            padding: "6px 10px",
+            fontSize: 12,
+            cursor: "pointer",
+            zIndex: 20,
+          }}
+          title="Adicionar texto"
+        >
+          <Type size={14} />
+          <span>Adicionar texto</span>
+        </button>
+      )}
+    </div>
+  );
+}
+
+// Draggable text block component
+function DraggableTextBlock({
+  block,
+  scale,
+  editable,
+  colors,
+  onUpdate,
+  onRemove,
+}: {
+  block: { id: string; text: string; x: number; y: number; fontSize: number };
+  scale: number;
+  editable?: boolean;
+  colors: any;
+  onUpdate: (updates: Partial<{ text: string; x: number; y: number; fontSize: number }>) => void;
+  onRemove: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const dragOffset = useRef({ x: 0, y: 0 });
+  const [focused, setFocused] = useState(false);
+  const textRef = useRef<HTMLDivElement>(null);
+  const isFocusedText = useRef(false);
+
+  useEffect(() => {
+    if (textRef.current && !isFocusedText.current) {
+      textRef.current.innerText = block.text || "";
+    }
+  }, [block.text]);
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if ((e.target as HTMLElement).getAttribute("contenteditable") === "true") return;
+    e.preventDefault();
+    dragging.current = true;
+    const rect = ref.current?.getBoundingClientRect();
+    if (rect) {
+      dragOffset.current = { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    }
+    const handleMouseMove = (ev: MouseEvent) => {
+      if (!dragging.current || !ref.current?.parentElement) return;
+      const parent = ref.current.parentElement.getBoundingClientRect();
+      const newX = (ev.clientX - parent.left - dragOffset.current.x) / scale;
+      const newY = (ev.clientY - parent.top - dragOffset.current.y) / scale;
+      onUpdate({ x: Math.max(0, Math.round(newX)), y: Math.max(0, Math.round(newY)) });
+    };
+    const handleMouseUp = () => {
+      dragging.current = false;
+      window.removeEventListener("mousemove", handleMouseMove);
+      window.removeEventListener("mouseup", handleMouseUp);
+    };
+    window.addEventListener("mousemove", handleMouseMove);
+    window.addEventListener("mouseup", handleMouseUp);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onMouseDown={editable ? handleMouseDown : undefined}
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        if (!ref.current?.contains(e.relatedTarget as Node)) setFocused(false);
+      }}
+      style={{
+        position: "absolute",
+        left: block.x * scale,
+        top: block.y * scale,
+        zIndex: 10,
+        cursor: editable ? "move" : "default",
+      }}
+    >
+      {/* Controls */}
+      {editable && focused && (
+        <div
+          style={{
+            position: "absolute",
+            top: -30 * scale,
+            left: 0,
+            display: "flex",
+            gap: 2,
+            background: "rgba(10,25,49,0.9)",
+            borderRadius: 4 * scale,
+            padding: `${2 * scale}px ${4 * scale}px`,
+            zIndex: 50,
+            alignItems: "center",
+          }}
+          onMouseDown={(e) => e.preventDefault()}
+        >
+          <button
+            onMouseDown={(e) => { e.preventDefault(); onUpdate({ fontSize: Math.max(12, block.fontSize - 2) }); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 2 }}
+          >
+            <Minus size={12 * scale} />
+          </button>
+          <span style={{ color: "#fff", fontSize: 10 * scale, minWidth: 20 * scale, textAlign: "center" }}>{block.fontSize}</span>
+          <button
+            onMouseDown={(e) => { e.preventDefault(); onUpdate({ fontSize: Math.min(120, block.fontSize + 2) }); }}
+            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 2 }}
+          >
+            <Plus size={12 * scale} />
+          </button>
+          <div style={{ width: 1, height: 14 * scale, background: "rgba(255,255,255,0.3)", margin: `0 ${2 * scale}px` }} />
+          <button
+            onMouseDown={(e) => { e.preventDefault(); onRemove(); }}
+            style={{ color: "#ff6b6b", border: "none", background: "transparent", cursor: "pointer", display: "flex", padding: 2 }}
+          >
+            <Trash2 size={12 * scale} />
+          </button>
+        </div>
+      )}
+      <div
+        ref={textRef}
+        contentEditable={editable}
+        suppressContentEditableWarning
+        onFocus={() => { isFocusedText.current = true; setFocused(true); }}
+        onBlur={() => {
+          isFocusedText.current = false;
+          if (textRef.current) {
+            onUpdate({ text: textRef.current.innerText.trim() });
+          }
+        }}
+        style={{
+          fontSize: block.fontSize * scale,
+          color: colors.text,
+          fontFamily: "'Inter', 'Segoe UI', system-ui, sans-serif",
+          outline: editable && focused ? `${2 * scale}px dashed rgba(200,30,30,0.5)` : "none",
+          padding: `${4 * scale}px ${8 * scale}px`,
+          minWidth: 60 * scale,
+          minHeight: 20 * scale,
+          cursor: editable ? "text" : "default",
+          whiteSpace: "pre-wrap",
+        }}
+      />
     </div>
   );
 }
