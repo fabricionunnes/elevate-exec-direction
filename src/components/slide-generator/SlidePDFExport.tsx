@@ -33,14 +33,18 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
     toast.info("Gerando PDF... Aguarde.");
 
     try {
-      const pdf = new jsPDF({ orientation: "landscape", unit: "mm", format: "a4" });
-      const pageWidth = 297;
-      const pageHeight = 210;
+      // Use pixel-based format matching the slide dimensions for perfect fit
+      const pdf = new jsPDF({
+        orientation: "landscape",
+        unit: "px",
+        format: [1920, 1080],
+        hotfixes: ["px_scaling"],
+      });
 
       const slideElements = slidesContainerRef.current.querySelectorAll("[data-slide-export]");
 
       for (let i = 0; i < slideElements.length; i++) {
-        if (i > 0) pdf.addPage();
+        if (i > 0) pdf.addPage([1920, 1080], "landscape");
 
         const el = slideElements[i] as HTMLElement;
 
@@ -49,62 +53,44 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
           backgroundColor: "#ffffff",
           useCORS: true,
           logging: false,
-          width: el.scrollWidth,
-          height: el.scrollHeight,
-          windowWidth: el.scrollWidth,
-          windowHeight: el.scrollHeight,
+          width: 1920,
+          height: 1080,
         });
 
-        const imgData = canvas.toDataURL("image/png");
-        const canvasRatio = canvas.width / canvas.height;
-        const pageRatio = pageWidth / pageHeight;
-
-        let imgW = pageWidth;
-        let imgH = pageHeight;
-        let offsetX = 0;
-        let offsetY = 0;
-
-        if (canvasRatio > pageRatio) {
-          imgH = pageWidth / canvasRatio;
-          offsetY = (pageHeight - imgH) / 2;
-        } else {
-          imgW = pageHeight * canvasRatio;
-          offsetX = (pageWidth - imgW) / 2;
-        }
-
-        pdf.setFillColor(255, 255, 255);
-        pdf.rect(0, 0, pageWidth, pageHeight, "F");
-        pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH);
+        const imgData = canvas.toDataURL("image/jpeg", 0.92);
+        pdf.addImage(imgData, "JPEG", 0, 0, 1920, 1080);
       }
 
-      // Use window.open for reliable download in iframe environments
+      const fileName = `${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
       const pdfBlob = pdf.output("blob");
       const blobUrl = URL.createObjectURL(pdfBlob);
+
+      // Use an iframe to trigger the download — works in nested iframes
+      const iframe = document.createElement("iframe");
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+
+      const link = document.createElement("a");
+      link.href = blobUrl;
+      link.download = fileName;
       
-      // Try multiple download methods for maximum compatibility
-      const fileName = `${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
-      
-      // Method 1: window.open (works in iframes)
-      const newWindow = window.open(blobUrl, "_blank");
-      
-      if (!newWindow) {
-        // Method 2: If popup blocked, try anchor with target _top
-        const a = document.createElement("a");
-        a.href = blobUrl;
-        a.download = fileName;
-        a.target = "_top";
-        a.style.display = "none";
-        document.body.appendChild(a);
-        a.click();
-        setTimeout(() => {
-          document.body.removeChild(a);
-          URL.revokeObjectURL(blobUrl);
-        }, 5000);
+      // Append to iframe document for sandboxed download
+      if (iframe.contentDocument) {
+        iframe.contentDocument.body.appendChild(link);
+        link.click();
       } else {
-        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+        // Fallback: append to main document
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
       }
-      
-      toast.success("PDF gerado! Se não abriu automaticamente, verifique se popups estão permitidos.");
+
+      setTimeout(() => {
+        document.body.removeChild(iframe);
+        URL.revokeObjectURL(blobUrl);
+      }, 10000);
+
+      toast.success("PDF gerado com sucesso!");
     } catch (err) {
       console.error("PDF export error:", err);
       toast.error("Erro ao exportar PDF");
