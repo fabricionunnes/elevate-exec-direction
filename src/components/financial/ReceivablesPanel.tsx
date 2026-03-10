@@ -472,7 +472,8 @@ export function ReceivablesPanel() {
     
     const matchesSearch =
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
-      r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase());
+      r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+      r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     
     // Period filter
