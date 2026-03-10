@@ -252,7 +252,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
         />
         <div style={{ width: 80, height: 4, background: "rgba(255,255,255,0.5)", marginTop: 48 }} />
       </div>
-      <div style={{ position: "absolute", bottom: 30, right: 40, fontSize: 12, opacity: 0.3 }}>UNV</div>
+      {logoFooter("right")}
     </div>
   );
 
