@@ -897,7 +897,8 @@ export default function AllRecurringChargesPage() {
 
       toast.success("Conta a receber lançada com sucesso");
       setReceivableDialog(false);
-      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+      setReceivableForm({ company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+      setShowCustomReceiverRecv(false);
       await loadData();
     } catch (err: any) {
       toast.error("Erro: " + (err.message || "erro"));
