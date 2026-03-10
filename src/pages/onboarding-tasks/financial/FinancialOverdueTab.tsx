@@ -283,36 +283,6 @@ export default function FinancialOverdueTab({
 
       const companyMap = new Map((companiesData).map((c: any) => [c.id, c]));
 
-      // For invoices without company_id, try to match by custom_receiver_name
-      const unmatchedNames = [...new Set(
-        sortedInvoices
-          .filter(i => !i.company_id && i.custom_receiver_name)
-          .map(i => i.custom_receiver_name!.trim().toLowerCase())
-      )];
-      if (unmatchedNames.length > 0) {
-        const { data: extraCompanies } = await supabase
-          .from("onboarding_companies")
-          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id");
-        if (extraCompanies) {
-          const nameToCompany = new Map<string, any>();
-          for (const c of extraCompanies) {
-            nameToCompany.set(c.name.trim().toLowerCase(), c);
-          }
-          for (const inv of sortedInvoices) {
-            if (!inv.company_id && inv.custom_receiver_name) {
-              const matched = nameToCompany.get(inv.custom_receiver_name.trim().toLowerCase());
-              if (matched && !companyMap.has(`custom_${inv.id}`)) {
-                companyMap.set(`custom_${inv.id}`, matched);
-                // Also collect consultant IDs
-                if (matched.consultant_id && !consultantMap.has(matched.consultant_id)) {
-                  // Will be fetched below if not already
-                }
-              }
-            }
-          }
-        }
-      }
-
       // Fetch recurring charge descriptions (service name)
       const recurringIds = [...new Set(sortedInvoices.map(i => i.recurring_charge_id).filter(Boolean))] as string[];
       let chargeMap = new Map<string, string>();
@@ -324,8 +294,44 @@ export default function FinancialOverdueTab({
         chargeMap = new Map((chargesData || []).map((c: any) => [c.id, c.description]));
       }
 
+      // For invoices without company_id, try to match by custom_receiver_name against all companies
+      const unmatchedNames = sortedInvoices.filter(i => !i.company_id && (i.custom_receiver_name || i.company_name));
+      const nameMatchMap = new Map<string, any>(); // inv.id -> company
+      if (unmatchedNames.length > 0) {
+        const { data: allCompanies } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id");
+        if (allCompanies) {
+          const nameToCompany = new Map<string, any>();
+          for (const c of allCompanies) {
+            nameToCompany.set(c.name.trim().toLowerCase(), c);
+          }
+          for (const inv of unmatchedNames) {
+            const searchName = (inv.custom_receiver_name || inv.company_name || "").trim().toLowerCase();
+            if (searchName) {
+              // Try exact match first
+              let matched = nameToCompany.get(searchName);
+              // Try partial match (startsWith)
+              if (!matched) {
+                for (const [key, val] of nameToCompany) {
+                  if (key.startsWith(searchName) || searchName.startsWith(key)) {
+                    matched = val;
+                    break;
+                  }
+                }
+              }
+              if (matched) {
+                nameMatchMap.set(inv.id, matched);
+                // Add to companiesData for consultant lookup
+                companiesData.push(matched);
+              }
+            }
+          }
+        }
+      }
+
       // Fetch consultant (representative) details
-      const consultantIds = [...new Set((companiesData || []).map((c: any) => c.consultant_id).filter(Boolean))] as string[];
+      const consultantIds = [...new Set((companiesData).map((c: any) => c.consultant_id).filter(Boolean))] as string[];
       let consultantMap = new Map<string, any>();
       if (consultantIds.length > 0) {
         const { data: staffData } = await supabase
@@ -337,7 +343,7 @@ export default function FinancialOverdueTab({
 
       // Build rows
       const rows = sortedInvoices.map(inv => {
-        const company = companyMap.get(inv.company_id) || {} as any;
+        const company = companyMap.get(inv.company_id) || nameMatchMap.get(inv.id) || {} as any;
         const consultant = company.consultant_id ? consultantMap.get(company.consultant_id) : null;
         const fullAddress = [company.address, company.address_number, company.address_complement].filter(Boolean).join(", ");
         const serviceName = inv.recurring_charge_id ? chargeMap.get(inv.recurring_charge_id) || inv.description : inv.description;
