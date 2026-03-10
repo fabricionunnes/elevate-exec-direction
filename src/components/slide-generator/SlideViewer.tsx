@@ -52,6 +52,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const slideContainerRef = useRef<HTMLDivElement>(null);
+  const [slideViewScale, setSlideViewScale] = useState(0.45);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
