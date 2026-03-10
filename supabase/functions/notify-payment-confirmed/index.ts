@@ -171,25 +171,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
-
-    const sendResponse = await fetch(
-      `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: whatsappInstance.api_key,
-        },
-        body: JSON.stringify({ number: formattedPhone, text: message }),
-      }
-    );
-
-    if (sendResponse.ok) {
-      console.log(`[notify-payment-confirmed] WhatsApp sent to ${formattedPhone} for invoice ${invoice_id}`);
-    } else {
-      console.error("[notify-payment-confirmed] WhatsApp send failed:", await sendResponse.text());
-    }
 
     // Send internal notifications to staff with receivables access
     try {
