@@ -299,14 +299,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={slide.title || ""}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 84, fontWeight: 800, lineHeight: 1.1, marginBottom: 28, maxWidth: 1400 }}
+          style={{ fontSize: fs("cover_title", 84), fontWeight: 800, lineHeight: 1.1, marginBottom: 28, maxWidth: 1400 }}
+          onFontSizeChange={(s) => setFontSize("cover_title", s)}
         />
         <EditableText
           value={slide.subtitle || ""}
           onChange={updateSubtitle}
           editable={editable}
-          style={{ fontSize: 36, opacity: 0.8, maxWidth: 1100, lineHeight: 1.4 }}
+          style={{ fontSize: fs("cover_subtitle", 36), opacity: 0.8, maxWidth: 1100, lineHeight: 1.4 }}
           placeholder="Subtítulo..."
+          onFontSizeChange={(s) => setFontSize("cover_subtitle", s)}
         />
         <div style={{ position: "absolute", bottom: 60, left: 120, right: 120, display: "flex", justifyContent: "space-between", alignItems: "center" }}>
           <div style={{ width: 80, height: 4, background: colors.accent }} />
