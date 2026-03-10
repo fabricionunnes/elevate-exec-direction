@@ -242,11 +242,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   const colors = getSlideColors(slide.slide_type);
   const content = slide.content || {};
   const vb = visibleBullets;
+  const fontSizes: Record<string, number> = content._fontSizes || {};
   const updateTitle = (title: string) => onUpdate?.({ title });
   const updateSubtitle = (subtitle: string) => onUpdate?.({ subtitle });
   const updateContent = (key: string, value: any) => {
     onUpdate?.({ content: { ...content, [key]: value } });
   };
+  const setFontSize = (key: string, size: number) => {
+    updateContent("_fontSizes", { ...fontSizes, [key]: size });
+  };
+  const fs = (key: string, defaultSize: number) => fontSizes[key] || defaultSize;
 
   const containerStyle: React.CSSProperties = {
     width: 1920,
