@@ -517,6 +517,9 @@ export function FinancialInboxPanel() {
                 invoices={companyInvoices}
                 loading={loadingCompany}
                 loadingInvoices={loadingCompanyInvoices}
+                contactPhone={selectedConversation?.contact?.phone}
+                instanceId={selectedConversation?.instance_id}
+                officialInstanceId={selectedConversation?.official_instance_id}
               />
             </div>
           )}
