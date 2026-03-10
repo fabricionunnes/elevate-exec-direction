@@ -404,7 +404,7 @@ export default function AllRecurringChargesPage() {
       // Use ALL companies (including simulators) for name/phone maps so invoices always resolve
       const companiesMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.name]));
       const companiesPhoneMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.phone]));
-      setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida" })));
+      setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || ch.custom_receiver_name || "Empresa desconhecida" })));
       setCompanies(allCompanies.map((c: any) => ({ id: c.id, name: c.name })));
       setFullCompanies(allCompanies);
       setStaffList(staffRes.data || []);
