@@ -211,6 +211,13 @@ export function CompanyInvoicesList({ companyId }: Props) {
     const todayStr = new Date().toLocaleDateString("en-CA"); // YYYY-MM-DD format
     const newStatus = dueDate < todayStr ? "overdue" : "pending";
 
+    // Get invoice details before reverting (to know paid amount and fee for bank debit)
+    const { data: invData } = await supabase
+      .from("company_invoices")
+      .select("paid_amount_cents, payment_fee_cents, description, installment_number, total_installments")
+      .eq("id", invoiceId)
+      .single();
+
     const { error } = await supabase
       .from("company_invoices")
       .update({
@@ -223,6 +230,40 @@ export function CompanyInvoicesList({ companyId }: Props) {
     if (error) {
       toast.error("Erro ao estornar fatura");
       return;
+    }
+
+    // Debit bank balance: reverse the credit that was recorded
+    if (invData?.paid_amount_cents) {
+      try {
+        const feeCents = invData.payment_fee_cents || 0;
+        const netAmount = invData.paid_amount_cents - feeCents;
+
+        // Find the bank that was credited for this invoice
+        const { data: bankTx } = await supabase
+          .from("financial_bank_transactions")
+          .select("bank_id")
+          .eq("reference_id", invoiceId)
+          .eq("reference_type", "invoice")
+          .eq("type", "credit")
+          .order("created_at", { ascending: false })
+          .limit(1);
+
+        if (bankTx?.length && netAmount > 0) {
+          const bankId = bankTx[0].bank_id;
+          await (supabase.rpc as any)("increment_bank_balance", { p_bank_id: bankId, p_amount: -netAmount });
+          await supabase.from("financial_bank_transactions").insert({
+            bank_id: bankId,
+            type: "debit",
+            amount_cents: netAmount,
+            description: `Estorno: ${invData.description || "Fatura"} (${invData.installment_number || 1}/${invData.total_installments || 1})`,
+            reference_type: "invoice",
+            reference_id: invoiceId,
+          } as any);
+        }
+      } catch (bankErr) {
+        console.error("Error reverting bank balance:", bankErr);
+        toast.warning("Estorno feito, mas houve erro ao ajustar saldo bancário");
+      }
     }
 
     toast.success("Baixa estornada com sucesso!");
