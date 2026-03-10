@@ -383,6 +383,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             colors={colors}
             fontSize={20}
             bulletStyle="check"
+            visibleCount={vb}
           />
         )}
       </div>
