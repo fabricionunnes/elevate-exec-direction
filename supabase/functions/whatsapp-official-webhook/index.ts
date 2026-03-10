@@ -312,6 +312,7 @@ async function detectCancellationIntent(messageContent: string, phone: string) {
   } catch (err) {
     console.error('[WhatsApp Official] Error calling cancellation detection:', err);
   }
+}
 
 async function processStatusUpdate(supabase: any, status: any) {
   const messageId = status.id;
