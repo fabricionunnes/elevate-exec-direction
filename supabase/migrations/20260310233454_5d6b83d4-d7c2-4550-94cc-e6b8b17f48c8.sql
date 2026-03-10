@@ -1,0 +1,1 @@
+ALTER TABLE public.company_invoices ADD COLUMN custom_receiver_name TEXT;

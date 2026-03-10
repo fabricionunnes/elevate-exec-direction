@@ -9991,6 +9991,7 @@ export type Database = {
           conta_azul_id: string | null
           cost_center_id: string | null
           created_at: string
+          custom_receiver_name: string | null
           daily_interest_percent: number
           description: string
           discount_cents: number
@@ -10023,6 +10024,7 @@ export type Database = {
           conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
+          custom_receiver_name?: string | null
           daily_interest_percent?: number
           description: string
           discount_cents?: number
@@ -10055,6 +10057,7 @@ export type Database = {
           conta_azul_id?: string | null
           cost_center_id?: string | null
           created_at?: string
+          custom_receiver_name?: string | null
           daily_interest_percent?: number
           description?: string
           discount_cents?: number
