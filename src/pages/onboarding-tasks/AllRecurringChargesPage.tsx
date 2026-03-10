@@ -404,12 +404,12 @@ export default function AllRecurringChargesPage() {
       // Use ALL companies (including simulators) for name/phone maps so invoices always resolve
       const companiesMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.name]));
       const companiesPhoneMap = new Map(allCompaniesRaw.map((c: any) => [c.id, c.phone]));
-      setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || "Empresa desconhecida" })));
+      setCharges((chargesRes.data || []).map((ch: any) => ({ ...ch, company_name: companiesMap.get(ch.company_id) || ch.custom_receiver_name || "Empresa desconhecida" })));
       setCompanies(allCompanies.map((c: any) => ({ id: c.id, name: c.name })));
       setFullCompanies(allCompanies);
       setStaffList(staffRes.data || []);
       setPayables((payablesRes.data as any) || []);
-      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
+      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || inv.custom_receiver_name || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
