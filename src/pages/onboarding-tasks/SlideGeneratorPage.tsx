@@ -26,6 +26,7 @@ interface Presentation {
   template_category: string | null;
   created_at: string;
   updated_at: string;
+  created_by: string | null;
 }
 
 type ViewMode = "library" | "create" | "view" | "templates";
@@ -36,6 +37,26 @@ export default function SlideGeneratorPage() {
   const [loading, setLoading] = useState(true);
   const [viewMode, setViewMode] = useState<ViewMode>("library");
   const [selectedPresentationId, setSelectedPresentationId] = useState<string | null>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (staff && ["admin", "master"].includes(staff.role)) {
+        setIsAdmin(true);
+      }
+    };
+    fetchUserRole();
+  }, []);
 
   useEffect(() => {
     loadPresentations();
@@ -281,17 +302,19 @@ export default function SlideGeneratorPage() {
                       >
                         <Copy className="h-3.5 w-3.5" />
                       </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        className="h-7 w-7 text-destructive"
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          handleDelete(p.id);
-                        }}
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
+                      {isAdmin && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-7 w-7 text-destructive"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleDelete(p.id);
+                          }}
+                        >
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      )}
                     </div>
                   </div>
                 </CardContent>

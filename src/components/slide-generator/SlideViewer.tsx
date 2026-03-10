@@ -30,6 +30,7 @@ interface PresentationData {
   description: string | null;
   topic: string;
   slide_count: number | null;
+  created_by: string | null;
 }
 
 interface Props {
@@ -51,6 +52,30 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const [currentUserId, setCurrentUserId] = useState<string | null>(null);
+  const [isAdmin, setIsAdmin] = useState(false);
+
+  useEffect(() => {
+    const fetchUserRole = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      setCurrentUserId(user.id);
+      const { data: staff } = await supabase
+        .from("onboarding_staff")
+        .select("role")
+        .eq("user_id", user.id)
+        .eq("is_active", true)
+        .maybeSingle();
+      if (staff && ["admin", "master"].includes(staff.role)) {
+        setIsAdmin(true);
+      }
+    };
+    fetchUserRole();
+  }, []);
+
+  const isOwner = presentation?.created_by === currentUserId;
+  const canEdit = isAdmin || isOwner;
+  const canDelete = isAdmin;
 
   useEffect(() => {
     loadData();
@@ -263,11 +288,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
               </form>
             ) : (
               <div
-                className="group/title flex items-center gap-1 cursor-pointer"
-                onClick={() => { setTitleDraft(presentation?.title || ""); setEditingTitle(true); }}
+                className={`group/title flex items-center gap-1 ${canEdit ? "cursor-pointer" : ""}`}
+                onClick={() => { if (canEdit) { setTitleDraft(presentation?.title || ""); setEditingTitle(true); } }}
               >
                 <h2 className="text-sm font-semibold line-clamp-1">{presentation?.title}</h2>
-                <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity" />
+                {canEdit && <Pencil className="h-3 w-3 text-muted-foreground opacity-0 group-hover/title:opacity-100 transition-opacity" />}
               </div>
             )}
             <p className="text-xs text-muted-foreground">{slides.length} slides</p>
@@ -297,10 +322,12 @@ export function SlideViewer({ presentationId, onBack }: Props) {
             </>
           ) : (
             <>
-              <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
-                <Edit3 className="h-4 w-4" />
-                <span className="hidden sm:inline">Editar</span>
-              </Button>
+              {canEdit && (
+                <Button variant="ghost" size="sm" onClick={() => setEditing(true)} className="gap-1.5">
+                  <Edit3 className="h-4 w-4" />
+                  <span className="hidden sm:inline">Editar</span>
+                </Button>
+              )}
               <Button variant="ghost" size="sm" onClick={() => setShowGrid(!showGrid)} className="gap-1.5">
                 <Grid3X3 className="h-4 w-4" />
                 <span className="hidden sm:inline">Visão Geral</span>
@@ -342,9 +369,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicateSlide(slide)}>
                       <Copy className="h-3.5 w-3.5" />
                     </Button>
-                    <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSlide(slide.id)}>
-                      <Trash2 className="h-3.5 w-3.5" />
-                    </Button>
+                    {canDelete && (
+                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSlide(slide.id)}>
+                        <Trash2 className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                   </div>
                 </div>
                 <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
@@ -438,14 +467,16 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                   <span className="text-xs text-muted-foreground bg-muted px-2 py-0.5 rounded">{currentSlide.slide_type}</span>
                 )}
               </div>
-              {currentSlide && (
+              {currentSlide && canEdit && (
                 <div className="flex gap-1">
                   <Button variant="ghost" size="sm" onClick={() => handleDuplicateSlide(currentSlide)} className="gap-1 text-xs">
                     <Copy className="h-3.5 w-3.5" /> Duplicar
                   </Button>
-                  <Button variant="ghost" size="sm" onClick={() => handleDeleteSlide(currentSlide.id)} className="gap-1 text-xs text-destructive">
-                    <Trash2 className="h-3.5 w-3.5" /> Remover
-                  </Button>
+                  {canDelete && (
+                    <Button variant="ghost" size="sm" onClick={() => handleDeleteSlide(currentSlide.id)} className="gap-1 text-xs text-destructive">
+                      <Trash2 className="h-3.5 w-3.5" /> Remover
+                    </Button>
+                  )}
                 </div>
               )}
             </div>
