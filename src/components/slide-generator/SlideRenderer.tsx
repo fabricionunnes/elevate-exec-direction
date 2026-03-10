@@ -530,14 +530,16 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           value={slide.title || "Obrigado!"}
           onChange={updateTitle}
           editable={editable}
-          style={{ fontSize: 72, fontWeight: 800, marginBottom: 28 }}
+          style={{ fontSize: fs("closing_title", 72), fontWeight: 800, marginBottom: 28 }}
+          onFontSizeChange={(s) => setFontSize("closing_title", s)}
         />
         <EditableText
           value={content.text || ""}
           onChange={(val) => updateContent("text", val)}
           editable={editable}
-          style={{ fontSize: 32, opacity: 0.8, maxWidth: 1000, marginBottom: 44 }}
+          style={{ fontSize: fs("closing_text", 32), opacity: 0.8, maxWidth: 1000, marginBottom: 44 }}
           placeholder="Mensagem final..."
+          onFontSizeChange={(s) => setFontSize("closing_text", s)}
         />
       </div>
     </div>
