@@ -274,9 +274,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
           placeholder="Texto complementar..."
         />
       </div>
-      <div style={{ position: "absolute", bottom: 30, left: 40, fontSize: 12, opacity: 0.4, color: colors.accent }}>
-        Momento de Reflexão
-      </div>
+      {logoFooter("left")}
     </div>
   );
 
