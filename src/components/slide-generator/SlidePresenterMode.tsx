@@ -20,12 +20,21 @@ interface Props {
   onExit: () => void;
 }
 
+function getStepCount(slide: SlideItem): number {
+  const content = slide.content || {};
+  if (content.framework_steps?.length) return content.framework_steps.length;
+  if (content.bullets?.length) return content.bullets.length;
+  return 0;
+}
+
 export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props) {
   const [currentIndex, setCurrentIndex] = useState(0);
+  const [currentStep, setCurrentStep] = useState(0); // 0 = title only, 1+ = bullets revealed
   const [showPresenterView, setShowPresenterView] = useState(false);
   const [elapsedSeconds, setElapsedSeconds] = useState(0);
   const [slideStartTime, setSlideStartTime] = useState(Date.now());
   const [slideTime, setSlideTime] = useState(0);
+  const [transition, setTransition] = useState<"enter" | "exit" | "idle">("enter");
   const containerRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -36,19 +45,50 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
     return () => clearInterval(interval);
   }, [slideStartTime]);
 
-  const goNext = useCallback(() => {
-    if (currentIndex < slides.length - 1) {
-      setCurrentIndex((i) => i + 1);
+  const totalSteps = slides[currentIndex] ? getStepCount(slides[currentIndex]) : 0;
+
+  const animateToSlide = useCallback((newIndex: number) => {
+    setTransition("exit");
+    setTimeout(() => {
+      setCurrentIndex(newIndex);
+      setCurrentStep(0);
       setSlideStartTime(Date.now());
+      setTransition("enter");
+      setTimeout(() => setTransition("idle"), 500);
+    }, 300);
+  }, []);
+
+  const goNext = useCallback(() => {
+    // If there are more bullets to reveal, reveal next
+    if (currentStep < totalSteps) {
+      setCurrentStep((s) => s + 1);
+      return;
     }
-  }, [currentIndex, slides.length]);
+    // Otherwise go to next slide
+    if (currentIndex < slides.length - 1) {
+      animateToSlide(currentIndex + 1);
+    }
+  }, [currentIndex, currentStep, totalSteps, slides.length, animateToSlide]);
 
   const goPrev = useCallback(() => {
-    if (currentIndex > 0) {
-      setCurrentIndex((i) => i - 1);
-      setSlideStartTime(Date.now());
+    // If we're partway through bullets, go back one
+    if (currentStep > 0) {
+      setCurrentStep((s) => s - 1);
+      return;
     }
-  }, [currentIndex]);
+    // Otherwise go to previous slide (show all bullets)
+    if (currentIndex > 0) {
+      setTransition("exit");
+      setTimeout(() => {
+        const prevIdx = currentIndex - 1;
+        setCurrentIndex(prevIdx);
+        setCurrentStep(getStepCount(slides[prevIdx]));
+        setSlideStartTime(Date.now());
+        setTransition("enter");
+        setTimeout(() => setTransition("idle"), 500);
+      }, 300);
+    }
+  }, [currentIndex, currentStep, slides]);
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (e.key === "Escape") onExit();
@@ -62,7 +102,6 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
-  // Fullscreen
   useEffect(() => {
     if (!showPresenterView && containerRef.current) {
       containerRef.current.requestFullscreen?.().catch(() => {});
@@ -74,6 +113,12 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
     };
   }, [showPresenterView]);
 
+  // Start with enter animation
+  useEffect(() => {
+    const t = setTimeout(() => setTransition("idle"), 500);
+    return () => clearTimeout(t);
+  }, []);
+
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60);
     const s = seconds % 60;
@@ -83,14 +128,37 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
   const currentSlide = slides[currentIndex];
   const nextSlide = slides[currentIndex + 1];
 
+  const transitionStyle: React.CSSProperties = {
+    transition: "opacity 0.4s ease, transform 0.4s ease",
+    opacity: transition === "exit" ? 0 : 1,
+    transform: transition === "exit" ? "scale(0.97) translateX(30px)" : transition === "enter" ? "scale(1) translateX(0)" : "none",
+  };
+
+  // Progress dots showing bullet progress
+  const progressDots = totalSteps > 0 ? (
+    <div className="flex items-center gap-1 ml-3">
+      {Array.from({ length: totalSteps }).map((_, i) => (
+        <div
+          key={i}
+          className="rounded-full transition-all duration-300"
+          style={{
+            width: i < currentStep ? 8 : 6,
+            height: i < currentStep ? 8 : 6,
+            background: i < currentStep ? "#C81E1E" : "rgba(255,255,255,0.3)",
+          }}
+        />
+      ))}
+    </div>
+  ) : null;
+
   if (showPresenterView) {
     return (
       <div className="fixed inset-0 bg-[#0A1931] z-50 flex flex-col" ref={containerRef}>
-        {/* Top bar */}
         <div className="flex items-center justify-between px-4 py-2 bg-black/30">
           <div className="flex items-center gap-4">
             <span className="text-white/70 text-sm font-medium">{presentationTitle}</span>
             <span className="text-white text-sm">{currentIndex + 1} / {slides.length}</span>
+            {progressDots}
           </div>
           <div className="flex items-center gap-4">
             <div className="flex items-center gap-2 text-white/70">
@@ -108,16 +176,13 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
         </div>
 
         <div className="flex-1 flex gap-4 p-4 overflow-hidden">
-          {/* Current slide */}
           <div className="flex-[2] flex items-center justify-center">
-            <div className="w-full max-w-3xl aspect-video rounded-lg overflow-hidden shadow-2xl border border-white/10">
-              <SlideRenderer slide={currentSlide} scale={0.5} />
+            <div className="w-full max-w-3xl aspect-video rounded-lg overflow-hidden shadow-2xl border border-white/10" style={transitionStyle}>
+              <SlideRenderer slide={currentSlide} scale={0.5} visibleBullets={currentStep} />
             </div>
           </div>
 
-          {/* Right panel */}
           <div className="flex-1 flex flex-col gap-4">
-            {/* Next slide */}
             <div className="flex-shrink-0">
               <p className="text-white/40 text-xs mb-2 uppercase tracking-wider">Próximo Slide</p>
               {nextSlide ? (
@@ -131,7 +196,6 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
               )}
             </div>
 
-            {/* Speaker notes */}
             <div className="flex-1 overflow-auto">
               <p className="text-white/40 text-xs mb-2 uppercase tracking-wider">Notas</p>
               <div className="bg-white/5 rounded-lg p-4 border border-white/10">
@@ -143,13 +207,13 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
           </div>
         </div>
 
-        {/* Nav */}
         <div className="flex items-center justify-center gap-4 py-3 bg-black/30">
-          <Button variant="ghost" onClick={goPrev} disabled={currentIndex === 0} className="text-white/70 hover:text-white">
+          <Button variant="ghost" onClick={goPrev} disabled={currentIndex === 0 && currentStep === 0} className="text-white/70 hover:text-white">
             <ChevronLeft className="h-5 w-5" />
           </Button>
           <span className="text-white font-medium">{currentIndex + 1} / {slides.length}</span>
-          <Button variant="ghost" onClick={goNext} disabled={currentIndex >= slides.length - 1} className="text-white/70 hover:text-white">
+          {progressDots}
+          <Button variant="ghost" onClick={goNext} disabled={currentIndex >= slides.length - 1 && currentStep >= totalSteps} className="text-white/70 hover:text-white">
             <ChevronRight className="h-5 w-5" />
           </Button>
         </div>
@@ -164,10 +228,14 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
       className="fixed inset-0 bg-black z-50 cursor-none flex items-center justify-center"
       onClick={goNext}
     >
-      <div className="w-full h-full flex items-center justify-center">
+      <div className="w-full h-full flex items-center justify-center" style={transitionStyle}>
         {currentSlide && (
           <div style={{ width: "100vw", height: "100vh", display: "flex", alignItems: "center", justifyContent: "center" }}>
-            <SlideRenderer slide={currentSlide} scale={Math.min(window.innerWidth / 1920, window.innerHeight / 1080)} />
+            <SlideRenderer
+              slide={currentSlide}
+              scale={Math.min(window.innerWidth / 1920, window.innerHeight / 1080)}
+              visibleBullets={currentStep}
+            />
           </div>
         )}
       </div>
@@ -178,6 +246,7 @@ export function SlidePresenterMode({ slides, presentationTitle, onExit }: Props)
           <ChevronLeft className="h-4 w-4" />
         </Button>
         <span className="text-white/70 text-sm">{currentIndex + 1}/{slides.length}</span>
+        {progressDots}
         <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); goNext(); }} className="text-white/70 h-8 w-8">
           <ChevronRight className="h-4 w-4" />
         </Button>

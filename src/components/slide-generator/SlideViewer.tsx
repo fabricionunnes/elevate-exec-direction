@@ -364,9 +364,21 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                   <ChevronRight className="h-5 w-5" />
                 </Button>
               )}
-              <div className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl">
+              <div
+                key={currentSlide?.id}
+                className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+                style={{
+                  animation: "slideIn 0.4s ease-out",
+                }}
+              >
                 {currentSlide && <SlideRenderer slide={currentSlide} scale={1} />}
               </div>
+              <style>{`
+                @keyframes slideIn {
+                  0% { opacity: 0; transform: scale(0.97); }
+                  100% { opacity: 1; transform: scale(1); }
+                }
+              `}</style>
             </div>
 
             <div className="border-t bg-card px-4 py-2 flex items-center justify-between">

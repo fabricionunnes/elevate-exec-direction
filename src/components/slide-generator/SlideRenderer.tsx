@@ -24,6 +24,7 @@ interface Props {
   scale: number;
   editable?: boolean;
   onUpdate?: (update: SlideUpdate) => void;
+  visibleBullets?: number; // -1 or undefined = show all
 }
 
 const ICON_MAP: Record<string, any> = {
@@ -119,6 +120,7 @@ function EditableBullets({
   colors,
   fontSize = 26,
   bulletStyle = "dot",
+  visibleCount,
 }: {
   bullets: string[];
   onChange: (bullets: string[]) => void;
@@ -126,6 +128,7 @@ function EditableBullets({
   colors: any;
   fontSize?: number;
   bulletStyle?: "dot" | "number" | "check";
+  visibleCount?: number;
 }) {
   const handleBulletChange = (index: number, newVal: string) => {
     const updated = [...bullets];
@@ -133,37 +136,52 @@ function EditableBullets({
     onChange(updated);
   };
 
+  const showAll = visibleCount === undefined || visibleCount < 0;
+
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: bulletStyle === "dot" ? 24 : 20 }}>
-      {bullets.map((bullet, i) => (
-        <div key={i} style={{ display: "flex", alignItems: "flex-start", gap: bulletStyle === "dot" ? 16 : 12 }}>
-          {bulletStyle === "dot" && (
-            <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
-          )}
-          {bulletStyle === "number" && (
-            <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
-              {i + 1}
-            </div>
-          )}
-          {bulletStyle === "check" && (
-            <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
-          )}
-          <EditableText
-            value={bullet}
-            onChange={(val) => handleBulletChange(i, val)}
-            editable={editable}
-            style={{ fontSize, lineHeight: 1.4, color: colors.text }}
-          />
-        </div>
-      ))}
+      {bullets.map((bullet, i) => {
+        const isVisible = showAll || i < visibleCount;
+        return (
+          <div
+            key={i}
+            style={{
+              display: "flex",
+              alignItems: "flex-start",
+              gap: bulletStyle === "dot" ? 16 : 12,
+              opacity: isVisible ? 1 : 0,
+              transform: isVisible ? "translateY(0)" : "translateY(20px)",
+              transition: "opacity 0.5s ease, transform 0.5s ease",
+            }}
+          >
+            {bulletStyle === "dot" && (
+              <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
+            )}
+            {bulletStyle === "number" && (
+              <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
+                {i + 1}
+              </div>
+            )}
+            {bulletStyle === "check" && (
+              <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+            )}
+            <EditableText
+              value={bullet}
+              onChange={(val) => handleBulletChange(i, val)}
+              editable={editable}
+              style={{ fontSize, lineHeight: 1.4, color: colors.text }}
+            />
+          </div>
+        );
+      })}
     </div>
   );
 }
 
-export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
+export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets }: Props) {
   const colors = getSlideColors(slide.slide_type);
   const content = slide.content || {};
-
+  const vb = visibleBullets;
   const updateTitle = (title: string) => onUpdate?.({ title });
   const updateSubtitle = (subtitle: string) => onUpdate?.({ subtitle });
   const updateContent = (key: string, value: any) => {
@@ -291,27 +309,33 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
         />
         {content.framework_steps?.length ? (
           <div style={{ display: "flex", gap: 24, flexWrap: "wrap" }}>
-            {content.framework_steps.map((step: string, i: number) => (
-              <div key={i} style={{
-                flex: "1 1 200px", padding: 32,
-                background: i % 2 === 0 ? "#F1F5F9" : "#EEF2FF",
-                borderRadius: 16, borderLeft: `4px solid ${colors.accent}`, minWidth: 200,
-              }}>
-                <div style={{ fontSize: 36, fontWeight: 800, color: colors.accent, marginBottom: 12 }}>
-                  {String(i + 1).padStart(2, "0")}
+            {content.framework_steps.map((step: string, i: number) => {
+              const isVisible = vb === undefined || vb < 0 || i < vb;
+              return (
+                <div key={i} style={{
+                  flex: "1 1 200px", padding: 32,
+                  background: i % 2 === 0 ? "#F1F5F9" : "#EEF2FF",
+                  borderRadius: 16, borderLeft: `4px solid ${colors.accent}`, minWidth: 200,
+                  opacity: isVisible ? 1 : 0,
+                  transform: isVisible ? "translateY(0)" : "translateY(20px)",
+                  transition: "opacity 0.5s ease, transform 0.5s ease",
+                }}>
+                  <div style={{ fontSize: 36, fontWeight: 800, color: colors.accent, marginBottom: 12 }}>
+                    {String(i + 1).padStart(2, "0")}
+                  </div>
+                  <EditableText
+                    value={step}
+                    onChange={(val) => {
+                      const updated = [...content.framework_steps];
+                      updated[i] = val;
+                      updateContent("framework_steps", updated);
+                    }}
+                    editable={editable}
+                    style={{ fontSize: 20, fontWeight: 600, color: colors.text }}
+                  />
                 </div>
-                <EditableText
-                  value={step}
-                  onChange={(val) => {
-                    const updated = [...content.framework_steps];
-                    updated[i] = val;
-                    updateContent("framework_steps", updated);
-                  }}
-                  editable={editable}
-                  style={{ fontSize: 20, fontWeight: 600, color: colors.text }}
-                />
-              </div>
-            ))}
+              );
+            })}
           </div>
         ) : content.bullets?.length ? (
           <EditableBullets
@@ -321,6 +345,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
             colors={colors}
             fontSize={22}
             bulletStyle="number"
+            visibleCount={vb}
           />
         ) : null}
       </div>
@@ -358,6 +383,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
             colors={colors}
             fontSize={20}
             bulletStyle="check"
+            visibleCount={vb}
           />
         )}
       </div>
@@ -393,6 +419,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
               colors={colors}
               fontSize={26}
               bulletStyle="dot"
+              visibleCount={vb}
             />
           ) : (
             <EditableText
