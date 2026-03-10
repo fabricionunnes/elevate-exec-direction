@@ -1,4 +1,4 @@
-import { useState, useMemo } from "react";
+import { useState, useMemo, useCallback } from "react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
@@ -11,6 +11,7 @@ import {
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
   Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
+  FileSpreadsheet,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -21,6 +22,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { motion, AnimatePresence } from "framer-motion";
+import * as XLSX from "xlsx";
 
 interface Invoice {
   id: string;
@@ -81,6 +83,7 @@ export default function FinancialOverdueTab({
   const [selectedConsultant, setSelectedConsultant] = useState("all");
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [isBulkSending, setIsBulkSending] = useState(false);
+  const [isExporting, setIsExporting] = useState(false);
   const [currentPage, setCurrentPage] = useState(1);
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
@@ -262,6 +265,91 @@ export default function FinancialOverdueTab({
     finally { setIsBulkSending(false); }
   };
 
+  const handleExportExcel = useCallback(async () => {
+    if (sortedInvoices.length === 0) { toast.error("Nenhuma fatura em atraso para exportar"); return; }
+    setIsExporting(true);
+    try {
+      // Fetch full company details
+      const companyIds = [...new Set(sortedInvoices.map(i => i.company_id))];
+      const { data: companiesData } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id")
+        .in("id", companyIds);
+
+      const companyMap = new Map((companiesData || []).map((c: any) => [c.id, c]));
+
+      // Fetch recurring charge descriptions (service name)
+      const recurringIds = [...new Set(sortedInvoices.map(i => i.recurring_charge_id).filter(Boolean))] as string[];
+      let chargeMap = new Map<string, string>();
+      if (recurringIds.length > 0) {
+        const { data: chargesData } = await supabase
+          .from("company_recurring_charges")
+          .select("id, description")
+          .in("id", recurringIds);
+        chargeMap = new Map((chargesData || []).map((c: any) => [c.id, c.description]));
+      }
+
+      // Fetch consultant (representative) details
+      const consultantIds = [...new Set((companiesData || []).map((c: any) => c.consultant_id).filter(Boolean))] as string[];
+      let consultantMap = new Map<string, any>();
+      if (consultantIds.length > 0) {
+        const { data: staffData } = await supabase
+          .from("onboarding_staff")
+          .select("id, name, email, phone")
+          .in("id", consultantIds);
+        consultantMap = new Map((staffData || []).map((s: any) => [s.id, s]));
+      }
+
+      // Build rows
+      const rows = sortedInvoices.map(inv => {
+        const company = companyMap.get(inv.company_id) || {} as any;
+        const consultant = company.consultant_id ? consultantMap.get(company.consultant_id) : null;
+        const fullAddress = [company.address, company.address_number, company.address_complement].filter(Boolean).join(", ");
+        const serviceName = inv.recurring_charge_id ? chargeMap.get(inv.recurring_charge_id) || inv.description : inv.description;
+
+        return {
+          "CNPJ/CPF": company.cnpj || "",
+          "NOME DO DEVEDOR": company.name || inv.company_name || "",
+          "ENDEREÇO": fullAddress || "",
+          "CEP": company.address_zipcode || "",
+          "BAIRRO": company.address_neighborhood || "",
+          "CIDADE": company.address_city || "",
+          "ESTADO": company.address_state || "",
+          "CONTATO": company.name || "",
+          "EMAIL": company.email || "",
+          "TELEFONE": company.phone || "",
+          "VENCIMENTO": inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "",
+          "VALOR": (inv.total_with_fees_cents / 100).toFixed(2).replace(".", ","),
+          "DESPESAS CARTÓRIO": "",
+          "Observação": inv.description || "",
+          "Link para baixar o Contrato": "",
+          "Serviço (em atraso)": serviceName || "",
+          "REPRESENTANTE": consultant?.name || "",
+          "REPRESENTANTE EMAIL": consultant?.email || "",
+          "REPRESENTANTE TELEFONE": consultant?.phone || "",
+        };
+      });
+
+      const ws = XLSX.utils.json_to_sheet(rows);
+      const wb = XLSX.utils.book_new();
+      XLSX.utils.book_append_sheet(wb, ws, "Atrasados");
+
+      // Auto-size columns
+      const colWidths = Object.keys(rows[0] || {}).map(key => ({
+        wch: Math.max(key.length, ...rows.map(r => String((r as any)[key] || "").length)) + 2,
+      }));
+      ws["!cols"] = colWidths;
+
+      XLSX.writeFile(wb, `faturas_atrasadas_${format(new Date(), "yyyy-MM-dd")}.xlsx`);
+      toast.success("Planilha exportada com sucesso!");
+    } catch (err: any) {
+      console.error("Export error:", err);
+      toast.error("Erro ao exportar planilha");
+    } finally {
+      setIsExporting(false);
+    }
+  }, [sortedInvoices]);
+
   return (
     <div className="space-y-6">
       {/* Header */}
@@ -288,6 +376,16 @@ export default function FinancialOverdueTab({
             <p className="text-sm text-muted-foreground">Gestão de inadimplência e cobranças</p>
           </div>
         </div>
+        <Button
+          variant="outline"
+          size="sm"
+          className="gap-2"
+          onClick={handleExportExcel}
+          disabled={isExporting || sortedInvoices.length === 0}
+        >
+          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+          Exportar Planilha
+        </Button>
       </motion.div>
 
       {/* KPI Cards */}
