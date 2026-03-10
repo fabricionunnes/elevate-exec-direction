@@ -41,10 +41,14 @@ export function CompanyFinancialSidePanel({
 
   if (loading) {
     return (
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 text-sm text-muted-foreground">
+      <div className="p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-2 text-sm font-medium">
+          <Building2 className="h-5 w-5 text-primary" />
+          <span>Identificação Financeira</span>
+        </div>
+        <div className="flex items-center gap-2 text-sm text-muted-foreground mt-2">
           <RefreshCw className="h-4 w-4 animate-spin" />
-          Identificando cliente...
+          Buscando empresa pelo telefone...
         </div>
       </div>
     );
@@ -52,10 +56,14 @@ export function CompanyFinancialSidePanel({
 
   if (!company) {
     return (
-      <div className="p-4 border-b border-border">
-        <div className="flex items-center gap-2 text-xs text-muted-foreground">
-          <Building2 className="h-4 w-4" />
-          <span>Nenhuma empresa identificada</span>
+      <div className="p-4 border-b border-border bg-muted/30">
+        <div className="flex items-center gap-2 text-sm font-medium mb-2">
+          <Building2 className="h-5 w-5 text-primary" />
+          <span>Identificação Financeira</span>
+        </div>
+        <div className="flex items-center gap-2 text-xs text-muted-foreground bg-background rounded-md p-2.5 border border-border">
+          <AlertTriangle className="h-4 w-4 text-amber-500 shrink-0" />
+          <span>Nenhuma empresa identificada para este telefone. Verifique se o telefone do contato está cadastrado na empresa.</span>
         </div>
       </div>
     );
