@@ -63,12 +63,10 @@ export function CompanyFinancialSidePanel({
 
       // Try Evolution API first, then Official
       if (instanceId) {
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ instanceId, phone: contactPhone, message: msg }),
+        const { error } = await supabase.functions.invoke("evolution-api", {
+          body: { action: "sendText", instanceId, phone: contactPhone, message: msg },
         });
-        if (!response.ok) throw new Error("Erro ao enviar");
+        if (error) throw new Error("Erro ao enviar");
       } else if (officialInstanceId) {
         const { error } = await supabase.functions.invoke("whatsapp-official-api", {
           body: { action: "sendText", instanceId: officialInstanceId, phone: contactPhone, message: msg },
@@ -88,12 +86,10 @@ export function CompanyFinancialSidePanel({
         const { data: inst } = await supabase.from("whatsapp_instances").select("id").eq("instance_name", instanceName).maybeSingle();
         if (!inst) { toast.error("Instância não encontrada"); return; }
 
-        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-          method: "POST",
-          headers: { "Content-Type": "application/json", Authorization: `Bearer ${session.access_token}` },
-          body: JSON.stringify({ instanceId: inst.id, phone: contactPhone, message: msg }),
+        const { error: sendErr } = await supabase.functions.invoke("evolution-api", {
+          body: { action: "sendText", instanceId: inst.id, phone: contactPhone, message: msg },
         });
-        if (!response.ok) throw new Error("Erro ao enviar");
+        if (sendErr) throw new Error("Erro ao enviar");
       }
 
       toast.success("Link enviado por WhatsApp!");
