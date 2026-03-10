@@ -274,10 +274,26 @@ export function CompanyFinancialSidePanel({
                           <span className="font-medium">{formatCurrency(invoice.amount_cents)}</span>
                         </div>
                         {invoice.payment_link_url && (
-                          <a href={invoice.payment_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
-                            <ExternalLink className="h-3 w-3" />
-                            Link de pagamento
-                          </a>
+                          <div className="flex items-center gap-2">
+                            <a href={invoice.payment_link_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-1 text-[10px] text-primary hover:underline">
+                              <ExternalLink className="h-3 w-3" />
+                              Link de pagamento
+                            </a>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              className="h-5 w-5 shrink-0"
+                              title="Reenviar link por WhatsApp"
+                              disabled={sendingLinkId === invoice.id}
+                              onClick={() => handleResendLink(invoice)}
+                            >
+                              {sendingLinkId === invoice.id ? (
+                                <RefreshCw className="h-3 w-3 animate-spin" />
+                              ) : (
+                                <Send className="h-3 w-3 text-green-600" />
+                              )}
+                            </Button>
+                          </div>
                         )}
                       </div>
                     ))}
