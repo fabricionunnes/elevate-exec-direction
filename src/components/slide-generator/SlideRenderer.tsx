@@ -181,6 +181,7 @@ function EditableBullets({
   fontSize = 26,
   bulletStyle = "dot",
   visibleCount,
+  onFontSizeChange,
 }: {
   bullets: string[];
   onChange: (bullets: string[]) => void;
