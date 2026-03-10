@@ -141,6 +141,14 @@ export const CRMInboxPage = () => {
     refetch: refetchMessages,
   } = useWhatsAppMessages(selectedConversation?.id || null);
 
+  // Company identification for receipt analysis
+  const {
+    company: identifiedCompany,
+    invoices: companyInvoices,
+  } = useCompanyIdentification({
+    phone: selectedConversation?.contact?.phone,
+  });
+
   // Fetch allowed instances for this user
   useEffect(() => {
     const fetchAllowedInstances = async () => {
