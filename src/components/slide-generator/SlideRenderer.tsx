@@ -416,7 +416,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
     <div style={containerStyle}>
       <div style={{ position: "absolute", top: 0, left: 0, right: 0, height: 8, background: colors.accent }} />
       <div style={{ display: "flex", flexDirection: "column", justifyContent: "center", alignItems: "center", height: "100%", padding: "0 160px", textAlign: "center" }}>
-        <Award size={64} color={colors.accent} style={{ marginBottom: 40 }} />
+        <img src={unvLogo} alt="UNV" style={{ height: 100, objectFit: "contain", marginBottom: 40 }} />
         <EditableText
           value={slide.title || "Obrigado!"}
           onChange={updateTitle}
@@ -430,9 +430,6 @@ export function SlideRenderer({ slide, scale, editable, onUpdate }: Props) {
           style={{ fontSize: 24, opacity: 0.8, maxWidth: 800, marginBottom: 40 }}
           placeholder="Mensagem final..."
         />
-        <div style={{ fontSize: 18, color: colors.accent, fontWeight: 700, letterSpacing: 4, textTransform: "uppercase" }}>
-          Universidade Nacional de Vendas
-        </div>
       </div>
     </div>
   );
