@@ -44,6 +44,7 @@ interface Invoice {
   created_at: string;
   company_name?: string;
   company_phone?: string;
+  custom_receiver_name?: string | null;
 }
 
 interface FinancialOverdueTabProps {
