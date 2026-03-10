@@ -1,0 +1,1 @@
+ALTER TABLE public.financial_receivables ADD COLUMN custom_receiver_name TEXT DEFAULT NULL;
