@@ -21879,6 +21879,119 @@ export type Database = {
           },
         ]
       }
+      slide_items: {
+        Row: {
+          background_color: string | null
+          content: Json | null
+          created_at: string | null
+          id: string
+          layout_type: string | null
+          presentation_id: string
+          slide_number: number
+          slide_type: string
+          sort_order: number | null
+          speaker_notes: string | null
+          subtitle: string | null
+          title: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          background_color?: string | null
+          content?: Json | null
+          created_at?: string | null
+          id?: string
+          layout_type?: string | null
+          presentation_id: string
+          slide_number: number
+          slide_type?: string
+          sort_order?: number | null
+          speaker_notes?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          background_color?: string | null
+          content?: Json | null
+          created_at?: string | null
+          id?: string
+          layout_type?: string | null
+          presentation_id?: string
+          slide_number?: number
+          slide_type?: string
+          sort_order?: number | null
+          speaker_notes?: string | null
+          subtitle?: string | null
+          title?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_items_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "slide_presentations"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      slide_presentations: {
+        Row: {
+          audience: string | null
+          content_level: string | null
+          created_at: string | null
+          created_by: string | null
+          description: string | null
+          duration_minutes: number | null
+          id: string
+          is_template: boolean | null
+          slide_count: number | null
+          staff_id: string | null
+          status: string | null
+          template_category: string | null
+          thumbnail_url: string | null
+          title: string
+          topic: string
+          updated_at: string | null
+        }
+        Insert: {
+          audience?: string | null
+          content_level?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_template?: boolean | null
+          slide_count?: number | null
+          staff_id?: string | null
+          status?: string | null
+          template_category?: string | null
+          thumbnail_url?: string | null
+          title: string
+          topic: string
+          updated_at?: string | null
+        }
+        Update: {
+          audience?: string | null
+          content_level?: string | null
+          created_at?: string | null
+          created_by?: string | null
+          description?: string | null
+          duration_minutes?: number | null
+          id?: string
+          is_template?: boolean | null
+          slide_count?: number | null
+          staff_id?: string | null
+          status?: string | null
+          template_category?: string | null
+          thumbnail_url?: string | null
+          title?: string
+          topic?: string
+          updated_at?: string | null
+        }
+        Relationships: []
+      }
       social_approval_contacts: {
         Row: {
           created_at: string
