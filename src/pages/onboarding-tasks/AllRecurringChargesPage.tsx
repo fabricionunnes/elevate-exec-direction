@@ -1392,7 +1392,8 @@ export default function AllRecurringChargesPage() {
                       Importar
                     </Button>
                     <Button size="sm" className="flex-1 sm:flex-none" onClick={() => {
-                      setReceivableForm({ company_id: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+                      setReceivableForm({ company_id: "", custom_receiver_name: "", description: "", amount: 0, due_date: "", notes: "", category_id: "", cost_center_id: "" });
+                      setShowCustomReceiverRecv(false);
                       setReceivableDialog(true);
                     }}>
                       <Plus className="h-4 w-4 mr-2" />
