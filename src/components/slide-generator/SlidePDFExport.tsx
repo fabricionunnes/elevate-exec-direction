@@ -108,11 +108,9 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
 
         {/* Hidden render area for capture */}
         <div ref={slidesContainerRef} className="space-y-4">
-          {slides.map((slide, i) => (
-            <div key={slide.id} data-slide-export className="rounded-lg overflow-hidden shadow-md">
-              <div style={{ width: 1920 * 0.5, height: 1080 * 0.5 }}>
-                <SlideRenderer slide={slide} scale={0.5} />
-              </div>
+        {slides.map((slide, i) => (
+            <div key={slide.id} data-slide-export style={{ width: 1920, height: 1080, overflow: "hidden" }}>
+              <SlideRenderer slide={slide} scale={1} />
             </div>
           ))}
         </div>
