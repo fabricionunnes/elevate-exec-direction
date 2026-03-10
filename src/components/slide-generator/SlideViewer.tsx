@@ -123,6 +123,19 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
 
+  // Calculate proper scale for slide view
+  useEffect(() => {
+    const updateScale = () => {
+      if (slideContainerRef.current) {
+        const containerWidth = slideContainerRef.current.offsetWidth;
+        setSlideViewScale(containerWidth / 1920);
+      }
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, [showGrid, editing, presenterMode]);
+
   const handleSlideUpdate = (slideId: string, update: { title?: string; subtitle?: string; content?: any }) => {
     // Update local state immediately
     setSlides(prev => prev.map(s => {
