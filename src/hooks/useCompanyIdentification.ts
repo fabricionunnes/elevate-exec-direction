@@ -65,12 +65,33 @@ export function useCompanyIdentification({ phone, cnpj }: UseCompanyIdentificati
     setError(null);
 
     try {
-      // Build query - fetch all companies and match in JS since phone is stored with mask
-      // We need to clean phone numbers for comparison which can't be done in ilike
+      // We need to fetch and match in JS because phone is stored with mask characters
+      // Use a broader search to get candidates, then filter precisely in JS
+      const conditions: string[] = [];
+      
+      if (cleanedPhone) {
+        // Search using smaller chunks that won't be broken by mask characters
+        // Use last 4 digits which won't have mask issues
+        const last4 = cleanedPhone.slice(-4);
+        conditions.push(`phone.ilike.%${last4}%`);
+      }
+      
+      if (cleanedCnpj) {
+        conditions.push(`cnpj.ilike.%${cleanedCnpj}%`);
+      }
+
+      if (conditions.length === 0) {
+        setCompany(null);
+        setInvoices([]);
+        setLoading(false);
+        return;
+      }
+
       const { data, error: fetchError } = await supabase
         .from("onboarding_companies")
         .select("id, name, cnpj, phone, email, status, contract_value, billing_day, is_billing_blocked, segment")
-        .limit(1000);
+        .or(conditions.join(","))
+        .limit(50);
 
       if (fetchError) throw fetchError;
 
