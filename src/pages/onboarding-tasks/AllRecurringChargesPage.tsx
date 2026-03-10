@@ -409,7 +409,7 @@ export default function AllRecurringChargesPage() {
       setFullCompanies(allCompanies);
       setStaffList(staffRes.data || []);
       setPayables((payablesRes.data as any) || []);
-      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
+      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || inv.custom_receiver_name || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
