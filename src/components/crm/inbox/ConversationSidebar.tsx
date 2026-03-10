@@ -606,7 +606,14 @@ export function ConversationSidebar({
         </CollapsibleContent>
       </Collapsible>
 
-      {/* Linked Leads Section - Show if there are linked leads */}
+      {/* Company Financial Panel */}
+      <CompanyFinancialSidePanel
+        company={identifiedCompany}
+        invoices={companyInvoices}
+        loading={loadingCompany}
+        loadingInvoices={loadingCompanyInvoices}
+      />
+
       {(linkedLeads.length > 0 || loadingLinkedLeads) && (
         <LinkedLeadsSection 
           leads={linkedLeads} 
