@@ -867,7 +867,7 @@ export default function AllRecurringChargesPage() {
     try {
       const amountCents = Math.round(receivableForm.amount * 100);
       const { data: inserted, error } = await supabase.from("company_invoices").insert({
-        company_id: receivableForm.company_id,
+        company_id: receivableForm.company_id || null,
         description: receivableForm.description,
         amount_cents: amountCents,
         due_date: receivableForm.due_date,
