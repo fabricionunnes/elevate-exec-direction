@@ -258,7 +258,7 @@ export function ReceivablesPanel() {
 
   const handlePaymentSuccess = () => {
     if (selectedReceivable) {
-      const companyName = selectedReceivable.company?.name || "Empresa não identificada";
+      const companyName = selectedReceivable.company?.name || selectedReceivable.custom_receiver_name || "Empresa não identificada";
       sendPaymentNotification(companyName, selectedReceivable.amount, selectedReceivable.description);
     }
     setIsPayDialogOpen(false);
