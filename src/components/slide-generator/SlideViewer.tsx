@@ -52,6 +52,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [editingTitle, setEditingTitle] = useState(false);
   const [titleDraft, setTitleDraft] = useState("");
   const containerRef = useRef<HTMLDivElement>(null);
+  const slideContainerRef = useRef<HTMLDivElement>(null);
+  const [slideViewScale, setSlideViewScale] = useState(0.45);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
 
@@ -120,6 +122,19 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     window.addEventListener("keydown", handleKeyDown);
     return () => window.removeEventListener("keydown", handleKeyDown);
   }, [handleKeyDown]);
+
+  // Calculate proper scale for slide view
+  useEffect(() => {
+    const updateScale = () => {
+      if (slideContainerRef.current) {
+        const containerWidth = slideContainerRef.current.offsetWidth;
+        setSlideViewScale(containerWidth / 1920);
+      }
+    };
+    updateScale();
+    window.addEventListener("resize", updateScale);
+    return () => window.removeEventListener("resize", updateScale);
+  }, [showGrid, editing, presenterMode]);
 
   const handleSlideUpdate = (slideId: string, update: { title?: string; subtitle?: string; content?: any }) => {
     // Update local state immediately
@@ -445,12 +460,13 @@ export function SlideViewer({ presentationId, onBack }: Props) {
               )}
               <div
                 key={currentSlide?.id}
-                className="w-full max-w-4xl aspect-video rounded-xl overflow-hidden shadow-2xl"
+                ref={slideContainerRef}
+                className="w-full max-w-4xl rounded-xl overflow-hidden shadow-2xl"
                 style={{
                   animation: "slideIn 0.4s ease-out",
                 }}
               >
-                {currentSlide && <SlideRenderer slide={currentSlide} scale={1} />}
+                {currentSlide && <SlideRenderer slide={currentSlide} scale={slideViewScale} />}
               </div>
               <style>{`
                 @keyframes slideIn {
