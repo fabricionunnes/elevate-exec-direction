@@ -281,7 +281,7 @@ export default function FinancialOverdueTab({
         companiesData = data || [];
       }
 
-      const companyMap = new Map((companiesData || []).map((c: any) => [c.id, c]));
+      const companyMap = new Map((companiesData).map((c: any) => [c.id, c]));
 
       // Fetch recurring charge descriptions (service name)
       const recurringIds = [...new Set(sortedInvoices.map(i => i.recurring_charge_id).filter(Boolean))] as string[];
