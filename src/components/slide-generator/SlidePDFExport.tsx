@@ -77,17 +77,34 @@ export function SlidePDFExport({ slides, presentationTitle, onBack }: Props) {
         pdf.addImage(imgData, "PNG", offsetX, offsetY, imgW, imgH);
       }
 
-      // Use Blob + anchor for reliable download in iframe/preview environments
+      // Use window.open for reliable download in iframe environments
       const pdfBlob = pdf.output("blob");
-      const url = URL.createObjectURL(pdfBlob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("PDF exportado com sucesso!");
+      const blobUrl = URL.createObjectURL(pdfBlob);
+      
+      // Try multiple download methods for maximum compatibility
+      const fileName = `${presentationTitle.replace(/[^a-zA-Z0-9]/g, "-")}.pdf`;
+      
+      // Method 1: window.open (works in iframes)
+      const newWindow = window.open(blobUrl, "_blank");
+      
+      if (!newWindow) {
+        // Method 2: If popup blocked, try anchor with target _top
+        const a = document.createElement("a");
+        a.href = blobUrl;
+        a.download = fileName;
+        a.target = "_top";
+        a.style.display = "none";
+        document.body.appendChild(a);
+        a.click();
+        setTimeout(() => {
+          document.body.removeChild(a);
+          URL.revokeObjectURL(blobUrl);
+        }, 5000);
+      } else {
+        setTimeout(() => URL.revokeObjectURL(blobUrl), 10000);
+      }
+      
+      toast.success("PDF gerado! Se não abriu automaticamente, verifique se popups estão permitidos.");
     } catch (err) {
       console.error("PDF export error:", err);
       toast.error("Erro ao exportar PDF");
