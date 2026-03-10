@@ -44,6 +44,7 @@ interface Invoice {
   created_at: string;
   company_name?: string;
   company_phone?: string;
+  custom_receiver_name?: string | null;
 }
 
 interface FinancialOverdueTabProps {
@@ -270,13 +271,17 @@ export default function FinancialOverdueTab({
     setIsExporting(true);
     try {
       // Fetch full company details
-      const companyIds = [...new Set(sortedInvoices.map(i => i.company_id))];
-      const { data: companiesData } = await supabase
-        .from("onboarding_companies")
-        .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id")
-        .in("id", companyIds);
+      const companyIds = [...new Set(sortedInvoices.map(i => i.company_id).filter(Boolean))];
+      let companiesData: any[] = [];
+      if (companyIds.length > 0) {
+        const { data } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id")
+          .in("id", companyIds);
+        companiesData = data || [];
+      }
 
-      const companyMap = new Map((companiesData || []).map((c: any) => [c.id, c]));
+      const companyMap = new Map((companiesData).map((c: any) => [c.id, c]));
 
       // Fetch recurring charge descriptions (service name)
       const recurringIds = [...new Set(sortedInvoices.map(i => i.recurring_charge_id).filter(Boolean))] as string[];
@@ -289,8 +294,44 @@ export default function FinancialOverdueTab({
         chargeMap = new Map((chargesData || []).map((c: any) => [c.id, c.description]));
       }
 
+      // For invoices without company_id, try to match by custom_receiver_name against all companies
+      const unmatchedNames = sortedInvoices.filter(i => !i.company_id && (i.custom_receiver_name || i.company_name));
+      const nameMatchMap = new Map<string, any>(); // inv.id -> company
+      if (unmatchedNames.length > 0) {
+        const { data: allCompanies } = await supabase
+          .from("onboarding_companies")
+          .select("id, name, cnpj, phone, email, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, consultant_id, cs_id");
+        if (allCompanies) {
+          const nameToCompany = new Map<string, any>();
+          for (const c of allCompanies) {
+            nameToCompany.set(c.name.trim().toLowerCase(), c);
+          }
+          for (const inv of unmatchedNames) {
+            const searchName = (inv.custom_receiver_name || inv.company_name || "").trim().toLowerCase();
+            if (searchName) {
+              // Try exact match first
+              let matched = nameToCompany.get(searchName);
+              // Try partial match (startsWith)
+              if (!matched) {
+                for (const [key, val] of nameToCompany) {
+                  if (key.startsWith(searchName) || searchName.startsWith(key)) {
+                    matched = val;
+                    break;
+                  }
+                }
+              }
+              if (matched) {
+                nameMatchMap.set(inv.id, matched);
+                // Add to companiesData for consultant lookup
+                companiesData.push(matched);
+              }
+            }
+          }
+        }
+      }
+
       // Fetch consultant (representative) details
-      const consultantIds = [...new Set((companiesData || []).map((c: any) => c.consultant_id).filter(Boolean))] as string[];
+      const consultantIds = [...new Set((companiesData).map((c: any) => c.consultant_id).filter(Boolean))] as string[];
       let consultantMap = new Map<string, any>();
       if (consultantIds.length > 0) {
         const { data: staffData } = await supabase
@@ -302,14 +343,14 @@ export default function FinancialOverdueTab({
 
       // Build rows
       const rows = sortedInvoices.map(inv => {
-        const company = companyMap.get(inv.company_id) || {} as any;
+        const company = companyMap.get(inv.company_id) || nameMatchMap.get(inv.id) || {} as any;
         const consultant = company.consultant_id ? consultantMap.get(company.consultant_id) : null;
         const fullAddress = [company.address, company.address_number, company.address_complement].filter(Boolean).join(", ");
         const serviceName = inv.recurring_charge_id ? chargeMap.get(inv.recurring_charge_id) || inv.description : inv.description;
 
         return {
           "CNPJ/CPF": company.cnpj || "",
-          "NOME DO DEVEDOR": company.name || inv.company_name || "",
+          "NOME DO DEVEDOR": company.name || inv.company_name || inv.custom_receiver_name || "",
           "ENDEREÇO": fullAddress || "",
           "CEP": company.address_zipcode || "",
           "BAIRRO": company.address_neighborhood || "",
