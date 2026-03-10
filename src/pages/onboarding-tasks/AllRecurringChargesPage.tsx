@@ -859,7 +859,7 @@ export default function AllRecurringChargesPage() {
 
   // Save manual receivable
   const handleSaveReceivable = async () => {
-    if (!receivableForm.company_id || !receivableForm.description || !receivableForm.amount || !receivableForm.due_date) {
+    if ((!receivableForm.company_id && !receivableForm.custom_receiver_name) || !receivableForm.description || !receivableForm.amount || !receivableForm.due_date) {
       toast.error("Preencha todos os campos obrigatórios");
       return;
     }
