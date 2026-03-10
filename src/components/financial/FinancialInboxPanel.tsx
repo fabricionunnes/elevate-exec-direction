@@ -55,6 +55,15 @@ export function FinancialInboxPanel() {
   const messagesScrollAreaRef = useRef<HTMLDivElement>(null);
   const isMobile = useIsMobile();
 
+  const {
+    company: identifiedCompany,
+    invoices: companyInvoices,
+    loading: loadingCompany,
+    loadingInvoices: loadingCompanyInvoices,
+  } = useCompanyIdentification({
+    phone: selectedConversation?.contact?.phone,
+  });
+
   // Parse instance filter for the hook
   const instanceIdForHook = selectedInstanceId === "all" ? undefined
     : selectedInstanceId.startsWith("official:") ? undefined
