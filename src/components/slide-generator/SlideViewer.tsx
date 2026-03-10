@@ -73,6 +73,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
 
   const handleKeyDown = useCallback((e: KeyboardEvent) => {
     if (presenterMode) return;
+    // Don't intercept keys when user is editing text
+    const active = document.activeElement;
+    if (active && (active.getAttribute("contenteditable") === "true" || active.tagName === "INPUT" || active.tagName === "TEXTAREA")) {
+      return;
+    }
     if (e.key === "ArrowRight" || e.key === " ") {
       e.preventDefault();
       setCurrentIndex((i) => Math.min(i + 1, slides.length - 1));
