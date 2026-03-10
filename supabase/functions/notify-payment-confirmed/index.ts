@@ -28,7 +28,7 @@ Deno.serve(async (req) => {
     // Fetch invoice with company info
     const { data: invoice, error: invErr } = await supabase
       .from("company_invoices")
-      .select("id, description, amount_cents, due_date, installment_number, total_installments, paid_at, paid_amount_cents, recurring_charge_id, company_id")
+      .select("id, description, amount_cents, due_date, installment_number, total_installments, paid_at, paid_amount_cents, recurring_charge_id, company_id, bank_id")
       .eq("id", invoice_id)
       .single();
 
@@ -38,6 +38,17 @@ Deno.serve(async (req) => {
         status: 404,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // Get bank name if available
+    let bankName = "";
+    if (invoice.bank_id) {
+      const { data: bank } = await supabase
+        .from("financial_banks")
+        .select("name")
+        .eq("id", invoice.bank_id)
+        .single();
+      if (bank) bankName = bank.name;
     }
 
     // Get company info (name, phone, email)
@@ -73,38 +84,7 @@ Deno.serve(async (req) => {
       }
     }
 
-    if (!customerPhone) {
-      console.log("[notify-payment-confirmed] No phone found, skipping WhatsApp");
-      return new Response(JSON.stringify({ skipped: true, reason: "no_phone" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Get default WhatsApp instance from config
-    const { data: defaultConfig } = await supabase
-      .from("whatsapp_default_config")
-      .select("setting_value")
-      .eq("setting_key", "default_instance")
-      .maybeSingle();
-
-    const defaultInstanceName = defaultConfig?.setting_value || "fabricionunnes";
-    console.log(`[notify-payment-confirmed] Using WhatsApp instance: ${defaultInstanceName}`);
-
-    const { data: whatsappInstance } = await supabase
-      .from("whatsapp_instances")
-      .select("api_url, api_key, instance_name, is_default")
-      .eq("status", "connected")
-      .eq("instance_name", defaultInstanceName)
-      .single();
-
-    if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {
-      console.log("[notify-payment-confirmed] No WhatsApp instance, skipping");
-      return new Response(JSON.stringify({ skipped: true, reason: "no_whatsapp" }), {
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Format message
+    // Format message values
     const amountPaid = (invoice.paid_amount_cents || invoice.amount_cents) / 100;
     const amountFormatted = amountPaid.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const dueFormatted = invoice.due_date ? invoice.due_date.split("-").reverse().join("/") : "";
@@ -112,27 +92,85 @@ Deno.serve(async (req) => {
       ? new Date(invoice.paid_at).toLocaleDateString("pt-BR")
       : new Date().toLocaleDateString("pt-BR");
 
-    const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
+    // --- Send internal notification to fixed number via "Financeiro UNV" instance ---
+    try {
+      const NOTIFY_PHONE = "5531989840003";
 
-    const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
+      // Find the "financeiro-unv" WhatsApp instance
+      const { data: finInstance } = await supabase
+        .from("whatsapp_instances")
+        .select("api_url, api_key, instance_name")
+        .eq("status", "connected")
+        .eq("instance_name", "financeiro-unv")
+        .maybeSingle();
 
-    const sendResponse = await fetch(
-      `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`,
-      {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-          apikey: whatsappInstance.api_key,
-        },
-        body: JSON.stringify({ number: formattedPhone, text: message }),
+      if (finInstance?.api_url && finInstance?.api_key) {
+        const bankInfo = bankName ? `\n🏦 *Banco:* ${bankName}` : "";
+        const internalMsg = `💰 *Pagamento Recebido!*\n\n🏢 *Empresa:* ${companyName || "N/A"}\n📄 *Descrição:* ${invoice.description || "Mensalidade"}\n💵 *Valor:* ${amountFormatted}${bankInfo}\n📅 *Pago em:* ${paidAtFormatted}`;
+
+        const intResponse = await fetch(
+          `${finInstance.api_url}/message/sendText/${finInstance.instance_name}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: finInstance.api_key },
+            body: JSON.stringify({ number: NOTIFY_PHONE, text: internalMsg }),
+          }
+        );
+
+        if (intResponse.ok) {
+          console.log(`[notify-payment-confirmed] Internal WhatsApp sent to ${NOTIFY_PHONE} via financeiro-unv`);
+        } else {
+          console.error("[notify-payment-confirmed] Internal WhatsApp send failed:", await intResponse.text());
+        }
+      } else {
+        console.log("[notify-payment-confirmed] financeiro-unv instance not found or not connected, skipping internal notification");
       }
-    );
-
-    if (sendResponse.ok) {
-      console.log(`[notify-payment-confirmed] WhatsApp sent to ${formattedPhone} for invoice ${invoice_id}`);
-    } else {
-      console.error("[notify-payment-confirmed] WhatsApp send failed:", await sendResponse.text());
+    } catch (intErr) {
+      console.error("[notify-payment-confirmed] Error sending internal WhatsApp notification:", intErr);
     }
+
+    // --- Send customer notification ---
+    if (!customerPhone) {
+      console.log("[notify-payment-confirmed] No phone found, skipping customer WhatsApp");
+    } else {
+      // Get default WhatsApp instance from config
+      const { data: defaultConfig } = await supabase
+        .from("whatsapp_default_config")
+        .select("setting_value")
+        .eq("setting_key", "default_instance")
+        .maybeSingle();
+
+      const defaultInstanceName = defaultConfig?.setting_value || "fabricionunnes";
+
+      const { data: whatsappInstance } = await supabase
+        .from("whatsapp_instances")
+        .select("api_url, api_key, instance_name")
+        .eq("status", "connected")
+        .eq("instance_name", defaultInstanceName)
+        .single();
+
+      if (whatsappInstance?.api_url && whatsappInstance?.api_key) {
+        const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
+
+        const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
+
+        const sendResponse = await fetch(
+          `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`,
+          {
+            method: "POST",
+            headers: { "Content-Type": "application/json", apikey: whatsappInstance.api_key },
+            body: JSON.stringify({ number: formattedPhone, text: message }),
+          }
+        );
+
+        if (sendResponse.ok) {
+          console.log(`[notify-payment-confirmed] WhatsApp sent to ${formattedPhone} for invoice ${invoice_id}`);
+        } else {
+          console.error("[notify-payment-confirmed] WhatsApp send failed:", await sendResponse.text());
+        }
+      }
+    }
+
 
     // Send internal notifications to staff with receivables access
     try {
