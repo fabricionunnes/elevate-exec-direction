@@ -1879,6 +1879,19 @@ const OnboardingProjectPage = () => {
             <ClientInstagramModule projectId={projectId!} />
           </TabsContent>
 
+          <TabsContent value="social">
+            <div className="flex flex-col items-center justify-center py-8">
+              <Button
+                onClick={() => navigate(`/social/${projectId}`)}
+                className="gap-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+              >
+                <Heart className="h-4 w-4" />
+                Abrir UNV Social
+              </Button>
+              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais</p>
+            </div>
+          </TabsContent>
+
           <TabsContent value="commercial_director">
             <CommercialDirectorModule
               projectId={projectId!}
