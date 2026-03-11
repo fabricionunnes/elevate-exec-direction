@@ -257,6 +257,8 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (!project) continue;
     const company = (project as any).onboarding_companies;
     if (!company) continue;
+    // In test mode, only include the selected company
+    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
 
     const phone = cleanPhone(company.phone);
     if (!phone) continue;
