@@ -22,6 +22,7 @@ import { toast } from "sonner";
 import { Search, Plus, Copy, User, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface Participant {
   id: string;
@@ -109,7 +110,7 @@ export default function PDIParticipantsPage() {
   };
 
   const copyAccessLink = (token: string) => {
-    const url = `${window.location.origin}/#/pdi/participant/${token}`;
+    const url = `${getPublicBaseUrl()}/?public=pdi-participant&token=${encodeURIComponent(token)}`;
     navigator.clipboard.writeText(url);
     toast.success("Link de acesso copiado!");
   };
