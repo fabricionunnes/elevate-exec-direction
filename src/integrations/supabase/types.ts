@@ -19066,6 +19066,317 @@ export type Database = {
           },
         ]
       }
+      meta_ads_accounts: {
+        Row: {
+          access_token: string
+          ad_account_id: string
+          ad_account_name: string | null
+          connected_by: string | null
+          created_at: string
+          id: string
+          is_connected: boolean
+          project_id: string
+          token_expires_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token: string
+          ad_account_id: string
+          ad_account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          project_id: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          ad_account_id?: string
+          ad_account_name?: string | null
+          connected_by?: string | null
+          created_at?: string
+          id?: string
+          is_connected?: boolean
+          project_id?: string
+          token_expires_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ads_accounts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_ads_ads: {
+        Row: {
+          ad_id: string
+          ad_name: string | null
+          adset_id: string | null
+          adset_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          creative_body: string | null
+          creative_link_url: string | null
+          creative_thumbnail_url: string | null
+          creative_title: string | null
+          ctr: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          project_id: string
+          reach: number | null
+          roas: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+        }
+        Insert: {
+          ad_id: string
+          ad_name?: string | null
+          adset_id?: string | null
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          creative_body?: string | null
+          creative_link_url?: string | null
+          creative_thumbnail_url?: string | null
+          creative_title?: string | null
+          ctr?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          project_id: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Update: {
+          ad_id?: string
+          ad_name?: string | null
+          adset_id?: string | null
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          creative_body?: string | null
+          creative_link_url?: string | null
+          creative_thumbnail_url?: string | null
+          creative_title?: string | null
+          ctr?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          project_id?: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ads_ads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_ads_adsets: {
+        Row: {
+          adset_id: string
+          adset_name: string | null
+          campaign_id: string | null
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          ctr: number | null
+          daily_budget: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          project_id: string
+          reach: number | null
+          roas: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+        }
+        Insert: {
+          adset_id: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          project_id: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Update: {
+          adset_id?: string
+          adset_name?: string | null
+          campaign_id?: string | null
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          project_id?: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ads_adsets_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      meta_ads_campaigns: {
+        Row: {
+          campaign_id: string
+          campaign_name: string | null
+          clicks: number | null
+          conversion_value: number | null
+          conversions: number | null
+          cpc: number | null
+          cpm: number | null
+          ctr: number | null
+          daily_budget: number | null
+          date_start: string | null
+          date_stop: string | null
+          frequency: number | null
+          id: string
+          impressions: number | null
+          lifetime_budget: number | null
+          objective: string | null
+          project_id: string
+          reach: number | null
+          roas: number | null
+          spend: number | null
+          status: string | null
+          synced_at: string
+        }
+        Insert: {
+          campaign_id: string
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          lifetime_budget?: number | null
+          objective?: string | null
+          project_id: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Update: {
+          campaign_id?: string
+          campaign_name?: string | null
+          clicks?: number | null
+          conversion_value?: number | null
+          conversions?: number | null
+          cpc?: number | null
+          cpm?: number | null
+          ctr?: number | null
+          daily_budget?: number | null
+          date_start?: string | null
+          date_stop?: string | null
+          frequency?: number | null
+          id?: string
+          impressions?: number | null
+          lifetime_budget?: number | null
+          objective?: string | null
+          project_id?: string
+          reach?: number | null
+          roas?: number | null
+          spend?: number | null
+          status?: string | null
+          synced_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "meta_ads_campaigns_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       nfse_records: {
         Row: {
           amount_cents: number
