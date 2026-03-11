@@ -62,20 +62,18 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
 
   return (
     <div className="space-y-4">
-      {isStaff && (
-        <div className="flex gap-2">
-          <Input
-            placeholder="@username do concorrente"
-            value={newUsername}
-            onChange={(e) => setNewUsername(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && handleAdd()}
-          />
-          <Button onClick={handleAdd} disabled={adding} className="gap-2">
-            {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
-            Adicionar
-          </Button>
-        </div>
-      )}
+      <div className="flex gap-2">
+        <Input
+          placeholder="@username do concorrente"
+          value={newUsername}
+          onChange={(e) => setNewUsername(e.target.value)}
+          onKeyDown={(e) => e.key === "Enter" && handleAdd()}
+        />
+        <Button onClick={handleAdd} disabled={adding} className="gap-2">
+          {adding ? <Loader2 className="h-4 w-4 animate-spin" /> : <Plus className="h-4 w-4" />}
+          Adicionar
+        </Button>
+      </div>
 
       {competitors.length === 0 ? (
         <Card>
@@ -98,11 +96,9 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
                     <span>{Number(c.posts_per_week).toFixed(1)} posts/sem</span>
                   </div>
                 </div>
-                {isStaff && (
-                  <Button variant="ghost" size="icon" onClick={() => handleRemove(c.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="icon" onClick={() => handleRemove(c.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </CardContent>
             </Card>
           ))}
