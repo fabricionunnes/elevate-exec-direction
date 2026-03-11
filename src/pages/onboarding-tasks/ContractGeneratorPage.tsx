@@ -354,6 +354,14 @@ export default function ContractGeneratorPage() {
         ? null
         : computeDueDateISO(formData.startDate, formData.dueDay);
 
+    // Snapshot the current clauses for future editing
+    const clausesSnapshot = editableClauses.map((c) => ({
+      id: c.id,
+      title: c.title,
+      content: c.content,
+      isDynamic: c.isDynamic,
+    }));
+
     const contractData = {
       client_name: formData.clientName,
       client_document: formData.clientDocument,
@@ -375,6 +383,7 @@ export default function ContractGeneratorPage() {
       due_date: dueDate,
       start_date: formData.startDate ? toISODate(formData.startDate) : null,
       pdf_url: pdfUrl,
+      clauses_snapshot: clausesSnapshot,
     };
 
     try {
