@@ -20,17 +20,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const surveyType = body.type || "all"; // "nps", "csat", or "all"
     const isManual = body.manual === true;
+    const isTest = body.test === true;
+    const testCompanyId = body.test_company_id || null;
 
     let totalSent = 0;
 
     // Process NPS
     if (surveyType === "nps" || surveyType === "all") {
-      totalSent += await processNPS(supabase, isManual);
+      totalSent += await processNPS(supabase, isManual, isTest, testCompanyId);
     }
 
     // Process CSAT
     if (surveyType === "csat" || surveyType === "all") {
-      totalSent += await processCSAT(supabase, isManual);
+      totalSent += await processCSAT(supabase, isManual, isTest, testCompanyId);
     }
 
     return new Response(JSON.stringify({ success: true, sent: totalSent }), {
@@ -45,7 +47,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
+async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
   // Get NPS config
   const { data: config } = await supabase
     .from("survey_send_configs")
@@ -89,6 +91,8 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
     if (!company || company.status !== "active") continue;
     const phone = cleanPhone(company.phone);
     if (!phone) continue;
+    // In test mode, only include the selected company
+    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
     // Keep only the first project per company
     if (!companyMap.has(company.id)) {
       companyMap.set(company.id, {
@@ -103,55 +107,59 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
   for (const entry of companyMap.values()) {
     const { companyId, companyName, phone, projectId } = entry;
 
-    // Check last NPS response for this company (any project)
-    const { data: lastResponse } = await supabase
-      .from("onboarding_nps_responses")
-      .select("created_at")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // If responded recently, skip
-    if (lastResponse) {
-      const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
-      if (daysSinceResponse < frequencyDays) continue;
-    }
-
-    // Check last send log for this company
-    const { data: lastLogs } = await supabase
-      .from("survey_send_log")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("survey_type", "nps")
-      .in("status", ["sent", "pending"])
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    const lastLog = lastLogs?.[0];
-
-    // Determine which rule to send
+    // In test mode, skip all eligibility checks and always use the first rule
     let ruleToSend: any = null;
     let attemptNumber = 1;
 
-    if (!lastLog) {
+    if (isTest) {
       ruleToSend = rules[0];
-      attemptNumber = 1;
     } else {
-      const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
-      attemptNumber = (lastLog.attempt_number || 0) + 1;
+      // Check last NPS response for this company (any project)
+      const { data: lastResponse } = await supabase
+        .from("onboarding_nps_responses")
+        .select("created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (attemptNumber > maxFollowUps) continue;
+      // If responded recently, skip
+      if (lastResponse) {
+        const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
+        if (daysSinceResponse < frequencyDays) continue;
+      }
 
-      const ruleIndex = attemptNumber - 1;
-      if (ruleIndex < rules.length) {
-        const currentRule = rules[ruleIndex];
-        const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
-        const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
-        if (daysSinceLastSend < daysNeeded) {
-          ruleToSend = null;
-        } else {
-          ruleToSend = currentRule;
+      // Check last send log for this company
+      const { data: lastLogs } = await supabase
+        .from("survey_send_log")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("survey_type", "nps")
+        .in("status", ["sent", "pending"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const lastLog = lastLogs?.[0];
+
+      if (!lastLog) {
+        ruleToSend = rules[0];
+        attemptNumber = 1;
+      } else {
+        const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
+        attemptNumber = (lastLog.attempt_number || 0) + 1;
+
+        if (attemptNumber > maxFollowUps) continue;
+
+        const ruleIndex = attemptNumber - 1;
+        if (ruleIndex < rules.length) {
+          const currentRule = rules[ruleIndex];
+          const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
+          const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
+          if (daysSinceLastSend < daysNeeded) {
+            ruleToSend = null;
+          } else {
+            ruleToSend = currentRule;
+          }
         }
       }
     }
@@ -196,7 +204,7 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
   return sent;
 }
 
-async function processCSAT(supabase: any, _isManual: boolean): Promise<number> {
+async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
   // Get CSAT config
   const { data: config } = await supabase
     .from("survey_send_configs")
@@ -249,6 +257,8 @@ async function processCSAT(supabase: any, _isManual: boolean): Promise<number> {
     if (!project) continue;
     const company = (project as any).onboarding_companies;
     if (!company) continue;
+    // In test mode, only include the selected company
+    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
 
     const phone = cleanPhone(company.phone);
     if (!phone) continue;

@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Save, Plus, Trash2, GripVertical, Send, Bell,
   MessageSquare, BarChart3, RefreshCw, CheckCircle2, Clock,
-  AlertTriangle, ExternalLink, Loader2, Settings, Pencil,
+  AlertTriangle, ExternalLink, Loader2, Settings, Pencil, FlaskConical, Search,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -79,6 +79,13 @@ export default function SurveySendConfigPage() {
   const [ruleForm, setRuleForm] = useState({ day_offset: 0, message_template: "", is_active: true });
   const [logsTab, setLogsTab] = useState<"nps" | "csat">("nps");
   const [runningManual, setRunningManual] = useState(false);
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [testSurveyType, setTestSurveyType] = useState<"nps" | "csat">("nps");
+  const [testCompanies, setTestCompanies] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  const [testSearch, setTestSearch] = useState("");
+  const [testSelectedCompany, setTestSelectedCompany] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -229,6 +236,77 @@ export default function SurveySendConfigPage() {
       setRunningManual(false);
     }
   };
+
+  const openTestDialog = async (type: "nps" | "csat") => {
+    setTestSurveyType(type);
+    setTestSelectedCompany(null);
+    setTestSearch("");
+    setShowTestDialog(true);
+    setLoadingCompanies(true);
+    try {
+      const { data } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, phone")
+        .eq("status", "active")
+        .order("name")
+        .limit(200);
+      setTestCompanies((data || []) as any[]);
+    } catch {
+      toast.error("Erro ao carregar empresas");
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testSelectedCompany) return;
+    const company = testCompanies.find(c => c.id === testSelectedCompany);
+    if (!company) return;
+
+    setSendingTest(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/survey-sender`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            type: testSurveyType,
+            manual: true,
+            test: true,
+            test_company_id: testSelectedCompany,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.sent > 0) {
+        toast.success(`Teste enviado para ${company.name}!`);
+      } else {
+        toast.warning(`Nenhuma mensagem enviada. Verifique se a empresa tem telefone e projeto ativo.`);
+      }
+      setShowTestDialog(false);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar teste");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const filteredTestCompanies = testCompanies.filter(c =>
+    c.name.toLowerCase().includes(testSearch.toLowerCase())
+  );
 
   const templateVars = {
     nps: [
@@ -385,6 +463,15 @@ export default function SurveySendConfigPage() {
               >
                 {runningManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Executar Agora
+              </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => openTestDialog(type)}
+              >
+                <FlaskConical className="h-4 w-4" />
+                Envio de Teste
               </Button>
             </div>
           </CardContent>
@@ -684,6 +771,75 @@ export default function SurveySendConfigPage() {
             <Button onClick={saveRule} disabled={saving || !ruleForm.message_template.trim()}>
               {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Save className="h-4 w-4 mr-2" />}
               Salvar
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Test Send Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5" />
+              Envio de Teste - {testSurveyType.toUpperCase()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Selecione uma empresa para enviar uma mensagem de teste. Será enviada a primeira mensagem da régua.
+            </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar empresa..."
+                value={testSearch}
+                onChange={(e) => setTestSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <ScrollArea className="max-h-[250px] border rounded-lg">
+              {loadingCompanies ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredTestCompanies.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa encontrada</p>
+              ) : (
+                <div className="p-1">
+                  {filteredTestCompanies.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setTestSelectedCompany(c.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        testSelectedCompany === c.id
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      <span className="font-medium">{c.name}</span>
+                      <span className={cn(
+                        "text-xs",
+                        testSelectedCompany === c.id ? "text-primary-foreground/70" : "text-muted-foreground"
+                      )}>
+                        {c.phone || "Sem telefone"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTestDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={handleSendTest}
+              disabled={!testSelectedCompany || sendingTest}
+              className="gap-2"
+            >
+              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar Teste
             </Button>
           </DialogFooter>
         </DialogContent>
