@@ -48,6 +48,27 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   rejected: { label: "Rejeitado", variant: "destructive" },
 };
 
+const LEADERSHIP_LABELS: Record<string, string> = {
+  beginner: "Iniciante",
+  intermediate: "Intermediário",
+  advanced: "Avançado",
+  expert: "Especialista",
+};
+
+const READINESS_LABELS: Record<string, string> = {
+  muito_preparado: "Estou muito preparado(a) e motivado(a)",
+  preparado: "Estou preparado(a)",
+  parcialmente: "Estou parcialmente preparado(a)",
+  inseguro: "Ainda me sinto inseguro(a)",
+};
+
+const TIME_LABELS: Record<string, string> = {
+  mais_10h: "Mais de 10 horas por semana",
+  "5_10h": "Entre 5 e 10 horas por semana",
+  "2_5h": "Entre 2 e 5 horas por semana",
+  menos_2h: "Menos de 2 horas por semana",
+};
+
 function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
@@ -60,12 +81,16 @@ function DetailField({ label, value }: { label: string; value: string | null | u
 
 function CommitField({ label, value }: { label: string; value: string | null | undefined }) {
   const isYes = value === "sim";
+  const displayValue = value === "sim" ? "Sim, me comprometo" : value === "nao" ? "Não" : value || "—";
   return (
-    <div className="flex items-center gap-2">
-      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-        {isYes ? "✓" : "✗"}
-      </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="space-y-0.5">
+      <p className="text-xs text-muted-foreground font-medium">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <span className={`inline-flex items-center justify-center h-4 w-4 rounded-full text-[10px] font-bold ${isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          {isYes ? "✓" : "✗"}
+        </span>
+        <span className="text-sm font-medium">{displayValue}</span>
+      </div>
     </div>
   );
 }
