@@ -110,6 +110,8 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (!company) continue;
     // Skip inactive companies only in non-test mode
     if (!isTest && company.status !== "active") continue;
+    // In test mode, only include the selected company
+    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
     const phone = cleanPhone(company.phone);
     if (!phone) {
       console.log(`Company ${company.name} (${company.id}) has no valid phone: ${company.phone}`);
