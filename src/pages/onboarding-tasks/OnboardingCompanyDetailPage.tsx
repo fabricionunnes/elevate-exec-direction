@@ -264,6 +264,7 @@ const OnboardingCompanyDetailPage = () => {
         status: data.status || "active",
         notes: data.notes || "",
         is_simulator: data.is_simulator || false,
+        goal_not_required: data.goal_not_required || false,
       });
       originalStatusRef.current = data.status || "active";
     } catch (error: any) {
