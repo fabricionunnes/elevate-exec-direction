@@ -442,7 +442,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const csatLink = `${PUBLIC_DOMAIN}/#/csat?token=${survey.access_token}`;
     const meetingSubject = meeting.subject || meeting.meeting_title || "Reunião";
     const meetingDate = meeting.meeting_date
-      ? new Date(meeting.meeting_date).toLocaleDateString("pt-BR")
+      ? formatDateBR(meeting.meeting_date)
       : "";
 
     const message = ruleToSend.message_template
