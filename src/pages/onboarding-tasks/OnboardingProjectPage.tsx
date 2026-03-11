@@ -96,6 +96,7 @@ import { CommercialActionsPanel } from "@/components/commercial-actions/Commerci
 import { RoutineContractPanel } from "@/components/routine-contract/RoutineContractPanel";
 import { ClipboardList, Filter as FunnelIcon } from "lucide-react";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
+import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
