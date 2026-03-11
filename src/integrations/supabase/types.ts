@@ -21067,6 +21067,57 @@ export type Database = {
           },
         ]
       }
+      pdi_attendance: {
+        Row: {
+          created_at: string
+          id: string
+          is_present: boolean
+          marked_by: string | null
+          notes: string | null
+          participant_id: string
+          points_awarded: number
+          session_date: string
+          track_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_present?: boolean
+          marked_by?: string | null
+          notes?: string | null
+          participant_id: string
+          points_awarded?: number
+          session_date?: string
+          track_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_present?: boolean
+          marked_by?: string | null
+          notes?: string | null
+          participant_id?: string
+          points_awarded?: number
+          session_date?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_attendance_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_attendance_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdi_book_tracks: {
         Row: {
           book_id: string

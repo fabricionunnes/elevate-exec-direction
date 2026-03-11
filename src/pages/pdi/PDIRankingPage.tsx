@@ -18,6 +18,7 @@ interface RankingEntry {
   entryScore: number | null;
   exitScore: number | null;
   evolution: number | null;
+  attendancePoints: number;
   totalPoints: number;
 }
 
@@ -28,12 +29,13 @@ export default function PDIRankingPage() {
   const [filterCohort, setFilterCohort] = useState("all");
 
   const fetchData = useCallback(async () => {
-    const [partRes, cohRes, subsRes, respRes, assessRes] = await Promise.all([
+    const [partRes, cohRes, subsRes, respRes, assessRes, attendRes] = await Promise.all([
       supabase.from("pdi_participants").select("*").eq("status", "active"),
       supabase.from("pdi_cohorts").select("id, name"),
       supabase.from("pdi_task_submissions").select("participant_id, status, ai_score"),
       supabase.from("pdi_assessment_responses").select("participant_id, assessment_id, total_score"),
       supabase.from("pdi_assessments").select("id, assessment_type"),
+      supabase.from("pdi_attendance").select("participant_id, is_present, points_awarded"),
     ]);
 
     const cohs = (cohRes.data as any[]) || [];
@@ -42,6 +44,7 @@ export default function PDIRankingPage() {
     const subs = (subsRes.data as any[]) || [];
     const resps = (respRes.data as any[]) || [];
     const assessments = (assessRes.data as any[]) || [];
+    const attendances = (attendRes.data as any[]) || [];
     const entryIds = new Set(assessments.filter((a) => a.assessment_type === "entry").map((a) => a.id));
     const exitIds = new Set(assessments.filter((a) => a.assessment_type === "exit").map((a) => a.id));
 
@@ -59,14 +62,18 @@ export default function PDIRankingPage() {
       const evolution = entryScore != null && exitScore != null && entryScore > 0
         ? Math.round(((exitScore - entryScore) / entryScore) * 100) : null;
 
-      // Points: tasks completed * 10 + avg AI score * 5 + evolution bonus
-      const totalPoints = completed * 10 + Math.round(avgAi * 5) + (evolution != null && evolution > 0 ? evolution : 0);
+      // Attendance points
+      const pAttendance = attendances.filter((a) => a.participant_id === p.id && a.is_present);
+      const attendancePoints = pAttendance.reduce((sum: number, a: any) => sum + (a.points_awarded || 0), 0);
+
+      // Points: tasks completed * 10 + avg AI score * 5 + evolution bonus + attendance
+      const totalPoints = completed * 10 + Math.round(avgAi * 5) + (evolution != null && evolution > 0 ? evolution : 0) + attendancePoints;
 
       return {
         id: p.id, full_name: p.full_name, company: p.company,
         cohort_id: p.cohort_id, cohort_name: cMap.get(p.cohort_id) || "—",
         tasksCompleted: completed, avgAiScore: Math.round(avgAi * 10) / 10,
-        entryScore, exitScore, evolution, totalPoints,
+        entryScore, exitScore, evolution, attendancePoints, totalPoints,
       };
     });
 

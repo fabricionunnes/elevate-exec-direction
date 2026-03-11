@@ -16,6 +16,7 @@ import {
   ArrowLeft,
   Menu,
   X,
+  CalendarCheck,
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 
@@ -26,6 +27,7 @@ const NAV_ITEMS = [
   { label: "Participantes", icon: ClipboardList, path: "/pdi/participants" },
   { label: "Trilhas", icon: Route, path: "/pdi/tracks" },
   { label: "Tarefas", icon: FileText, path: "/pdi/tasks" },
+  { label: "Presença", icon: CalendarCheck, path: "/pdi/attendance" },
   { label: "Biblioteca", icon: BookOpen, path: "/pdi/library" },
   { label: "Testes", icon: ClipboardList, path: "/pdi/assessments" },
   { label: "Relatórios", icon: FileText, path: "/pdi/reports" },

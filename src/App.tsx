@@ -178,6 +178,7 @@ const PDIReportsPage = lazy(() => import("./pages/pdi/PDIReportsPage"));
 const PDICertificatesPage = lazy(() => import("./pages/pdi/PDICertificatesPage"));
 const PDIRankingPage = lazy(() => import("./pages/pdi/PDIRankingPage"));
 const PDICommunityPage = lazy(() => import("./pages/pdi/PDICommunityPage"));
+const PDIAttendancePage = lazy(() => import("./pages/pdi/PDIAttendancePage"));
 const PDISettingsPage = lazy(() => import("./pages/pdi/PDISettingsPage"));
 const PDIParticipantPortalPage = lazy(() => import("./pages/pdi/PDIParticipantPortalPage"));
 
@@ -452,6 +453,7 @@ const App = () => (
               <Route path="participants" element={<PDIParticipantsPage />} />
               <Route path="tracks" element={<PDITracksPage />} />
               <Route path="tasks" element={<PDITasksPage />} />
+              <Route path="attendance" element={<PDIAttendancePage />} />
               <Route path="library" element={<PDILibraryPage />} />
               <Route path="assessments" element={<PDIAssessmentsPage />} />
               <Route path="reports" element={<PDIReportsPage />} />
