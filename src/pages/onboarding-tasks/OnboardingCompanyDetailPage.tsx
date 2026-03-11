@@ -100,6 +100,7 @@ interface CompanyForm {
   status: string;
   notes: string;
   is_simulator: boolean;
+  goal_not_required: boolean;
 }
 
 interface Project {
