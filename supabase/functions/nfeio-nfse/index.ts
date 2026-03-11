@@ -61,10 +61,12 @@ Deno.serve(async (req) => {
         const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode } = params;
 
         // Build NFS-e payload for NFE.io
+        // amountCents is actually in reais (frontend already converts)
+        const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "1.05",
           description: serviceDescription,
-          servicesAmount: amountCents / 100,
+          servicesAmount: amountInReais,
           borrower: {
             name: tomadorName,
             federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
@@ -85,9 +87,10 @@ Deno.serve(async (req) => {
             company_id: companyId,
             invoice_id: invoiceId || null,
             nfeio_id: result.id,
+            // Store as cents in DB
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
-            amount_cents: amountCents,
+            amount_cents: Math.round(amountInReais * 100),
             service_description: serviceDescription,
             tomador_name: tomadorName,
             tomador_document: tomadorDocument,
