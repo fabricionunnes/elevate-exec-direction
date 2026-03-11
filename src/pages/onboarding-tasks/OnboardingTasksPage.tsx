@@ -2461,6 +2461,12 @@ const OnboardingTasksPage = () => {
                               Régua de Cobranças
                             </DropdownMenuItem>
                           )}
+                          {(isAdmin || hasMenuPerm("financial")) && (
+                            <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/survey-send-config")}>
+                              <MessageSquare className="h-4 w-4 mr-2" />
+                              Régua de Pesquisas
+                            </DropdownMenuItem>
+                          )}
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
