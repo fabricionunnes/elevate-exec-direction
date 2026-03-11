@@ -60,6 +60,8 @@ export function NfsePanel() {
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
 
   // Emit form state
+  const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
+
   const [form, setForm] = useState({
     companyId: "",
     nfeioCompanyId: "",
@@ -68,7 +70,7 @@ export function NfsePanel() {
     tomadorName: "",
     tomadorDocument: "",
     tomadorEmail: "",
-    cityServiceCode: "1.05",
+    cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
   });
 
   useEffect(() => {
