@@ -96,11 +96,9 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
                     <span>{Number(c.posts_per_week).toFixed(1)} posts/sem</span>
                   </div>
                 </div>
-                {isStaff && (
-                  <Button variant="ghost" size="icon" onClick={() => handleRemove(c.id)}>
-                    <Trash2 className="h-4 w-4 text-destructive" />
-                  </Button>
-                )}
+                <Button variant="ghost" size="icon" onClick={() => handleRemove(c.id)}>
+                  <Trash2 className="h-4 w-4 text-destructive" />
+                </Button>
               </CardContent>
             </Card>
           ))}
