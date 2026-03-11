@@ -33,11 +33,13 @@ export const InstagramInsights = ({ accountId, projectId }: InstagramInsightsPro
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const { error } = await supabase.functions.invoke("instagram-project-oauth", {
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
         body: { action: "generate_insights", accountId, projectId },
       });
       if (error) throw error;
-      toast.success("Insights gerados com sucesso!");
+      if (data?.error) throw new Error(data.error);
+      if (!data?.success) throw new Error(data?.error || "Erro desconhecido");
+      toast.success(`${data.count || 0} insights gerados com sucesso!`);
       // Refetch
       const { data } = await supabase
         .from("instagram_insights_ai")
