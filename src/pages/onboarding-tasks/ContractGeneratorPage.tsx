@@ -69,6 +69,7 @@ interface SavedContract {
   zapsign_document_url: string | null;
   zapsign_signers: unknown;
   zapsign_sent_at: string | null;
+  clauses_snapshot: unknown;
 }
 
 const defaultFormData: ContractFormData = {
