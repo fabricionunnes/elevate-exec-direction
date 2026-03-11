@@ -48,6 +48,28 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   rejected: { label: "Rejeitado", variant: "destructive" },
 };
 
+function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
+  if (!value) return null;
+  return (
+    <div>
+      <p className="text-xs text-muted-foreground font-medium">{label}</p>
+      <p className="text-sm whitespace-pre-wrap">{value}</p>
+    </div>
+  );
+}
+
+function CommitField({ label, value }: { label: string; value: string | null | undefined }) {
+  const isYes = value === "sim";
+  return (
+    <div className="flex items-center gap-2">
+      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+        {isYes ? "✓" : "✗"}
+      </span>
+      <span className="text-xs text-muted-foreground">{label}</span>
+    </div>
+  );
+}
+
 export default function PDIApplicationsPage() {
   const [applications, setApplications] = useState<Application[]>([]);
   const [loading, setLoading] = useState(true);
