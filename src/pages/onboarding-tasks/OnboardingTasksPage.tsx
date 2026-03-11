@@ -2502,6 +2502,10 @@ const OnboardingTasksPage = () => {
 
                       {/* UNV Academy & Tools */}
                       <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/pdi")}>
+                        <Target className="h-4 w-4 mr-2" />
+                        PDI
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/academy")}>
                         <GraduationCap className="h-4 w-4 mr-2" />
                         UNV Academy

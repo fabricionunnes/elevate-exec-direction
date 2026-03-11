@@ -163,6 +163,15 @@ const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/Publi
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
 const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
 
+// PDI
+const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
+const PDIDashboardPage = lazy(() => import("./pages/pdi/PDIDashboardPage"));
+const PDICohortsPage = lazy(() => import("./pages/pdi/PDICohortsPage"));
+const PDIApplicationsPage = lazy(() => import("./pages/pdi/PDIApplicationsPage"));
+const PDIParticipantsPage = lazy(() => import("./pages/pdi/PDIParticipantsPage"));
+const PDITracksPage = lazy(() => import("./pages/pdi/PDITracksPage"));
+const PDIEnrollmentPage = lazy(() => import("./pages/pdi/PDIEnrollmentPage"));
+
 // Academy
 const AcademyLayout = lazy(() => import("./pages/academy/AcademyLayout"));
 const AcademyHomePage = lazy(() => import("./pages/academy/AcademyHomePage"));
@@ -425,6 +434,16 @@ const App = () => (
               <Route path="plano/:planId" element={<PortalPlanVersionPage />} />
               <Route path="estrategias/:planId" element={<PortalStrategiesPage />} />
             </Route>
+            
+            {/* PDI */}
+            <Route path="/pdi" element={<PDILayout />}>
+              <Route index element={<PDIDashboardPage />} />
+              <Route path="cohorts" element={<PDICohortsPage />} />
+              <Route path="applications" element={<PDIApplicationsPage />} />
+              <Route path="participants" element={<PDIParticipantsPage />} />
+              <Route path="tracks" element={<PDITracksPage />} />
+            </Route>
+            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
             
             {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>

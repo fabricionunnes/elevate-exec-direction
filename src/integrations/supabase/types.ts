@@ -20841,6 +20841,354 @@ export type Database = {
           },
         ]
       }
+      pdi_applications: {
+        Row: {
+          cohort_id: string
+          company: string | null
+          created_at: string
+          current_challenges: string | null
+          email: string | null
+          experience_years: number | null
+          full_name: string
+          id: string
+          leadership_level: string | null
+          motivation: string | null
+          phone: string | null
+          professional_goal: string | null
+          reviewed_at: string | null
+          reviewed_by: string | null
+          reviewer_notes: string | null
+          role_title: string | null
+          status: string
+          submitted_at: string
+        }
+        Insert: {
+          cohort_id: string
+          company?: string | null
+          created_at?: string
+          current_challenges?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name: string
+          id?: string
+          leadership_level?: string | null
+          motivation?: string | null
+          phone?: string | null
+          professional_goal?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          role_title?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Update: {
+          cohort_id?: string
+          company?: string | null
+          created_at?: string
+          current_challenges?: string | null
+          email?: string | null
+          experience_years?: number | null
+          full_name?: string
+          id?: string
+          leadership_level?: string | null
+          motivation?: string | null
+          phone?: string | null
+          professional_goal?: string | null
+          reviewed_at?: string | null
+          reviewed_by?: string | null
+          reviewer_notes?: string | null
+          role_title?: string | null
+          status?: string
+          submitted_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_applications_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_applications_reviewed_by_fkey"
+            columns: ["reviewed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_cohort_tracks: {
+        Row: {
+          cohort_id: string
+          created_at: string
+          id: string
+          sort_order: number
+          track_id: string
+        }
+        Insert: {
+          cohort_id: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          track_id: string
+        }
+        Update: {
+          cohort_id?: string
+          created_at?: string
+          id?: string
+          sort_order?: number
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_cohort_tracks_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_cohort_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_cohorts: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          end_date: string | null
+          enrollment_token: string | null
+          id: string
+          is_enrollment_open: boolean
+          max_participants: number | null
+          min_participants: number | null
+          name: string
+          objective: string | null
+          program_id: string | null
+          project_id: string | null
+          responsible_staff_id: string | null
+          start_date: string | null
+          status: string
+          total_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          enrollment_token?: string | null
+          id?: string
+          is_enrollment_open?: boolean
+          max_participants?: number | null
+          min_participants?: number | null
+          name: string
+          objective?: string | null
+          program_id?: string | null
+          project_id?: string | null
+          responsible_staff_id?: string | null
+          start_date?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          end_date?: string | null
+          enrollment_token?: string | null
+          id?: string
+          is_enrollment_open?: boolean
+          max_participants?: number | null
+          min_participants?: number | null
+          name?: string
+          objective?: string | null
+          program_id?: string | null
+          project_id?: string | null
+          responsible_staff_id?: string | null
+          start_date?: string | null
+          status?: string
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_cohorts_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_programs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_cohorts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_cohorts_responsible_staff_id_fkey"
+            columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_participants: {
+        Row: {
+          access_token: string | null
+          application_id: string | null
+          cohort_id: string
+          company: string | null
+          completed_at: string | null
+          created_at: string
+          email: string | null
+          enrolled_at: string
+          full_name: string
+          id: string
+          phone: string | null
+          role_title: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string | null
+          application_id?: string | null
+          cohort_id: string
+          company?: string | null
+          completed_at?: string | null
+          created_at?: string
+          email?: string | null
+          enrolled_at?: string
+          full_name: string
+          id?: string
+          phone?: string | null
+          role_title?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string | null
+          application_id?: string | null
+          cohort_id?: string
+          company?: string | null
+          completed_at?: string | null
+          created_at?: string
+          email?: string | null
+          enrolled_at?: string
+          full_name?: string
+          id?: string
+          phone?: string | null
+          role_title?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_participants_application_id_fkey"
+            columns: ["application_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_applications"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_participants_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_programs: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          objective: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          objective?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          objective?: string | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      pdi_tracks: {
+        Row: {
+          category: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          program_id: string | null
+          sort_order: number
+          total_hours: number | null
+          updated_at: string
+        }
+        Insert: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          program_id?: string | null
+          sort_order?: number
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Update: {
+          category?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          program_id?: string | null
+          sort_order?: number
+          total_hours?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_tracks_program_id_fkey"
+            columns: ["program_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_programs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       portal_audit_logs: {
         Row: {
           action: string
