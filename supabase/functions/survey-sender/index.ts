@@ -204,7 +204,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   return sent;
 }
 
-async function processCSAT(supabase: any, _isManual: boolean): Promise<number> {
+async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
   // Get CSAT config
   const { data: config } = await supabase
     .from("survey_send_configs")
