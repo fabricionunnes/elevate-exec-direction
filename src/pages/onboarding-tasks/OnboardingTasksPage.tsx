@@ -12,6 +12,7 @@ import { GlobalAccessControlPanel } from "@/components/onboarding-tasks/GlobalAc
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { format, isBefore, startOfDay, startOfMonth, endOfMonth, isWithinInterval, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -2544,6 +2545,7 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
+            <ThemeToggle />
             <Button 
               variant="ghost" 
               size="icon"
