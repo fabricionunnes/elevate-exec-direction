@@ -48,6 +48,27 @@ const STATUS_MAP: Record<string, { label: string; variant: "default" | "secondar
   rejected: { label: "Rejeitado", variant: "destructive" },
 };
 
+const LEADERSHIP_LABELS: Record<string, string> = {
+  beginner: "Iniciante",
+  intermediate: "Intermediário",
+  advanced: "Avançado",
+  expert: "Especialista",
+};
+
+const READINESS_LABELS: Record<string, string> = {
+  muito_preparado: "Estou muito preparado(a) e motivado(a)",
+  preparado: "Estou preparado(a)",
+  parcialmente: "Estou parcialmente preparado(a)",
+  inseguro: "Ainda me sinto inseguro(a)",
+};
+
+const TIME_LABELS: Record<string, string> = {
+  mais_10h: "Mais de 10 horas por semana",
+  "5_10h": "Entre 5 e 10 horas por semana",
+  "2_5h": "Entre 2 e 5 horas por semana",
+  menos_2h: "Menos de 2 horas por semana",
+};
+
 function DetailField({ label, value }: { label: string; value: string | null | undefined }) {
   if (!value) return null;
   return (
@@ -60,12 +81,16 @@ function DetailField({ label, value }: { label: string; value: string | null | u
 
 function CommitField({ label, value }: { label: string; value: string | null | undefined }) {
   const isYes = value === "sim";
+  const displayValue = value === "sim" ? "Sim, me comprometo" : value === "nao" ? "Não" : value || "—";
   return (
-    <div className="flex items-center gap-2">
-      <span className={`inline-flex items-center justify-center h-5 w-5 rounded-full text-xs font-bold ${isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
-        {isYes ? "✓" : "✗"}
-      </span>
-      <span className="text-xs text-muted-foreground">{label}</span>
+    <div className="space-y-0.5">
+      <p className="text-xs text-muted-foreground font-medium">{label}</p>
+      <div className="flex items-center gap-1.5">
+        <span className={`inline-flex items-center justify-center h-4 w-4 rounded-full text-[10px] font-bold ${isYes ? "bg-green-100 text-green-700" : "bg-red-100 text-red-700"}`}>
+          {isYes ? "✓" : "✗"}
+        </span>
+        <span className="text-sm font-medium">{displayValue}</span>
+      </div>
     </div>
   );
 }
@@ -266,7 +291,7 @@ export default function PDIApplicationsPage() {
                 <div><span className="text-muted-foreground">Cargo:</span> <span className="font-medium">{selected.role_title || "—"}</span></div>
                 <div><span className="text-muted-foreground">Empresa:</span> <span className="font-medium">{selected.company || "—"}</span></div>
                 <div><span className="text-muted-foreground">Experiência:</span> <span className="font-medium">{selected.experience_years ? `${selected.experience_years} anos` : "—"}</span></div>
-                <div><span className="text-muted-foreground">Nível de Liderança:</span> <span className="font-medium">{selected.leadership_level || "—"}</span></div>
+                <div><span className="text-muted-foreground">Nível de Liderança:</span> <span className="font-medium">{LEADERSHIP_LABELS[selected.leadership_level] || selected.leadership_level || "—"}</span></div>
               </div>
 
               <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Perfil Profissional</h4>
@@ -278,14 +303,14 @@ export default function PDIApplicationsPage() {
               <DetailField label="Expectativas" value={(selected as any).expectations} />
 
               <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Comprometimento</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <CommitField label="Participar de todas as reuniões" value={(selected as any).commitment_meetings} />
-                <CommitField label="Ler os livros solicitados" value={(selected as any).commitment_books} />
-                <CommitField label="Fazer todas as tarefas" value={(selected as any).commitment_tasks} />
-                <CommitField label="Câmera aberta nas reuniões" value={(selected as any).commitment_camera} />
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <CommitField label="Você se compromete a participar de TODAS as reuniões agendadas?" value={(selected as any).commitment_meetings} />
+                <CommitField label="Você se compromete a ler TODOS os livros e materiais solicitados?" value={(selected as any).commitment_books} />
+                <CommitField label="Você se compromete a realizar TODAS as tarefas e exercícios propostos?" value={(selected as any).commitment_tasks} />
+                <CommitField label="Você se compromete a entrar nas reuniões com a câmera aberta?" value={(selected as any).commitment_camera} />
               </div>
-              <DetailField label="Prontidão para Desenvolvimento" value={(selected as any).development_readiness} />
-              <DetailField label="Disponibilidade de Tempo" value={(selected as any).time_availability} />
+              <DetailField label="Prontidão para Desenvolvimento" value={READINESS_LABELS[(selected as any).development_readiness] || (selected as any).development_readiness} />
+              <DetailField label="Disponibilidade de Tempo" value={TIME_LABELS[(selected as any).time_availability] || (selected as any).time_availability} />
 
               {selected.status === "pending" && (
                 <>
