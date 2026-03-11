@@ -256,8 +256,64 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   const maxFollowUps = config.max_follow_ups || 3;
   const now = new Date();
 
-  // Find finalized meetings that need CSAT sends
-  // Look for meetings finalized in the last 30 days that have CSAT surveys
+  // TEST MODE: Send directly to the company without requiring a csat_survey
+  if (isTest && testCompanyId) {
+    // Get company info
+    const { data: company } = await supabase
+      .from("onboarding_companies")
+      .select("id, name, phone")
+      .eq("id", testCompanyId)
+      .single();
+
+    if (!company) { console.log("Test CSAT: company not found"); return 0; }
+    const phone = cleanPhone(company.phone);
+    if (!phone) { console.log(`Test CSAT: no valid phone for ${company.name}`); return 0; }
+
+    // Get any project for this company
+    const { data: projects } = await supabase
+      .from("onboarding_projects")
+      .select("id")
+      .eq("company_id", testCompanyId)
+      .limit(1);
+
+    const projectId = projects?.[0]?.id || "test";
+    const ruleToSend = rules[0];
+
+    // Build a test CSAT link (no real token, just for testing the message)
+    const csatLink = `${PUBLIC_DOMAIN}/#/csat?test=true`;
+
+    const message = ruleToSend.message_template
+      .replace(/\{nome\}/g, company.name || "")
+      .replace(/\{empresa\}/g, company.name || "")
+      .replace(/\{link\}/g, csatLink)
+      .replace(/\{assunto_reuniao\}/g, "Reunião de Teste")
+      .replace(/\{data_reuniao\}/g, new Date().toLocaleDateString("pt-BR"));
+
+    const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    console.log(`Test CSAT: Sending to ${phone} via instance ${instanceName}`);
+    const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
+    console.log(`Test CSAT result:`, JSON.stringify(sendResult));
+
+    await supabase.from("survey_send_log").insert({
+      config_id: config.id,
+      rule_id: ruleToSend.id,
+      project_id: projectId,
+      company_id: company.id,
+      survey_type: "csat",
+      phone,
+      contact_name: company.name,
+      survey_link: csatLink,
+      meeting_subject: "Reunião de Teste",
+      status: sendResult.success ? "sent" : "failed",
+      attempt_number: 1,
+      sent_at: sendResult.success ? new Date().toISOString() : null,
+      error_message: sendResult.error || null,
+    });
+
+    return sendResult.success ? 1 : 0;
+  }
+
+  // NORMAL MODE: Find finalized meetings that need CSAT sends
   const { data: surveys } = await supabase
     .from("csat_surveys")
     .select(`
@@ -275,7 +331,6 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const meeting = (survey as any).onboarding_meeting_notes;
     if (!meeting?.is_finalized) continue;
 
-    // Get project company info for phone
     const { data: project } = await supabase
       .from("onboarding_projects")
       .select("id, onboarding_companies(id, name, phone)")
@@ -285,13 +340,10 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (!project) continue;
     const company = (project as any).onboarding_companies;
     if (!company) continue;
-    // In test mode, only include the selected company
-    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
 
     const phone = cleanPhone(company.phone);
     if (!phone) continue;
 
-    // Check existing send logs for this survey
     const { data: existingLogs } = await supabase
       .from("survey_send_log")
       .select("*")
@@ -307,7 +359,6 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       attemptNumber = (lastLog.attempt_number || 0) + 1;
       if (attemptNumber > maxFollowUps) continue;
 
-      // Check timing
       const ruleIndex = attemptNumber - 1;
       if (ruleIndex >= rules.length) continue;
 
@@ -318,15 +369,11 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       if (daysSinceLastSend < daysNeeded) continue;
     }
 
-    // Get the rule for this attempt
     const ruleIndex = attemptNumber - 1;
     if (ruleIndex >= rules.length) continue;
     const ruleToSend = rules[ruleIndex];
 
-    // Generate CSAT link
     const csatLink = `${PUBLIC_DOMAIN}/#/csat?token=${survey.access_token}`;
-
-    // Replace template variables
     const meetingSubject = meeting.subject || meeting.meeting_title || "Reunião";
     const meetingDate = meeting.meeting_date
       ? new Date(meeting.meeting_date).toLocaleDateString("pt-BR")
@@ -339,11 +386,9 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       .replace(/\{assunto_reuniao\}/g, meetingSubject)
       .replace(/\{data_reuniao\}/g, meetingDate);
 
-    // Send via WhatsApp
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
 
-    // Log the send
     await supabase.from("survey_send_log").insert({
       config_id: config.id,
       rule_id: ruleToSend.id,
