@@ -464,7 +464,7 @@ Deno.serve(async (req) => {
           const username = competitor.competitor_username.replace("@", "").trim();
           
           if (account?.access_token) {
-            const discoveryUrl = `https://graph.facebook.com/v22.0/${account.instagram_user_id}?fields=business_discovery.fields(username,name,biography,followers_count,media_count,media.limit(12){timestamp,like_count,comments_count,media_type})&business_discovery.username=${username}&access_token=${account.access_token}`;
+            const discoveryUrl = `https://graph.facebook.com/v22.0/${account.instagram_user_id}?fields=business_discovery.username(${username}){username,name,biography,followers_count,media_count,media.limit(12){timestamp,like_count,comments_count,media_type}}&access_token=${account.access_token}`;
             
             const resp = await fetch(discoveryUrl);
             const data = await resp.json();
