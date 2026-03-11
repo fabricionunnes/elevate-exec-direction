@@ -69,6 +69,7 @@ interface SavedContract {
   zapsign_document_url: string | null;
   zapsign_signers: unknown;
   zapsign_sent_at: string | null;
+  clauses_snapshot: unknown;
 }
 
 const defaultFormData: ContractFormData = {
@@ -354,6 +355,14 @@ export default function ContractGeneratorPage() {
         ? null
         : computeDueDateISO(formData.startDate, formData.dueDay);
 
+    // Snapshot the current clauses for future editing
+    const clausesSnapshot = editableClauses.map((c) => ({
+      id: c.id,
+      title: c.title,
+      content: c.content,
+      isDynamic: c.isDynamic,
+    }));
+
     const contractData = {
       client_name: formData.clientName,
       client_document: formData.clientDocument,
@@ -375,6 +384,7 @@ export default function ContractGeneratorPage() {
       due_date: dueDate,
       start_date: formData.startDate ? toISODate(formData.startDate) : null,
       pdf_url: pdfUrl,
+      clauses_snapshot: clausesSnapshot,
     };
 
     try {
@@ -903,6 +913,25 @@ export default function ContractGeneratorPage() {
       startDate: selectedContract.start_date ? new Date(selectedContract.start_date) : new Date(),
     });
     
+    // Restore saved clauses snapshot if available, otherwise use current template
+    if (selectedContract.clauses_snapshot && Array.isArray(selectedContract.clauses_snapshot)) {
+      const snapshot = selectedContract.clauses_snapshot as Array<{
+        id: string;
+        title: string;
+        content: string;
+        isDynamic?: boolean;
+      }>;
+      setEditableClauses(
+        snapshot.map((c) => ({
+          id: c.id,
+          title: c.title,
+          content: c.content,
+          originalContent: c.content,
+          isDynamic: c.isDynamic,
+        }))
+      );
+    }
+
     setShowContractDialog(false);
     setShowHistory(false);
     

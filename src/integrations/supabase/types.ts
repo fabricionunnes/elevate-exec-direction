@@ -16376,6 +16376,7 @@ export type Database = {
       }
       generated_contracts: {
         Row: {
+          clauses_snapshot: Json | null
           client_address: string | null
           client_document: string
           client_email: string | null
@@ -16405,6 +16406,7 @@ export type Database = {
           zapsign_signers: Json | null
         }
         Insert: {
+          clauses_snapshot?: Json | null
           client_address?: string | null
           client_document: string
           client_email?: string | null
@@ -16434,6 +16436,7 @@ export type Database = {
           zapsign_signers?: Json | null
         }
         Update: {
+          clauses_snapshot?: Json | null
           client_address?: string | null
           client_document?: string
           client_email?: string | null
