@@ -219,6 +219,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Diretor Comercial IA",
     group: null,
   },
+  {
+    key: CLIENT_MENU_KEYS.outros_servicos,
+    label: "Outros Serviços",
+    group: null,
+  },
 ] as const;
 
 // Role labels in Portuguese
