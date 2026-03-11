@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Search, Users, Calendar, Copy, ExternalLink } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
