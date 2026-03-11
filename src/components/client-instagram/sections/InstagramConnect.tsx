@@ -19,9 +19,11 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [manualAuthUrl, setManualAuthUrl] = useState<string | null>(null);
 
   const handleConnect = async () => {
     setIsConnecting(true);
+    setManualAuthUrl(null);
     try {
       const redirectUri = `${window.location.origin}/#/social/instagram-callback`;
       
@@ -38,8 +40,9 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
       if (data?.authUrl) {
         const opened = window.open(data.authUrl, "_blank");
         if (!opened) {
+          setManualAuthUrl(data.authUrl);
           await navigator.clipboard.writeText(data.authUrl);
-          toast.info("Pop-up bloqueado. URL copiada para a área de transferência.", { duration: 8000 });
+          toast.info("Pop-up bloqueado. Use o link abaixo ou cole da área de transferência.", { duration: 8000 });
         }
       }
     } catch (err: any) {
