@@ -204,7 +204,9 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
     // Send via WhatsApp
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    console.log(`Sending to ${phone} via instance ${instanceName}`);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
+    console.log(`Send result:`, JSON.stringify(sendResult));
 
     // Log the send
     await supabase.from("survey_send_log").insert({
