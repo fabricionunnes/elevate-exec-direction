@@ -830,6 +830,25 @@ const OnboardingCompanyDetailPage = () => {
                       />
                     </div>
                   )}
+
+                  {/* Goal Not Required Toggle - Master/Admin/CS only */}
+                  {(currentUserRole === "master" || currentUserRole === "admin" || currentUserRole === "cs") && (
+                    <div className="flex items-center justify-between rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="goal_not_required" className="text-base font-medium">
+                          Meta Não Necessária
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Empresa não precisa de meta cadastrada. Não aparecerá como "Sem Meta" nos dashboards e relatórios.
+                        </p>
+                      </div>
+                      <Switch
+                        id="goal_not_required"
+                        checked={form.goal_not_required}
+                        onCheckedChange={(checked) => setForm({ ...form, goal_not_required: checked })}
+                      />
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             </TabsContent>

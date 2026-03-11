@@ -916,11 +916,14 @@ const OnboardingTasksPage = () => {
       })
     );
     
-    // Companies without goals (no KPI configured)
+    // Companies without goals (no KPI configured) - exclude goal_not_required
     const noGoalIds = new Set<string>();
     activeCompanyIds.forEach(companyId => {
       if (!companiesWithAnyKpiIds.has(companyId)) {
-        noGoalIds.add(companyId);
+        const company = companies.find(c => c.id === companyId);
+        if (!(company as any)?.goal_not_required) {
+          noGoalIds.add(companyId);
+        }
       }
     });
     

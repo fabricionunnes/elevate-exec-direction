@@ -323,7 +323,7 @@ const OnboardingCompaniesPage = () => {
                           Vaga em aberto
                         </Badge>
                       )}
-                      {!company.hasGoal && company.status === "active" && (
+                      {!company.hasGoal && company.status === "active" && !(company as any).goal_not_required && (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
                           Sem Meta
                         </Badge>

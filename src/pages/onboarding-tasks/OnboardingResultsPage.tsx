@@ -535,7 +535,12 @@ const OnboardingResultsPage = () => {
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
         const hasGoals = !!companiesWithGoals[company.id];
-        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        const goalNotRequired = !!(company as any).goal_not_required;
+        if (filterGoals === "without_goals" && goalNotRequired) {
+          matchesGoals = false;
+        } else {
+          matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        }
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesGoals;
