@@ -33,9 +33,11 @@ const MetaAdsCallbackPage = () => {
   const handleCallback = async (code: string, stateParam: string) => {
     try {
       let projectId: string;
+      let stateRedirectUri: string | undefined;
       try {
         const decoded = JSON.parse(atob(stateParam));
         projectId = decoded.project_id;
+        stateRedirectUri = decoded.redirect_uri;
       } catch {
         throw new Error("State inválido");
       }
