@@ -55,9 +55,24 @@ export default function SocialInstagramCallback() {
       if (error) throw error;
 
       if (data?.success) {
-        setStatus("success");
         setAccountName(data.username || null);
-        setMessage("Instagram conectado com sucesso!");
+        setMessage("Instagram conectado! Sincronizando publicações...");
+
+        // Auto-sync posts after connecting
+        const accountId = data.accountId;
+        if (accountId) {
+          try {
+            await supabase.functions.invoke("instagram-project-oauth", {
+              body: { action: "sync", accountId },
+            });
+            setMessage("Instagram conectado e publicações sincronizadas!");
+          } catch (syncErr) {
+            console.warn("Auto-sync failed, user can sync manually later:", syncErr);
+            setMessage("Instagram conectado! Sincronize as publicações manualmente no painel.");
+          }
+        }
+
+        setStatus("success");
 
         // If opened as popup, notify parent and close
         if (window.opener) {
@@ -66,7 +81,6 @@ export default function SocialInstagramCallback() {
             window.close();
           }, 2000);
         }
-        // Otherwise user will use the "Voltar" button
       } else {
         throw new Error(data?.error || "Erro ao conectar");
       }

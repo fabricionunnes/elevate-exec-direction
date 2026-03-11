@@ -62,7 +62,8 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
 
   return (
     <div className="space-y-4">
-      {isStaff && (
+      {/* Allow all users to add competitors */}
+      {true && (
         <div className="flex gap-2">
           <Input
             placeholder="@username do concorrente"
