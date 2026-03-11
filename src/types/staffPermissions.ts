@@ -94,6 +94,7 @@ export const FINANCIAL_PERMISSION_STRUCTURE = [
   { key: FINANCIAL_PERMISSION_KEYS.fin_whatsapp_instance, label: "Instância WhatsApp", description: "Gerenciar instâncias de WhatsApp", group: "Operacional" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_company_detail, label: "Financeiro da Empresa", description: "Acessar aba financeira nos detalhes da empresa", group: "Visão Geral" },
   { key: FINANCIAL_PERMISSION_KEYS.fin_bank_statement, label: "Extrato Bancário", description: "Visualizar extrato consolidado de todos os bancos", group: "Administração" },
+  { key: FINANCIAL_PERMISSION_KEYS.fin_nfse, label: "NFS-e", description: "Emitir e gerenciar Notas Fiscais de Serviço via NFE.io", group: "Operacional" },
 ] as const;
 
 export type StaffMenuKey = typeof STAFF_MENU_KEYS[keyof typeof STAFF_MENU_KEYS];

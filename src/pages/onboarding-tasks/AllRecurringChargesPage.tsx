@@ -2217,6 +2217,9 @@ export default function AllRecurringChargesPage() {
           {activeTab === "bank-statement" && (
             <BankStatementFullPanel />
           )}
+          {activeTab === "nfse" && (
+            <NfsePanel />
+          )}
         </div>
       </main>
 
