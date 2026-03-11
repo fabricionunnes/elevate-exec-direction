@@ -2904,7 +2904,7 @@ const OnboardingTasksPage = () => {
                           </div>
                         </div>
                         <ChevronDown
-                          className={`h-4 w-4 sm:h-5 sm:w-5 text-[#0A2240] transition-transform ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 text-foreground transition-transform ${
                             expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
