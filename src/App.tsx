@@ -460,8 +460,7 @@ const App = () => (
               <Route path="community" element={<PDICommunityPage />} />
               <Route path="settings" element={<PDISettingsPage />} />
             </Route>
-            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
-            <Route path="/pdi/participant/:token" element={<PDIParticipantPortalPage />} />
+            
             
             {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>
@@ -482,6 +481,10 @@ const App = () => (
               <Route path="admin/reports" element={<AcademyAdminReportsPage />} />
               <Route path="settings" element={<AcademySettingsPage />} />
             </Route>
+            
+            {/* PDI Public Routes */}
+            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
+            <Route path="/pdi/participant/:token" element={<PDIParticipantPortalPage />} />
             
             {/* Payment Links */}
             <Route path="/pagamento" element={<PaymentLinkPage />} />

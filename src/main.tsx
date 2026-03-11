@@ -32,6 +32,8 @@ const publicRoutes = [
   "/pagamento",
   "/checkout",
   "/fatura",
+  "/pdi/enroll",
+  "/pdi/participant",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
