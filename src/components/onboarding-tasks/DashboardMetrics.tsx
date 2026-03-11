@@ -168,6 +168,7 @@ const DashboardMetrics = ({
   const npsNotRespondedPerPage = 10;
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
   const [showNotRenewedCompanies, setShowNotRenewedCompanies] = useState(false);
+  const [showCompletedCompanies, setShowCompletedCompanies] = useState(false);
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const [overdueCompaniesData, setOverdueCompaniesData] = useState<OverdueCompanyData[]>([]);
   const [showOverdueCompanies, setShowOverdueCompanies] = useState(false);
