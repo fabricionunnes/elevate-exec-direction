@@ -567,7 +567,7 @@ const DashboardMetrics = ({
     // This captures real non-renewals even when renewal_status is not manually updated.
     const closedCompanyIdsInPeriod = new Set(
       nonSimulatorAllProjects
-        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getProjectClosedDate(p), { start, end }))
+        .filter(p => p.status === "closed" && isWithinInterval(getProjectClosedDate(p), { start, end }))
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
     );
