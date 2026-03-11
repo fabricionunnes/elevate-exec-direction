@@ -1272,6 +1272,50 @@ const DashboardMetrics = ({
             </Card>
           )}
 
+          {/* List of completed companies in period */}
+          {showCompletedCompanies && completedMetrics.companies.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                  Projetos concluídos no período ({completedMetrics.companies.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {completedMetrics.companies.map(company => {
+                    const companyProjects = allProjectsForChurn.filter(p => getProjectCompanyId(p) === company.id && p.status === "completed");
+                    const firstProject = companyProjects[0];
+                    return (
+                      <div 
+                        key={company.id} 
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                          firstProject && "cursor-pointer"
+                        )}
+                        onClick={() => {
+                          if (firstProject) {
+                            navigate(`/onboarding-tasks/${firstProject.id}`);
+                          }
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-blue-400/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            Concluído em: {company.status_changed_at ? format(new Date(company.status_changed_at), "dd/MM/yyyy") : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
           {/* List of overdue companies */}
           {showOverdueCompanies && overdueCompaniesData.length > 0 && (
             <Card>
