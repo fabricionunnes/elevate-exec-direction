@@ -1,0 +1,1 @@
+ALTER TABLE public.generated_contracts ADD COLUMN clauses_snapshot JSONB DEFAULT NULL;
