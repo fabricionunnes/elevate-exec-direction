@@ -1526,7 +1526,7 @@ const OnboardingProjectPage = () => {
                 </TabsTrigger>
                 <TabsTrigger value="social" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
-                  UNV Social
+                  UNV Social IA
                 </TabsTrigger>
                 <TabsTrigger value="commercial_director" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <BrainCircuit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1875,9 +1875,9 @@ const OnboardingProjectPage = () => {
                 className="gap-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
               >
                 <Heart className="h-4 w-4" />
-                Abrir UNV Social
+                Abrir UNV Social IA
               </Button>
-              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais</p>
+              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais com IA</p>
             </div>
           </TabsContent>
 
