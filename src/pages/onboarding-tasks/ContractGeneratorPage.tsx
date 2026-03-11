@@ -912,6 +912,25 @@ export default function ContractGeneratorPage() {
       startDate: selectedContract.start_date ? new Date(selectedContract.start_date) : new Date(),
     });
     
+    // Restore saved clauses snapshot if available, otherwise use current template
+    if (selectedContract.clauses_snapshot && Array.isArray(selectedContract.clauses_snapshot)) {
+      const snapshot = selectedContract.clauses_snapshot as Array<{
+        id: string;
+        title: string;
+        content: string;
+        isDynamic?: boolean;
+      }>;
+      setEditableClauses(
+        snapshot.map((c) => ({
+          id: c.id,
+          title: c.title,
+          content: c.content,
+          originalContent: c.content,
+          isDynamic: c.isDynamic,
+        }))
+      );
+    }
+
     setShowContractDialog(false);
     setShowHistory(false);
     
