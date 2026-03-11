@@ -211,6 +211,24 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
     const catMap = new Map(categories.map(c => [c.name.toLowerCase().trim(), c.id]));
     const ccMap = new Map(costCenters.map(c => [c.name.toLowerCase().trim(), c.id]));
 
+    // Build a CNPJ->id map from existing companies for fallback matching
+    let cnpjMap = new Map<string, string>();
+    if (type === "receivable") {
+      const { data: allComps } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, cnpj");
+      if (allComps) {
+        for (const c of allComps) {
+          if (c.cnpj) cnpjMap.set(c.cnpj.replace(/\D/g, ""), c.id);
+          companyMap.set(c.name.toLowerCase().trim(), c.id);
+        }
+      }
+    }
+
+    // Track companies to update/create with imported data
+    const companiesToUpdate: Map<string, Record<string, string>> = new Map();
+    const companiesToCreate: { name: string; data: Record<string, string> }[] = [];
+
     const BATCH = 50;
     for (let i = 0; i < parsedData.length; i += BATCH) {
       const batch = parsedData.slice(i, i + BATCH);
@@ -237,7 +255,44 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
           if (type === "receivable") {
             const rawCompanyName = getVal(row, "company_name");
             const companyNameKey = rawCompanyName.toLowerCase().trim();
-            const companyId = companyMap.get(companyNameKey) || null;
+            const rawCnpj = getVal(row, "cnpj").replace(/\D/g, "");
+
+            // Try match: by name first, then by CNPJ
+            let companyId = companyMap.get(companyNameKey) || null;
+            if (!companyId && rawCnpj) {
+              companyId = cnpjMap.get(rawCnpj) || null;
+            }
+
+            // Collect company extra data from the row
+            const extraData: Record<string, string> = {};
+            const rowCnpj = getVal(row, "cnpj");
+            const rowPhone = getVal(row, "phone");
+            const rowEmail = getVal(row, "email");
+            const rowAddress = getVal(row, "address");
+            const rowAddressNumber = getVal(row, "address_number");
+            const rowNeighborhood = getVal(row, "address_neighborhood");
+            const rowZipcode = getVal(row, "address_zipcode");
+            const rowCity = getVal(row, "address_city");
+            const rowState = getVal(row, "address_state");
+            if (rowCnpj) extraData.cnpj = rowCnpj;
+            if (rowPhone) extraData.phone = rowPhone;
+            if (rowEmail) extraData.email = rowEmail;
+            if (rowAddress) extraData.address = rowAddress;
+            if (rowAddressNumber) extraData.address_number = rowAddressNumber;
+            if (rowNeighborhood) extraData.address_neighborhood = rowNeighborhood;
+            if (rowZipcode) extraData.address_zipcode = rowZipcode.replace(/\D/g, "");
+            if (rowCity) extraData.address_city = rowCity;
+            if (rowState) extraData.address_state = rowState.toUpperCase().trim();
+
+            if (companyId && Object.keys(extraData).length > 0) {
+              // Merge data for update (won't overwrite existing non-empty fields)
+              const existing = companiesToUpdate.get(companyId) || {};
+              companiesToUpdate.set(companyId, { ...existing, ...extraData });
+            } else if (!companyId && rawCompanyName && Object.keys(extraData).length > 0) {
+              // Track for creation
+              companiesToCreate.push({ name: rawCompanyName, data: extraData });
+            }
+
             const record: any = {
               company_id: companyId,
               custom_receiver_name: companyId ? null : (rawCompanyName || null),
@@ -300,6 +355,50 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
       }
 
       setProgress(Math.round(((i + batch.length) / parsedData.length) * 100));
+    }
+
+    // Update existing companies with imported data (only fill empty fields)
+    for (const [compId, extraData] of companiesToUpdate) {
+      try {
+        // Fetch current data to avoid overwriting
+        const { data: current } = await supabase
+          .from("onboarding_companies")
+          .select("cnpj, phone, email, address, address_number, address_neighborhood, address_zipcode, address_city, address_state")
+          .eq("id", compId)
+          .single();
+        if (current) {
+          const updates: Record<string, string> = {};
+          for (const [key, val] of Object.entries(extraData)) {
+            if (!current[key as keyof typeof current]) updates[key] = val;
+          }
+          if (Object.keys(updates).length > 0) {
+            await supabase.from("onboarding_companies").update(updates as any).eq("id", compId);
+          }
+        }
+      } catch { /* silently skip update errors */ }
+    }
+
+    // Create new companies from import data (deduplicate by name)
+    const createdNames = new Set<string>();
+    for (const { name, data } of companiesToCreate) {
+      const nameKey = name.toLowerCase().trim();
+      if (createdNames.has(nameKey)) continue;
+      createdNames.add(nameKey);
+      try {
+        const { data: newComp } = await supabase
+          .from("onboarding_companies")
+          .insert({ name, status: "active", ...data } as any)
+          .select("id")
+          .single();
+        if (newComp) {
+          // Update invoices that have this custom_receiver_name to link to the new company
+          await supabase
+            .from("company_invoices")
+            .update({ company_id: newComp.id, custom_receiver_name: null } as any)
+            .is("company_id", null)
+            .eq("custom_receiver_name", name);
+        }
+      } catch { /* silently skip creation errors */ }
     }
 
     setImportResult({ success, errors, errorMessages: errorMsgs.slice(0, 20) });
