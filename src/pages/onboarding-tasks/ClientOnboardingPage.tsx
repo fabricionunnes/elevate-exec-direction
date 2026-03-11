@@ -362,6 +362,7 @@ const ClientOnboardingPage = () => {
         billing: "Minhas Faturas",
         paid_traffic: "Tráfego Pago",
         sales_funnel: "Funil de Vendas",
+        instagram: "Instagram",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
