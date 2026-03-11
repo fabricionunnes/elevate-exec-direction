@@ -460,8 +460,7 @@ const App = () => (
               <Route path="community" element={<PDICommunityPage />} />
               <Route path="settings" element={<PDISettingsPage />} />
             </Route>
-            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
-            <Route path="/pdi/participant/:token" element={<PDIParticipantPortalPage />} />
+            
             
             {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>
