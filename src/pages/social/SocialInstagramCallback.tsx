@@ -36,16 +36,19 @@ export default function SocialInstagramCallback() {
     try {
       // Decode state
       const state = JSON.parse(atob(stateParam));
-      const { projectId: pId } = state;
+      const { projectId: pId, redirectUri } = state;
       setProjectId(pId);
 
       setMessage("Trocando código por token de acesso...");
 
-      const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
+      const callbackRedirectUri = redirectUri || `https://elevate-exec-direction.lovable.app/#/social/instagram-callback`;
+
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
         body: {
-          action: "exchange",
+          action: "callback",
           code,
           projectId: pId,
+          redirectUri: callbackRedirectUri,
         },
       });
 
@@ -53,16 +56,17 @@ export default function SocialInstagramCallback() {
 
       if (data?.success) {
         setStatus("success");
-        setAccountName(data.account?.username || null);
+        setAccountName(data.username || null);
         setMessage("Instagram conectado com sucesso!");
 
-        // Close popup after delay
-        setTimeout(() => {
-          if (window.opener) {
+        // If opened as popup, notify parent and close
+        if (window.opener) {
+          setTimeout(() => {
             window.opener.postMessage({ type: "instagram-connected", projectId: pId }, "*");
             window.close();
-          }
-        }, 2000);
+          }, 2000);
+        }
+        // Otherwise user will use the "Voltar" button
       } else {
         throw new Error(data?.error || "Erro ao conectar");
       }
@@ -108,11 +112,17 @@ export default function SocialInstagramCallback() {
               {accountName && (
                 <p className="text-lg font-medium mt-2">@{accountName}</p>
               )}
-              <p className="text-muted-foreground mt-2">
-                Esta janela será fechada automaticamente...
-              </p>
+              {window.opener ? (
+                <p className="text-muted-foreground mt-2">
+                  Esta janela será fechada automaticamente...
+                </p>
+              ) : (
+                <p className="text-muted-foreground mt-2">
+                  Instagram conectado! Volte ao painel para continuar.
+                </p>
+              )}
             </div>
-            <Button onClick={handleClose}>Fechar</Button>
+            <Button onClick={handleClose}>Voltar ao CRM</Button>
           </>
         )}
 
@@ -126,7 +136,7 @@ export default function SocialInstagramCallback() {
               <p className="text-muted-foreground mt-2">{message}</p>
             </div>
             <Button onClick={handleClose} variant="outline">
-              Fechar
+              Voltar ao CRM
             </Button>
           </>
         )}
