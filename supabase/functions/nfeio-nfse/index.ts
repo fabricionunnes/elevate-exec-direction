@@ -185,11 +185,31 @@ Deno.serve(async (req) => {
 
       case "download-pdf": {
         const { nfeioCompanyId, nfeioId } = params;
-        const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}/pdf`
+        const apiKey = Deno.env.get("NFEIO_API_KEY");
+        if (!apiKey) throw new Error("NFEIO_API_KEY not configured");
+
+        const pdfRes = await fetch(
+          `${NFEIO_BASE}/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}/pdf`,
+          {
+            headers: {
+              Authorization: apiKey,
+              Accept: "application/pdf",
+            },
+          }
         );
-        return new Response(JSON.stringify(result), {
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
+
+        if (!pdfRes.ok) {
+          const errText = await pdfRes.text();
+          throw new Error(`PDF download failed: ${pdfRes.status} - ${errText}`);
+        }
+
+        const pdfBuffer = await pdfRes.arrayBuffer();
+        return new Response(pdfBuffer, {
+          headers: {
+            ...corsHeaders,
+            "Content-Type": "application/pdf",
+            "Content-Disposition": `attachment; filename="nfse-${nfeioId}.pdf"`,
+          },
         });
       }
 
