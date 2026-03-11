@@ -24441,6 +24441,193 @@ export type Database = {
           },
         ]
       }
+      survey_send_configs: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean
+          max_follow_ups: number | null
+          nps_frequency_days: number | null
+          survey_type: string
+          updated_at: string
+          whatsapp_instance_name: string | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_follow_ups?: number | null
+          nps_frequency_days?: number | null
+          survey_type: string
+          updated_at?: string
+          whatsapp_instance_name?: string | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          max_follow_ups?: number | null
+          nps_frequency_days?: number | null
+          survey_type?: string
+          updated_at?: string
+          whatsapp_instance_name?: string | null
+        }
+        Relationships: []
+      }
+      survey_send_log: {
+        Row: {
+          attempt_number: number
+          company_id: string | null
+          config_id: string | null
+          contact_name: string | null
+          created_at: string
+          csat_survey_id: string | null
+          error_message: string | null
+          id: string
+          meeting_id: string | null
+          meeting_subject: string | null
+          nps_response_id: string | null
+          phone: string
+          project_id: string
+          responded_at: string | null
+          rule_id: string | null
+          sent_at: string | null
+          status: string
+          survey_link: string | null
+          survey_type: string
+        }
+        Insert: {
+          attempt_number?: number
+          company_id?: string | null
+          config_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          csat_survey_id?: string | null
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          meeting_subject?: string | null
+          nps_response_id?: string | null
+          phone: string
+          project_id: string
+          responded_at?: string | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: string
+          survey_link?: string | null
+          survey_type: string
+        }
+        Update: {
+          attempt_number?: number
+          company_id?: string | null
+          config_id?: string | null
+          contact_name?: string | null
+          created_at?: string
+          csat_survey_id?: string | null
+          error_message?: string | null
+          id?: string
+          meeting_id?: string | null
+          meeting_subject?: string | null
+          nps_response_id?: string | null
+          phone?: string
+          project_id?: string
+          responded_at?: string | null
+          rule_id?: string | null
+          sent_at?: string | null
+          status?: string
+          survey_link?: string | null
+          survey_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_send_log_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "survey_send_configs"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_csat_survey_id_fkey"
+            columns: ["csat_survey_id"]
+            isOneToOne: false
+            referencedRelation: "csat_surveys"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_meeting_id_fkey"
+            columns: ["meeting_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_meeting_notes"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_nps_response_id_fkey"
+            columns: ["nps_response_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_nps_responses"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "survey_send_log_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "survey_send_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      survey_send_rules: {
+        Row: {
+          config_id: string
+          created_at: string
+          day_offset: number
+          id: string
+          is_active: boolean
+          message_template: string
+          sort_order: number
+        }
+        Insert: {
+          config_id: string
+          created_at?: string
+          day_offset?: number
+          id?: string
+          is_active?: boolean
+          message_template: string
+          sort_order?: number
+        }
+        Update: {
+          config_id?: string
+          created_at?: string
+          day_offset?: number
+          id?: string
+          is_active?: boolean
+          message_template?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "survey_send_rules_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "survey_send_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       talent_pool_tags: {
         Row: {
           category: string | null
