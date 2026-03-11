@@ -52,11 +52,53 @@ Deno.serve(async (req) => {
 
     // ──── EXCHANGE CODE FOR TOKEN ────
     if (action === "connect") {
-      // Exchange code for short-lived token
-      const tokenUrl = `${GRAPH_API}/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirect_uri)}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`;
-      const tokenRes = await fetchWithTimeout(tokenUrl);
-      const tokenData = await tokenRes.json();
-      if (tokenData.error) throw new Error(tokenData.error.message);
+      const { oauth_state } = body;
+
+      let stateRedirectUri: string | undefined;
+      if (oauth_state) {
+        try {
+          const decodedState = JSON.parse(atob(oauth_state));
+          stateRedirectUri = decodedState?.redirect_uri;
+        } catch {
+          // ignore invalid state decoding and fallback to provided redirect_uri
+        }
+      }
+
+      // Facebook is strict with redirect_uri matching; try both normalized variants
+      const redirectCandidates = Array.from(
+        new Set(
+          [redirect_uri, stateRedirectUri]
+            .filter(Boolean)
+            .flatMap((uri) => {
+              const base = String(uri).trim().replace(/\/+$/, "");
+              return base ? [base, `${base}/`] : [];
+            })
+        )
+      );
+
+      if (redirectCandidates.length === 0) {
+        throw new Error("redirect_uri não informado");
+      }
+
+      let tokenData: any = null;
+      let tokenErrorMessage = "Erro ao validar código OAuth";
+
+      for (const candidateRedirectUri of redirectCandidates) {
+        const tokenUrl = `${GRAPH_API}/oauth/access_token?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(candidateRedirectUri)}&client_secret=${FACEBOOK_APP_SECRET}&code=${code}`;
+        const tokenRes = await fetchWithTimeout(tokenUrl);
+        const candidateTokenData = await tokenRes.json();
+
+        if (!candidateTokenData.error && candidateTokenData.access_token) {
+          tokenData = candidateTokenData;
+          break;
+        }
+
+        tokenErrorMessage = candidateTokenData?.error?.message || tokenErrorMessage;
+      }
+
+      if (!tokenData?.access_token) {
+        throw new Error(tokenErrorMessage);
+      }
 
       // Exchange for long-lived token
       const longUrl = `${GRAPH_API}/oauth/access_token?grant_type=fb_exchange_token&client_id=${FACEBOOK_APP_ID}&client_secret=${FACEBOOK_APP_SECRET}&fb_exchange_token=${tokenData.access_token}`;
