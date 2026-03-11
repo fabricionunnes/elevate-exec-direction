@@ -96,7 +96,7 @@ export function NfsePanel() {
         companyId,
         tomadorName: company.name || prev.tomadorName,
         tomadorDocument: company.cnpj || prev.tomadorDocument,
-        tomadorEmail: company.contact_email || company.email || prev.tomadorEmail,
+        tomadorEmail: company.email || prev.tomadorEmail,
       }));
     } else {
       setForm((prev) => ({ ...prev, companyId }));
