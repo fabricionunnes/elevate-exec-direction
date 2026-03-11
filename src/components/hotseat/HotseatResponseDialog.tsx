@@ -670,7 +670,7 @@ export function HotseatResponseDialog({
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="max-h-[60vh] mt-4">
+            <div className="mt-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
               <TabsContent value="details" className="space-y-4 mt-0">
                 {/* Response Info */}
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
