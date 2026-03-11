@@ -573,7 +573,7 @@ export default function SegmentsAnalysisPage() {
                                 toast.error("Erro ao salvar segmento");
                               } else {
                                 toast.success(`Segmento de "${c.name}" atualizado`);
-                                fetchData();
+                                fetchAllData();
                               }
                             }}
                           />
