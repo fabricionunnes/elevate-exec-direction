@@ -256,7 +256,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   const maxFollowUps = config.max_follow_ups || 3;
   const now = new Date();
 
-  // TEST MODE: Send directly to the company without requiring a csat_survey
+  // TEST MODE: Find the latest finalized meeting for the company and use its real CSAT link
   if (isTest && testCompanyId) {
     // Get company info
     const { data: company } = await supabase
@@ -269,28 +269,92 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const phone = cleanPhone(company.phone);
     if (!phone) { console.log(`Test CSAT: no valid phone for ${company.name}`); return 0; }
 
-    // Get any project for this company
-    const { data: projects } = await supabase
+    // Get projects for this company (try both foreign keys)
+    let { data: projects } = await supabase
       .from("onboarding_projects")
       .select("id")
-      .eq("company_id", testCompanyId)
-      .limit(1);
+      .eq("onboarding_company_id", testCompanyId);
 
-    const projectId = projects?.[0]?.id || "test";
+    if (!projects || projects.length === 0) {
+      const res = await supabase
+        .from("onboarding_projects")
+        .select("id")
+        .eq("company_id", testCompanyId);
+      projects = res.data;
+    }
+
+    if (!projects || projects.length === 0) {
+      console.log(`Test CSAT: no projects found for company ${company.name}`);
+      return 0;
+    }
+
+    const projectIds = projects.map((p: any) => p.id);
+
+    // Find the latest finalized meeting for any of this company's projects
+    const { data: latestMeeting } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("id, subject, meeting_title, meeting_date, project_id, is_finalized")
+      .in("project_id", projectIds)
+      .eq("is_finalized", true)
+      .order("meeting_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+
+    let csatLink: string;
+    let meetingSubject = "Reunião de Teste";
+    let meetingDate = new Date().toLocaleDateString("pt-BR");
+    let meetingId: string | null = null;
+    let csatSurveyId: string | null = null;
+    const projectId = latestMeeting?.project_id || projectIds[0];
+
+    if (latestMeeting) {
+      meetingSubject = latestMeeting.subject || latestMeeting.meeting_title || "Reunião";
+      meetingDate = latestMeeting.meeting_date
+        ? new Date(latestMeeting.meeting_date).toLocaleDateString("pt-BR")
+        : meetingDate;
+      meetingId = latestMeeting.id;
+
+      // Check if a csat_survey already exists for this meeting
+      const { data: existingSurvey } = await supabase
+        .from("csat_surveys")
+        .select("id, access_token")
+        .eq("meeting_id", latestMeeting.id)
+        .maybeSingle();
+
+      if (existingSurvey) {
+        csatLink = `${PUBLIC_DOMAIN}/#/csat?token=${existingSurvey.access_token}`;
+        csatSurveyId = existingSurvey.id;
+      } else {
+        // Create a csat_survey for this meeting
+        const { data: newSurvey } = await supabase
+          .from("csat_surveys")
+          .insert({ project_id: projectId, meeting_id: latestMeeting.id })
+          .select("id, access_token")
+          .single();
+
+        if (newSurvey) {
+          csatLink = `${PUBLIC_DOMAIN}/#/csat?token=${newSurvey.access_token}`;
+          csatSurveyId = newSurvey.id;
+        } else {
+          csatLink = `${PUBLIC_DOMAIN}/#/csat?test=true`;
+        }
+      }
+    } else {
+      // No finalized meeting found, use placeholder
+      console.log(`Test CSAT: no finalized meetings for company ${company.name}, using placeholder`);
+      csatLink = `${PUBLIC_DOMAIN}/#/csat?test=true`;
+    }
+
     const ruleToSend = rules[0];
-
-    // Build a test CSAT link (no real token, just for testing the message)
-    const csatLink = `${PUBLIC_DOMAIN}/#/csat?test=true`;
-
     const message = ruleToSend.message_template
       .replace(/\{nome\}/g, company.name || "")
       .replace(/\{empresa\}/g, company.name || "")
       .replace(/\{link\}/g, csatLink)
-      .replace(/\{assunto_reuniao\}/g, "Reunião de Teste")
-      .replace(/\{data_reuniao\}/g, new Date().toLocaleDateString("pt-BR"));
+      .replace(/\{assunto_reuniao\}/g, meetingSubject)
+      .replace(/\{data_reuniao\}/g, meetingDate);
 
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
-    console.log(`Test CSAT: Sending to ${phone} via instance ${instanceName}`);
+    console.log(`Test CSAT: Sending to ${phone} via instance ${instanceName}, link: ${csatLink}`);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
     console.log(`Test CSAT result:`, JSON.stringify(sendResult));
 
@@ -303,7 +367,9 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
       phone,
       contact_name: company.name,
       survey_link: csatLink,
-      meeting_subject: "Reunião de Teste",
+      meeting_id: meetingId,
+      meeting_subject: meetingSubject,
+      csat_survey_id: csatSurveyId,
       status: sendResult.success ? "sent" : "failed",
       attempt_number: 1,
       sent_at: sendResult.success ? new Date().toISOString() : null,
