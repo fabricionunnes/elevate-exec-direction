@@ -62,6 +62,7 @@ export const CLIENT_MENU_KEYS = {
   funil_vendas: "funil_vendas",
   instagram: "instagram",
   diretor_comercial_ia: "diretor_comercial_ia",
+  outros_servicos: "outros_servicos",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -216,6 +217,11 @@ export const CLIENT_MENU_STRUCTURE = [
   {
     key: CLIENT_MENU_KEYS.diretor_comercial_ia,
     label: "Diretor Comercial IA",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.outros_servicos,
+    label: "Outros Serviços",
     group: null,
   },
 ] as const;

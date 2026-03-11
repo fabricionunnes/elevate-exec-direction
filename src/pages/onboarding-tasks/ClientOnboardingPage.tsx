@@ -37,6 +37,7 @@ import {
   Instagram,
   BrainCircuit,
 } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
@@ -67,6 +68,7 @@ import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedS
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
+import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -114,7 +116,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -367,6 +369,7 @@ const ClientOnboardingPage = () => {
         sales_funnel: "Funil de Vendas",
         instagram: "Instagram",
         commercial_director: "Diretor Comercial IA",
+        other_services: "Outros Serviços",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -520,6 +523,7 @@ const ClientOnboardingPage = () => {
       { id: "sales_funnel" as ViewType, icon: FunnelIcon, label: "Funil de Vendas", menuKey: CLIENT_MENU_KEYS.funil_vendas },
       { id: "instagram" as ViewType, icon: Instagram, label: "Instagram", menuKey: CLIENT_MENU_KEYS.instagram },
       { id: "commercial_director" as ViewType, icon: BrainCircuit, label: "Diretor Comercial IA", menuKey: CLIENT_MENU_KEYS.diretor_comercial_ia },
+      { id: "other_services" as ViewType, icon: ShoppingCart, label: "Outros Serviços", menuKey: CLIENT_MENU_KEYS.outros_servicos },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1208,6 +1212,20 @@ const ClientOnboardingPage = () => {
                 projectId={projectId || ""}
                 companyId={companyId || ""}
                 companyName={company?.name}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "other_services" && (
+            <motion.div
+              key="other_services"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientOtherServicesPanel
+                projectId={projectId || ""}
+                currentUserId={currentUser?.id || ""}
               />
             </motion.div>
           )}

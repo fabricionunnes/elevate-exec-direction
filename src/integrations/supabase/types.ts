@@ -23415,6 +23415,103 @@ export type Database = {
           },
         ]
       }
+      service_catalog: {
+        Row: {
+          billing_type: string
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          menu_key: string
+          name: string
+          price: number
+          sort_order: number
+          updated_at: string
+        }
+        Insert: {
+          billing_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          menu_key: string
+          name: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Update: {
+          billing_type?: string
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          menu_key?: string
+          name?: string
+          price?: number
+          sort_order?: number
+          updated_at?: string
+        }
+        Relationships: []
+      }
+      service_requests: {
+        Row: {
+          admin_notes: string | null
+          created_at: string
+          id: string
+          menu_key: string
+          project_id: string
+          requested_by: string
+          service_catalog_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          menu_key: string
+          project_id: string
+          requested_by: string
+          service_catalog_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          admin_notes?: string | null
+          created_at?: string
+          id?: string
+          menu_key?: string
+          project_id?: string
+          requested_by?: string
+          service_catalog_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_requests_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_requested_by_fkey"
+            columns: ["requested_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_requests_service_catalog_id_fkey"
+            columns: ["service_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "service_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slide_items: {
         Row: {
           background_color: string | null

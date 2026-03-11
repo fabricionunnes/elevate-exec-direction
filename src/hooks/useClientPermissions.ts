@@ -158,4 +158,5 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   sales_funnel: CLIENT_MENU_KEYS.funil_vendas,
   instagram: CLIENT_MENU_KEYS.instagram,
   commercial_director: CLIENT_MENU_KEYS.diretor_comercial_ia,
+  other_services: CLIENT_MENU_KEYS.outros_servicos,
 };
