@@ -1265,18 +1265,7 @@ const OnboardingProjectPage = () => {
                   </Button>
                 </>
               )}
-              {/* UNV Social Button - only show if project uses UNV Social service */}
-              {(project.product_id === 'f8236aa9-73ab-449a-adc4-0779c052141a' || project.product_id === 'social') && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 px-2 text-xs bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-pink-500/30 hover:border-pink-500/50"
-                  onClick={() => navigate(`/social/${projectId}`)}
-                >
-                  <Instagram className="h-3 w-3 mr-1 text-pink-500" />
-                  UNV Social
-                </Button>
-              )}
+              {/* UNV Social is now a tab, removed standalone button */}
               {/* CRM Button */}
               {project.crm_link ? (
                 <Button 
