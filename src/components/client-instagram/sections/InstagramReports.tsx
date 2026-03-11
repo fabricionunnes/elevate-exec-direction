@@ -45,7 +45,8 @@ export const InstagramReports = ({ accountId, projectId }: InstagramReportsProps
   };
 
   const handleShare = async (shareToken: string) => {
-    const url = `${window.location.origin}/#/instagram-report/${shareToken}`;
+    const { getPublicBaseUrl } = await import("@/lib/publicDomain");
+    const url = `${getPublicBaseUrl()}/instagram-report/${shareToken}`;
     await navigator.clipboard.writeText(url);
     toast.success("Link copiado para a área de transferência!");
   };

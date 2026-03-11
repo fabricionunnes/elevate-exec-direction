@@ -88,14 +88,18 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
             <Card key={c.id}>
               <CardContent className="p-4 flex items-center justify-between">
                 <div>
-                  <p className="font-semibold">@{c.competitor_username}</p>
-                  {c.competitor_full_name && <p className="text-sm text-muted-foreground">{c.competitor_full_name}</p>}
-                  <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
-                    <span>{c.followers_count.toLocaleString("pt-BR")} seguidores</span>
-                    <span>{Number(c.avg_engagement_rate).toFixed(2)}% eng.</span>
-                    <span>{Number(c.posts_per_week).toFixed(1)} posts/sem</span>
-                  </div>
-                </div>
+                   <p className="font-semibold">@{c.competitor_username}</p>
+                   {c.competitor_full_name && <p className="text-sm text-muted-foreground">{c.competitor_full_name}</p>}
+                   {c.followers_count > 0 ? (
+                     <div className="flex gap-4 mt-2 text-xs text-muted-foreground">
+                       <span>{c.followers_count.toLocaleString("pt-BR")} seguidores</span>
+                       <span>{Number(c.avg_engagement_rate).toFixed(2)}% eng.</span>
+                       <span>{Number(c.posts_per_week).toFixed(1)} posts/sem</span>
+                     </div>
+                   ) : (
+                     <p className="text-xs text-muted-foreground mt-2">Dados ainda não sincronizados</p>
+                   )}
+                 </div>
                 <Button variant="ghost" size="icon" onClick={() => handleRemove(c.id)}>
                   <Trash2 className="h-4 w-4 text-destructive" />
                 </Button>

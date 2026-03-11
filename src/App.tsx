@@ -59,6 +59,7 @@ const CheckoutPage = lazy(() => import("./pages/CheckoutPage"));
 const PublicInvoicePage = lazy(() => import("./pages/PublicInvoicePage"));
 const InstagramOAuthCallback = lazy(() => import("./pages/InstagramOAuthCallback"));
 const SocialInstagramCallback = lazy(() => import("./pages/social/SocialInstagramCallback"));
+const PublicInstagramReportPage = lazy(() => import("./pages/PublicInstagramReportPage"));
 const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
 const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
 const NPSSurveyPage = lazy(() => import("./pages/NPSSurveyPage"));
@@ -273,6 +274,7 @@ const App = () => (
             {/* OAuth Callbacks */}
             <Route path="/auth/instagram/callback" element={<InstagramOAuthCallback />} />
             <Route path="/social/instagram-callback" element={<SocialInstagramCallback />} />
+            <Route path="/instagram-report/:shareToken" element={<PublicInstagramReportPage />} />
             
             {/* Onboarding CS */}
             <Route path="/onboarding" element={<OnboardingPage />} />
