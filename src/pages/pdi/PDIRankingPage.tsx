@@ -18,6 +18,7 @@ interface RankingEntry {
   entryScore: number | null;
   exitScore: number | null;
   evolution: number | null;
+  attendancePoints: number;
   totalPoints: number;
 }
 
