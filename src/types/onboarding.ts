@@ -63,6 +63,7 @@ export const CLIENT_MENU_KEYS = {
   instagram: "instagram",
   diretor_comercial_ia: "diretor_comercial_ia",
   outros_servicos: "outros_servicos",
+  unv_social: "unv_social",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
