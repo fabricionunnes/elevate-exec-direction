@@ -68,16 +68,35 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
   if (!rules || rules.length === 0) return 0;
 
-  // Get active projects with company info and phone
-  const { data: projects } = await supabase
+  // Get projects with company info and phone
+  let projectsQuery = supabase
     .from("onboarding_projects")
     .select(`
       id, product_name, status,
       onboarding_companies!inner(id, name, phone, status)
-    `)
-    .eq("status", "active");
+    `);
 
-  if (!projects || projects.length === 0) return 0;
+  // In test mode, allow any project status; in normal mode only active projects
+  if (!isTest) {
+    projectsQuery = projectsQuery.eq("status", "active");
+  }
+
+  const { data: projects, error: projectsError } = await projectsQuery;
+
+  if (projectsError) {
+    console.error("Error fetching projects:", projectsError);
+    return 0;
+  }
+
+  if (projectsError) {
+    console.error("Error fetching projects:", projectsError);
+    return 0;
+  }
+
+  if (!projects || projects.length === 0) {
+    console.log("No projects found" + (isTest ? ` for company ${testCompanyId}` : ""));
+    return 0;
+  }
 
   const frequencyDays = config.nps_frequency_days || 30;
   const maxFollowUps = config.max_follow_ups || 5;
@@ -88,11 +107,16 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   const companyMap = new Map<string, { companyId: string; companyName: string; phone: string; projectId: string }>();
   for (const project of projects) {
     const company = (project as any).onboarding_companies;
-    if (!company || company.status !== "active") continue;
-    const phone = cleanPhone(company.phone);
-    if (!phone) continue;
+    if (!company) continue;
+    // Skip inactive companies only in non-test mode
+    if (!isTest && company.status !== "active") continue;
     // In test mode, only include the selected company
     if (isTest && testCompanyId && company.id !== testCompanyId) continue;
+    const phone = cleanPhone(company.phone);
+    if (!phone) {
+      console.log(`Company ${company.name} (${company.id}) has no valid phone: ${company.phone}`);
+      continue;
+    }
     // Keep only the first project per company
     if (!companyMap.has(company.id)) {
       companyMap.set(company.id, {
@@ -103,6 +127,8 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
       });
     }
   }
+
+  console.log(`CompanyMap has ${companyMap.size} entries` + (isTest ? " (test mode)" : ""));
 
   for (const entry of companyMap.values()) {
     const { companyId, companyName, phone, projectId } = entry;
