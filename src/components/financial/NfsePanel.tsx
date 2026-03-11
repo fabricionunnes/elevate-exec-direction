@@ -116,7 +116,7 @@ export function NfsePanel() {
         .from("company_invoices")
         .select("id, description, amount_cents, due_date, status, paid_at")
         .eq("company_id", companyId)
-        .order("due_date", { ascending: false });
+        .order("due_date", { ascending: true });
       if (error) throw error;
       setCompanyInvoices(data || []);
     } catch (err) {
