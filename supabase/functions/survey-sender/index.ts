@@ -310,7 +310,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (latestMeeting) {
       meetingSubject = latestMeeting.subject || latestMeeting.meeting_title || "Reunião";
       meetingDate = latestMeeting.meeting_date
-        ? new Date(latestMeeting.meeting_date).toLocaleDateString("pt-BR")
+        ? formatDateBR(latestMeeting.meeting_date)
         : meetingDate;
       meetingId = latestMeeting.id;
 
@@ -442,7 +442,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     const csatLink = `${PUBLIC_DOMAIN}/#/csat?token=${survey.access_token}`;
     const meetingSubject = meeting.subject || meeting.meeting_title || "Reunião";
     const meetingDate = meeting.meeting_date
-      ? new Date(meeting.meeting_date).toLocaleDateString("pt-BR")
+      ? formatDateBR(meeting.meeting_date)
       : "";
 
     const message = ruleToSend.message_template
@@ -556,4 +556,13 @@ function cleanPhone(phone: string | null): string {
 function daysBetween(d1: Date, d2: Date): number {
   const diff = d2.getTime() - d1.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
+}
+
+function formatDateBR(dateStr: string): string {
+  // Parse date string (YYYY-MM-DD or ISO) and format as DD/MM/YYYY
+  const parts = dateStr.substring(0, 10).split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
 }
