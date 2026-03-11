@@ -287,7 +287,7 @@ export function NfsePanel() {
   const handleDownloadPdf = async (record: NfseRecord) => {
     if (!record.nfeio_id) return;
 
-    const downloadWindow = window.open("", "_blank");
+    const previewWindow = window.open("", "_blank");
 
     try {
       toast.info("Baixando PDF...");
@@ -314,33 +314,63 @@ export function NfsePanel() {
         throw new Error(errText);
       }
 
-      const blob = await res.blob();
-      const contentType = res.headers.get("content-type") || blob.type;
+      const arrayBuffer = await res.arrayBuffer();
+      const bytes = new Uint8Array(arrayBuffer);
+      const pdfSignature = new TextDecoder().decode(bytes.slice(0, 5));
+      const contentType = res.headers.get("content-type") || "";
 
-      if (!contentType?.includes("application/pdf") || blob.size === 0) {
-        const responseText = await blob.text();
-        throw new Error(responseText || "Resposta inválida ao baixar PDF");
+      if (bytes.length === 0 || (!contentType.includes("application/pdf") && pdfSignature !== "%PDF-")) {
+        throw new Error("O arquivo retornado não é um PDF válido");
       }
 
+      const blob = new Blob([arrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
       const fileName = `nfse-${record.number || record.nfeio_id}.pdf`;
 
       const a = document.createElement("a");
       a.href = url;
       a.download = fileName;
+      a.rel = "noopener";
       a.style.display = "none";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
 
-      if (downloadWindow) {
-        downloadWindow.location.href = url;
+      if (previewWindow) {
+        previewWindow.document.write(`
+          <!doctype html>
+          <html lang="pt-BR">
+            <head>
+              <meta charset="UTF-8" />
+              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+              <title>${fileName}</title>
+              <style>
+                body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
+                .toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; background: #111827; border-bottom: 1px solid #334155; }
+                .title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+                .actions { display: flex; gap: 8px; }
+                .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 8px; background: #f8fafc; color: #0f172a; text-decoration: none; font-weight: 600; }
+                iframe { width: 100%; height: calc(100vh - 58px); border: 0; background: white; }
+              </style>
+            </head>
+            <body>
+              <div class="toolbar">
+                <div class="title">${fileName}</div>
+                <div class="actions">
+                  <a class="button" href="${url}" download="${fileName}">Baixar PDF</a>
+                </div>
+              </div>
+              <iframe src="${url}" title="${fileName}"></iframe>
+            </body>
+          </html>
+        `);
+        previewWindow.document.close();
       }
 
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
-      toast.success("PDF gerado! Se não baixar automático, ele abriu em nova aba.");
+      setTimeout(() => URL.revokeObjectURL(url), 60000);
+      toast.success("PDF pronto para download.");
     } catch (err: any) {
-      if (downloadWindow) downloadWindow.close();
+      if (previewWindow) previewWindow.close();
       toast.error("Erro ao baixar PDF: " + err.message);
     }
   };
