@@ -315,13 +315,23 @@ Deno.serve(async (req) => {
 
       // Fetch account and recent metrics
       const { data: account } = await supabase.from("instagram_accounts").select("*").eq("id", accountId).single();
-      const { data: recentMetrics } = await supabase.from("instagram_post_metrics")
-        .select("*, post:instagram_posts(*)")
-        .in("post_id", (await supabase.from("instagram_posts").select("id").eq("account_id", accountId).limit(30)).data?.map((p: any) => p.id) || [])
-        .order("recorded_at", { ascending: false });
+      
+      // Get post IDs for this account
+      const { data: postIds } = await supabase.from("instagram_posts").select("id").eq("account_id", accountId).limit(30);
+      const ids = postIds?.map((p: any) => p.id) || [];
 
-      if (!recentMetrics || recentMetrics.length === 0) {
-        return new Response(JSON.stringify({ success: true, message: "No data to analyze" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      let recentMetrics: any[] = [];
+      if (ids.length > 0) {
+        const { data } = await supabase.from("instagram_post_metrics")
+          .select("*, post:instagram_posts(*)")
+          .in("post_id", ids)
+          .order("recorded_at", { ascending: false });
+        recentMetrics = data || [];
+      }
+
+      if (recentMetrics.length === 0) {
+        // No metrics yet - trigger a sync first, then return a message
+        return new Response(JSON.stringify({ success: false, error: "Nenhuma métrica encontrada. Clique em 'Sincronizar' na Visão Geral primeiro para puxar os dados do Instagram." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Generate basic insights from data patterns
