@@ -535,11 +535,9 @@ export function NfsePanel() {
                           <RefreshCw className="h-4 w-4" />
                         </Button>
                       )}
-                      {record.pdf_url && (
-                        <Button variant="ghost" size="icon" asChild title="Baixar PDF">
-                          <a href={record.pdf_url} target="_blank" rel="noopener noreferrer">
-                            <Download className="h-4 w-4" />
-                          </a>
+                      {record.status === "authorized" && record.nfeio_id && (
+                        <Button variant="ghost" size="icon" onClick={() => handleDownloadPdf(record)} title="Baixar PDF">
+                          <Download className="h-4 w-4" />
                         </Button>
                       )}
                       {record.status === "authorized" && record.nfeio_id && (
