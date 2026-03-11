@@ -1526,7 +1526,7 @@ const OnboardingProjectPage = () => {
                 </TabsTrigger>
                 <TabsTrigger value="social" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
-                  UNV Social
+                  UNV Social IA
                 </TabsTrigger>
                 <TabsTrigger value="commercial_director" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <BrainCircuit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
