@@ -281,3 +281,6 @@ verify_jwt = false
 
 [functions.nfeio-nfse]
 verify_jwt = false
+
+[functions.commercial-director-analysis]
+verify_jwt = false
