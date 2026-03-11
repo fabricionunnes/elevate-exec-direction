@@ -11,7 +11,7 @@ import {
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
   Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
-  FileSpreadsheet,
+  FileSpreadsheet, Upload,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
+import { CompanyImportDialog } from "@/components/financial/CompanyImportDialog";
 
 interface Invoice {
   id: string;
@@ -89,6 +90,7 @@ export default function FinancialOverdueTab({
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showCompanyImport, setShowCompanyImport] = useState(false);
   const ITEMS_PER_PAGE = 10;
 
   const toggleSort = (column: string) => {
@@ -426,17 +428,34 @@ export default function FinancialOverdueTab({
             <p className="text-sm text-muted-foreground">Gestão de inadimplência e cobranças</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={handleExportExcel}
-          disabled={isExporting || sortedInvoices.length === 0}
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-          Exportar Planilha
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setShowCompanyImport(true)}
+          >
+            <Upload className="h-4 w-4" />
+            Importar Empresas
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleExportExcel}
+            disabled={isExporting || sortedInvoices.length === 0}
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            Exportar Planilha
+          </Button>
+        </div>
       </motion.div>
+
+      <CompanyImportDialog
+        open={showCompanyImport}
+        onOpenChange={setShowCompanyImport}
+        onSuccess={() => loadData()}
+      />
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
