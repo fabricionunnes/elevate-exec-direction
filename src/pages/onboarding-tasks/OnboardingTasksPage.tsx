@@ -1140,17 +1140,31 @@ const OnboardingTasksPage = () => {
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
-      // Exception: show them when filtering by relevant status metrics
-      const isCancellationFilter = activeMetricFilter?.type === "status" && 
+      // Exception: show them when filtering by relevant status metrics OR status dropdown
+      const isCancellationMetricFilter = activeMetricFilter?.type === "status" && 
         (activeMetricFilter?.value === "closed" || activeMetricFilter?.value === "churn_signaled" || 
          activeMetricFilter?.value === "cancellation_signaled" || activeMetricFilter?.value === "notice_period");
+      const isCancellationStatusFilter = filterStatus === "cancellation_signaled" || filterStatus === "notice_period" || filterStatus === "closed";
       if (company.status === "inactive" || company.status === "closed") {
-        if (!isCancellationFilter) {
-          // Still allow if company has cancellation/notice projects and we're filtering for those
-          const hasCancellationProject = company.projects?.some(p => 
-            p.status === "cancellation_signaled" || p.status === "notice_period"
-          );
-          if (!hasCancellationProject || !activeMetricFilter) {
+        const hasCancellationProject = company.projects?.some(p => 
+          p.status === "cancellation_signaled" || p.status === "notice_period"
+        );
+        // Allow inactive companies through if they have cancellation projects AND 
+        // the user is actively filtering for cancellation/notice status (via card OR dropdown)
+        if (!isCancellationMetricFilter && !isCancellationStatusFilter) {
+          if (!hasCancellationProject) {
+            return false;
+          }
+          // No active cancellation filter, hide even if has cancellation project
+          return false;
+        }
+        // Even with a cancellation filter active, the company must have matching projects
+        if (!hasCancellationProject) {
+          // For "closed" filter, allow companies with closed projects
+          if (filterStatus === "closed" || activeMetricFilter?.value === "closed") {
+            const hasClosedProject = company.projects?.some(p => p.status === "closed");
+            if (!hasClosedProject) return false;
+          } else {
             return false;
           }
         }
