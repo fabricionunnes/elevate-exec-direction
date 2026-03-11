@@ -68,6 +68,7 @@ import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedS
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
+import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
