@@ -9947,6 +9947,72 @@ export type Database = {
           },
         ]
       }
+      commercial_director_analyses: {
+        Row: {
+          commercial_score: number | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          diagnosis: Json | null
+          forecast: Json | null
+          full_analysis: string | null
+          growth_plan: Json | null
+          id: string
+          insights: Json | null
+          priorities: Json | null
+          project_id: string
+          radar: Json | null
+          score_classification: string | null
+        }
+        Insert: {
+          commercial_score?: number | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          diagnosis?: Json | null
+          forecast?: Json | null
+          full_analysis?: string | null
+          growth_plan?: Json | null
+          id?: string
+          insights?: Json | null
+          priorities?: Json | null
+          project_id: string
+          radar?: Json | null
+          score_classification?: string | null
+        }
+        Update: {
+          commercial_score?: number | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          diagnosis?: Json | null
+          forecast?: Json | null
+          full_analysis?: string | null
+          growth_plan?: Json | null
+          id?: string
+          insights?: Json | null
+          priorities?: Json | null
+          project_id?: string
+          radar?: Json | null
+          score_classification?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "commercial_director_analyses_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "commercial_director_analyses_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       company_daily_goal_settings: {
         Row: {
           company_id: string
