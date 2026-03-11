@@ -110,7 +110,7 @@ export default function PDIParticipantsPage() {
   };
 
   const copyAccessLink = (token: string) => {
-    const url = `${window.location.origin}/#/pdi/participant/${token}`;
+    const url = `${getPublicBaseUrl()}/?public=pdi-participant&token=${encodeURIComponent(token)}`;
     navigator.clipboard.writeText(url);
     toast.success("Link de acesso copiado!");
   };
