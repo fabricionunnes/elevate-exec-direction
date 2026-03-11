@@ -397,14 +397,17 @@ async function sendWhatsApp(
 
     if (!instance) return { success: false, error: "Instância não encontrada ou desconectada" };
 
-    // Get Evolution API credentials from environment (Global API Key)
-    const EVOLUTION_API_URL = Deno.env.get("EVOLUTION_API_URL");
-    const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY");
+    // Get Evolution API credentials
+    // Use instance api_url if available (instance may be on a different server), fallback to env
+    const EVOLUTION_API_URL = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
+    // Use instance api_key if available (each server has its own Global API Key), fallback to env
+    const EVOLUTION_API_KEY = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
       return { success: false, error: "Evolution API credentials not configured" };
     }
 
+    console.log(`Using API URL: ${EVOLUTION_API_URL}, key starts with: ${EVOLUTION_API_KEY?.substring(0, 6)}`);
     const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
 
     // Call Evolution API directly to send text message
