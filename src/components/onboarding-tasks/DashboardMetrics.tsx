@@ -168,6 +168,7 @@ const DashboardMetrics = ({
   const npsNotRespondedPerPage = 10;
   const [showCompaniesWithoutTasks, setShowCompaniesWithoutTasks] = useState(false);
   const [showNotRenewedCompanies, setShowNotRenewedCompanies] = useState(false);
+  const [showCompletedCompanies, setShowCompletedCompanies] = useState(false);
   const [healthHistoryDialogOpen, setHealthHistoryDialogOpen] = useState(false);
   const [overdueCompaniesData, setOverdueCompaniesData] = useState<OverdueCompanyData[]>([]);
   const [showOverdueCompanies, setShowOverdueCompanies] = useState(false);
@@ -458,7 +459,7 @@ const DashboardMetrics = ({
     const cancellationSignaled = nonSimulatorProjects.filter(p => p.status === "cancellation_signaled").length;
     const noticePeriod = nonSimulatorProjects.filter(p => p.status === "notice_period").length;
     // Closed projects count uses nonSimulatorAllProjects to include all closed projects (for churn/encerradas metrics)
-    const closedProjects = nonSimulatorAllProjects.filter(p => p.status === "closed" || p.status === "completed").length;
+    const closedProjects = nonSimulatorAllProjects.filter(p => p.status === "closed").length;
     const reactivatedInPeriod = nonSimulatorProjects.filter(p => {
       if (!p.reactivated_at) return false;
       return isWithinInterval(new Date(p.reactivated_at), { start: dateRange.start, end: dateRange.end });
@@ -566,7 +567,7 @@ const DashboardMetrics = ({
     // This captures real non-renewals even when renewal_status is not manually updated.
     const closedCompanyIdsInPeriod = new Set(
       nonSimulatorAllProjects
-        .filter(p => (p.status === "closed" || p.status === "completed") && isWithinInterval(getProjectClosedDate(p), { start, end }))
+        .filter(p => p.status === "closed" && isWithinInterval(getProjectClosedDate(p), { start, end }))
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
     );
@@ -608,7 +609,7 @@ const DashboardMetrics = ({
     // Use nonSimulatorAllProjects to include closed/completed projects but exclude simulators
     // Also exclude projects from companies marked as 'nao_renovado' (they appear in the "Não Renovadas" card instead)
     const closedInPeriod = nonSimulatorAllProjects.filter(p => {
-      if (p.status !== "closed" && p.status !== "completed") return false;
+      if (p.status !== "closed") return false;
       if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
       const companyId = getProjectCompanyId(p);
       if (companyId && notRenewedCompanyIds.has(companyId)) return false;
@@ -626,7 +627,7 @@ const DashboardMetrics = ({
     const closedCompanyIds = new Set(
       nonSimulatorAllProjects
         .filter(p => {
-          if (p.status !== "closed" && p.status !== "completed") return false;
+          if (p.status !== "closed") return false;
           if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
           const companyId = getProjectCompanyId(p);
           if (companyId && notRenewedCompanyIds.has(companyId)) return false;
@@ -640,6 +641,33 @@ const DashboardMetrics = ({
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
   }, [nonSimulatorAllProjects, dateRange, projectMetrics, notRenewedCompanyIds]);
 
+  // Completed projects metrics - separate from churn
+  const completedMetrics = useMemo(() => {
+    const getCompletedDate = (p: Project) => {
+      const dateStr = p.churn_date || p.updated_at;
+      const dateOnly = dateStr.substring(0, 10);
+      return new Date(dateOnly + "T12:00:00");
+    };
+
+    const completedInPeriod = nonSimulatorAllProjects.filter(p => {
+      if (p.status !== "completed") return false;
+      return isWithinInterval(getCompletedDate(p), { start: dateRange.start, end: dateRange.end });
+    });
+
+    const completedCompanyIds = new Set(
+      completedInPeriod
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
+
+    const completedCompanies = companies.filter(c => completedCompanyIds.has(c.id));
+
+    return {
+      count: completedCompanyIds.size,
+      companies: completedCompanies,
+    };
+  }, [nonSimulatorAllProjects, dateRange, companies]);
+
   const monthlyChurnData = useMemo(() => {
     const currentYear = dateRange.start.getFullYear();
     const months = eachMonthOfInterval({ start: startOfYear(new Date(currentYear, 0, 1)), end: endOfYear(new Date(currentYear, 0, 1)) });
@@ -648,7 +676,7 @@ const DashboardMetrics = ({
       const monthEnd = endOfMonth(monthDate);
       // Usa churn_date como referência para determinar o mês do churn
       const closedInMonth = nonSimulatorAllProjects.filter(p => {
-        if (p.status !== "closed" && p.status !== "completed") return false;
+        if (p.status !== "closed") return false;
         // Prioriza churn_date, depois updated_at como fallback
         const churnDateStr = p.churn_date || p.updated_at;
         // Extrai apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone
@@ -658,7 +686,7 @@ const DashboardMetrics = ({
       }).length;
       const activeAtMonthStart = nonSimulatorAllProjects.filter(p => {
         if (new Date(p.created_at) > monthEnd) return false;
-        if (p.status === "closed" || p.status === "completed") {
+        if (p.status === "closed") {
           // Usa churn_date como referência
           const churnDateStr = p.churn_date || p.updated_at;
           const dateOnly = churnDateStr.substring(0, 10);
@@ -1152,7 +1180,7 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-11 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-12 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
@@ -1170,6 +1198,18 @@ const DashboardMetrics = ({
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-red-400">{renewalMetrics.notRenewedCount}</p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Renovadas</p>
+              </CardContent>
+            </Card>
+            <Card 
+              className={cn(
+                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                showCompletedCompanies && "ring-2 ring-blue-400"
+              )} 
+              onClick={() => setShowCompletedCompanies(!showCompletedCompanies)}
+            >
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-blue-400">{completedMetrics.count}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Concluídos</p>
               </CardContent>
             </Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
@@ -1222,6 +1262,50 @@ const DashboardMetrics = ({
                           <p className="text-sm font-medium truncate">{company.name}</p>
                           <p className="text-[10px] text-muted-foreground truncate">
                             Vence: {company.contract_end_date ? format(new Date(company.contract_end_date), "dd/MM/yyyy") : "-"}
+                          </p>
+                        </div>
+                      </div>
+                    );
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* List of completed companies in period */}
+          {showCompletedCompanies && completedMetrics.companies.length > 0 && (
+            <Card>
+              <CardHeader className="pb-2 pt-3 px-4">
+                <CardTitle className="text-xs font-medium flex items-center gap-2">
+                  <CheckCircle2 className="h-4 w-4 text-blue-400" />
+                  Projetos concluídos no período ({completedMetrics.companies.length})
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="px-4 pb-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                  {completedMetrics.companies.map(company => {
+                    const companyProjects = allProjectsForChurn.filter(p => getProjectCompanyId(p) === company.id && p.status === "completed");
+                    const firstProject = companyProjects[0];
+                    return (
+                      <div 
+                        key={company.id} 
+                        className={cn(
+                          "flex items-center gap-2 p-2 rounded-lg bg-muted/50 hover:bg-muted transition-colors",
+                          firstProject && "cursor-pointer"
+                        )}
+                        onClick={() => {
+                          if (firstProject) {
+                            navigate(`/onboarding-tasks/${firstProject.id}`);
+                          }
+                        }}
+                      >
+                        <div className="h-8 w-8 rounded-full bg-blue-400/10 flex items-center justify-center shrink-0">
+                          <Building2 className="h-4 w-4 text-blue-400" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                          <p className="text-sm font-medium truncate">{company.name}</p>
+                          <p className="text-[10px] text-muted-foreground truncate">
+                            Concluído em: {company.status_changed_at ? format(new Date(company.status_changed_at), "dd/MM/yyyy") : "-"}
                           </p>
                         </div>
                       </div>
