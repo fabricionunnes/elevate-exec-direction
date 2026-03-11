@@ -367,6 +367,7 @@ const ClientOnboardingPage = () => {
         sales_funnel: "Funil de Vendas",
         instagram: "Instagram",
         commercial_director: "Diretor Comercial IA",
+        other_services: "Outros Serviços",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
