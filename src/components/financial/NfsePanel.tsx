@@ -266,6 +266,21 @@ export function NfsePanel() {
     }
   };
 
+  const handleDelete = async (record: NfseRecord) => {
+    try {
+      const { error } = await supabase
+        .from("nfse_records" as any)
+        .delete()
+        .eq("id", record.id);
+      if (error) throw error;
+      toast.success("Registro de NFS-e excluído com sucesso");
+      loadRecords();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    }
+  };
+
+
   const handleDownloadPdf = async (record: NfseRecord) => {
     if (!record.nfeio_id) return;
     try {
