@@ -274,6 +274,7 @@ const App = () => (
             {/* OAuth Callbacks */}
             <Route path="/auth/instagram/callback" element={<InstagramOAuthCallback />} />
             <Route path="/social/instagram-callback" element={<SocialInstagramCallback />} />
+            <Route path="/instagram-report/:shareToken" element={<PublicInstagramReportPage />} />
             
             {/* Onboarding CS */}
             <Route path="/onboarding" element={<OnboardingPage />} />
