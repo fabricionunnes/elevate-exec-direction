@@ -44,6 +44,7 @@ export default function PDIRankingPage() {
     const subs = (subsRes.data as any[]) || [];
     const resps = (respRes.data as any[]) || [];
     const assessments = (assessRes.data as any[]) || [];
+    const attendances = (attendRes.data as any[]) || [];
     const entryIds = new Set(assessments.filter((a) => a.assessment_type === "entry").map((a) => a.id));
     const exitIds = new Set(assessments.filter((a) => a.assessment_type === "exit").map((a) => a.id));
 
