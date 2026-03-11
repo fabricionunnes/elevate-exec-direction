@@ -191,7 +191,7 @@ const OnboardingResultsPage = () => {
         : format(endOfMonth(selectedMonthDate), "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
-        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator").eq("status", "active").order("name"),
+        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator, goal_not_required").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
