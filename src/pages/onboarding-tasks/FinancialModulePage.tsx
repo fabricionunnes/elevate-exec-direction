@@ -19,7 +19,8 @@ import {
   Bell,
   Truck,
   MessageSquare,
-  Headphones
+  Headphones,
+  FileCheck
 } from "lucide-react";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
@@ -39,6 +40,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { NfsePanel } from "@/components/financial/NfsePanel";
 import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
 
 // Map tab IDs to financial permission keys (null = always visible if user has financial access)
@@ -59,6 +61,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   "whatsapp-instance": "fin_whatsapp_instance",
   "bank-statement": "fin_bank_statement",
   "general-statement": null, // always visible
+  "nfse": null, // always visible
 };
 
 const ALL_TABS = [
@@ -78,6 +81,7 @@ const ALL_TABS = [
   { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
   { id: "general-statement", label: "Extrato Geral", icon: FileText },
+  { id: "nfse", label: "NFS-e", icon: FileCheck },
 ];
 
 export default function FinancialModulePage() {
@@ -219,6 +223,9 @@ export default function FinancialModulePage() {
           </TabsContent>
           <TabsContent value="general-statement" className="mt-0">
             <GeneralStatementPanel />
+          </TabsContent>
+          <TabsContent value="nfse" className="mt-0">
+            <NfsePanel />
           </TabsContent>
         </Tabs>
       </main>

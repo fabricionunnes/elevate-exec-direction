@@ -18997,6 +18997,92 @@ export type Database = {
           },
         ]
       }
+      nfse_records: {
+        Row: {
+          amount_cents: number
+          cancelled_at: string | null
+          city_service_code: string | null
+          company_id: string
+          created_at: string
+          created_by: string | null
+          environment: string | null
+          error_message: string | null
+          id: string
+          invoice_id: string | null
+          issued_at: string | null
+          nfeio_id: string | null
+          number: string | null
+          pdf_url: string | null
+          rps_number: string | null
+          rps_serie: string | null
+          service_description: string | null
+          status: string
+          tomador_document: string | null
+          tomador_email: string | null
+          tomador_name: string | null
+          updated_at: string
+          xml_url: string | null
+        }
+        Insert: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          city_service_code?: string | null
+          company_id: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string | null
+          error_message?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_at?: string | null
+          nfeio_id?: string | null
+          number?: string | null
+          pdf_url?: string | null
+          rps_number?: string | null
+          rps_serie?: string | null
+          service_description?: string | null
+          status?: string
+          tomador_document?: string | null
+          tomador_email?: string | null
+          tomador_name?: string | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Update: {
+          amount_cents?: number
+          cancelled_at?: string | null
+          city_service_code?: string | null
+          company_id?: string
+          created_at?: string
+          created_by?: string | null
+          environment?: string | null
+          error_message?: string | null
+          id?: string
+          invoice_id?: string | null
+          issued_at?: string | null
+          nfeio_id?: string | null
+          number?: string | null
+          pdf_url?: string | null
+          rps_number?: string | null
+          rps_serie?: string | null
+          service_description?: string | null
+          status?: string
+          tomador_document?: string | null
+          tomador_email?: string | null
+          tomador_name?: string | null
+          updated_at?: string
+          xml_url?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "nfse_records_invoice_id_fkey"
+            columns: ["invoice_id"]
+            isOneToOne: false
+            referencedRelation: "company_invoices"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       onboarding_ai_chat: {
         Row: {
           content: string
