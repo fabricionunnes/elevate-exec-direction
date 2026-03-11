@@ -25,12 +25,14 @@ const NAV_ITEMS = [
   { label: "Inscrições", icon: UserPlus, path: "/pdi/applications" },
   { label: "Participantes", icon: ClipboardList, path: "/pdi/participants" },
   { label: "Trilhas", icon: Route, path: "/pdi/tracks" },
-  // Phase 2+
-  // { label: "Tarefas", icon: FileText, path: "/pdi/tasks" },
-  // { label: "Biblioteca", icon: BookOpen, path: "/pdi/library" },
-  // { label: "Ranking", icon: Trophy, path: "/pdi/ranking" },
-  // { label: "Certificados", icon: Award, path: "/pdi/certificates" },
-  // { label: "Configurações", icon: Settings, path: "/pdi/settings" },
+  { label: "Tarefas", icon: FileText, path: "/pdi/tasks" },
+  { label: "Biblioteca", icon: BookOpen, path: "/pdi/library" },
+  { label: "Testes", icon: ClipboardList, path: "/pdi/assessments" },
+  { label: "Relatórios", icon: FileText, path: "/pdi/reports" },
+  { label: "Certificados", icon: Award, path: "/pdi/certificates" },
+  { label: "Ranking", icon: Trophy, path: "/pdi/ranking" },
+  { label: "Comunidade", icon: Users, path: "/pdi/community" },
+  { label: "Configurações", icon: Settings, path: "/pdi/settings" },
 ];
 
 export default function PDILayout() {
