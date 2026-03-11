@@ -80,6 +80,8 @@ export function NfsePanel() {
   const [emitting, setEmitting] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdmin = isMaster || currentStaff?.role === "admin";
 
   const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
 
