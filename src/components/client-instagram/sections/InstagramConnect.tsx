@@ -19,9 +19,11 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
   const [isConnecting, setIsConnecting] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
   const [isDisconnecting, setIsDisconnecting] = useState(false);
+  const [manualAuthUrl, setManualAuthUrl] = useState<string | null>(null);
 
   const handleConnect = async () => {
     setIsConnecting(true);
+    setManualAuthUrl(null);
     try {
       const redirectUri = `${window.location.origin}/#/social/instagram-callback`;
       
@@ -38,8 +40,9 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
       if (data?.authUrl) {
         const opened = window.open(data.authUrl, "_blank");
         if (!opened) {
+          setManualAuthUrl(data.authUrl);
           await navigator.clipboard.writeText(data.authUrl);
-          toast.info("Pop-up bloqueado. URL copiada para a área de transferência.", { duration: 8000 });
+          toast.info("Pop-up bloqueado. Use o link abaixo ou cole da área de transferência.", { duration: 8000 });
         }
       }
     } catch (err: any) {
@@ -169,6 +172,21 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
               <><Instagram className="h-4 w-4 mr-2" /> Conectar Instagram <ExternalLink className="h-4 w-4 ml-2" /></>
             )}
           </Button>
+
+          {manualAuthUrl && (
+            <div className="bg-muted rounded-lg p-4 space-y-2 text-center">
+              <p className="text-sm text-muted-foreground">Pop-up bloqueado. Clique no link abaixo:</p>
+              <a 
+                href={manualAuthUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary underline break-all inline-flex items-center gap-1"
+              >
+                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                Abrir autenticação do Instagram
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
