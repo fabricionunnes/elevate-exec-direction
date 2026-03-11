@@ -47,7 +47,7 @@ Deno.serve(async (req) => {
   }
 });
 
-async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
+async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = false, testCompanyId: string | null = null): Promise<number> {
   // Get NPS config
   const { data: config } = await supabase
     .from("survey_send_configs")
