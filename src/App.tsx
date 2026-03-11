@@ -171,6 +171,15 @@ const PDIApplicationsPage = lazy(() => import("./pages/pdi/PDIApplicationsPage")
 const PDIParticipantsPage = lazy(() => import("./pages/pdi/PDIParticipantsPage"));
 const PDITracksPage = lazy(() => import("./pages/pdi/PDITracksPage"));
 const PDIEnrollmentPage = lazy(() => import("./pages/pdi/PDIEnrollmentPage"));
+const PDITasksPage = lazy(() => import("./pages/pdi/PDITasksPage"));
+const PDILibraryPage = lazy(() => import("./pages/pdi/PDILibraryPage"));
+const PDIAssessmentsPage = lazy(() => import("./pages/pdi/PDIAssessmentsPage"));
+const PDIReportsPage = lazy(() => import("./pages/pdi/PDIReportsPage"));
+const PDICertificatesPage = lazy(() => import("./pages/pdi/PDICertificatesPage"));
+const PDIRankingPage = lazy(() => import("./pages/pdi/PDIRankingPage"));
+const PDICommunityPage = lazy(() => import("./pages/pdi/PDICommunityPage"));
+const PDISettingsPage = lazy(() => import("./pages/pdi/PDISettingsPage"));
+const PDIParticipantPortalPage = lazy(() => import("./pages/pdi/PDIParticipantPortalPage"));
 
 // Academy
 const AcademyLayout = lazy(() => import("./pages/academy/AcademyLayout"));
@@ -442,8 +451,17 @@ const App = () => (
               <Route path="applications" element={<PDIApplicationsPage />} />
               <Route path="participants" element={<PDIParticipantsPage />} />
               <Route path="tracks" element={<PDITracksPage />} />
+              <Route path="tasks" element={<PDITasksPage />} />
+              <Route path="library" element={<PDILibraryPage />} />
+              <Route path="assessments" element={<PDIAssessmentsPage />} />
+              <Route path="reports" element={<PDIReportsPage />} />
+              <Route path="certificates" element={<PDICertificatesPage />} />
+              <Route path="ranking" element={<PDIRankingPage />} />
+              <Route path="community" element={<PDICommunityPage />} />
+              <Route path="settings" element={<PDISettingsPage />} />
             </Route>
             <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
+            <Route path="/pdi/participant/:token" element={<PDIParticipantPortalPage />} />
             
             {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>

@@ -20919,6 +20919,238 @@ export type Database = {
           },
         ]
       }
+      pdi_assessment_questions: {
+        Row: {
+          assessment_id: string
+          category: string
+          correct_option: string | null
+          id: string
+          options: Json | null
+          question_text: string
+          sort_order: number | null
+        }
+        Insert: {
+          assessment_id: string
+          category?: string
+          correct_option?: string | null
+          id?: string
+          options?: Json | null
+          question_text: string
+          sort_order?: number | null
+        }
+        Update: {
+          assessment_id?: string
+          category?: string
+          correct_option?: string | null
+          id?: string
+          options?: Json | null
+          question_text?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_assessment_questions_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_assessments"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_assessment_responses: {
+        Row: {
+          answers: Json | null
+          assessment_id: string
+          category_scores: Json | null
+          completed_at: string | null
+          id: string
+          participant_id: string
+          total_score: number | null
+        }
+        Insert: {
+          answers?: Json | null
+          assessment_id: string
+          category_scores?: Json | null
+          completed_at?: string | null
+          id?: string
+          participant_id: string
+          total_score?: number | null
+        }
+        Update: {
+          answers?: Json | null
+          assessment_id?: string
+          category_scores?: Json | null
+          completed_at?: string | null
+          id?: string
+          participant_id?: string
+          total_score?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_assessment_responses_assessment_id_fkey"
+            columns: ["assessment_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_assessments"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_assessment_responses_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_assessments: {
+        Row: {
+          assessment_type: string
+          cohort_id: string | null
+          created_at: string | null
+          description: string | null
+          id: string
+          is_active: boolean | null
+          title: string
+        }
+        Insert: {
+          assessment_type?: string
+          cohort_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          title: string
+        }
+        Update: {
+          assessment_type?: string
+          cohort_id?: string | null
+          created_at?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_assessments_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_book_tracks: {
+        Row: {
+          book_id: string
+          id: string
+          track_id: string
+        }
+        Insert: {
+          book_id: string
+          id?: string
+          track_id: string
+        }
+        Update: {
+          book_id?: string
+          id?: string
+          track_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_book_tracks_book_id_fkey"
+            columns: ["book_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_books"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_book_tracks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_books: {
+        Row: {
+          author: string | null
+          cover_url: string | null
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          summary: string | null
+          themes: string[] | null
+          title: string
+        }
+        Insert: {
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          summary?: string | null
+          themes?: string[] | null
+          title: string
+        }
+        Update: {
+          author?: string | null
+          cover_url?: string | null
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          summary?: string | null
+          themes?: string[] | null
+          title?: string
+        }
+        Relationships: []
+      }
+      pdi_certificates: {
+        Row: {
+          certificate_code: string | null
+          cohort_id: string
+          id: string
+          issued_at: string | null
+          participant_id: string
+          pdf_url: string | null
+          total_hours: number | null
+        }
+        Insert: {
+          certificate_code?: string | null
+          cohort_id: string
+          id?: string
+          issued_at?: string | null
+          participant_id: string
+          pdf_url?: string | null
+          total_hours?: number | null
+        }
+        Update: {
+          certificate_code?: string | null
+          cohort_id?: string
+          id?: string
+          issued_at?: string | null
+          participant_id?: string
+          pdf_url?: string | null
+          total_hours?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_certificates_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_certificates_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdi_cohort_tracks: {
         Row: {
           cohort_id: string
@@ -21043,6 +21275,93 @@ export type Database = {
           },
         ]
       }
+      pdi_community_comments: {
+        Row: {
+          content: string
+          created_at: string | null
+          id: string
+          participant_id: string
+          post_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string | null
+          id?: string
+          participant_id: string
+          post_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string | null
+          id?: string
+          participant_id?: string
+          post_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_community_comments_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_community_comments_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_community_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_community_posts: {
+        Row: {
+          cohort_id: string | null
+          content: string
+          created_at: string | null
+          id: string
+          participant_id: string
+          post_type: string | null
+          title: string
+          updated_at: string | null
+        }
+        Insert: {
+          cohort_id?: string | null
+          content: string
+          created_at?: string | null
+          id?: string
+          participant_id: string
+          post_type?: string | null
+          title: string
+          updated_at?: string | null
+        }
+        Update: {
+          cohort_id?: string | null
+          content?: string
+          created_at?: string | null
+          id?: string
+          participant_id?: string
+          post_type?: string | null
+          title?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_community_posts_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_community_posts_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       pdi_participants: {
         Row: {
           access_token: string | null
@@ -21141,6 +21460,110 @@ export type Database = {
           updated_at?: string
         }
         Relationships: []
+      }
+      pdi_task_submissions: {
+        Row: {
+          ai_feedback: string | null
+          ai_score: number | null
+          file_url: string | null
+          id: string
+          participant_id: string
+          response_text: string | null
+          reviewed_at: string | null
+          status: string | null
+          submitted_at: string | null
+          task_id: string
+        }
+        Insert: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          file_url?: string | null
+          id?: string
+          participant_id: string
+          response_text?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          task_id: string
+        }
+        Update: {
+          ai_feedback?: string | null
+          ai_score?: number | null
+          file_url?: string | null
+          id?: string
+          participant_id?: string
+          response_text?: string | null
+          reviewed_at?: string | null
+          status?: string | null
+          submitted_at?: string | null
+          task_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_task_submissions_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_task_submissions_task_id_fkey"
+            columns: ["task_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_tasks"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      pdi_tasks: {
+        Row: {
+          created_at: string | null
+          description: string | null
+          due_days: number | null
+          id: string
+          is_active: boolean | null
+          sort_order: number | null
+          support_material_url: string | null
+          task_type: string
+          title: string
+          track_id: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          description?: string | null
+          due_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          support_material_url?: string | null
+          task_type?: string
+          title: string
+          track_id: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          description?: string | null
+          due_days?: number | null
+          id?: string
+          is_active?: boolean | null
+          sort_order?: number | null
+          support_material_url?: string | null
+          task_type?: string
+          title?: string
+          track_id?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "pdi_tasks_track_id_fkey"
+            columns: ["track_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_tracks"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       pdi_tracks: {
         Row: {

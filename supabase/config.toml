@@ -275,3 +275,6 @@ verify_jwt = false
 
 [functions.detect-cancellation-intent]
 verify_jwt = false
+
+[functions.pdi-evaluate-summary]
+verify_jwt = false
