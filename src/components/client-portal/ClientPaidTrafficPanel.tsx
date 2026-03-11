@@ -31,7 +31,9 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
   const [urlInput, setUrlInput] = useState("");
   const [embedInput, setEmbedInput] = useState("");
   const [configTab, setConfigTab] = useState("url");
-  const [activeTab, setActiveTab] = useState("meta_ads");
+  const { hasPermission } = useClientPermissions(projectId);
+  const hasMetaAds = hasPermission(CLIENT_MENU_KEYS.meta_ads);
+  const [activeTab, setActiveTab] = useState(hasMetaAds ? "meta_ads" : "dashboard");
 
   useEffect(() => {
     fetchData();
