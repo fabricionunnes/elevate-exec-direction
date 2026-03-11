@@ -21,7 +21,8 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/#/meta-ads-callback`;
+      // Use origin without hash - OAuthRedirectHandler will catch the callback
+      const redirectUri = window.location.origin;
       const { data, error } = await supabase.functions.invoke("meta-ads-sync", {
         body: { action: "auth_url", project_id: projectId, redirect_uri: redirectUri },
       });
