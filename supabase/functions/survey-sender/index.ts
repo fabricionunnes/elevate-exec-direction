@@ -407,7 +407,6 @@ async function sendWhatsApp(
       return { success: false, error: "Evolution API credentials not configured" };
     }
 
-    console.log(`Using API URL: ${EVOLUTION_API_URL}, key starts with: ${EVOLUTION_API_KEY?.substring(0, 6)}`);
     const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
 
     // Call Evolution API directly to send text message
