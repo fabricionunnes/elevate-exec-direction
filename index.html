@@ -30,6 +30,22 @@
   </head>
 
   <body>
+    <script>
+      // Apply saved theme instantly to prevent flash
+      try {
+        var stored = localStorage.getItem('unv-theme-customization');
+        if (stored) {
+          var data = JSON.parse(stored);
+          var presets = {
+            'default-dark': true, 'ocean-dark': true, 'emerald-dark': true,
+            'sunset-dark': true, 'purple-dark': true, 'midnight-dark': true
+          };
+          if (presets[data.presetId]) {
+            document.documentElement.classList.add('dark');
+          }
+        }
+      } catch(e) {}
+    </script>
     <div id="root"></div>
     <script type="module" src="/src/main.tsx"></script>
   </body>
