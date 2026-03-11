@@ -303,14 +303,14 @@ export default function PDIApplicationsPage() {
               <DetailField label="Expectativas" value={(selected as any).expectations} />
 
               <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Comprometimento</h4>
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <CommitField label="Participar de todas as reuniões" value={(selected as any).commitment_meetings} />
-                <CommitField label="Ler os livros solicitados" value={(selected as any).commitment_books} />
-                <CommitField label="Fazer todas as tarefas" value={(selected as any).commitment_tasks} />
-                <CommitField label="Câmera aberta nas reuniões" value={(selected as any).commitment_camera} />
+              <div className="grid grid-cols-1 gap-3 text-sm">
+                <CommitField label="Você se compromete a participar de TODAS as reuniões agendadas?" value={(selected as any).commitment_meetings} />
+                <CommitField label="Você se compromete a ler TODOS os livros e materiais solicitados?" value={(selected as any).commitment_books} />
+                <CommitField label="Você se compromete a realizar TODAS as tarefas e exercícios propostos?" value={(selected as any).commitment_tasks} />
+                <CommitField label="Você se compromete a entrar nas reuniões com a câmera aberta?" value={(selected as any).commitment_camera} />
               </div>
-              <DetailField label="Prontidão para Desenvolvimento" value={(selected as any).development_readiness} />
-              <DetailField label="Disponibilidade de Tempo" value={(selected as any).time_availability} />
+              <DetailField label="Prontidão para Desenvolvimento" value={READINESS_LABELS[(selected as any).development_readiness] || (selected as any).development_readiness} />
+              <DetailField label="Disponibilidade de Tempo" value={TIME_LABELS[(selected as any).time_availability] || (selected as any).time_availability} />
 
               {selected.status === "pending" && (
                 <>
