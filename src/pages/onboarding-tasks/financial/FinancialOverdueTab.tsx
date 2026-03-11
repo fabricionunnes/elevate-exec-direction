@@ -204,8 +204,8 @@ export default function FinancialOverdueTab({
   };
 
   const handleBulkSend = async () => {
-    const selected = overdueInvoices.filter(inv => selectedIds.has(inv.id) && inv.payment_link_url);
-    if (selected.length === 0) { toast.error("Nenhuma fatura selecionada com link de pagamento"); return; }
+    const selected = overdueInvoices.filter(inv => selectedIds.has(inv.id));
+    if (selected.length === 0) { toast.error("Nenhuma fatura selecionada"); return; }
     setIsBulkSending(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
@@ -728,15 +728,13 @@ export default function FinancialOverdueTab({
                         <TableCell>
                           <div className="flex justify-end gap-1">
                             {inv.payment_link_url && (
-                              <>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-500" title="Copiar link" onClick={() => copyLink(inv.payment_link_url)}>
-                                  <Copy className="h-3.5 w-3.5" />
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-500/10 hover:text-emerald-500" title="Enviar via WhatsApp" onClick={() => sendWhatsApp(inv)}>
-                                  <Send className="h-3.5 w-3.5" />
-                                </Button>
-                              </>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-blue-500/10 hover:text-blue-500" title="Copiar link" onClick={() => copyLink(inv.payment_link_url)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
                             )}
+                            <Button variant="ghost" size="icon" className="h-8 w-8 hover:bg-emerald-500/10 hover:text-emerald-500" title="Enviar via WhatsApp" onClick={() => sendWhatsApp(inv)}>
+                              <Send className="h-3.5 w-3.5" />
+                            </Button>
                             {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
                               <Button
                                 variant="ghost"
