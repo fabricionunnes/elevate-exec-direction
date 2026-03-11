@@ -83,6 +83,9 @@ export default function PDIParticipantPortalPage() {
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostType, setNewPostType] = useState("discussion");
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [postComments, setPostComments] = useState<{ id: string; content: string; created_at: string; participant_name: string }[]>([]);
+  const [newComment, setNewComment] = useState("");
 
   const fetchParticipant = useCallback(async () => {
     if (!token) return;
@@ -214,6 +217,29 @@ export default function PDIParticipantPortalPage() {
     });
     toast.success("Publicação criada!");
     setNewPostTitle(""); setNewPostContent(""); setNewPostType("discussion");
+    fetchCommunity(participant);
+  };
+
+  const openPostComments = async (postId: string) => {
+    if (selectedPostId === postId) { setSelectedPostId(null); return; }
+    setSelectedPostId(postId);
+    const { data } = await supabase.from("pdi_community_comments")
+      .select("*").eq("post_id", postId).order("created_at");
+    const { data: partsData } = await supabase.from("pdi_participants").select("id, full_name");
+    const pMap = new Map(((partsData as any[]) || []).map((p: any) => [p.id, p.full_name]));
+    setPostComments(((data as any[]) || []).map((c: any) => ({
+      ...c, participant_name: pMap.get(c.participant_id) || "—",
+    })));
+  };
+
+  const submitComment = async (postId: string) => {
+    if (!participant || !newComment.trim()) return;
+    await supabase.from("pdi_community_comments").insert({
+      post_id: postId, participant_id: participant.id, content: newComment,
+    });
+    setNewComment("");
+    toast.success("Comentário enviado!");
+    openPostComments(postId);
     fetchCommunity(participant);
   };
 
@@ -406,15 +432,45 @@ export default function PDIParticipantPortalPage() {
               </CardContent>
             </Card>
             {posts.map((post) => (
-              <Card key={post.id}>
+              <Card key={post.id} className="overflow-hidden">
                 <CardContent className="p-4">
-                  <h3 className="font-semibold text-sm">{post.title}</h3>
-                  <p className="text-xs text-muted-foreground mt-1 line-clamp-3">{post.content}</p>
-                  <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
-                    <span>{post.participant_name}</span>
-                    <span>{format(new Date(post.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
-                    <span>{post.comments_count} comentários</span>
+                  <div className="cursor-pointer" onClick={() => openPostComments(post.id)}>
+                    <h3 className="font-semibold text-sm">{post.title}</h3>
+                    <p className="text-xs text-muted-foreground mt-1 whitespace-pre-wrap">{post.content}</p>
+                    <div className="flex items-center gap-3 text-xs text-muted-foreground mt-2">
+                      <span className="flex items-center gap-1"><User className="h-3 w-3" />{post.participant_name}</span>
+                      <span>{format(new Date(post.created_at), "dd/MM HH:mm", { locale: ptBR })}</span>
+                      <span className="flex items-center gap-1"><MessageSquare className="h-3 w-3" />{post.comments_count} comentários</span>
+                    </div>
                   </div>
+
+                  {selectedPostId === post.id && (
+                    <div className="mt-4 pt-4 border-t border-border space-y-3">
+                      {postComments.length === 0 && (
+                        <p className="text-xs text-muted-foreground text-center py-2">Nenhum comentário ainda. Seja o primeiro!</p>
+                      )}
+                      {postComments.map((c) => (
+                        <div key={c.id} className="bg-muted/30 rounded-lg p-3">
+                          <p className="text-sm">{c.content}</p>
+                          <p className="text-xs text-muted-foreground mt-1">
+                            {c.participant_name} • {format(new Date(c.created_at), "dd/MM HH:mm", { locale: ptBR })}
+                          </p>
+                        </div>
+                      ))}
+                      <div className="flex gap-2">
+                        <Textarea
+                          value={newComment}
+                          onChange={(e) => setNewComment(e.target.value)}
+                          placeholder="Escreva um comentário..."
+                          rows={2}
+                          className="flex-1 min-h-[60px]"
+                        />
+                        <Button size="icon" className="shrink-0 self-end" onClick={() => submitComment(post.id)} disabled={!newComment.trim()}>
+                          <Send className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    </div>
+                  )}
                 </CardContent>
               </Card>
             ))}
