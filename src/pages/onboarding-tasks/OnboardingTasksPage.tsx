@@ -1134,11 +1134,19 @@ const OnboardingTasksPage = () => {
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
-      // Exception: show closed companies when filtering by "closed" status metric
-      const isClosedFilter = activeMetricFilter?.type === "status" && activeMetricFilter?.value === "closed";
+      // Exception: show them when filtering by relevant status metrics
+      const isCancellationFilter = activeMetricFilter?.type === "status" && 
+        (activeMetricFilter?.value === "closed" || activeMetricFilter?.value === "churn_signaled" || 
+         activeMetricFilter?.value === "cancellation_signaled" || activeMetricFilter?.value === "notice_period");
       if (company.status === "inactive" || company.status === "closed") {
-        if (!isClosedFilter) {
-          return false;
+        if (!isCancellationFilter) {
+          // Still allow if company has cancellation/notice projects and we're filtering for those
+          const hasCancellationProject = company.projects?.some(p => 
+            p.status === "cancellation_signaled" || p.status === "notice_period"
+          );
+          if (!hasCancellationProject || !activeMetricFilter) {
+            return false;
+          }
         }
       }
       
