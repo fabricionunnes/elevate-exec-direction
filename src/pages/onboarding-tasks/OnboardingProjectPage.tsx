@@ -1878,8 +1878,8 @@ const OnboardingProjectPage = () => {
           <TabsContent value="commercial_director">
             <CommercialDirectorModule
               projectId={projectId!}
-              companyId={company?.id || ""}
-              companyName={company?.name}
+              companyId={project.onboarding_company_id || ""}
+              companyName={project.onboarding_company?.name}
             />
           </TabsContent>
 
