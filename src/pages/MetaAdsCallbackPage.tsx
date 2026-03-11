@@ -47,8 +47,9 @@ const MetaAdsCallbackPage = () => {
       setMessage("Trocando código por token de acesso...");
 
       // Use the exact same redirect_uri that was used to generate the OAuth URL
+      // Priority: sessionStorage > state param > current origin
       const storedRedirectUri = sessionStorage.getItem("meta_ads_redirect_uri");
-      const redirectUri = storedRedirectUri || window.location.origin;
+      const redirectUri = storedRedirectUri || stateRedirectUri || window.location.origin;
       sessionStorage.removeItem("meta_ads_redirect_uri");
       
       const { data: result, error: err } = await supabase.functions.invoke("meta-ads-sync", {
