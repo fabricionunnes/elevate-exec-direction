@@ -8,9 +8,11 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt } from "lucide-react";
+import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2 } from "lucide-react";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -78,6 +80,8 @@ export function NfsePanel() {
   const [emitting, setEmitting] = useState(false);
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdmin = isMaster || currentStaff?.role === "admin";
 
   const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
 
@@ -261,6 +265,21 @@ export function NfsePanel() {
       toast.error("Erro ao cancelar: " + err.message);
     }
   };
+
+  const handleDelete = async (record: NfseRecord) => {
+    try {
+      const { error } = await supabase
+        .from("nfse_records" as any)
+        .delete()
+        .eq("id", record.id);
+      if (error) throw error;
+      toast.success("Registro de NFS-e excluído com sucesso");
+      loadRecords();
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + err.message);
+    }
+  };
+
 
   const handleDownloadPdf = async (record: NfseRecord) => {
     if (!record.nfeio_id) return;
@@ -561,6 +580,29 @@ export function NfsePanel() {
                         <Button variant="ghost" size="icon" onClick={() => handleCancel(record)} title="Cancelar NFS-e">
                           <XCircle className="h-4 w-4 text-destructive" />
                         </Button>
+                      )}
+                      {isAdmin && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button variant="ghost" size="icon" title="Excluir registro">
+                              <Trash2 className="h-4 w-4 text-destructive" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir NFS-e</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Tem certeza que deseja excluir este registro de NFS-e{record.number ? ` #${record.number}` : ""}? Esta ação não pode ser desfeita.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => handleDelete(record)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>
