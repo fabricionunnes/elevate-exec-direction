@@ -203,7 +203,9 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
     // Send via WhatsApp
     const instanceName = await getInstanceName(supabase, config.whatsapp_instance_name);
+    console.log(`Sending to ${phone} via instance ${instanceName}`);
     const sendResult = await sendWhatsApp(supabase, instanceName, phone, message);
+    console.log(`Send result:`, JSON.stringify(sendResult));
 
     // Log the send
     await supabase.from("survey_send_log").insert({
@@ -394,9 +396,11 @@ async function sendWhatsApp(
 
     if (!instance) return { success: false, error: "Instância não encontrada ou desconectada" };
 
-    // Get Evolution API credentials - prefer env Global API Key over instance token
+    // Get Evolution API credentials
+    // Use instance api_url if available (instance may be on a different server), fallback to env
     const EVOLUTION_API_URL = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
-    const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || instance.api_key;
+    // Use instance api_key if available (each server has its own Global API Key), fallback to env
+    const EVOLUTION_API_KEY = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
       return { success: false, error: "Evolution API credentials not configured" };
