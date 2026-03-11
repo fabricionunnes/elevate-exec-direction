@@ -459,7 +459,7 @@ const DashboardMetrics = ({
     const cancellationSignaled = nonSimulatorProjects.filter(p => p.status === "cancellation_signaled").length;
     const noticePeriod = nonSimulatorProjects.filter(p => p.status === "notice_period").length;
     // Closed projects count uses nonSimulatorAllProjects to include all closed projects (for churn/encerradas metrics)
-    const closedProjects = nonSimulatorAllProjects.filter(p => p.status === "closed" || p.status === "completed").length;
+    const closedProjects = nonSimulatorAllProjects.filter(p => p.status === "closed").length;
     const reactivatedInPeriod = nonSimulatorProjects.filter(p => {
       if (!p.reactivated_at) return false;
       return isWithinInterval(new Date(p.reactivated_at), { start: dateRange.start, end: dateRange.end });
