@@ -82,10 +82,25 @@ export function NfsePanel() {
   const loadOnboardingCompanies = async () => {
     const { data } = await supabase
       .from("onboarding_companies")
-      .select("id, name")
+      .select("id, name, cnpj, email, contact_email")
       .eq("status", "active")
       .order("name");
     if (data) setOnboardingCompanies(data);
+  };
+
+  const handleCompanySelect = (companyId: string) => {
+    const company = onboardingCompanies.find((c: any) => c.id === companyId);
+    if (company) {
+      setForm((prev) => ({
+        ...prev,
+        companyId,
+        tomadorName: company.name || prev.tomadorName,
+        tomadorDocument: company.cnpj || prev.tomadorDocument,
+        tomadorEmail: company.contact_email || company.email || prev.tomadorEmail,
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, companyId }));
+    }
   };
 
   const loadNfeioCompanies = async () => {
