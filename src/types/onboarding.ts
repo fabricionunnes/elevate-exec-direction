@@ -233,6 +233,21 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "UNV Social IA",
     group: "Integrações",
   },
+  {
+    key: CLIENT_MENU_KEYS.contrato_rotina,
+    label: "Contrato de Rotina",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.acoes_comerciais,
+    label: "Ações Comerciais",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.meta_ads,
+    label: "Meta Ads",
+    group: "Tráfego",
+  },
 ] as const;
 
 // Role labels in Portuguese

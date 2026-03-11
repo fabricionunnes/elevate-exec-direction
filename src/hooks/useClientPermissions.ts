@@ -160,4 +160,7 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   commercial_director: CLIENT_MENU_KEYS.diretor_comercial_ia,
   other_services: CLIENT_MENU_KEYS.outros_servicos,
   social: CLIENT_MENU_KEYS.unv_social,
+  routine_contract: CLIENT_MENU_KEYS.contrato_rotina,
+  commercial_actions: CLIENT_MENU_KEYS.acoes_comerciais,
+  meta_ads: CLIENT_MENU_KEYS.meta_ads,
 };
