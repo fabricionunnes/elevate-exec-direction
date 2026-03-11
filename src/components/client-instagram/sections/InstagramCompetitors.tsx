@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Plus, Trash2, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { InstagramCompetitor } from "../types";
 
@@ -17,6 +17,7 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
   const [loading, setLoading] = useState(true);
   const [newUsername, setNewUsername] = useState("");
   const [adding, setAdding] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchCompetitors = async () => {
     const { data } = await supabase
