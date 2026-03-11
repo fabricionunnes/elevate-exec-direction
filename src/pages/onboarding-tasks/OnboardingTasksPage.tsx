@@ -1351,8 +1351,12 @@ const OnboardingTasksPage = () => {
     );
     
     // Always exclude closed/completed projects AND projects from inactive companies
+    // BUT keep cancellation_signaled/notice_period projects even from inactive companies
     const actionableProjects = allProjects.filter(p => {
       if (p.status === "closed" || p.status === "completed") return false;
+      
+      // Keep cancellation/notice projects even from inactive companies
+      if (p.status === "cancellation_signaled" || p.status === "notice_period") return true;
       
       // Filter out projects from inactive/closed companies
       const companyId = getProjectCompanyId(p);
