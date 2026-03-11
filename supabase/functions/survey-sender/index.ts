@@ -76,14 +76,17 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
       onboarding_companies!inner(id, name, phone, status)
     `);
 
-  // In test mode, filter by company directly and allow any project status
-  if (isTest && testCompanyId) {
-    projectsQuery = projectsQuery.eq("onboarding_companies.id", testCompanyId);
-  } else {
+  // In test mode, allow any project status; in normal mode only active projects
+  if (!isTest) {
     projectsQuery = projectsQuery.eq("status", "active");
   }
 
   const { data: projects, error: projectsError } = await projectsQuery;
+
+  if (projectsError) {
+    console.error("Error fetching projects:", projectsError);
+    return 0;
+  }
 
   if (projectsError) {
     console.error("Error fetching projects:", projectsError);
