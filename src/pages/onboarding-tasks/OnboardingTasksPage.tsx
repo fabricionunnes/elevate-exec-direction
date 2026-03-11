@@ -689,17 +689,23 @@ const OnboardingTasksPage = () => {
     p.onboarding_company_id ?? p.company_id ?? null;
 
   const activeProjects = useMemo(() => {
-    const active = allProjects.filter(p => p.status === "active");
+    // Include active + cancellation/notice projects (they still have pending tasks)
+    const active = allProjects.filter(p => 
+      p.status === "active" || p.status === "cancellation_signaled" || p.status === "notice_period"
+    );
     
     // Always filter out projects from inactive companies (for all roles)
+    // But keep cancellation/notice projects even from inactive companies
     const activeCompanyIds = new Set(
       companies.filter(c => c.status !== "inactive" && c.status !== "closed").map(c => c.id)
     );
     
     return active.filter(p => {
       const companyId = getProjectCompanyId(p);
-      // Include projects without company OR projects from active companies
-      return !companyId || activeCompanyIds.has(companyId);
+      if (!companyId) return true;
+      // Keep cancellation/notice projects regardless of company status
+      if (p.status === "cancellation_signaled" || p.status === "notice_period") return true;
+      return activeCompanyIds.has(companyId);
     });
   }, [allProjects, companies]);
 
