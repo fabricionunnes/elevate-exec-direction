@@ -616,7 +616,7 @@ export function NfsePanel() {
                         </Button>
                       )}
                       {record.status === "authorized" && record.nfeio_id && (
-                        <Button variant="ghost" size="icon" onClick={() => handleDownloadPdf(record)} title="Baixar PDF">
+                        <Button type="button" variant="ghost" size="icon" onClick={() => handleDownloadPdf(record)} title="Baixar PDF">
                           <Download className="h-4 w-4" />
                         </Button>
                       )}
