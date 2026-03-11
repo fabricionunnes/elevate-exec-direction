@@ -87,6 +87,7 @@ Deno.serve(async (req) => {
             company_id: companyId,
             invoice_id: invoiceId || null,
             nfeio_id: result.id,
+            // Store as cents in DB
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
             amount_cents: amountCents,
