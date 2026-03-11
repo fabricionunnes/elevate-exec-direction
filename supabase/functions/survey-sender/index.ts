@@ -107,55 +107,59 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
   for (const entry of companyMap.values()) {
     const { companyId, companyName, phone, projectId } = entry;
 
-    // Check last NPS response for this company (any project)
-    const { data: lastResponse } = await supabase
-      .from("onboarding_nps_responses")
-      .select("created_at")
-      .eq("project_id", projectId)
-      .order("created_at", { ascending: false })
-      .limit(1)
-      .maybeSingle();
-
-    // If responded recently, skip
-    if (lastResponse) {
-      const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
-      if (daysSinceResponse < frequencyDays) continue;
-    }
-
-    // Check last send log for this company
-    const { data: lastLogs } = await supabase
-      .from("survey_send_log")
-      .select("*")
-      .eq("company_id", companyId)
-      .eq("survey_type", "nps")
-      .in("status", ["sent", "pending"])
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    const lastLog = lastLogs?.[0];
-
-    // Determine which rule to send
+    // In test mode, skip all eligibility checks and always use the first rule
     let ruleToSend: any = null;
     let attemptNumber = 1;
 
-    if (!lastLog) {
+    if (isTest) {
       ruleToSend = rules[0];
-      attemptNumber = 1;
     } else {
-      const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
-      attemptNumber = (lastLog.attempt_number || 0) + 1;
+      // Check last NPS response for this company (any project)
+      const { data: lastResponse } = await supabase
+        .from("onboarding_nps_responses")
+        .select("created_at")
+        .eq("project_id", projectId)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
 
-      if (attemptNumber > maxFollowUps) continue;
+      // If responded recently, skip
+      if (lastResponse) {
+        const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
+        if (daysSinceResponse < frequencyDays) continue;
+      }
 
-      const ruleIndex = attemptNumber - 1;
-      if (ruleIndex < rules.length) {
-        const currentRule = rules[ruleIndex];
-        const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
-        const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
-        if (daysSinceLastSend < daysNeeded) {
-          ruleToSend = null;
-        } else {
-          ruleToSend = currentRule;
+      // Check last send log for this company
+      const { data: lastLogs } = await supabase
+        .from("survey_send_log")
+        .select("*")
+        .eq("company_id", companyId)
+        .eq("survey_type", "nps")
+        .in("status", ["sent", "pending"])
+        .order("created_at", { ascending: false })
+        .limit(1);
+
+      const lastLog = lastLogs?.[0];
+
+      if (!lastLog) {
+        ruleToSend = rules[0];
+        attemptNumber = 1;
+      } else {
+        const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
+        attemptNumber = (lastLog.attempt_number || 0) + 1;
+
+        if (attemptNumber > maxFollowUps) continue;
+
+        const ruleIndex = attemptNumber - 1;
+        if (ruleIndex < rules.length) {
+          const currentRule = rules[ruleIndex];
+          const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
+          const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
+          if (daysSinceLastSend < daysNeeded) {
+            ruleToSend = null;
+          } else {
+            ruleToSend = currentRule;
+          }
         }
       }
     }
