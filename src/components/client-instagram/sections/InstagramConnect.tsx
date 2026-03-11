@@ -158,31 +158,42 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
             </ul>
           </div>
 
-          <Button 
-            onClick={handleConnect}
-            disabled={isConnecting}
-            className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white"
-            size="lg"
-          >
-            {isConnecting ? (
-              <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Conectando...</>
-            ) : (
-              <><Instagram className="h-4 w-4 mr-2" /> Conectar Instagram <ExternalLink className="h-4 w-4 ml-2" /></>
-            )}
-          </Button>
-
-          {manualAuthUrl && (
-            <div className="bg-muted rounded-lg p-4 space-y-2 text-center">
-              <p className="text-sm text-muted-foreground">Pop-up bloqueado. Clique no link abaixo:</p>
+          {!manualAuthUrl ? (
+            <Button 
+              onClick={handleConnect}
+              disabled={isConnecting}
+              className="w-full bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 text-white"
+              size="lg"
+            >
+              {isConnecting ? (
+                <><Loader2 className="h-4 w-4 mr-2 animate-spin" /> Gerando link...</>
+              ) : (
+                <><Instagram className="h-4 w-4 mr-2" /> Conectar Instagram <ExternalLink className="h-4 w-4 ml-2" /></>
+              )}
+            </Button>
+          ) : (
+            <div className="space-y-3">
               <a 
                 href={manualAuthUrl} 
                 target="_blank" 
                 rel="noopener noreferrer"
-                className="text-sm text-primary underline break-all inline-flex items-center gap-1"
+                className="flex items-center justify-center gap-2 w-full rounded-lg px-4 py-3 text-sm font-medium text-white bg-gradient-to-r from-purple-500 via-pink-500 to-orange-500 hover:from-purple-600 hover:via-pink-600 hover:to-orange-600 transition-colors"
               >
-                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                <Instagram className="h-4 w-4" />
                 Abrir autenticação do Instagram
+                <ExternalLink className="h-4 w-4" />
               </a>
+              <p className="text-xs text-center text-muted-foreground">
+                Clique acima para abrir a página de autenticação do Facebook/Instagram.
+              </p>
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                className="w-full"
+                onClick={() => setManualAuthUrl(null)}
+              >
+                Gerar novo link
+              </Button>
             </div>
           )}
         </CardContent>
