@@ -61,6 +61,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   "whatsapp-instance": "fin_whatsapp_instance",
   "bank-statement": "fin_bank_statement",
   "general-statement": null, // always visible
+  "nfse": null, // always visible
 };
 
 const ALL_TABS = [
