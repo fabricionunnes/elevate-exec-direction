@@ -376,9 +376,9 @@ async function sendWhatsApp(
 
     if (!instance) return { success: false, error: "Instância não encontrada ou desconectada" };
 
-    // Get Evolution API credentials from env or instance
+    // Get Evolution API credentials - prefer env Global API Key over instance token
     const EVOLUTION_API_URL = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
-    const EVOLUTION_API_KEY = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
+    const EVOLUTION_API_KEY = Deno.env.get("EVOLUTION_API_KEY") || instance.api_key;
 
     if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
       return { success: false, error: "Evolution API credentials not configured" };
