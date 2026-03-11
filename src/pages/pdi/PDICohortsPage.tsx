@@ -143,7 +143,7 @@ export default function PDICohortsPage() {
   };
 
   const copyEnrollmentLink = (token: string) => {
-    const url = `${window.location.origin}/#/pdi/enroll/${token}`;
+    const url = `${getPublicBaseUrl()}/#/pdi/enroll/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
