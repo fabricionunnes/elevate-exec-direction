@@ -225,6 +225,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Outros Serviços",
     group: null,
   },
+  {
+    key: CLIENT_MENU_KEYS.unv_social,
+    label: "UNV Social",
+    group: "Integrações",
+  },
 ] as const;
 
 // Role labels in Portuguese
