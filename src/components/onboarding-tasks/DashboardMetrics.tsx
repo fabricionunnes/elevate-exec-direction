@@ -649,7 +649,7 @@ const DashboardMetrics = ({
       const monthEnd = endOfMonth(monthDate);
       // Usa churn_date como referência para determinar o mês do churn
       const closedInMonth = nonSimulatorAllProjects.filter(p => {
-        if (p.status !== "closed" && p.status !== "completed") return false;
+        if (p.status !== "closed") return false;
         // Prioriza churn_date, depois updated_at como fallback
         const churnDateStr = p.churn_date || p.updated_at;
         // Extrai apenas a parte da data (YYYY-MM-DD) para evitar problemas de timezone
