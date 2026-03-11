@@ -34,6 +34,7 @@ import {
   Receipt,
   Megaphone,
   Filter as FunnelIcon,
+  Instagram,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
