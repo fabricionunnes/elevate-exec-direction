@@ -204,8 +204,8 @@ export default function FinancialOverdueTab({
   };
 
   const handleBulkSend = async () => {
-    const selected = overdueInvoices.filter(inv => selectedIds.has(inv.id) && inv.payment_link_url);
-    if (selected.length === 0) { toast.error("Nenhuma fatura selecionada com link de pagamento"); return; }
+    const selected = overdueInvoices.filter(inv => selectedIds.has(inv.id));
+    if (selected.length === 0) { toast.error("Nenhuma fatura selecionada"); return; }
     setIsBulkSending(true);
     try {
       const { data: { session } } = await supabase.auth.getSession();
