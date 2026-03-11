@@ -404,18 +404,44 @@ export function NfsePanel() {
 
                   <div>
                     <Label>Empresa (Sistema)</Label>
-                    <Select value={form.companyId} onValueChange={handleCompanySelect}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Vincular a empresa (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {onboardingCompanies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={companySearchOpen} onOpenChange={setCompanySearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={companySearchOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {form.companyId
+                            ? onboardingCompanies.find((c: any) => c.id === form.companyId)?.name || "Selecione"
+                            : "Vincular a empresa (opcional)"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar empresa pelo nome..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {onboardingCompanies.map((c: any) => (
+                                <CommandItem
+                                  key={c.id}
+                                  value={c.name}
+                                  onSelect={() => {
+                                    handleCompanySelect(c.id);
+                                    setCompanySearchOpen(false);
+                                  }}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${form.companyId === c.id ? "opacity-100" : "opacity-0"}`} />
+                                  {c.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Invoice selector */}
