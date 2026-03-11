@@ -1177,6 +1177,17 @@ const ClientOnboardingPage = () => {
               />
             </motion.div>
           )}
+
+          {activeView === "instagram" && hasViewAccess("instagram") && (
+            <motion.div
+              key="instagram"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientInstagramModule projectId={projectId || ""} />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
