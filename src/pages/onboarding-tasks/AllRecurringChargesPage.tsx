@@ -66,6 +66,7 @@ import { SuppliersPanel } from "@/components/financial/SuppliersPanel";
 import { WhatsAppInstancePanel } from "@/components/financial/WhatsAppInstancePanel";
 import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel";
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
+import { NfsePanel } from "@/components/financial/NfsePanel";
 import { SupplierAutocomplete } from "@/components/financial/SupplierAutocomplete";
 import { PayablePaymentDialog, PayableEditDialog } from "@/components/financial/PayableActionDialogs";
 import { BankTransactionsDialog } from "@/components/financial/BankTransactionsDialog";
