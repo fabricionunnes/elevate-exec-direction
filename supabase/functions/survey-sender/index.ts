@@ -366,36 +366,47 @@ async function sendWhatsApp(
   message: string
 ): Promise<{ success: boolean; error?: string }> {
   try {
-    // Get instance info
+    // Get instance info including api_url and api_key
     const { data: instance } = await supabase
       .from("whatsapp_instances")
-      .select("id, instance_name")
+      .select("id, instance_name, api_url, api_key")
       .eq("instance_name", instanceName)
       .eq("status", "connected")
       .single();
 
     if (!instance) return { success: false, error: "Instância não encontrada ou desconectada" };
 
-    // Call evolution-api edge function
-    const response = await fetch(`${SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+    // Get Evolution API credentials from env or instance
+    const EVOLUTION_API_URL = instance.api_url || Deno.env.get("EVOLUTION_API_URL");
+    const EVOLUTION_API_KEY = instance.api_key || Deno.env.get("EVOLUTION_API_KEY");
+
+    if (!EVOLUTION_API_URL || !EVOLUTION_API_KEY) {
+      return { success: false, error: "Evolution API credentials not configured" };
+    }
+
+    const baseUrl = EVOLUTION_API_URL.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+
+    // Call Evolution API directly to send text message
+    const sendUrl = `${baseUrl}/message/sendText/${instance.instance_name}`;
+    const response = await fetch(sendUrl, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        Authorization: `Bearer ${SERVICE_ROLE_KEY}`,
-        apikey: SERVICE_ROLE_KEY,
+        apikey: EVOLUTION_API_KEY,
+        Authorization: `Bearer ${EVOLUTION_API_KEY}`,
       },
       body: JSON.stringify({
-        instanceName: instance.instance_name,
         number: phone,
         text: message,
       }),
     });
 
     if (!response.ok) {
-      const err = await response.json().catch(() => ({}));
-      return { success: false, error: err.error || `HTTP ${response.status}` };
+      const errText = await response.text();
+      return { success: false, error: `HTTP ${response.status}: ${errText.substring(0, 200)}` };
     }
 
+    await response.text(); // consume body
     return { success: true };
   } catch (error: any) {
     return { success: false, error: error.message };
