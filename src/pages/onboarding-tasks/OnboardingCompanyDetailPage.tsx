@@ -322,6 +322,7 @@ const OnboardingCompanyDetailPage = () => {
         status: currentForm.status,
         notes: currentForm.notes || null,
         is_simulator: currentForm.is_simulator,
+        goal_not_required: currentForm.goal_not_required,
       };
 
       if (isNew) {
