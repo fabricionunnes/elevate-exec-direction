@@ -60,6 +60,8 @@ export function NfsePanel() {
   const [selectedCompanyFilter, setSelectedCompanyFilter] = useState<string>("all");
 
   // Emit form state
+  const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
+
   const [form, setForm] = useState({
     companyId: "",
     nfeioCompanyId: "",
@@ -68,7 +70,7 @@ export function NfsePanel() {
     tomadorName: "",
     tomadorDocument: "",
     tomadorEmail: "",
-    cityServiceCode: "1.05",
+    cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
   });
 
   useEffect(() => {
@@ -80,10 +82,25 @@ export function NfsePanel() {
   const loadOnboardingCompanies = async () => {
     const { data } = await supabase
       .from("onboarding_companies")
-      .select("id, name")
+      .select("id, name, cnpj, email, contact_email")
       .eq("status", "active")
       .order("name");
     if (data) setOnboardingCompanies(data);
+  };
+
+  const handleCompanySelect = (companyId: string) => {
+    const company = onboardingCompanies.find((c: any) => c.id === companyId);
+    if (company) {
+      setForm((prev) => ({
+        ...prev,
+        companyId,
+        tomadorName: company.name || prev.tomadorName,
+        tomadorDocument: company.cnpj || prev.tomadorDocument,
+        tomadorEmail: company.contact_email || company.email || prev.tomadorEmail,
+      }));
+    } else {
+      setForm((prev) => ({ ...prev, companyId }));
+    }
   };
 
   const loadNfeioCompanies = async () => {
@@ -139,7 +156,7 @@ export function NfsePanel() {
         tomadorName: "",
         tomadorDocument: "",
         tomadorEmail: "",
-        cityServiceCode: "1.05",
+        cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
       });
       loadRecords();
     } catch (err: any) {
@@ -239,7 +256,7 @@ export function NfsePanel() {
 
                 <div>
                   <Label>Empresa (Sistema)</Label>
-                  <Select value={form.companyId} onValueChange={(v) => setForm({ ...form, companyId: v })}>
+                  <Select value={form.companyId} onValueChange={handleCompanySelect}>
                     <SelectTrigger>
                       <SelectValue placeholder="Vincular a empresa (opcional)" />
                     </SelectTrigger>
