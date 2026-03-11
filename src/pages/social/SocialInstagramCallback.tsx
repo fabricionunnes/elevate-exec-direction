@@ -56,7 +56,7 @@ export default function SocialInstagramCallback() {
 
       if (data?.success) {
         setStatus("success");
-        setAccountName(data.account?.username || null);
+        setAccountName(data.username || null);
         setMessage("Instagram conectado com sucesso!");
 
         // Close popup after delay
