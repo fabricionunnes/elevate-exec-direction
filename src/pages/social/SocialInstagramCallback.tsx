@@ -112,11 +112,17 @@ export default function SocialInstagramCallback() {
               {accountName && (
                 <p className="text-lg font-medium mt-2">@{accountName}</p>
               )}
-              <p className="text-muted-foreground mt-2">
-                Esta janela será fechada automaticamente...
-              </p>
+              {window.opener ? (
+                <p className="text-muted-foreground mt-2">
+                  Esta janela será fechada automaticamente...
+                </p>
+              ) : (
+                <p className="text-muted-foreground mt-2">
+                  Instagram conectado! Volte ao painel para continuar.
+                </p>
+              )}
             </div>
-            <Button onClick={handleClose}>Fechar</Button>
+            <Button onClick={handleClose}>Voltar ao CRM</Button>
           </>
         )}
 
