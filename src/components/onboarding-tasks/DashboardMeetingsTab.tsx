@@ -308,8 +308,14 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
     const pending = staffFilteredMeetings.filter((m) => {
       if (!(!m.is_finalized && isBefore(parseISO(m.meeting_date), now))) return false;
       if (isAdminOrMaster && selectedStaffId === "all") return true;
-      if (isAdminOrMaster && selectedStaffId !== "all") return m.calendar_owner_id === selectedStaffId;
-      return m.calendar_owner_id === staffId;
+      if (isAdminOrMaster && selectedStaffId !== "all") {
+        if (m.calendar_owner_id === selectedStaffId) return true;
+        const company = m.project?.onboarding_company;
+        return company?.consultant_id === selectedStaffId || company?.cs_id === selectedStaffId;
+      }
+      if (m.calendar_owner_id === staffId) return true;
+      const company = m.project?.onboarding_company;
+      return company?.consultant_id === staffId || company?.cs_id === staffId;
     }).length;
     const finalized = staffFilteredMeetings.filter((m) => m.is_finalized).length;
     return { upcoming, pending, finalized, all: staffFilteredMeetings.length };
