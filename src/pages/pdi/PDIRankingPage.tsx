@@ -73,7 +73,7 @@ export default function PDIRankingPage() {
         id: p.id, full_name: p.full_name, company: p.company,
         cohort_id: p.cohort_id, cohort_name: cMap.get(p.cohort_id) || "—",
         tasksCompleted: completed, avgAiScore: Math.round(avgAi * 10) / 10,
-        entryScore, exitScore, evolution, totalPoints,
+        entryScore, exitScore, evolution, attendancePoints, totalPoints,
       };
     });
 
