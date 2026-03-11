@@ -109,17 +109,49 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
       const reader = new FileReader();
       reader.onload = (e) => {
         try {
-          const wb = XLSX.read(e.target?.result, { type: "binary" });
+          const wb = XLSX.read(e.target?.result, { type: "binary", cellText: true, cellDates: true });
           const ws = wb.Sheets[wb.SheetNames[0]];
-          const json = XLSX.utils.sheet_to_json<ParsedRow>(ws, { defval: "" });
-          if (!json.length) { toast.error("Planilha vazia"); return; }
-          const headers = Object.keys(json[0]);
+          
+          // Read as raw array to detect header row properly
+          const rawData = XLSX.utils.sheet_to_json<any[]>(ws, { header: 1, defval: "", raw: false });
+          if (!rawData.length) { toast.error("Planilha vazia"); return; }
+          
+          const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
+          const knownKeywords = ["nome", "cnpj", "cpf", "empresa", "razao", "cliente", "devedor", "telefone", "email", "endereco", "bairro", "cep", "cidade", "uf", "estado", "valor", "vencimento", "descricao", "fornecedor", "categoria", "status", "observ"];
+          
+          let headerRowIdx = 0;
+          let maxScore = 0;
+          for (let r = 0; r < Math.min(rawData.length, 10); r++) {
+            const row = rawData[r];
+            if (!Array.isArray(row)) continue;
+            const score = row.filter((cell: any) => {
+              const n = normalize(String(cell || ""));
+              return n.length > 0 && knownKeywords.some(k => n.includes(k));
+            }).length;
+            if (score > maxScore) { maxScore = score; headerRowIdx = r; }
+          }
+          
+          const headerRow = (rawData[headerRowIdx] || []).map((cell: any) => String(cell || "").trim());
+          const validHeaders: { name: string; idx: number }[] = [];
+          headerRow.forEach((h: string, idx: number) => { if (h) validHeaders.push({ name: h, idx }); });
+          
+          if (!validHeaders.length) { toast.error("Nenhum cabeçalho válido encontrado"); return; }
+          
+          const headers = validHeaders.map(vh => vh.name);
+          const dataRows = rawData.slice(headerRowIdx + 1);
+          
+          const parsed: ParsedRow[] = dataRows
+            .filter((row: any[]) => Array.isArray(row) && row.some((c: any) => String(c || "").trim()))
+            .map((row: any[]) => {
+              const obj: ParsedRow = {};
+              validHeaders.forEach(vh => { obj[vh.name] = String(row[vh.idx] ?? "").trim(); });
+              return obj;
+            });
+          
+          if (!parsed.length) { toast.error("Planilha sem dados"); return; }
+          
           setFileHeaders(headers);
-          setParsedData(json.map(row => {
-            const clean: ParsedRow = {};
-            headers.forEach(h => clean[h] = String(row[h] ?? ""));
-            return clean;
-          }));
+          setParsedData(parsed);
           autoMap(headers);
           setStep("mapping");
         } catch { toast.error("Erro ao ler planilha"); }
