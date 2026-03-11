@@ -521,6 +521,7 @@ const ClientOnboardingPage = () => {
       { id: "sales_funnel" as ViewType, icon: FunnelIcon, label: "Funil de Vendas", menuKey: CLIENT_MENU_KEYS.funil_vendas },
       { id: "instagram" as ViewType, icon: Instagram, label: "Instagram", menuKey: CLIENT_MENU_KEYS.instagram },
       { id: "commercial_director" as ViewType, icon: BrainCircuit, label: "Diretor Comercial IA", menuKey: CLIENT_MENU_KEYS.diretor_comercial_ia },
+      { id: "other_services" as ViewType, icon: ShoppingCart, label: "Outros Serviços", menuKey: CLIENT_MENU_KEYS.outros_servicos },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
