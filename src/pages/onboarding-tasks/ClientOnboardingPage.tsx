@@ -44,6 +44,7 @@ import { ClientCalendarView } from "@/components/client-portal/ClientCalendarVie
 import { ClientTasksList } from "@/components/client-portal/ClientTasksList";
 import { ClientTaskDetailSheet } from "@/components/client-portal/ClientTaskDetailSheet";
 import { ClientSettingsSheet } from "@/components/client-portal/ClientSettingsSheet";
+import { ThemeToggle } from "@/components/settings/ThemeToggle";
 
 import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { GoalProjectionAlertDialog } from "@/components/onboarding-tasks/GoalProjectionAlertDialog";
