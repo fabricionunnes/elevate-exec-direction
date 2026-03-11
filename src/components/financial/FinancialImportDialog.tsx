@@ -30,6 +30,15 @@ interface ParsedRow {
 
 const RECEIVABLE_FIELDS = [
   { key: "company_name", label: "Empresa", required: true },
+  { key: "cnpj", label: "CNPJ/CPF", required: false },
+  { key: "phone", label: "Telefone", required: false },
+  { key: "email", label: "Email", required: false },
+  { key: "address", label: "Endereço", required: false },
+  { key: "address_number", label: "Número", required: false },
+  { key: "address_neighborhood", label: "Bairro", required: false },
+  { key: "address_zipcode", label: "CEP", required: false },
+  { key: "address_city", label: "Cidade", required: false },
+  { key: "address_state", label: "UF", required: false },
   { key: "description", label: "Descrição", required: true },
   { key: "amount", label: "Valor", required: true },
   { key: "due_date", label: "Vencimento", required: true },
