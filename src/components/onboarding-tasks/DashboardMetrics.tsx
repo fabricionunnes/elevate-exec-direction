@@ -659,7 +659,7 @@ const DashboardMetrics = ({
       }).length;
       const activeAtMonthStart = nonSimulatorAllProjects.filter(p => {
         if (new Date(p.created_at) > monthEnd) return false;
-        if (p.status === "closed" || p.status === "completed") {
+        if (p.status === "closed") {
           // Usa churn_date como referência
           const churnDateStr = p.churn_date || p.updated_at;
           const dateOnly = churnDateStr.substring(0, 10);
