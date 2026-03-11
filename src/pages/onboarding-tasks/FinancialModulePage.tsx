@@ -19,7 +19,8 @@ import {
   Bell,
   Truck,
   MessageSquare,
-  Headphones
+  Headphones,
+  FileCheck
 } from "lucide-react";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
