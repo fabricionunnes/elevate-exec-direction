@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SegmentSelect } from "@/components/ui/segment-select";
 import { toast } from "sonner";
 import { ArrowLeft, Building2, BarChart3, Heart, Star, Brain, ExternalLink, TrendingUp, AlertTriangle, CheckCircle2, Users, Target, Sparkles } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie } from "recharts";
@@ -545,9 +546,9 @@ export default function SegmentsAnalysisPage() {
                 <ScrollArea className="h-[400px]">
                   <div className="space-y-2">
                     {noSegmentCompanies.map((c) => (
-                      <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border">
-                        <div>
-                          <p className="font-medium">{c.name}</p>
+                      <div key={c.id} className="flex items-center justify-between p-3 rounded-lg border gap-3">
+                        <div className="min-w-0 flex-1">
+                          <p className="font-medium truncate">{c.name}</p>
                           <div className="flex items-center gap-2 mt-1">
                             <Badge variant={c.status === "active" ? "default" : "secondary"}>{c.status}</Badge>
                             {c.consultantName && (
@@ -557,14 +558,34 @@ export default function SegmentsAnalysisPage() {
                             )}
                           </div>
                         </div>
-                        <Button
-                          variant="outline"
-                          size="sm"
-                          onClick={() => navigate(`/onboarding-tasks/companies/${c.id}`)}
-                        >
-                          <ExternalLink className="h-4 w-4 mr-1" />
-                          Abrir Empresa
-                        </Button>
+                        <div className="flex items-center gap-2 shrink-0">
+                          <SegmentSelect
+                            value=""
+                            className="w-[180px]"
+                            placeholder="Selecionar segmento"
+                            onValueChange={async (value) => {
+                              if (!value) return;
+                              const { error } = await supabase
+                                .from("onboarding_companies")
+                                .update({ segment: value })
+                                .eq("id", c.id);
+                              if (error) {
+                                toast.error("Erro ao salvar segmento");
+                              } else {
+                                toast.success(`Segmento de "${c.name}" atualizado`);
+                                fetchAllData();
+                              }
+                            }}
+                          />
+                          <Button
+                            variant="outline"
+                            size="sm"
+                            onClick={() => navigate(`/onboarding-tasks/companies/${c.id}`)}
+                          >
+                            <ExternalLink className="h-4 w-4 mr-1" />
+                            Abrir Empresa
+                          </Button>
+                        </div>
                       </div>
                     ))}
                   </div>
