@@ -189,10 +189,10 @@ export default function PDIAssessmentsPage() {
               </div>
               <div>
                 <Label>Turma</Label>
-                <Select value={form.cohort_id} onValueChange={(v) => setForm({ ...form, cohort_id: v })}>
+                <Select value={form.cohort_id || "__global__"} onValueChange={(v) => setForm({ ...form, cohort_id: v === "__global__" ? "" : v })}>
                   <SelectTrigger><SelectValue placeholder="Global" /></SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="">Global</SelectItem>
+                    <SelectItem value="__global__">Global</SelectItem>
                     {cohorts.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>))}
                   </SelectContent>
                 </Select>
