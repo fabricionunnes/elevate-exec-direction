@@ -79,6 +79,13 @@ export default function SurveySendConfigPage() {
   const [ruleForm, setRuleForm] = useState({ day_offset: 0, message_template: "", is_active: true });
   const [logsTab, setLogsTab] = useState<"nps" | "csat">("nps");
   const [runningManual, setRunningManual] = useState(false);
+  const [showTestDialog, setShowTestDialog] = useState(false);
+  const [testSurveyType, setTestSurveyType] = useState<"nps" | "csat">("nps");
+  const [testCompanies, setTestCompanies] = useState<{ id: string; name: string; phone: string | null }[]>([]);
+  const [testSearch, setTestSearch] = useState("");
+  const [testSelectedCompany, setTestSelectedCompany] = useState<string | null>(null);
+  const [sendingTest, setSendingTest] = useState(false);
+  const [loadingCompanies, setLoadingCompanies] = useState(false);
 
   const loadData = useCallback(async () => {
     setLoading(true);
