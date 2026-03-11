@@ -716,6 +716,9 @@ const OnboardingCompanyDetailPage = () => {
                     <div className="space-y-2">
                       <Label>Segmento</Label>
                       <SegmentSelect value={form.segment} onValueChange={(value) => {
+                        const previousSegment = formRef.current.segment;
+                        // Only auto-save if value actually changed
+                        if (value === previousSegment) return;
                         setForm(prev => ({ ...prev, segment: value }));
                         if (!isNew && companyId) {
                           supabase
