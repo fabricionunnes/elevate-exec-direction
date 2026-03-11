@@ -2756,7 +2756,7 @@ const OnboardingTasksPage = () => {
                         </div>
                         <div className="min-w-0 flex-1">
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
-                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-[#0A2240] uppercase tracking-wide break-words max-w-full">{company.name}</h3>
+                            <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
                               {getStatusBadge(company.status)}
                               {/* Tag "Empresa Nova" for companies started within last 30 days.
@@ -2904,7 +2904,7 @@ const OnboardingTasksPage = () => {
                           </div>
                         </div>
                         <ChevronDown
-                          className={`h-4 w-4 sm:h-5 sm:w-5 text-[#0A2240] transition-transform ${
+                          className={`h-4 w-4 sm:h-5 sm:w-5 text-foreground transition-transform ${
                             expandedCompanyId === company.id ? "rotate-180" : ""
                           }`}
                         />
