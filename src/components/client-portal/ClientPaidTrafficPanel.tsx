@@ -7,8 +7,9 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone, ExternalLink, Settings, Loader2, Code, Link } from "lucide-react";
+import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
+import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
 
 interface ClientPaidTrafficPanelProps {
   projectId: string;
@@ -28,6 +29,7 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
   const [urlInput, setUrlInput] = useState("");
   const [embedInput, setEmbedInput] = useState("");
   const [configTab, setConfigTab] = useState("url");
+  const [activeTab, setActiveTab] = useState("meta_ads");
 
   useEffect(() => {
     fetchData();
@@ -88,14 +90,9 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
     return url.replace("/reporting/", "/embed/reporting/").replace("/s/", "/embed/s/");
   };
 
-  // Determine the iframe src: embed code takes priority
   const getIframeSrc = (): string | null => {
-    if (embedCode) {
-      return extractSrcFromEmbed(embedCode);
-    }
-    if (lookerUrl) {
-      return getEmbedUrl(lookerUrl);
-    }
+    if (embedCode) return extractSrcFromEmbed(embedCode);
+    if (lookerUrl) return getEmbedUrl(lookerUrl);
     return null;
   };
 
@@ -116,125 +113,79 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
     );
   }
 
-  if (!hasConfig) {
-    return (
-      <Card>
-        <CardContent className="py-12 text-center">
-          <Megaphone className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
-          <h3 className="text-lg font-semibold mb-2">Tráfego Pago</h3>
-          <p className="text-sm text-muted-foreground mb-4">
-            {canEdit
-              ? "Configure o dashboard de tráfego pago colando um link ou código embed."
-              : "O dashboard de tráfego pago ainda não foi configurado para este projeto."}
-          </p>
-          {canEdit && (
-            <Button onClick={() => { setUrlInput(""); setEmbedInput(""); setConfigTab("url"); setShowConfigDialog(true); }}>
-              <Settings className="h-4 w-4 mr-2" />
-              Configurar Dashboard
-            </Button>
-          )}
-          <ConfigDialog
-            open={showConfigDialog}
-            onOpenChange={setShowConfigDialog}
-            urlInput={urlInput}
-            setUrlInput={setUrlInput}
-            embedInput={embedInput}
-            setEmbedInput={setEmbedInput}
-            configTab={configTab}
-            setConfigTab={setConfigTab}
-            onSave={saveConfig}
-          />
-        </CardContent>
-      </Card>
-    );
-  }
-
   return (
     <div className="space-y-4">
-      <div className="flex items-center justify-between">
-        <div>
-          <h2 className="text-lg font-semibold">Tráfego Pago</h2>
-          <p className="text-xs text-muted-foreground">Dashboard de performance de campanhas</p>
-        </div>
-        <div className="flex items-center gap-2">
-          {getExternalUrl() && (
-            <Button
-              variant="outline"
-              size="sm"
-              onClick={() => window.open(getExternalUrl()!, "_blank")}
-              className="gap-2"
-            >
-              <ExternalLink className="h-3.5 w-3.5" />
-              <span className="hidden sm:inline">Abrir no Looker</span>
-            </Button>
-          )}
-          {canEdit && (
-            <Button
-              variant="ghost"
-              size="sm"
-              onClick={() => {
-                setUrlInput(lookerUrl || "");
-                setEmbedInput(embedCode || "");
-                setConfigTab(embedCode ? "embed" : "url");
-                setShowConfigDialog(true);
-              }}
-            >
-              <Settings className="h-3.5 w-3.5" />
-            </Button>
-          )}
-        </div>
+      <div>
+        <h2 className="text-lg font-semibold">Tráfego Pago</h2>
+        <p className="text-xs text-muted-foreground">Dashboard de performance de campanhas</p>
       </div>
 
-      {iframeSrc && (
-        <div className="w-full rounded-lg border overflow-hidden bg-background" style={{ height: "calc(100vh - 220px)", minHeight: "500px" }}>
-          <iframe
-            src={iframeSrc}
-            width="100%"
-            height="100%"
-            frameBorder="0"
-            allowFullScreen
-            sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox"
-            style={{ border: 0 }}
-          />
-        </div>
-      )}
+      <Tabs value={activeTab} onValueChange={setActiveTab}>
+        <TabsList>
+          <TabsTrigger value="meta_ads" className="gap-1.5">
+            <Megaphone className="h-3.5 w-3.5" />
+            Meta Ads
+          </TabsTrigger>
+          <TabsTrigger value="dashboard" className="gap-1.5">
+            <BarChart3 className="h-3.5 w-3.5" />
+            Dashboard
+          </TabsTrigger>
+        </TabsList>
 
-      <ConfigDialog
-        open={showConfigDialog}
-        onOpenChange={setShowConfigDialog}
-        urlInput={urlInput}
-        setUrlInput={setUrlInput}
-        embedInput={embedInput}
-        setEmbedInput={setEmbedInput}
-        configTab={configTab}
-        setConfigTab={setConfigTab}
-        onSave={saveConfig}
-      />
+        <TabsContent value="meta_ads">
+          <MetaAdsModule projectId={projectId} isStaff={canEdit} />
+        </TabsContent>
+
+        <TabsContent value="dashboard">
+          {!hasConfig ? (
+            <Card>
+              <CardContent className="py-12 text-center">
+                <Megaphone className="h-12 w-12 mx-auto text-muted-foreground/50 mb-4" />
+                <h3 className="text-lg font-semibold mb-2">Dashboard Looker Studio</h3>
+                <p className="text-sm text-muted-foreground mb-4">
+                  {canEdit
+                    ? "Configure o dashboard colando um link ou código embed do Looker Studio."
+                    : "O dashboard ainda não foi configurado para este projeto."}
+                </p>
+                {canEdit && (
+                  <Button onClick={() => { setUrlInput(""); setEmbedInput(""); setConfigTab("url"); setShowConfigDialog(true); }}>
+                    <Settings className="h-4 w-4 mr-2" />
+                    Configurar Dashboard
+                  </Button>
+                )}
+              </CardContent>
+            </Card>
+          ) : (
+            <div className="space-y-4">
+              <div className="flex items-center justify-end gap-2">
+                {getExternalUrl() && (
+                  <Button variant="outline" size="sm" onClick={() => window.open(getExternalUrl()!, "_blank")} className="gap-2">
+                    <ExternalLink className="h-3.5 w-3.5" />
+                    <span className="hidden sm:inline">Abrir no Looker</span>
+                  </Button>
+                )}
+                {canEdit && (
+                  <Button variant="ghost" size="sm" onClick={() => { setUrlInput(lookerUrl || ""); setEmbedInput(embedCode || ""); setConfigTab(embedCode ? "embed" : "url"); setShowConfigDialog(true); }}>
+                    <Settings className="h-3.5 w-3.5" />
+                  </Button>
+                )}
+              </div>
+              {iframeSrc && (
+                <div className="w-full rounded-lg border overflow-hidden bg-background" style={{ height: "calc(100vh - 280px)", minHeight: "500px" }}>
+                  <iframe src={iframeSrc} width="100%" height="100%" frameBorder="0" allowFullScreen sandbox="allow-storage-access-by-user-activation allow-scripts allow-same-origin allow-popups allow-popups-to-escape-sandbox" style={{ border: 0 }} />
+                </div>
+              )}
+            </div>
+          )}
+        </TabsContent>
+      </Tabs>
+
+      <ConfigDialog open={showConfigDialog} onOpenChange={setShowConfigDialog} urlInput={urlInput} setUrlInput={setUrlInput} embedInput={embedInput} setEmbedInput={setEmbedInput} configTab={configTab} setConfigTab={setConfigTab} onSave={saveConfig} />
     </div>
   );
 };
 
-function ConfigDialog({
-  open,
-  onOpenChange,
-  urlInput,
-  setUrlInput,
-  embedInput,
-  setEmbedInput,
-  configTab,
-  setConfigTab,
-  onSave,
-}: {
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  urlInput: string;
-  setUrlInput: (v: string) => void;
-  embedInput: string;
-  setEmbedInput: (v: string) => void;
-  configTab: string;
-  setConfigTab: (v: string) => void;
-  onSave: () => void;
-}) {
+function ConfigDialog({ open, onOpenChange, urlInput, setUrlInput, embedInput, setEmbedInput, configTab, setConfigTab, onSave }: { open: boolean; onOpenChange: (open: boolean) => void; urlInput: string; setUrlInput: (v: string) => void; embedInput: string; setEmbedInput: (v: string) => void; configTab: string; setConfigTab: (v: string) => void; onSave: () => void; }) {
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
       <DialogContent className="max-w-md">
@@ -243,50 +194,27 @@ function ConfigDialog({
         </DialogHeader>
         <Tabs value={configTab} onValueChange={setConfigTab}>
           <TabsList className="w-full">
-            <TabsTrigger value="url" className="flex-1 gap-1.5">
-              <Link className="h-3.5 w-3.5" />
-              Link
-            </TabsTrigger>
-            <TabsTrigger value="embed" className="flex-1 gap-1.5">
-              <Code className="h-3.5 w-3.5" />
-              Código Embed
-            </TabsTrigger>
+            <TabsTrigger value="url" className="flex-1 gap-1.5"><Link className="h-3.5 w-3.5" />Link</TabsTrigger>
+            <TabsTrigger value="embed" className="flex-1 gap-1.5"><Code className="h-3.5 w-3.5" />Código Embed</TabsTrigger>
           </TabsList>
           <TabsContent value="url" className="space-y-3 mt-3">
             <div>
               <Label>URL do Looker Studio</Label>
-              <Input
-                value={urlInput}
-                onChange={(e) => setUrlInput(e.target.value)}
-                placeholder="https://lookerstudio.google.com/reporting/..."
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Cole o link de compartilhamento do seu dashboard.
-              </p>
+              <Input value={urlInput} onChange={(e) => setUrlInput(e.target.value)} placeholder="https://lookerstudio.google.com/reporting/..." />
+              <p className="text-xs text-muted-foreground mt-1">Cole o link de compartilhamento do seu dashboard.</p>
             </div>
           </TabsContent>
           <TabsContent value="embed" className="space-y-3 mt-3">
             <div>
               <Label>Código Embed (iframe)</Label>
-              <Textarea
-                value={embedInput}
-                onChange={(e) => setEmbedInput(e.target.value)}
-                placeholder='<iframe src="https://lookerstudio.google.com/embed/reporting/..." ...></iframe>'
-                rows={5}
-              />
-              <p className="text-xs text-muted-foreground mt-1">
-                Cole o código embed gerado pelo Looker Studio (Arquivo → Incorporar relatório).
-              </p>
+              <Textarea value={embedInput} onChange={(e) => setEmbedInput(e.target.value)} placeholder='<iframe src="https://lookerstudio.google.com/embed/reporting/..." ...></iframe>' rows={5} />
+              <p className="text-xs text-muted-foreground mt-1">Cole o código embed gerado pelo Looker Studio.</p>
             </div>
           </TabsContent>
         </Tabs>
         <div className="flex gap-2">
-          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">
-            Cancelar
-          </Button>
-          <Button onClick={onSave} className="flex-1">
-            Salvar
-          </Button>
+          <Button variant="outline" onClick={() => onOpenChange(false)} className="flex-1">Cancelar</Button>
+          <Button onClick={onSave} className="flex-1">Salvar</Button>
         </div>
       </DialogContent>
     </Dialog>
