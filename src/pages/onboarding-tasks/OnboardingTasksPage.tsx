@@ -2050,10 +2050,6 @@ const OnboardingTasksPage = () => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  <DropdownMenuItem onClick={() => {
-                    const { useThemeCustomization, themePresets } = require("@/contexts/ThemeCustomizationContext");
-                  }}>
-                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => setShowStaffSettings(true)}>
                     <User className="h-4 w-4 mr-2" />
                     Meu Perfil
