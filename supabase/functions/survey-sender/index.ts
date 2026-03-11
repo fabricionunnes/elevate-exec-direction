@@ -340,9 +340,9 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
         }
       }
     } else {
-      // No finalized meeting found, use placeholder
-      console.log(`Test CSAT: no finalized meetings for company ${company.name}, using placeholder`);
-      csatLink = `${PUBLIC_DOMAIN}/#/csat?test=true`;
+      // No finalized meeting found — CSAT requires a finalized meeting, abort
+      console.log(`Test CSAT: nenhuma reunião finalizada encontrada para ${company.name}. CSAT não será enviado.`);
+      return 0;
     }
 
     const ruleToSend = rules[0];
