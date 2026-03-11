@@ -38,12 +38,10 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
       if (error || data?.error) throw new Error(data?.error || error?.message);
 
       if (data?.authUrl) {
-        const opened = window.open(data.authUrl, "_blank");
-        if (!opened) {
-          setManualAuthUrl(data.authUrl);
-          await navigator.clipboard.writeText(data.authUrl);
-          toast.info("Pop-up bloqueado. Use o link abaixo ou cole da área de transferência.", { duration: 8000 });
-        }
+        // Always show the link for the user to click directly.
+        // Using window.open or window.location.href gets blocked by Safari's
+        // Cross-Origin-Opener-Policy on Facebook OAuth pages.
+        setManualAuthUrl(data.authUrl);
       }
     } catch (err: any) {
       console.error("Error connecting Instagram:", err);
