@@ -609,7 +609,7 @@ const DashboardMetrics = ({
     // Use nonSimulatorAllProjects to include closed/completed projects but exclude simulators
     // Also exclude projects from companies marked as 'nao_renovado' (they appear in the "Não Renovadas" card instead)
     const closedInPeriod = nonSimulatorAllProjects.filter(p => {
-      if (p.status !== "closed" && p.status !== "completed") return false;
+      if (p.status !== "closed") return false;
       if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
       const companyId = getProjectCompanyId(p);
       if (companyId && notRenewedCompanyIds.has(companyId)) return false;
