@@ -287,8 +287,6 @@ export function NfsePanel() {
   const handleDownloadPdf = async (record: NfseRecord) => {
     if (!record.nfeio_id) return;
 
-    const previewWindow = window.open("", "_blank");
-
     try {
       toast.info("Baixando PDF...");
       const nfeioCompanyId = companies[0]?.id;
@@ -336,41 +334,9 @@ export function NfsePanel() {
       a.click();
       document.body.removeChild(a);
 
-      if (previewWindow) {
-        previewWindow.document.write(`
-          <!doctype html>
-          <html lang="pt-BR">
-            <head>
-              <meta charset="UTF-8" />
-              <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-              <title>${fileName}</title>
-              <style>
-                body { margin: 0; font-family: system-ui, sans-serif; background: #0f172a; color: #e2e8f0; }
-                .toolbar { display: flex; gap: 12px; align-items: center; justify-content: space-between; padding: 12px 16px; background: #111827; border-bottom: 1px solid #334155; }
-                .title { font-size: 14px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
-                .actions { display: flex; gap: 8px; }
-                .button { display: inline-flex; align-items: center; justify-content: center; padding: 10px 14px; border-radius: 8px; background: #f8fafc; color: #0f172a; text-decoration: none; font-weight: 600; }
-                iframe { width: 100%; height: calc(100vh - 58px); border: 0; background: white; }
-              </style>
-            </head>
-            <body>
-              <div class="toolbar">
-                <div class="title">${fileName}</div>
-                <div class="actions">
-                  <a class="button" href="${url}" download="${fileName}">Baixar PDF</a>
-                </div>
-              </div>
-              <iframe src="${url}" title="${fileName}"></iframe>
-            </body>
-          </html>
-        `);
-        previewWindow.document.close();
-      }
-
       setTimeout(() => URL.revokeObjectURL(url), 60000);
-      toast.success("PDF pronto para download.");
+      toast.success("Download do PDF iniciado.");
     } catch (err: any) {
-      if (previewWindow) previewWindow.close();
       toast.error("Erro ao baixar PDF: " + err.message);
     }
   };
