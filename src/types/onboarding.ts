@@ -207,6 +207,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Funil de Vendas",
     group: null,
   },
+  {
+    key: CLIENT_MENU_KEYS.instagram,
+    label: "Instagram",
+    group: "Integrações",
+  },
 ] as const;
 
 // Role labels in Portuguese
