@@ -284,7 +284,7 @@ const OnboardingCompaniesPage = () => {
           <Card>
             <CardContent className="pt-6">
               <div className="text-2xl font-bold text-orange-500">
-                {companies.filter((c) => !c.hasGoal && c.status === "active").length}
+                {companies.filter((c) => !c.hasGoal && c.status === "active" && !(c as any).goal_not_required).length}
               </div>
               <div className="text-sm text-muted-foreground">Sem Meta</div>
             </CardContent>
@@ -323,7 +323,7 @@ const OnboardingCompaniesPage = () => {
                           Vaga em aberto
                         </Badge>
                       )}
-                      {!company.hasGoal && company.status === "active" && (
+                      {!company.hasGoal && company.status === "active" && !(company as any).goal_not_required && (
                         <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-300">
                           Sem Meta
                         </Badge>

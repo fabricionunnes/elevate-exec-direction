@@ -19223,6 +19223,7 @@ export type Database = {
           cs_id: string | null
           email: string | null
           expected_timeline: Json | null
+          goal_not_required: boolean
           goals_long_term: string | null
           goals_short_term: string | null
           growth_expectation_12m: string | null
@@ -19291,6 +19292,7 @@ export type Database = {
           cs_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
+          goal_not_required?: boolean
           goals_long_term?: string | null
           goals_short_term?: string | null
           growth_expectation_12m?: string | null
@@ -19359,6 +19361,7 @@ export type Database = {
           cs_id?: string | null
           email?: string | null
           expected_timeline?: Json | null
+          goal_not_required?: boolean
           goals_long_term?: string | null
           goals_short_term?: string | null
           growth_expectation_12m?: string | null

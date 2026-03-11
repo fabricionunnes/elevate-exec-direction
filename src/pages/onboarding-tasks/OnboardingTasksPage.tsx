@@ -289,6 +289,7 @@ const OnboardingTasksPage = () => {
             created_at,
             instagram,
             is_simulator,
+            goal_not_required,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
@@ -596,6 +597,7 @@ const OnboardingTasksPage = () => {
             status_changed_at,
             created_at,
             instagram,
+            goal_not_required,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
@@ -914,11 +916,14 @@ const OnboardingTasksPage = () => {
       })
     );
     
-    // Companies without goals (no KPI configured)
+    // Companies without goals (no KPI configured) - exclude goal_not_required
     const noGoalIds = new Set<string>();
     activeCompanyIds.forEach(companyId => {
       if (!companiesWithAnyKpiIds.has(companyId)) {
-        noGoalIds.add(companyId);
+        const company = companies.find(c => c.id === companyId);
+        if (!(company as any)?.goal_not_required) {
+          noGoalIds.add(companyId);
+        }
       }
     });
     

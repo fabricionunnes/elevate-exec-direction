@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_companies ADD COLUMN IF NOT EXISTS goal_not_required BOOLEAN NOT NULL DEFAULT false;

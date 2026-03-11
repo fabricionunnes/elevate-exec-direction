@@ -100,6 +100,7 @@ interface CompanyForm {
   status: string;
   notes: string;
   is_simulator: boolean;
+  goal_not_required: boolean;
 }
 
 interface Project {
@@ -160,6 +161,7 @@ const OnboardingCompanyDetailPage = () => {
     status: "active",
     notes: "",
     is_simulator: false,
+    goal_not_required: false,
   });
 
   // Keep ref in sync with latest form state
@@ -262,6 +264,7 @@ const OnboardingCompanyDetailPage = () => {
         status: data.status || "active",
         notes: data.notes || "",
         is_simulator: data.is_simulator || false,
+        goal_not_required: data.goal_not_required || false,
       });
       originalStatusRef.current = data.status || "active";
     } catch (error: any) {
@@ -319,6 +322,7 @@ const OnboardingCompanyDetailPage = () => {
         status: currentForm.status,
         notes: currentForm.notes || null,
         is_simulator: currentForm.is_simulator,
+        goal_not_required: currentForm.goal_not_required,
       };
 
       if (isNew) {
@@ -823,6 +827,25 @@ const OnboardingCompanyDetailPage = () => {
                         id="is_simulator"
                         checked={form.is_simulator}
                         onCheckedChange={(checked) => setForm({ ...form, is_simulator: checked })}
+                      />
+                    </div>
+                  )}
+
+                  {/* Goal Not Required Toggle - Master/Admin/CS only */}
+                  {(currentUserRole === "master" || currentUserRole === "admin" || currentUserRole === "cs") && (
+                    <div className="flex items-center justify-between rounded-lg border p-4 bg-blue-50 dark:bg-blue-950/20">
+                      <div className="space-y-0.5">
+                        <Label htmlFor="goal_not_required" className="text-base font-medium">
+                          Meta Não Necessária
+                        </Label>
+                        <p className="text-sm text-muted-foreground">
+                          Empresa não precisa de meta cadastrada. Não aparecerá como "Sem Meta" nos dashboards e relatórios.
+                        </p>
+                      </div>
+                      <Switch
+                        id="goal_not_required"
+                        checked={form.goal_not_required}
+                        onCheckedChange={(checked) => setForm({ ...form, goal_not_required: checked })}
                       />
                     </div>
                   )}

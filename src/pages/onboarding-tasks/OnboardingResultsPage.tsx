@@ -191,7 +191,7 @@ const OnboardingResultsPage = () => {
         : format(endOfMonth(selectedMonthDate), "yyyy-MM-dd");
       
       const [companiesRes, staffRes, servicesRes, projectsRes] = await Promise.all([
-        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator").eq("status", "active").order("name"),
+        supabase.from("onboarding_companies").select("id, name, segment, cs_id, consultant_id, status, is_simulator, goal_not_required").eq("status", "active").order("name"),
         supabase.from("onboarding_staff").select("id, name, role").eq("is_active", true).order("name"),
         supabase.from("onboarding_services").select("id, name").order("name"),
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
@@ -464,7 +464,12 @@ const OnboardingResultsPage = () => {
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
         const hasGoals = !!companiesWithGoals[company.id];
-        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        const goalNotRequired = !!(company as any).goal_not_required;
+        if (filterGoals === "without_goals" && goalNotRequired) {
+          matchesGoals = false; // Hide goal_not_required companies from "sem metas"
+        } else {
+          matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        }
       }
       
       // Results filter
@@ -530,7 +535,12 @@ const OnboardingResultsPage = () => {
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
         const hasGoals = !!companiesWithGoals[company.id];
-        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        const goalNotRequired = !!(company as any).goal_not_required;
+        if (filterGoals === "without_goals" && goalNotRequired) {
+          matchesGoals = false;
+        } else {
+          matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        }
       }
       
       return matchesSearch && matchesConsultant && matchesService && matchesGoals;
