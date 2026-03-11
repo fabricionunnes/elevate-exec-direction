@@ -613,7 +613,7 @@ export function HotseatResponseDialog({
   return (
     <>
       <Dialog open={open} onOpenChange={onOpenChange}>
-        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto">
+        <DialogContent className="max-w-2xl max-h-[90vh] overflow-y-auto flex flex-col">
           <DialogHeader className="flex flex-row items-center justify-between">
             <DialogTitle className="flex items-center gap-2">
               <User className="h-5 w-5" />
@@ -670,7 +670,7 @@ export function HotseatResponseDialog({
               </TabsTrigger>
             </TabsList>
 
-            <ScrollArea className="max-h-[60vh] mt-4">
+            <div className="mt-4 overflow-y-auto" style={{ maxHeight: 'calc(90vh - 180px)' }}>
               <TabsContent value="details" className="space-y-4 mt-0">
                 {/* Response Info */}
                 <div className="bg-muted/50 rounded-lg p-4 space-y-3">
@@ -1222,7 +1222,7 @@ export function HotseatResponseDialog({
                   </>
                 )}
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         </DialogContent>
       </Dialog>
