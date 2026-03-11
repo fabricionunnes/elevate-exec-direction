@@ -37,6 +37,7 @@ import {
   Instagram,
   BrainCircuit,
 } from "lucide-react";
+import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
 import { ClientJourneyTrail } from "@/components/client-portal/ClientJourneyTrail";
