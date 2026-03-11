@@ -91,6 +91,8 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (!company || company.status !== "active") continue;
     const phone = cleanPhone(company.phone);
     if (!phone) continue;
+    // In test mode, only include the selected company
+    if (isTest && testCompanyId && company.id !== testCompanyId) continue;
     // Keep only the first project per company
     if (!companyMap.has(company.id)) {
       companyMap.set(company.id, {
