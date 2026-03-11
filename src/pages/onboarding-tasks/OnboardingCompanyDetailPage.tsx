@@ -161,6 +161,7 @@ const OnboardingCompanyDetailPage = () => {
     status: "active",
     notes: "",
     is_simulator: false,
+    goal_not_required: false,
   });
 
   // Keep ref in sync with latest form state
