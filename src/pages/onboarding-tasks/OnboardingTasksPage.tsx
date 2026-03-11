@@ -1274,9 +1274,11 @@ const OnboardingTasksPage = () => {
           matchesMetricFilter = company.projects?.some(p => 
             p.status === "cancellation_signaled" || p.status === "notice_period"
           ) ?? false;
+        } else if (activeMetricFilter.type === "status" && (activeMetricFilter.value === "cancellation_signaled" || activeMetricFilter.value === "notice_period")) {
+          // For cancellation/notice filters, don't require date range - show all current
+          matchesMetricFilter = company.projects?.some(p => p.status === activeMetricFilter.value) ?? false;
         } else if (activeMetricFilter.type === "status") {
-          // For status filters from cards (active, cancellation_signaled, notice_period), 
-          // filter by projects that changed to this status in the selected period
+          // For other status filters (active, etc.), filter by date range
           matchesMetricFilter = company.projects?.some(p => {
             if (p.status !== activeMetricFilter.value) return false;
             const updatedAt = new Date(p.updated_at);
