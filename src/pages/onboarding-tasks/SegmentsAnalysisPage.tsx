@@ -8,6 +8,7 @@ import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { SegmentSelect } from "@/components/ui/segment-select";
 import { toast } from "sonner";
 import { ArrowLeft, Building2, BarChart3, Heart, Star, Brain, ExternalLink, TrendingUp, AlertTriangle, CheckCircle2, Users, Target, Sparkles } from "lucide-react";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Cell, LabelList, PieChart, Pie } from "recharts";
