@@ -42,7 +42,7 @@ Deno.serve(async (req) => {
     // ──── GET AUTH URL ────
     if (action === "auth_url") {
       const scopes = "ads_read,ads_management,business_management";
-      const state = btoa(JSON.stringify({ project_id, flow: "meta_ads" }));
+      const state = btoa(JSON.stringify({ project_id, flow: "meta_ads", redirect_uri }));
       const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${scopes}&state=${encodeURIComponent(state)}&response_type=code`;
       
       return new Response(JSON.stringify({ url }), {

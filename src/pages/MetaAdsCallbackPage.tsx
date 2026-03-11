@@ -33,9 +33,11 @@ const MetaAdsCallbackPage = () => {
   const handleCallback = async (code: string, stateParam: string) => {
     try {
       let projectId: string;
+      let stateRedirectUri: string | undefined;
       try {
         const decoded = JSON.parse(atob(stateParam));
         projectId = decoded.project_id;
+        stateRedirectUri = decoded.redirect_uri;
       } catch {
         throw new Error("State inválido");
       }
@@ -44,7 +46,12 @@ const MetaAdsCallbackPage = () => {
 
       setMessage("Trocando código por token de acesso...");
 
-      const redirectUri = window.location.origin;
+      // Use the exact same redirect_uri that was used to generate the OAuth URL
+      // Priority: sessionStorage > state param > current origin
+      const storedRedirectUri = sessionStorage.getItem("meta_ads_redirect_uri");
+      const redirectUri = storedRedirectUri || stateRedirectUri || window.location.origin;
+      sessionStorage.removeItem("meta_ads_redirect_uri");
+      
       const { data: result, error: err } = await supabase.functions.invoke("meta-ads-sync", {
         body: { action: "connect", code, redirect_uri: redirectUri, project_id: projectId },
       });
