@@ -82,7 +82,7 @@ export function NfsePanel() {
   const loadOnboardingCompanies = async () => {
     const { data } = await supabase
       .from("onboarding_companies")
-      .select("id, name, cnpj, email, contact_email")
+      .select("id, name, cnpj, email")
       .eq("status", "active")
       .order("name");
     if (data) setOnboardingCompanies(data);
@@ -96,7 +96,7 @@ export function NfsePanel() {
         companyId,
         tomadorName: company.name || prev.tomadorName,
         tomadorDocument: company.cnpj || prev.tomadorDocument,
-        tomadorEmail: company.contact_email || company.email || prev.tomadorEmail,
+        tomadorEmail: company.email || prev.tomadorEmail,
       }));
     } else {
       setForm((prev) => ({ ...prev, companyId }));
