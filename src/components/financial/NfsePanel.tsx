@@ -267,13 +267,29 @@ export function NfsePanel() {
     try {
       toast.info("Baixando PDF...");
       const nfeioCompanyId = companies[0]?.id;
-      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: { action: "download-pdf", nfeioCompanyId, nfeioId: record.nfeio_id },
-      });
-      if (error) throw error;
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+      const session = (await supabase.auth.getSession()).data.session;
+      
+      const res = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/nfeio-nfse`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            "Authorization": `Bearer ${session?.access_token}`,
+            "apikey": anonKey,
+          },
+          body: JSON.stringify({ action: "download-pdf", nfeioCompanyId, nfeioId: record.nfeio_id }),
+        }
+      );
 
-      // data is a Blob from the edge function
-      const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+      if (!res.ok) {
+        const errText = await res.text();
+        throw new Error(errText);
+      }
+
+      const blob = await res.blob();
       const url = URL.createObjectURL(blob);
       const a = document.createElement("a");
       a.href = url;
@@ -282,6 +298,7 @@ export function NfsePanel() {
       a.click();
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+      toast.success("PDF baixado com sucesso!");
     } catch (err: any) {
       toast.error("Erro ao baixar PDF: " + err.message);
     }
