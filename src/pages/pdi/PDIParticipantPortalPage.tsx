@@ -83,6 +83,9 @@ export default function PDIParticipantPortalPage() {
   const [newPostTitle, setNewPostTitle] = useState("");
   const [newPostContent, setNewPostContent] = useState("");
   const [newPostType, setNewPostType] = useState("discussion");
+  const [selectedPostId, setSelectedPostId] = useState<string | null>(null);
+  const [postComments, setPostComments] = useState<{ id: string; content: string; created_at: string; participant_name: string }[]>([]);
+  const [newComment, setNewComment] = useState("");
 
   const fetchParticipant = useCallback(async () => {
     if (!token) return;
