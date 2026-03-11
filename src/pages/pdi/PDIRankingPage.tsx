@@ -62,8 +62,12 @@ export default function PDIRankingPage() {
       const evolution = entryScore != null && exitScore != null && entryScore > 0
         ? Math.round(((exitScore - entryScore) / entryScore) * 100) : null;
 
-      // Points: tasks completed * 10 + avg AI score * 5 + evolution bonus
-      const totalPoints = completed * 10 + Math.round(avgAi * 5) + (evolution != null && evolution > 0 ? evolution : 0);
+      // Attendance points
+      const pAttendance = attendances.filter((a) => a.participant_id === p.id && a.is_present);
+      const attendancePoints = pAttendance.reduce((sum: number, a: any) => sum + (a.points_awarded || 0), 0);
+
+      // Points: tasks completed * 10 + avg AI score * 5 + evolution bonus + attendance
+      const totalPoints = completed * 10 + Math.round(avgAi * 5) + (evolution != null && evolution > 0 ? evolution : 0) + attendancePoints;
 
       return {
         id: p.id, full_name: p.full_name, company: p.company,
