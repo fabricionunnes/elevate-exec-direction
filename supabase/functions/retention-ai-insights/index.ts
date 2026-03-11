@@ -51,10 +51,10 @@ Gere um relatório com:
 
 Seja direto, use dados concretos e dê recomendações acionáveis. Use formatação markdown.`;
 
-    const LOVABLE_API_BASE = Deno.env.get("LOVABLE_API_URL") || "https://api.lovable.dev";
+    const LOVABLE_API_BASE = Deno.env.get("LOVABLE_API_URL") || "https://lovable.dev";
     const LOVABLE_TOKEN = Deno.env.get("LOVABLE_API_TOKEN");
 
-    const response = await fetch(`${LOVABLE_API_BASE}/ai`, {
+    const response = await fetch(`${LOVABLE_API_BASE}/api/ai`, {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
@@ -69,7 +69,7 @@ Seja direto, use dados concretos e dê recomendações acionáveis. Use formata�
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI API error:", errText);
+      console.error("AI API error:", response.status, errText);
       throw new Error(`AI API returned ${response.status}`);
     }
 
