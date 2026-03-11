@@ -29,12 +29,13 @@ export default function PDIRankingPage() {
   const [filterCohort, setFilterCohort] = useState("all");
 
   const fetchData = useCallback(async () => {
-    const [partRes, cohRes, subsRes, respRes, assessRes] = await Promise.all([
+    const [partRes, cohRes, subsRes, respRes, assessRes, attendRes] = await Promise.all([
       supabase.from("pdi_participants").select("*").eq("status", "active"),
       supabase.from("pdi_cohorts").select("id, name"),
       supabase.from("pdi_task_submissions").select("participant_id, status, ai_score"),
       supabase.from("pdi_assessment_responses").select("participant_id, assessment_id, total_score"),
       supabase.from("pdi_assessments").select("id, assessment_type"),
+      supabase.from("pdi_attendance").select("participant_id, is_present, points_awarded"),
     ]);
 
     const cohs = (cohRes.data as any[]) || [];
