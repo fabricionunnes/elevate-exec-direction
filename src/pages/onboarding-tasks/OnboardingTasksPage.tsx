@@ -1146,27 +1146,18 @@ const OnboardingTasksPage = () => {
          activeMetricFilter?.value === "cancellation_signaled" || activeMetricFilter?.value === "notice_period");
       const isCancellationStatusFilter = filterStatus === "cancellation_signaled" || filterStatus === "notice_period" || filterStatus === "closed";
       if (company.status === "inactive" || company.status === "closed") {
+        // Must be filtering by a relevant status to show inactive/closed companies
+        if (!isCancellationMetricFilter && !isCancellationStatusFilter) {
+          return false;
+        }
+        // Company must have projects matching the filter
         const hasCancellationProject = company.projects?.some(p => 
           p.status === "cancellation_signaled" || p.status === "notice_period"
         );
-        // Allow inactive companies through if they have cancellation projects AND 
-        // the user is actively filtering for cancellation/notice status (via card OR dropdown)
-        if (!isCancellationMetricFilter && !isCancellationStatusFilter) {
-          if (!hasCancellationProject) {
-            return false;
-          }
-          // No active cancellation filter, hide even if has cancellation project
+        const hasClosedProject = company.projects?.some(p => p.status === "closed");
+        const isClosedFilter = filterStatus === "closed" || activeMetricFilter?.value === "closed";
+        if (!hasCancellationProject && !(isClosedFilter && hasClosedProject)) {
           return false;
-        }
-        // Even with a cancellation filter active, the company must have matching projects
-        if (!hasCancellationProject) {
-          // For "closed" filter, allow companies with closed projects
-          if (filterStatus === "closed" || activeMetricFilter?.value === "closed") {
-            const hasClosedProject = company.projects?.some(p => p.status === "closed");
-            if (!hasClosedProject) return false;
-          } else {
-            return false;
-          }
         }
       }
       
