@@ -433,6 +433,104 @@ Deno.serve(async (req) => {
       return new Response(JSON.stringify({ success: true }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
     }
 
+    // ──────── sync_competitors ────────
+    if (action === "sync_competitors") {
+      const { accountId } = body;
+      if (!accountId) throw new Error("accountId is required");
+
+      const { data: competitors } = await supabase
+        .from("instagram_competitors")
+        .select("*")
+        .eq("account_id", accountId);
+
+      if (!competitors || competitors.length === 0) {
+        return new Response(JSON.stringify({ success: true, synced: 0, message: "Nenhum concorrente cadastrado" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Get the access token from the account to use Graph API search
+      const { data: account } = await supabase
+        .from("instagram_accounts")
+        .select("access_token, instagram_user_id")
+        .eq("id", accountId)
+        .single();
+
+      let syncedCount = 0;
+
+      for (const competitor of competitors) {
+        try {
+          // Try to get public profile data via Instagram Graph API business discovery
+          const username = competitor.competitor_username.replace("@", "").trim();
+          
+          if (account?.access_token) {
+            const discoveryUrl = `https://graph.facebook.com/v22.0/${account.instagram_user_id}?fields=business_discovery.fields(username,name,biography,followers_count,media_count,media.limit(12){timestamp,like_count,comments_count,media_type})&business_discovery.username=${username}&access_token=${account.access_token}`;
+            
+            const resp = await fetch(discoveryUrl);
+            const data = await resp.json();
+            
+            if (data.business_discovery) {
+              const bd = data.business_discovery;
+              const followersCount = bd.followers_count || 0;
+              const fullName = bd.name || null;
+              
+              // Calculate engagement rate and posts per week from recent media
+              let totalEngagement = 0;
+              let mediaCount = 0;
+              let earliestPost: Date | null = null;
+              let latestPost: Date | null = null;
+
+              if (bd.media?.data) {
+                for (const post of bd.media.data) {
+                  const likes = post.like_count || 0;
+                  const comments = post.comments_count || 0;
+                  totalEngagement += likes + comments;
+                  mediaCount++;
+
+                  const postDate = new Date(post.timestamp);
+                  if (!earliestPost || postDate < earliestPost) earliestPost = postDate;
+                  if (!latestPost || postDate > latestPost) latestPost = postDate;
+                }
+              }
+
+              const avgEngagementRate = followersCount > 0 && mediaCount > 0
+                ? ((totalEngagement / mediaCount) / followersCount) * 100
+                : 0;
+
+              let postsPerWeek = 0;
+              if (earliestPost && latestPost && mediaCount > 1) {
+                const diffMs = latestPost.getTime() - earliestPost.getTime();
+                const diffWeeks = diffMs / (1000 * 60 * 60 * 24 * 7);
+                postsPerWeek = diffWeeks > 0 ? mediaCount / diffWeeks : mediaCount;
+              }
+
+              await supabase
+                .from("instagram_competitors")
+                .update({
+                  competitor_full_name: fullName,
+                  followers_count: followersCount,
+                  avg_engagement_rate: Number(avgEngagementRate.toFixed(4)),
+                  posts_per_week: Number(postsPerWeek.toFixed(2)),
+                  last_synced_at: new Date().toISOString(),
+                })
+                .eq("id", competitor.id);
+
+              syncedCount++;
+              console.log(`Synced competitor @${username}: ${followersCount} followers, ${avgEngagementRate.toFixed(2)}% eng`);
+            } else {
+              console.warn(`Could not discover @${username}:`, data.error?.message || "Not a business/creator account");
+            }
+          }
+        } catch (err: any) {
+          console.error(`Error syncing competitor ${competitor.competitor_username}:`, err.message);
+        }
+      }
+
+      return new Response(JSON.stringify({ success: true, synced: syncedCount, total: competitors.length }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     throw new Error(`Unknown action: ${action}`);
   } catch (error: any) {
     console.error("Instagram Project OAuth Error:", error);

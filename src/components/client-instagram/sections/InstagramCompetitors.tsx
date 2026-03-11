@@ -3,7 +3,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Plus, Trash2, Loader2 } from "lucide-react";
+import { Users, Plus, Trash2, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
 import type { InstagramCompetitor } from "../types";
 
@@ -17,6 +17,7 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
   const [loading, setLoading] = useState(true);
   const [newUsername, setNewUsername] = useState("");
   const [adding, setAdding] = useState(false);
+  const [syncing, setSyncing] = useState(false);
 
   const fetchCompetitors = async () => {
     const { data } = await supabase
@@ -56,12 +57,43 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
     fetchCompetitors();
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
+        body: { action: "sync_competitors", accountId },
+      });
+      if (error) throw error;
+      if (data?.synced === 0 && data?.total > 0) {
+        toast.info("Nenhum concorrente pôde ser sincronizado. Verifique se são contas Business/Creator.");
+      } else {
+        toast.success(`${data?.synced || 0} de ${data?.total || 0} concorrentes sincronizados!`);
+      }
+      await fetchCompetitors();
+    } catch (err: any) {
+      console.error("Sync competitors error:", err);
+      toast.error("Erro ao sincronizar concorrentes: " + (err.message || "Tente novamente"));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground">Concorrentes</h3>
+        {competitors.length > 0 && (
+          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="gap-2">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {syncing ? "Sincronizando..." : "Sincronizar Dados"}
+          </Button>
+        )}
+      </div>
+
       <div className="flex gap-2">
         <Input
           placeholder="@username do concorrente"
