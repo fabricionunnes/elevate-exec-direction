@@ -236,33 +236,34 @@ export default function PDIApplicationsPage() {
           </DialogHeader>
           {selected && (
             <div className="space-y-4">
+              <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1">Dados Pessoais</h4>
               <div className="grid grid-cols-2 gap-3 text-sm">
                 <div><span className="text-muted-foreground">Nome:</span> <span className="font-medium">{selected.full_name}</span></div>
                 <div><span className="text-muted-foreground">Email:</span> <span className="font-medium">{selected.email || "—"}</span></div>
+                <div><span className="text-muted-foreground">Telefone:</span> <span className="font-medium">{(selected as any).phone || "—"}</span></div>
                 <div><span className="text-muted-foreground">Cargo:</span> <span className="font-medium">{selected.role_title || "—"}</span></div>
                 <div><span className="text-muted-foreground">Empresa:</span> <span className="font-medium">{selected.company || "—"}</span></div>
                 <div><span className="text-muted-foreground">Experiência:</span> <span className="font-medium">{selected.experience_years ? `${selected.experience_years} anos` : "—"}</span></div>
                 <div><span className="text-muted-foreground">Nível de Liderança:</span> <span className="font-medium">{selected.leadership_level || "—"}</span></div>
               </div>
 
-              {selected.professional_goal && (
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Objetivo Profissional</p>
-                  <p className="text-sm">{selected.professional_goal}</p>
-                </div>
-              )}
-              {selected.current_challenges && (
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Desafios Atuais</p>
-                  <p className="text-sm">{selected.current_challenges}</p>
-                </div>
-              )}
-              {selected.motivation && (
-                <div>
-                  <p className="text-xs text-muted-foreground font-medium">Motivação</p>
-                  <p className="text-sm">{selected.motivation}</p>
-                </div>
-              )}
+              <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Perfil Profissional</h4>
+              <DetailField label="Objetivo Profissional" value={selected.professional_goal} />
+              <DetailField label="Desafios Atuais" value={selected.current_challenges} />
+              <DetailField label="Motivação" value={selected.motivation} />
+              <DetailField label="Maior Ponto Fraco" value={(selected as any).biggest_weakness} />
+              <DetailField label="Treinamentos Anteriores" value={(selected as any).previous_training} />
+              <DetailField label="Expectativas" value={(selected as any).expectations} />
+
+              <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Comprometimento</h4>
+              <div className="grid grid-cols-2 gap-3 text-sm">
+                <CommitField label="Participar de todas as reuniões" value={(selected as any).commitment_meetings} />
+                <CommitField label="Ler os livros solicitados" value={(selected as any).commitment_books} />
+                <CommitField label="Fazer todas as tarefas" value={(selected as any).commitment_tasks} />
+                <CommitField label="Câmera aberta nas reuniões" value={(selected as any).commitment_camera} />
+              </div>
+              <DetailField label="Prontidão para Desenvolvimento" value={(selected as any).development_readiness} />
+              <DetailField label="Disponibilidade de Tempo" value={(selected as any).time_availability} />
 
               {selected.status === "pending" && (
                 <>
