@@ -11,7 +11,9 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2 } from "lucide-react";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
+import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2, ChevronsUpDown, Check } from "lucide-react";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -82,6 +84,7 @@ export function NfsePanel() {
   const [selectedInvoiceId, setSelectedInvoiceId] = useState<string>("");
   const { currentStaff, isMaster } = useStaffPermissions();
   const isAdmin = isMaster || currentStaff?.role === "admin";
+  const [companySearchOpen, setCompanySearchOpen] = useState(false);
 
   const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
 
@@ -401,18 +404,44 @@ export function NfsePanel() {
 
                   <div>
                     <Label>Empresa (Sistema)</Label>
-                    <Select value={form.companyId} onValueChange={handleCompanySelect}>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Vincular a empresa (opcional)" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {onboardingCompanies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <Popover open={companySearchOpen} onOpenChange={setCompanySearchOpen}>
+                      <PopoverTrigger asChild>
+                        <Button
+                          variant="outline"
+                          role="combobox"
+                          aria-expanded={companySearchOpen}
+                          className="w-full justify-between font-normal"
+                        >
+                          {form.companyId
+                            ? onboardingCompanies.find((c: any) => c.id === form.companyId)?.name || "Selecione"
+                            : "Vincular a empresa (opcional)"}
+                          <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                        </Button>
+                      </PopoverTrigger>
+                      <PopoverContent className="w-[400px] p-0" align="start">
+                        <Command>
+                          <CommandInput placeholder="Buscar empresa pelo nome..." />
+                          <CommandList>
+                            <CommandEmpty>Nenhuma empresa encontrada.</CommandEmpty>
+                            <CommandGroup>
+                              {onboardingCompanies.map((c: any) => (
+                                <CommandItem
+                                  key={c.id}
+                                  value={c.name}
+                                  onSelect={() => {
+                                    handleCompanySelect(c.id);
+                                    setCompanySearchOpen(false);
+                                  }}
+                                >
+                                  <Check className={`mr-2 h-4 w-4 ${form.companyId === c.id ? "opacity-100" : "opacity-0"}`} />
+                                  {c.name}
+                                </CommandItem>
+                              ))}
+                            </CommandGroup>
+                          </CommandList>
+                        </Command>
+                      </PopoverContent>
+                    </Popover>
                   </div>
 
                   {/* Invoice selector */}
