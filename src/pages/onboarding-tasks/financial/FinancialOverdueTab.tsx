@@ -90,6 +90,7 @@ export default function FinancialOverdueTab({
   const [selectedMonthFilter, setSelectedMonthFilter] = useState<"all" | { start: Date; end: Date }>("all");
   const [sortColumn, setSortColumn] = useState<string | null>(null);
   const [sortDirection, setSortDirection] = useState<"asc" | "desc">("asc");
+  const [showCompanyImport, setShowCompanyImport] = useState(false);
   const ITEMS_PER_PAGE = 10;
 
   const toggleSort = (column: string) => {
