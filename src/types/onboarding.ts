@@ -64,6 +64,9 @@ export const CLIENT_MENU_KEYS = {
   diretor_comercial_ia: "diretor_comercial_ia",
   outros_servicos: "outros_servicos",
   unv_social: "unv_social",
+  contrato_rotina: "contrato_rotina",
+  acoes_comerciais: "acoes_comerciais",
+  meta_ads: "meta_ads",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -229,6 +232,21 @@ export const CLIENT_MENU_STRUCTURE = [
     key: CLIENT_MENU_KEYS.unv_social,
     label: "UNV Social IA",
     group: "Integrações",
+  },
+  {
+    key: CLIENT_MENU_KEYS.contrato_rotina,
+    label: "Contrato de Rotina",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.acoes_comerciais,
+    label: "Ações Comerciais",
+    group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.meta_ads,
+    label: "Meta Ads",
+    group: "Tráfego",
   },
 ] as const;
 

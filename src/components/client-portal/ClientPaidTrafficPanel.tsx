@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
+import { useClientPermissions } from "@/hooks/useClientPermissions";
+import { CLIENT_MENU_KEYS } from "@/types/onboarding";
 
 interface ClientPaidTrafficPanelProps {
   projectId: string;
@@ -29,7 +31,9 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
   const [urlInput, setUrlInput] = useState("");
   const [embedInput, setEmbedInput] = useState("");
   const [configTab, setConfigTab] = useState("url");
-  const [activeTab, setActiveTab] = useState("meta_ads");
+  const { hasPermission } = useClientPermissions(projectId);
+  const hasMetaAds = hasPermission(CLIENT_MENU_KEYS.meta_ads);
+  const [activeTab, setActiveTab] = useState(hasMetaAds ? "meta_ads" : "dashboard");
 
   useEffect(() => {
     fetchData();
@@ -122,10 +126,12 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList>
-          <TabsTrigger value="meta_ads" className="gap-1.5">
-            <Megaphone className="h-3.5 w-3.5" />
-            Meta Ads
-          </TabsTrigger>
+          {hasMetaAds && (
+            <TabsTrigger value="meta_ads" className="gap-1.5">
+              <Megaphone className="h-3.5 w-3.5" />
+              Meta Ads
+            </TabsTrigger>
+          )}
           <TabsTrigger value="dashboard" className="gap-1.5">
             <BarChart3 className="h-3.5 w-3.5" />
             Dashboard
