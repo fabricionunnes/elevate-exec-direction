@@ -310,7 +310,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     if (latestMeeting) {
       meetingSubject = latestMeeting.subject || latestMeeting.meeting_title || "Reunião";
       meetingDate = latestMeeting.meeting_date
-        ? new Date(latestMeeting.meeting_date).toLocaleDateString("pt-BR")
+        ? formatDateBR(latestMeeting.meeting_date)
         : meetingDate;
       meetingId = latestMeeting.id;
 
