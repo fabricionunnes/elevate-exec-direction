@@ -84,6 +84,16 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground">Concorrentes</h3>
+        {competitors.length > 0 && (
+          <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="gap-2">
+            {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+            {syncing ? "Sincronizando..." : "Sincronizar Dados"}
+          </Button>
+        )}
+      </div>
+
       <div className="flex gap-2">
         <Input
           placeholder="@username do concorrente"
