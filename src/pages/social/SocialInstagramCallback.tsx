@@ -36,16 +36,19 @@ export default function SocialInstagramCallback() {
     try {
       // Decode state
       const state = JSON.parse(atob(stateParam));
-      const { projectId: pId } = state;
+      const { projectId: pId, redirectUri } = state;
       setProjectId(pId);
 
       setMessage("Trocando código por token de acesso...");
 
-      const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
+      const callbackRedirectUri = redirectUri || `https://elevate-exec-direction.lovable.app/#/social/instagram-callback`;
+
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
         body: {
-          action: "exchange",
+          action: "callback",
           code,
           projectId: pId,
+          redirectUri: callbackRedirectUri,
         },
       });
 
