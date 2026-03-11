@@ -196,13 +196,11 @@ Deno.serve(async (req) => {
             const likesCount = item.like_count || 0;
             const commentsCount = item.comments_count || 0;
 
-            // Fetch insights - use different metrics based on media type
+            // Fetch insights - v22.0+ compatible metrics
             let reachVal = 0, impressionsVal = 0, savedVal = 0, sharesVal = 0;
             try {
-              // For all media types, reach and saved are supported
-              const insightMetrics = item.media_type === "VIDEO" 
-                ? "reach,saved,shares,plays"
-                : "reach,impressions,saved,shares";
+              // impressions/plays deprecated after Apr 2025. Use reach,saved,shares,views
+              const insightMetrics = "reach,saved,shares,views";
 
               const insightsRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=${insightMetrics}&access_token=${token}`);
               const insightsData = await insightsRes.json();
@@ -210,10 +208,9 @@ Deno.serve(async (req) => {
               if (insightsData.data) {
                 for (const m of insightsData.data) {
                   if (m.name === "reach") reachVal = m.values?.[0]?.value || 0;
-                  if (m.name === "impressions") impressionsVal = m.values?.[0]?.value || 0;
+                  if (m.name === "views") impressionsVal = m.values?.[0]?.value || 0;
                   if (m.name === "saved") savedVal = m.values?.[0]?.value || 0;
                   if (m.name === "shares") sharesVal = m.values?.[0]?.value || 0;
-                  if (m.name === "plays") impressionsVal = m.values?.[0]?.value || 0; // use plays as impressions for video
                 }
               } else if (insightsData.error) {
                 console.log(`Insights API error for ${item.id}: ${insightsData.error.message}`);
