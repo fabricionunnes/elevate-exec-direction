@@ -597,6 +597,7 @@ const OnboardingTasksPage = () => {
             status_changed_at,
             created_at,
             instagram,
+            goal_not_required,
             cs:onboarding_staff!onboarding_companies_cs_id_fkey(id, name, role),
             consultant:onboarding_staff!onboarding_companies_consultant_id_fkey(id, name, role)
           `)
