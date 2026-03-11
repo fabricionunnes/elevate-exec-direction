@@ -34,6 +34,7 @@ import {
   Receipt,
   Megaphone,
   Filter as FunnelIcon,
+  Instagram,
 } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { motion, AnimatePresence } from "framer-motion";
@@ -61,6 +62,7 @@ import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustom
 import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedScreen";
+import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import {
   DropdownMenu,
@@ -109,7 +111,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -360,6 +362,7 @@ const ClientOnboardingPage = () => {
         billing: "Minhas Faturas",
         paid_traffic: "Tráfego Pago",
         sales_funnel: "Funil de Vendas",
+        instagram: "Instagram",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -511,6 +514,7 @@ const ClientOnboardingPage = () => {
       { id: "billing" as ViewType, icon: Receipt, label: "Faturas", menuKey: CLIENT_MENU_KEYS.minhas_faturas },
       { id: "paid_traffic" as ViewType, icon: Megaphone, label: "Tráfego Pago", menuKey: CLIENT_MENU_KEYS.trafego_pago },
       { id: "sales_funnel" as ViewType, icon: FunnelIcon, label: "Funil de Vendas", menuKey: CLIENT_MENU_KEYS.funil_vendas },
+      { id: "instagram" as ViewType, icon: Instagram, label: "Instagram", menuKey: CLIENT_MENU_KEYS.instagram },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1173,6 +1177,17 @@ const ClientOnboardingPage = () => {
                 isStaff={false}
                 canEdit={currentUser?.role === "client" || currentUser?.role === "gerente"}
               />
+            </motion.div>
+          )}
+
+          {activeView === "instagram" && hasViewAccess("instagram") && (
+            <motion.div
+              key="instagram"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientInstagramModule projectId={projectId || ""} />
             </motion.div>
           )}
         </AnimatePresence>

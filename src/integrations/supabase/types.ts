@@ -16956,6 +16956,186 @@ export type Database = {
           },
         ]
       }
+      instagram_account_metrics: {
+        Row: {
+          account_id: string
+          avg_comments: number | null
+          avg_likes: number | null
+          avg_saves: number | null
+          avg_shares: number | null
+          created_at: string
+          followers_count: number | null
+          following_count: number | null
+          id: string
+          media_count: number | null
+          profile_score: number | null
+          recorded_date: string
+          total_engagement: number | null
+          total_impressions: number | null
+          total_reach: number | null
+        }
+        Insert: {
+          account_id: string
+          avg_comments?: number | null
+          avg_likes?: number | null
+          avg_saves?: number | null
+          avg_shares?: number | null
+          created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          id?: string
+          media_count?: number | null
+          profile_score?: number | null
+          recorded_date: string
+          total_engagement?: number | null
+          total_impressions?: number | null
+          total_reach?: number | null
+        }
+        Update: {
+          account_id?: string
+          avg_comments?: number | null
+          avg_likes?: number | null
+          avg_saves?: number | null
+          avg_shares?: number | null
+          created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          id?: string
+          media_count?: number | null
+          profile_score?: number | null
+          recorded_date?: string
+          total_engagement?: number | null
+          total_impressions?: number | null
+          total_reach?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_account_metrics_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_accounts: {
+        Row: {
+          access_token: string
+          bio: string | null
+          connected_by: string | null
+          created_at: string
+          followers_count: number | null
+          following_count: number | null
+          full_name: string | null
+          id: string
+          instagram_user_id: string
+          last_synced_at: string | null
+          media_count: number | null
+          profile_picture_url: string | null
+          project_id: string
+          status: string
+          token_expires_at: string | null
+          updated_at: string
+          username: string
+          website: string | null
+        }
+        Insert: {
+          access_token: string
+          bio?: string | null
+          connected_by?: string | null
+          created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          full_name?: string | null
+          id?: string
+          instagram_user_id: string
+          last_synced_at?: string | null
+          media_count?: number | null
+          profile_picture_url?: string | null
+          project_id: string
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          username: string
+          website?: string | null
+        }
+        Update: {
+          access_token?: string
+          bio?: string | null
+          connected_by?: string | null
+          created_at?: string
+          followers_count?: number | null
+          following_count?: number | null
+          full_name?: string | null
+          id?: string
+          instagram_user_id?: string
+          last_synced_at?: string | null
+          media_count?: number | null
+          profile_picture_url?: string | null
+          project_id?: string
+          status?: string
+          token_expires_at?: string | null
+          updated_at?: string
+          username?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_accounts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_competitors: {
+        Row: {
+          account_id: string
+          avg_engagement_rate: number | null
+          competitor_full_name: string | null
+          competitor_username: string
+          created_at: string
+          followers_count: number | null
+          id: string
+          last_synced_at: string | null
+          posts_per_week: number | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          avg_engagement_rate?: number | null
+          competitor_full_name?: string | null
+          competitor_username: string
+          created_at?: string
+          followers_count?: number | null
+          id?: string
+          last_synced_at?: string | null
+          posts_per_week?: number | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          avg_engagement_rate?: number | null
+          competitor_full_name?: string | null
+          competitor_username?: string
+          created_at?: string
+          followers_count?: number | null
+          id?: string
+          last_synced_at?: string | null
+          posts_per_week?: number | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_competitors_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_contacts: {
         Row: {
           created_at: string
@@ -16999,6 +17179,59 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_content_suggestions: {
+        Row: {
+          account_id: string
+          created_at: string
+          cta: string | null
+          description: string | null
+          format: string | null
+          generated_at: string
+          id: string
+          is_used: boolean | null
+          objective: string | null
+          suggestion_type: string
+          theme: string
+          visual_style: string | null
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          cta?: string | null
+          description?: string | null
+          format?: string | null
+          generated_at?: string
+          id?: string
+          is_used?: boolean | null
+          objective?: string | null
+          suggestion_type: string
+          theme: string
+          visual_style?: string | null
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          cta?: string | null
+          description?: string | null
+          format?: string | null
+          generated_at?: string
+          id?: string
+          is_used?: boolean | null
+          objective?: string | null
+          suggestion_type?: string
+          theme?: string
+          visual_style?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_content_suggestions_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -17127,6 +17360,50 @@ export type Database = {
             columns: ["instance_id"]
             isOneToOne: false
             referencedRelation: "instagram_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_insights_ai: {
+        Row: {
+          account_id: string
+          created_at: string
+          data: Json | null
+          description: string
+          generated_at: string
+          id: string
+          insight_type: string
+          priority: string | null
+          title: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          data?: Json | null
+          description: string
+          generated_at?: string
+          id?: string
+          insight_type: string
+          priority?: string | null
+          title: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          data?: Json | null
+          description?: string
+          generated_at?: string
+          id?: string
+          insight_type?: string
+          priority?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_insights_ai_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
           },
         ]
@@ -17311,6 +17588,206 @@ export type Database = {
             columns: ["sent_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_post_metrics: {
+        Row: {
+          comments: number | null
+          engagement_rate: number | null
+          id: string
+          impressions: number | null
+          likes: number | null
+          link_clicks: number | null
+          post_id: string
+          profile_visits: number | null
+          reach: number | null
+          reach_rate: number | null
+          recorded_at: string
+          saves: number | null
+          shares: number | null
+        }
+        Insert: {
+          comments?: number | null
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          link_clicks?: number | null
+          post_id: string
+          profile_visits?: number | null
+          reach?: number | null
+          reach_rate?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+        }
+        Update: {
+          comments?: number | null
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number | null
+          likes?: number | null
+          link_clicks?: number | null
+          post_id?: string
+          profile_visits?: number | null
+          reach?: number | null
+          reach_rate?: number | null
+          recorded_at?: string
+          saves?: number | null
+          shares?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_post_metrics_post_id_fkey"
+            columns: ["post_id"]
+            isOneToOne: true
+            referencedRelation: "instagram_posts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_posts: {
+        Row: {
+          account_id: string
+          caption: string | null
+          created_at: string
+          id: string
+          instagram_post_id: string
+          media_url: string | null
+          permalink: string | null
+          post_type: string
+          posted_at: string | null
+          thumbnail_url: string | null
+          updated_at: string
+        }
+        Insert: {
+          account_id: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          instagram_post_id: string
+          media_url?: string | null
+          permalink?: string | null
+          post_type?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Update: {
+          account_id?: string
+          caption?: string | null
+          created_at?: string
+          id?: string
+          instagram_post_id?: string
+          media_url?: string | null
+          permalink?: string | null
+          post_type?: string
+          posted_at?: string | null
+          thumbnail_url?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_posts_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_reports: {
+        Row: {
+          account_id: string
+          created_at: string
+          data: Json | null
+          generated_by: string | null
+          id: string
+          pdf_url: string | null
+          period_end: string
+          period_start: string
+          report_type: string
+          share_token: string | null
+          title: string
+        }
+        Insert: {
+          account_id: string
+          created_at?: string
+          data?: Json | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end: string
+          period_start: string
+          report_type?: string
+          share_token?: string | null
+          title: string
+        }
+        Update: {
+          account_id?: string
+          created_at?: string
+          data?: Json | null
+          generated_by?: string | null
+          id?: string
+          pdf_url?: string | null
+          period_end?: string
+          period_start?: string
+          report_type?: string
+          share_token?: string | null
+          title?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_reports_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      instagram_sync_logs: {
+        Row: {
+          account_id: string
+          completed_at: string | null
+          error_message: string | null
+          id: string
+          metrics_synced: number | null
+          posts_synced: number | null
+          started_at: string
+          status: string
+          sync_type: string
+        }
+        Insert: {
+          account_id: string
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          metrics_synced?: number | null
+          posts_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type: string
+        }
+        Update: {
+          account_id?: string
+          completed_at?: string | null
+          error_message?: string | null
+          id?: string
+          metrics_synced?: number | null
+          posts_synced?: number | null
+          started_at?: string
+          status?: string
+          sync_type?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "instagram_sync_logs_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "instagram_accounts"
             referencedColumns: ["id"]
           },
         ]
