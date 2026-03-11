@@ -262,6 +262,31 @@ export function NfsePanel() {
     }
   };
 
+  const handleDownloadPdf = async (record: NfseRecord) => {
+    if (!record.nfeio_id) return;
+    try {
+      toast.info("Baixando PDF...");
+      const nfeioCompanyId = companies[0]?.id;
+      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
+        body: { action: "download-pdf", nfeioCompanyId, nfeioId: record.nfeio_id },
+      });
+      if (error) throw error;
+
+      // data is a Blob from the edge function
+      const blob = data instanceof Blob ? data : new Blob([data], { type: "application/pdf" });
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `nfse-${record.number || record.nfeio_id}.pdf`;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      URL.revokeObjectURL(url);
+    } catch (err: any) {
+      toast.error("Erro ao baixar PDF: " + err.message);
+    }
+  };
+
   const formatCurrency = (cents: number) =>
     (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
