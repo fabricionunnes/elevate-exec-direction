@@ -1875,6 +1875,14 @@ const OnboardingProjectPage = () => {
             <ClientInstagramModule projectId={projectId!} />
           </TabsContent>
 
+          <TabsContent value="commercial_director">
+            <CommercialDirectorModule
+              projectId={projectId!}
+              companyId={company?.id || ""}
+              companyName={company?.name}
+            />
+          </TabsContent>
+
         </Tabs>
       </div>
 
