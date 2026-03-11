@@ -271,8 +271,26 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      // Also consider companies with main goal KPIs that have target_value > 0
-      // A company has "meta" only if it has a KPI marked as is_main_goal with target_value > 0
+      // Also fetch ALL monthly targets for this month (including salesperson/unit/team level)
+      // to determine which companies have ANY goals configured
+      const { data: allMonthlyTargets } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, target_value")
+        .eq("month_year", selectedMonth)
+        .gt("target_value", 0);
+      
+      (allMonthlyTargets || []).forEach(t => {
+        const companyId = kpiToCompanyMap.get(t.kpi_id);
+        // Only mark as having goals if the KPI is a main goal
+        if (companyId) {
+          const kpi = (kpisData || []).find(k => k.id === t.kpi_id);
+          if (kpi?.is_main_goal) {
+            companyIdsWithGoalsRecord[companyId] = true;
+          }
+        }
+      });
+
+      // Also consider companies with main goal KPIs that have target_value > 0 (default/base target)
       (kpisData || []).forEach(k => {
         if (k.is_main_goal && k.company_id && k.target_value > 0) {
           if (!companyIdsWithGoalsRecord[k.company_id]) {
