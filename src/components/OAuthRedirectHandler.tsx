@@ -40,6 +40,14 @@ export function OAuthRedirectHandler() {
           // Try to decode state to check the provider
           const decodedState = JSON.parse(atob(state));
           
+          // Check if it's a Meta Ads OAuth callback
+          if (decodedState.flow === "meta_ads") {
+            const callbackUrl = `/meta-ads-callback${queryString}`;
+            window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
+            navigate(callbackUrl, { replace: true });
+            return;
+          }
+          
           // Check if it's a Social module OAuth callback (UNV Social)
           if (decodedState.flow === "social" || (decodedState.redirectUri && decodedState.redirectUri.includes("/social/instagram-callback"))) {
             const callbackUrl = `/social/instagram-callback${queryString}`;
