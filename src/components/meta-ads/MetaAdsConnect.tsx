@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -18,49 +18,39 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
   const [selectedAccount, setSelectedAccount] = useState("");
   const [saving, setSaving] = useState(false);
 
+  // Check for callback result from sessionStorage
+  useEffect(() => {
+    const stored = sessionStorage.getItem("meta_ads_callback");
+    if (stored) {
+      try {
+        const data = JSON.parse(stored);
+        if (data.project_id === projectId) {
+          sessionStorage.removeItem("meta_ads_callback");
+          if (data.accounts?.length === 1) {
+            // Auto-connected, just refresh
+            onConnected();
+          } else if (data.accounts?.length > 1) {
+            setAccounts(data.accounts);
+            setAccessToken(data.access_token);
+          }
+        }
+      } catch {
+        sessionStorage.removeItem("meta_ads_callback");
+      }
+    }
+  }, [projectId]);
+
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/#/meta-ads-callback`;
+      const redirectUri = window.location.origin;
       const { data, error } = await supabase.functions.invoke("meta-ads-sync", {
         body: { action: "auth_url", project_id: projectId, redirect_uri: redirectUri },
       });
       if (error || data?.error) throw new Error(data?.error || "Erro ao gerar URL");
 
-      // Open popup
-      const width = 600, height = 700;
-      const left = (screen.width - width) / 2;
-      const top = (screen.height - height) / 2;
-      const popup = window.open(data.url, "meta-ads-auth", `width=${width},height=${height},left=${left},top=${top}`);
-
-      // Listen for callback
-      const handler = async (event: MessageEvent) => {
-        if (event.data?.type === "meta-ads-callback" && event.data?.code) {
-          window.removeEventListener("message", handler);
-          popup?.close();
-
-          // Exchange code
-          const { data: result, error: err } = await supabase.functions.invoke("meta-ads-sync", {
-            body: { action: "connect", code: event.data.code, redirect_uri: redirectUri, project_id: projectId },
-          });
-          if (err || result?.error) throw new Error(result?.error || "Erro na conexão");
-
-          setAccounts(result.accounts || []);
-          setAccessToken(result.access_token);
-          if (result.accounts?.length === 1) {
-            setSelectedAccount(result.accounts[0].id);
-          }
-          setConnecting(false);
-        }
-      };
-      window.addEventListener("message", handler);
-
-      // Check if popup was blocked
-      if (!popup) {
-        window.removeEventListener("message", handler);
-        // Fallback: direct navigation
-        window.location.href = data.url;
-      }
+      // Navigate directly (no popup - avoids blockers)
+      window.location.href = data.url;
     } catch (e: any) {
       toast.error(e.message || "Erro ao conectar");
       setConnecting(false);
@@ -99,7 +89,7 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
     return (
       <Card>
         <CardContent className="py-8 text-center space-y-4">
-          <Megaphone className="h-12 w-12 mx-auto text-blue-500" />
+          <Megaphone className="h-12 w-12 mx-auto text-primary" />
           <h3 className="text-lg font-semibold">Selecione a conta de anúncios</h3>
           <div className="max-w-xs mx-auto">
             <Select value={selectedAccount} onValueChange={setSelectedAccount}>
