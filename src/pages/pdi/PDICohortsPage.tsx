@@ -22,6 +22,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Plus, Search, Users, Calendar, Copy, ExternalLink } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -142,7 +143,7 @@ export default function PDICohortsPage() {
   };
 
   const copyEnrollmentLink = (token: string) => {
-    const url = `${window.location.origin}/#/pdi/enroll/${token}`;
+    const url = `${getPublicBaseUrl()}/#/pdi/enroll/${token}`;
     navigator.clipboard.writeText(url);
     toast.success("Link copiado!");
   };
