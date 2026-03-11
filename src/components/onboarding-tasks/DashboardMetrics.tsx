@@ -641,7 +641,34 @@ const DashboardMetrics = ({
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
   }, [nonSimulatorAllProjects, dateRange, projectMetrics, notRenewedCompanyIds]);
 
-  const monthlyChurnData = useMemo(() => {
+  // Completed projects metrics - separate from churn
+  const completedMetrics = useMemo(() => {
+    const getCompletedDate = (p: Project) => {
+      const dateStr = p.churn_date || p.updated_at;
+      const dateOnly = dateStr.substring(0, 10);
+      return new Date(dateOnly + "T12:00:00");
+    };
+
+    const completedInPeriod = nonSimulatorAllProjects.filter(p => {
+      if (p.status !== "completed") return false;
+      return isWithinInterval(getCompletedDate(p), { start: dateRange.start, end: dateRange.end });
+    });
+
+    const completedCompanyIds = new Set(
+      completedInPeriod
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
+
+    const completedCompanies = companies.filter(c => completedCompanyIds.has(c.id));
+
+    return {
+      count: completedCompanyIds.size,
+      companies: completedCompanies,
+    };
+  }, [nonSimulatorAllProjects, dateRange, companies]);
+
+
     const currentYear = dateRange.start.getFullYear();
     const months = eachMonthOfInterval({ start: startOfYear(new Date(currentYear, 0, 1)), end: endOfYear(new Date(currentYear, 0, 1)) });
     return months.map(monthDate => {
