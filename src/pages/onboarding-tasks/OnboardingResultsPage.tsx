@@ -271,11 +271,10 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      // Also consider companies with main goal KPIs that have default targets (not month-specific)
-      // This is a fallback for companies that have KPIs configured but no monthly target yet
+      // Also consider companies with ANY active KPI configured
+      // A company with KPIs registered should be considered as "com meta"
       (kpisData || []).forEach(k => {
-        if (k.is_main_goal && k.company_id && k.target_value > 0) {
-          // Only add if not already marked from monthly targets
+        if (k.company_id) {
           if (!companyIdsWithGoalsRecord[k.company_id]) {
             companyIdsWithGoalsRecord[k.company_id] = true;
           }
