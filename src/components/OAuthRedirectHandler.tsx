@@ -41,7 +41,7 @@ export function OAuthRedirectHandler() {
           const decodedState = JSON.parse(atob(state));
           
           // Check if it's a Social module OAuth callback (UNV Social)
-          if (decodedState.flow === "social") {
+          if (decodedState.flow === "social" || (decodedState.redirectUri && decodedState.redirectUri.includes("/social/instagram-callback"))) {
             const callbackUrl = `/social/instagram-callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
             navigate(callbackUrl, { replace: true });
