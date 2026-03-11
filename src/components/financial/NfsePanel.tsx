@@ -267,7 +267,7 @@ export function NfsePanel() {
                   <Label>Valor *</Label>
                   <CurrencyInput
                     value={form.amountCents}
-                    onValueChange={(v) => setForm({ ...form, amountCents: v })}
+                    onChange={(v) => setForm({ ...form, amountCents: v })}
                   />
                 </div>
 
