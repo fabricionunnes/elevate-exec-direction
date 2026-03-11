@@ -61,7 +61,7 @@ interface SendLog {
 interface WhatsAppInstance {
   id: string;
   instance_name: string;
-  friendly_name: string | null;
+  display_name: string | null;
   status: string;
 }
 
@@ -86,7 +86,7 @@ export default function SurveySendConfigPage() {
       const [configRes, rulesRes, instancesRes, logsRes] = await Promise.all([
         supabase.from("survey_send_configs").select("*").order("survey_type"),
         supabase.from("survey_send_rules").select("*").order("sort_order"),
-        supabase.from("whatsapp_instances").select("id, instance_name, friendly_name, status"),
+        supabase.from("whatsapp_instances").select("id, instance_name, display_name, status"),
         supabase.from("survey_send_log").select("*").order("created_at", { ascending: false }).limit(100),
       ]);
 
@@ -368,7 +368,7 @@ export default function SurveySendConfigPage() {
                   <SelectItem value="default">Instância padrão do sistema</SelectItem>
                   {instances.filter(i => i.status === "connected").map(inst => (
                     <SelectItem key={inst.id} value={inst.instance_name}>
-                      {inst.friendly_name || inst.instance_name}
+                      {inst.display_name || inst.instance_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
