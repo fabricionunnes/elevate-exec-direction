@@ -1,7 +1,9 @@
 import { useState, useEffect } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
 import { supabase } from "@/integrations/supabase/client";
-import { Users, Eye, Heart, MessageCircle, Share2, Bookmark, TrendingUp, BarChart3 } from "lucide-react";
+import { Users, Eye, Heart, MessageCircle, Share2, Bookmark, TrendingUp, BarChart3, RefreshCw, Loader2 } from "lucide-react";
+import { toast } from "sonner";
 import type { InstagramAccount, InstagramAccountMetrics } from "../types";
 
 interface InstagramOverviewProps {
@@ -12,21 +14,38 @@ interface InstagramOverviewProps {
 export const InstagramOverview = ({ accountId, account }: InstagramOverviewProps) => {
   const [metrics, setMetrics] = useState<InstagramAccountMetrics | null>(null);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
 
-  useEffect(() => {
-    const fetchMetrics = async () => {
-      const { data } = await supabase
-        .from("instagram_account_metrics")
-        .select("*")
-        .eq("account_id", accountId)
-        .order("recorded_date", { ascending: false })
-        .limit(1)
-        .maybeSingle();
-      setMetrics(data as InstagramAccountMetrics | null);
-      setLoading(false);
-    };
-    fetchMetrics();
-  }, [accountId]);
+  const fetchMetrics = async () => {
+    const { data } = await supabase
+      .from("instagram_account_metrics")
+      .select("*")
+      .eq("account_id", accountId)
+      .order("recorded_date", { ascending: false })
+      .limit(1)
+      .maybeSingle();
+    setMetrics(data as InstagramAccountMetrics | null);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchMetrics(); }, [accountId]);
+
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
+        body: { action: "sync", accountId },
+      });
+      if (error) throw error;
+      toast.success("Sincronização concluída!");
+      await fetchMetrics();
+    } catch (err: any) {
+      console.error("Sync error:", err);
+      toast.error("Erro ao sincronizar: " + (err.message || "Tente novamente"));
+    } finally {
+      setSyncing(false);
+    }
+  };
 
   const cards = [
     { label: "Seguidores", value: account.followers_count, icon: Users, color: "text-blue-500" },
@@ -42,6 +61,14 @@ export const InstagramOverview = ({ accountId, account }: InstagramOverviewProps
 
   return (
     <div className="space-y-4">
+      <div className="flex items-center justify-between">
+        <h3 className="text-sm font-medium text-muted-foreground">Visão Geral</h3>
+        <Button variant="outline" size="sm" onClick={handleSync} disabled={syncing} className="gap-2">
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {syncing ? "Sincronizando..." : "Sincronizar"}
+        </Button>
+      </div>
+
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-5 gap-3">
         {cards.map((card) => (
           <Card key={card.label}>
@@ -61,7 +88,10 @@ export const InstagramOverview = ({ accountId, account }: InstagramOverviewProps
           <CardContent className="py-12 text-center">
             <BarChart3 className="h-12 w-12 mx-auto text-muted-foreground/40 mb-3" />
             <p className="text-muted-foreground">Métricas serão exibidas após a primeira sincronização.</p>
-            <p className="text-sm text-muted-foreground/70">Clique em "Sincronizar" na aba de conexão para atualizar os dados.</p>
+            <Button variant="default" onClick={handleSync} disabled={syncing} className="mt-4 gap-2">
+              {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+              Sincronizar Agora
+            </Button>
           </CardContent>
         </Card>
       )}
