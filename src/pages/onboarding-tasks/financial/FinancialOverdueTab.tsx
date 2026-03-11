@@ -11,7 +11,7 @@ import {
 import {
   AlertTriangle, Search, Copy, Send, CheckCircle2, Loader2,
   Clock, Building2, DollarSign, TrendingDown, Flame, ArrowUpDown, ArrowUp, ArrowDown,
-  FileSpreadsheet,
+  FileSpreadsheet, Upload,
 } from "lucide-react";
 import MonthYearPicker from "@/components/onboarding-tasks/MonthYearPicker";
 import { startOfMonth, endOfMonth } from "date-fns";
@@ -23,6 +23,7 @@ import { cn } from "@/lib/utils";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
 import { motion, AnimatePresence } from "framer-motion";
 import * as XLSX from "xlsx";
+import { CompanyImportDialog } from "@/components/financial/CompanyImportDialog";
 
 interface Invoice {
   id: string;
