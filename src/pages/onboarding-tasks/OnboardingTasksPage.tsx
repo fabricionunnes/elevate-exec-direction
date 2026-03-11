@@ -1140,19 +1140,24 @@ const OnboardingTasksPage = () => {
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
       // Hide inactive and closed companies entirely from dashboard
-      // Exception: show them when filtering by relevant status metrics
-      const isCancellationFilter = activeMetricFilter?.type === "status" && 
+      // Exception: show them when filtering by relevant status metrics OR status dropdown
+      const isCancellationMetricFilter = activeMetricFilter?.type === "status" && 
         (activeMetricFilter?.value === "closed" || activeMetricFilter?.value === "churn_signaled" || 
          activeMetricFilter?.value === "cancellation_signaled" || activeMetricFilter?.value === "notice_period");
+      const isCancellationStatusFilter = filterStatus === "cancellation_signaled" || filterStatus === "notice_period" || filterStatus === "closed";
       if (company.status === "inactive" || company.status === "closed") {
-        if (!isCancellationFilter) {
-          // Still allow if company has cancellation/notice projects and we're filtering for those
-          const hasCancellationProject = company.projects?.some(p => 
-            p.status === "cancellation_signaled" || p.status === "notice_period"
-          );
-          if (!hasCancellationProject || !activeMetricFilter) {
-            return false;
-          }
+        // Must be filtering by a relevant status to show inactive/closed companies
+        if (!isCancellationMetricFilter && !isCancellationStatusFilter) {
+          return false;
+        }
+        // Company must have projects matching the filter
+        const hasCancellationProject = company.projects?.some(p => 
+          p.status === "cancellation_signaled" || p.status === "notice_period"
+        );
+        const hasClosedProject = company.projects?.some(p => p.status === "closed");
+        const isClosedFilter = filterStatus === "closed" || activeMetricFilter?.value === "closed";
+        if (!hasCancellationProject && !(isClosedFilter && hasClosedProject)) {
+          return false;
         }
       }
       
