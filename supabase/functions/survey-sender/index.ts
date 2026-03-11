@@ -139,7 +139,6 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
 
     if (isTest) {
       ruleToSend = rules[0];
-      console.log(`Test mode: using rule ${rules[0]?.id}, template length: ${rules[0]?.message_template?.length}`);
     } else {
       // Check last NPS response for this company (any project)
       const { data: lastResponse } = await supabase
