@@ -118,6 +118,16 @@ if (publicParam) {
     forceHashRoute("/career-plan", window.location.search);
   } else if (publicParam === "checkout") {
     forceHashRoute("/checkout", window.location.search);
+  } else if (publicParam === "pdi-enroll") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/pdi/enroll/${encodeURIComponent(token)}`, "");
+    }
+  } else if (publicParam === "pdi-participant") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/pdi/participant/${encodeURIComponent(token)}`, "");
+    }
   } else if (publicParam === "contrato-rotina") {
     const token = urlSearch.get("token");
     if (token) {
