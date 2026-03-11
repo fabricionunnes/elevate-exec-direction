@@ -482,6 +482,10 @@ const App = () => (
               <Route path="settings" element={<AcademySettingsPage />} />
             </Route>
             
+            {/* PDI Public Routes */}
+            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
+            <Route path="/pdi/participant/:token" element={<PDIParticipantPortalPage />} />
+            
             {/* Payment Links */}
             <Route path="/pagamento" element={<PaymentLinkPage />} />
             <Route path="/recebimento" element={<RecebimentosPage />} />
