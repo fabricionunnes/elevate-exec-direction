@@ -21544,11 +21544,14 @@ export type Database = {
       }
       pdi_tasks: {
         Row: {
+          cohort_id: string | null
           created_at: string | null
           description: string | null
           due_days: number | null
           id: string
           is_active: boolean | null
+          participant_id: string | null
+          scope: string
           sort_order: number | null
           support_material_url: string | null
           task_type: string
@@ -21557,11 +21560,14 @@ export type Database = {
           updated_at: string | null
         }
         Insert: {
+          cohort_id?: string | null
           created_at?: string | null
           description?: string | null
           due_days?: number | null
           id?: string
           is_active?: boolean | null
+          participant_id?: string | null
+          scope?: string
           sort_order?: number | null
           support_material_url?: string | null
           task_type?: string
@@ -21570,11 +21576,14 @@ export type Database = {
           updated_at?: string | null
         }
         Update: {
+          cohort_id?: string | null
           created_at?: string | null
           description?: string | null
           due_days?: number | null
           id?: string
           is_active?: boolean | null
+          participant_id?: string | null
+          scope?: string
           sort_order?: number | null
           support_material_url?: string | null
           task_type?: string
@@ -21583,6 +21592,20 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: [
+          {
+            foreignKeyName: "pdi_tasks_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_tasks_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pdi_tasks_track_id_fkey"
             columns: ["track_id"]
@@ -21595,41 +21618,64 @@ export type Database = {
       pdi_tracks: {
         Row: {
           category: string
+          cohort_id: string | null
           created_at: string
           description: string | null
           id: string
           is_active: boolean
           name: string
+          participant_id: string | null
           program_id: string | null
+          scope: string
           sort_order: number
           total_hours: number | null
           updated_at: string
         }
         Insert: {
           category?: string
+          cohort_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
           name: string
+          participant_id?: string | null
           program_id?: string | null
+          scope?: string
           sort_order?: number
           total_hours?: number | null
           updated_at?: string
         }
         Update: {
           category?: string
+          cohort_id?: string | null
           created_at?: string
           description?: string | null
           id?: string
           is_active?: boolean
           name?: string
+          participant_id?: string | null
           program_id?: string | null
+          scope?: string
           sort_order?: number
           total_hours?: number | null
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "pdi_tracks_cohort_id_fkey"
+            columns: ["cohort_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_cohorts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "pdi_tracks_participant_id_fkey"
+            columns: ["participant_id"]
+            isOneToOne: false
+            referencedRelation: "pdi_participants"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "pdi_tracks_program_id_fkey"
             columns: ["program_id"]
