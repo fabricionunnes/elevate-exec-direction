@@ -1,0 +1,1 @@
+DELETE FROM survey_send_log WHERE status = 'failed';
