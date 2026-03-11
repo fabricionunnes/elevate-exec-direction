@@ -376,11 +376,11 @@ export function NfsePanel() {
                 Emitir NFS-e
               </Button>
             </DialogTrigger>
-            <DialogContent className="max-w-lg max-h-[90vh] overflow-hidden flex flex-col">
+             <DialogContent className="max-w-lg max-h-[90vh] flex flex-col">
               <DialogHeader>
                 <DialogTitle>Emitir NFS-e</DialogTitle>
               </DialogHeader>
-              <ScrollArea className="flex-1 pr-4">
+              <ScrollArea className="flex-1 overflow-auto pr-4" style={{ maxHeight: 'calc(90vh - 80px)' }}>
                 <div className="space-y-4 pb-2">
                   <div>
                     <Label>Empresa Emissora (NFE.io) *</Label>
