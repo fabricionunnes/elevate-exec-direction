@@ -156,7 +156,7 @@ export function NfsePanel() {
         tomadorName: "",
         tomadorDocument: "",
         tomadorEmail: "",
-        cityServiceCode: "1.05",
+        cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
       });
       loadRecords();
     } catch (err: any) {
