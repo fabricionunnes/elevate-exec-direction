@@ -271,10 +271,10 @@ const OnboardingResultsPage = () => {
         }
       });
       
-      // Also consider companies with ANY active KPI configured
-      // A company with KPIs registered should be considered as "com meta"
+      // Also consider companies with main goal KPIs that have target_value > 0
+      // A company has "meta" only if it has a KPI marked as is_main_goal with target_value > 0
       (kpisData || []).forEach(k => {
-        if (k.company_id) {
+        if (k.is_main_goal && k.company_id && k.target_value > 0) {
           if (!companyIdsWithGoalsRecord[k.company_id]) {
             companyIdsWithGoalsRecord[k.company_id] = true;
           }
