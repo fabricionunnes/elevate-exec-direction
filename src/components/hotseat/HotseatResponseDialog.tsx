@@ -1222,7 +1222,7 @@ export function HotseatResponseDialog({
                   </>
                 )}
               </TabsContent>
-            </ScrollArea>
+            </div>
           </Tabs>
         </DialogContent>
       </Dialog>
