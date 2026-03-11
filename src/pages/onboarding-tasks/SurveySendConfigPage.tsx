@@ -86,7 +86,7 @@ export default function SurveySendConfigPage() {
       const [configRes, rulesRes, instancesRes, logsRes] = await Promise.all([
         supabase.from("survey_send_configs").select("*").order("survey_type"),
         supabase.from("survey_send_rules").select("*").order("sort_order"),
-        supabase.from("whatsapp_instances").select("id, instance_name, friendly_name, status"),
+        supabase.from("whatsapp_instances").select("id, instance_name, display_name, status"),
         supabase.from("survey_send_log").select("*").order("created_at", { ascending: false }).limit(100),
       ]);
 
