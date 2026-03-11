@@ -2208,7 +2208,7 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
             {/* Reuniões button - visible for all staff */}
-            {canAccessCalendar && currentStaffId && (
+            {(canAccessCalendar || isConsultant || isCS) && currentStaffId && (
               <Button 
                 variant="outline" 
                 size="sm" 
