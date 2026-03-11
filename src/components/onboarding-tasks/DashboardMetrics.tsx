@@ -669,6 +669,7 @@ const DashboardMetrics = ({
   }, [nonSimulatorAllProjects, dateRange, companies]);
 
 
+  const monthlyChurnData = useMemo(() => {
     const currentYear = dateRange.start.getFullYear();
     const months = eachMonthOfInterval({ start: startOfYear(new Date(currentYear, 0, 1)), end: endOfYear(new Date(currentYear, 0, 1)) });
     return months.map(monthDate => {
