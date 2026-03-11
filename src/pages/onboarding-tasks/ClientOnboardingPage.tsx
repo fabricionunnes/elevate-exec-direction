@@ -364,6 +364,7 @@ const ClientOnboardingPage = () => {
         paid_traffic: "Tráfego Pago",
         sales_funnel: "Funil de Vendas",
         instagram: "Instagram",
+        commercial_director: "Diretor Comercial IA",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
