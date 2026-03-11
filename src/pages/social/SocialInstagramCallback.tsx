@@ -59,13 +59,14 @@ export default function SocialInstagramCallback() {
         setAccountName(data.username || null);
         setMessage("Instagram conectado com sucesso!");
 
-        // Close popup after delay
-        setTimeout(() => {
-          if (window.opener) {
+        // If opened as popup, notify parent and close
+        if (window.opener) {
+          setTimeout(() => {
             window.opener.postMessage({ type: "instagram-connected", projectId: pId }, "*");
             window.close();
-          }
-        }, 2000);
+          }, 2000);
+        }
+        // Otherwise user will use the "Voltar" button
       } else {
         throw new Error(data?.error || "Erro ao conectar");
       }
