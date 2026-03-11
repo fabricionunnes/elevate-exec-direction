@@ -464,6 +464,15 @@ export default function SurveySendConfigPage() {
                 {runningManual ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 Executar Agora
               </Button>
+              <Button
+                variant="outline"
+                size="sm"
+                className="gap-2"
+                onClick={() => openTestDialog(type)}
+              >
+                <FlaskConical className="h-4 w-4" />
+                Envio de Teste
+              </Button>
             </div>
           </CardContent>
         </Card>
