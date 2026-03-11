@@ -48,8 +48,8 @@ export const InstagramInsights = ({ accountId, projectId }: InstagramInsightsPro
         .order("generated_at", { ascending: false })
         .limit(20);
       setInsights((data || []) as InstagramInsight[]);
-    } catch (err) {
-      toast.error("Erro ao gerar insights");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao gerar insights");
     } finally {
       setGenerating(false);
     }
