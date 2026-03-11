@@ -82,18 +82,32 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
   const now = new Date();
   let sent = 0;
 
+  // Group projects by company to avoid sending multiple NPS to the same company
+  const companyMap = new Map<string, { companyId: string; companyName: string; phone: string; projectId: string }>();
   for (const project of projects) {
     const company = (project as any).onboarding_companies;
     if (!company || company.status !== "active") continue;
-
     const phone = cleanPhone(company.phone);
     if (!phone) continue;
+    // Keep only the first project per company
+    if (!companyMap.has(company.id)) {
+      companyMap.set(company.id, {
+        companyId: company.id,
+        companyName: company.name,
+        phone,
+        projectId: project.id,
+      });
+    }
+  }
 
-    // Check last NPS response for this project
+  for (const entry of companyMap.values()) {
+    const { companyId, companyName, phone, projectId } = entry;
+
+    // Check last NPS response for this company (any project)
     const { data: lastResponse } = await supabase
       .from("onboarding_nps_responses")
       .select("created_at")
-      .eq("project_id", project.id)
+      .eq("project_id", projectId)
       .order("created_at", { ascending: false })
       .limit(1)
       .maybeSingle();
@@ -104,11 +118,11 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
       if (daysSinceResponse < frequencyDays) continue;
     }
 
-    // Check last send log for this project
+    // Check last send log for this company
     const { data: lastLogs } = await supabase
       .from("survey_send_log")
       .select("*")
-      .eq("project_id", project.id)
+      .eq("company_id", companyId)
       .eq("survey_type", "nps")
       .in("status", ["sent", "pending"])
       .order("created_at", { ascending: false })
@@ -116,58 +130,26 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
 
     const lastLog = lastLogs?.[0];
 
-    // If already responded in this cycle, skip
-    const { data: respondedLogs } = await supabase
-      .from("survey_send_log")
-      .select("id")
-      .eq("project_id", project.id)
-      .eq("survey_type", "nps")
-      .eq("status", "responded")
-      .order("created_at", { ascending: false })
-      .limit(1);
-
-    if (respondedLogs?.[0] && lastResponse) {
-      const lastResponseDate = new Date(lastResponse.created_at);
-      const daysSince = daysBetween(lastResponseDate, now);
-      if (daysSince < frequencyDays) continue;
-    }
-
     // Determine which rule to send
     let ruleToSend: any = null;
     let attemptNumber = 1;
 
     if (!lastLog) {
-      // First send ever or new cycle
       ruleToSend = rules[0];
       attemptNumber = 1;
     } else {
-      // Calculate days since first send of this cycle
       const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
       attemptNumber = (lastLog.attempt_number || 0) + 1;
 
-      if (attemptNumber > maxFollowUps) continue; // Max reached
+      if (attemptNumber > maxFollowUps) continue;
 
-      // Find the next rule based on day_offset
-      for (const rule of rules) {
-        if (rule.day_offset > 0 && daysSinceLastSend >= rule.day_offset - (lastLog.attempt_number > 1 ? rules[lastLog.attempt_number - 2]?.day_offset || 0 : 0)) {
-          // More precise: find rule matching this attempt
-          const ruleIndex = attemptNumber - 1;
-          if (ruleIndex < rules.length) {
-            ruleToSend = rules[ruleIndex];
-          }
-          break;
-        }
-      }
-
-      // Simpler approach: use attempt_number as rule index
       const ruleIndex = attemptNumber - 1;
       if (ruleIndex < rules.length) {
-        // Check if enough days have passed since last send
         const currentRule = rules[ruleIndex];
         const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
         const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
         if (daysSinceLastSend < daysNeeded) {
-          ruleToSend = null; // Not time yet
+          ruleToSend = null;
         } else {
           ruleToSend = currentRule;
         }
@@ -176,13 +158,13 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
 
     if (!ruleToSend) continue;
 
-    // Generate NPS link
-    const npsLink = `${PUBLIC_DOMAIN}/?public=nps&project=${encodeURIComponent(project.id)}`;
+    // Generate NPS link using hash route format for WhatsApp compatibility
+    const npsLink = `${PUBLIC_DOMAIN}/#/nps?project=${encodeURIComponent(projectId)}`;
 
     // Replace template variables
     const message = ruleToSend.message_template
-      .replace(/\{nome\}/g, company.name || "")
-      .replace(/\{empresa\}/g, company.name || "")
+      .replace(/\{nome\}/g, companyName || "")
+      .replace(/\{empresa\}/g, companyName || "")
       .replace(/\{link\}/g, npsLink);
 
     // Send via WhatsApp
@@ -193,11 +175,11 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
     await supabase.from("survey_send_log").insert({
       config_id: config.id,
       rule_id: ruleToSend.id,
-      project_id: project.id,
-      company_id: company.id,
+      project_id: projectId,
+      company_id: companyId,
       survey_type: "nps",
       phone,
-      contact_name: company.name,
+      contact_name: companyName,
       survey_link: npsLink,
       status: sendResult.success ? "sent" : "failed",
       attempt_number: attemptNumber,
@@ -207,8 +189,8 @@ async function processNPS(supabase: any, _isManual: boolean): Promise<number> {
 
     if (sendResult.success) sent++;
 
-    // Small delay between sends
-    await new Promise((r) => setTimeout(r, 1500));
+    // Delay between sends to avoid rate limiting
+    await new Promise((r) => setTimeout(r, 2000));
   }
 
   return sent;
