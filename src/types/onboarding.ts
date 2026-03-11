@@ -213,6 +213,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Instagram",
     group: "Integrações",
   },
+  {
+    key: CLIENT_MENU_KEYS.diretor_comercial_ia,
+    label: "Diretor Comercial IA",
+    group: null,
+  },
 ] as const;
 
 // Role labels in Portuguese
