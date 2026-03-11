@@ -278,3 +278,6 @@ verify_jwt = false
 
 [functions.pdi-evaluate-summary]
 verify_jwt = false
+
+[functions.nfeio-nfse]
+verify_jwt = false
