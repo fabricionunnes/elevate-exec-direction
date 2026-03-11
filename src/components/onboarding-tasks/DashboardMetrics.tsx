@@ -1201,6 +1201,18 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Renovadas</p>
               </CardContent>
             </Card>
+            <Card 
+              className={cn(
+                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                showCompletedCompanies && "ring-2 ring-blue-400"
+              )} 
+              onClick={() => setShowCompletedCompanies(!showCompletedCompanies)}
+            >
+              <CardContent className="p-2 sm:p-3 text-center">
+                <p className="text-lg sm:text-xl font-bold text-blue-400">{completedMetrics.count}</p>
+                <p className="text-[9px] sm:text-[10px] text-muted-foreground">Concluídos</p>
+              </CardContent>
+            </Card>
             <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
             <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
             <Card 
