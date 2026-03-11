@@ -1265,18 +1265,7 @@ const OnboardingProjectPage = () => {
                   </Button>
                 </>
               )}
-              {/* UNV Social Button - only show if project uses UNV Social service */}
-              {(project.product_id === 'f8236aa9-73ab-449a-adc4-0779c052141a' || project.product_id === 'social') && (
-                <Button 
-                  variant="outline" 
-                  size="sm" 
-                  className="h-7 px-2 text-xs bg-gradient-to-r from-pink-500/10 to-purple-500/10 border-pink-500/30 hover:border-pink-500/50"
-                  onClick={() => navigate(`/social/${projectId}`)}
-                >
-                  <Instagram className="h-3 w-3 mr-1 text-pink-500" />
-                  UNV Social
-                </Button>
-              )}
+              {/* UNV Social is now a tab, removed standalone button */}
               {/* CRM Button */}
               {project.crm_link ? (
                 <Button 
@@ -1534,6 +1523,10 @@ const OnboardingProjectPage = () => {
                 <TabsTrigger value="instagram" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <Instagram className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
                   Instagram
+                </TabsTrigger>
+                <TabsTrigger value="social" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Heart className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
+                  UNV Social
                 </TabsTrigger>
                 <TabsTrigger value="commercial_director" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <BrainCircuit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1873,6 +1866,19 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="instagram">
             <ClientInstagramModule projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="social">
+            <div className="flex flex-col items-center justify-center py-8">
+              <Button
+                onClick={() => navigate(`/social/${projectId}`)}
+                className="gap-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
+              >
+                <Heart className="h-4 w-4" />
+                Abrir UNV Social
+              </Button>
+              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais</p>
+            </div>
           </TabsContent>
 
           <TabsContent value="commercial_director">
