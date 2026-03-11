@@ -1194,6 +1194,21 @@ const ClientOnboardingPage = () => {
               <ClientInstagramModule projectId={projectId || ""} />
             </motion.div>
           )}
+
+          {activeView === "commercial_director" && hasViewAccess("commercial_director") && (
+            <motion.div
+              key="commercial_director"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <CommercialDirectorModule
+                projectId={projectId || ""}
+                companyId={companyId || ""}
+                companyName={company?.name}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
