@@ -368,7 +368,7 @@ export default function SurveySendConfigPage() {
                   <SelectItem value="default">Instância padrão do sistema</SelectItem>
                   {instances.filter(i => i.status === "connected").map(inst => (
                     <SelectItem key={inst.id} value={inst.instance_name}>
-                      {inst.friendly_name || inst.instance_name}
+                      {inst.display_name || inst.instance_name}
                     </SelectItem>
                   ))}
                 </SelectContent>
