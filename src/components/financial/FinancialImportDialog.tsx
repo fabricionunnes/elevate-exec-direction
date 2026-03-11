@@ -134,7 +134,16 @@ export function FinancialImportDialog({ open, onOpenChange, type, companies, cat
     const m: Record<string, string> = {};
     const normalize = (s: string) => s.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-z0-9]/g, "");
     const aliases: Record<string, string[]> = {
-      company_name: ["empresa", "cliente", "company", "razao social", "razao"],
+      company_name: ["empresa", "cliente", "company", "razao social", "razao", "nome do devedor", "devedor", "nome devedor"],
+      cnpj: ["cnpj", "cpf", "cnpjcpf", "cpfcnpj", "documento", "doc"],
+      phone: ["telefone", "fone", "phone", "tel", "celular"],
+      email: ["email", "e-mail", "mail"],
+      address: ["endereco", "logradouro", "rua", "address"],
+      address_number: ["numero", "nro", "num", "n"],
+      address_neighborhood: ["bairro", "neighborhood"],
+      address_zipcode: ["cep", "zipcode", "zip"],
+      address_city: ["cidade", "city", "municipio"],
+      address_state: ["uf", "estado", "state"],
       supplier_name: ["fornecedor", "supplier", "credor"],
       description: ["descricao", "desc", "description", "historico"],
       amount: ["valor", "amount", "value", "total"],
