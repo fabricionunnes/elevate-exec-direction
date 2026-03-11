@@ -33,11 +33,13 @@ export const InstagramInsights = ({ accountId, projectId }: InstagramInsightsPro
   const handleGenerate = async () => {
     setGenerating(true);
     try {
-      const { error } = await supabase.functions.invoke("instagram-project-oauth", {
+      const { data: genData, error } = await supabase.functions.invoke("instagram-project-oauth", {
         body: { action: "generate_insights", accountId, projectId },
       });
       if (error) throw error;
-      toast.success("Insights gerados com sucesso!");
+      if (genData?.error) throw new Error(genData.error);
+      if (!genData?.success) throw new Error(genData?.error || "Erro desconhecido");
+      toast.success(`${genData.count || 0} insights gerados com sucesso!`);
       // Refetch
       const { data } = await supabase
         .from("instagram_insights_ai")
@@ -46,8 +48,8 @@ export const InstagramInsights = ({ accountId, projectId }: InstagramInsightsPro
         .order("generated_at", { ascending: false })
         .limit(20);
       setInsights((data || []) as InstagramInsight[]);
-    } catch (err) {
-      toast.error("Erro ao gerar insights");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao gerar insights");
     } finally {
       setGenerating(false);
     }

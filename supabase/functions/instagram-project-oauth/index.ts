@@ -162,8 +162,8 @@ Deno.serve(async (req) => {
           updated_at: new Date().toISOString(),
         }).eq("id", accountId);
 
-        // Fetch recent media
-        const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${igId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp&limit=50&access_token=${token}`);
+        // Fetch recent media with engagement fields
+        const mediaRes = await fetch(`https://graph.facebook.com/v21.0/${igId}/media?fields=id,caption,media_type,media_url,thumbnail_url,permalink,timestamp,like_count,comments_count&limit=50&access_token=${token}`);
         const mediaData = await mediaRes.json();
         const mediaItems = mediaData.data || [];
 
@@ -192,41 +192,56 @@ Deno.serve(async (req) => {
           if (savedPost) {
             postsSynced++;
 
-            // Fetch insights for each post
+            // Get likes and comments from the media object itself
+            const likesCount = item.like_count || 0;
+            const commentsCount = item.comments_count || 0;
+
+            // Fetch insights - use different metrics based on media type
+            let reachVal = 0, impressionsVal = 0, savedVal = 0, sharesVal = 0;
             try {
-              const insightsRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=reach,impressions,likes,comments,shares,saved,profile_visits&access_token=${token}`);
+              // For all media types, reach and saved are supported
+              const insightMetrics = item.media_type === "VIDEO" 
+                ? "reach,saved,shares,plays"
+                : "reach,impressions,saved,shares";
+
+              const insightsRes = await fetch(`https://graph.facebook.com/v21.0/${item.id}/insights?metric=${insightMetrics}&access_token=${token}`);
               const insightsData = await insightsRes.json();
 
               if (insightsData.data) {
-                const metricsMap: Record<string, number> = {};
                 for (const m of insightsData.data) {
-                  metricsMap[m.name] = m.values?.[0]?.value || 0;
+                  if (m.name === "reach") reachVal = m.values?.[0]?.value || 0;
+                  if (m.name === "impressions") impressionsVal = m.values?.[0]?.value || 0;
+                  if (m.name === "saved") savedVal = m.values?.[0]?.value || 0;
+                  if (m.name === "shares") sharesVal = m.values?.[0]?.value || 0;
+                  if (m.name === "plays") impressionsVal = m.values?.[0]?.value || 0; // use plays as impressions for video
                 }
-
-                const totalEngagement = (metricsMap.likes || 0) + (metricsMap.comments || 0) + (metricsMap.shares || 0) + (metricsMap.saved || 0);
-                const engRate = profile.followers_count > 0 ? (totalEngagement / profile.followers_count) * 100 : 0;
-                const reachRate = profile.followers_count > 0 ? ((metricsMap.reach || 0) / profile.followers_count) * 100 : 0;
-
-                await supabase.from("instagram_post_metrics").upsert({
-                  post_id: savedPost.id,
-                  reach: metricsMap.reach || 0,
-                  impressions: metricsMap.impressions || 0,
-                  likes: metricsMap.likes || 0,
-                  comments: metricsMap.comments || 0,
-                  shares: metricsMap.shares || 0,
-                  saves: metricsMap.saved || 0,
-                  profile_visits: metricsMap.profile_visits || 0,
-                  link_clicks: 0,
-                  engagement_rate: engRate,
-                  reach_rate: reachRate,
-                  recorded_at: new Date().toISOString(),
-                }, { onConflict: "post_id" });
-
-                metricsSynced++;
+              } else if (insightsData.error) {
+                console.log(`Insights API error for ${item.id}: ${insightsData.error.message}`);
               }
             } catch (e) {
               console.log(`Could not fetch insights for post ${item.id}:`, e);
             }
+
+            const totalEngagement = likesCount + commentsCount + sharesVal + savedVal;
+            const engRate = profile.followers_count > 0 ? (totalEngagement / profile.followers_count) * 100 : 0;
+            const reachRate = profile.followers_count > 0 ? (reachVal / profile.followers_count) * 100 : 0;
+
+            await supabase.from("instagram_post_metrics").upsert({
+              post_id: savedPost.id,
+              reach: reachVal,
+              impressions: impressionsVal,
+              likes: likesCount,
+              comments: commentsCount,
+              shares: sharesVal,
+              saves: savedVal,
+              profile_visits: 0,
+              link_clicks: 0,
+              engagement_rate: engRate,
+              reach_rate: reachRate,
+              recorded_at: new Date().toISOString(),
+            }, { onConflict: "post_id" });
+
+            metricsSynced++;
           }
         }
 
@@ -300,13 +315,23 @@ Deno.serve(async (req) => {
 
       // Fetch account and recent metrics
       const { data: account } = await supabase.from("instagram_accounts").select("*").eq("id", accountId).single();
-      const { data: recentMetrics } = await supabase.from("instagram_post_metrics")
-        .select("*, post:instagram_posts(*)")
-        .in("post_id", (await supabase.from("instagram_posts").select("id").eq("account_id", accountId).limit(30)).data?.map((p: any) => p.id) || [])
-        .order("recorded_at", { ascending: false });
+      
+      // Get post IDs for this account
+      const { data: postIds } = await supabase.from("instagram_posts").select("id").eq("account_id", accountId).limit(30);
+      const ids = postIds?.map((p: any) => p.id) || [];
 
-      if (!recentMetrics || recentMetrics.length === 0) {
-        return new Response(JSON.stringify({ success: true, message: "No data to analyze" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      let recentMetrics: any[] = [];
+      if (ids.length > 0) {
+        const { data } = await supabase.from("instagram_post_metrics")
+          .select("*, post:instagram_posts(*)")
+          .in("post_id", ids)
+          .order("recorded_at", { ascending: false });
+        recentMetrics = data || [];
+      }
+
+      if (recentMetrics.length === 0) {
+        // No metrics yet - trigger a sync first, then return a message
+        return new Response(JSON.stringify({ success: false, error: "Nenhuma métrica encontrada. Clique em 'Sincronizar' na Visão Geral primeiro para puxar os dados do Instagram." }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
       }
 
       // Generate basic insights from data patterns
