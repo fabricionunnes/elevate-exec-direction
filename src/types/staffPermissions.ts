@@ -61,6 +61,7 @@ export const FINANCIAL_PERMISSION_KEYS = {
   fin_whatsapp_instance: "fin_whatsapp_instance",
   fin_company_detail: "fin_company_detail",
   fin_bank_statement: "fin_bank_statement",
+  fin_nfse: "fin_nfse",
 } as const;
 
 export type FinancialPermissionKey = typeof FINANCIAL_PERMISSION_KEYS[keyof typeof FINANCIAL_PERMISSION_KEYS];
