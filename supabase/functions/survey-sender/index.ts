@@ -557,3 +557,12 @@ function daysBetween(d1: Date, d2: Date): number {
   const diff = d2.getTime() - d1.getTime();
   return Math.floor(diff / (1000 * 60 * 60 * 24));
 }
+
+function formatDateBR(dateStr: string): string {
+  // Parse date string (YYYY-MM-DD or ISO) and format as DD/MM/YYYY
+  const parts = dateStr.substring(0, 10).split("-");
+  if (parts.length === 3) {
+    return `${parts[2]}/${parts[1]}/${parts[0]}`;
+  }
+  return dateStr;
+}
