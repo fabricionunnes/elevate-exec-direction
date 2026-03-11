@@ -64,6 +64,7 @@ import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTra
 import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedScreen";
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
+import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
