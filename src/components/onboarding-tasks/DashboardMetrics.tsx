@@ -429,13 +429,17 @@ const DashboardMetrics = ({
   );
 
   // Filter projects to exclude those belonging to simulator companies AND inactive/closed companies
-  // This ensures all metrics only show data from active companies
+  // BUT keep projects with cancellation_signaled/notice_period status even if company is inactive
   const nonSimulatorProjects = useMemo(
     () => projects.filter(p => {
       const companyId = getProjectCompanyId(p);
       if (!companyId) return true;
-      // Exclude simulators and inactive/closed companies
-      return !simulatorCompanyIds.has(companyId) && !inactiveCompanyIds.has(companyId);
+      // Always exclude simulators
+      if (simulatorCompanyIds.has(companyId)) return false;
+      // Keep cancellation/notice projects even from inactive companies
+      if (p.status === "cancellation_signaled" || p.status === "notice_period") return true;
+      // Exclude inactive/closed companies for other statuses
+      return !inactiveCompanyIds.has(companyId);
     }),
     [projects, simulatorCompanyIds, inactiveCompanyIds]
   );
