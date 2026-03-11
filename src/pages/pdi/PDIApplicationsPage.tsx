@@ -291,7 +291,7 @@ export default function PDIApplicationsPage() {
                 <div><span className="text-muted-foreground">Cargo:</span> <span className="font-medium">{selected.role_title || "—"}</span></div>
                 <div><span className="text-muted-foreground">Empresa:</span> <span className="font-medium">{selected.company || "—"}</span></div>
                 <div><span className="text-muted-foreground">Experiência:</span> <span className="font-medium">{selected.experience_years ? `${selected.experience_years} anos` : "—"}</span></div>
-                <div><span className="text-muted-foreground">Nível de Liderança:</span> <span className="font-medium">{selected.leadership_level || "—"}</span></div>
+                <div><span className="text-muted-foreground">Nível de Liderança:</span> <span className="font-medium">{LEADERSHIP_LABELS[selected.leadership_level] || selected.leadership_level || "—"}</span></div>
               </div>
 
               <h4 className="text-xs font-semibold text-primary uppercase tracking-wide border-b pb-1 pt-2">Perfil Profissional</h4>
