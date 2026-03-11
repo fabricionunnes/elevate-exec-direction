@@ -61,6 +61,7 @@ import { ClientCustomersPanel } from "@/components/client-inventory/ClientCustom
 import { ClientBillingPanel } from "@/components/client-portal/ClientBillingPanel";
 import { ClientPaidTrafficPanel } from "@/components/client-portal/ClientPaidTrafficPanel";
 import { BillingBlockedScreen } from "@/components/client-portal/BillingBlockedScreen";
+import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import {
   DropdownMenu,
