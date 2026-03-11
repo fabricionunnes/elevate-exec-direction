@@ -20,17 +20,19 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const surveyType = body.type || "all"; // "nps", "csat", or "all"
     const isManual = body.manual === true;
+    const isTest = body.test === true;
+    const testCompanyId = body.test_company_id || null;
 
     let totalSent = 0;
 
     // Process NPS
     if (surveyType === "nps" || surveyType === "all") {
-      totalSent += await processNPS(supabase, isManual);
+      totalSent += await processNPS(supabase, isManual, isTest, testCompanyId);
     }
 
     // Process CSAT
     if (surveyType === "csat" || surveyType === "all") {
-      totalSent += await processCSAT(supabase, isManual);
+      totalSent += await processCSAT(supabase, isManual, isTest, testCompanyId);
     }
 
     return new Response(JSON.stringify({ success: true, sent: totalSent }), {
