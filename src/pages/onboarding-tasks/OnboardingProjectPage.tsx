@@ -1864,6 +1864,10 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
+          <TabsContent value="instagram">
+            <ClientInstagramModule projectId={projectId!} />
+          </TabsContent>
+
         </Tabs>
       </div>
 
