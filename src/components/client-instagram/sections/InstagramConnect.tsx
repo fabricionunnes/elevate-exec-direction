@@ -25,7 +25,7 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
     setIsConnecting(true);
     setManualAuthUrl(null);
     try {
-      const redirectUri = `${window.location.origin}/#/social/instagram-callback`;
+      const redirectUri = `https://elevate-exec-direction.lovable.app/#/social/instagram-callback`;
       
       const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
         body: {
