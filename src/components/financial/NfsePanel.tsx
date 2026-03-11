@@ -153,7 +153,7 @@ export function NfsePanel() {
       setForm((prev) => ({
         ...prev,
         serviceDescription: prev.serviceDescription || invoice.description,
-        amountCents: invoice.amount_cents,
+        amountCents: invoice.amount_cents / 100,
       }));
     }
   };
