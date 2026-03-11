@@ -20843,17 +20843,25 @@ export type Database = {
       }
       pdi_applications: {
         Row: {
+          biggest_weakness: string | null
           cohort_id: string
+          commitment_books: string | null
+          commitment_camera: string | null
+          commitment_meetings: string | null
+          commitment_tasks: string | null
           company: string | null
           created_at: string
           current_challenges: string | null
+          development_readiness: string | null
           email: string | null
+          expectations: string | null
           experience_years: number | null
           full_name: string
           id: string
           leadership_level: string | null
           motivation: string | null
           phone: string | null
+          previous_training: string | null
           professional_goal: string | null
           reviewed_at: string | null
           reviewed_by: string | null
@@ -20861,19 +20869,28 @@ export type Database = {
           role_title: string | null
           status: string
           submitted_at: string
+          time_availability: string | null
         }
         Insert: {
+          biggest_weakness?: string | null
           cohort_id: string
+          commitment_books?: string | null
+          commitment_camera?: string | null
+          commitment_meetings?: string | null
+          commitment_tasks?: string | null
           company?: string | null
           created_at?: string
           current_challenges?: string | null
+          development_readiness?: string | null
           email?: string | null
+          expectations?: string | null
           experience_years?: number | null
           full_name: string
           id?: string
           leadership_level?: string | null
           motivation?: string | null
           phone?: string | null
+          previous_training?: string | null
           professional_goal?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -20881,19 +20898,28 @@ export type Database = {
           role_title?: string | null
           status?: string
           submitted_at?: string
+          time_availability?: string | null
         }
         Update: {
+          biggest_weakness?: string | null
           cohort_id?: string
+          commitment_books?: string | null
+          commitment_camera?: string | null
+          commitment_meetings?: string | null
+          commitment_tasks?: string | null
           company?: string | null
           created_at?: string
           current_challenges?: string | null
+          development_readiness?: string | null
           email?: string | null
+          expectations?: string | null
           experience_years?: number | null
           full_name?: string
           id?: string
           leadership_level?: string | null
           motivation?: string | null
           phone?: string | null
+          previous_training?: string | null
           professional_goal?: string | null
           reviewed_at?: string | null
           reviewed_by?: string | null
@@ -20901,6 +20927,7 @@ export type Database = {
           role_title?: string | null
           status?: string
           submitted_at?: string
+          time_availability?: string | null
         }
         Relationships: [
           {
