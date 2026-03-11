@@ -172,6 +172,21 @@ export const InstagramConnect = ({ projectId, isStaff = false, onConnected, exis
               <><Instagram className="h-4 w-4 mr-2" /> Conectar Instagram <ExternalLink className="h-4 w-4 ml-2" /></>
             )}
           </Button>
+
+          {manualAuthUrl && (
+            <div className="bg-muted rounded-lg p-4 space-y-2 text-center">
+              <p className="text-sm text-muted-foreground">Pop-up bloqueado. Clique no link abaixo:</p>
+              <a 
+                href={manualAuthUrl} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-sm text-primary underline break-all inline-flex items-center gap-1"
+              >
+                <ExternalLink className="h-3 w-3 flex-shrink-0" />
+                Abrir autenticação do Instagram
+              </a>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
