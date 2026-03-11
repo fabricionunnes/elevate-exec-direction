@@ -220,6 +220,29 @@ export default function PDIParticipantPortalPage() {
     fetchCommunity(participant);
   };
 
+  const openPostComments = async (postId: string) => {
+    if (selectedPostId === postId) { setSelectedPostId(null); return; }
+    setSelectedPostId(postId);
+    const { data } = await supabase.from("pdi_community_comments")
+      .select("*").eq("post_id", postId).order("created_at");
+    const { data: partsData } = await supabase.from("pdi_participants").select("id, full_name");
+    const pMap = new Map(((partsData as any[]) || []).map((p: any) => [p.id, p.full_name]));
+    setPostComments(((data as any[]) || []).map((c: any) => ({
+      ...c, participant_name: pMap.get(c.participant_id) || "—",
+    })));
+  };
+
+  const submitComment = async (postId: string) => {
+    if (!participant || !newComment.trim()) return;
+    await supabase.from("pdi_community_comments").insert({
+      post_id: postId, participant_id: participant.id, content: newComment,
+    });
+    setNewComment("");
+    toast.success("Comentário enviado!");
+    openPostComments(postId);
+    fetchCommunity(participant);
+  };
+
   if (loading) return (
     <div className="min-h-screen bg-background flex items-center justify-center">
       <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
