@@ -90,7 +90,7 @@ Deno.serve(async (req) => {
             // Store as cents in DB
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
-            amount_cents: amountCents,
+            amount_cents: Math.round(amountInReais * 100),
             service_description: serviceDescription,
             tomador_name: tomadorName,
             tomador_document: tomadorDocument,
