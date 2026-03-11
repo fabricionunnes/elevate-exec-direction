@@ -61,7 +61,7 @@ interface SendLog {
 interface WhatsAppInstance {
   id: string;
   instance_name: string;
-  friendly_name: string | null;
+  display_name: string | null;
   status: string;
 }
 
