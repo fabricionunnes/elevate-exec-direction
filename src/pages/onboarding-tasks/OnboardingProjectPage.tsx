@@ -97,6 +97,8 @@ import { RoutineContractPanel } from "@/components/routine-contract/RoutineContr
 import { ClipboardList, Filter as FunnelIcon } from "lucide-react";
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
+import { BrainCircuit } from "lucide-react";
+import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1533,6 +1535,10 @@ const OnboardingProjectPage = () => {
                   <Instagram className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-pink-500" />
                   Instagram
                 </TabsTrigger>
+                <TabsTrigger value="commercial_director" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <BrainCircuit className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Diretor Comercial
+                </TabsTrigger>
               </TabsList>
             </div>
           </div>
@@ -1867,6 +1873,14 @@ const OnboardingProjectPage = () => {
 
           <TabsContent value="instagram">
             <ClientInstagramModule projectId={projectId!} />
+          </TabsContent>
+
+          <TabsContent value="commercial_director">
+            <CommercialDirectorModule
+              projectId={projectId!}
+              companyId={project.onboarding_company_id || ""}
+              companyName={project.onboarding_company?.name}
+            />
           </TabsContent>
 
         </Tabs>
