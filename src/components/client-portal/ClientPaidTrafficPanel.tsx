@@ -10,6 +10,8 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
+import { useClientPermissions } from "@/hooks/useClientPermissions";
+import { CLIENT_MENU_KEYS } from "@/types/onboarding";
 
 interface ClientPaidTrafficPanelProps {
   projectId: string;
