@@ -283,21 +283,24 @@ export function NfsePanel() {
 
   const handleDownloadPdf = async (record: NfseRecord) => {
     if (!record.nfeio_id) return;
+
+    const downloadWindow = window.open("", "_blank");
+
     try {
       toast.info("Baixando PDF...");
       const nfeioCompanyId = companies[0]?.id;
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const session = (await supabase.auth.getSession()).data.session;
-      
+
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/nfeio-nfse`,
         {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            "Authorization": `Bearer ${session?.access_token}`,
-            "apikey": anonKey,
+            Authorization: `Bearer ${session?.access_token}`,
+            apikey: anonKey,
           },
           body: JSON.stringify({ action: "download-pdf", nfeioCompanyId, nfeioId: record.nfeio_id }),
         }
@@ -309,16 +312,32 @@ export function NfsePanel() {
       }
 
       const blob = await res.blob();
+      const contentType = res.headers.get("content-type") || blob.type;
+
+      if (!contentType?.includes("application/pdf") || blob.size === 0) {
+        const responseText = await blob.text();
+        throw new Error(responseText || "Resposta inválida ao baixar PDF");
+      }
+
       const url = URL.createObjectURL(blob);
+      const fileName = `nfse-${record.number || record.nfeio_id}.pdf`;
+
       const a = document.createElement("a");
       a.href = url;
-      a.download = `nfse-${record.number || record.nfeio_id}.pdf`;
+      a.download = fileName;
+      a.style.display = "none";
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);
-      URL.revokeObjectURL(url);
-      toast.success("PDF baixado com sucesso!");
+
+      if (downloadWindow) {
+        downloadWindow.location.href = url;
+      }
+
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      toast.success("PDF gerado! Se não baixar automático, ele abriu em nova aba.");
     } catch (err: any) {
+      if (downloadWindow) downloadWindow.close();
       toast.error("Erro ao baixar PDF: " + err.message);
     }
   };
