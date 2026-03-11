@@ -237,6 +237,77 @@ export default function SurveySendConfigPage() {
     }
   };
 
+  const openTestDialog = async (type: "nps" | "csat") => {
+    setTestSurveyType(type);
+    setTestSelectedCompany(null);
+    setTestSearch("");
+    setShowTestDialog(true);
+    setLoadingCompanies(true);
+    try {
+      const { data } = await supabase
+        .from("onboarding_companies")
+        .select("id, name, phone")
+        .eq("status", "active")
+        .order("name")
+        .limit(200);
+      setTestCompanies((data || []) as any[]);
+    } catch {
+      toast.error("Erro ao carregar empresas");
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const handleSendTest = async () => {
+    if (!testSelectedCompany) return;
+    const company = testCompanies.find(c => c.id === testSelectedCompany);
+    if (!company) return;
+
+    setSendingTest(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/survey-sender`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            type: testSurveyType,
+            manual: true,
+            test: true,
+            test_company_id: testSelectedCompany,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.sent > 0) {
+        toast.success(`Teste enviado para ${company.name}!`);
+      } else {
+        toast.warning(`Nenhuma mensagem enviada. Verifique se a empresa tem telefone e projeto ativo.`);
+      }
+      setShowTestDialog(false);
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao enviar teste");
+    } finally {
+      setSendingTest(false);
+    }
+  };
+
+  const filteredTestCompanies = testCompanies.filter(c =>
+    c.name.toLowerCase().includes(testSearch.toLowerCase())
+  );
+
   const templateVars = {
     nps: [
       { var: "{nome}", desc: "Nome da empresa/contato" },
