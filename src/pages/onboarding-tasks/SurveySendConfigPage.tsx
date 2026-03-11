@@ -17,7 +17,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   ArrowLeft, Save, Plus, Trash2, GripVertical, Send, Bell,
   MessageSquare, BarChart3, RefreshCw, CheckCircle2, Clock,
-  AlertTriangle, ExternalLink, Loader2, Settings, Pencil,
+  AlertTriangle, ExternalLink, Loader2, Settings, Pencil, FlaskConical, Search,
 } from "lucide-react";
 import { format, parseISO, differenceInDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
