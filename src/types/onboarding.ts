@@ -227,7 +227,7 @@ export const CLIENT_MENU_STRUCTURE = [
   },
   {
     key: CLIENT_MENU_KEYS.unv_social,
-    label: "UNV Social",
+    label: "UNV Social IA",
     group: "Integrações",
   },
 ] as const;

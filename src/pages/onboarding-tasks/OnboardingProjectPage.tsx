@@ -1875,9 +1875,9 @@ const OnboardingProjectPage = () => {
                 className="gap-2 bg-gradient-to-r from-pink-500 to-purple-500 hover:from-pink-600 hover:to-purple-600"
               >
                 <Heart className="h-4 w-4" />
-                Abrir UNV Social
+                Abrir UNV Social IA
               </Button>
-              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais</p>
+              <p className="text-sm text-muted-foreground mt-3">Acesse o módulo completo de gestão de redes sociais com IA</p>
             </div>
           </TabsContent>
 
