@@ -256,7 +256,7 @@ export function NfsePanel() {
 
                 <div>
                   <Label>Empresa (Sistema)</Label>
-                  <Select value={form.companyId} onValueChange={(v) => setForm({ ...form, companyId: v })}>
+                  <Select value={form.companyId} onValueChange={handleCompanySelect}>
                     <SelectTrigger>
                       <SelectValue placeholder="Vincular a empresa (opcional)" />
                     </SelectTrigger>
