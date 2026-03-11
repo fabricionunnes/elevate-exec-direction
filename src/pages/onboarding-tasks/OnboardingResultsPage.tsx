@@ -464,7 +464,12 @@ const OnboardingResultsPage = () => {
       let matchesGoals = filterGoals === "all";
       if (!matchesGoals) {
         const hasGoals = !!companiesWithGoals[company.id];
-        matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        const goalNotRequired = !!(company as any).goal_not_required;
+        if (filterGoals === "without_goals" && goalNotRequired) {
+          matchesGoals = false; // Hide goal_not_required companies from "sem metas"
+        } else {
+          matchesGoals = filterGoals === "with_goals" ? hasGoals : !hasGoals;
+        }
       }
       
       // Results filter
