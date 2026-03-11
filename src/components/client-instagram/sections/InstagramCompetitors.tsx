@@ -57,6 +57,27 @@ export const InstagramCompetitors = ({ accountId, isStaff }: InstagramCompetitor
     fetchCompetitors();
   };
 
+  const handleSync = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
+        body: { action: "sync_competitors", accountId },
+      });
+      if (error) throw error;
+      if (data?.synced === 0 && data?.total > 0) {
+        toast.info("Nenhum concorrente pôde ser sincronizado. Verifique se são contas Business/Creator.");
+      } else {
+        toast.success(`${data?.synced || 0} de ${data?.total || 0} concorrentes sincronizados!`);
+      }
+      await fetchCompetitors();
+    } catch (err: any) {
+      console.error("Sync competitors error:", err);
+      toast.error("Erro ao sincronizar concorrentes: " + (err.message || "Tente novamente"));
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   if (loading) {
     return <div className="flex items-center justify-center py-16"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
