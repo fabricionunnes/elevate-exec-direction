@@ -435,6 +435,16 @@ const App = () => (
               <Route path="estrategias/:planId" element={<PortalStrategiesPage />} />
             </Route>
             
+            {/* PDI */}
+            <Route path="/pdi" element={<PDILayout />}>
+              <Route index element={<PDIDashboardPage />} />
+              <Route path="cohorts" element={<PDICohortsPage />} />
+              <Route path="applications" element={<PDIApplicationsPage />} />
+              <Route path="participants" element={<PDIParticipantsPage />} />
+              <Route path="tracks" element={<PDITracksPage />} />
+            </Route>
+            <Route path="/pdi/enroll/:token" element={<PDIEnrollmentPage />} />
+            
             {/* Academy */}
             <Route path="/academy" element={<AcademyLayout />}>
               <Route index element={<AcademyHomePage />} />
