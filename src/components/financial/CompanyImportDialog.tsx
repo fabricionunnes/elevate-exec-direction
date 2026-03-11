@@ -236,13 +236,13 @@ export function CompanyImportDialog({ open, onOpenChange, onSuccess }: Props) {
             if (cleanCnpj) cnpjMap.set(cleanCnpj, newComp.id);
 
             // Link invoices with matching custom_receiver_name
-            const { count } = await supabase
+            const { data: linkedData2 } = await supabase
               .from("company_invoices")
               .update({ company_id: newComp.id, custom_receiver_name: null } as any)
               .is("company_id", null)
               .ilike("custom_receiver_name", name)
-              .select("id", { count: "exact", head: true });
-            if (count && count > 0) linked += count;
+              .select("id");
+            if (linkedData2 && linkedData2.length > 0) linked += linkedData2.length;
           }
         }
       } catch (err: any) {
