@@ -725,6 +725,7 @@ const ClientOnboardingPage = () => {
                 </Button>
               )}
 
+              <ThemeToggle />
               <Button 
                 variant="ghost" 
                 size="icon" 
