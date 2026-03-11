@@ -428,17 +428,34 @@ export default function FinancialOverdueTab({
             <p className="text-sm text-muted-foreground">Gestão de inadimplência e cobranças</p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          size="sm"
-          className="gap-2"
-          onClick={handleExportExcel}
-          disabled={isExporting || sortedInvoices.length === 0}
-        >
-          {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
-          Exportar Planilha
-        </Button>
+        <div className="flex gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={() => setShowCompanyImport(true)}
+          >
+            <Upload className="h-4 w-4" />
+            Importar Empresas
+          </Button>
+          <Button
+            variant="outline"
+            size="sm"
+            className="gap-2"
+            onClick={handleExportExcel}
+            disabled={isExporting || sortedInvoices.length === 0}
+          >
+            {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <FileSpreadsheet className="h-4 w-4" />}
+            Exportar Planilha
+          </Button>
+        </div>
       </motion.div>
+
+      <CompanyImportDialog
+        open={showCompanyImport}
+        onOpenChange={setShowCompanyImport}
+        onSuccess={() => loadData()}
+      />
 
       {/* KPI Cards */}
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
