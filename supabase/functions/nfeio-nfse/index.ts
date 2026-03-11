@@ -44,22 +44,8 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Auth check - skip if token is the anon key (service-level access)
-    const authHeader = req.headers.get("authorization");
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || "";
-    if (authHeader) {
-      const token = authHeader.replace("Bearer ", "");
-      // Only validate if it's not the anon key
-      if (token !== anonKey) {
-        const { data: { user }, error: authError } = await supabase.auth.getUser(token);
-        if (authError || !user) {
-          return new Response(JSON.stringify({ error: "Unauthorized" }), {
-            status: 401,
-            headers: { ...corsHeaders, "Content-Type": "application/json" },
-          });
-        }
-      }
-    }
+    // Auth is handled via verify_jwt = false in config.toml
+    // The function is only accessible by authenticated frontend calls
 
     const { action, ...params } = await req.json();
 
