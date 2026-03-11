@@ -314,6 +314,7 @@ const App = () => (
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
+              <Route path="/onboarding-tasks/survey-send-config" element={<SurveySendConfigPage />} />
               <Route path="/onboarding-tasks/segments" element={<SegmentsAnalysisPage />} />
               <Route path="/onboarding-tasks/nota-fiscal" element={<StaffInvoicePage />} />
               <Route path="/onboarding-tasks/gamificacao-geral" element={<GlobalGamificationPage />} />
