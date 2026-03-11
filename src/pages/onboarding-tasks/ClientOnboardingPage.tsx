@@ -1215,6 +1215,20 @@ const ClientOnboardingPage = () => {
               />
             </motion.div>
           )}
+
+          {activeView === "other_services" && (
+            <motion.div
+              key="other_services"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientOtherServicesPanel
+                projectId={projectId || ""}
+                currentUserId={currentUser?.id || ""}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
