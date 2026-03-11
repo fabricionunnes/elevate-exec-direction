@@ -21,6 +21,11 @@ Deno.serve(async (req) => {
       });
     }
 
+    const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
+    if (!LOVABLE_API_KEY) {
+      throw new Error("LOVABLE_API_KEY is not configured");
+    }
+
     const prompt = `Você é um analista especialista em retenção de clientes de uma consultoria de vendas chamada UNV (Universidade de Vendas). Analise os seguintes dados e gere insights estratégicos em português brasileiro.
 
 DADOS:
@@ -51,14 +56,11 @@ Gere um relatório com:
 
 Seja direto, use dados concretos e dê recomendações acionáveis. Use formatação markdown.`;
 
-    const LOVABLE_API_BASE = Deno.env.get("LOVABLE_API_URL") || "https://api.lovable.dev";
-    const LOVABLE_TOKEN = Deno.env.get("LOVABLE_API_TOKEN");
-
-    const response = await fetch(`${LOVABLE_API_BASE}/ai`, {
+    const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        ...(LOVABLE_TOKEN ? { Authorization: `Bearer ${LOVABLE_TOKEN}` } : {}),
+        "Authorization": `Bearer ${LOVABLE_API_KEY}`,
       },
       body: JSON.stringify({
         model: "google/gemini-2.5-flash",
@@ -69,12 +71,12 @@ Seja direto, use dados concretos e dê recomendações acionáveis. Use formata�
 
     if (!response.ok) {
       const errText = await response.text();
-      console.error("AI API error:", errText);
+      console.error("AI API error:", response.status, errText);
       throw new Error(`AI API returned ${response.status}`);
     }
 
     const result = await response.json();
-    const insights = result.choices?.[0]?.message?.content || result.content || "Sem insights disponíveis.";
+    const insights = result.choices?.[0]?.message?.content || "Sem insights disponíveis.";
 
     return new Response(JSON.stringify({ insights }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
