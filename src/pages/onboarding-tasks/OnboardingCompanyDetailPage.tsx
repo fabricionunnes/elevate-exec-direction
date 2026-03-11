@@ -719,6 +719,11 @@ const OnboardingCompanyDetailPage = () => {
                         const previousSegment = formRef.current.segment;
                         // Only auto-save if value actually changed
                         if (value === previousSegment) return;
+                        // Prevent auto-saving empty when a valid segment was already set
+                        // (Radix Select can fire onValueChange spuriously on re-render)
+                        if (!value && previousSegment) {
+                          return;
+                        }
                         setForm(prev => ({ ...prev, segment: value }));
                         if (!isNew && companyId) {
                           supabase
