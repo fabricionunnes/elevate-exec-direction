@@ -71,7 +71,25 @@ export function OAuthRedirectHandler() {
       // Check for error callback
       const error = params.get("error");
       if (error) {
-        // Navigate to callback page to show error
+        const stateParam = params.get("state");
+
+        if (stateParam) {
+          try {
+            const decodedState = JSON.parse(atob(stateParam));
+
+            // Keep Meta Ads errors in Meta Ads callback route
+            if (decodedState.flow === "meta_ads") {
+              const callbackUrl = `/meta-ads-callback${queryString}`;
+              window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
+              navigate(callbackUrl, { replace: true });
+              return;
+            }
+          } catch {
+            // ignore decode issues and fallback below
+          }
+        }
+
+        // Fallback to CRM Instagram callback
         const callbackUrl = `/auth/instagram/callback${queryString}`;
         window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
         navigate(callbackUrl, { replace: true });

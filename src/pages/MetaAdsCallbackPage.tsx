@@ -53,7 +53,7 @@ const MetaAdsCallbackPage = () => {
       sessionStorage.removeItem("meta_ads_redirect_uri");
       
       const { data: result, error: err } = await supabase.functions.invoke("meta-ads-sync", {
-        body: { action: "connect", code, redirect_uri: redirectUri, project_id: projectId },
+        body: { action: "connect", code, redirect_uri: redirectUri, oauth_state: stateParam, project_id: projectId },
       });
 
       if (err || result?.error) throw new Error(result?.error || "Erro na conexão");
