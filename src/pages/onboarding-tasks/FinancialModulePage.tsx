@@ -81,6 +81,7 @@ const ALL_TABS = [
   { id: "whatsapp-instance", label: "Instância", icon: MessageSquare },
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
   { id: "general-statement", label: "Extrato Geral", icon: FileText },
+  { id: "nfse", label: "NFS-e", icon: FileCheck },
 ];
 
 export default function FinancialModulePage() {
