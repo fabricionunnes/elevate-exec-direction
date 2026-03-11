@@ -136,7 +136,7 @@ export default function SocialInstagramCallback() {
               <p className="text-muted-foreground mt-2">{message}</p>
             </div>
             <Button onClick={handleClose} variant="outline">
-              Fechar
+              Voltar ao CRM
             </Button>
           </>
         )}
