@@ -209,13 +209,13 @@ export function CompanyImportDialog({ open, onOpenChange, onSuccess }: Props) {
           }
 
           // Link invoices
-          const { count } = await supabase
+          const { data: linkedData } = await supabase
             .from("company_invoices")
             .update({ company_id: existingId, custom_receiver_name: null } as any)
             .is("company_id", null)
             .ilike("custom_receiver_name", name)
-            .select("id", { count: "exact", head: true });
-          if (count && count > 0) linked += count;
+            .select("id");
+          if (linkedData && linkedData.length > 0) linked += linkedData.length;
         } else {
           // Create new company
           const { data: newComp, error: insertErr } = await supabase
