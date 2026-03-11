@@ -627,7 +627,7 @@ const DashboardMetrics = ({
     const closedCompanyIds = new Set(
       nonSimulatorAllProjects
         .filter(p => {
-          if (p.status !== "closed" && p.status !== "completed") return false;
+          if (p.status !== "closed") return false;
           if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
           const companyId = getProjectCompanyId(p);
           if (companyId && notRenewedCompanyIds.has(companyId)) return false;
