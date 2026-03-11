@@ -775,6 +775,75 @@ export default function SurveySendConfigPage() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Test Send Dialog */}
+      <Dialog open={showTestDialog} onOpenChange={setShowTestDialog}>
+        <DialogContent className="sm:max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FlaskConical className="h-5 w-5" />
+              Envio de Teste - {testSurveyType.toUpperCase()}
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <p className="text-sm text-muted-foreground">
+              Selecione uma empresa para enviar uma mensagem de teste. Será enviada a primeira mensagem da régua.
+            </p>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Buscar empresa..."
+                value={testSearch}
+                onChange={(e) => setTestSearch(e.target.value)}
+                className="pl-9"
+              />
+            </div>
+            <ScrollArea className="max-h-[250px] border rounded-lg">
+              {loadingCompanies ? (
+                <div className="flex items-center justify-center py-8">
+                  <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
+                </div>
+              ) : filteredTestCompanies.length === 0 ? (
+                <p className="text-sm text-muted-foreground text-center py-8">Nenhuma empresa encontrada</p>
+              ) : (
+                <div className="p-1">
+                  {filteredTestCompanies.map(c => (
+                    <button
+                      key={c.id}
+                      onClick={() => setTestSelectedCompany(c.id)}
+                      className={cn(
+                        "w-full text-left px-3 py-2 rounded-md text-sm transition-colors flex items-center justify-between",
+                        testSelectedCompany === c.id
+                          ? "bg-primary text-primary-foreground"
+                          : "hover:bg-muted"
+                      )}
+                    >
+                      <span className="font-medium">{c.name}</span>
+                      <span className={cn(
+                        "text-xs",
+                        testSelectedCompany === c.id ? "text-primary-foreground/70" : "text-muted-foreground"
+                      )}>
+                        {c.phone || "Sem telefone"}
+                      </span>
+                    </button>
+                  ))}
+                </div>
+              )}
+            </ScrollArea>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setShowTestDialog(false)}>Cancelar</Button>
+            <Button
+              onClick={handleSendTest}
+              disabled={!testSelectedCompany || sendingTest}
+              className="gap-2"
+            >
+              {sendingTest ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+              Enviar Teste
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }
