@@ -2545,6 +2545,7 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             )}
 
+            <ThemeToggle />
             <Button 
               variant="ghost" 
               size="icon"
