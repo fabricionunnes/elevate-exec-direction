@@ -170,8 +170,16 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange, onBulkTran
           ${draggedTask === task.id ? "opacity-50 scale-95" : ""}
         `}
       >
-        {/* Drag Handle */}
+        {/* Drag Handle + Selection */}
         <div className="flex items-start gap-2">
+          {onBulkTransfer && (
+            <Checkbox
+              checked={selectedTaskIds.has(task.id)}
+              onCheckedChange={() => {}}
+              onClick={(e) => toggleTaskSelection(task.id, e)}
+              className="mt-0.5 flex-shrink-0"
+            />
+          )}
           <GripVertical className="h-4 w-4 text-muted-foreground/50 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
           
           <div className="flex-1 min-w-0 space-y-2">
