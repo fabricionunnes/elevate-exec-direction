@@ -46,11 +46,7 @@ export default function PublicInvoicePage() {
     if (!token) { setLoading(false); return; }
 
     const fetchInvoice = async () => {
-      // First update fees for overdue invoices
-      await supabase.functions.invoke("generate-invoices", {
-        body: { action: "update_fees" },
-      });
-
+      // Fetch invoice immediately
       const { data } = await supabase
         .from("company_invoices")
         .select("*")
@@ -59,6 +55,18 @@ export default function PublicInvoicePage() {
 
       setInvoice(data as any);
       setLoading(false);
+
+      // Update fees in background, then refresh
+      supabase.functions.invoke("generate-invoices", {
+        body: { action: "update_fees" },
+      }).then(async () => {
+        const { data: updated } = await supabase
+          .from("company_invoices")
+          .select("*")
+          .eq("public_token", token!)
+          .single();
+        if (updated) setInvoice(updated as any);
+      });
     };
 
     fetchInvoice();
