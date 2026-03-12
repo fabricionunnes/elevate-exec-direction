@@ -820,7 +820,14 @@ export function ReceivablesPanel() {
                       {format(parseISO(receivable.due_date), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(receivable.amount)}
+                      <div>
+                        <span>{formatCurrency(receivable.amount)}</span>
+                        {receivable.status === "partial" && receivable.paid_amount != null && receivable.paid_amount > 0 && (
+                          <p className="text-xs text-orange-600">
+                            Pago: {formatCurrency(receivable.paid_amount)} • Resta: {formatCurrency(receivable.amount - receivable.paid_amount)}
+                          </p>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(receivable.status, receivable.due_date)}</TableCell>
                     <TableCell>{getProjectStatusBadge(receivable.project_status)}</TableCell>
