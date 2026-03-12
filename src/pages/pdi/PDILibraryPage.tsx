@@ -208,6 +208,40 @@ export default function PDILibraryPage() {
             <div><Label>Temas (separados por vírgula)</Label><Input value={form.themes} onChange={(e) => setForm({ ...form, themes: e.target.value })} placeholder="Liderança, Gestão, Vendas" /></div>
             <div><Label>URL da Capa</Label><Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} /></div>
             <div>
+              <Label>Arquivo PDF do Livro</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={handlePdfUpload}
+                disabled={uploadingPdf}
+              />
+              {pdfUrl ? (
+                <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/50">
+                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-sm truncate flex-1">{pdfFileName}</span>
+                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setPdfUrl(null); setPdfFileName(null); }}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-1"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPdf}
+                >
+                  {uploadingPdf ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>
+                  ) : (
+                    <><Upload className="h-4 w-4 mr-2" />Enviar PDF</>
+                  )}
+                </Button>
+              )}
+            </div>
+            <div>
               <Label>Associar às Trilhas</Label>
               <div className="flex flex-wrap gap-2 mt-1">
                 {tracks.map((t) => (
