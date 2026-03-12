@@ -21,7 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Users, Calendar, Copy, ExternalLink } from "lucide-react";
+import { Plus, Search, Users, Calendar, Copy, ExternalLink, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -63,6 +75,9 @@ export default function PDICohortsPage() {
   const [search, setSearch] = useState("");
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
+
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdminOrMaster = isMaster || currentStaff?.role === "admin";
 
   const [form, setForm] = useState({
     name: "",
@@ -140,6 +155,16 @@ export default function PDICohortsPage() {
     await supabase.from("pdi_cohorts").update({ status }).eq("id", cohortId);
     fetchCohorts();
     toast.success("Status atualizado");
+  };
+
+  const deleteCohort = async (cohortId: string) => {
+    const { error } = await supabase.from("pdi_cohorts").delete().eq("id", cohortId);
+    if (error) {
+      toast.error("Erro ao excluir turma");
+      return;
+    }
+    toast.success("Turma excluída com sucesso!");
+    fetchCohorts();
   };
 
   const copyEnrollmentLink = (token: string) => {
@@ -299,6 +324,29 @@ export default function PDICohortsPage() {
                         <Button size="sm" variant="outline" onClick={() => updateStatus(cohort.id, "active")}>
                           Ativar
                         </Button>
+                      )}
+                      {isAdminOrMaster && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" title="Excluir turma">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir turma?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação é irreversível. A turma "{cohort.name}" e todos os dados associados serão excluídos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteCohort(cohort.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
                       )}
                     </div>
                   </div>
