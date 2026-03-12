@@ -10,7 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Search, BookOpen, Edit, Upload, FileText, Loader2, X } from "lucide-react";
+import { Plus, Search, BookOpen, Edit, Upload, FileText, Loader2, X, Trash2 } from "lucide-react";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Book {
   id: string;
@@ -28,6 +33,8 @@ export default function PDILibraryPage() {
   const [tracks, setTracks] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdminOrMaster = isMaster || currentStaff?.role === "admin";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [saving, setSaving] = useState(false);
@@ -140,6 +147,19 @@ export default function PDILibraryPage() {
     setDialogOpen(true);
   };
 
+  const handleDelete = async (bookId: string) => {
+    try {
+      await supabase.from("pdi_book_tracks").delete().eq("book_id", bookId);
+      const { error } = await supabase.from("pdi_books").delete().eq("id", bookId);
+      if (error) throw error;
+      toast.success("Livro excluído com sucesso!");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting book:", error);
+      toast.error("Erro ao excluir livro");
+    }
+  };
+
   const filtered = books.filter((b) =>
     b.title.toLowerCase().includes(search.toLowerCase()) ||
     (b.author || "").toLowerCase().includes(search.toLowerCase())
@@ -189,9 +209,34 @@ export default function PDILibraryPage() {
                   )}
                   {book.themes && book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
                 </div>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => handleEdit(book)}>
-                  <Edit className="h-3 w-3 mr-1" />Editar
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(book)}>
+                    <Edit className="h-3 w-3 mr-1" />Editar
+                  </Button>
+                  {isAdminOrMaster && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir livro</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir "{book.title}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(book.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
