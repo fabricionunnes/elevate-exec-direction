@@ -33,6 +33,11 @@ export default function PDILibraryPage() {
   const [saving, setSaving] = useState(false);
   const [bookTracks, setBookTracks] = useState<string[]>([]);
 
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
+
   const [form, setForm] = useState({
     title: "", author: "", summary: "", themes: "", cover_url: "",
   });
