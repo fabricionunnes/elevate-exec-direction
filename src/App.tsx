@@ -144,6 +144,7 @@ const ClientAccessReportPage = lazy(() => import("./pages/onboarding-tasks/Clien
 const BillingRulesPage = lazy(() => import("./pages/onboarding-tasks/BillingRulesPage"));
 const SurveySendConfigPage = lazy(() => import("./pages/onboarding-tasks/SurveySendConfigPage"));
 const ContractGeneratorPage = lazy(() => import("./pages/onboarding-tasks/ContractGeneratorPage"));
+const DistratoPage = lazy(() => import("./pages/onboarding-tasks/DistratoPage"));
 const SegmentsAnalysisPage = lazy(() => import("./pages/onboarding-tasks/SegmentsAnalysisPage"));
 const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoicePage"));
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
@@ -303,6 +304,7 @@ const App = () => (
             
             {/* Contract Generator - Public */}
             <Route path="/contratos" element={<ContractGeneratorPage />} />
+            <Route path="/distrato" element={<DistratoPage />} />
             
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>

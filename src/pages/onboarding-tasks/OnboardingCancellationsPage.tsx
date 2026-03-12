@@ -232,6 +232,9 @@ export default function OnboardingCancellationsPage() {
       setChurnReason("");
       setChurnNotes("");
       fetchData(staffId || undefined);
+      
+      // Redirect to Distrato page
+      navigate(`/distrato?company_id=${project.company_id}&project_id=${project.id}`);
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao encerrar projeto: " + (err.message || ""));
