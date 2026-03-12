@@ -1725,6 +1725,10 @@ const OnboardingProjectPage = () => {
                   toast.success(`${taskIds.length} tarefa(s) excluída(s)`);
                   await fetchProjectData();
                 } : undefined}
+                onBulkTransfer={canAddTasks && project?.onboarding_company_id ? (taskIds) => {
+                  setTransferTaskIds(taskIds);
+                  setShowTransferDialog(true);
+                } : undefined}
               />
             )}
 
