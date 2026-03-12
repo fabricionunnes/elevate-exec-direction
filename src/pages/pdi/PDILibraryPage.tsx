@@ -33,6 +33,8 @@ export default function PDILibraryPage() {
   const [tracks, setTracks] = useState<{ id: string; name: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [search, setSearch] = useState("");
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdminOrMaster = isMaster || currentStaff?.role === "admin";
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [saving, setSaving] = useState(false);
