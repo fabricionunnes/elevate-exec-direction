@@ -305,6 +305,20 @@ export const TasksListView = ({
                   Excluir
                 </Button>
               )}
+
+              {/* Bulk Transfer/Copy */}
+              {onBulkTransfer && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onBulkTransfer(Array.from(selectedTaskIds))}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  Transferir/Copiar
+                </Button>
+              )}
             </div>
             <Button
               variant="ghost"
