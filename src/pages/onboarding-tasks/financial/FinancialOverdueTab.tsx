@@ -377,6 +377,24 @@ export default function FinancialOverdueTab({
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Atrasados");
 
+      // Force CNPJ/CPF column to text format to avoid scientific notation
+      const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
+      for (let row = range.s.r + 1; row <= range.e.r; row++) {
+        const cellRef = XLSX.utils.encode_cell({ r: row, c: 0 }); // Column A = CNPJ/CPF
+        const cell = ws[cellRef];
+        if (cell) {
+          cell.t = "s"; // force string type
+          cell.v = String(cell.v || "");
+          // Format CNPJ (14 digits) or CPF (11 digits)
+          const digits = String(cell.v).replace(/\D/g, "");
+          if (digits.length === 14) {
+            cell.v = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+          } else if (digits.length === 11) {
+            cell.v = digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+          }
+        }
+      }
+
       // Auto-size columns
       const colWidths = Object.keys(rows[0] || {}).map(key => ({
         wch: Math.max(key.length, ...rows.map(r => String((r as any)[key] || "").length)) + 2,
