@@ -181,11 +181,14 @@ export default function PDILibraryPage() {
                   </div>
                 </div>
                 {book.summary && <p className="text-xs text-muted-foreground line-clamp-3">{book.summary}</p>}
-                {book.themes && book.themes.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {book.pdf_url && (
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      <FileText className="h-3 w-3" />PDF
+                    </Badge>
+                  )}
+                  {book.themes && book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
+                </div>
                 <Button variant="outline" size="sm" className="w-full" onClick={() => handleEdit(book)}>
                   <Edit className="h-3 w-3 mr-1" />Editar
                 </Button>
