@@ -10,7 +10,12 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Search, BookOpen, Edit, Upload, FileText, Loader2, X } from "lucide-react";
+import { Plus, Search, BookOpen, Edit, Upload, FileText, Loader2, X, Trash2 } from "lucide-react";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+import {
+  AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent,
+  AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
 
 interface Book {
   id: string;
