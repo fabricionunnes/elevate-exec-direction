@@ -209,9 +209,34 @@ export default function PDILibraryPage() {
                   )}
                   {book.themes && book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
                 </div>
-                <Button variant="outline" size="sm" className="w-full" onClick={() => handleEdit(book)}>
-                  <Edit className="h-3 w-3 mr-1" />Editar
-                </Button>
+                <div className="flex gap-2">
+                  <Button variant="outline" size="sm" className="flex-1" onClick={() => handleEdit(book)}>
+                    <Edit className="h-3 w-3 mr-1" />Editar
+                  </Button>
+                  {isAdminOrMaster && (
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="outline" size="sm" className="text-destructive hover:text-destructive">
+                          <Trash2 className="h-3 w-3" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir livro</AlertDialogTitle>
+                          <AlertDialogDescription>
+                            Tem certeza que deseja excluir "{book.title}"? Esta ação não pode ser desfeita.
+                          </AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => handleDelete(book.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                            Excluir
+                          </AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
