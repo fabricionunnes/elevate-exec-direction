@@ -112,6 +112,7 @@ export const TasksListView = ({
   onBulkReassign,
   onBulkComplete,
   onBulkDelete,
+  onBulkTransfer,
   isAdmin = false,
 }: TasksListViewProps) => {
   const [editingPhase, setEditingPhase] = useState<string | null>(null);
