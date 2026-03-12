@@ -133,6 +133,8 @@ export default function PDILibraryPage() {
       summary: book.summary || "", themes: (book.themes || []).join(", "),
       cover_url: book.cover_url || "",
     });
+    setPdfUrl(book.pdf_url || null);
+    setPdfFileName(book.pdf_url ? "PDF anexado" : null);
     const { data } = await supabase.from("pdi_book_tracks").select("track_id").eq("book_id", book.id);
     setBookTracks(((data as any[]) || []).map((d) => d.track_id));
     setDialogOpen(true);
