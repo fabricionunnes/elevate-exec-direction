@@ -21,7 +21,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import { Plus, Search, Users, Calendar, Copy, ExternalLink } from "lucide-react";
+import { Plus, Search, Users, Calendar, Copy, ExternalLink, Trash2 } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
