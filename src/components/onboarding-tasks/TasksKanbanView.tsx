@@ -334,6 +334,7 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange, onBulkTran
           </Card>
         );
       })}
+      </div>
     </div>
   );
 };
