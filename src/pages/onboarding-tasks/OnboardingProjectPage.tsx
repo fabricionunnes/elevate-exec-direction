@@ -1678,6 +1678,10 @@ const OnboardingProjectPage = () => {
                 tasks={filteredTasks}
                 onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
+                onBulkTransfer={canAddTasks && project?.onboarding_company_id ? (taskIds) => {
+                  setTransferTaskIds(taskIds);
+                  setShowTransferDialog(true);
+                } : undefined}
               />
             ) : (
               <TasksListView
