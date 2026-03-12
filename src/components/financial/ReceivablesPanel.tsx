@@ -772,6 +772,7 @@ export function ReceivablesPanel() {
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="partial">Parciais</SelectItem>
                 <SelectItem value="overdue">Atrasados</SelectItem>
                 <SelectItem value="paid">Pagos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
