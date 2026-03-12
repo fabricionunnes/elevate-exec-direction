@@ -19,6 +19,7 @@ interface Book {
   summary: string | null;
   themes: string[] | null;
   cover_url: string | null;
+  pdf_url: string | null;
   is_active: boolean;
 }
 
