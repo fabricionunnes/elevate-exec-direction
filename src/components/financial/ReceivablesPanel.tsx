@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
+import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Receivable {
