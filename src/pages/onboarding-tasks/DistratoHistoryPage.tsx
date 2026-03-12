@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent } from "@/components/ui/card";
-import { ArrowLeft, FileText, Plus, Download, Eye, Trash2, Loader2 } from "lucide-react";
+import { ArrowLeft, FileText, Plus, Download, Eye, Trash2, Loader2, Printer } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -26,6 +26,7 @@ interface DistratoRecord {
   project_name: string | null;
   distrato_date: string;
   created_at: string;
+  pdf_url: string | null;
 }
 
 export default function DistratoHistoryPage() {
@@ -37,7 +38,7 @@ export default function DistratoHistoryPage() {
     setLoading(true);
     const { data, error } = await supabase
       .from("distratos")
-      .select("id, company_name, company_cnpj, project_name, distrato_date, created_at")
+      .select("id, company_name, company_cnpj, project_name, distrato_date, created_at, pdf_url")
       .order("created_at", { ascending: false });
     if (error) {
       toast.error("Erro ao carregar histórico");
@@ -56,6 +57,14 @@ export default function DistratoHistoryPage() {
     } else {
       toast.success("Distrato excluído");
       fetchDistratos();
+    }
+  };
+
+  const handleView = (distrato: DistratoRecord) => {
+    if (distrato.pdf_url) {
+      window.open(distrato.pdf_url, "_blank");
+    } else {
+      navigate(`/distrato?distrato_id=${distrato.id}`);
     }
   };
 
@@ -110,6 +119,14 @@ export default function DistratoHistoryPage() {
                     </p>
                   </div>
                   <div className="flex gap-1">
+                    <Button 
+                      variant="ghost" 
+                      size="icon" 
+                      onClick={() => handleView(d)}
+                      title="Visualizar / Imprimir"
+                    >
+                      <Printer className="h-4 w-4" />
+                    </Button>
                     <AlertDialog>
                       <AlertDialogTrigger asChild>
                         <Button variant="ghost" size="icon" className="text-destructive hover:text-destructive">
