@@ -74,6 +74,7 @@ interface TasksListViewProps {
   onBulkReassign?: (taskIds: string[], staffId: string) => Promise<void>;
   onBulkComplete?: (taskIds: string[]) => Promise<void>;
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  onBulkTransfer?: (taskIds: string[]) => void;
   isAdmin?: boolean;
 }
 
