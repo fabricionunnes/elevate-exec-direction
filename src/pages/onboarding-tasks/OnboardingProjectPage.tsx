@@ -2193,6 +2193,18 @@ const OnboardingProjectPage = () => {
         onOpenChange={setShowProjectMenuPermissions}
         projectId={projectId!}
       />
+
+      {project?.onboarding_company_id && (
+        <TransferTasksDialog
+          open={showTransferDialog}
+          onOpenChange={setShowTransferDialog}
+          taskIds={transferTaskIds}
+          currentProjectId={projectId!}
+          companyId={project.onboarding_company_id}
+          staffList={staffList}
+          onComplete={() => fetchProjectData()}
+        />
+      )}
     </div>
   );
 };
