@@ -286,7 +286,14 @@ export default function DistratoForm({ formData, onChange, preSelectedCompanyId,
                 <Input
                   placeholder="dd/mm/aaaa"
                   value={formData.contractDate}
-                  onChange={(e) => update("contractDate", e.target.value)}
+                  maxLength={10}
+                  onChange={(e) => {
+                    let v = e.target.value.replace(/\D/g, "");
+                    if (v.length > 2) v = v.slice(0, 2) + "/" + v.slice(2);
+                    if (v.length > 5) v = v.slice(0, 5) + "/" + v.slice(5);
+                    if (v.length > 10) v = v.slice(0, 10);
+                    update("contractDate", v);
+                  }}
                 />
               </div>
               <div>

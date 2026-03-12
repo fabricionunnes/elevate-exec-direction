@@ -223,14 +223,19 @@ export async function generateDistratoPDF({ formData, clauses }: GenerateDistrat
   // CONTRATANTE signature
   doc.line(rightX, sigY, rightX + sigW, sigY);
   const signerName = formData.legalRepName || formData.companyName;
-  doc.setFontSize(10);
+  doc.setFontSize(9);
   doc.setFont("helvetica", "bold");
   doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(signerName.toUpperCase(), rightX + sigW / 2, sigY + 6, { align: "center" });
+  // Wrap long names into multiple lines
+  const nameLines = doc.splitTextToSize(signerName.toUpperCase(), sigW);
+  nameLines.forEach((line: string, idx: number) => {
+    doc.text(line, rightX + sigW / 2, sigY + 5 + idx * 4, { align: "center" });
+  });
+  const nameEndY = sigY + 5 + nameLines.length * 4;
   doc.setFontSize(9);
   doc.setFont("helvetica", "normal");
   doc.setTextColor(0, 0, 0);
-  doc.text("CONTRATANTE", rightX + sigW / 2, sigY + 12, { align: "center" });
+  doc.text("CONTRATANTE", rightX + sigW / 2, nameEndY + 2, { align: "center" });
 
   // Footer
   const totalPages = doc.getNumberOfPages();
