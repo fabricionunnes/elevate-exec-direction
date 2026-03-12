@@ -848,7 +848,7 @@ export function ReceivablesPanel() {
                                 }}
                               >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Dar Baixa
+                                {receivable.status === "partial" ? "Continuar Baixa" : "Dar Baixa"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
@@ -861,6 +861,17 @@ export function ReceivablesPanel() {
                                 Editar Vencimento
                               </DropdownMenuItem>
                             </>
+                          )}
+                          {(receivable.status === "partial" || receivable.status === "paid") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedReceivable(receivable);
+                                setIsEditPaymentsOpen(true);
+                              }}
+                            >
+                              <Filter className="h-4 w-4 mr-2" />
+                              Editar Pagamentos
+                            </DropdownMenuItem>
                           )}
                           {receivable.payment_link && (
                             <DropdownMenuItem
