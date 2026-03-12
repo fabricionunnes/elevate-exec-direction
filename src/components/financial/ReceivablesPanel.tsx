@@ -108,6 +108,7 @@ export function ReceivablesPanel() {
   const [editDueDate, setEditDueDate] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
