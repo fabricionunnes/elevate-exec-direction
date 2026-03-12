@@ -51,9 +51,7 @@ export async function generateDistratoPDF({ formData, clauses }: GenerateDistrat
 
   // Load assets
   let logo: LoadedImage | null = null;
-  let signature: LoadedImage | null = null;
   try { logo = await loadImage("/images/unv-logo-contract.png"); } catch {}
-  try { signature = await loadImage(signatureImage); } catch {}
 
   const addDecorations = () => {
     doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
