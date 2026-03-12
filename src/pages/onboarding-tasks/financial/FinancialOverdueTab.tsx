@@ -69,6 +69,34 @@ const urgencyLevel = (days: number) => {
   return { label: "Baixo", color: "from-yellow-400 to-amber-500", bg: "bg-yellow-500/15", text: "text-yellow-400", border: "border-yellow-500/30", icon: Clock };
 };
 
+const formatCpfCnpjForExport = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  // Handle scientific notation when needed (e.g. 1.42753120001E+13)
+  let normalized = raw;
+  if (/[eE][+-]?\d+/.test(raw)) {
+    const numeric = Number(raw.replace(",", "."));
+    if (Number.isFinite(numeric)) {
+      normalized = Math.trunc(numeric).toString();
+    }
+  }
+
+  const digits = normalized.replace(/\D/g, "");
+
+  if (digits.length === 14) {
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  }
+
+  if (digits.length === 11) {
+    return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  }
+
+  return normalized;
+};
+
 export default function FinancialOverdueTab({
   invoices,
   companies,
