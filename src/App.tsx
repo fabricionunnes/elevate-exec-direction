@@ -304,6 +304,7 @@ const App = () => (
             
             {/* Contract Generator - Public */}
             <Route path="/contratos" element={<ContractGeneratorPage />} />
+            <Route path="/distrato" element={<DistratoPage />} />
             
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
