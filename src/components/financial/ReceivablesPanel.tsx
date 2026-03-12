@@ -55,6 +55,7 @@ import { toast } from "sonner";
 import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
+import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 
 interface Receivable {
@@ -107,6 +108,7 @@ export function ReceivablesPanel() {
   const [editDueDate, setEditDueDate] = useState("");
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
+  const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
 
   // Form state
   const [formData, setFormData] = useState({
@@ -407,6 +409,8 @@ export function ReceivablesPanel() {
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
+      case "partial":
+        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><Clock className="h-3 w-3 mr-1" /> Parcial</Badge>;
       case "pending":
         if (isPastDue) {
           return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
@@ -770,6 +774,7 @@ export function ReceivablesPanel() {
               <SelectContent>
                 <SelectItem value="all">Todos</SelectItem>
                 <SelectItem value="pending">Pendentes</SelectItem>
+                <SelectItem value="partial">Parciais</SelectItem>
                 <SelectItem value="overdue">Atrasados</SelectItem>
                 <SelectItem value="paid">Pagos</SelectItem>
                 <SelectItem value="cancelled">Cancelados</SelectItem>
@@ -817,7 +822,14 @@ export function ReceivablesPanel() {
                       {format(parseISO(receivable.due_date), "dd/MM/yyyy")}
                     </TableCell>
                     <TableCell className="text-right font-medium">
-                      {formatCurrency(receivable.amount)}
+                      <div>
+                        <span>{formatCurrency(receivable.amount)}</span>
+                        {receivable.status === "partial" && receivable.paid_amount != null && receivable.paid_amount > 0 && (
+                          <p className="text-xs text-orange-600">
+                            Pago: {formatCurrency(receivable.paid_amount)} • Resta: {formatCurrency(receivable.amount - receivable.paid_amount)}
+                          </p>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>{getStatusBadge(receivable.status, receivable.due_date)}</TableCell>
                     <TableCell>{getProjectStatusBadge(receivable.project_status)}</TableCell>
@@ -838,7 +850,7 @@ export function ReceivablesPanel() {
                                 }}
                               >
                                 <CheckCircle2 className="h-4 w-4 mr-2" />
-                                Dar Baixa
+                                {receivable.status === "partial" ? "Continuar Baixa" : "Dar Baixa"}
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 onClick={() => {
@@ -851,6 +863,17 @@ export function ReceivablesPanel() {
                                 Editar Vencimento
                               </DropdownMenuItem>
                             </>
+                          )}
+                          {(receivable.status === "partial" || receivable.status === "paid") && (
+                            <DropdownMenuItem
+                              onClick={() => {
+                                setSelectedReceivable(receivable);
+                                setIsEditPaymentsOpen(true);
+                              }}
+                            >
+                              <Filter className="h-4 w-4 mr-2" />
+                              Editar Pagamentos
+                            </DropdownMenuItem>
                           )}
                           {receivable.payment_link && (
                             <DropdownMenuItem
@@ -952,6 +975,16 @@ export function ReceivablesPanel() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Payments Dialog */}
+      <EditPaymentsDialog
+        open={isEditPaymentsOpen}
+        onOpenChange={setIsEditPaymentsOpen}
+        receivable={selectedReceivable}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
     </div>
   );
 }
