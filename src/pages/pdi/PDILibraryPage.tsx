@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback } from "react";
+import { useEffect, useState, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
@@ -10,7 +10,7 @@ import {
   Dialog, DialogContent, DialogHeader, DialogTitle,
 } from "@/components/ui/dialog";
 import { toast } from "sonner";
-import { Plus, Search, BookOpen, Edit } from "lucide-react";
+import { Plus, Search, BookOpen, Edit, Upload, FileText, Loader2, X } from "lucide-react";
 
 interface Book {
   id: string;
@@ -19,6 +19,7 @@ interface Book {
   summary: string | null;
   themes: string[] | null;
   cover_url: string | null;
+  pdf_url: string | null;
   is_active: boolean;
 }
 
@@ -31,6 +32,11 @@ export default function PDILibraryPage() {
   const [editingBook, setEditingBook] = useState<Book | null>(null);
   const [saving, setSaving] = useState(false);
   const [bookTracks, setBookTracks] = useState<string[]>([]);
+
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const [uploadingPdf, setUploadingPdf] = useState(false);
+  const [pdfUrl, setPdfUrl] = useState<string | null>(null);
+  const [pdfFileName, setPdfFileName] = useState<string | null>(null);
 
   const [form, setForm] = useState({
     title: "", author: "", summary: "", themes: "", cover_url: "",
@@ -52,6 +58,35 @@ export default function PDILibraryPage() {
     setForm({ title: "", author: "", summary: "", themes: "", cover_url: "" });
     setEditingBook(null);
     setBookTracks([]);
+    setPdfUrl(null);
+    setPdfFileName(null);
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Apenas arquivos PDF são permitidos");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("PDF deve ter no máximo 50MB");
+      return;
+    }
+    setUploadingPdf(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const { error } = await supabase.storage.from("pdi-books").upload(fileName, file, { upsert: true });
+    if (error) {
+      toast.error("Erro ao fazer upload do PDF");
+      setUploadingPdf(false);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("pdi-books").getPublicUrl(fileName);
+    setPdfUrl(publicUrl);
+    setPdfFileName(file.name);
+    setUploadingPdf(false);
+    toast.success("PDF enviado com sucesso!");
   };
 
   const handleSave = async () => {
@@ -61,7 +96,8 @@ export default function PDILibraryPage() {
     const payload = {
       title: form.title, author: form.author || null,
       summary: form.summary || null, themes: themesArr, cover_url: form.cover_url || null,
-    };
+      pdf_url: pdfUrl || null,
+    } as any;
 
     let bookId: string;
     if (editingBook) {
@@ -97,6 +133,8 @@ export default function PDILibraryPage() {
       summary: book.summary || "", themes: (book.themes || []).join(", "),
       cover_url: book.cover_url || "",
     });
+    setPdfUrl(book.pdf_url || null);
+    setPdfFileName(book.pdf_url ? "PDF anexado" : null);
     const { data } = await supabase.from("pdi_book_tracks").select("track_id").eq("book_id", book.id);
     setBookTracks(((data as any[]) || []).map((d) => d.track_id));
     setDialogOpen(true);
@@ -143,11 +181,14 @@ export default function PDILibraryPage() {
                   </div>
                 </div>
                 {book.summary && <p className="text-xs text-muted-foreground line-clamp-3">{book.summary}</p>}
-                {book.themes && book.themes.length > 0 && (
-                  <div className="flex flex-wrap gap-1">
-                    {book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
-                  </div>
-                )}
+                <div className="flex flex-wrap gap-1">
+                  {book.pdf_url && (
+                    <Badge variant="secondary" className="text-[10px] gap-1">
+                      <FileText className="h-3 w-3" />PDF
+                    </Badge>
+                  )}
+                  {book.themes && book.themes.map((t) => (<Badge key={t} variant="outline" className="text-[10px]">{t}</Badge>))}
+                </div>
                 <Button variant="outline" size="sm" className="w-full" onClick={() => handleEdit(book)}>
                   <Edit className="h-3 w-3 mr-1" />Editar
                 </Button>
@@ -166,6 +207,40 @@ export default function PDILibraryPage() {
             <div><Label>Resumo</Label><Textarea value={form.summary} onChange={(e) => setForm({ ...form, summary: e.target.value })} /></div>
             <div><Label>Temas (separados por vírgula)</Label><Input value={form.themes} onChange={(e) => setForm({ ...form, themes: e.target.value })} placeholder="Liderança, Gestão, Vendas" /></div>
             <div><Label>URL da Capa</Label><Input value={form.cover_url} onChange={(e) => setForm({ ...form, cover_url: e.target.value })} /></div>
+            <div>
+              <Label>Arquivo PDF do Livro</Label>
+              <input
+                ref={fileInputRef}
+                type="file"
+                accept="application/pdf"
+                className="hidden"
+                onChange={handlePdfUpload}
+                disabled={uploadingPdf}
+              />
+              {pdfUrl ? (
+                <div className="flex items-center gap-2 mt-1 p-2 rounded-md border bg-muted/50">
+                  <FileText className="h-4 w-4 text-primary flex-shrink-0" />
+                  <span className="text-sm truncate flex-1">{pdfFileName}</span>
+                  <Button type="button" variant="ghost" size="icon" className="h-6 w-6" onClick={() => { setPdfUrl(null); setPdfFileName(null); }}>
+                    <X className="h-3 w-3" />
+                  </Button>
+                </div>
+              ) : (
+                <Button
+                  type="button"
+                  variant="outline"
+                  className="w-full mt-1"
+                  onClick={() => fileInputRef.current?.click()}
+                  disabled={uploadingPdf}
+                >
+                  {uploadingPdf ? (
+                    <><Loader2 className="h-4 w-4 mr-2 animate-spin" />Enviando...</>
+                  ) : (
+                    <><Upload className="h-4 w-4 mr-2" />Enviar PDF</>
+                  )}
+                </Button>
+              )}
+            </div>
             <div>
               <Label>Associar às Trilhas</Label>
               <div className="flex flex-wrap gap-2 mt-1">

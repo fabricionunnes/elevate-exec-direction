@@ -21624,6 +21624,7 @@ export type Database = {
           created_at: string | null
           id: string
           is_active: boolean | null
+          pdf_url: string | null
           summary: string | null
           themes: string[] | null
           title: string
@@ -21634,6 +21635,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          pdf_url?: string | null
           summary?: string | null
           themes?: string[] | null
           title: string
@@ -21644,6 +21646,7 @@ export type Database = {
           created_at?: string | null
           id?: string
           is_active?: boolean | null
+          pdf_url?: string | null
           summary?: string | null
           themes?: string[] | null
           title?: string
