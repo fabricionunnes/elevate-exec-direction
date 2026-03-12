@@ -45,6 +45,7 @@ interface TasksKanbanViewProps {
   tasks: OnboardingTask[];
   onTaskClick: (task: OnboardingTask) => void;
   onStatusChange: (taskId: string, status: "pending" | "in_progress" | "completed") => void;
+  onBulkTransfer?: (taskIds: string[]) => void;
 }
 
 const COLUMNS = [
