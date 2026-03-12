@@ -14180,9 +14180,14 @@ export type Database = {
           distrato_date: string
           id: string
           legal_rep_name: string | null
+          pdf_url: string | null
           project_id: string | null
           project_name: string | null
           service_description: string | null
+          zapsign_document_token: string | null
+          zapsign_document_url: string | null
+          zapsign_sent_at: string | null
+          zapsign_signers: Json | null
         }
         Insert: {
           additional_notes?: string | null
@@ -14197,9 +14202,14 @@ export type Database = {
           distrato_date?: string
           id?: string
           legal_rep_name?: string | null
+          pdf_url?: string | null
           project_id?: string | null
           project_name?: string | null
           service_description?: string | null
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
         }
         Update: {
           additional_notes?: string | null
@@ -14214,9 +14224,14 @@ export type Database = {
           distrato_date?: string
           id?: string
           legal_rep_name?: string | null
+          pdf_url?: string | null
           project_id?: string | null
           project_name?: string | null
           service_description?: string | null
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
         }
         Relationships: [
           {
