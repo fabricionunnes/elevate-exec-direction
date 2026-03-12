@@ -157,6 +157,16 @@ export default function PDICohortsPage() {
     toast.success("Status atualizado");
   };
 
+  const deleteCohort = async (cohortId: string) => {
+    const { error } = await supabase.from("pdi_cohorts").delete().eq("id", cohortId);
+    if (error) {
+      toast.error("Erro ao excluir turma");
+      return;
+    }
+    toast.success("Turma excluída com sucesso!");
+    fetchCohorts();
+  };
+
   const copyEnrollmentLink = (token: string) => {
     const url = `${getPublicBaseUrl()}/?public=pdi-enroll&token=${encodeURIComponent(token)}`;
     navigator.clipboard.writeText(url);
