@@ -69,6 +69,34 @@ const urgencyLevel = (days: number) => {
   return { label: "Baixo", color: "from-yellow-400 to-amber-500", bg: "bg-yellow-500/15", text: "text-yellow-400", border: "border-yellow-500/30", icon: Clock };
 };
 
+const formatCpfCnpjForExport = (value: unknown): string => {
+  if (value === null || value === undefined) return "";
+
+  const raw = String(value).trim();
+  if (!raw) return "";
+
+  // Handle scientific notation when needed (e.g. 1.42753120001E+13)
+  let normalized = raw;
+  if (/[eE][+-]?\d+/.test(raw)) {
+    const numeric = Number(raw.replace(",", "."));
+    if (Number.isFinite(numeric)) {
+      normalized = Math.trunc(numeric).toString();
+    }
+  }
+
+  const digits = normalized.replace(/\D/g, "");
+
+  if (digits.length === 14) {
+    return digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
+  }
+
+  if (digits.length === 11) {
+    return digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+  }
+
+  return normalized;
+};
+
 export default function FinancialOverdueTab({
   invoices,
   companies,
@@ -351,7 +379,7 @@ export default function FinancialOverdueTab({
         const serviceName = inv.recurring_charge_id ? chargeMap.get(inv.recurring_charge_id) || inv.description : inv.description;
 
         return {
-          "CNPJ/CPF": company.cnpj || "",
+          "CNPJ/CPF": formatCpfCnpjForExport(company.cnpj),
           "NOME DO DEVEDOR": company.name || inv.company_name || inv.custom_receiver_name || "",
           "ENDEREÇO": fullAddress || "",
           "CEP": company.address_zipcode || "",
@@ -377,20 +405,18 @@ export default function FinancialOverdueTab({
       const wb = XLSX.utils.book_new();
       XLSX.utils.book_append_sheet(wb, ws, "Atrasados");
 
-      // Force CNPJ/CPF column to text format to avoid scientific notation
+      // Force CNPJ/CPF column to text format to avoid scientific notation in Excel/Numbers
+      const headerKeys = Object.keys(rows[0] || {});
+      const cnpjCpfColIndex = headerKeys.indexOf("CNPJ/CPF");
       const range = XLSX.utils.decode_range(ws["!ref"] || "A1");
-      for (let row = range.s.r + 1; row <= range.e.r; row++) {
-        const cellRef = XLSX.utils.encode_cell({ r: row, c: 0 }); // Column A = CNPJ/CPF
-        const cell = ws[cellRef];
-        if (cell) {
-          cell.t = "s"; // force string type
-          cell.v = String(cell.v || "");
-          // Format CNPJ (14 digits) or CPF (11 digits)
-          const digits = String(cell.v).replace(/\D/g, "");
-          if (digits.length === 14) {
-            cell.v = digits.replace(/^(\d{2})(\d{3})(\d{3})(\d{4})(\d{2})$/, "$1.$2.$3/$4-$5");
-          } else if (digits.length === 11) {
-            cell.v = digits.replace(/^(\d{3})(\d{3})(\d{3})(\d{2})$/, "$1.$2.$3-$4");
+      if (cnpjCpfColIndex >= 0) {
+        for (let row = range.s.r + 1; row <= range.e.r; row++) {
+          const cellRef = XLSX.utils.encode_cell({ r: row, c: cnpjCpfColIndex });
+          const cell = ws[cellRef];
+          if (cell) {
+            cell.t = "s";
+            cell.z = "@";
+            cell.v = String(cell.v || "");
           }
         }
       }
