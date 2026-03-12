@@ -407,6 +407,8 @@ export function ReceivablesPanel() {
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
+      case "partial":
+        return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><Clock className="h-3 w-3 mr-1" /> Parcial</Badge>;
       case "pending":
         if (isPastDue) {
           return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
