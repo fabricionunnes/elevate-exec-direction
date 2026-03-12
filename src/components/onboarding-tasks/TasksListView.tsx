@@ -18,6 +18,7 @@ import {
   User,
   Users,
   X,
+  ArrowRightLeft,
 } from "lucide-react";
 import { isPast, isToday } from "date-fns";
 import { formatDateLocal, parseDateLocal } from "@/lib/dateUtils";
@@ -74,6 +75,7 @@ interface TasksListViewProps {
   onBulkReassign?: (taskIds: string[], staffId: string) => Promise<void>;
   onBulkComplete?: (taskIds: string[]) => Promise<void>;
   onBulkDelete?: (taskIds: string[]) => Promise<void>;
+  onBulkTransfer?: (taskIds: string[]) => void;
   isAdmin?: boolean;
 }
 
@@ -111,6 +113,7 @@ export const TasksListView = ({
   onBulkReassign,
   onBulkComplete,
   onBulkDelete,
+  onBulkTransfer,
   isAdmin = false,
 }: TasksListViewProps) => {
   const [editingPhase, setEditingPhase] = useState<string | null>(null);
@@ -300,6 +303,20 @@ export const TasksListView = ({
                 >
                   <Trash2 className="h-3.5 w-3.5" />
                   Excluir
+                </Button>
+              )}
+
+              {/* Bulk Transfer/Copy */}
+              {onBulkTransfer && (
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => onBulkTransfer(Array.from(selectedTaskIds))}
+                  disabled={isBulkLoading}
+                  className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+                >
+                  <ArrowRightLeft className="h-3.5 w-3.5" />
+                  Transferir/Copiar
                 </Button>
               )}
             </div>

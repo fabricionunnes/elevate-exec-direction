@@ -99,6 +99,7 @@ import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { BrainCircuit } from "lucide-react";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
+import { TransferTasksDialog } from "@/components/onboarding-tasks/TransferTasksDialog";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -244,6 +245,8 @@ const OnboardingProjectPage = () => {
   const [docsLinkInput, setDocsLinkInput] = useState("");
   const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
   const [showProjectMenuPermissions, setShowProjectMenuPermissions] = useState(false);
+  const [transferTaskIds, setTransferTaskIds] = useState<string[]>([]);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
     if (!projectId) return;
@@ -1675,6 +1678,10 @@ const OnboardingProjectPage = () => {
                 tasks={filteredTasks}
                 onTaskClick={setSelectedTask}
                 onStatusChange={handleStatusChange}
+                onBulkTransfer={canAddTasks && project?.onboarding_company_id ? (taskIds) => {
+                  setTransferTaskIds(taskIds);
+                  setShowTransferDialog(true);
+                } : undefined}
               />
             ) : (
               <TasksListView
@@ -1721,6 +1728,10 @@ const OnboardingProjectPage = () => {
                   }
                   toast.success(`${taskIds.length} tarefa(s) excluída(s)`);
                   await fetchProjectData();
+                } : undefined}
+                onBulkTransfer={canAddTasks && project?.onboarding_company_id ? (taskIds) => {
+                  setTransferTaskIds(taskIds);
+                  setShowTransferDialog(true);
                 } : undefined}
               />
             )}
@@ -2186,6 +2197,18 @@ const OnboardingProjectPage = () => {
         onOpenChange={setShowProjectMenuPermissions}
         projectId={projectId!}
       />
+
+      {project?.onboarding_company_id && (
+        <TransferTasksDialog
+          open={showTransferDialog}
+          onOpenChange={setShowTransferDialog}
+          taskIds={transferTaskIds}
+          currentProjectId={projectId!}
+          companyId={project.onboarding_company_id}
+          staffList={staffList}
+          onComplete={() => fetchProjectData()}
+        />
+      )}
     </div>
   );
 };

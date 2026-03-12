@@ -2,6 +2,8 @@ import { useState, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Button } from "@/components/ui/button";
 import {
   CheckCircle2,
   Circle,
@@ -12,6 +14,8 @@ import {
   EyeOff,
   User,
   GripVertical,
+  ArrowRightLeft,
+  X,
 } from "lucide-react";
 import { isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
@@ -41,6 +45,7 @@ interface TasksKanbanViewProps {
   tasks: OnboardingTask[];
   onTaskClick: (task: OnboardingTask) => void;
   onStatusChange: (taskId: string, status: "pending" | "in_progress" | "completed") => void;
+  onBulkTransfer?: (taskIds: string[]) => void;
 }
 
 const COLUMNS = [
@@ -88,9 +93,20 @@ const isTaskDueToday = (task: OnboardingTask): boolean => {
   return dueDate.getTime() === today.getTime();
 };
 
-export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKanbanViewProps) => {
+export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange, onBulkTransfer }: TasksKanbanViewProps) => {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+
+  const toggleTaskSelection = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
 
   const tasksByStatus = useMemo(() => {
     return {
@@ -154,8 +170,16 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
           ${draggedTask === task.id ? "opacity-50 scale-95" : ""}
         `}
       >
-        {/* Drag Handle */}
+        {/* Drag Handle + Selection */}
         <div className="flex items-start gap-2">
+          {onBulkTransfer && (
+            <Checkbox
+              checked={selectedTaskIds.has(task.id)}
+              onCheckedChange={() => {}}
+              onClick={(e) => toggleTaskSelection(task.id, e)}
+              className="mt-0.5 flex-shrink-0"
+            />
+          )}
           <GripVertical className="h-4 w-4 text-muted-foreground/50 mt-0.5 opacity-0 group-hover:opacity-100 transition-opacity cursor-grab" />
           
           <div className="flex-1 min-w-0 space-y-2">
@@ -218,7 +242,42 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-full">
+    <div className="space-y-3">
+      {/* Transfer bar */}
+      <AnimatePresence>
+        {onBulkTransfer && selectedTaskIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 rounded-xl border bg-primary/5 border-primary/20 flex items-center gap-3"
+          >
+            <span className="text-sm font-medium">
+              {selectedTaskIds.size} tarefa{selectedTaskIds.size > 1 ? "s" : ""} selecionada{selectedTaskIds.size > 1 ? "s" : ""}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onBulkTransfer(Array.from(selectedTaskIds))}
+              className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Transferir/Copiar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedTaskIds(new Set())}
+              className="h-8 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Limpar
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-full">
       {COLUMNS.map(column => {
         const columnTasks = tasksByStatus[column.id];
         const Icon = column.icon;
@@ -275,6 +334,7 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKan
           </Card>
         );
       })}
+      </div>
     </div>
   );
 };
