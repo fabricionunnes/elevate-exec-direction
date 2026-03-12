@@ -325,6 +325,29 @@ export default function PDICohortsPage() {
                           Ativar
                         </Button>
                       )}
+                      {isAdminOrMaster && (
+                        <AlertDialog>
+                          <AlertDialogTrigger asChild>
+                            <Button size="sm" variant="destructive" title="Excluir turma">
+                              <Trash2 className="h-3 w-3" />
+                            </Button>
+                          </AlertDialogTrigger>
+                          <AlertDialogContent>
+                            <AlertDialogHeader>
+                              <AlertDialogTitle>Excluir turma?</AlertDialogTitle>
+                              <AlertDialogDescription>
+                                Esta ação é irreversível. A turma "{cohort.name}" e todos os dados associados serão excluídos permanentemente.
+                              </AlertDialogDescription>
+                            </AlertDialogHeader>
+                            <AlertDialogFooter>
+                              <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                              <AlertDialogAction onClick={() => deleteCohort(cohort.id)}>
+                                Excluir
+                              </AlertDialogAction>
+                            </AlertDialogFooter>
+                          </AlertDialogContent>
+                        </AlertDialog>
+                      )}
                     </div>
                   </div>
                 </CardContent>
