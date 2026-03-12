@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { distratoCompanyInfo } from "@/data/distratoTemplate";
 import type { DistratoFormData } from "./DistratoForm";
 import type { EditableDistratoClause } from "./DistratoClausesEditor";
-import signatureImage from "@/assets/assinatura-fabricio.png";
+
 
 const NAVY = [10, 34, 64] as const;
 const RED = [220, 38, 38] as const;
