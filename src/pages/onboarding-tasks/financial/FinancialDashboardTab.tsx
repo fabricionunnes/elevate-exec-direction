@@ -367,7 +367,33 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
       {/* ═══ ATRASOS ═══ */}
       <div>
         <SectionHeader icon={AlertTriangle} title="Atrasos - Contas a Receber" />
-        <div className="grid gap-3 md:grid-cols-2 mt-3">
+        <div className="grid gap-3 md:grid-cols-3 mt-3">
+          <GradientCard gradient={`linear-gradient(135deg, ${inadimplencia.pctValue > 10 ? '#fef2f2 0%, #fecaca' : inadimplencia.pctValue > 5 ? '#fffbeb 0%, #fef3c7' : '#ecfdf5 0%, #d1fae5'} 100%)`}>
+            <div className="p-5 space-y-2">
+              <div className="flex items-center gap-2">
+                <div className={`h-8 w-8 rounded-lg flex items-center justify-center ${inadimplencia.pctValue > 10 ? 'bg-red-500/15' : inadimplencia.pctValue > 5 ? 'bg-amber-500/15' : 'bg-emerald-500/15'}`}>
+                  <ShieldAlert className={`h-4 w-4 ${inadimplencia.pctValue > 10 ? 'text-red-600' : inadimplencia.pctValue > 5 ? 'text-amber-600' : 'text-emerald-600'}`} />
+                </div>
+                <span className="text-sm font-medium text-muted-foreground">Inadimplência do Período</span>
+              </div>
+              <div className="flex items-baseline gap-4">
+                <div>
+                  <div className="text-2xl font-bold" style={{ color: inadimplenciaColor(inadimplencia.pctValue) }}>
+                    {inadimplencia.pctValue.toFixed(1)}%
+                  </div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">por valor</p>
+                </div>
+                <div>
+                  <div className="text-2xl font-bold" style={{ color: inadimplenciaColor(inadimplencia.pctQty) }}>
+                    {inadimplencia.pctQty.toFixed(1)}%
+                  </div>
+                  <p className="text-[10px] text-muted-foreground uppercase tracking-wider">por qtd</p>
+                </div>
+              </div>
+              <p className="text-xs text-muted-foreground">{inadimplencia.overdueCount} de {inadimplencia.total} fatura(s) vencida(s) em {MONTH_LABELS[selectedMonth]}/{selectedYear}</p>
+            </div>
+          </GradientCard>
+
           <GradientCard gradient="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)">
             <div className="p-5 space-y-2">
               <div className="flex items-center gap-2">
