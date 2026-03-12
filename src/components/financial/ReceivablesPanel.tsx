@@ -489,10 +489,23 @@ export function ReceivablesPanel() {
 
   // Calculate totals based on filtered data
   const todayForTotals = format(new Date(), "yyyy-MM-dd");
+  
+  const paidReceivables = filteredReceivables.filter(r => r.status === "paid");
+  const totalReceived = paidReceivables.reduce((sum, r) => {
+    const baseAmount = Number(r.paid_amount || r.amount);
+    // Se tiver campos de ajustes (juros, taxas, descontos), calcular o líquido
+    const interest = Number((r as any).interest_amount || 0);
+    const lateFee = Number((r as any).late_fee_amount || 0);
+    const discount = Number((r as any).discount_amount || 0);
+    const fee = Number((r as any).fee_amount || 0);
+    const netReceived = baseAmount + interest + lateFee - discount - fee;
+    return sum + netReceived;
+  }, 0);
+  
   const totals = {
     pending: filteredReceivables.filter(r => r.status === "pending" && !(r.due_date < todayForTotals)).reduce((sum, r) => sum + Number(r.amount), 0),
     overdue: filteredReceivables.filter(r => r.status === "overdue" || (r.status === "pending" && r.due_date < todayForTotals)).reduce((sum, r) => sum + Number(r.amount), 0),
-    paid: filteredReceivables.filter(r => r.status === "paid").reduce((sum, r) => sum + Number(r.paid_amount || r.amount), 0)
+    paid: totalReceived
   };
 
   const totalPages = Math.ceil(filteredReceivables.length / pageSize);

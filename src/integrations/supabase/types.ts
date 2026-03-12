@@ -15485,9 +15485,13 @@ export type Database = {
           created_at: string
           custom_receiver_name: string | null
           description: string
+          discount_amount: number | null
           due_date: string
+          fee_amount: number | null
           id: string
+          interest_amount: number | null
           is_recurring: boolean | null
+          late_fee_amount: number | null
           notes: string | null
           paid_amount: number | null
           paid_date: string | null
@@ -15507,9 +15511,13 @@ export type Database = {
           created_at?: string
           custom_receiver_name?: string | null
           description: string
+          discount_amount?: number | null
           due_date: string
+          fee_amount?: number | null
           id?: string
+          interest_amount?: number | null
           is_recurring?: boolean | null
+          late_fee_amount?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_date?: string | null
@@ -15529,9 +15537,13 @@ export type Database = {
           created_at?: string
           custom_receiver_name?: string | null
           description?: string
+          discount_amount?: number | null
           due_date?: string
+          fee_amount?: number | null
           id?: string
+          interest_amount?: number | null
           is_recurring?: boolean | null
+          late_fee_amount?: number | null
           notes?: string | null
           paid_amount?: number | null
           paid_date?: string | null

@@ -186,6 +186,10 @@ export function ReceivablePaymentDialog({
             status: newStatus,
             paid_date: dateStr,
             paid_amount: totalPaid,
+            interest_amount: interest,
+            late_fee_amount: 0,
+            discount_amount: discount,
+            fee_amount: fees,
           })
           .eq("id", entityId);
         if (error) throw error;
