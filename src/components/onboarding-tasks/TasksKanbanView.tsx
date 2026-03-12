@@ -14,6 +14,8 @@ import {
   EyeOff,
   User,
   GripVertical,
+  ArrowRightLeft,
+  X,
 } from "lucide-react";
 import { isToday } from "date-fns";
 import { motion, AnimatePresence } from "framer-motion";
