@@ -96,7 +96,8 @@ export default function PDILibraryPage() {
     const payload = {
       title: form.title, author: form.author || null,
       summary: form.summary || null, themes: themesArr, cover_url: form.cover_url || null,
-    };
+      pdf_url: pdfUrl || null,
+    } as any;
 
     let bookId: string;
     if (editingBook) {
