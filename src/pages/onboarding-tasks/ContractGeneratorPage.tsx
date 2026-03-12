@@ -1036,6 +1036,14 @@ export default function ContractGeneratorPage() {
                 <FileText className="h-4 w-4" />
                 Distrato
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/distratos")}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Histórico Distratos
+              </Button>
             </div>
           </div>
         </div>
