@@ -93,9 +93,20 @@ const isTaskDueToday = (task: OnboardingTask): boolean => {
   return dueDate.getTime() === today.getTime();
 };
 
-export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange }: TasksKanbanViewProps) => {
+export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange, onBulkTransfer }: TasksKanbanViewProps) => {
   const [draggedTask, setDraggedTask] = useState<string | null>(null);
   const [dragOverColumn, setDragOverColumn] = useState<string | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
+
+  const toggleTaskSelection = (taskId: string, e: React.MouseEvent) => {
+    e.stopPropagation();
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) next.delete(taskId);
+      else next.add(taskId);
+      return next;
+    });
+  };
 
   const tasksByStatus = useMemo(() => {
     return {
