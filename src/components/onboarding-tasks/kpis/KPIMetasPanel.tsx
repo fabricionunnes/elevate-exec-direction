@@ -314,7 +314,7 @@ export const KPIMetasPanel = ({
             <KPIDashboardTab 
               companyId={companyId} 
               projectId={projectId} 
-              canDeleteEntries={canAccessAllTabs} 
+              canDeleteEntries={canAccessAllTabs || isClientView} 
               canEditSalesHistory={!salespersonId} 
               salespersonId={salespersonId}
               isClientView={isClientView}
