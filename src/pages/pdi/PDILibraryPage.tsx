@@ -58,6 +58,35 @@ export default function PDILibraryPage() {
     setForm({ title: "", author: "", summary: "", themes: "", cover_url: "" });
     setEditingBook(null);
     setBookTracks([]);
+    setPdfUrl(null);
+    setPdfFileName(null);
+  };
+
+  const handlePdfUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    if (file.type !== "application/pdf") {
+      toast.error("Apenas arquivos PDF são permitidos");
+      return;
+    }
+    if (file.size > 50 * 1024 * 1024) {
+      toast.error("PDF deve ter no máximo 50MB");
+      return;
+    }
+    setUploadingPdf(true);
+    const ext = file.name.split(".").pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${ext}`;
+    const { error } = await supabase.storage.from("pdi-books").upload(fileName, file, { upsert: true });
+    if (error) {
+      toast.error("Erro ao fazer upload do PDF");
+      setUploadingPdf(false);
+      return;
+    }
+    const { data: { publicUrl } } = supabase.storage.from("pdi-books").getPublicUrl(fileName);
+    setPdfUrl(publicUrl);
+    setPdfFileName(file.name);
+    setUploadingPdf(false);
+    toast.success("PDF enviado com sucesso!");
   };
 
   const handleSave = async () => {
