@@ -110,10 +110,8 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
   const fetchInvoices = async () => {
     setLoading(true);
-    await supabase.functions.invoke("generate-invoices", {
-      body: { action: "update_fees" },
-    });
 
+    // Fetch invoices immediately without waiting for fee update
     const { data, error } = await supabase
       .from("company_invoices")
       .select("*")
@@ -122,6 +120,18 @@ export function CompanyInvoicesList({ companyId }: Props) {
 
     if (!error) setInvoices((data as any) || []);
     setLoading(false);
+
+    // Update fees in background, then refresh if needed
+    supabase.functions.invoke("generate-invoices", {
+      body: { action: "update_fees" },
+    }).then(async () => {
+      const { data: updated } = await supabase
+        .from("company_invoices")
+        .select("*")
+        .eq("company_id", companyId)
+        .order("due_date", { ascending: true });
+      if (updated) setInvoices(updated as any);
+    });
   };
 
   const copyLink = (inv: Invoice) => {
