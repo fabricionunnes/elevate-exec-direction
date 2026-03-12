@@ -1028,6 +1028,14 @@ export default function ContractGeneratorPage() {
                 <History className="h-4 w-4" />
                 {showHistory ? "Novo Contrato" : "Contratos"}
               </Button>
+              <Button
+                variant="outline"
+                onClick={() => navigate("/distrato")}
+                className="gap-2"
+              >
+                <FileText className="h-4 w-4" />
+                Distrato
+              </Button>
             </div>
           </div>
         </div>
