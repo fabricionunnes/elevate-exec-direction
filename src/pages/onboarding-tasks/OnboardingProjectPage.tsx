@@ -828,6 +828,9 @@ const OnboardingProjectPage = () => {
       } : null);
       setShowChurnDialog(false);
       toast.success("Projeto encerrado");
+      
+      // Redirect to Distrato page with pre-filled data
+      navigate(`/distrato?company_id=${project?.onboarding_company_id}&project_id=${projectId}`);
     } catch (error) {
       console.error("Error closing project:", error);
       toast.error("Erro ao encerrar projeto");
