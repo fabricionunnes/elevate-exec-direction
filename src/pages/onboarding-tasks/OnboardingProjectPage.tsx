@@ -99,6 +99,7 @@ import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { ClientInstagramModule } from "@/components/client-instagram/ClientInstagramModule";
 import { BrainCircuit } from "lucide-react";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
+import { TransferTasksDialog } from "@/components/onboarding-tasks/TransferTasksDialog";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
