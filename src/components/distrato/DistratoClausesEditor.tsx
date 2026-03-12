@@ -5,7 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Label } from "@/components/ui/label";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
-import { ChevronDown, ChevronRight, RotateCcw, Plus, Trash2, FileEdit } from "lucide-react";
+import { ChevronDown, ChevronRight, RotateCcw, Plus, Trash2, FileEdit, ArrowUp, ArrowDown } from "lucide-react";
 import { distratoClauses, type DistratoClause } from "@/data/distratoTemplate";
 
 export interface EditableDistratoClause {
@@ -49,6 +49,14 @@ export default function DistratoClausesEditor({ clauses, onChange }: DistratoCla
     onChange(clauses.map((c) => (c.id === id ? { ...c, content: c.originalContent } : c)));
   };
 
+  const moveClause = (index: number, direction: "up" | "down") => {
+    const newIndex = direction === "up" ? index - 1 : index + 1;
+    if (newIndex < 0 || newIndex >= clauses.length) return;
+    const updated = [...clauses];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    onChange(updated);
+  };
+
   const addCustomClause = () => {
     const nextNum = clauses.length + 1;
     const newClause: EditableDistratoClause = {
@@ -81,23 +89,45 @@ export default function DistratoClausesEditor({ clauses, onChange }: DistratoCla
         </div>
       </CardHeader>
       <CardContent className="space-y-2">
-        {clauses.map((clause) => (
+        {clauses.map((clause, index) => (
           <Collapsible key={clause.id} open={openClauses.has(clause.id)}>
-            <CollapsibleTrigger asChild>
-              <button
-                onClick={() => toggle(clause.id)}
-                className={cn(
-                  "flex items-center gap-2 w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors",
-                  isModified(clause) && "border-l-2 border-primary"
-                )}
-              >
-                {openClauses.has(clause.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
-                <span className="font-medium flex-1">{clause.title}</span>
-                {isModified(clause) && <span className="text-xs text-primary">(editado)</span>}
-                {clause.isCustom && <span className="text-xs text-amber-600">(personalizado)</span>}
-              </button>
-            </CollapsibleTrigger>
-            <CollapsibleContent className="px-3 pb-3 pt-1 space-y-2">
+            <div className="flex items-center gap-1">
+              <div className="flex flex-col">
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  disabled={index === 0}
+                  onClick={() => moveClause(index, "up")}
+                >
+                  <ArrowUp className="h-3 w-3" />
+                </Button>
+                <Button
+                  variant="ghost"
+                  size="icon"
+                  className="h-5 w-5"
+                  disabled={index === clauses.length - 1}
+                  onClick={() => moveClause(index, "down")}
+                >
+                  <ArrowDown className="h-3 w-3" />
+                </Button>
+              </div>
+              <CollapsibleTrigger asChild>
+                <button
+                  onClick={() => toggle(clause.id)}
+                  className={cn(
+                    "flex items-center gap-2 w-full text-left px-3 py-2 rounded-md text-sm hover:bg-muted transition-colors",
+                    isModified(clause) && "border-l-2 border-primary"
+                  )}
+                >
+                  {openClauses.has(clause.id) ? <ChevronDown className="h-4 w-4" /> : <ChevronRight className="h-4 w-4" />}
+                  <span className="font-medium flex-1">{clause.title}</span>
+                  {isModified(clause) && <span className="text-xs text-primary">(editado)</span>}
+                  {clause.isCustom && <span className="text-xs text-amber-600">(personalizado)</span>}
+                </button>
+              </CollapsibleTrigger>
+            </div>
+            <CollapsibleContent className="pl-10 pr-3 pb-3 pt-1 space-y-2">
               <div>
                 <Label className="text-xs">Título</Label>
                 <Input
