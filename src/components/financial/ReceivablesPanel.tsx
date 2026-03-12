@@ -975,6 +975,16 @@ export function ReceivablesPanel() {
           </div>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Payments Dialog */}
+      <EditPaymentsDialog
+        open={isEditPaymentsOpen}
+        onOpenChange={setIsEditPaymentsOpen}
+        receivable={selectedReceivable}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
     </div>
   );
 }
