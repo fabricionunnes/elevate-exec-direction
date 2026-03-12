@@ -147,6 +147,19 @@ export default function PDILibraryPage() {
     setDialogOpen(true);
   };
 
+  const handleDelete = async (bookId: string) => {
+    try {
+      await supabase.from("pdi_book_tracks").delete().eq("book_id", bookId);
+      const { error } = await supabase.from("pdi_books").delete().eq("id", bookId);
+      if (error) throw error;
+      toast.success("Livro excluído com sucesso!");
+      fetchData();
+    } catch (error) {
+      console.error("Error deleting book:", error);
+      toast.error("Erro ao excluir livro");
+    }
+  };
+
   const filtered = books.filter((b) =>
     b.title.toLowerCase().includes(search.toLowerCase()) ||
     (b.author || "").toLowerCase().includes(search.toLowerCase())
