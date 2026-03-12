@@ -14166,6 +14166,75 @@ export type Database = {
           },
         ]
       }
+      distratos: {
+        Row: {
+          additional_notes: string | null
+          clauses_snapshot: Json | null
+          company_address: string | null
+          company_cnpj: string | null
+          company_id: string | null
+          company_name: string
+          contract_date: string | null
+          created_at: string
+          created_by: string | null
+          distrato_date: string
+          id: string
+          legal_rep_name: string | null
+          project_id: string | null
+          project_name: string | null
+          service_description: string | null
+        }
+        Insert: {
+          additional_notes?: string | null
+          clauses_snapshot?: Json | null
+          company_address?: string | null
+          company_cnpj?: string | null
+          company_id?: string | null
+          company_name: string
+          contract_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          distrato_date?: string
+          id?: string
+          legal_rep_name?: string | null
+          project_id?: string | null
+          project_name?: string | null
+          service_description?: string | null
+        }
+        Update: {
+          additional_notes?: string | null
+          clauses_snapshot?: Json | null
+          company_address?: string | null
+          company_cnpj?: string | null
+          company_id?: string | null
+          company_name?: string
+          contract_date?: string | null
+          created_at?: string
+          created_by?: string | null
+          distrato_date?: string
+          id?: string
+          legal_rep_name?: string | null
+          project_id?: string | null
+          project_name?: string | null
+          service_description?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "distratos_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "distratos_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       endomarketing_balloon_achievements: {
         Row: {
           achieved_value: number | null

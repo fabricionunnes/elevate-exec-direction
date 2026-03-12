@@ -1,11 +1,12 @@
 import { useState } from "react";
 import { useSearchParams, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Download, Eye, Loader2, FileText } from "lucide-react";
+import { ArrowLeft, Download, Eye, Loader2, FileText, History } from "lucide-react";
 import { toast } from "sonner";
 import DistratoForm, { defaultDistrato, type DistratoFormData } from "@/components/distrato/DistratoForm";
 import DistratoClausesEditor, { getDefaultDistratoClauses, type EditableDistratoClause } from "@/components/distrato/DistratoClausesEditor";
 import { generateDistratoPDF, downloadDistratoPDF } from "@/components/distrato/generateDistratoPDF";
+import { supabase } from "@/integrations/supabase/client";
 
 export default function DistratoPage() {
   const navigate = useNavigate();
@@ -27,7 +28,26 @@ export default function DistratoPage() {
     try {
       const blob = await generateDistratoPDF({ formData, clauses });
       setGeneratedBlob(blob);
-      toast.success("Distrato gerado com sucesso!");
+
+      // Save to database
+      const { data: { user } } = await supabase.auth.getUser();
+      await supabase.from("distratos").insert({
+        company_id: formData.companyId || null,
+        company_name: formData.companyName,
+        company_cnpj: formData.companyCnpj || null,
+        company_address: formData.companyAddress || null,
+        legal_rep_name: formData.legalRepName || null,
+        project_id: formData.projectId || null,
+        project_name: formData.projectName || null,
+        contract_date: formData.contractDate || null,
+        service_description: formData.serviceDescription || null,
+        distrato_date: formData.distratoDate.toISOString().split("T")[0],
+        additional_notes: formData.additionalNotes || null,
+        clauses_snapshot: clauses as any,
+        created_by: user?.id || null,
+      });
+
+      toast.success("Distrato gerado e salvo com sucesso!");
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao gerar distrato");
@@ -68,6 +88,9 @@ export default function DistratoPage() {
             </div>
           </div>
           <div className="flex gap-2">
+            <Button variant="outline" onClick={() => navigate("/distratos")} className="gap-2">
+              <History className="h-4 w-4" /> Histórico
+            </Button>
             {generatedBlob && (
               <>
                 <Button variant="outline" onClick={handlePreview} className="gap-2">
