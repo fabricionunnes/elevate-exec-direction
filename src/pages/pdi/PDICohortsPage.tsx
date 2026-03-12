@@ -76,6 +76,9 @@ export default function PDICohortsPage() {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [saving, setSaving] = useState(false);
 
+  const { currentStaff, isMaster } = useStaffPermissions();
+  const isAdminOrMaster = isMaster || currentStaff?.role === "admin";
+
   const [form, setForm] = useState({
     name: "",
     description: "",
