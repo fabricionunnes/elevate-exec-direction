@@ -242,7 +242,42 @@ export const TasksKanbanView = ({ tasks, onTaskClick, onStatusChange, onBulkTran
   };
 
   return (
-    <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-full">
+    <div className="space-y-3">
+      {/* Transfer bar */}
+      <AnimatePresence>
+        {onBulkTransfer && selectedTaskIds.size > 0 && (
+          <motion.div
+            initial={{ opacity: 0, y: -10 }}
+            animate={{ opacity: 1, y: 0 }}
+            exit={{ opacity: 0, y: -10 }}
+            className="p-3 rounded-xl border bg-primary/5 border-primary/20 flex items-center gap-3"
+          >
+            <span className="text-sm font-medium">
+              {selectedTaskIds.size} tarefa{selectedTaskIds.size > 1 ? "s" : ""} selecionada{selectedTaskIds.size > 1 ? "s" : ""}
+            </span>
+            <Button
+              size="sm"
+              variant="outline"
+              onClick={() => onBulkTransfer(Array.from(selectedTaskIds))}
+              className="h-8 text-xs gap-1 border-primary/30 text-primary hover:bg-primary/10"
+            >
+              <ArrowRightLeft className="h-3.5 w-3.5" />
+              Transferir/Copiar
+            </Button>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => setSelectedTaskIds(new Set())}
+              className="h-8 text-xs"
+            >
+              <X className="h-3 w-3 mr-1" />
+              Limpar
+            </Button>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-3 sm:gap-4 h-full">
       {COLUMNS.map(column => {
         const columnTasks = tasksByStatus[column.id];
         const Icon = column.icon;
