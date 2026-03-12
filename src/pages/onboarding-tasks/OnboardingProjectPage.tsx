@@ -244,6 +244,8 @@ const OnboardingProjectPage = () => {
   const [docsLinkInput, setDocsLinkInput] = useState("");
   const [kpiDefaultTab, setKpiDefaultTab] = useState<string | undefined>(undefined);
   const [showProjectMenuPermissions, setShowProjectMenuPermissions] = useState(false);
+  const [transferTaskIds, setTransferTaskIds] = useState<string[]>([]);
+  const [showTransferDialog, setShowTransferDialog] = useState(false);
   // Check for attention/risk alerts when opening project
   const checkProjectAlerts = async () => {
     if (!projectId) return;
