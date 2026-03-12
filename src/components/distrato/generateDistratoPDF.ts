@@ -4,7 +4,7 @@ import { ptBR } from "date-fns/locale";
 import { distratoCompanyInfo } from "@/data/distratoTemplate";
 import type { DistratoFormData } from "./DistratoForm";
 import type { EditableDistratoClause } from "./DistratoClausesEditor";
-import signatureImage from "@/assets/assinatura-fabricio.png";
+
 
 const NAVY = [10, 34, 64] as const;
 const RED = [220, 38, 38] as const;
@@ -51,9 +51,7 @@ export async function generateDistratoPDF({ formData, clauses }: GenerateDistrat
 
   // Load assets
   let logo: LoadedImage | null = null;
-  let signature: LoadedImage | null = null;
   try { logo = await loadImage("/images/unv-logo-contract.png"); } catch {}
-  try { signature = await loadImage(signatureImage); } catch {}
 
   const addDecorations = () => {
     doc.setFillColor(NAVY[0], NAVY[1], NAVY[2]);
@@ -191,51 +189,7 @@ export async function generateDistratoPDF({ formData, clauses }: GenerateDistrat
   addText(`${distratoCompanyInfo.city}, ${format(distratoDate, "dd 'de' MMMM 'de' yyyy", { locale: ptBR })}`, 11, { align: "center", bold: true });
   y += 20;
 
-  // === Signatures ===
-  checkPageBreak(70);
-  const sigY = y;
-  const sigW = 70;
-  const gap = 20;
-  const totalW = sigW * 2 + gap;
-  const leftX = (pw - totalW) / 2;
-  const rightX = leftX + sigW + gap;
 
-  // CONTRATADA signature with image
-  if (signature) {
-    try {
-      const { width: sw, height: sh } = fitImage(signature.width, signature.height, 40, 25);
-      doc.addImage(signature.dataUrl, "PNG", leftX + (sigW - sw) / 2, sigY - sh - 2, sw, sh);
-    } catch {}
-  }
-
-  doc.setDrawColor(0, 0, 0);
-  doc.setLineWidth(0.3);
-  doc.line(leftX, sigY, leftX + sigW, sigY);
-  doc.setFontSize(10);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  doc.text(distratoCompanyInfo.representative.toUpperCase(), leftX + sigW / 2, sigY + 6, { align: "center" });
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(0, 0, 0);
-  doc.text("CONTRATADA", leftX + sigW / 2, sigY + 12, { align: "center" });
-
-  // CONTRATANTE signature
-  doc.line(rightX, sigY, rightX + sigW, sigY);
-  const signerName = formData.legalRepName || formData.companyName;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "bold");
-  doc.setTextColor(NAVY[0], NAVY[1], NAVY[2]);
-  // Wrap long names into multiple lines
-  const nameLines = doc.splitTextToSize(signerName.toUpperCase(), sigW);
-  nameLines.forEach((line: string, idx: number) => {
-    doc.text(line, rightX + sigW / 2, sigY + 5 + idx * 4, { align: "center" });
-  });
-  const nameEndY = sigY + 5 + nameLines.length * 4;
-  doc.setFontSize(9);
-  doc.setFont("helvetica", "normal");
-  doc.setTextColor(0, 0, 0);
-  doc.text("CONTRATANTE", rightX + sigW / 2, nameEndY + 2, { align: "center" });
 
   // Footer
   const totalPages = doc.getNumberOfPages();
