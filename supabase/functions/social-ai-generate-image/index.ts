@@ -206,6 +206,10 @@ Visual Request: ${prompt}
 QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese. Prefer NO text if possible.
 REALISM: 100% physically realistic, correct proportions and perspective.
+
+CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
+The logo will be added separately after generation. If you include a fabricated logo it will be WRONG.
+Do NOT invent or hallucinate any logos. Leave the image clean without any brand marks.
 `;
 
       // Add reference image if provided
