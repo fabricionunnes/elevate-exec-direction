@@ -365,23 +365,16 @@ export const SocialCardDetailSheet = ({
         card_color: cardColor,
       };
 
-      console.log("Save payload:", JSON.stringify(updatePayload, null, 2));
-      console.log("Card ID:", card.id);
-
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from("social_content_cards")
         .update(updatePayload)
-        .eq("id", card.id)
-        .select();
-
-      console.log("Save result - error:", error, "data:", data);
+        .eq("id", card.id);
 
       if (error) throw error;
       toast.success("Conteúdo atualizado!");
       onUpdate();
     } catch (error: any) {
       console.error("Error saving card:", error);
-      console.error("Error details:", error?.message, error?.details, error?.hint, error?.code);
       toast.error("Erro ao salvar: " + (error?.message || "erro desconhecido"));
     } finally {
       setSaving(false);
