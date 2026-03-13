@@ -149,6 +149,8 @@ export const SocialCardDetailSheet = ({
   const [aiCarouselCount, setAiCarouselCount] = useState(3);
   const [aiCarouselConnected, setAiCarouselConnected] = useState(false);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
+  const [aiImageText, setAiImageText] = useState("");
+  const [aiCarouselTexts, setAiCarouselTexts] = useState<string[]>(["", "", ""]);
 
   const generatePromptSuggestion = async (copy: string, theme: string, contentType: string) => {
     setGeneratingPromptSuggestion(true);
