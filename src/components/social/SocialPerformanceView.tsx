@@ -73,6 +73,7 @@ interface SocialPerformanceViewProps {
   cards: ContentCard[];
   stages: Stage[];
   boardId: string;
+  projectId: string;
 }
 
 const contentTypeIcon: Record<string, React.ReactNode> = {
@@ -90,9 +91,10 @@ const rankIcons = [
 
 type SortBy = "engagement" | "likes" | "comments" | "saves" | "shares" | "views" | "reach";
 
-export const SocialPerformanceView = ({ cards, stages, boardId }: SocialPerformanceViewProps) => {
+export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: SocialPerformanceViewProps) => {
   const [metrics, setMetrics] = useState<PostMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<PostMetric>>({});
   const [sortBy, setSortBy] = useState<SortBy>("engagement");
@@ -128,6 +130,29 @@ export const SocialPerformanceView = ({ cards, stages, boardId }: SocialPerforma
       console.error("Error loading metrics:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const syncFromInstagram = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-sync-metrics", {
+        body: { projectId, boardId },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Métricas sincronizadas! ${data.synced}/${data.total} posts atualizados`);
+        await loadMetrics();
+      } else if (data?.error) {
+        toast.error(data.error);
+      }
+    } catch (error) {
+      console.error("Error syncing metrics:", error);
+      toast.error("Erro ao sincronizar métricas do Instagram");
+    } finally {
+      setSyncing(false);
     }
   };
 
@@ -249,6 +274,23 @@ export const SocialPerformanceView = ({ cards, stages, boardId }: SocialPerforma
 
   return (
     <div className="h-full flex flex-col p-4 gap-4 overflow-auto">
+      {/* Sync Bar */}
+      <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+        <div className="text-sm text-muted-foreground">
+          {metrics.some((m) => m.synced_at) ? (
+            <span>
+              Última sincronização: {format(new Date(metrics.filter((m) => m.synced_at).sort((a, b) => new Date(b.synced_at!).getTime() - new Date(a.synced_at!).getTime())[0]?.synced_at || ""), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
+          ) : (
+            <span>Métricas ainda não sincronizadas</span>
+          )}
+        </div>
+        <Button onClick={syncFromInstagram} disabled={syncing} className="gap-2">
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {syncing ? "Sincronizando..." : "Sincronizar Instagram"}
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[

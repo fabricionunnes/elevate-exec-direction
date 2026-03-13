@@ -333,6 +333,7 @@ export const SocialPipelinePage = () => {
             cards={cards}
             stages={stages}
             boardId={boardId}
+            projectId={project.id}
           />
         )}
       </div>
