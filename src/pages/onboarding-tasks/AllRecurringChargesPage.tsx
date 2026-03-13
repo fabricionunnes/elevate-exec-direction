@@ -1664,7 +1664,7 @@ export default function AllRecurringChargesPage() {
                       </TableHeader>
                       <TableBody>
                         {paginatedInvoices.length === 0 ? (
-                          <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
                         ) : paginatedInvoices.map(inv => {
                           const isProcessing = processingInvoiceId === inv.id;
                           const displayAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
