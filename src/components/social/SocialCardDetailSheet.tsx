@@ -143,6 +143,7 @@ export const SocialCardDetailSheet = ({
   // AI image generation
   const [aiPrompt, setAiPrompt] = useState("");
   const [generatingAiImage, setGeneratingAiImage] = useState(false);
+  const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
 
   useEffect(() => {
     if (card && open) {
@@ -429,9 +430,9 @@ export const SocialCardDetailSheet = ({
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
         body: {
           projectId,
-          prompt: aiPrompt.trim(),
+          prompt: aiPrompt.trim() + " | Imagem sem fundo, fundo transparente",
           format: "feed_post",
-          includeLogoPref: true,
+          includeLogoPref: aiIncludeLogo,
         },
       });
       if (error) throw error;
@@ -819,6 +820,18 @@ export const SocialCardDetailSheet = ({
                     className="min-h-[60px] text-sm"
                     rows={2}
                   />
+                </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aiIncludeLogo}
+                      onChange={(e) => setAiIncludeLogo(e.target.checked)}
+                      disabled={card.is_locked || generatingAiImage}
+                      className="rounded border-input"
+                    />
+                    Incluir logomarca
+                  </label>
                 </div>
                 <Button
                   size="sm"
