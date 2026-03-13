@@ -133,6 +133,29 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
     }
   };
 
+  const syncFromInstagram = async () => {
+    setSyncing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-sync-metrics", {
+        body: { projectId, boardId },
+      });
+
+      if (error) throw error;
+
+      if (data?.success) {
+        toast.success(`Métricas sincronizadas! ${data.synced}/${data.total} posts atualizados`);
+        await loadMetrics();
+      } else if (data?.error) {
+        toast.error(data.error);
+      }
+    } catch (error) {
+      console.error("Error syncing metrics:", error);
+      toast.error("Erro ao sincronizar métricas do Instagram");
+    } finally {
+      setSyncing(false);
+    }
+  };
+
   const getMetricForCard = (cardId: string): PostMetric | undefined =>
     metrics.find((m) => m.card_id === cardId);
 
