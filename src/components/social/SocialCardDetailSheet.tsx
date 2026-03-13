@@ -485,7 +485,7 @@ export const SocialCardDetailSheet = ({
         },
       });
       if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
+      if (data?.error) { toast.error(data.error, { id: isCarousel ? "ai-carousel" : undefined }); return; }
 
       if (isCarousel && data?.images?.length) {
         // For carousel, save first image as creative and store all
