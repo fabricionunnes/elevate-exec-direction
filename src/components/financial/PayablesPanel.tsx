@@ -53,7 +53,8 @@ import {
   RotateCcw,
   Trash2,
   Repeat,
-  CalendarDays
+  CalendarDays,
+  Copy
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -981,6 +982,31 @@ export function PayablesPanel() {
                               Excluir
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setFormData({
+                                supplier_name: payable.supplier_name,
+                                category_id: payable.category_id || "",
+                                description: payable.description,
+                                amount: String(payable.amount),
+                                due_date: payable.due_date,
+                                payment_method: payable.payment_method || "pix",
+                                is_recurring: false,
+                                recurrence_type: "monthly",
+                                recurring_count: "12",
+                                cost_center: payable.cost_center || "",
+                                reference_month: format(new Date(), "yyyy-MM"),
+                                notes: payable.notes || "",
+                                has_installments: false,
+                                total_installments: "1",
+                                cost_type: "" as "" | "fixed" | "variable"
+                              });
+                              setIsAddDialogOpen(true);
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicar
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>

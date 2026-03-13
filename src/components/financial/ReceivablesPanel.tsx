@@ -43,7 +43,8 @@ import {
   Loader2,
   RefreshCw,
   ExternalLink,
-  CalendarDays
+  CalendarDays,
+  Copy
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -914,6 +915,27 @@ export function ReceivablesPanel() {
                               Cancelar
                             </DropdownMenuItem>
                           )}
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setFormData({
+                                company_id: receivable.company_id || "",
+                                custom_receiver_name: receivable.custom_receiver_name || "",
+                                category_id: receivable.category_id || "",
+                                description: receivable.description,
+                                amount: String(receivable.amount),
+                                due_date: receivable.due_date,
+                                payment_method: receivable.payment_method || "pix",
+                                is_recurring: receivable.is_recurring,
+                                reference_month: receivable.reference_month || format(new Date(), "yyyy-MM"),
+                                notes: receivable.notes || ""
+                              });
+                              setShowCustomReceiver(!!receivable.custom_receiver_name);
+                              setIsAddDialogOpen(true);
+                            }}
+                          >
+                            <Copy className="h-4 w-4 mr-2" />
+                            Duplicar
+                          </DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </TableCell>
