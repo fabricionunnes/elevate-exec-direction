@@ -183,12 +183,15 @@ export const SocialApprovalPage = () => {
     return null;
   }
 
-  const { card, company_name } = approvalData;
+  const { card, company_name, carousel_images } = approvalData;
+  const displayImage = selectedImage || card.creative_url;
+  const hasCarousel = carousel_images && carousel_images.length > 1;
 
   const contentTypeLabels: Record<string, string> = {
     feed: "Feed",
     reels: "Reels",
     stories: "Stories",
+    carrossel: "Carrossel",
   };
 
   const objectiveLabels: Record<string, string> = {
