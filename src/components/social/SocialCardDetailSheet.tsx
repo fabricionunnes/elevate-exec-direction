@@ -803,7 +803,36 @@ export const SocialCardDetailSheet = ({
                 />
               </div>
 
-              {/* Type & Objective */}
+              {/* AI Image Generation */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Gerar Imagem com IA
+                </Label>
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Descreva a imagem que deseja gerar..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    disabled={card.is_locked || generatingAiImage}
+                    className="min-h-[60px] text-sm"
+                    rows={2}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateAiImage}
+                  disabled={card.is_locked || generatingAiImage || !aiPrompt.trim()}
+                  className="gap-1.5 w-full"
+                >
+                  {generatingAiImage ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando...</>
+                  ) : (
+                    <><Sparkles className="h-3.5 w-3.5" /> Gerar Imagem</>
+                  )}
+                </Button>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
