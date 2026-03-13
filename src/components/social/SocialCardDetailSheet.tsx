@@ -208,7 +208,7 @@ export const SocialCardDetailSheet = ({
     setHashtags(card.hashtags || "");
     setCta(card.cta || "");
     setSuggestedDate(card.suggested_date || "");
-    setSuggestedTime(card.suggested_time || "");
+    setSuggestedTime(card.suggested_time ? card.suggested_time.slice(0, 5) : "");
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
