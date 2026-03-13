@@ -171,30 +171,23 @@ Deno.serve(async (req) => {
 
     // Handle carousel generation
     if (format === "carousel" && carouselCount && carouselCount > 1) {
-      const images: string[] = [];
       const { width: targetW, height: targetH } = getTargetDimensions(format);
       
-      for (let i = 0; i < carouselCount; i++) {
-        let carouselPrompt = enhancedPrompt;
+      // Generate all slides IN PARALLEL to avoid CPU timeout
+      const generateSlide = async (i: number): Promise<string | null> => {
+        let carouselPrompt: string;
         
         if (carouselConnected) {
-          // For connected carousel, generate panoramic slices
-          // Reference image only on first slide for connected carousels
-          // NOTE: Do NOT pass logo to AI - it will be applied via overlay
           const useRefImage = i === 0 ? referenceImageUrl : null;
           carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, false, useRefImage);
         } else {
-          // For separate images, add variation instruction
-          // Reference image only on first slide
-          const isFirstSlide = i === 0;
-          if (isFirstSlide && referenceImageUrl) {
+          if (i === 0 && referenceImageUrl) {
             carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. This is the MAIN image featuring the reference subject prominently.`;
           } else {
-            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style. Do NOT include the reference subject in this image - focus on complementary visuals.`;
+            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style.`;
           }
         }
 
-        // Only include reference image on the first slide - NOT the logo (logo applied via overlay)
         const slideImages: { type: string; image_url: { url: string } }[] = [];
         if (i === 0 && referenceImageUrl) {
           slideImages.push({ type: "image_url", image_url: { url: referenceImageUrl } });
@@ -204,73 +197,83 @@ Deno.serve(async (req) => {
           ? [{ type: "text", text: carouselPrompt }, ...slideImages]
           : carouselPrompt;
 
-        // Use PRO model for higher quality
-        const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
-          method: "POST",
-          headers: {
-            Authorization: `Bearer ${lovableApiKey}`,
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            model: "google/gemini-3-pro-image-preview",
-            messages: [{ role: "user", content: carouselMessageContent }],
-            modalities: ["image", "text"],
-          }),
-        }, 60000);
+        try {
+          // Use FLASH model for carousel to avoid CPU timeout
+          const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
+            method: "POST",
+            headers: {
+              Authorization: `Bearer ${lovableApiKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              model: "google/gemini-3.1-flash-image-preview",
+              messages: [{ role: "user", content: carouselMessageContent }],
+              modalities: ["image", "text"],
+            }),
+          }, 90000);
 
-        if (!aiResponse.ok) {
-          const errorText = await aiResponse.text();
-          console.error(`AI API error for carousel image ${i + 1}:`, errorText);
-          
-          if (aiResponse.status === 429) {
-            return new Response(
-              JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
-              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+          if (!aiResponse.ok) {
+            const errorText = await aiResponse.text();
+            console.error(`AI API error for carousel image ${i + 1}:`, errorText);
+            
+            if (aiResponse.status === 429 || aiResponse.status === 402) {
+              return null;
+            }
+            return null;
           }
-          if (aiResponse.status === 402) {
-            return new Response(
-              JSON.stringify({ error: "Créditos de IA insuficientes." }),
-              { status: 402, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-            );
+
+          const aiData = await aiResponse.json();
+          const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+          if (!imageData) {
+            console.error(`No image generated for carousel slide ${i + 1}`);
+            return null;
           }
-          
-          continue; // Skip this image and try next
-        }
 
-        const aiData = await aiResponse.json();
-        const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-        if (imageData) {
           const base64Data = imageData.split(",")[1];
           const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-          let imageBuffer = await resizeAndCropToExact(rawBuffer, targetW, targetH);
           
-          // Apply logo overlay if requested (using the ACTUAL logo, not AI-generated)
-          if (shouldApplyLogoOverlay && logoUrl) {
-            imageBuffer = await applyLogoOverlay(imageBuffer, logoUrl, targetW, targetH);
-          }
-          
+          // Skip heavy canvas logo overlay for carousel - save CPU time
           const fileName = `${projectId}/ai-generated/carousel-${Date.now()}-${i + 1}.png`;
           
           const { error: uploadError } = await supabase.storage
             .from("social-briefing")
-            .upload(fileName, imageBuffer, {
+            .upload(fileName, rawBuffer, {
               contentType: "image/png",
               upsert: false
             });
 
-          if (!uploadError) {
-            const { data: { publicUrl } } = supabase.storage
-              .from("social-briefing")
-              .getPublicUrl(fileName);
-            images.push(publicUrl);
+          if (uploadError) {
+            console.error(`Upload error for slide ${i + 1}:`, uploadError);
+            return null;
           }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from("social-briefing")
+            .getPublicUrl(fileName);
+          
+          console.log(`Carousel slide ${i + 1} generated successfully`);
+          return publicUrl;
+        } catch (err) {
+          console.error(`Error generating carousel slide ${i + 1}:`, err);
+          return null;
         }
-      }
+      };
+
+      // Generate all slides in parallel
+      console.log(`Starting parallel generation of ${carouselCount} carousel slides...`);
+      const results = await Promise.all(
+        Array.from({ length: carouselCount }, (_, i) => generateSlide(i))
+      );
+      
+      const images = results.filter((url): url is string => url !== null);
+      console.log(`Carousel generation complete: ${images.length}/${carouselCount} slides`);
 
       if (images.length === 0) {
-        throw new Error("Failed to generate any carousel images");
+        return new Response(
+          JSON.stringify({ error: "Não foi possível gerar nenhuma imagem do carrossel. Tente novamente com um prompt mais simples." }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
       }
 
       // Log for audit
