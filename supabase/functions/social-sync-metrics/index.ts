@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
 
     if (!projectId || !boardId) {
       return new Response(
-        JSON.stringify({ error: "projectId and boardId are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "projectId e boardId são obrigatórios" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
