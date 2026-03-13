@@ -529,7 +529,7 @@ export const SocialCardDetailSheet = ({
           overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
-            carouselConnected: true,
+            carouselConnected: aiCarouselConnected,
             slideTexts: aiCarouselTexts.slice(0, aiCarouselCount),
           }),
         },
