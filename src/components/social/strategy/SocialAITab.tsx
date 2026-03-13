@@ -780,6 +780,9 @@ CTA: ${suggestion.cta}`;
                                 <Download className="h-4 w-4" />
                               </a>
                             </Button>
+                            <Button size="icon" variant="secondary" onClick={() => openUseInCardDialog(image.url)} title="Usar em Card">
+                              <ImagePlus className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       )}
