@@ -1658,6 +1658,7 @@ export default function AllRecurringChargesPage() {
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-right">Recebido</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
