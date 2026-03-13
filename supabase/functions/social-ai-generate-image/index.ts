@@ -106,7 +106,7 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { projectId, prompt, format, includeLogoPref, carouselCount, carouselConnected, referenceImageUrl } = await req.json();
+    const { projectId, prompt, format, includeLogoPref, carouselCount, carouselConnected, referenceImageUrl, overlayText, slideTexts } = await req.json();
 
     if (!projectId || !prompt) {
       return new Response(
