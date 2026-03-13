@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays } from "lucide-react";
+import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { SocialKanbanBoard } from "@/components/social/SocialKanbanBoard";
 import { SocialCalendarView } from "@/components/social/SocialCalendarView";
