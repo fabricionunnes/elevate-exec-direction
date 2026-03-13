@@ -151,6 +151,7 @@ export const SocialCardDetailSheet = ({
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
   const [aiImageText, setAiImageText] = useState("");
   const [aiCarouselTexts, setAiCarouselTexts] = useState<string[]>(["", "", ""]);
+  const [generatingTextSuggestion, setGeneratingTextSuggestion] = useState(false);
 
   const generatePromptSuggestion = async (copy: string, theme: string, contentType: string) => {
     setGeneratingPromptSuggestion(true);
@@ -1060,29 +1061,75 @@ export const SocialCardDetailSheet = ({
                 {/* Text overlay fields */}
                 {aiGenerateMode === "single" ? (
                   <div className="space-y-1.5">
-                    <Label className="text-xs text-muted-foreground">Texto na imagem (opcional)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Texto na imagem (opcional)</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] gap-1 text-primary"
+                        disabled={card.is_locked || generatingAiImage || generatingTextSuggestion}
+                        onClick={async () => {
+                          setGeneratingTextSuggestion(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("social-ai-suggestions", {
+                              body: { type: "image_text", copyText: card.copy_text || "", theme: card.theme || "", contentType: card.content_type || "" },
+                            });
+                            if (!error && data?.suggestion) setAiImageText(data.suggestion);
+                          } catch {} finally { setGeneratingTextSuggestion(false); }
+                        }}
+                      >
+                        {generatingTextSuggestion ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                        Sugerir texto
+                      </Button>
+                    </div>
                     <Input
-                      placeholder="Ex: Estratégia + Motivação = Resultados"
+                      placeholder={generatingTextSuggestion ? "Gerando sugestão..." : "Ex: Estratégia + Motivação = Resultados"}
                       value={aiImageText}
                       onChange={(e) => setAiImageText(e.target.value)}
-                      disabled={card.is_locked || generatingAiImage}
+                      disabled={card.is_locked || generatingAiImage || generatingTextSuggestion}
                       className="text-sm"
                     />
                   </div>
                 ) : (
                   <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
-                    <Label className="text-xs text-muted-foreground">Texto em cada slide (opcional)</Label>
+                    <div className="flex items-center justify-between">
+                      <Label className="text-xs text-muted-foreground">Texto em cada slide (opcional)</Label>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        className="h-6 text-[10px] gap-1 text-primary"
+                        disabled={card.is_locked || generatingAiImage || generatingTextSuggestion}
+                        onClick={async () => {
+                          setGeneratingTextSuggestion(true);
+                          try {
+                            const { data, error } = await supabase.functions.invoke("social-ai-suggestions", {
+                              body: { type: "image_text", copyText: card.copy_text || "", theme: card.theme || "", contentType: card.content_type || "", carouselCount: aiCarouselCount },
+                            });
+                            if (!error && data?.slideTexts) {
+                              const texts = [...data.slideTexts];
+                              while (texts.length < aiCarouselCount) texts.push("");
+                              setAiCarouselTexts(texts.slice(0, aiCarouselCount));
+                            }
+                          } catch {} finally { setGeneratingTextSuggestion(false); }
+                        }}
+                      >
+                        {generatingTextSuggestion ? <Loader2 className="h-3 w-3 animate-spin" /> : <Sparkles className="h-3 w-3" />}
+                        Sugerir textos
+                      </Button>
+                    </div>
                     {Array.from({ length: aiCarouselCount }).map((_, i) => (
                       <Input
                         key={i}
-                        placeholder={`Slide ${i + 1} — texto (deixe vazio se não quiser)`}
+                        placeholder={generatingTextSuggestion ? "Gerando..." : `Slide ${i + 1} — texto (deixe vazio se não quiser)`}
                         value={aiCarouselTexts[i] || ""}
                         onChange={(e) => {
                           const updated = [...aiCarouselTexts];
                           updated[i] = e.target.value;
                           setAiCarouselTexts(updated);
                         }}
-                        disabled={card.is_locked || generatingAiImage}
+                        disabled={card.is_locked || generatingAiImage || generatingTextSuggestion}
                         className="text-sm h-8"
                       />
                     ))}
