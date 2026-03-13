@@ -821,6 +821,18 @@ export const SocialCardDetailSheet = ({
                     rows={2}
                   />
                 </div>
+                <div className="flex items-center gap-3">
+                  <label className="flex items-center gap-1.5 text-sm cursor-pointer">
+                    <input
+                      type="checkbox"
+                      checked={aiIncludeLogo}
+                      onChange={(e) => setAiIncludeLogo(e.target.checked)}
+                      disabled={card.is_locked || generatingAiImage}
+                      className="rounded border-input"
+                    />
+                    Incluir logomarca
+                  </label>
+                </div>
                 <Button
                   size="sm"
                   onClick={handleGenerateAiImage}
