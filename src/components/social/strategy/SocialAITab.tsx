@@ -104,7 +104,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
     try {
       // Fetch stages for this board
       const { data: stages } = await supabase
-        .from("social_pipeline_stages")
+        .from("social_content_stages")
         .select("id, name")
         .eq("board_id", boardId);
       const stageMap = new Map((stages || []).map(s => [s.id, s.name]));
