@@ -551,9 +551,11 @@ export default function AllRecurringChargesPage() {
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
       if (searchTerm && !p.description?.toLowerCase().includes(searchTerm.toLowerCase()) && !p.supplier_name?.toLowerCase().includes(searchTerm.toLowerCase())) return false;
-      if (selectedStatus === "pending" && p.status !== "pending") return false;
+      const today = format(new Date(), "yyyy-MM-dd");
+      const isOverdue = p.status === "pending" && p.due_date && p.due_date < today;
+      if (selectedStatus === "pending" && (p.status !== "pending" || isOverdue)) return false;
       if (selectedStatus === "paid" && p.status !== "paid") return false;
-      if (selectedStatus === "overdue" && p.status !== "overdue") return false;
+      if (selectedStatus === "overdue" && !isOverdue) return false;
       if (payableDateFrom && p.due_date) { if (p.due_date < format(payableDateFrom, "yyyy-MM-dd")) return false; }
       if (payableDateTo && p.due_date) { if (p.due_date > format(payableDateTo, "yyyy-MM-dd")) return false; }
       const pAny = p as any;
