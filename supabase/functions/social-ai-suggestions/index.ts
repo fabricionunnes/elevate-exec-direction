@@ -88,6 +88,104 @@ Responda APENAS com a descrição da imagem, sem explicações extras.`;
       );
     }
 
+    // Handle image text suggestion
+    if (type === "image_text") {
+      const { copyText, theme, contentType, carouselCount } = body;
+      console.log("social-ai-suggestions: Generating image text suggestion");
+      
+      const isCarousel = carouselCount && carouselCount > 1;
+      
+      let prompt: string;
+      if (isCarousel) {
+        prompt = `Você é um copywriter especialista em social media e design de carrosséis para Instagram.
+Com base na copy abaixo, sugira textos curtos e impactantes para inserir em cada slide de um carrossel de ${carouselCount} imagens.
+
+Regras:
+- Cada texto deve ter no máximo 6-8 palavras
+- Os textos devem contar uma história sequencial entre os slides
+- Use linguagem direta e persuasiva
+- Adequado para sobrepor em imagens (legibilidade)
+- Reflita o tom e a mensagem da copy
+
+Tema do card: ${theme || "não especificado"}
+
+Copy do card:
+"""
+${copyText || "Sem copy definida"}
+"""
+
+Responda APENAS com um JSON array de ${carouselCount} strings, sem explicações. Ex: ["Texto slide 1", "Texto slide 2", "Texto slide 3"]`;
+      } else {
+        prompt = `Você é um copywriter especialista em social media.
+Com base na copy abaixo, sugira um texto curto e impactante para inserir na imagem de feed.
+
+Regras:
+- Máximo 6-8 palavras
+- Linguagem direta e persuasiva
+- Adequado para sobrepor em imagens (legibilidade)
+- Reflita o tom e a mensagem da copy
+
+Tema do card: ${theme || "não especificado"}
+
+Copy do card:
+"""
+${copyText || "Sem copy definida"}
+"""
+
+Responda APENAS com o texto sugerido, sem aspas e sem explicações.`;
+      }
+
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [{ role: "user", content: prompt }],
+        }),
+      });
+
+      if (!aiResp.ok) {
+        console.error("AI error for image text:", aiResp.status);
+        return new Response(
+          JSON.stringify({ suggestion: null }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResp.json();
+      const raw = aiData.choices?.[0]?.message?.content?.trim() || null;
+      console.log("social-ai-suggestions: Image text suggestion raw:", raw);
+
+      if (isCarousel && raw) {
+        try {
+          // Try to parse JSON array
+          const cleaned = raw.replace(/```json?\n?/g, "").replace(/```/g, "").trim();
+          const texts = JSON.parse(cleaned);
+          if (Array.isArray(texts)) {
+            return new Response(
+              JSON.stringify({ slideTexts: texts }),
+              { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
+          }
+        } catch {
+          // If parse fails, split by newlines
+          const lines = raw.split("\n").map((l: string) => l.replace(/^[-\d.)\s"]+/, "").replace(/"$/, "").trim()).filter(Boolean);
+          return new Response(
+            JSON.stringify({ slideTexts: lines.slice(0, carouselCount) }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ suggestion: raw }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     const { contentType, quantity, customTopic } = body;
     console.log("social-ai-suggestions: Params received:", { projectId, contentType, quantity, customTopic });
 
