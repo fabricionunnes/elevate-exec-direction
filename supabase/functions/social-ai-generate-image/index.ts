@@ -207,9 +207,24 @@ Visual Request: ${prompt}
         panoramicPrompt += `\nBRAND COLORS (MUST USE): ${brandColors}`;
       }
 
+      // Add slide text instructions
+      const hasSlideTexts = slideTexts && Array.isArray(slideTexts) && slideTexts.some((t: string) => t && t.trim());
+      if (hasSlideTexts) {
+        panoramicPrompt += `\n\nTEXT TO INCLUDE IN EACH SLIDE: The panoramic image will be split into ${carouselCount} equal vertical panels. Include the following text in each corresponding panel section, using prominent, legible typography that fits the design:`;
+        for (let i = 0; i < carouselCount; i++) {
+          const text = slideTexts[i]?.trim();
+          if (text) {
+            panoramicPrompt += `\n- Panel ${i + 1} (from x=${i * slideWidth}px to x=${(i + 1) * slideWidth}px): "${text}"`;
+          } else {
+            panoramicPrompt += `\n- Panel ${i + 1}: No text needed.`;
+          }
+        }
+        panoramicPrompt += `\nAll text MUST be in Brazilian Portuguese, clearly readable, and well-positioned within each panel area.`;
+      }
+
       panoramicPrompt += `
 QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
-LANGUAGE: Any text MUST be in correct Brazilian Portuguese. Prefer NO text if possible.
+LANGUAGE: Any text MUST be in correct Brazilian Portuguese.${hasSlideTexts ? '' : ' Prefer NO text if possible.'}
 REALISM: 100% physically realistic, correct proportions and perspective.
 
 CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
