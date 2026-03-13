@@ -53,7 +53,8 @@ import {
   RotateCcw,
   Trash2,
   Repeat,
-  CalendarDays
+  CalendarDays,
+  Copy
 } from "lucide-react";
 import {
   DropdownMenu,
