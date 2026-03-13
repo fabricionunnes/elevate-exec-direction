@@ -122,6 +122,7 @@ export function PayablesPanel() {
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
   const { isMaster } = useFinancialPermissions();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     supplier_name: "",
     category_id: "",
@@ -864,6 +865,16 @@ export function PayablesPanel() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={paginatedPayables.length > 0 && paginatedPayables.every(p => selectedIds.has(p.id))}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedIds);
+                      paginatedPayables.forEach(p => checked ? next.add(p.id) : next.delete(p.id));
+                      setSelectedIds(next);
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Vencimento</TableHead>
@@ -875,13 +886,23 @@ export function PayablesPanel() {
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta a pagar encontrada
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedPayables.map((payable) => (
-                  <TableRow key={payable.id}>
+                  <TableRow key={payable.id} data-state={selectedIds.has(payable.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(payable.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          checked ? next.add(payable.id) : next.delete(payable.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {payable.is_recurring && (
@@ -970,6 +991,36 @@ export function PayablesPanel() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Selection Summary */}
+      {selectedIds.size > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="py-3 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">{selectedIds.size} selecionado(s)</span>
+              <div className="h-4 w-px bg-border" />
+              <span className="text-sm">
+                Total a pagar:{" "}
+                <strong className="text-primary">
+                  {formatCurrency(
+                    payables
+                      .filter(p => selectedIds.has(p.id))
+                      .reduce((sum, p) => {
+                        if (p.status === "partial" && p.paid_amount) {
+                          return sum + (p.amount - p.paid_amount);
+                        }
+                        return sum + Number(p.amount);
+                      }, 0)
+                  )}
+                </strong>
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+              Limpar seleção
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2">

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -57,6 +57,7 @@ import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Receivable {
   id: string;
@@ -109,6 +110,7 @@ export function ReceivablesPanel() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Form state
   const [formData, setFormData] = useState({
@@ -790,6 +792,16 @@ export function ReceivablesPanel() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={paginatedReceivables.length > 0 && paginatedReceivables.every(r => selectedIds.has(r.id))}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedIds);
+                      paginatedReceivables.forEach(r => checked ? next.add(r.id) : next.delete(r.id));
+                      setSelectedIds(next);
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Vencimento</TableHead>
@@ -802,13 +814,23 @@ export function ReceivablesPanel() {
             <TableBody>
               {filteredReceivables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta a receber encontrada
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedReceivables.map((receivable) => (
-                  <TableRow key={receivable.id}>
+                  <TableRow key={receivable.id} data-state={selectedIds.has(receivable.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(receivable.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          checked ? next.add(receivable.id) : next.delete(receivable.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{receivable.description}</p>
@@ -902,6 +924,36 @@ export function ReceivablesPanel() {
           </Table>
         </CardContent>
       </Card>
+
+      {/* Selection Summary */}
+      {selectedIds.size > 0 && (
+        <Card className="border-primary/30 bg-primary/5">
+          <CardContent className="py-3 px-4 flex items-center justify-between">
+            <div className="flex items-center gap-4">
+              <span className="text-sm font-medium">{selectedIds.size} selecionado(s)</span>
+              <div className="h-4 w-px bg-border" />
+              <span className="text-sm">
+                Total a receber:{" "}
+                <strong className="text-primary">
+                  {formatCurrency(
+                    filteredReceivables
+                      .filter(r => selectedIds.has(r.id))
+                      .reduce((sum, r) => {
+                        if (r.status === "partial" && r.paid_amount) {
+                          return sum + (r.amount - r.paid_amount);
+                        }
+                        return sum + Number(r.amount);
+                      }, 0)
+                  )}
+                </strong>
+              </span>
+            </div>
+            <Button variant="ghost" size="sm" onClick={() => setSelectedIds(new Set())}>
+              Limpar seleção
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       {/* Pagination */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-2">
