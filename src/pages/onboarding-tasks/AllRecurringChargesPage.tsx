@@ -1541,7 +1541,10 @@ export default function AllRecurringChargesPage() {
               {selectedInvoiceIds.size > 0 && (
                 <Card className="border-emerald-200 bg-emerald-50/50">
                   <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
+                      <span className="text-sm">Total: <strong className="text-primary">{formatCurrencyCents(filteredInvoices.filter(inv => selectedInvoiceIds.has(inv.id)).reduce((sum, inv) => sum + (inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents), 0))}</strong></span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedInvoiceIds(new Set())}>
                         Limpar seleção
@@ -1793,6 +1796,23 @@ export default function AllRecurringChargesPage() {
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar"
+                                    onClick={() => {
+                                      setReceivableForm({
+                                        company_id: inv.company_id || "",
+                                        custom_receiver_name: (inv as any).custom_receiver_name || "",
+                                        description: inv.description,
+                                        amount: inv.amount_cents / 100,
+                                        due_date: inv.due_date || "",
+                                        notes: (inv as any).notes || "",
+                                        category_id: (inv as any).category_id || "",
+                                        cost_center_id: (inv as any).cost_center_id || "",
+                                      });
+                                      setShowCustomReceiverRecv(!!(inv as any).custom_receiver_name);
+                                      setReceivableDialog(true);
+                                    }}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
@@ -1978,7 +1998,10 @@ export default function AllRecurringChargesPage() {
               {selectedPayableIds.size > 0 && (
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
+                      <span className="text-sm">Total: <strong className="text-primary">{formatCurrency(payables.filter(p => selectedPayableIds.has(p.id)).reduce((sum, p) => sum + p.amount, 0))}</strong></span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedPayableIds(new Set())}>
                         Limpar seleção
@@ -2087,6 +2110,25 @@ export default function AllRecurringChargesPage() {
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Duplicar"
+                                  onClick={() => {
+                                    setPayableForm(prev => ({
+                                      ...prev,
+                                      supplier_name: p.supplier_name || "",
+                                      description: p.description,
+                                      amount: p.amount,
+                                      due_date: p.due_date || "",
+                                      reference_month: p.reference_month || "",
+                                      category_id: (p as any).category_id || "",
+                                      cost_center_id: (p as any).cost_center_id || "",
+                                      notes: (p as any).notes || "",
+                                      is_recurring: false,
+                                      recurring_count: "12",
+                                    }));
+                                    setPayableDialog(true);
+                                  }}>
+                                  <Copy className="h-4 w-4" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
