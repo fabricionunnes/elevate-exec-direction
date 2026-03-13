@@ -169,135 +169,188 @@ Deno.serve(async (req) => {
       ? [{ type: "text", text: enhancedPrompt }, ...messageImages]
       : enhancedPrompt;
 
-    // Handle carousel generation
+    // Handle carousel generation - generate ONE wide panoramic image and split it
     if (format === "carousel" && carouselCount && carouselCount > 1) {
-      const { width: targetW, height: targetH } = getTargetDimensions(format);
-      
-      // Generate all slides IN PARALLEL to avoid CPU timeout
-      const generateSlide = async (i: number): Promise<string | null> => {
-        let carouselPrompt: string;
-        
-        if (carouselConnected) {
-          const useRefImage = i === 0 ? referenceImageUrl : null;
-          carouselPrompt = buildConnectedCarouselPrompt(prompt, briefing, profile, i + 1, carouselCount, false, useRefImage);
-        } else {
-          if (i === 0 && referenceImageUrl) {
-            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. This is the MAIN image featuring the reference subject prominently.`;
-          } else {
-            carouselPrompt = `${enhancedPrompt}\n\nThis is image ${i + 1} of ${carouselCount} in a carousel. Create a unique variation that maintains the same theme and style.`;
+      const slideHeight = 1350;
+      const slideWidth = 1080;
+      const panoramicWidth = slideWidth * carouselCount;
+
+      // Build prompt for a single wide panoramic image
+      const brandColors = extractBrandColors(profile, briefing);
+      let panoramicPrompt = `Generate a SINGLE WIDE PANORAMIC IMAGE that will be sliced into ${carouselCount} equal vertical panels for an Instagram carousel.
+
+EXACT DIMENSIONS: The image must be ${panoramicWidth}x${slideHeight} pixels (a very wide horizontal panorama).
+ASPECT RATIO: ${panoramicWidth}:${slideHeight} — this is a very wide image.
+
+CRITICAL COMPOSITION RULES:
+- Design the image so that when split into ${carouselCount} equal vertical slices (each ${slideWidth}x${slideHeight}), EACH slice looks beautiful on its own AND flows seamlessly into the next.
+- Spread visual interest across the ENTIRE width — do NOT concentrate everything in the center.
+- Use a continuous background, gradient, or scene that spans the full width.
+- Important elements should be distributed across all ${carouselCount} sections.
+- Avoid placing critical elements exactly at the split boundaries (every ${slideWidth}px).
+
+Visual Request: ${prompt}
+`;
+
+      if (profile?.tone_of_voice) {
+        panoramicPrompt += `\nBrand tone: ${profile.tone_of_voice}`;
+      }
+      if (briefing?.brand_perception) {
+        panoramicPrompt += `\nBrand personality: ${briefing.brand_perception}`;
+      }
+      if (brandColors) {
+        panoramicPrompt += `\nBRAND COLORS (MUST USE): ${brandColors}`;
+      }
+
+      panoramicPrompt += `
+QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
+LANGUAGE: Any text MUST be in correct Brazilian Portuguese. Prefer NO text if possible.
+REALISM: 100% physically realistic, correct proportions and perspective.
+`;
+
+      // Add reference image if provided
+      const panoramicMessageContent: any = referenceImageUrl 
+        ? [
+            { type: "text", text: panoramicPrompt },
+            { type: "image_url", image_url: { url: referenceImageUrl } }
+          ]
+        : panoramicPrompt;
+
+      console.log(`Generating panoramic image ${panoramicWidth}x${slideHeight} for ${carouselCount}-slide carousel...`);
+
+      try {
+        const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
+          method: "POST",
+          headers: {
+            Authorization: `Bearer ${lovableApiKey}`,
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({
+            model: "google/gemini-3-pro-image-preview",
+            messages: [{ role: "user", content: panoramicMessageContent }],
+            modalities: ["image", "text"],
+          }),
+        }, 120000);
+
+        if (!aiResponse.ok) {
+          const errorText = await aiResponse.text();
+          console.error("AI API error for panoramic:", errorText);
+          if (aiResponse.status === 429) {
+            return new Response(
+              JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns minutos." }),
+              { status: 429, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+            );
           }
+          throw new Error("Failed to generate panoramic image");
         }
 
-        const slideImages: { type: string; image_url: { url: string } }[] = [];
-        if (i === 0 && referenceImageUrl) {
-          slideImages.push({ type: "image_url", image_url: { url: referenceImageUrl } });
+        const aiData = await aiResponse.json();
+        const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
+
+        if (!imageData) {
+          const textContent = aiData.choices?.[0]?.message?.content;
+          return new Response(
+            JSON.stringify({ error: "Não foi possível gerar a imagem panorâmica. Tente reformular o prompt.", details: textContent }),
+            { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
         }
 
-        const carouselMessageContent: any = slideImages.length > 0 
-          ? [{ type: "text", text: carouselPrompt }, ...slideImages]
-          : carouselPrompt;
+        // Decode the panoramic image
+        const base64Data = imageData.split(",")[1];
+        const panoramicBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
 
-        try {
-          // Use FLASH model for carousel to avoid CPU timeout
-          const aiResponse = await fetchWithTimeout("https://ai.gateway.lovable.dev/v1/chat/completions", {
-            method: "POST",
-            headers: {
-              Authorization: `Bearer ${lovableApiKey}`,
-              "Content-Type": "application/json",
-            },
-            body: JSON.stringify({
-              model: "google/gemini-3.1-flash-image-preview",
-              messages: [{ role: "user", content: carouselMessageContent }],
-              modalities: ["image", "text"],
-            }),
-          }, 90000);
+        // Split the panoramic image into equal slides using canvas
+        console.log("Splitting panoramic image into slides...");
+        const panoramicImage = await canvasLoadImage(panoramicBuffer);
+        const imgW = panoramicImage.width();
+        const imgH = panoramicImage.height();
+        console.log(`Panoramic image actual size: ${imgW}x${imgH}`);
 
-          if (!aiResponse.ok) {
-            const errorText = await aiResponse.text();
-            console.error(`AI API error for carousel image ${i + 1}:`, errorText);
-            
-            if (aiResponse.status === 429 || aiResponse.status === 402) {
-              return null;
-            }
-            return null;
+        const sliceW = Math.floor(imgW / carouselCount);
+        const images: string[] = [];
+
+        for (let i = 0; i < carouselCount; i++) {
+          const canvas = createCanvas(sliceW, imgH);
+          const ctx = canvas.getContext("2d");
+
+          // Draw the slice from the panoramic image
+          // drawImage(image, sx, sy, sw, sh, dx, dy, dw, dh)
+          ctx.drawImage(panoramicImage, i * sliceW, 0, sliceW, imgH, 0, 0, sliceW, imgH);
+
+          // Apply logo overlay on last slide if requested
+          if (shouldApplyLogoOverlay && logoUrl && i === carouselCount - 1) {
+            try {
+              const logoResponse = await fetch(logoUrl);
+              if (logoResponse.ok) {
+                const logoBuffer = new Uint8Array(await logoResponse.arrayBuffer());
+                const logoImage = await canvasLoadImage(logoBuffer);
+                const maxLogoWidth = sliceW * 0.15;
+                const logoAspect = logoImage.width() / logoImage.height();
+                let logoW2 = Math.min(logoImage.width(), maxLogoWidth);
+                let logoH2 = logoW2 / logoAspect;
+                const maxLogoHeight = imgH * 0.1;
+                if (logoH2 > maxLogoHeight) { logoH2 = maxLogoHeight; logoW2 = logoH2 * logoAspect; }
+                const padding = sliceW * 0.05;
+                ctx.drawImage(logoImage, sliceW - logoW2 - padding, imgH - logoH2 - padding, logoW2, logoH2);
+              }
+            } catch (e) { console.error("Logo overlay error:", e); }
           }
 
-          const aiData = await aiResponse.json();
-          const imageData = aiData.choices?.[0]?.message?.images?.[0]?.image_url?.url;
-
-          if (!imageData) {
-            console.error(`No image generated for carousel slide ${i + 1}`);
-            return null;
-          }
-
-          const base64Data = imageData.split(",")[1];
-          const rawBuffer = Uint8Array.from(atob(base64Data), c => c.charCodeAt(0));
-          
-          // Skip heavy canvas logo overlay for carousel - save CPU time
+          const sliceBuffer = new Uint8Array(canvas.toBuffer("image/png"));
           const fileName = `${projectId}/ai-generated/carousel-${Date.now()}-${i + 1}.png`;
-          
+
           const { error: uploadError } = await supabase.storage
             .from("social-briefing")
-            .upload(fileName, rawBuffer, {
-              contentType: "image/png",
-              upsert: false
-            });
+            .upload(fileName, sliceBuffer, { contentType: "image/png", upsert: false });
 
           if (uploadError) {
             console.error(`Upload error for slide ${i + 1}:`, uploadError);
-            return null;
+            continue;
           }
 
           const { data: { publicUrl } } = supabase.storage
             .from("social-briefing")
             .getPublicUrl(fileName);
-          
-          console.log(`Carousel slide ${i + 1} generated successfully`);
-          return publicUrl;
-        } catch (err) {
-          console.error(`Error generating carousel slide ${i + 1}:`, err);
-          return null;
+
+          images.push(publicUrl);
+          console.log(`Slide ${i + 1}/${carouselCount} uploaded`);
         }
-      };
 
-      // Generate all slides in parallel
-      console.log(`Starting parallel generation of ${carouselCount} carousel slides...`);
-      const results = await Promise.all(
-        Array.from({ length: carouselCount }, (_, i) => generateSlide(i))
-      );
-      
-      const images = results.filter((url): url is string => url !== null);
-      console.log(`Carousel generation complete: ${images.length}/${carouselCount} slides`);
+        if (images.length === 0) {
+          return new Response(
+            JSON.stringify({ error: "Falha ao dividir a imagem panorâmica em slides." }),
+            { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
 
-      if (images.length === 0) {
+        // Also upload the full panoramic for reference
+        const panoramicFileName = `${projectId}/ai-generated/panoramic-${Date.now()}.png`;
+        await supabase.storage.from("social-briefing").upload(panoramicFileName, panoramicBuffer, { contentType: "image/png", upsert: false });
+        const { data: { publicUrl: panoramicUrl } } = supabase.storage.from("social-briefing").getPublicUrl(panoramicFileName);
+
+        // Log for audit
+        await supabase.from("social_audit_logs").insert({
+          project_id: projectId,
+          entity_type: "ai_image",
+          entity_id: projectId,
+          action: "generate_carousel",
+          changes: { prompt, format, carousel_count: carouselCount, panoramic_url: panoramicUrl, image_urls: images },
+        });
+
         return new Response(
-          JSON.stringify({ error: "Não foi possível gerar nenhuma imagem do carrossel. Tente novamente com um prompt mais simples." }),
-          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          JSON.stringify({ success: true, images, panoramic_url: panoramicUrl }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      } catch (err) {
+        console.error("Carousel generation error:", err);
+        if (err instanceof Error && err.name === "AbortError") {
+          return new Response(
+            JSON.stringify({ error: "Tempo limite ao gerar imagem panorâmica. Tente com menos slides ou prompt mais simples." }),
+            { status: 504, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        throw err;
       }
-
-      // Log for audit
-      await supabase.from("social_audit_logs").insert({
-        project_id: projectId,
-        entity_type: "ai_image",
-        entity_id: projectId,
-        action: "generate_carousel",
-        changes: { 
-          prompt: prompt,
-          format: format,
-          carousel_count: carouselCount,
-          connected: carouselConnected,
-          image_urls: images
-        },
-      });
-
-      return new Response(
-        JSON.stringify({ 
-          success: true, 
-          images: images
-        }),
-        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
     }
 
     // Call Lovable AI for image generation - using PRO model for higher quality
