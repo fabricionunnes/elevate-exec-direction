@@ -90,6 +90,63 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   // Card creation state
   const [creatingCard, setCreatingCard] = useState<string | null>(null);
 
+  // "Usar em Card" dialog state
+  const [useInCardDialogOpen, setUseInCardDialogOpen] = useState(false);
+  const [selectedImageForCard, setSelectedImageForCard] = useState<string | null>(null);
+  const [pipelineCards, setPipelineCards] = useState<{ id: string; theme: string; content_type: string; stage_name: string }[]>([]);
+  const [loadingCards, setLoadingCards] = useState(false);
+  const [applyingToCard, setApplyingToCard] = useState<string | null>(null);
+
+  const openUseInCardDialog = async (imageUrl: string) => {
+    setSelectedImageForCard(imageUrl);
+    setUseInCardDialogOpen(true);
+    setLoadingCards(true);
+    try {
+      // Fetch stages for this board
+      const { data: stages } = await supabase
+        .from("social_pipeline_stages")
+        .select("id, name")
+        .eq("board_id", boardId);
+      const stageMap = new Map((stages || []).map(s => [s.id, s.name]));
+
+      // Fetch cards
+      const { data: cards } = await supabase
+        .from("social_content_cards")
+        .select("id, theme, content_type, stage_id")
+        .eq("board_id", boardId)
+        .order("created_at", { ascending: false });
+
+      setPipelineCards((cards || []).map(c => ({
+        id: c.id,
+        theme: c.theme || "Sem tema",
+        content_type: c.content_type,
+        stage_name: stageMap.get(c.stage_id) || "—",
+      })));
+    } catch {
+      toast.error("Erro ao carregar cards");
+    } finally {
+      setLoadingCards(false);
+    }
+  };
+
+  const applyImageToCard = async (cardId: string) => {
+    if (!selectedImageForCard) return;
+    setApplyingToCard(cardId);
+    try {
+      const { error } = await supabase
+        .from("social_content_cards")
+        .update({ creative_url: selectedImageForCard, creative_type: "image" })
+        .eq("id", cardId);
+      if (error) throw error;
+      toast.success("Imagem aplicada ao card!");
+      setUseInCardDialogOpen(false);
+    } catch {
+      toast.error("Erro ao aplicar imagem");
+    } finally {
+      setApplyingToCard(null);
+    }
+  };
+
   const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
