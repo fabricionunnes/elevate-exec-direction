@@ -225,17 +225,17 @@ export const SocialApprovalPage = () => {
           </CardHeader>
         <CardContent className="space-y-4">
             {/* Creative Preview with Watermark - Protected against saving */}
-            {card.creative_url && (
+            {displayImage && (
               <div 
-                className="relative rounded-lg overflow-hidden bg-gray-100 dark:bg-gray-800 select-none"
+                className="relative rounded-lg overflow-hidden bg-muted select-none"
                 onContextMenu={(e) => e.preventDefault()}
                 onDragStart={(e) => e.preventDefault()}
               >
                 {/* Aspect ratio based on content type */}
-                <div className={card.content_type === "feed" ? "aspect-square" : "aspect-[9/16]"}>
+                <div className={card.content_type === "feed" || card.content_type === "carrossel" ? "aspect-square" : "aspect-[9/16]"}>
                   {card.creative_type === "video" ? (
                     <video
-                      src={card.creative_url}
+                      src={displayImage}
                       controls
                       playsInline
                       controlsList="nodownload"
@@ -245,7 +245,7 @@ export const SocialApprovalPage = () => {
                     />
                   ) : (
                     <img
-                      src={card.creative_url}
+                      src={displayImage}
                       alt="Preview"
                       className="w-full h-full object-contain pointer-events-none"
                       draggable={false}
@@ -268,6 +268,40 @@ export const SocialApprovalPage = () => {
                     RASCUNHO
                   </div>
                 </div>
+              </div>
+            )}
+
+            {/* Carousel slides grid */}
+            {hasCarousel && (
+              <div className="grid grid-cols-3 gap-2">
+                {carousel_images.map((imgUrl, index) => (
+                  <div
+                    key={index}
+                    className={`relative rounded-md overflow-hidden cursor-pointer border-2 transition-all select-none ${
+                      displayImage === imgUrl ? "border-primary ring-2 ring-primary/30" : "border-transparent hover:border-muted-foreground/30"
+                    }`}
+                    onClick={() => setSelectedImage(imgUrl)}
+                    onContextMenu={(e) => e.preventDefault()}
+                  >
+                    <div className="aspect-square">
+                      <img
+                        src={imgUrl}
+                        alt={`Slide ${index + 1}`}
+                        className="w-full h-full object-cover pointer-events-none"
+                        draggable={false}
+                      />
+                    </div>
+                    <div className="absolute bottom-1 right-1 bg-black/60 text-white text-[10px] px-1.5 py-0.5 rounded">
+                      {index + 1}/{carousel_images.length}
+                    </div>
+                    {/* Watermark on thumbnails */}
+                    <div className="absolute inset-0 flex items-center justify-center pointer-events-none">
+                      <div className="text-[10px] font-bold text-white/40 rotate-[-30deg] select-none">
+                        RASCUNHO
+                      </div>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
