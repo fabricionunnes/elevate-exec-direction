@@ -865,6 +865,16 @@ export function PayablesPanel() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={paginatedPayables.length > 0 && paginatedPayables.every(p => selectedIds.has(p.id))}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedIds);
+                      paginatedPayables.forEach(p => checked ? next.add(p.id) : next.delete(p.id));
+                      setSelectedIds(next);
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Fornecedor</TableHead>
                 <TableHead>Vencimento</TableHead>
@@ -876,13 +886,23 @@ export function PayablesPanel() {
             <TableBody>
               {filteredPayables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta a pagar encontrada
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedPayables.map((payable) => (
-                  <TableRow key={payable.id}>
+                  <TableRow key={payable.id} data-state={selectedIds.has(payable.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(payable.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          checked ? next.add(payable.id) : next.delete(payable.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div className="flex items-center gap-2">
                         {payable.is_recurring && (
