@@ -1706,6 +1706,16 @@ export default function AllRecurringChargesPage() {
                                 })()}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
+                              <TableCell className="text-right font-medium text-sm">
+                                {inv.status === "paid" ? (() => {
+                                  const base = inv.paid_amount_cents || inv.amount_cents;
+                                  const interest = (inv as any).interest_cents || 0;
+                                  const discount = (inv as any).discount_cents || 0;
+                                  const fee = (inv as any).payment_fee_cents || 0;
+                                  const net = base + interest - discount - fee;
+                                  return <span className="text-emerald-600">{formatCurrencyCents(net)}</span>;
+                                })() : "-"}
+                              </TableCell>
                               <TableCell>
                                 <div className="flex justify-end gap-1">
                                   {inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled" && (
