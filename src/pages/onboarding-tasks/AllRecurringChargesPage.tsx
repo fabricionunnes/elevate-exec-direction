@@ -1981,7 +1981,10 @@ export default function AllRecurringChargesPage() {
               {selectedPayableIds.size > 0 && (
                 <Card className="border-primary/20 bg-primary/5">
                   <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm font-medium">{selectedPayableIds.size} lançamento(s) selecionado(s)</span>
+                      <span className="text-sm">Total: <strong className="text-primary">{formatCurrency(payables.filter(p => selectedPayableIds.has(p.id)).reduce((sum, p) => sum + p.amount, 0))}</strong></span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedPayableIds(new Set())}>
                         Limpar seleção
