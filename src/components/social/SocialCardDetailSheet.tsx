@@ -524,9 +524,11 @@ export const SocialCardDetailSheet = ({
           prompt: aiPrompt.trim(),
           format: isCarousel ? "carousel" : "feed_post",
           includeLogoPref: aiIncludeLogo,
+          overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
             carouselConnected: true,
+            slideTexts: aiCarouselTexts.slice(0, aiCarouselCount),
           }),
         },
       });
