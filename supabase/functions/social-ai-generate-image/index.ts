@@ -728,6 +728,7 @@ FINAL INSTRUCTIONS:
 ============================================
 - STRONGLY PREFER creating images WITHOUT text - let the design speak for itself
 - If text is absolutely essential, keep it to 1-3 words maximum, CENTERED and LARGE
+- Do NOT render technical labels or UI text (e.g. "1080px", "px", "4:5", "1/3", counters, sizing tags)
 - Create a visually striking image that works as a background for text overlays added later
 - MAXIMUM resolution, PROFESSIONAL quality, STUDIO-GRADE output
 - Every pixel must be perfect
