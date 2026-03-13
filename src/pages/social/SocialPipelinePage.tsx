@@ -57,6 +57,7 @@ export const SocialPipelinePage = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<ContentCard | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
