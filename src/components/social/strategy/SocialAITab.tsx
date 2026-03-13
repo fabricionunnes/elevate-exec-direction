@@ -14,9 +14,15 @@ import { Switch } from "@/components/ui/switch";
 import { 
   Loader2, Sparkles, Wand2, Image as ImageIcon, Plus, 
   Download, Copy, CheckCircle, RefreshCw, FileText, Video,
-  LayoutGrid, Send, Lightbulb, Palette, Upload, X, Link2
+  LayoutGrid, Send, Lightbulb, Palette, Upload, X, Link2, ImagePlus
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface SocialAITabProps {
   projectId: string;
