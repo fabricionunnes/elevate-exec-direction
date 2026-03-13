@@ -1001,9 +1001,14 @@ export default function AllRecurringChargesPage() {
         rows.push([p.description, formatCurrency(p.amount), p.due_date ? format(new Date(p.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(p.status), p.reference_month, p.paid_at ? format(new Date(p.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
       });
     } else if (activeTab === "recurring") {
-      rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em"]];
+      rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em", "Recebido"]];
       filteredInvoices.forEach(inv => {
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : ""]);
+        const base = inv.paid_amount_cents || inv.amount_cents;
+        const interest = (inv as any).interest_cents || 0;
+        const discount = (inv as any).discount_cents || 0;
+        const fee = (inv as any).payment_fee_cents || 0;
+        const net = inv.status === "paid" ? (base + interest - discount - fee) : 0;
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", inv.status === "paid" ? formatCurrencyCents(net) : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -1115,7 +1120,13 @@ export default function AllRecurringChargesPage() {
     return {
       totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
-      totalPaid: paid.reduce((s, i) => s + (i.paid_amount_cents || i.amount_cents), 0),
+      totalPaid: paid.reduce((s, i) => {
+        const base = i.paid_amount_cents || i.amount_cents;
+        const interest = (i as any).interest_cents || 0;
+        const discount = (i as any).discount_cents || 0;
+        const fee = (i as any).payment_fee_cents || 0;
+        return s + base + interest - discount - fee;
+      }, 0),
       paidCount: paid.length,
       totalOverdue: effectivelyOverdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
       overdueCount: effectivelyOverdue.length,
@@ -1658,12 +1669,13 @@ export default function AllRecurringChargesPage() {
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("due_date")}><div className="flex items-center">Vencimento<SortIcon column="due_date" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("status")}><div className="flex items-center">Status<SortIcon column="status" activeCol={recSortCol} /></div></TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("paid_at")}><div className="flex items-center">Pago em<SortIcon column="paid_at" activeCol={recSortCol} /></div></TableHead>
+                          <TableHead className="text-right">Recebido</TableHead>
                           <TableHead className="text-right">Ações</TableHead>
                         </TableRow>
                       </TableHeader>
                       <TableBody>
                         {paginatedInvoices.length === 0 ? (
-                          <TableRow><TableCell colSpan={9} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
+                          <TableRow><TableCell colSpan={10} className="text-center py-8 text-muted-foreground">Nenhuma fatura encontrada</TableCell></TableRow>
                         ) : paginatedInvoices.map(inv => {
                           const isProcessing = processingInvoiceId === inv.id;
                           const displayAmount = inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents;
@@ -1705,6 +1717,16 @@ export default function AllRecurringChargesPage() {
                                 })()}
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
+                              <TableCell className="text-right font-medium text-sm">
+                                {inv.status === "paid" ? (() => {
+                                  const base = inv.paid_amount_cents || inv.amount_cents;
+                                  const interest = (inv as any).interest_cents || 0;
+                                  const discount = (inv as any).discount_cents || 0;
+                                  const fee = (inv as any).payment_fee_cents || 0;
+                                  const net = base + interest - discount - fee;
+                                  return <span className="text-emerald-600">{formatCurrencyCents(net)}</span>;
+                                })() : "-"}
+                              </TableCell>
                               <TableCell>
                                 <div className="flex justify-end gap-1">
                                   {inv.payment_link_url && inv.status !== "paid" && inv.status !== "cancelled" && (
