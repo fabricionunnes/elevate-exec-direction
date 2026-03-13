@@ -204,10 +204,17 @@ Deno.serve(async (req) => {
         .map((a: { file_url: string | null }) => a.file_url)
         .filter((url): url is string => Boolean(url));
 
+      const fallbackImageUrl = card.creative_url;
+
       if (slideUrls.length < 2) {
-        // Single image, post as regular image
-        console.log("Carousel has only 1 slide, posting as single image");
-        containerId = await createImageContainer(igUserId, slideUrls[0], accessToken, caption);
+        // Single image fallback (legacy cards without attachments)
+        console.log(`Carousel fallback: ${slideUrls.length} slide(s) found, posting as single image`);
+        containerId = await createImageContainer(
+          igUserId,
+          slideUrls[0] ?? fallbackImageUrl,
+          accessToken,
+          caption
+        );
         await waitForContainer(containerId, accessToken, false);
       } else {
         console.log(`Creating carousel with ${slideUrls.length} slides...`);
