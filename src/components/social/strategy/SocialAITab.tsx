@@ -14,9 +14,15 @@ import { Switch } from "@/components/ui/switch";
 import { 
   Loader2, Sparkles, Wand2, Image as ImageIcon, Plus, 
   Download, Copy, CheckCircle, RefreshCw, FileText, Video,
-  LayoutGrid, Send, Lightbulb, Palette, Upload, X, Link2
+  LayoutGrid, Send, Lightbulb, Palette, Upload, X, Link2, ImagePlus
 } from "lucide-react";
 import { toast } from "sonner";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 
 interface SocialAITabProps {
   projectId: string;
@@ -83,6 +89,63 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   
   // Card creation state
   const [creatingCard, setCreatingCard] = useState<string | null>(null);
+
+  // "Usar em Card" dialog state
+  const [useInCardDialogOpen, setUseInCardDialogOpen] = useState(false);
+  const [selectedImageForCard, setSelectedImageForCard] = useState<string | null>(null);
+  const [pipelineCards, setPipelineCards] = useState<{ id: string; theme: string; content_type: string; stage_name: string }[]>([]);
+  const [loadingCards, setLoadingCards] = useState(false);
+  const [applyingToCard, setApplyingToCard] = useState<string | null>(null);
+
+  const openUseInCardDialog = async (imageUrl: string) => {
+    setSelectedImageForCard(imageUrl);
+    setUseInCardDialogOpen(true);
+    setLoadingCards(true);
+    try {
+      // Fetch stages for this board
+      const { data: stages } = await supabase
+        .from("social_content_stages")
+        .select("id, name")
+        .eq("board_id", boardId);
+      const stageMap = new Map((stages || []).map(s => [s.id, s.name]));
+
+      // Fetch cards
+      const { data: cards } = await supabase
+        .from("social_content_cards")
+        .select("id, theme, content_type, stage_id")
+        .eq("board_id", boardId)
+        .order("created_at", { ascending: false });
+
+      setPipelineCards((cards || []).map(c => ({
+        id: c.id,
+        theme: c.theme || "Sem tema",
+        content_type: c.content_type,
+        stage_name: stageMap.get(c.stage_id) || "—",
+      })));
+    } catch {
+      toast.error("Erro ao carregar cards");
+    } finally {
+      setLoadingCards(false);
+    }
+  };
+
+  const applyImageToCard = async (cardId: string) => {
+    if (!selectedImageForCard) return;
+    setApplyingToCard(cardId);
+    try {
+      const { error } = await supabase
+        .from("social_content_cards")
+        .update({ creative_url: selectedImageForCard, creative_type: "image" })
+        .eq("id", cardId);
+      if (error) throw error;
+      toast.success("Imagem aplicada ao card!");
+      setUseInCardDialogOpen(false);
+    } catch {
+      toast.error("Erro ao aplicar imagem");
+    } finally {
+      setApplyingToCard(null);
+    }
+  };
 
   const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
@@ -699,6 +762,9 @@ CTA: ${suggestion.cta}`;
                                 </a>
                               </Button>
                             ))}
+                            <Button size="icon" variant="secondary" onClick={() => openUseInCardDialog(image.carouselImages![0])} title="Usar em Card">
+                              <ImagePlus className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ) : (
@@ -713,6 +779,9 @@ CTA: ${suggestion.cta}`;
                               <a href={image.url} target="_blank" rel="noopener noreferrer" download>
                                 <Download className="h-4 w-4" />
                               </a>
+                            </Button>
+                            <Button size="icon" variant="secondary" onClick={() => openUseInCardDialog(image.url)} title="Usar em Card">
+                              <ImagePlus className="h-4 w-4" />
                             </Button>
                           </div>
                         </div>
@@ -738,6 +807,45 @@ CTA: ${suggestion.cta}`;
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Dialog: Usar em Card */}
+      <Dialog open={useInCardDialogOpen} onOpenChange={setUseInCardDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Aplicar imagem em um Card</DialogTitle>
+          </DialogHeader>
+          {loadingCards ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : pipelineCards.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhum card encontrado no pipeline.</p>
+          ) : (
+            <ScrollArea className="max-h-[400px]">
+              <div className="space-y-2">
+                {pipelineCards.map(card => (
+                  <div key={card.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{card.theme}</p>
+                      <p className="text-xs text-muted-foreground">{card.stage_name} · {card.content_type}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={applyingToCard === card.id}
+                      onClick={() => applyImageToCard(card.id)}
+                      className="ml-2 shrink-0"
+                    >
+                      {applyingToCard === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5 mr-1" />}
+                      Usar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
