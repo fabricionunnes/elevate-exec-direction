@@ -60,8 +60,8 @@ Deno.serve(async (req) => {
 
     if (igError || !igAccount) {
       return new Response(
-        JSON.stringify({ error: "Conta Instagram não conectada para este projeto" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Conta Instagram não conectada para este projeto. Conecte na aba Base Estratégica > Integrações." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
