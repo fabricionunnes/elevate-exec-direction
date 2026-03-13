@@ -14,8 +14,74 @@ interface PublishRequest {
   projectId: string;
 }
 
+async function waitForContainer(
+  containerId: string,
+  accessToken: string,
+  isVideo: boolean
+): Promise<string> {
+  let status = "IN_PROGRESS";
+  let attempts = 0;
+  const pollIntervalMs = 2000;
+  const maxWaitMs = isVideo ? 150_000 : 60_000;
+  const maxAttempts = Math.ceil(maxWaitMs / pollIntervalMs);
+
+  while (status === "IN_PROGRESS" && attempts < maxAttempts) {
+    await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
+    attempts++;
+
+    const statusResponse = await fetch(
+      `${GRAPH_API_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`
+    );
+    const statusData = await statusResponse.json();
+    console.log(`Container status (attempt ${attempts}/${maxAttempts}):`, statusData);
+
+    if (statusData.error) {
+      throw new Error(statusData.error.message || "Failed to check container status");
+    }
+
+    status = statusData.status_code || "FINISHED";
+  }
+
+  if (status === "ERROR") throw new Error("Media container processing failed");
+  if (status === "IN_PROGRESS") throw new Error(`Media processing timed out after ${Math.round(maxWaitMs / 1000)}s`);
+
+  return status;
+}
+
+async function createImageContainer(
+  igUserId: string,
+  imageUrl: string,
+  accessToken: string,
+  caption?: string,
+  isCarouselItem: boolean = false
+): Promise<string> {
+  const body: Record<string, unknown> = {
+    image_url: imageUrl,
+    access_token: accessToken,
+  };
+  if (isCarouselItem) {
+    body.is_carousel_item = true;
+  } else if (caption) {
+    body.caption = caption;
+  }
+
+  const response = await fetch(`${GRAPH_API_BASE}/${igUserId}/media`, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify(body),
+  });
+
+  const data = await response.json();
+  console.log("Image container response:", data);
+
+  if (data.error) {
+    throw new Error(data.error.message || "Failed to create image container");
+  }
+
+  return data.id;
+}
+
 Deno.serve(async (req) => {
-  // Handle CORS preflight
   if (req.method === "OPTIONS") {
     return new Response("ok", { headers: corsHeaders });
   }
@@ -26,7 +92,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? ""
     );
 
-    // Check for authentication - allow service-to-service calls with service role key
+    // Auth check
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(
@@ -37,11 +103,9 @@ Deno.serve(async (req) => {
 
     const token = authHeader.replace("Bearer ", "");
     const serviceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
-    
-    // If it's not the service role key, validate as user token
+
     if (token !== serviceRoleKey) {
       const { data: { user }, error: authError } = await supabaseClient.auth.getUser(token);
-
       if (authError || !user) {
         return new Response(
           JSON.stringify({ error: "Unauthorized" }),
@@ -79,7 +143,6 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 2. Validate card has media
     if (!card.creative_url) {
       return new Response(
         JSON.stringify({ error: "Card has no media to publish" }),
@@ -87,7 +150,7 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 3. Fetch Instagram account for the project
+    // 2. Fetch Instagram account
     const { data: igAccount, error: igError } = await supabaseClient
       .from("social_instagram_accounts")
       .select("*")
@@ -113,33 +176,78 @@ Deno.serve(async (req) => {
       );
     }
 
-    // 4. Build caption
+    // 3. Build caption
     let caption = card.final_caption || card.copy_text || "";
     if (card.hashtags) {
       caption = caption + "\n\n" + card.hashtags;
     }
 
-    // 5. Determine media type and create container
+    // 4. Check if carousel
+    const isCarousel = card.content_type === "carrossel";
     const isVideo = card.creative_type === "video";
     let containerId: string;
 
-    console.log(`Creating ${isVideo ? "video" : "image"} container...`);
+    if (isCarousel) {
+      // Fetch carousel slides from attachments
+      const { data: attachments, error: attachError } = await supabaseClient
+        .from("social_card_attachments")
+        .select("file_url, sort_order")
+        .eq("card_id", cardId)
+        .order("sort_order", { ascending: true });
 
-    if (isVideo) {
-      // Video/Reels container
-      const containerResponse = await fetch(
-        `${GRAPH_API_BASE}/${igUserId}/media`,
-        {
+      const slideUrls = attachments && attachments.length > 0
+        ? attachments.map((a: any) => a.file_url)
+        : [card.creative_url];
+
+      if (slideUrls.length < 2) {
+        // Single image, post as regular image
+        console.log("Carousel has only 1 slide, posting as single image");
+        containerId = await createImageContainer(igUserId, slideUrls[0], accessToken, caption);
+        await waitForContainer(containerId, accessToken, false);
+      } else {
+        console.log(`Creating carousel with ${slideUrls.length} slides...`);
+
+        // Create individual containers for each slide (is_carousel_item = true)
+        const childIds: string[] = [];
+        for (const url of slideUrls) {
+          const childId = await createImageContainer(igUserId, url, accessToken, undefined, true);
+          await waitForContainer(childId, accessToken, false);
+          childIds.push(childId);
+        }
+
+        // Create the carousel container
+        const carouselResponse = await fetch(`${GRAPH_API_BASE}/${igUserId}/media`, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
-            media_type: "REELS",
-            video_url: card.creative_url,
+            media_type: "CAROUSEL",
+            children: childIds.join(","),
             caption: caption,
             access_token: accessToken,
           }),
+        });
+
+        const carouselData = await carouselResponse.json();
+        console.log("Carousel container response:", carouselData);
+
+        if (carouselData.error) {
+          throw new Error(carouselData.error.message || "Failed to create carousel container");
         }
-      );
+
+        containerId = carouselData.id;
+      }
+    } else if (isVideo) {
+      console.log("Creating video container...");
+      const containerResponse = await fetch(`${GRAPH_API_BASE}/${igUserId}/media`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          media_type: "REELS",
+          video_url: card.creative_url,
+          caption: caption,
+          access_token: accessToken,
+        }),
+      });
 
       const containerData = await containerResponse.json();
       console.log("Video container response:", containerData);
@@ -149,77 +257,23 @@ Deno.serve(async (req) => {
       }
 
       containerId = containerData.id;
+      await waitForContainer(containerId, accessToken, true);
     } else {
-      // Image container
-      const containerResponse = await fetch(
-        `${GRAPH_API_BASE}/${igUserId}/media`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            image_url: card.creative_url,
-            caption: caption,
-            access_token: accessToken,
-          }),
-        }
-      );
-
-      const containerData = await containerResponse.json();
-      console.log("Image container response:", containerData);
-
-      if (containerData.error) {
-        throw new Error(containerData.error.message || "Failed to create image container");
-      }
-
-      containerId = containerData.id;
+      console.log("Creating image container...");
+      containerId = await createImageContainer(igUserId, card.creative_url, accessToken, caption);
+      await waitForContainer(containerId, accessToken, false);
     }
 
-    // 6. Wait for container to be ready (poll status)
-    // Videos/Reels can take longer to process, so we allow a longer window.
-    let status = "IN_PROGRESS";
-    let attempts = 0;
-    const pollIntervalMs = 2000;
-    const maxWaitMs = isVideo ? 150_000 : 60_000; // 150s for video, 60s for images
-    const maxAttempts = Math.ceil(maxWaitMs / pollIntervalMs);
-
-    while (status === "IN_PROGRESS" && attempts < maxAttempts) {
-      await new Promise((resolve) => setTimeout(resolve, pollIntervalMs));
-      attempts++;
-
-      const statusResponse = await fetch(
-        `${GRAPH_API_BASE}/${containerId}?fields=status_code&access_token=${accessToken}`
-      );
-      const statusData = await statusResponse.json();
-      console.log(`Container status (attempt ${attempts}/${maxAttempts}):`, statusData);
-
-      if (statusData.error) {
-        throw new Error(statusData.error.message || "Failed to check container status");
-      }
-
-      status = statusData.status_code || "FINISHED";
-    }
-
-    if (status === "ERROR") {
-      throw new Error("Media container processing failed");
-    }
-
-    if (status === "IN_PROGRESS") {
-      throw new Error(`Media processing timed out after ${Math.round(maxWaitMs / 1000)}s`);
-    }
-
-    // 7. Publish the container
+    // 5. Publish the container
     console.log("Publishing container...");
-    const publishResponse = await fetch(
-      `${GRAPH_API_BASE}/${igUserId}/media_publish`,
-      {
-        method: "POST",
-        headers: { "Content-Type": "application/json" },
-        body: JSON.stringify({
-          creation_id: containerId,
-          access_token: accessToken,
-        }),
-      }
-    );
+    const publishResponse = await fetch(`${GRAPH_API_BASE}/${igUserId}/media_publish`, {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({
+        creation_id: containerId,
+        access_token: accessToken,
+      }),
+    });
 
     const publishData = await publishResponse.json();
     console.log("Publish response:", publishData);
@@ -230,7 +284,7 @@ Deno.serve(async (req) => {
 
     const mediaId = publishData.id;
 
-    // 8. Get the permalink
+    // 6. Get the permalink
     const permalinkResponse = await fetch(
       `${GRAPH_API_BASE}/${mediaId}?fields=permalink&access_token=${accessToken}`
     );
@@ -239,7 +293,7 @@ Deno.serve(async (req) => {
 
     console.log("Post URL:", postUrl);
 
-    // 9. Log the publication
+    // 7. Log the publication
     await supabaseClient.from("social_publish_logs").insert({
       project_id: projectId,
       card_id: cardId,
@@ -250,7 +304,7 @@ Deno.serve(async (req) => {
       published_at: new Date().toISOString(),
     });
 
-    // 10. Update the card with post info and move to "published" stage
+    // 8. Update the card
     const { data: publishedStage } = await supabaseClient
       .from("social_content_stages")
       .select("id")
@@ -273,7 +327,7 @@ Deno.serve(async (req) => {
       .update(updateData)
       .eq("id", cardId);
 
-    // 11. Log history
+    // 9. Log history
     await supabaseClient.from("social_content_history").insert({
       card_id: cardId,
       action: "published",
@@ -281,11 +335,7 @@ Deno.serve(async (req) => {
     });
 
     return new Response(
-      JSON.stringify({
-        success: true,
-        postId: mediaId,
-        postUrl: postUrl,
-      }),
+      JSON.stringify({ success: true, postId: mediaId, postUrl: postUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
