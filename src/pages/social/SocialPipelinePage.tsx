@@ -295,6 +295,15 @@ export const SocialPipelinePage = () => {
               <CalendarDays className="h-4 w-4" />
               Calendário
             </Button>
+            <Button
+              variant={viewMode === "performance" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("performance")}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Performance
+            </Button>
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={loadData}>
@@ -313,11 +322,17 @@ export const SocialPipelinePage = () => {
             onCardClick={handleCardClick}
             onStageUpdate={loadData}
           />
-        ) : (
+        ) : viewMode === "calendar" ? (
           <SocialCalendarView
             cards={cards}
             stages={stages}
             onCardClick={handleCardClick}
+          />
+        ) : (
+          <SocialPerformanceView
+            cards={cards}
+            stages={stages}
+            boardId={boardId}
           />
         )}
       </div>
