@@ -247,6 +247,7 @@ Deno.serve(async (req) => {
         }
 
         containerId = carouselData.id;
+        await waitForContainer(containerId, accessToken, false);
       }
     } else if (isVideo) {
       console.log("Creating video container...");
