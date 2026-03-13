@@ -1796,6 +1796,23 @@ export default function AllRecurringChargesPage() {
                                       <Trash2 className="h-3.5 w-3.5" />
                                     </Button>
                                   )}
+                                  <Button variant="ghost" size="icon" className="h-7 w-7" title="Duplicar"
+                                    onClick={() => {
+                                      setReceivableForm({
+                                        company_id: inv.company_id || "",
+                                        custom_receiver_name: inv.custom_receiver_name || "",
+                                        description: inv.description,
+                                        amount: inv.amount_cents / 100,
+                                        due_date: inv.due_date || "",
+                                        notes: (inv as any).notes || "",
+                                        category_id: (inv as any).category_id || "",
+                                        cost_center_id: (inv as any).cost_center_id || "",
+                                      });
+                                      setShowCustomReceiverRecv(!!inv.custom_receiver_name);
+                                      setReceivableDialog(true);
+                                    }}>
+                                    <Copy className="h-3.5 w-3.5" />
+                                  </Button>
                                 </div>
                               </TableCell>
                             </TableRow>
