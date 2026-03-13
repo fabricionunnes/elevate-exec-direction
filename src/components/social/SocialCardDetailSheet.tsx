@@ -936,6 +936,40 @@ export const SocialCardDetailSheet = ({
                     </p>
                   </div>
                 )}
+
+                {/* Carousel slides gallery - shown right below the main image */}
+                {carouselImages.length > 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                      <LayoutGrid className="h-3.5 w-3.5" />
+                      Slides do carrossel ({carouselImages.length})
+                    </Label>
+                    <div className="grid grid-cols-3 gap-2">
+                      {carouselImages.map((url, idx) => (
+                        <div
+                          key={idx}
+                          className={cn(
+                            "relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:opacity-90",
+                            creativeUrl === url ? "border-primary ring-2 ring-primary/30" : "border-border"
+                          )}
+                          onClick={() => {
+                            setCreativeUrl(url);
+                            toast.info(`Visualizando slide ${idx + 1}`);
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={`Slide ${idx + 1}`}
+                            className="w-full h-auto"
+                          />
+                          <span className="absolute top-1 left-1 bg-background/80 text-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
+                            {idx + 1}/{carouselImages.length}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
                 <input
                   ref={fileInputRef}
                   type="file"
