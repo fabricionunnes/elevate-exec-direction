@@ -208,7 +208,7 @@ export const SocialCardDetailSheet = ({
     setHashtags(card.hashtags || "");
     setCta(card.cta || "");
     setSuggestedDate(card.suggested_date || "");
-    setSuggestedTime(card.suggested_time || "");
+    setSuggestedTime(card.suggested_time ? card.suggested_time.slice(0, 5) : "");
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
@@ -326,13 +326,20 @@ export const SocialCardDetailSheet = ({
     }
   };
 
-  // Combine suggested_date + suggested_time into scheduled_at with São Paulo timezone (UTC-3)
+  // Combine suggested_date + suggested_time into scheduled_at (UTC ISO)
   const calculateScheduledAt = (date: string, time: string): string | null => {
     if (!date) return null;
-    // Default time to 09:00 if not provided
-    const timeStr = time || "09:00";
-    // Create ISO string with São Paulo timezone offset (-03:00)
-    return `${date}T${timeStr}:00-03:00`;
+
+    const normalizedTime = (time || "09:00").slice(0, 5); // handles values like "20:00:00"
+    const [year, month, day] = date.split("-").map(Number);
+    const [hours, minutes] = normalizedTime.split(":").map(Number);
+
+    if ([year, month, day, hours, minutes].some((v) => Number.isNaN(v))) {
+      return null;
+    }
+
+    const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    return localDate.toISOString();
   };
 
   const handleSave = async () => {
@@ -358,23 +365,16 @@ export const SocialCardDetailSheet = ({
         card_color: cardColor,
       };
 
-      console.log("Save payload:", JSON.stringify(updatePayload, null, 2));
-      console.log("Card ID:", card.id);
-
-      const { error, data } = await supabase
+      const { error } = await supabase
         .from("social_content_cards")
         .update(updatePayload)
-        .eq("id", card.id)
-        .select();
-
-      console.log("Save result - error:", error, "data:", data);
+        .eq("id", card.id);
 
       if (error) throw error;
       toast.success("Conteúdo atualizado!");
       onUpdate();
     } catch (error: any) {
       console.error("Error saving card:", error);
-      console.error("Error details:", error?.message, error?.details, error?.hint, error?.code);
       toast.error("Erro ao salvar: " + (error?.message || "erro desconhecido"));
     } finally {
       setSaving(false);
