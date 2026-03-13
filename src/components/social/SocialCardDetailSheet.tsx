@@ -198,6 +198,34 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const loadCarouselImages = async (cardId: string, baseCreativeUrl: string | null, cardContentType: string) => {
+    if (cardContentType !== "carrossel") {
+      setCarouselImages([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("social_card_attachments")
+        .select("file_url,file_name")
+        .eq("card_id", cardId)
+        .like("file_name", "ai-carousel-slide-%")
+        .order("file_name", { ascending: true });
+
+      if (error) throw error;
+
+      const urls = (data || []).map((item) => item.file_url).filter(Boolean);
+      if (urls.length > 0) {
+        setCarouselImages(urls);
+      } else {
+        setCarouselImages(baseCreativeUrl ? [baseCreativeUrl] : []);
+      }
+    } catch (error) {
+      console.error("Error loading carousel slides:", error);
+      setCarouselImages(baseCreativeUrl ? [baseCreativeUrl] : []);
+    }
+  };
+
   const loadCardData = () => {
     if (!card) return;
     setTheme(card.theme || "");
@@ -216,6 +244,7 @@ export const SocialCardDetailSheet = ({
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
+    loadCarouselImages(card.id, card.creative_url, card.content_type || "");
   };
 
   const loadHistory = async () => {
