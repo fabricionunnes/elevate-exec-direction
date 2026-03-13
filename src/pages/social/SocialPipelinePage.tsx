@@ -275,22 +275,50 @@ export const SocialPipelinePage = () => {
             <Plus className="h-4 w-4" />
             Novo Conteúdo
           </Button>
+          <div className="flex items-center border rounded-lg overflow-hidden ml-2">
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </Button>
+            <Button
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendário
+            </Button>
+          </div>
         </div>
         <Button variant="ghost" size="icon" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Kanban Board */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <SocialKanbanBoard
-          stages={stages}
-          cards={cards}
-          boardId={boardId}
-          onCardMove={handleCardMove}
-          onCardClick={handleCardClick}
-          onStageUpdate={loadData}
-        />
+        {viewMode === "kanban" ? (
+          <SocialKanbanBoard
+            stages={stages}
+            cards={cards}
+            boardId={boardId}
+            onCardMove={handleCardMove}
+            onCardClick={handleCardClick}
+            onStageUpdate={loadData}
+          />
+        ) : (
+          <SocialCalendarView
+            cards={cards}
+            stages={stages}
+            onCardClick={handleCardClick}
+          />
+        )}
       </div>
 
       {/* Create Card Dialog */}
