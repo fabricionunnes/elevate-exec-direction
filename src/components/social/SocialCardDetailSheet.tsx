@@ -450,6 +450,14 @@ export const SocialCardDetailSheet = ({
 
       if (updateError) throw updateError;
 
+      // Manual upload replaces any previous AI carousel set
+      setCarouselImages([]);
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
+
       toast.success("Arquivo enviado!");
       // Don't call onUpdate() here - it would reload and close/refresh the sheet
     } catch (error) {
