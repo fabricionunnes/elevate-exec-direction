@@ -762,6 +762,9 @@ CTA: ${suggestion.cta}`;
                                 </a>
                               </Button>
                             ))}
+                            <Button size="icon" variant="secondary" onClick={() => openUseInCardDialog(image.carouselImages![0])} title="Usar em Card">
+                              <ImagePlus className="h-4 w-4" />
+                            </Button>
                           </div>
                         </div>
                       ) : (
