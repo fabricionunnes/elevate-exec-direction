@@ -43,7 +43,8 @@ import {
   Loader2,
   RefreshCw,
   ExternalLink,
-  CalendarDays
+  CalendarDays,
+  Copy
 } from "lucide-react";
 import {
   DropdownMenu,
