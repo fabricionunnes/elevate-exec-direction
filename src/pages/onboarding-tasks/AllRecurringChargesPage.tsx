@@ -1541,7 +1541,10 @@ export default function AllRecurringChargesPage() {
               {selectedInvoiceIds.size > 0 && (
                 <Card className="border-emerald-200 bg-emerald-50/50">
                   <CardContent className="py-3 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
-                    <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
+                    <div className="flex flex-wrap items-center gap-3">
+                      <span className="text-sm font-medium">{selectedInvoiceIds.size} fatura(s) selecionada(s)</span>
+                      <span className="text-sm">Total: <strong className="text-primary">{formatCurrencyCents(filteredInvoices.filter(inv => selectedInvoiceIds.has(inv.id)).reduce((sum, inv) => sum + (inv.status === "overdue" ? inv.total_with_fees_cents : inv.amount_cents), 0))}</strong></span>
+                    </div>
                     <div className="flex flex-wrap gap-2">
                       <Button variant="outline" size="sm" onClick={() => setSelectedInvoiceIds(new Set())}>
                         Limpar seleção
