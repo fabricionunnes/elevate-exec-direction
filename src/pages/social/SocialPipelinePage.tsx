@@ -2,9 +2,10 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, RefreshCw } from "lucide-react";
+import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays } from "lucide-react";
 import { toast } from "sonner";
 import { SocialKanbanBoard } from "@/components/social/SocialKanbanBoard";
+import { SocialCalendarView } from "@/components/social/SocialCalendarView";
 import { SocialCardDialog } from "@/components/social/SocialCardDialog";
 import { SocialCardDetailSheet } from "@/components/social/SocialCardDetailSheet";
 
@@ -56,6 +57,7 @@ export const SocialPipelinePage = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<ContentCard | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -273,22 +275,50 @@ export const SocialPipelinePage = () => {
             <Plus className="h-4 w-4" />
             Novo Conteúdo
           </Button>
+          <div className="flex items-center border rounded-lg overflow-hidden ml-2">
+            <Button
+              variant={viewMode === "kanban" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("kanban")}
+            >
+              <LayoutGrid className="h-4 w-4" />
+              Kanban
+            </Button>
+            <Button
+              variant={viewMode === "calendar" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("calendar")}
+            >
+              <CalendarDays className="h-4 w-4" />
+              Calendário
+            </Button>
+          </div>
         </div>
         <Button variant="ghost" size="icon" onClick={loadData}>
           <RefreshCw className="h-4 w-4" />
         </Button>
       </div>
 
-      {/* Kanban Board */}
+      {/* Content */}
       <div className="flex-1 overflow-hidden">
-        <SocialKanbanBoard
-          stages={stages}
-          cards={cards}
-          boardId={boardId}
-          onCardMove={handleCardMove}
-          onCardClick={handleCardClick}
-          onStageUpdate={loadData}
-        />
+        {viewMode === "kanban" ? (
+          <SocialKanbanBoard
+            stages={stages}
+            cards={cards}
+            boardId={boardId}
+            onCardMove={handleCardMove}
+            onCardClick={handleCardClick}
+            onStageUpdate={loadData}
+          />
+        ) : (
+          <SocialCalendarView
+            cards={cards}
+            stages={stages}
+            onCardClick={handleCardClick}
+          />
+        )}
       </div>
 
       {/* Create Card Dialog */}
