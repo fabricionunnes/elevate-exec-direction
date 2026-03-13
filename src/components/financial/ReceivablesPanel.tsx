@@ -57,6 +57,7 @@ import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
+import { Checkbox } from "@/components/ui/checkbox";
 
 interface Receivable {
   id: string;
