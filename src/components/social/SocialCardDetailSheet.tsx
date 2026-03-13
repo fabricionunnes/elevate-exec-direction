@@ -468,10 +468,9 @@ export const SocialCardDetailSheet = ({
     setGeneratingAiImage(true);
     const isCarousel = aiGenerateMode === "carousel";
     if (isCarousel) {
-      toast.loading(`Gerando ${aiCarouselCount} slides do carrossel... isso pode levar até 1 minuto`, { id: "ai-carousel" });
+      toast.loading(`Gerando imagem panorâmica e dividindo em ${aiCarouselCount} slides...`, { id: "ai-carousel" });
     }
     try {
-      const isCarousel = aiGenerateMode === "carousel";
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
         body: {
           projectId,
@@ -480,7 +479,7 @@ export const SocialCardDetailSheet = ({
           includeLogoPref: aiIncludeLogo,
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
-            carouselConnected: aiCarouselConnected,
+            carouselConnected: true,
           }),
         },
       });
