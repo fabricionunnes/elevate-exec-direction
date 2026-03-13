@@ -1120,7 +1120,13 @@ export default function AllRecurringChargesPage() {
     return {
       totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
-      totalPaid: paid.reduce((s, i) => s + (i.paid_amount_cents || i.amount_cents), 0),
+      totalPaid: paid.reduce((s, i) => {
+        const base = i.paid_amount_cents || i.amount_cents;
+        const interest = (i as any).interest_cents || 0;
+        const discount = (i as any).discount_cents || 0;
+        const fee = (i as any).payment_fee_cents || 0;
+        return s + base + interest - discount - fee;
+      }, 0),
       paidCount: paid.length,
       totalOverdue: effectivelyOverdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
       overdueCount: effectivelyOverdue.length,
