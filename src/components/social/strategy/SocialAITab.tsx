@@ -667,6 +667,10 @@ CTA: ${suggestion.cta}`;
                               <SelectItem value="4">4 imagens</SelectItem>
                               <SelectItem value="5">5 imagens</SelectItem>
                               <SelectItem value="6">6 imagens</SelectItem>
+                              <SelectItem value="7">7 imagens</SelectItem>
+                              <SelectItem value="8">8 imagens</SelectItem>
+                              <SelectItem value="9">9 imagens</SelectItem>
+                              <SelectItem value="10">10 imagens</SelectItem>
                             </SelectContent>
                           </Select>
                         </div>
