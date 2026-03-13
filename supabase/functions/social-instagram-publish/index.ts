@@ -260,6 +260,7 @@ Deno.serve(async (req) => {
 
     const updateData: Record<string, unknown> = {
       instagram_post_url: postUrl,
+      instagram_post_id: mediaId,
       published_at: new Date().toISOString(),
     };
 
