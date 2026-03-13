@@ -144,6 +144,7 @@ export const SocialCardDetailSheet = ({
   const [aiPrompt, setAiPrompt] = useState("");
   const [generatingAiImage, setGeneratingAiImage] = useState(false);
   const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
+  const [generatingPromptSuggestion, setGeneratingPromptSuggestion] = useState(false);
 
   useEffect(() => {
     if (card && open) {
