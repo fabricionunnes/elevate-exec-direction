@@ -479,6 +479,13 @@ export const SocialCardDetailSheet = ({
 
       if (error) throw error;
 
+      // Remove persisted AI carousel slides for this card
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
+
       // Update local state
       setCreativeUrl("");
       setCreativeType(null);
