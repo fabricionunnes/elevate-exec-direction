@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, DragEvent } from "react";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
