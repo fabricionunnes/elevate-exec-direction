@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink, Wand2
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink, Wand2, X
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -955,7 +955,7 @@ export const SocialCardDetailSheet = ({
                         <div
                           key={idx}
                           className={cn(
-                            "relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all hover:opacity-90",
+                            "relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all group hover:opacity-90",
                             creativeUrl === url ? "border-primary ring-2 ring-primary/30" : "border-border"
                           )}
                           onClick={() => {
@@ -971,6 +971,49 @@ export const SocialCardDetailSheet = ({
                           <span className="absolute top-1 left-1 bg-background/80 text-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
                             {idx + 1}/{carouselImages.length}
                           </span>
+                          {!card.is_locked && (
+                            <button
+                              className="absolute top-1 right-1 bg-destructive/90 text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
+                              title="Excluir slide"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const slideIndex = idx + 1;
+                                const fileName = `ai-carousel-slide-${slideIndex}.png`;
+                                
+                                // Delete from attachments
+                                await supabase
+                                  .from("social_card_attachments")
+                                  .delete()
+                                  .eq("card_id", card.id)
+                                  .eq("file_url", url);
+
+                                // Update local state
+                                const newImages = carouselImages.filter((_, i) => i !== idx);
+                                setCarouselImages(newImages);
+
+                                // If deleted the currently displayed image, switch to first remaining
+                                if (creativeUrl === url && newImages.length > 0) {
+                                  setCreativeUrl(newImages[0]);
+                                  // Update the card's creative_url to the new first slide
+                                  await supabase
+                                    .from("social_content_cards")
+                                    .update({ creative_url: newImages[0] })
+                                    .eq("id", card.id);
+                                } else if (newImages.length === 0) {
+                                  setCreativeUrl("");
+                                  setCreativeType(null);
+                                  await supabase
+                                    .from("social_content_cards")
+                                    .update({ creative_url: null, creative_type: null })
+                                    .eq("id", card.id);
+                                }
+
+                                toast.success(`Slide ${slideIndex} excluído`);
+                              }}
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          )}
                         </div>
                       ))}
                     </div>
