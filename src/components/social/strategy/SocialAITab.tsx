@@ -827,7 +827,10 @@ CTA: ${suggestion.cta}`;
                   <div key={card.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
                     <div className="min-w-0 flex-1">
                       <p className="text-sm font-medium truncate">{card.theme}</p>
-                      <p className="text-xs text-muted-foreground">{card.stage_name} · {card.content_type}</p>
+                      <div className="flex items-center gap-1.5 mt-0.5">
+                        <Badge variant="outline" className="text-[10px] px-1.5 py-0">{card.stage_name}</Badge>
+                        <span className="text-[10px] text-muted-foreground">{card.content_type}</span>
+                      </div>
                     </div>
                     <Button
                       size="sm"
