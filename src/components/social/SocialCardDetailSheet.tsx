@@ -1,4 +1,5 @@
 import { useState, useEffect, useRef, DragEvent } from "react";
+import { Switch } from "@/components/ui/switch";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -528,7 +529,7 @@ export const SocialCardDetailSheet = ({
           overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
-            carouselConnected: true,
+            carouselConnected: aiCarouselConnected,
             slideTexts: aiCarouselTexts.slice(0, aiCarouselCount),
           }),
         },
@@ -1026,7 +1027,7 @@ export const SocialCardDetailSheet = ({
 
                 {/* Carousel options */}
                 {aiGenerateMode === "carousel" && (
-                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                  <div className="space-y-3 p-3 border border-border rounded-lg bg-muted/30">
                     <div className="flex items-center gap-3">
                       <Label className="text-xs whitespace-nowrap">Slides:</Label>
                       <Select
@@ -1052,9 +1053,22 @@ export const SocialCardDetailSheet = ({
                         </SelectContent>
                       </Select>
                     </div>
-                    <p className="text-[10px] text-muted-foreground">
-                      Uma imagem panorâmica será gerada e dividida em {aiCarouselCount} slides iguais com continuidade visual.
-                    </p>
+
+                    <div className="flex items-center justify-between">
+                      <div className="space-y-0.5">
+                        <Label className="text-xs">Imagem panorâmica</Label>
+                        <p className="text-[10px] text-muted-foreground">
+                          {aiCarouselConnected 
+                            ? "Uma imagem contínua dividida em slides (efeito deslizar)" 
+                            : "Imagens individuais geradas separadamente para cada slide"}
+                        </p>
+                      </div>
+                      <Switch
+                        checked={aiCarouselConnected}
+                        onCheckedChange={setAiCarouselConnected}
+                        disabled={card.is_locked || generatingAiImage}
+                      />
+                    </div>
                   </div>
                 )}
 
