@@ -2110,6 +2110,25 @@ export default function AllRecurringChargesPage() {
                                     <Trash2 className="h-4 w-4 text-destructive" />
                                   </Button>
                                 )}
+                                <Button variant="ghost" size="icon" className="h-8 w-8" title="Duplicar"
+                                  onClick={() => {
+                                    setPayableForm(prev => ({
+                                      ...prev,
+                                      supplier_name: p.supplier_name || "",
+                                      description: p.description,
+                                      amount: p.amount,
+                                      due_date: p.due_date || "",
+                                      reference_month: p.reference_month || "",
+                                      category_id: (p as any).category_id || "",
+                                      cost_center_id: (p as any).cost_center_id || "",
+                                      notes: (p as any).notes || "",
+                                      is_recurring: false,
+                                      recurring_count: "12",
+                                    }));
+                                    setPayableDialog(true);
+                                  }}>
+                                  <Copy className="h-4 w-4" />
+                                </Button>
                               </div>
                             </TableCell>
                           </TableRow>
