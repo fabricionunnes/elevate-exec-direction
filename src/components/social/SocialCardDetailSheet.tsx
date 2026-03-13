@@ -453,6 +453,7 @@ export const SocialCardDetailSheet = ({
       // Update local state
       setCreativeUrl("");
       setCreativeType(null);
+      setCarouselImages([]);
 
       toast.success("Mídia removida!");
     } catch (error) {
