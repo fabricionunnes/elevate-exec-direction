@@ -1808,7 +1808,7 @@ export default function AllRecurringChargesPage() {
                                         category_id: (inv as any).category_id || "",
                                         cost_center_id: (inv as any).cost_center_id || "",
                                       });
-                                      setShowCustomReceiverRecv(!!inv.custom_receiver_name);
+                                      setShowCustomReceiverRecv(!!(inv as any).custom_receiver_name);
                                       setReceivableDialog(true);
                                     }}>
                                     <Copy className="h-3.5 w-3.5" />
