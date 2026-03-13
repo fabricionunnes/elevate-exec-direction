@@ -544,6 +544,30 @@ export const SocialCardDetailSheet = ({
           .eq("id", card.id);
         if (updateError) throw updateError;
 
+        // Persist slides so they can be viewed after reopening the card
+        await supabase
+          .from("social_card_attachments")
+          .delete()
+          .eq("card_id", card.id)
+          .like("file_name", "ai-carousel-slide-%");
+
+        const slidesToInsert = data.images.map((url: string, index: number) => ({
+          card_id: card.id,
+          file_name: `ai-carousel-slide-${index + 1}.png`,
+          file_url: url,
+          file_type: "image/png",
+          file_size: null,
+          uploaded_by: null,
+        }));
+
+        const { error: insertSlidesError } = await supabase
+          .from("social_card_attachments")
+          .insert(slidesToInsert);
+
+        if (insertSlidesError) {
+          console.error("Error saving carousel slides:", insertSlidesError);
+        }
+
         setCreativeUrl(firstImage);
         setCreativeType("image");
         setContentType("carrossel");
