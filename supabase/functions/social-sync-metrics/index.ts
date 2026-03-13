@@ -67,8 +67,8 @@ Deno.serve(async (req) => {
 
     if (!igAccount.access_token) {
       return new Response(
-        JSON.stringify({ error: "Token de acesso inválido. Reconecte o Instagram." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Token de acesso inválido. Reconecte o Instagram nas Integrações." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
