@@ -466,6 +466,10 @@ export const SocialCardDetailSheet = ({
   const handleGenerateAiImage = async () => {
     if (!card || !aiPrompt.trim()) return;
     setGeneratingAiImage(true);
+    const isCarousel = aiGenerateMode === "carousel";
+    if (isCarousel) {
+      toast.loading(`Gerando ${aiCarouselCount} slides do carrossel... isso pode levar até 1 minuto`, { id: "ai-carousel" });
+    }
     try {
       const isCarousel = aiGenerateMode === "carousel";
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
