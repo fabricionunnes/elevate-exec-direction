@@ -832,10 +832,11 @@ export const SocialCardDetailSheet = ({
                         className="w-full h-auto"
                       />
                     )}
-                    <div className="absolute bottom-2 right-2 flex gap-2">
+                    <div className="absolute bottom-2 right-2 flex gap-2 z-10">
                       <Button
                         size="sm"
                         variant="secondary"
+                        className="shadow-md"
                         onClick={() => fileInputRef.current?.click()}
                         disabled={card.is_locked || uploading}
                       >
@@ -844,6 +845,7 @@ export const SocialCardDetailSheet = ({
                       <Button
                         size="sm"
                         variant="destructive"
+                        className="shadow-md"
                         onClick={handleRemoveCreative}
                         disabled={card.is_locked || uploading}
                       >
