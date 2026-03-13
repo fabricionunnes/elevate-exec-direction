@@ -29,6 +29,7 @@ interface ApprovalData {
   status: string;
   expires_at: string;
   company_name: string | null;
+  carousel_images?: string[];
 }
 
 export const SocialApprovalPage = () => {
