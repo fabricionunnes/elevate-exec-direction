@@ -505,7 +505,7 @@ export const SocialCardDetailSheet = ({
         setContentType("carrossel");
         setCarouselImages(data.images);
         setAiPrompt("");
-        toast.success(`Carrossel com ${data.images.length} imagens gerado!`);
+        toast.success(`Carrossel com ${data.images.length} imagens gerado!`, { id: "ai-carousel" });
       } else {
         const imageUrl = data?.image_url || data?.images?.[0];
         if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
