@@ -1,11 +1,9 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import {
   Select,
   SelectContent,
@@ -24,8 +22,6 @@ import {
   Medal,
   Crown,
   Loader2,
-  Save,
-  Pencil,
   Image,
   Video,
   Film,
@@ -95,12 +91,8 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
   const [metrics, setMetrics] = useState<PostMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
-  const [editingId, setEditingId] = useState<string | null>(null);
-  const [editValues, setEditValues] = useState<Partial<PostMetric>>({});
   const [sortBy, setSortBy] = useState<SortBy>("engagement");
-  const [saving, setSaving] = useState(false);
 
-  // Only published content cards
   const publishedCards = useMemo(
     () => cards.filter((c) => c.card_type === "content" && c.published_at),
     [cards]
@@ -140,7 +132,10 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
         body: { projectId, boardId },
       });
 
-      if (error) throw error;
+      if (error) {
+        console.error("Sync error details:", error);
+        throw error;
+      }
 
       if (data?.success) {
         toast.success(`Métricas sincronizadas! ${data.synced}/${data.total} posts atualizados`);
@@ -150,7 +145,7 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
       }
     } catch (error) {
       console.error("Error syncing metrics:", error);
-      toast.error("Erro ao sincronizar métricas do Instagram");
+      toast.error("Erro ao sincronizar métricas do Instagram. Verifique se o Instagram está conectado nas Integrações.");
     } finally {
       setSyncing(false);
     }
@@ -159,77 +154,19 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
   const getMetricForCard = (cardId: string): PostMetric | undefined =>
     metrics.find((m) => m.card_id === cardId);
 
-  const startEditing = (card: ContentCard) => {
-    const existing = getMetricForCard(card.id);
-    setEditingId(card.id);
-    setEditValues({
-      likes: existing?.likes || 0,
-      comments: existing?.comments || 0,
-      saves: existing?.saves || 0,
-      shares: existing?.shares || 0,
-      views: existing?.views || 0,
-      reach: existing?.reach || 0,
-      impressions: existing?.impressions || 0,
-    });
-  };
-
-  const saveMetrics = async (cardId: string) => {
-    setSaving(true);
-    try {
-      const totalInteractions =
-        (editValues.likes || 0) +
-        (editValues.comments || 0) +
-        (editValues.saves || 0) +
-        (editValues.shares || 0);
-      const reachVal = editValues.reach || editValues.views || 1;
-      const engagementRate = reachVal > 0 ? Number(((totalInteractions / reachVal) * 100).toFixed(2)) : 0;
-
-      const existing = getMetricForCard(cardId);
-
-      if (existing) {
-        const { error } = await supabase
-          .from("social_post_metrics")
-          .update({
-            ...editValues,
-            engagement_rate: engagementRate,
-            updated_at: new Date().toISOString(),
-          })
-          .eq("id", existing.id);
-        if (error) throw error;
-      } else {
-        const { error } = await supabase
-          .from("social_post_metrics")
-          .insert({
-            card_id: cardId,
-            board_id: boardId,
-            ...editValues,
-            engagement_rate: engagementRate,
-          });
-        if (error) throw error;
-      }
-
-      toast.success("Métricas salvas!");
-      setEditingId(null);
-      await loadMetrics();
-    } catch (error) {
-      console.error("Error saving metrics:", error);
-      toast.error("Erro ao salvar métricas");
-    } finally {
-      setSaving(false);
-    }
-  };
-
-  // Ranked cards
+  // Ranked cards - show ALL published cards, sorted by metric
   const rankedCards = useMemo(() => {
     return publishedCards
-      .map((card) => {
-        const m = getMetricForCard(card.id);
-        return { card, metrics: m };
-      })
-      .filter(({ metrics: m }) => m && (m.likes + m.comments + m.saves + m.shares + m.views) > 0)
+      .map((card) => ({
+        card,
+        metrics: getMetricForCard(card.id),
+      }))
       .sort((a, b) => {
-        const ma = a.metrics!;
-        const mb = b.metrics!;
+        const ma = a.metrics;
+        const mb = b.metrics;
+        if (!ma && !mb) return 0;
+        if (!ma) return 1;
+        if (!mb) return -1;
         switch (sortBy) {
           case "engagement": return (mb.engagement_rate || 0) - (ma.engagement_rate || 0);
           case "likes": return mb.likes - ma.likes;
@@ -243,7 +180,6 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
       });
   }, [publishedCards, metrics, sortBy]);
 
-  // Totals
   const totals = useMemo(() => {
     return metrics.reduce(
       (acc, m) => ({
@@ -264,6 +200,13 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
     return (withRate.reduce((sum, m) => sum + m.engagement_rate, 0) / withRate.length).toFixed(2);
   }, [metrics]);
 
+  const lastSyncDate = useMemo(() => {
+    const synced = metrics.filter((m) => m.synced_at).sort((a, b) =>
+      new Date(b.synced_at!).getTime() - new Date(a.synced_at!).getTime()
+    );
+    return synced[0]?.synced_at || null;
+  }, [metrics]);
+
   if (loading) {
     return (
       <div className="h-full flex items-center justify-center">
@@ -277,9 +220,9 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
       {/* Sync Bar */}
       <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
         <div className="text-sm text-muted-foreground">
-          {metrics.some((m) => m.synced_at) ? (
+          {lastSyncDate ? (
             <span>
-              Última sincronização: {format(new Date(metrics.filter((m) => m.synced_at).sort((a, b) => new Date(b.synced_at!).getTime() - new Date(a.synced_at!).getTime())[0]?.synced_at || ""), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+              Última sincronização: {format(new Date(lastSyncDate), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
             </span>
           ) : (
             <span>Métricas ainda não sincronizadas</span>
@@ -312,233 +255,125 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
         ))}
       </div>
 
-      {/* Tabs: Ranking / Edit Metrics */}
-      <Tabs defaultValue="ranking" className="flex-1 flex flex-col min-h-0">
-        <div className="flex items-center justify-between flex-wrap gap-2">
-          <TabsList>
-            <TabsTrigger value="ranking" className="gap-1.5">
-              <Trophy className="h-4 w-4" />
-              Ranking
-            </TabsTrigger>
-            <TabsTrigger value="edit" className="gap-1.5">
-              <Pencil className="h-4 w-4" />
-              Editar Métricas
-            </TabsTrigger>
-          </TabsList>
-
-          <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
-            <SelectTrigger className="w-[180px]">
-              <SelectValue placeholder="Ordenar por" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="engagement">Engajamento %</SelectItem>
-              <SelectItem value="likes">Curtidas</SelectItem>
-              <SelectItem value="comments">Comentários</SelectItem>
-              <SelectItem value="saves">Salvamentos</SelectItem>
-              <SelectItem value="shares">Compartilhamentos</SelectItem>
-              <SelectItem value="views">Visualizações</SelectItem>
-              <SelectItem value="reach">Alcance</SelectItem>
-            </SelectContent>
-          </Select>
+      {/* Sort + Ranking */}
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <Trophy className="h-4 w-4 text-primary" />
+          <span className="font-semibold text-sm text-foreground">Ranking de Posts</span>
+          <Badge variant="secondary" className="text-[10px]">{publishedCards.length} posts</Badge>
         </div>
+        <Select value={sortBy} onValueChange={(v) => setSortBy(v as SortBy)}>
+          <SelectTrigger className="w-[180px]">
+            <SelectValue placeholder="Ordenar por" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="engagement">Engajamento %</SelectItem>
+            <SelectItem value="likes">Curtidas</SelectItem>
+            <SelectItem value="comments">Comentários</SelectItem>
+            <SelectItem value="saves">Salvamentos</SelectItem>
+            <SelectItem value="shares">Compartilhamentos</SelectItem>
+            <SelectItem value="views">Visualizações</SelectItem>
+            <SelectItem value="reach">Alcance</SelectItem>
+          </SelectContent>
+        </Select>
+      </div>
 
-        {/* Ranking Tab */}
-        <TabsContent value="ranking" className="flex-1 mt-4 min-h-0">
-          <ScrollArea className="h-full">
-            {rankedCards.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
-                <Trophy className="h-10 w-10 opacity-30" />
-                <p>Nenhum post com métricas registradas</p>
-                <p className="text-xs">Adicione métricas na aba "Editar Métricas"</p>
-              </div>
-            ) : (
-              <div className="space-y-3 pr-2">
-                {rankedCards.map(({ card, metrics: m }, index) => {
-                  const stage = stageMap[card.stage_id];
-                  return (
-                    <Card
-                      key={card.id}
-                      className={`border-l-4 ${index < 3 ? "shadow-md" : ""}`}
-                      style={{ borderLeftColor: index === 0 ? "#EAB308" : index === 1 ? "#9CA3AF" : index === 2 ? "#B45309" : (stage?.color || "hsl(var(--primary))") }}
-                    >
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          {/* Rank */}
-                          <div className="flex flex-col items-center justify-center min-w-[40px]">
-                            {index < 3 ? rankIcons[index] : (
-                              <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
-                            )}
-                          </div>
+      {/* Cards List */}
+      <ScrollArea className="flex-1">
+        {rankedCards.length === 0 ? (
+          <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
+            <Trophy className="h-10 w-10 opacity-30" />
+            <p>Nenhum post publicado ainda</p>
+            <p className="text-xs">Publique conteúdos e sincronize para ver o ranking</p>
+          </div>
+        ) : (
+          <div className="space-y-3 pr-2">
+            {rankedCards.map(({ card, metrics: m }, index) => {
+              const stage = stageMap[card.stage_id];
+              const hasMetrics = m && (m.likes + m.comments + m.saves + m.shares + m.views) > 0;
+              return (
+                <Card
+                  key={card.id}
+                  className={`border-l-4 ${hasMetrics && index < 3 ? "shadow-md" : ""}`}
+                  style={{
+                    borderLeftColor: hasMetrics
+                      ? (index === 0 ? "#EAB308" : index === 1 ? "#9CA3AF" : index === 2 ? "#B45309" : (stage?.color || "hsl(var(--primary))"))
+                      : (stage?.color || "hsl(var(--muted))")
+                  }}
+                >
+                  <CardContent className="p-4">
+                    <div className="flex items-start gap-3">
+                      {/* Rank */}
+                      <div className="flex flex-col items-center justify-center min-w-[40px]">
+                        {hasMetrics && index < 3 ? rankIcons[index] : (
+                          <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
+                        )}
+                      </div>
 
-                          {/* Thumbnail */}
-                          {card.creative_url && (
-                            <img
-                              src={card.creative_url}
-                              alt=""
-                              className="h-16 w-16 rounded-lg object-cover flex-shrink-0"
-                            />
+                      {/* Thumbnail */}
+                      {card.creative_url && (
+                        <img
+                          src={card.creative_url}
+                          alt=""
+                          className="h-16 w-16 rounded-lg object-cover flex-shrink-0"
+                        />
+                      )}
+
+                      {/* Info */}
+                      <div className="flex-1 min-w-0">
+                        <div className="flex items-center gap-2 mb-1">
+                          <p className="font-semibold text-sm text-foreground truncate">{card.theme}</p>
+                          {card.content_type && (
+                            <Badge variant="secondary" className="text-[10px] gap-1">
+                              {contentTypeIcon[card.content_type]}
+                              {card.content_type}
+                            </Badge>
                           )}
-
-                          {/* Info */}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center gap-2 mb-1">
-                              <p className="font-semibold text-sm text-foreground truncate">{card.theme}</p>
-                              {card.content_type && (
-                                <Badge variant="secondary" className="text-[10px] gap-1">
-                                  {contentTypeIcon[card.content_type]}
-                                  {card.content_type}
-                                </Badge>
-                              )}
-                            </div>
-                            {card.published_at && (
-                              <p className="text-xs text-muted-foreground mb-2">
-                                Publicado em {format(new Date(card.published_at), "dd/MM/yyyy", { locale: ptBR })}
-                              </p>
-                            )}
-
-                            {/* Metrics Row */}
-                            <div className="flex flex-wrap gap-3 text-xs">
-                              <span className="flex items-center gap-1 text-red-500">
-                                <Heart className="h-3.5 w-3.5" /> {m!.likes}
-                              </span>
-                              <span className="flex items-center gap-1 text-blue-500">
-                                <MessageCircle className="h-3.5 w-3.5" /> {m!.comments}
-                              </span>
-                              <span className="flex items-center gap-1 text-amber-500">
-                                <Bookmark className="h-3.5 w-3.5" /> {m!.saves}
-                              </span>
-                              <span className="flex items-center gap-1 text-green-500">
-                                <Share2 className="h-3.5 w-3.5" /> {m!.shares}
-                              </span>
-                              <span className="flex items-center gap-1 text-purple-500">
-                                <Eye className="h-3.5 w-3.5" /> {m!.views}
-                              </span>
-                              <span className="flex items-center gap-1 font-semibold text-primary">
-                                <TrendingUp className="h-3.5 w-3.5" /> {m!.engagement_rate}%
-                              </span>
-                            </div>
-                          </div>
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </TabsContent>
+                        {card.published_at && (
+                          <p className="text-xs text-muted-foreground mb-2">
+                            Publicado em {format(new Date(card.published_at), "dd/MM/yyyy", { locale: ptBR })}
+                          </p>
+                        )}
 
-        {/* Edit Metrics Tab */}
-        <TabsContent value="edit" className="flex-1 mt-4 min-h-0">
-          <ScrollArea className="h-full">
-            {publishedCards.length === 0 ? (
-              <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
-                <Eye className="h-10 w-10 opacity-30" />
-                <p>Nenhum post publicado ainda</p>
-              </div>
-            ) : (
-              <div className="space-y-3 pr-2">
-                {publishedCards.map((card) => {
-                  const m = getMetricForCard(card.id);
-                  const isEditing = editingId === card.id;
-
-                  return (
-                    <Card key={card.id} className="border-l-4" style={{ borderLeftColor: stageMap[card.stage_id]?.color || "hsl(var(--primary))" }}>
-                      <CardContent className="p-4">
-                        <div className="flex items-start gap-3">
-                          {card.creative_url && (
-                            <img
-                              src={card.creative_url}
-                              alt=""
-                              className="h-14 w-14 rounded-lg object-cover flex-shrink-0"
-                            />
-                          )}
-                          <div className="flex-1 min-w-0">
-                            <div className="flex items-center justify-between mb-2">
-                              <p className="font-semibold text-sm text-foreground truncate">{card.theme}</p>
-                              {!isEditing ? (
-                                <Button variant="ghost" size="sm" onClick={() => startEditing(card)}>
-                                  <Pencil className="h-3.5 w-3.5 mr-1" />
-                                  Editar
-                                </Button>
-                              ) : (
-                                <div className="flex gap-1">
-                                  <Button size="sm" onClick={() => saveMetrics(card.id)} disabled={saving}>
-                                    {saving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1" /> : <Save className="h-3.5 w-3.5 mr-1" />}
-                                    Salvar
-                                  </Button>
-                                  <Button variant="ghost" size="sm" onClick={() => setEditingId(null)}>
-                                    Cancelar
-                                  </Button>
-                                </div>
-                              )}
-                            </div>
-
-                            {isEditing ? (
-                              <div className="grid grid-cols-3 md:grid-cols-4 lg:grid-cols-7 gap-2">
-                                {[
-                                  { key: "likes", icon: <Heart className="h-3 w-3 text-red-500" />, label: "Curtidas" },
-                                  { key: "comments", icon: <MessageCircle className="h-3 w-3 text-blue-500" />, label: "Comentários" },
-                                  { key: "saves", icon: <Bookmark className="h-3 w-3 text-amber-500" />, label: "Salvamentos" },
-                                  { key: "shares", icon: <Share2 className="h-3 w-3 text-green-500" />, label: "Compartilhamentos" },
-                                  { key: "views", icon: <Eye className="h-3 w-3 text-purple-500" />, label: "Visualizações" },
-                                  { key: "reach", icon: <TrendingUp className="h-3 w-3 text-primary" />, label: "Alcance" },
-                                  { key: "impressions", icon: <Eye className="h-3 w-3 text-muted-foreground" />, label: "Impressões" },
-                                ].map(({ key, icon, label }) => (
-                                  <div key={key} className="space-y-1">
-                                    <label className="flex items-center gap-1 text-[10px] text-muted-foreground">
-                                      {icon} {label}
-                                    </label>
-                                    <Input
-                                      type="number"
-                                      min={0}
-                                      className="h-8 text-sm"
-                                      value={editValues[key as keyof PostMetric] || 0}
-                                      onChange={(e) =>
-                                        setEditValues((prev) => ({
-                                          ...prev,
-                                          [key]: parseInt(e.target.value) || 0,
-                                        }))
-                                      }
-                                    />
-                                  </div>
-                                ))}
-                              </div>
-                            ) : (
-                              <div className="flex flex-wrap gap-3 text-xs">
-                                <span className="flex items-center gap-1 text-red-500">
-                                  <Heart className="h-3 w-3" /> {m?.likes || 0}
-                                </span>
-                                <span className="flex items-center gap-1 text-blue-500">
-                                  <MessageCircle className="h-3 w-3" /> {m?.comments || 0}
-                                </span>
-                                <span className="flex items-center gap-1 text-amber-500">
-                                  <Bookmark className="h-3 w-3" /> {m?.saves || 0}
-                                </span>
-                                <span className="flex items-center gap-1 text-green-500">
-                                  <Share2 className="h-3 w-3" /> {m?.shares || 0}
-                                </span>
-                                <span className="flex items-center gap-1 text-purple-500">
-                                  <Eye className="h-3 w-3" /> {m?.views || 0}
-                                </span>
-                                {m?.engagement_rate ? (
-                                  <span className="flex items-center gap-1 font-semibold text-primary">
-                                    <TrendingUp className="h-3 w-3" /> {m.engagement_rate}%
-                                  </span>
-                                ) : null}
-                              </div>
-                            )}
-                          </div>
+                        {/* Metrics Row */}
+                        <div className="flex flex-wrap gap-3 text-xs">
+                          <span className="flex items-center gap-1 text-red-500">
+                            <Heart className="h-3.5 w-3.5" /> {m?.likes || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-blue-500">
+                            <MessageCircle className="h-3.5 w-3.5" /> {m?.comments || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-amber-500">
+                            <Bookmark className="h-3.5 w-3.5" /> {m?.saves || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-green-500">
+                            <Share2 className="h-3.5 w-3.5" /> {m?.shares || 0}
+                          </span>
+                          <span className="flex items-center gap-1 text-purple-500">
+                            <Eye className="h-3.5 w-3.5" /> {m?.views || 0}
+                          </span>
+                          {m?.engagement_rate ? (
+                            <span className="flex items-center gap-1 font-semibold text-primary">
+                              <TrendingUp className="h-3.5 w-3.5" /> {m.engagement_rate}%
+                            </span>
+                          ) : null}
                         </div>
-                      </CardContent>
-                    </Card>
-                  );
-                })}
-              </div>
-            )}
-          </ScrollArea>
-        </TabsContent>
-      </Tabs>
+
+                        {!hasMetrics && (
+                          <p className="text-[10px] text-muted-foreground mt-1 italic">
+                            Sincronize para buscar métricas
+                          </p>
+                        )}
+                      </div>
+                    </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
+        )}
+      </ScrollArea>
     </div>
   );
 };
