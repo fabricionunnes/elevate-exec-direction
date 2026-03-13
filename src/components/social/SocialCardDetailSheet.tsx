@@ -342,31 +342,40 @@ export const SocialCardDetailSheet = ({
       // Calculate scheduled_at from suggested_date + suggested_time
       const scheduledAt = calculateScheduledAt(suggestedDate, suggestedTime);
 
-      const { error } = await supabase
+      const updatePayload: Record<string, unknown> = {
+        theme,
+        content_type: contentType,
+        objective: objective || null,
+        copy_text: copyText || null,
+        final_caption: finalCaption || null,
+        hashtags: hashtags || null,
+        cta: cta || null,
+        suggested_date: suggestedDate || null,
+        suggested_time: suggestedTime || null,
+        scheduled_at: scheduledAt,
+        creative_url: creativeUrl || null,
+        creative_type: creativeType,
+        card_color: cardColor,
+      };
+
+      console.log("Save payload:", JSON.stringify(updatePayload, null, 2));
+      console.log("Card ID:", card.id);
+
+      const { error, data } = await supabase
         .from("social_content_cards")
-        .update({
-          theme,
-          content_type: contentType as "estatico" | "carrossel" | "feed" | "reels" | "stories" | "outro",
-          objective: objective as "engagement" | "authority" | "conversion",
-          copy_text: copyText || null,
-          final_caption: finalCaption || null,
-          hashtags: hashtags || null,
-          cta: cta || null,
-          suggested_date: suggestedDate || null,
-          suggested_time: suggestedTime || null,
-          scheduled_at: scheduledAt,
-          creative_url: creativeUrl || null,
-          creative_type: creativeType,
-          card_color: cardColor,
-        })
-        .eq("id", card.id);
+        .update(updatePayload)
+        .eq("id", card.id)
+        .select();
+
+      console.log("Save result - error:", error, "data:", data);
 
       if (error) throw error;
       toast.success("Conteúdo atualizado!");
       onUpdate();
-    } catch (error) {
+    } catch (error: any) {
       console.error("Error saving card:", error);
-      toast.error("Erro ao salvar");
+      console.error("Error details:", error?.message, error?.details, error?.hint, error?.code);
+      toast.error("Erro ao salvar: " + (error?.message || "erro desconhecido"));
     } finally {
       setSaving(false);
     }
