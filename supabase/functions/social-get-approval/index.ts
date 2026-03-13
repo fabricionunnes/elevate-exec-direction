@@ -83,6 +83,21 @@ Deno.serve(async (req) => {
       (board?.project as any)?.product_name ||
       null;
 
+    // Load carousel slide attachments if content is carousel
+    let carouselImages: string[] = [];
+    if (link.card.content_type === "carrossel") {
+      const { data: attachments } = await supabase
+        .from("social_card_attachments")
+        .select("file_url, file_name")
+        .eq("card_id", link.card.id)
+        .like("file_name", "ai-carousel-slide-%")
+        .order("file_name");
+
+      if (attachments && attachments.length > 0) {
+        carouselImages = attachments.map((a: any) => a.file_url).filter(Boolean);
+      }
+    }
+
     return new Response(
       JSON.stringify({
         id: link.id,
@@ -90,6 +105,7 @@ Deno.serve(async (req) => {
         status: link.status,
         expires_at: link.expires_at,
         company_name: companyName,
+        carousel_images: carouselImages,
       }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } },
     );
