@@ -792,6 +792,16 @@ export function ReceivablesPanel() {
           <Table>
             <TableHeader>
               <TableRow>
+                <TableHead className="w-[40px]">
+                  <Checkbox
+                    checked={paginatedReceivables.length > 0 && paginatedReceivables.every(r => selectedIds.has(r.id))}
+                    onCheckedChange={(checked) => {
+                      const next = new Set(selectedIds);
+                      paginatedReceivables.forEach(r => checked ? next.add(r.id) : next.delete(r.id));
+                      setSelectedIds(next);
+                    }}
+                  />
+                </TableHead>
                 <TableHead>Descrição</TableHead>
                 <TableHead>Cliente</TableHead>
                 <TableHead>Vencimento</TableHead>
@@ -804,13 +814,23 @@ export function ReceivablesPanel() {
             <TableBody>
               {filteredReceivables.length === 0 ? (
                 <TableRow>
-                  <TableCell colSpan={7} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={8} className="text-center py-8 text-muted-foreground">
                     Nenhuma conta a receber encontrada
                   </TableCell>
                 </TableRow>
               ) : (
                 paginatedReceivables.map((receivable) => (
-                  <TableRow key={receivable.id}>
+                  <TableRow key={receivable.id} data-state={selectedIds.has(receivable.id) ? "selected" : undefined}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedIds.has(receivable.id)}
+                        onCheckedChange={(checked) => {
+                          const next = new Set(selectedIds);
+                          checked ? next.add(receivable.id) : next.delete(receivable.id);
+                          setSelectedIds(next);
+                        }}
+                      />
+                    </TableCell>
                     <TableCell>
                       <div>
                         <p className="font-medium">{receivable.description}</p>
