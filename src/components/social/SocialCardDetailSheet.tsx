@@ -872,22 +872,91 @@ export const SocialCardDetailSheet = ({
                 />
               </div>
 
-              {/* AI Image Generation */}
-              <div className="space-y-2">
+               {/* AI Image Generation */}
+              <div className="space-y-3">
                 <Label className="flex items-center gap-1.5">
                   <Wand2 className="h-3.5 w-3.5" />
                   Gerar Imagem com IA
                 </Label>
-                <div className="flex gap-2">
-                  <Textarea
-                    placeholder={generatingPromptSuggestion ? "Gerando sugestão de prompt..." : "Descreva a imagem que deseja gerar..."}
-                    value={generatingPromptSuggestion ? "" : aiPrompt}
-                    onChange={(e) => setAiPrompt(e.target.value)}
-                    disabled={card.is_locked || generatingAiImage || generatingPromptSuggestion}
-                    className="min-h-[60px] text-sm"
-                    rows={3}
-                  />
+
+                {/* Mode toggle: single vs carousel */}
+                <div className="flex gap-1 p-1 bg-muted rounded-lg">
+                  <button
+                    type="button"
+                    onClick={() => setAiGenerateMode("single")}
+                    className={cn(
+                      "flex-1 text-xs py-1.5 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5",
+                      aiGenerateMode === "single" 
+                        ? "bg-background text-foreground shadow-sm" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    disabled={card.is_locked || generatingAiImage}
+                  >
+                    <Image className="h-3.5 w-3.5" />
+                    Imagem única
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiGenerateMode("carousel")}
+                    className={cn(
+                      "flex-1 text-xs py-1.5 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5",
+                      aiGenerateMode === "carousel" 
+                        ? "bg-background text-foreground shadow-sm" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    disabled={card.is_locked || generatingAiImage}
+                  >
+                    <LayoutGrid className="h-3.5 w-3.5" />
+                    Carrossel
+                  </button>
                 </div>
+
+                {/* Carousel options */}
+                {aiGenerateMode === "carousel" && (
+                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                    <div className="flex items-center gap-3">
+                      <Label className="text-xs whitespace-nowrap">Slides:</Label>
+                      <Select
+                        value={String(aiCarouselCount)}
+                        onValueChange={(v) => setAiCarouselCount(Number(v))}
+                        disabled={card.is_locked || generatingAiImage}
+                      >
+                        <SelectTrigger className="h-8 text-xs w-20">
+                          <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {[2, 3, 4, 5, 6, 7, 8, 10].map((n) => (
+                            <SelectItem key={n} value={String(n)}>{n}</SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
+                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
+                      <input
+                        type="checkbox"
+                        checked={aiCarouselConnected}
+                        onChange={(e) => setAiCarouselConnected(e.target.checked)}
+                        disabled={card.is_locked || generatingAiImage}
+                        className="rounded border-input"
+                      />
+                      Imagens conectadas (panorâmico)
+                    </label>
+                    <p className="text-[10px] text-muted-foreground">
+                      {aiCarouselConnected 
+                        ? "As imagens formarão uma sequência visual contínua." 
+                        : "Cada slide terá uma variação independente do tema."}
+                    </p>
+                  </div>
+                )}
+
+                <Textarea
+                  placeholder={generatingPromptSuggestion ? "Gerando sugestão de prompt..." : "Descreva a imagem que deseja gerar..."}
+                  value={generatingPromptSuggestion ? "" : aiPrompt}
+                  onChange={(e) => setAiPrompt(e.target.value)}
+                  disabled={card.is_locked || generatingAiImage || generatingPromptSuggestion}
+                  className="min-h-[60px] text-sm"
+                  rows={3}
+                />
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                     <input
@@ -907,11 +976,41 @@ export const SocialCardDetailSheet = ({
                   className="gap-1.5 w-full"
                 >
                   {generatingAiImage ? (
-                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando...</>
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando{aiGenerateMode === "carousel" ? ` ${aiCarouselCount} slides` : ""}...</>
                   ) : (
-                    <><Sparkles className="h-3.5 w-3.5" /> Gerar Imagem</>
+                    <><Sparkles className="h-3.5 w-3.5" /> {aiGenerateMode === "carousel" ? `Gerar Carrossel (${aiCarouselCount} slides)` : "Gerar Imagem"}</>
                   )}
                 </Button>
+
+                {/* Carousel preview */}
+                {carouselImages.length > 1 && (
+                  <div className="space-y-2">
+                    <Label className="text-xs text-muted-foreground">
+                      Carrossel gerado ({carouselImages.length} slides)
+                    </Label>
+                    <div className="flex gap-2 overflow-x-auto pb-2">
+                      {carouselImages.map((url, idx) => (
+                        <div
+                          key={idx}
+                          className="relative flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border border-border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
+                          onClick={() => {
+                            setCreativeUrl(url);
+                            toast.info(`Slide ${idx + 1} selecionado como capa`);
+                          }}
+                        >
+                          <img
+                            src={url}
+                            alt={`Slide ${idx + 1}`}
+                            className="w-full h-full object-cover"
+                          />
+                          <span className="absolute bottom-0.5 right-0.5 bg-background/80 text-foreground text-[10px] px-1 rounded">
+                            {idx + 1}
+                          </span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
