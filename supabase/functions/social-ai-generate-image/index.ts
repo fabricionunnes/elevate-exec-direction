@@ -227,6 +227,8 @@ QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese.${hasSlideTexts ? '' : ' Prefer NO text if possible.'}
 REALISM: 100% physically realistic, correct proportions and perspective.
 
+CRITICAL - NO TECHNICAL LABELS: Never render resolution labels, measurement text, UI elements or counters such as "1080px", "px", "4:5", "1/3", "2/3", or similar.
+
 CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
 The logo will be added separately after generation. If you include a fabricated logo it will be WRONG.
 Do NOT invent or hallucinate any logos. Leave the image clean without any brand marks.
