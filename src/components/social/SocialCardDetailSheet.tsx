@@ -149,6 +149,8 @@ export const SocialCardDetailSheet = ({
   const [aiCarouselCount, setAiCarouselCount] = useState(3);
   const [aiCarouselConnected, setAiCarouselConnected] = useState(false);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
+  const [aiImageText, setAiImageText] = useState("");
+  const [aiCarouselTexts, setAiCarouselTexts] = useState<string[]>(["", "", ""]);
 
   const generatePromptSuggestion = async (copy: string, theme: string, contentType: string) => {
     setGeneratingPromptSuggestion(true);
@@ -522,9 +524,11 @@ export const SocialCardDetailSheet = ({
           prompt: aiPrompt.trim(),
           format: isCarousel ? "carousel" : "feed_post",
           includeLogoPref: aiIncludeLogo,
+          overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
             carouselConnected: true,
+            slideTexts: aiCarouselTexts.slice(0, aiCarouselCount),
           }),
         },
       });
@@ -1026,7 +1030,15 @@ export const SocialCardDetailSheet = ({
                       <Label className="text-xs whitespace-nowrap">Slides:</Label>
                       <Select
                         value={String(aiCarouselCount)}
-                        onValueChange={(v) => setAiCarouselCount(Number(v))}
+                        onValueChange={(v) => {
+                          const count = Number(v);
+                          setAiCarouselCount(count);
+                          setAiCarouselTexts(prev => {
+                            const newTexts = [...prev];
+                            while (newTexts.length < count) newTexts.push("");
+                            return newTexts.slice(0, count);
+                          });
+                        }}
                         disabled={card.is_locked || generatingAiImage}
                       >
                         <SelectTrigger className="h-8 text-xs w-20">
@@ -1042,6 +1054,38 @@ export const SocialCardDetailSheet = ({
                     <p className="text-[10px] text-muted-foreground">
                       Uma imagem panorâmica será gerada e dividida em {aiCarouselCount} slides iguais com continuidade visual.
                     </p>
+                  </div>
+                )}
+
+                {/* Text overlay fields */}
+                {aiGenerateMode === "single" ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Texto na imagem (opcional)</Label>
+                    <Input
+                      placeholder="Ex: Estratégia + Motivação = Resultados"
+                      value={aiImageText}
+                      onChange={(e) => setAiImageText(e.target.value)}
+                      disabled={card.is_locked || generatingAiImage}
+                      className="text-sm"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                    <Label className="text-xs text-muted-foreground">Texto em cada slide (opcional)</Label>
+                    {Array.from({ length: aiCarouselCount }).map((_, i) => (
+                      <Input
+                        key={i}
+                        placeholder={`Slide ${i + 1} — texto (deixe vazio se não quiser)`}
+                        value={aiCarouselTexts[i] || ""}
+                        onChange={(e) => {
+                          const updated = [...aiCarouselTexts];
+                          updated[i] = e.target.value;
+                          setAiCarouselTexts(updated);
+                        }}
+                        disabled={card.is_locked || generatingAiImage}
+                        className="text-sm h-8"
+                      />
+                    ))}
                   </div>
                 )}
 
