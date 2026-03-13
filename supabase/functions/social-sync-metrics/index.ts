@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
     if (mediaData.error) {
       console.error("Instagram API error:", mediaData.error);
       return new Response(
-        JSON.stringify({ error: `Erro da API Instagram: ${mediaData.error.message}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: `Erro da API Instagram: ${mediaData.error.message}` }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
