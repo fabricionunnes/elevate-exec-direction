@@ -2338,9 +2338,9 @@ const OnboardingTasksPage = () => {
                     </>
                   )}
                   {canAccessFinancial && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro")}>
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/financeiro/recorrencias")}>
                       <Calculator className="h-4 w-4 mr-2" />
-                      Módulo Financeiro
+                      Financeiro
                     </DropdownMenuItem>
                   )}
                   {isAdmin && (
