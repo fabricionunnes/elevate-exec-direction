@@ -2,10 +2,11 @@ import { useState, useEffect } from "react";
 import { useOutletContext } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays } from "lucide-react";
+import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { SocialKanbanBoard } from "@/components/social/SocialKanbanBoard";
 import { SocialCalendarView } from "@/components/social/SocialCalendarView";
+import { SocialPerformanceView } from "@/components/social/SocialPerformanceView";
 import { SocialCardDialog } from "@/components/social/SocialCardDialog";
 import { SocialCardDetailSheet } from "@/components/social/SocialCardDetailSheet";
 
@@ -57,7 +58,7 @@ export const SocialPipelinePage = () => {
   const [createDialogOpen, setCreateDialogOpen] = useState(false);
   const [selectedCard, setSelectedCard] = useState<ContentCard | null>(null);
   const [detailOpen, setDetailOpen] = useState(false);
-  const [viewMode, setViewMode] = useState<"kanban" | "calendar">("kanban");
+  const [viewMode, setViewMode] = useState<"kanban" | "calendar" | "performance">("kanban");
   const [currentStaffId, setCurrentStaffId] = useState<string | null>(null);
 
   useEffect(() => {
@@ -294,6 +295,15 @@ export const SocialPipelinePage = () => {
               <CalendarDays className="h-4 w-4" />
               Calendário
             </Button>
+            <Button
+              variant={viewMode === "performance" ? "default" : "ghost"}
+              size="sm"
+              className="rounded-none gap-1.5"
+              onClick={() => setViewMode("performance")}
+            >
+              <BarChart3 className="h-4 w-4" />
+              Performance
+            </Button>
           </div>
         </div>
         <Button variant="ghost" size="icon" onClick={loadData}>
@@ -312,11 +322,17 @@ export const SocialPipelinePage = () => {
             onCardClick={handleCardClick}
             onStageUpdate={loadData}
           />
-        ) : (
+        ) : viewMode === "calendar" ? (
           <SocialCalendarView
             cards={cards}
             stages={stages}
             onCardClick={handleCardClick}
+          />
+        ) : (
+          <SocialPerformanceView
+            cards={cards}
+            stages={stages}
+            boardId={boardId}
           />
         )}
       </div>
