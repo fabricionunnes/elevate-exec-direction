@@ -191,18 +191,30 @@ Deno.serve(async (req) => {
       // Fetch carousel slides from attachments
       const { data: attachments, error: attachError } = await supabaseClient
         .from("social_card_attachments")
-        .select("file_url, sort_order")
+        .select("file_url, created_at")
         .eq("card_id", cardId)
-        .order("sort_order", { ascending: true });
+        .order("created_at", { ascending: true });
 
-      const slideUrls = attachments && attachments.length > 0
-        ? attachments.map((a: any) => a.file_url)
-        : [card.creative_url];
+      if (attachError) {
+        console.error("Failed to load carousel attachments:", attachError);
+        throw new Error("Não foi possível carregar os slides do carrossel");
+      }
+
+      const slideUrls = (attachments ?? [])
+        .map((a: { file_url: string | null }) => a.file_url)
+        .filter((url): url is string => Boolean(url));
+
+      const fallbackImageUrl = card.creative_url;
 
       if (slideUrls.length < 2) {
-        // Single image, post as regular image
-        console.log("Carousel has only 1 slide, posting as single image");
-        containerId = await createImageContainer(igUserId, slideUrls[0], accessToken, caption);
+        // Single image fallback (legacy cards without attachments)
+        console.log(`Carousel fallback: ${slideUrls.length} slide(s) found, posting as single image`);
+        containerId = await createImageContainer(
+          igUserId,
+          slideUrls[0] ?? fallbackImageUrl,
+          accessToken,
+          caption
+        );
         await waitForContainer(containerId, accessToken, false);
       } else {
         console.log(`Creating carousel with ${slideUrls.length} slides...`);
@@ -235,6 +247,7 @@ Deno.serve(async (req) => {
         }
 
         containerId = carouselData.id;
+        await waitForContainer(containerId, accessToken, false);
       }
     } else if (isVideo) {
       console.log("Creating video container...");
