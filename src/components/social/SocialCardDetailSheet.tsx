@@ -466,6 +466,10 @@ export const SocialCardDetailSheet = ({
   const handleGenerateAiImage = async () => {
     if (!card || !aiPrompt.trim()) return;
     setGeneratingAiImage(true);
+    const isCarousel = aiGenerateMode === "carousel";
+    if (isCarousel) {
+      toast.loading(`Gerando ${aiCarouselCount} slides do carrossel... isso pode levar até 1 minuto`, { id: "ai-carousel" });
+    }
     try {
       const isCarousel = aiGenerateMode === "carousel";
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
@@ -481,7 +485,7 @@ export const SocialCardDetailSheet = ({
         },
       });
       if (error) throw error;
-      if (data?.error) { toast.error(data.error); return; }
+      if (data?.error) { toast.error(data.error, { id: isCarousel ? "ai-carousel" : undefined }); return; }
 
       if (isCarousel && data?.images?.length) {
         // For carousel, save first image as creative and store all
@@ -501,7 +505,7 @@ export const SocialCardDetailSheet = ({
         setContentType("carrossel");
         setCarouselImages(data.images);
         setAiPrompt("");
-        toast.success(`Carrossel com ${data.images.length} imagens gerado!`);
+        toast.success(`Carrossel com ${data.images.length} imagens gerado!`, { id: "ai-carousel" });
       } else {
         const imageUrl = data?.image_url || data?.images?.[0];
         if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
@@ -520,7 +524,7 @@ export const SocialCardDetailSheet = ({
       }
     } catch (err) {
       console.error("AI image error:", err);
-      toast.error("Erro ao gerar imagem via IA");
+      toast.error("Erro ao gerar imagem via IA", { id: isCarousel ? "ai-carousel" : undefined });
     } finally {
       setGeneratingAiImage(false);
     }
