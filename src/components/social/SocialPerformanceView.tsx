@@ -274,6 +274,23 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
 
   return (
     <div className="h-full flex flex-col p-4 gap-4 overflow-auto">
+      {/* Sync Bar */}
+      <div className="flex items-center justify-between bg-muted/50 rounded-lg p-3">
+        <div className="text-sm text-muted-foreground">
+          {metrics.some((m) => m.synced_at) ? (
+            <span>
+              Última sincronização: {format(new Date(metrics.filter((m) => m.synced_at).sort((a, b) => new Date(b.synced_at!).getTime() - new Date(a.synced_at!).getTime())[0]?.synced_at || ""), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+            </span>
+          ) : (
+            <span>Métricas ainda não sincronizadas</span>
+          )}
+        </div>
+        <Button onClick={syncFromInstagram} disabled={syncing} className="gap-2">
+          {syncing ? <Loader2 className="h-4 w-4 animate-spin" /> : <RefreshCw className="h-4 w-4" />}
+          {syncing ? "Sincronizando..." : "Sincronizar Instagram"}
+        </Button>
+      </div>
+
       {/* Summary Cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-7 gap-3">
         {[
