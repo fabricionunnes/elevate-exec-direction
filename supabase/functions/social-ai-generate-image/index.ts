@@ -148,6 +148,11 @@ Deno.serve(async (req) => {
     const shouldApplyLogoOverlay = includeLogoPref && logoUrl;
     let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, false, referenceImageUrl);
 
+    // Add overlay text instruction for single images
+    if (overlayText && overlayText.trim()) {
+      enhancedPrompt += `\n\nIMPORTANT TEXT TO INCLUDE IN THE IMAGE: Write the following text prominently and legibly in the image, using a visually appealing typography that fits the design: "${overlayText.trim()}". The text must be in Brazilian Portuguese, clearly readable, and well-positioned.`;
+    }
+
     console.log("Generating image with prompt:", enhancedPrompt);
     console.log("Logo will be applied via overlay:", shouldApplyLogoOverlay ? logoUrl : "none");
     console.log("Reference image URL:", referenceImageUrl || "none");
