@@ -457,7 +457,7 @@ export const SocialCardDetailSheet = ({
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
         body: {
           projectId,
-          prompt: aiPrompt.trim() + " | Imagem sem fundo, fundo transparente",
+          prompt: aiPrompt.trim(),
           format: "feed_post",
           includeLogoPref: aiIncludeLogo,
         },
