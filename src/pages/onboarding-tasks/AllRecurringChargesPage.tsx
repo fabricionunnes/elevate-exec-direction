@@ -1800,7 +1800,7 @@ export default function AllRecurringChargesPage() {
                                     onClick={() => {
                                       setReceivableForm({
                                         company_id: inv.company_id || "",
-                                        custom_receiver_name: inv.custom_receiver_name || "",
+                                        custom_receiver_name: (inv as any).custom_receiver_name || "",
                                         description: inv.description,
                                         amount: inv.amount_cents / 100,
                                         due_date: inv.due_date || "",
