@@ -122,6 +122,7 @@ export function PayablesPanel() {
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
   const { isMaster } = useFinancialPermissions();
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
     supplier_name: "",
     category_id: "",

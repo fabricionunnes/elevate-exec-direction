@@ -109,6 +109,7 @@ export function ReceivablesPanel() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Form state
   const [formData, setFormData] = useState({
