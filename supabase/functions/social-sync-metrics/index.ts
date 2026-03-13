@@ -45,8 +45,8 @@ Deno.serve(async (req) => {
 
     if (!projectId || !boardId) {
       return new Response(
-        JSON.stringify({ error: "projectId and boardId are required" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "projectId e boardId são obrigatórios" }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -60,15 +60,15 @@ Deno.serve(async (req) => {
 
     if (igError || !igAccount) {
       return new Response(
-        JSON.stringify({ error: "Conta Instagram não conectada para este projeto" }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Conta Instagram não conectada para este projeto. Conecte na aba Base Estratégica > Integrações." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
     if (!igAccount.access_token) {
       return new Response(
-        JSON.stringify({ error: "Token de acesso inválido. Reconecte o Instagram." }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: "Token de acesso inválido. Reconecte o Instagram nas Integrações." }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -85,8 +85,8 @@ Deno.serve(async (req) => {
     if (mediaData.error) {
       console.error("Instagram API error:", mediaData.error);
       return new Response(
-        JSON.stringify({ error: `Erro da API Instagram: ${mediaData.error.message}` }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        JSON.stringify({ success: false, error: `Erro da API Instagram: ${mediaData.error.message}` }),
+        { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
     }
 
@@ -226,8 +226,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error syncing metrics:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to sync metrics" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Falha ao sincronizar métricas" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
