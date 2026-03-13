@@ -169,6 +169,7 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  useEffect(() => {
     if (card && open) {
       loadCardData();
       loadHistory();
