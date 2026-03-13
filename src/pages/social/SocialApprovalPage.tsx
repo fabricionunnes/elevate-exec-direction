@@ -40,6 +40,7 @@ export const SocialApprovalPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [approvalData, setApprovalData] = useState<ApprovalData | null>(null);
   const [selectedImage, setSelectedImage] = useState<string | null>(null);
+  const [error, setError] = useState<string | null>(null);
   const [showAdjustmentForm, setShowAdjustmentForm] = useState(false);
   const [adjustmentNotes, setAdjustmentNotes] = useState("");
   const [submitted, setSubmitted] = useState(false);
