@@ -421,6 +421,42 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const handleGenerateAiImage = async () => {
+    if (!card || !aiPrompt.trim()) return;
+    setGeneratingAiImage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
+        body: {
+          projectId,
+          prompt: aiPrompt.trim(),
+          format: "feed_post",
+          includeLogoPref: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const imageUrl = data?.image_url || data?.images?.[0];
+      if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
+
+      const { error: updateError } = await supabase
+        .from("social_content_cards")
+        .update({ creative_url: imageUrl, creative_type: "image" })
+        .eq("id", card.id);
+      if (updateError) throw updateError;
+
+      setCreativeUrl(imageUrl);
+      setCreativeType("image");
+      setAiPrompt("");
+      toast.success("Imagem gerada e aplicada ao card!");
+    } catch (err) {
+      console.error("AI image error:", err);
+      toast.error("Erro ao gerar imagem via IA");
+    } finally {
+      setGeneratingAiImage(false);
+    }
+  };
+
   const handleSendForApproval = async () => {
     if (!card) return;
 
