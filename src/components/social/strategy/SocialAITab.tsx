@@ -807,6 +807,45 @@ CTA: ${suggestion.cta}`;
           </TabsContent>
         </div>
       </Tabs>
+
+      {/* Dialog: Usar em Card */}
+      <Dialog open={useInCardDialogOpen} onOpenChange={setUseInCardDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle>Aplicar imagem em um Card</DialogTitle>
+          </DialogHeader>
+          {loadingCards ? (
+            <div className="flex items-center justify-center py-8">
+              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : pipelineCards.length === 0 ? (
+            <p className="text-sm text-muted-foreground text-center py-6">Nenhum card encontrado no pipeline.</p>
+          ) : (
+            <ScrollArea className="max-h-[400px]">
+              <div className="space-y-2">
+                {pipelineCards.map(card => (
+                  <div key={card.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="min-w-0 flex-1">
+                      <p className="text-sm font-medium truncate">{card.theme}</p>
+                      <p className="text-xs text-muted-foreground">{card.stage_name} · {card.content_type}</p>
+                    </div>
+                    <Button
+                      size="sm"
+                      variant="outline"
+                      disabled={applyingToCard === card.id}
+                      onClick={() => applyImageToCard(card.id)}
+                      className="ml-2 shrink-0"
+                    >
+                      {applyingToCard === card.id ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <ImagePlus className="h-3.5 w-3.5 mr-1" />}
+                      Usar
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </ScrollArea>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
