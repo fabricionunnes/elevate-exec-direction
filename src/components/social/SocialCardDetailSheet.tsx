@@ -840,12 +840,12 @@ export const SocialCardDetailSheet = ({
                 </Label>
                 <div className="flex gap-2">
                   <Textarea
-                    placeholder="Descreva a imagem que deseja gerar..."
-                    value={aiPrompt}
+                    placeholder={generatingPromptSuggestion ? "Gerando sugestão de prompt..." : "Descreva a imagem que deseja gerar..."}
+                    value={generatingPromptSuggestion ? "" : aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    disabled={card.is_locked || generatingAiImage}
+                    disabled={card.is_locked || generatingAiImage || generatingPromptSuggestion}
                     className="min-h-[60px] text-sm"
-                    rows={2}
+                    rows={3}
                   />
                 </div>
                 <div className="flex items-center gap-3">

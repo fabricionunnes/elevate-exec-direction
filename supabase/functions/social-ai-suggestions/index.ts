@@ -28,7 +28,67 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { projectId, contentType, quantity, customTopic } = await req.json();
+    const body = await req.json();
+    const { projectId, type } = body;
+    
+    // Handle image prompt suggestion
+    if (type === "image_prompt") {
+      const { copyText, theme, contentType } = body;
+      console.log("social-ai-suggestions: Generating image prompt suggestion");
+      
+      const prompt = `Você é um diretor de arte especialista em social media. 
+Com base no texto de copy abaixo, crie uma descrição curta e objetiva (2-3 frases) para gerar uma imagem de marketing digital.
+
+A descrição deve:
+- Ser visual e descritiva (cores, elementos, composição)
+- Ser adequada para geração por IA de imagem
+- Refletir o tom e a mensagem da copy
+- NÃO incluir texto na imagem
+- Focar em elementos visuais, metáforas e símbolos
+
+Tema do card: ${theme || "não especificado"}
+Formato: ${contentType || "feed_post"}
+
+Copy do card:
+"""
+${copyText}
+"""
+
+Responda APENAS com a descrição da imagem, sem explicações extras.`;
+
+      const aiResp = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash-lite",
+          messages: [
+            { role: "user", content: prompt }
+          ],
+        }),
+      });
+
+      if (!aiResp.ok) {
+        console.error("AI error for image prompt:", aiResp.status);
+        return new Response(
+          JSON.stringify({ suggestion: null }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const aiData = await aiResp.json();
+      const suggestion = aiData.choices?.[0]?.message?.content?.trim() || null;
+      console.log("social-ai-suggestions: Image prompt suggestion generated");
+
+      return new Response(
+        JSON.stringify({ suggestion }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    const { contentType, quantity, customTopic } = body;
     console.log("social-ai-suggestions: Params received:", { projectId, contentType, quantity, customTopic });
 
     if (!projectId) {
