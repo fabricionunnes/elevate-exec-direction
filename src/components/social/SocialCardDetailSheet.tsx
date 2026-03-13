@@ -326,13 +326,20 @@ export const SocialCardDetailSheet = ({
     }
   };
 
-  // Combine suggested_date + suggested_time into scheduled_at with São Paulo timezone (UTC-3)
+  // Combine suggested_date + suggested_time into scheduled_at (UTC ISO)
   const calculateScheduledAt = (date: string, time: string): string | null => {
     if (!date) return null;
-    // Default time to 09:00 if not provided
-    const timeStr = time || "09:00";
-    // Create ISO string with São Paulo timezone offset (-03:00)
-    return `${date}T${timeStr}:00-03:00`;
+
+    const normalizedTime = (time || "09:00").slice(0, 5); // handles values like "20:00:00"
+    const [year, month, day] = date.split("-").map(Number);
+    const [hours, minutes] = normalizedTime.split(":").map(Number);
+
+    if ([year, month, day, hours, minutes].some((v) => Number.isNaN(v))) {
+      return null;
+    }
+
+    const localDate = new Date(year, month - 1, day, hours, minutes, 0, 0);
+    return localDate.toISOString();
   };
 
   const handleSave = async () => {
