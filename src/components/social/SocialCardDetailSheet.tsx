@@ -146,7 +146,29 @@ export const SocialCardDetailSheet = ({
   const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
   const [generatingPromptSuggestion, setGeneratingPromptSuggestion] = useState(false);
 
-  useEffect(() => {
+  const generatePromptSuggestion = async (copy: string, theme: string, contentType: string) => {
+    setGeneratingPromptSuggestion(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-ai-suggestions", {
+        body: {
+          type: "image_prompt",
+          copyText: copy,
+          theme,
+          contentType,
+        },
+      });
+      if (!error && data?.suggestion) {
+        setAiPrompt(data.suggestion);
+      } else {
+        setAiPrompt(copy);
+      }
+    } catch {
+      setAiPrompt(copy);
+    } finally {
+      setGeneratingPromptSuggestion(false);
+    }
+  };
+
     if (card && open) {
       loadCardData();
       loadHistory();
