@@ -771,7 +771,7 @@ export const SocialCardDetailSheet = ({
                 <Label>Criativo</Label>
                 {creativeUrl ? (
                   <div 
-                    className={`relative rounded-lg overflow-hidden bg-muted aspect-video ${isDraggingFile ? 'ring-2 ring-primary ring-offset-2' : ''}`}
+                    className={`relative rounded-lg overflow-hidden bg-muted ${isDraggingFile ? 'ring-2 ring-primary ring-offset-2' : ''}`}
                     onDragOver={handleDragOver}
                     onDragLeave={handleDragLeave}
                     onDrop={handleFileDrop}
@@ -780,13 +780,13 @@ export const SocialCardDetailSheet = ({
                       <video
                         src={creativeUrl}
                         controls
-                        className="w-full h-full object-cover"
+                        className="w-full h-auto"
                       />
                     ) : (
                       <img
                         src={creativeUrl}
                         alt="Preview"
-                        className="w-full h-full object-cover"
+                        className="w-full h-auto"
                       />
                     )}
                     <div className="absolute bottom-2 right-2 flex gap-2">
