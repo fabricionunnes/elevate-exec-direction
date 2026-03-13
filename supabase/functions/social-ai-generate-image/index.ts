@@ -206,6 +206,10 @@ Visual Request: ${prompt}
 QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese. Prefer NO text if possible.
 REALISM: 100% physically realistic, correct proportions and perspective.
+
+CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
+The logo will be added separately after generation. If you include a fabricated logo it will be WRONG.
+Do NOT invent or hallucinate any logos. Leave the image clean without any brand marks.
 `;
 
       // Add reference image if provided
@@ -651,22 +655,18 @@ SAFE ZONE - LOGO & ELEMENT POSITIONING (CRITICAL):
 - NO important elements should be cut off when cropped
 `;
 
-  if (includeLogo) {
-    prompt += `
+  // Logo is ALWAYS applied via programmatic canvas overlay, NEVER by AI generation
+  // We must tell the AI explicitly NOT to include logos to prevent hallucinated/fake logos
+  prompt += `
 ============================================
-LOGO INCLUSION INSTRUCTIONS (CRITICAL):
+LOGO / BRAND MARK INSTRUCTIONS (ABSOLUTELY CRITICAL):
 ============================================
-- I am providing the brand logo image as a reference
-- You MUST incorporate this EXACT logo into the generated image
-- POSITION THE LOGO IN THE CENTER OF THE IMAGE - not in corners!
-- The logo must be FULLY VISIBLE and COMPLETE - no cropping
-- The logo should be clearly visible and proportionally sized
-- Maintain the logo's original colors, proportions, and details EXACTLY
-- The logo must remain SHARP and HIGH QUALITY - no blur or pixelation
-- Integrate the logo naturally without distorting it
-- The logo is the brand identity - it MUST be perfect
+- Do NOT include any logo, brand mark, watermark, or company name text in the image
+- The logo will be added separately AFTER image generation via a precise overlay process
+- If you include any fabricated or hallucinated logo, it will be WRONG and ruin the image
+- Leave the bottom-right corner area clean/simple so the real logo can be overlaid there
+- This is NON-NEGOTIABLE — NO logos or brand marks of any kind in the generated image
 `;
-  }
 
   if (referenceImageUrl) {
     prompt += `
