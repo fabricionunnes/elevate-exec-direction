@@ -1030,7 +1030,15 @@ export const SocialCardDetailSheet = ({
                       <Label className="text-xs whitespace-nowrap">Slides:</Label>
                       <Select
                         value={String(aiCarouselCount)}
-                        onValueChange={(v) => setAiCarouselCount(Number(v))}
+                        onValueChange={(v) => {
+                          const count = Number(v);
+                          setAiCarouselCount(count);
+                          setAiCarouselTexts(prev => {
+                            const newTexts = [...prev];
+                            while (newTexts.length < count) newTexts.push("");
+                            return newTexts.slice(0, count);
+                          });
+                        }}
                         disabled={card.is_locked || generatingAiImage}
                       >
                         <SelectTrigger className="h-8 text-xs w-20">
