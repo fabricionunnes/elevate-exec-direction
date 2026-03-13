@@ -73,6 +73,7 @@ interface SocialPerformanceViewProps {
   cards: ContentCard[];
   stages: Stage[];
   boardId: string;
+  projectId: string;
 }
 
 const contentTypeIcon: Record<string, React.ReactNode> = {
@@ -90,9 +91,10 @@ const rankIcons = [
 
 type SortBy = "engagement" | "likes" | "comments" | "saves" | "shares" | "views" | "reach";
 
-export const SocialPerformanceView = ({ cards, stages, boardId }: SocialPerformanceViewProps) => {
+export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: SocialPerformanceViewProps) => {
   const [metrics, setMetrics] = useState<PostMetric[]>([]);
   const [loading, setLoading] = useState(true);
+  const [syncing, setSyncing] = useState(false);
   const [editingId, setEditingId] = useState<string | null>(null);
   const [editValues, setEditValues] = useState<Partial<PostMetric>>({});
   const [sortBy, setSortBy] = useState<SortBy>("engagement");
