@@ -198,6 +198,34 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const loadCarouselImages = async (cardId: string, baseCreativeUrl: string | null, cardContentType: string) => {
+    if (cardContentType !== "carrossel") {
+      setCarouselImages([]);
+      return;
+    }
+
+    try {
+      const { data, error } = await supabase
+        .from("social_card_attachments")
+        .select("file_url,file_name")
+        .eq("card_id", cardId)
+        .like("file_name", "ai-carousel-slide-%")
+        .order("file_name", { ascending: true });
+
+      if (error) throw error;
+
+      const urls = (data || []).map((item) => item.file_url).filter(Boolean);
+      if (urls.length > 0) {
+        setCarouselImages(urls);
+      } else {
+        setCarouselImages(baseCreativeUrl ? [baseCreativeUrl] : []);
+      }
+    } catch (error) {
+      console.error("Error loading carousel slides:", error);
+      setCarouselImages(baseCreativeUrl ? [baseCreativeUrl] : []);
+    }
+  };
+
   const loadCardData = () => {
     if (!card) return;
     setTheme(card.theme || "");
@@ -216,6 +244,7 @@ export const SocialCardDetailSheet = ({
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
+    loadCarouselImages(card.id, card.creative_url, card.content_type || "");
   };
 
   const loadHistory = async () => {
@@ -421,6 +450,14 @@ export const SocialCardDetailSheet = ({
 
       if (updateError) throw updateError;
 
+      // Manual upload replaces any previous AI carousel set
+      setCarouselImages([]);
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
+
       toast.success("Arquivo enviado!");
       // Don't call onUpdate() here - it would reload and close/refresh the sheet
     } catch (error) {
@@ -449,6 +486,13 @@ export const SocialCardDetailSheet = ({
         .eq("id", card.id);
 
       if (error) throw error;
+
+      // Remove persisted AI carousel slides for this card
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
 
       // Update local state
       setCreativeUrl("");
@@ -499,6 +543,30 @@ export const SocialCardDetailSheet = ({
           })
           .eq("id", card.id);
         if (updateError) throw updateError;
+
+        // Persist slides so they can be viewed after reopening the card
+        await supabase
+          .from("social_card_attachments")
+          .delete()
+          .eq("card_id", card.id)
+          .like("file_name", "ai-carousel-slide-%");
+
+        const slidesToInsert = data.images.map((url: string, index: number) => ({
+          card_id: card.id,
+          file_name: `ai-carousel-slide-${index + 1}.png`,
+          file_url: url,
+          file_type: "image/png",
+          file_size: null,
+          uploaded_by: null,
+        }));
+
+        const { error: insertSlidesError } = await supabase
+          .from("social_card_attachments")
+          .insert(slidesToInsert);
+
+        if (insertSlidesError) {
+          console.error("Error saving carousel slides:", insertSlidesError);
+        }
 
         setCreativeUrl(firstImage);
         setCreativeType("image");
