@@ -1029,13 +1029,13 @@ export const SocialCardDetailSheet = ({
                           : "Selecionar data"}
                       </Button>
                     </PopoverTrigger>
-                    <PopoverContent className="w-auto p-0" align="start">
+                    <PopoverContent className="w-auto p-0 pointer-events-auto z-[9999]" align="start" side="top" sideOffset={4}>
                       <CalendarComponent
                         mode="single"
                         selected={suggestedDate ? parseDateLocal(suggestedDate) : undefined}
                         onSelect={(date) => setSuggestedDate(date ? toDateString(date) : "")}
                         locale={ptBR}
-                        className="pointer-events-auto"
+                        className="p-3 pointer-events-auto"
                       />
                     </PopoverContent>
                   </Popover>
