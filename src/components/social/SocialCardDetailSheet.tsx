@@ -1057,6 +1057,38 @@ export const SocialCardDetailSheet = ({
                   </div>
                 )}
 
+                {/* Text overlay fields */}
+                {aiGenerateMode === "single" ? (
+                  <div className="space-y-1.5">
+                    <Label className="text-xs text-muted-foreground">Texto na imagem (opcional)</Label>
+                    <Input
+                      placeholder="Ex: Estratégia + Motivação = Resultados"
+                      value={aiImageText}
+                      onChange={(e) => setAiImageText(e.target.value)}
+                      disabled={card.is_locked || generatingAiImage}
+                      className="text-sm"
+                    />
+                  </div>
+                ) : (
+                  <div className="space-y-2 p-3 border border-border rounded-lg bg-muted/30">
+                    <Label className="text-xs text-muted-foreground">Texto em cada slide (opcional)</Label>
+                    {Array.from({ length: aiCarouselCount }).map((_, i) => (
+                      <Input
+                        key={i}
+                        placeholder={`Slide ${i + 1} — texto (deixe vazio se não quiser)`}
+                        value={aiCarouselTexts[i] || ""}
+                        onChange={(e) => {
+                          const updated = [...aiCarouselTexts];
+                          updated[i] = e.target.value;
+                          setAiCarouselTexts(updated);
+                        }}
+                        disabled={card.is_locked || generatingAiImage}
+                        className="text-sm h-8"
+                      />
+                    ))}
+                  </div>
+                )}
+
                 <Textarea
                   placeholder={generatingPromptSuggestion ? "Gerando sugestão de prompt..." : "Descreva a imagem que deseja gerar..."}
                   value={generatingPromptSuggestion ? "" : aiPrompt}
