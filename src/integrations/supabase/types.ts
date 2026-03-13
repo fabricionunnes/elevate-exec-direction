@@ -25538,6 +25538,72 @@ export type Database = {
           },
         ]
       }
+      social_post_metrics: {
+        Row: {
+          board_id: string
+          card_id: string
+          comments: number
+          created_at: string
+          engagement_rate: number | null
+          id: string
+          impressions: number
+          likes: number
+          reach: number
+          saves: number
+          shares: number
+          synced_at: string | null
+          updated_at: string
+          views: number
+        }
+        Insert: {
+          board_id: string
+          card_id: string
+          comments?: number
+          created_at?: string
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number
+          likes?: number
+          reach?: number
+          saves?: number
+          shares?: number
+          synced_at?: string | null
+          updated_at?: string
+          views?: number
+        }
+        Update: {
+          board_id?: string
+          card_id?: string
+          comments?: number
+          created_at?: string
+          engagement_rate?: number | null
+          id?: string
+          impressions?: number
+          likes?: number
+          reach?: number
+          saves?: number
+          shares?: number
+          synced_at?: string | null
+          updated_at?: string
+          views?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_post_metrics_board_id_fkey"
+            columns: ["board_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_boards"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "social_post_metrics_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: true
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_publish_logs: {
         Row: {
           action: string
