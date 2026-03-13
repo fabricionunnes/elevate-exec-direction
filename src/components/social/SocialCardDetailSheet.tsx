@@ -33,7 +33,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink, Wand2
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -139,6 +139,10 @@ export const SocialCardDetailSheet = ({
   const [creativeType, setCreativeType] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [cardColor, setCardColor] = useState<string | null>(null);
+  
+  // AI image generation
+  const [aiPrompt, setAiPrompt] = useState("");
+  const [generatingAiImage, setGeneratingAiImage] = useState(false);
 
   useEffect(() => {
     if (card && open) {
@@ -414,6 +418,42 @@ export const SocialCardDetailSheet = ({
       toast.error("Erro ao remover mídia");
     } finally {
       setUploading(false);
+    }
+  };
+
+  const handleGenerateAiImage = async () => {
+    if (!card || !aiPrompt.trim()) return;
+    setGeneratingAiImage(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
+        body: {
+          projectId,
+          prompt: aiPrompt.trim(),
+          format: "feed_post",
+          includeLogoPref: true,
+        },
+      });
+      if (error) throw error;
+      if (data?.error) { toast.error(data.error); return; }
+
+      const imageUrl = data?.image_url || data?.images?.[0];
+      if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
+
+      const { error: updateError } = await supabase
+        .from("social_content_cards")
+        .update({ creative_url: imageUrl, creative_type: "image" })
+        .eq("id", card.id);
+      if (updateError) throw updateError;
+
+      setCreativeUrl(imageUrl);
+      setCreativeType("image");
+      setAiPrompt("");
+      toast.success("Imagem gerada e aplicada ao card!");
+    } catch (err) {
+      console.error("AI image error:", err);
+      toast.error("Erro ao gerar imagem via IA");
+    } finally {
+      setGeneratingAiImage(false);
     }
   };
 
@@ -763,7 +803,36 @@ export const SocialCardDetailSheet = ({
                 />
               </div>
 
-              {/* Type & Objective */}
+              {/* AI Image Generation */}
+              <div className="space-y-2">
+                <Label className="flex items-center gap-1.5">
+                  <Wand2 className="h-3.5 w-3.5" />
+                  Gerar Imagem com IA
+                </Label>
+                <div className="flex gap-2">
+                  <Textarea
+                    placeholder="Descreva a imagem que deseja gerar..."
+                    value={aiPrompt}
+                    onChange={(e) => setAiPrompt(e.target.value)}
+                    disabled={card.is_locked || generatingAiImage}
+                    className="min-h-[60px] text-sm"
+                    rows={2}
+                  />
+                </div>
+                <Button
+                  size="sm"
+                  onClick={handleGenerateAiImage}
+                  disabled={card.is_locked || generatingAiImage || !aiPrompt.trim()}
+                  className="gap-1.5 w-full"
+                >
+                  {generatingAiImage ? (
+                    <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Gerando...</>
+                  ) : (
+                    <><Sparkles className="h-3.5 w-3.5" /> Gerar Imagem</>
+                  )}
+                </Button>
+              </div>
+
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-2">
                   <Label>Tipo</Label>
