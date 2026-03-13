@@ -1078,35 +1078,6 @@ export const SocialCardDetailSheet = ({
                   )}
                 </Button>
 
-                {/* Carousel preview */}
-                {carouselImages.length > 1 && (
-                  <div className="space-y-2">
-                    <Label className="text-xs text-muted-foreground">
-                      Carrossel gerado ({carouselImages.length} slides)
-                    </Label>
-                    <div className="flex gap-2 overflow-x-auto pb-2">
-                      {carouselImages.map((url, idx) => (
-                        <div
-                          key={idx}
-                          className="relative flex-shrink-0 w-20 h-20 rounded-md overflow-hidden border border-border cursor-pointer hover:ring-2 hover:ring-primary transition-all"
-                          onClick={() => {
-                            setCreativeUrl(url);
-                            toast.info(`Slide ${idx + 1} selecionado como capa`);
-                          }}
-                        >
-                          <img
-                            src={url}
-                            alt={`Slide ${idx + 1}`}
-                            className="w-full h-full object-cover"
-                          />
-                          <span className="absolute bottom-0.5 right-0.5 bg-background/80 text-foreground text-[10px] px-1 rounded">
-                            {idx + 1}
-                          </span>
-                        </div>
-                      ))}
-                    </div>
-                  </div>
-                )}
               </div>
 
               <div className="grid grid-cols-2 gap-4">
