@@ -467,30 +467,57 @@ export const SocialCardDetailSheet = ({
     if (!card || !aiPrompt.trim()) return;
     setGeneratingAiImage(true);
     try {
+      const isCarousel = aiGenerateMode === "carousel";
       const { data, error } = await supabase.functions.invoke("social-ai-generate-image", {
         body: {
           projectId,
           prompt: aiPrompt.trim(),
-          format: "feed_post",
+          format: isCarousel ? "carousel" : "feed_post",
           includeLogoPref: aiIncludeLogo,
+          ...(isCarousel && {
+            carouselCount: aiCarouselCount,
+            carouselConnected: aiCarouselConnected,
+          }),
         },
       });
       if (error) throw error;
       if (data?.error) { toast.error(data.error); return; }
 
-      const imageUrl = data?.image_url || data?.images?.[0];
-      if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
+      if (isCarousel && data?.images?.length) {
+        // For carousel, save first image as creative and store all
+        const firstImage = data.images[0];
+        const { error: updateError } = await supabase
+          .from("social_content_cards")
+          .update({ 
+            creative_url: firstImage, 
+            creative_type: "image",
+            content_type: "carrossel",
+          })
+          .eq("id", card.id);
+        if (updateError) throw updateError;
 
-      const { error: updateError } = await supabase
-        .from("social_content_cards")
-        .update({ creative_url: imageUrl, creative_type: "image" })
-        .eq("id", card.id);
-      if (updateError) throw updateError;
+        setCreativeUrl(firstImage);
+        setCreativeType("image");
+        setContentType("carrossel");
+        setCarouselImages(data.images);
+        setAiPrompt("");
+        toast.success(`Carrossel com ${data.images.length} imagens gerado!`);
+      } else {
+        const imageUrl = data?.image_url || data?.images?.[0];
+        if (!imageUrl) { toast.error("Nenhuma imagem gerada"); return; }
 
-      setCreativeUrl(imageUrl);
-      setCreativeType("image");
-      setAiPrompt("");
-      toast.success("Imagem gerada e aplicada ao card!");
+        const { error: updateError } = await supabase
+          .from("social_content_cards")
+          .update({ creative_url: imageUrl, creative_type: "image" })
+          .eq("id", card.id);
+        if (updateError) throw updateError;
+
+        setCreativeUrl(imageUrl);
+        setCreativeType("image");
+        setCarouselImages([]);
+        setAiPrompt("");
+        toast.success("Imagem gerada e aplicada ao card!");
+      }
     } catch (err) {
       console.error("AI image error:", err);
       toast.error("Erro ao gerar imagem via IA");
