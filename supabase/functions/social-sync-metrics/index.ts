@@ -226,8 +226,8 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Error syncing metrics:", error);
     return new Response(
-      JSON.stringify({ error: error instanceof Error ? error.message : "Failed to sync metrics" }),
-      { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      JSON.stringify({ success: false, error: error instanceof Error ? error.message : "Falha ao sincronizar métricas" }),
+      { status: 200, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
 });
