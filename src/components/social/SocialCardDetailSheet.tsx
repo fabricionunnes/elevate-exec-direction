@@ -144,6 +144,30 @@ export const SocialCardDetailSheet = ({
   const [aiPrompt, setAiPrompt] = useState("");
   const [generatingAiImage, setGeneratingAiImage] = useState(false);
   const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
+  const [generatingPromptSuggestion, setGeneratingPromptSuggestion] = useState(false);
+
+  const generatePromptSuggestion = async (copy: string, theme: string, contentType: string) => {
+    setGeneratingPromptSuggestion(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-ai-suggestions", {
+        body: {
+          type: "image_prompt",
+          copyText: copy,
+          theme,
+          contentType,
+        },
+      });
+      if (!error && data?.suggestion) {
+        setAiPrompt(data.suggestion);
+      } else {
+        setAiPrompt(copy);
+      }
+    } catch {
+      setAiPrompt(copy);
+    } finally {
+      setGeneratingPromptSuggestion(false);
+    }
+  };
 
   useEffect(() => {
     if (card && open) {
@@ -176,7 +200,10 @@ export const SocialCardDetailSheet = ({
     setContentType(card.content_type || "estatico");
     setObjective(card.objective);
     setCopyText(card.copy_text || "");
-    setAiPrompt(card.copy_text || "");
+    setAiPrompt("");
+    if (card.copy_text?.trim()) {
+      generatePromptSuggestion(card.copy_text, card.theme || "", card.content_type || "");
+    }
     setFinalCaption(card.final_caption || "");
     setHashtags(card.hashtags || "");
     setCta(card.cta || "");
@@ -813,12 +840,12 @@ export const SocialCardDetailSheet = ({
                 </Label>
                 <div className="flex gap-2">
                   <Textarea
-                    placeholder="Descreva a imagem que deseja gerar..."
-                    value={aiPrompt}
+                    placeholder={generatingPromptSuggestion ? "Gerando sugestão de prompt..." : "Descreva a imagem que deseja gerar..."}
+                    value={generatingPromptSuggestion ? "" : aiPrompt}
                     onChange={(e) => setAiPrompt(e.target.value)}
-                    disabled={card.is_locked || generatingAiImage}
+                    disabled={card.is_locked || generatingAiImage || generatingPromptSuggestion}
                     className="min-h-[60px] text-sm"
-                    rows={2}
+                    rows={3}
                   />
                 </div>
                 <div className="flex items-center gap-3">
