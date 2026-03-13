@@ -929,26 +929,14 @@ export const SocialCardDetailSheet = ({
                           <SelectValue />
                         </SelectTrigger>
                         <SelectContent>
-                          {[2, 3, 4, 5, 6, 7, 8, 10].map((n) => (
+                          {[2, 3, 4, 5].map((n) => (
                             <SelectItem key={n} value={String(n)}>{n}</SelectItem>
                           ))}
                         </SelectContent>
                       </Select>
                     </div>
-                    <label className="flex items-center gap-1.5 text-xs cursor-pointer">
-                      <input
-                        type="checkbox"
-                        checked={aiCarouselConnected}
-                        onChange={(e) => setAiCarouselConnected(e.target.checked)}
-                        disabled={card.is_locked || generatingAiImage}
-                        className="rounded border-input"
-                      />
-                      Imagens conectadas (panorâmico)
-                    </label>
                     <p className="text-[10px] text-muted-foreground">
-                      {aiCarouselConnected 
-                        ? "As imagens formarão uma sequência visual contínua." 
-                        : "Cada slide terá uma variação independente do tema."}
+                      Uma imagem panorâmica será gerada e dividida em {aiCarouselCount} slides iguais com continuidade visual.
                     </p>
                   </div>
                 )}
