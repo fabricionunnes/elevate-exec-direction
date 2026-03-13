@@ -175,6 +175,7 @@ export const SocialCardDetailSheet = ({
     setContentType(card.content_type || "estatico");
     setObjective(card.objective);
     setCopyText(card.copy_text || "");
+    setAiPrompt(card.copy_text || "");
     setFinalCaption(card.final_caption || "");
     setHashtags(card.hashtags || "");
     setCta(card.cta || "");
