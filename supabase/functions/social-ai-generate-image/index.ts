@@ -182,17 +182,15 @@ Deno.serve(async (req) => {
 
       // Build prompt for a single wide panoramic image
       const brandColors = extractBrandColors(profile, briefing);
-      let panoramicPrompt = `Generate a SINGLE WIDE PANORAMIC IMAGE that will be sliced into ${carouselCount} equal vertical panels for an Instagram carousel.
+      let panoramicPrompt = `Generate a SINGLE WIDE PANORAMIC IMAGE for an Instagram carousel with ${carouselCount} slides.
 
-EXACT DIMENSIONS: The image must be ${panoramicWidth}x${slideHeight} pixels (a very wide horizontal panorama).
-ASPECT RATIO: ${panoramicWidth}:${slideHeight} — this is a very wide image.
+The image must be a very wide horizontal panorama (ratio approximately ${carouselCount}:1.25).
 
 CRITICAL COMPOSITION RULES:
-- Design the image so that when split into ${carouselCount} equal vertical slices (each ${slideWidth}x${slideHeight}), EACH slice looks beautiful on its own AND flows seamlessly into the next.
+- The image will be split into ${carouselCount} equal vertical sections. Each section must look beautiful on its own AND flow seamlessly into the next.
 - Spread visual interest across the ENTIRE width — do NOT concentrate everything in the center.
 - Use a continuous background, gradient, or scene that spans the full width.
-- Important elements should be distributed across all ${carouselCount} sections.
-- Avoid placing critical elements exactly at the split boundaries (every ${slideWidth}px).
+- Important elements should be distributed across all sections.
 
 Visual Request: ${prompt}
 `;
@@ -210,16 +208,14 @@ Visual Request: ${prompt}
       // Add slide text instructions
       const hasSlideTexts = slideTexts && Array.isArray(slideTexts) && slideTexts.some((t: string) => t && t.trim());
       if (hasSlideTexts) {
-        panoramicPrompt += `\n\nTEXT TO INCLUDE IN EACH SLIDE: The panoramic image will be split into ${carouselCount} equal vertical panels. Include the following text in each corresponding panel section, using prominent, legible typography that fits the design:`;
+        panoramicPrompt += `\n\nTEXT TO INCLUDE: The image has ${carouselCount} equal vertical sections from left to right. Include the following text in each section, using prominent, legible typography:`;
         for (let i = 0; i < carouselCount; i++) {
           const text = slideTexts[i]?.trim();
           if (text) {
-            panoramicPrompt += `\n- Panel ${i + 1} (from x=${i * slideWidth}px to x=${(i + 1) * slideWidth}px): "${text}"`;
-          } else {
-            panoramicPrompt += `\n- Panel ${i + 1}: No text needed.`;
+            panoramicPrompt += `\n- Section ${i + 1}: "${text}"`;
           }
         }
-        panoramicPrompt += `\nAll text MUST be in Brazilian Portuguese, clearly readable, and well-positioned within each panel area.`;
+        panoramicPrompt += `\nAll text MUST be in Brazilian Portuguese, clearly readable, and well-positioned.`;
       }
 
       panoramicPrompt += `
@@ -227,11 +223,16 @@ QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese.${hasSlideTexts ? '' : ' Prefer NO text if possible.'}
 REALISM: 100% physically realistic, correct proportions and perspective.
 
-CRITICAL - NO TECHNICAL LABELS: Never render resolution labels, measurement text, UI elements or counters such as "1080px", "px", "4:5", "1/3", "2/3", or similar.
+ABSOLUTELY FORBIDDEN - DO NOT RENDER ANY OF THE FOLLOWING IN THE IMAGE:
+- NO pixel measurements, coordinates, or dimensions (e.g. "1080px", "0-1080", "px")
+- NO panel/section labels, numbers, or indicators (e.g. "Panel 1", "1/5", "2/5", "Section 1")
+- NO aspect ratio text (e.g. "4:5", "16:9")
+- NO UI elements, borders between sections, dotted lines, or grid markers
+- NO technical annotations of any kind
+The image must be a CLEAN, SEAMLESS panoramic artwork with ZERO technical overlays.
 
 CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
-The logo will be added separately after generation. If you include a fabricated logo it will be WRONG.
-Do NOT invent or hallucinate any logos. Leave the image clean without any brand marks.
+The logo will be added separately after generation. Do NOT invent or hallucinate any logos.
 `;
 
       // Add reference image if provided
