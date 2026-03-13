@@ -6,6 +6,7 @@ import { Plus, Loader2, RefreshCw, LayoutGrid, CalendarDays, BarChart3 } from "l
 import { toast } from "sonner";
 import { SocialKanbanBoard } from "@/components/social/SocialKanbanBoard";
 import { SocialCalendarView } from "@/components/social/SocialCalendarView";
+import { SocialPerformanceView } from "@/components/social/SocialPerformanceView";
 import { SocialCardDialog } from "@/components/social/SocialCardDialog";
 import { SocialCardDetailSheet } from "@/components/social/SocialCardDetailSheet";
 
