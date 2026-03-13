@@ -524,7 +524,7 @@ export const SocialCardDetailSheet = ({
       }
     } catch (err) {
       console.error("AI image error:", err);
-      toast.error("Erro ao gerar imagem via IA");
+      toast.error("Erro ao gerar imagem via IA", { id: isCarousel ? "ai-carousel" : undefined });
     } finally {
       setGeneratingAiImage(false);
     }
