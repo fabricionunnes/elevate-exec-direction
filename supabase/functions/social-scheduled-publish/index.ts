@@ -66,7 +66,9 @@ Deno.serve(async (req) => {
       .in("stage_id", scheduledStageIds)
       .eq("is_locked", true)
       .not("creative_url", "is", null)
-      .lt("publish_attempts", MAX_ATTEMPTS);
+      .lt("publish_attempts", MAX_ATTEMPTS)
+      .is("published_at", null)
+      .is("instagram_post_id", null);
 
     if (cardsError) {
       console.error("Error fetching cards:", cardsError);
