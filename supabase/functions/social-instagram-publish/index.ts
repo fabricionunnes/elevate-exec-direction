@@ -150,6 +150,15 @@ Deno.serve(async (req) => {
       );
     }
 
+    // Guard against duplicate publishing
+    if (card.instagram_post_id || card.published_at) {
+      console.log(`Card ${cardId} already published (post_id: ${card.instagram_post_id}), skipping`);
+      return new Response(
+        JSON.stringify({ success: true, alreadyPublished: true, postId: card.instagram_post_id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // 2. Fetch Instagram account
     const { data: igAccount, error: igError } = await supabaseClient
       .from("social_instagram_accounts")
