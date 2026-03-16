@@ -1471,7 +1471,14 @@ export default function AllRecurringChargesPage() {
               </Card>
 
               {/* Summary */}
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrencyCents(invoiceSummary.totalAll)}</div>
+                    <p className="text-xs text-muted-foreground">{invoiceSummary.totalCount} parcelas</p>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">A Receber</CardTitle></CardHeader>
                   <CardContent>
