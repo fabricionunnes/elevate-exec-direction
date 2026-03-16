@@ -10,7 +10,8 @@ import {
   BarChart3,
   UserCheck,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JobOpeningsTab } from "./tabs/JobOpeningsTab";
@@ -23,6 +24,7 @@ import { HRDashboardTab } from "./tabs/HRDashboardTab";
 import { TalentPoolTab } from "./tabs/TalentPoolTab";
 import { CultureManualTab } from "./tabs/CultureManualTab";
 import { CareerPlanTab } from "./tabs/CareerPlanTab";
+import { HRSettingsTab } from "./tabs/HRSettingsTab";
 
 interface HRRecruitmentPanelProps {
   projectId: string;
@@ -158,6 +160,12 @@ export function HRRecruitmentPanel({
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Plano de Carreira</span>
           </TabsTrigger>
+          {isStaff && (
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configurações</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
@@ -235,6 +243,12 @@ export function HRRecruitmentPanel({
             isStaff={isStaff}
           />
         </TabsContent>
+
+        {isStaff && (
+          <TabsContent value="settings" className="mt-6">
+            <HRSettingsTab projectId={projectId} />
+          </TabsContent>
+        )}
 
       </Tabs>
     </div>
