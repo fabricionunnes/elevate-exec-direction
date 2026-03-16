@@ -39,6 +39,7 @@ import { PerformanceComparisonCard } from "./PerformanceComparisonCard";
 import { DailyGoalCard } from "./DailyGoalCard";
 import { ProjectTermVisionCard } from "./ProjectTermVisionCard";
 import { SalesHeatmapCharts } from "./SalesHeatmapCharts";
+import { PeriodComparisonCard } from "./PeriodComparisonCard";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface KPI {
@@ -1821,6 +1822,20 @@ export const KPIDashboardTab = ({
           )}
         </div>
       )}
+
+      {/* Period Comparison Card */}
+      <PeriodComparisonCard
+        companyId={companyId}
+        kpis={kpis.map(k => ({ id: k.id, name: k.name, kpi_type: k.kpi_type, is_main_goal: k.is_main_goal }))}
+        salespeople={salespeople.map(sp => ({ id: sp.id, name: sp.name, team_id: sp.team_id, unit_id: sp.unit_id, sector_id: sp.sector_id }))}
+        dateRange={dateRange}
+        selectedKpi={selectedKpi}
+        selectedSalesperson={selectedSalesperson}
+        selectedUnit={selectedUnit}
+        selectedTeam={selectedTeam}
+        selectedSector={selectedSector}
+        sectorTeams={sectorTeams}
+      />
 
       {/* Daily Goal Card */}
       <DailyGoalCard
