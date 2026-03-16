@@ -14,7 +14,6 @@ export async function notifyClientStageChange({
   jobTitle,
 }: NotifyParams) {
   try {
-    // Fetch HR WhatsApp config with instance details
     const { data: config } = await supabase
       .from("hr_whatsapp_config")
       .select("*, whatsapp_instances(*)")
@@ -22,7 +21,7 @@ export async function notifyClientStageChange({
       .maybeSingle();
 
     if (!config || !config.notify_on_stage_change || !config.instance_id) {
-      return; // Not configured or disabled
+      return;
     }
 
     const instance = config.whatsapp_instances as any;
@@ -31,7 +30,8 @@ export async function notifyClientStageChange({
       return;
     }
 
-    const template = config.message_template ||
+    const template =
+      config.message_template ||
       'O candidato {candidate_name} avançou para a etapa "{stage_name}" na vaga "{job_title}".';
 
     const message = template
@@ -39,31 +39,45 @@ export async function notifyClientStageChange({
       .replace(/{stage_name}/g, stageName)
       .replace(/{job_title}/g, jobTitle);
 
-    const recipient = config.notify_group_jid || config.notify_phone;
+    const isGroup = Boolean(config.notify_group_jid);
+    const recipient = isGroup ? config.notify_group_jid : config.notify_phone;
 
     if (!recipient) {
       console.warn("No recipient configured for HR WhatsApp notifications");
       return;
     }
 
-    // Use the evolution-api edge function instead of calling the API directly (avoids CORS)
+    const action = isGroup ? "sendGroupText" : "sendText";
+    const body = isGroup
+      ? {
+          action,
+          instanceId: config.instance_id,
+          groupJid: recipient,
+          message,
+        }
+      : {
+          action,
+          instanceId: config.instance_id,
+          phone: recipient,
+          message,
+        };
+
     const { data, error } = await supabase.functions.invoke("evolution-api", {
-      body: {
-        action: "sendText",
-        instanceId: config.instance_id,
-        number: config.notify_group_jid ? undefined : recipient,
-        jid: config.notify_group_jid || undefined,
-        text: message,
-      },
+      body,
     });
 
     if (error) {
       console.error("Error sending HR WhatsApp notification via edge function:", error);
-    } else {
-      console.log("HR WhatsApp notification sent successfully:", data);
+      return;
     }
+
+    if (data?.error) {
+      console.error("Evolution API returned an error for HR notification:", data);
+      return;
+    }
+
+    console.log("HR WhatsApp notification sent successfully:", data);
   } catch (error) {
     console.error("Error sending HR WhatsApp notification:", error);
-    // Don't throw - notification failure shouldn't block stage change
   }
 }
