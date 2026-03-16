@@ -19223,9 +19223,11 @@ export type Database = {
           cpc: number | null
           cpm: number | null
           creative_body: string | null
+          creative_image_url: string | null
           creative_link_url: string | null
           creative_thumbnail_url: string | null
           creative_title: string | null
+          creative_video_url: string | null
           ctr: number | null
           date_start: string | null
           date_stop: string | null
@@ -19252,9 +19254,11 @@ export type Database = {
           cpc?: number | null
           cpm?: number | null
           creative_body?: string | null
+          creative_image_url?: string | null
           creative_link_url?: string | null
           creative_thumbnail_url?: string | null
           creative_title?: string | null
+          creative_video_url?: string | null
           ctr?: number | null
           date_start?: string | null
           date_stop?: string | null
@@ -19281,9 +19285,11 @@ export type Database = {
           cpc?: number | null
           cpm?: number | null
           creative_body?: string | null
+          creative_image_url?: string | null
           creative_link_url?: string | null
           creative_thumbnail_url?: string | null
           creative_title?: string | null
+          creative_video_url?: string | null
           ctr?: number | null
           date_start?: string | null
           date_stop?: string | null
