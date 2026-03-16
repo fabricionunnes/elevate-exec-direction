@@ -1070,12 +1070,12 @@ export default function AllRecurringChargesPage() {
     const effectivelyOverdue = filteredInvoices.filter(i => isEffectivelyOverdue(i.status, i.due_date));
     const effectivelyPending = filteredInvoices.filter(i => (i.status === "pending" || i.status === "overdue") && !isEffectivelyOverdue(i.status, i.due_date));
     const pending = filteredInvoices.filter(i => i.status === "pending" || i.status === "overdue");
-    const paid = filteredInvoices.filter(i => i.status === "paid");
+    const paid = filteredInvoices.filter(i => i.status === "paid" || i.status === "partial");
     return {
       totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
       totalPaid: paid.reduce((s, i) => {
-        const base = i.paid_amount_cents || i.amount_cents;
+        const base = i.paid_amount_cents || (i.status === "paid" ? i.amount_cents : 0);
         const interest = (i as any).interest_cents || 0;
         const discount = (i as any).discount_cents || 0;
         const fee = (i as any).payment_fee_cents || 0;
