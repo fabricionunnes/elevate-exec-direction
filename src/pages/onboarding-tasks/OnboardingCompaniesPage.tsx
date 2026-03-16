@@ -127,25 +127,45 @@ const OnboardingCompaniesPage = () => {
 
       if (error) throw error;
       
-      // Fetch monthly goals for current month to check which companies have goals
-      const currentMonth = new Date().getMonth() + 1;
-      const currentYear = new Date().getFullYear();
-      
-      // Get all projects and their goals for current month
-      const { data: projectsWithGoals } = await supabase
-        .from("onboarding_projects")
-        .select(`
-          company_id,
-          onboarding_monthly_goals!inner(sales_target)
-        `)
-        .eq("onboarding_monthly_goals.month", currentMonth)
-        .eq("onboarding_monthly_goals.year", currentYear)
-        .gt("onboarding_monthly_goals.sales_target", 0);
-      
-      // Create a set of company IDs that have goals > 0
-      const companiesWithGoals = new Set(
-        projectsWithGoals?.map(p => p.company_id) || []
-      );
+      // Use same criteria as Results page: KPIs with is_main_goal = true
+      // that have kpi_monthly_targets with target_value > 0 or base target_value > 0
+      const now = new Date();
+      const selectedMonth = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+
+      // Fetch all main goal KPIs with their company_id
+      const { data: mainGoalKpis } = await supabase
+        .from("company_kpis")
+        .select("id, company_id, target_value, is_main_goal")
+        .eq("is_main_goal", true);
+
+      const kpiIds = (mainGoalKpis || []).map(k => k.id);
+
+      // Fetch monthly targets for this month
+      const { data: monthlyTargets } = kpiIds.length > 0
+        ? await supabase
+            .from("kpi_monthly_targets")
+            .select("kpi_id, target_value")
+            .eq("month_year", selectedMonth)
+            .gt("target_value", 0)
+            .in("kpi_id", kpiIds)
+        : { data: [] as any[] };
+
+      // Build set of company IDs that have goals
+      const companiesWithGoals = new Set<string>();
+
+      // Companies with monthly targets > 0 for main goal KPIs
+      const kpiToCompany = new Map((mainGoalKpis || []).map(k => [k.id, k.company_id]));
+      (monthlyTargets || []).forEach(t => {
+        const companyId = kpiToCompany.get(t.kpi_id);
+        if (companyId) companiesWithGoals.add(companyId);
+      });
+
+      // Also consider main goal KPIs with base target_value > 0
+      (mainGoalKpis || []).forEach(k => {
+        if (k.company_id && k.target_value > 0) {
+          companiesWithGoals.add(k.company_id);
+        }
+      });
 
       // Fetch open job openings to check which companies have open positions
       const { data: openJobs } = await supabase
