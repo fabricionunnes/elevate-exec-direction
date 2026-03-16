@@ -1928,7 +1928,13 @@ export default function AllRecurringChargesPage() {
                 </CardContent>
               </Card>
 
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrency(filteredPayables.reduce((s, p) => s + p.amount, 0))}</div>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total a Pagar</CardTitle></CardHeader>
                   <CardContent>
@@ -1938,7 +1944,7 @@ export default function AllRecurringChargesPage() {
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Pago</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold">{formatCurrency(filteredPayables.filter(p => p.status === "paid").reduce((s, p) => s + (p.paid_amount || p.amount), 0))}</div>
+                    <div className="text-2xl font-bold text-emerald-600">{formatCurrency(filteredPayables.filter(p => p.status === "paid").reduce((s, p) => s + (p.paid_amount || p.amount), 0))}</div>
                   </CardContent>
                 </Card>
                 <Card>
