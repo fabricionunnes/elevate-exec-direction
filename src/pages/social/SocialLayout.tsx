@@ -127,7 +127,7 @@ export const SocialLayout = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/onboarding-tasks/${projectId}`)}
+              onClick={() => navigate(backPath)}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
