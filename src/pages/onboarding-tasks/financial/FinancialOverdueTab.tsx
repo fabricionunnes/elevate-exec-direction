@@ -247,7 +247,7 @@ export default function FinancialOverdueTab({
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-            body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
+            body: JSON.stringify({ instanceName: defaultInstName2, number: phone, text: msg }),
           });
           if (!response.ok) throw new Error();
           sent++;
