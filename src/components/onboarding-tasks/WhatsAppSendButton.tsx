@@ -34,7 +34,7 @@ export const WhatsAppSendButton = ({
 }: WhatsAppSendButtonProps) => {
   const [showDialog, setShowDialog] = useState(false);
   const [sending, setSending] = useState(false);
-  const [hasInstance, setHasInstance] = useState<boolean | null>(null);
+  
 
   // Clean phone number
   const rawDigits = phone?.replace(/\D/g, "") || "";
