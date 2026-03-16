@@ -232,13 +232,6 @@ export default function FinancialOverdueTab({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
       const defaultInstName2 = await getDefaultWhatsAppInstance();
-      const { data: instance } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_name")
-        .in("status", ["connected", "connecting"])
-        .eq("instance_name", defaultInstName2)
-        .maybeSingle();
-      if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
 
       let sent = 0, failed = 0;
       for (const inv of selected) {
