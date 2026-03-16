@@ -114,22 +114,23 @@ export const MetaAdsCreatives = ({ projectId, dateStart, dateStop }: Props) => {
               <div className="space-y-4">
                 {/* Media */}
                 {hasVideo(selectedAd) && selectedAd.creative_video_url ? (
-                  <div className="rounded-lg overflow-hidden bg-muted">
-                    <img
+                  <div className="rounded-lg overflow-hidden bg-black">
+                    <video
                       src={selectedAd.creative_video_url}
-                      alt={selectedAd.ad_name}
-                      className="w-full object-contain max-h-[60vh]"
+                      controls
+                      playsInline
+                      preload="auto"
+                      poster={selectedAd.creative_thumbnail_url || selectedAd.creative_image_url || undefined}
+                      className="w-full max-h-[60vh] mx-auto"
                     />
-                    <p className="text-xs text-muted-foreground text-center py-2">
-                      Pré-visualização do vídeo (thumbnail)
-                    </p>
                   </div>
                 ) : getMediaUrl(selectedAd) ? (
                   <div className="rounded-lg overflow-hidden bg-muted">
                     <img
-                      src={getMediaUrl(selectedAd)}
+                      src={selectedAd.creative_image_url || selectedAd.creative_thumbnail_url}
                       alt={selectedAd.ad_name}
                       className="w-full object-contain max-h-[60vh]"
+                      loading="eager"
                     />
                   </div>
                 ) : (
