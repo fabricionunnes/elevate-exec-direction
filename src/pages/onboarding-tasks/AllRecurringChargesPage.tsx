@@ -1005,12 +1005,13 @@ export default function AllRecurringChargesPage() {
     } else if (activeTab === "recurring") {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em", "Recebido"]];
       filteredInvoices.forEach(inv => {
-        const base = inv.paid_amount_cents || inv.amount_cents;
+        const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
         const interest = (inv as any).interest_cents || 0;
         const discount = (inv as any).discount_cents || 0;
         const fee = (inv as any).payment_fee_cents || 0;
-        const net = inv.status === "paid" ? (base + interest - discount - fee) : 0;
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", inv.status === "paid" ? formatCurrencyCents(net) : ""]);
+        const hasPaid = inv.status === "paid" || inv.status === "partial";
+        const net = hasPaid ? (base + interest - discount - fee) : 0;
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", hasPaid ? formatCurrencyCents(net) : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
