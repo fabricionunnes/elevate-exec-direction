@@ -2807,35 +2807,41 @@ const OnboardingTasksPage = () => {
                             )}
                             <span 
                               className={`flex items-center gap-0.5 px-1.5 py-0.5 rounded-full ${
-                                companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'bg-muted' 
-                                  : companyGoalPercent >= 100 
-                                    ? 'bg-green-100' 
-                                    : companyGoalPercent >= 70 
-                                      ? 'bg-yellow-100' 
-                                      : 'bg-red-100'
+                                (company as any).goal_not_required
+                                  ? 'bg-blue-100'
+                                  : companyGoalPercent === null || companyGoalPercent === undefined 
+                                    ? 'bg-muted' 
+                                    : companyGoalPercent >= 100 
+                                      ? 'bg-green-100' 
+                                      : companyGoalPercent >= 70 
+                                        ? 'bg-yellow-100' 
+                                        : 'bg-red-100'
                               }`}
-                              title="Projeção da Meta Principal"
+                              title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
                             >
                               <Target className={`h-2.5 w-2.5 ${
-                                companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'text-muted-foreground' 
-                                  : companyGoalPercent >= 100 
-                                    ? 'text-green-600' 
-                                    : companyGoalPercent >= 70 
-                                      ? 'text-yellow-600' 
-                                      : 'text-red-600'
+                                (company as any).goal_not_required
+                                  ? 'text-blue-600'
+                                  : companyGoalPercent === null || companyGoalPercent === undefined 
+                                    ? 'text-muted-foreground' 
+                                    : companyGoalPercent >= 100 
+                                      ? 'text-green-600' 
+                                      : companyGoalPercent >= 70 
+                                        ? 'text-yellow-600' 
+                                        : 'text-red-600'
                               }`} />
                               <span className={`font-semibold ${
-                                companyGoalPercent === null || companyGoalPercent === undefined 
-                                  ? 'text-muted-foreground' 
-                                  : companyGoalPercent >= 100 
-                                    ? 'text-green-600' 
-                                    : companyGoalPercent >= 70 
-                                      ? 'text-yellow-600' 
-                                      : 'text-red-600'
+                                (company as any).goal_not_required
+                                  ? 'text-blue-600'
+                                  : companyGoalPercent === null || companyGoalPercent === undefined 
+                                    ? 'text-muted-foreground' 
+                                    : companyGoalPercent >= 100 
+                                      ? 'text-green-600' 
+                                      : companyGoalPercent >= 70 
+                                        ? 'text-yellow-600' 
+                                        : 'text-red-600'
                               }`}>
-                                {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
+                                {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                               </span>
                             </span>
                           </div>
