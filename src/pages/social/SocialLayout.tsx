@@ -6,6 +6,24 @@ import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2, BookOpen } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const useIsClientUser = () => {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setIsClient(!data);
+    };
+    check();
+  }, []);
+  return isClient;
+};
+
 interface ProjectInfo {
   id: string;
   product_name: string | null;
