@@ -342,6 +342,7 @@ serve(async (req) => {
       const captions = chunkWordsIntoCaptions(transcript.words, transcript.text);
       const { overlays, suggested_style } = await generateOverlaysAndStyle(
         transcript.text || captions.map((caption) => caption.text).join(" "),
+        captions,
         editorNotes,
         lovableApiKey,
       );
