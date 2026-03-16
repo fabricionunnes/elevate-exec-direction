@@ -48,7 +48,7 @@ import { CardTagSelector } from "./CardTagSelector";
 import { CardAttachments } from "./CardAttachments";
 import { CardColorPicker } from "./CardColorPicker";
 import { CardSubtasks } from "./CardSubtasks";
-
+import { VideoEditor } from "./video-editor/VideoEditor";
 interface Stage {
   id: string;
   stage_type: string;
