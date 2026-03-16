@@ -6,6 +6,24 @@ import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2, BookOpen } from "l
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 
+const useIsClientUser = () => {
+  const [isClient, setIsClient] = useState(false);
+  useEffect(() => {
+    const check = async () => {
+      const { data: { user } } = await supabase.auth.getUser();
+      if (!user) return;
+      const { data } = await supabase
+        .from("onboarding_staff")
+        .select("id")
+        .eq("user_id", user.id)
+        .maybeSingle();
+      setIsClient(!data);
+    };
+    check();
+  }, []);
+  return isClient;
+};
+
 interface ProjectInfo {
   id: string;
   product_name: string | null;
@@ -18,6 +36,7 @@ export const SocialLayout = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const isClient = useIsClientUser();
 
   useEffect(() => {
     if (projectId) {
@@ -91,10 +110,12 @@ export const SocialLayout = () => {
     return null;
   }
 
+  const backPath = isClient ? `/onboarding-client/${projectId}` : `/onboarding-tasks/${projectId}`;
+
   const navItems = [
     { to: `/social/${projectId}`, label: "Pipeline", icon: LayoutGrid, end: true },
     { to: `/social/${projectId}/strategy`, label: "Base Estratégica", icon: BookOpen },
-    { to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings },
+    ...(!isClient ? [{ to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings }] : []),
   ];
 
   return (
@@ -106,7 +127,7 @@ export const SocialLayout = () => {
             <Button
               variant="ghost"
               size="icon"
-              onClick={() => navigate(`/onboarding-tasks/${projectId}`)}
+              onClick={() => navigate(backPath)}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
