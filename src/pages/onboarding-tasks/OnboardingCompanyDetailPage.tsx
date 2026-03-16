@@ -166,6 +166,10 @@ const OnboardingCompanyDetailPage = () => {
     notes: "",
     is_simulator: false,
     goal_not_required: false,
+    owner_name: "",
+    owner_cpf: "",
+    owner_rg: "",
+    owner_marital_status: "",
   });
 
   // Keep ref in sync with latest form state
