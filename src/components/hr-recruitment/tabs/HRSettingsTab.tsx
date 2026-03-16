@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PIPELINE_STAGES } from "../types";
+import { HRWhatsAppConfig } from "../settings/HRWhatsAppConfig";
 
 interface HRSettingsTabProps {
   projectId: string;
