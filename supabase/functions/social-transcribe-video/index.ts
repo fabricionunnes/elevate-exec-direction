@@ -102,6 +102,7 @@ async function submitTranscription(videoUrl: string, assemblyKey: string) {
     },
     body: JSON.stringify({
       audio_url: videoUrl,
+      language_code: "pt",
       punctuate: true,
       format_text: true,
       speaker_labels: false,
