@@ -270,3 +270,119 @@ async function readJsonBodySafe(req: Request): Promise<any | null> {
     return null;
   }
 }
+
+async function sendClientApprovalNotification(
+  supabase: any,
+  card: any,
+  projectId: string | undefined,
+  publishedNow: boolean
+) {
+  if (!projectId) return;
+
+  // Get WhatsApp settings
+  const { data: settings } = await supabase
+    .from("social_whatsapp_settings")
+    .select("*")
+    .eq("project_id", projectId)
+    .eq("is_active", true)
+    .single();
+
+  if (!settings?.whatsapp_instance_id) return;
+
+  // Get instance
+  const { data: instance } = await supabase
+    .from("whatsapp_instances")
+    .select("api_url, api_key, instance_name")
+    .eq("id", settings.whatsapp_instance_id)
+    .single();
+
+  if (!instance?.api_url || !instance?.api_key) return;
+
+  // Get contacts
+  const { data: contacts } = await supabase
+    .from("social_approval_contacts")
+    .select("phone, name")
+    .eq("project_id", projectId)
+    .eq("is_active", true);
+
+  // Build targets
+  const targets: { phone: string; name: string }[] = [];
+
+  if (contacts && contacts.length > 0) {
+    for (const c of contacts) {
+      let phone = c.phone.replace(/\D/g, "");
+      if (!phone.startsWith("55")) phone = "55" + phone;
+      targets.push({ phone, name: c.name || "" });
+    }
+  } else if (settings.client_phone) {
+    let phone = settings.client_phone.replace(/\D/g, "");
+    if (!phone.startsWith("55")) phone = "55" + phone;
+    targets.push({ phone, name: settings.client_name || "" });
+  }
+
+  if (targets.length === 0) return;
+
+  // Also send to group if configured
+  if (settings.send_to_group && settings.group_jid) {
+    targets.push({ phone: settings.group_jid, name: settings.group_name || "Grupo" });
+  }
+
+  const contentTypes: Record<string, string> = {
+    feed: "Feed", estatico: "Estático", carrossel: "Carrossel",
+    reels: "Reels", stories: "Stories", outro: "Outro"
+  };
+
+  const contentType = contentTypes[card.content_type] || card.content_type || "Conteúdo";
+
+  let message: string;
+  if (publishedNow) {
+    message = `✅ *Conteúdo Aprovado e Publicado!*
+
+O conteúdo abaixo foi aprovado e já foi publicado automaticamente:
+
+📱 *${contentType}*
+📝 *Tema:* ${card.theme || "—"}
+
+🎉 O post já está no ar! Obrigado pela aprovação.`;
+  } else if (card.suggested_date) {
+    const date = new Date(card.suggested_date + "T12:00:00");
+    const formattedDate = date.toLocaleDateString("pt-BR", { day: "2-digit", month: "2-digit", year: "numeric" });
+    const time = card.suggested_time ? card.suggested_time.slice(0, 5) : "09:00";
+
+    message = `✅ *Conteúdo Aprovado!*
+
+O conteúdo abaixo foi aprovado e está programado para publicação:
+
+📱 *${contentType}*
+📝 *Tema:* ${card.theme || "—"}
+📅 *Data programada:* ${formattedDate} às ${time}
+
+Avisaremos quando for publicado! 🚀`;
+  } else {
+    message = `✅ *Conteúdo Aprovado!*
+
+O conteúdo abaixo foi aprovado:
+
+📱 *${contentType}*
+📝 *Tema:* ${card.theme || "—"}
+
+O post será publicado em breve. Avisaremos quando estiver no ar! 🚀`;
+  }
+
+  const baseUrl = instance.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+
+  for (const target of targets) {
+    try {
+      await fetch(`${baseUrl}/message/sendText/${instance.instance_name}`, {
+        method: "POST",
+        headers: {
+          "Content-Type": "application/json",
+          apikey: instance.api_key,
+        },
+        body: JSON.stringify({ number: target.phone, text: message }),
+      });
+    } catch (err) {
+      console.error(`Error sending approval notification to ${target.phone}:`, err);
+    }
+  }
+}
