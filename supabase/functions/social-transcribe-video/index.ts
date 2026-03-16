@@ -33,6 +33,37 @@ serve(async (req) => {
     const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseKey);
 
+    // Download video and convert to base64 data URL
+    console.log("Downloading video from:", videoUrl);
+    const videoResponse = await fetch(videoUrl);
+    if (!videoResponse.ok) {
+      return new Response(JSON.stringify({ error: "Não foi possível baixar o vídeo" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+    const videoBuffer = await videoResponse.arrayBuffer();
+    const videoBytes = new Uint8Array(videoBuffer);
+    
+    // Convert to base64
+    let binary = "";
+    for (let i = 0; i < videoBytes.length; i++) {
+      binary += String.fromCharCode(videoBytes[i]);
+    }
+    const base64Video = btoa(binary);
+    
+    // Detect MIME type from URL
+    const extension = videoUrl.split(".").pop()?.split("?")[0]?.toLowerCase() || "mp4";
+    const mimeMap: Record<string, string> = {
+      mp4: "video/mp4",
+      webm: "video/webm",
+      mov: "video/quicktime",
+      avi: "video/x-msvideo",
+    };
+    const mimeType = mimeMap[extension] || "video/mp4";
+    const dataUrl = `data:${mimeType};base64,${base64Video}`;
+    console.log(`Video converted: ${videoBytes.length} bytes, mime: ${mimeType}`);
+
     // Build prompt for transcription + emoji suggestions
     const editorContext = editorNotes
       ? `\n\nDirecionamento do editor: "${editorNotes}"`
@@ -64,7 +95,7 @@ Use a tool "video_analysis" para retornar os dados estruturados.`;
               },
               {
                 type: "image_url",
-                image_url: { url: videoUrl },
+                image_url: { url: dataUrl },
               },
             ],
           },
