@@ -26406,6 +26406,100 @@ export type Database = {
           },
         ]
       }
+      social_video_captions: {
+        Row: {
+          card_id: string
+          created_at: string | null
+          end_time: number
+          id: string
+          sort_order: number | null
+          start_time: number
+          style_json: Json | null
+          style_preset: string | null
+          text: string
+        }
+        Insert: {
+          card_id: string
+          created_at?: string | null
+          end_time: number
+          id?: string
+          sort_order?: number | null
+          start_time: number
+          style_json?: Json | null
+          style_preset?: string | null
+          text: string
+        }
+        Update: {
+          card_id?: string
+          created_at?: string | null
+          end_time?: number
+          id?: string
+          sort_order?: number | null
+          start_time?: number
+          style_json?: Json | null
+          style_preset?: string | null
+          text?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_video_captions_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      social_video_overlays: {
+        Row: {
+          animation: string | null
+          card_id: string
+          content: string
+          created_at: string | null
+          end_time: number
+          id: string
+          overlay_type: string
+          scale: number | null
+          start_time: number
+          x: number | null
+          y: number | null
+        }
+        Insert: {
+          animation?: string | null
+          card_id: string
+          content: string
+          created_at?: string | null
+          end_time: number
+          id?: string
+          overlay_type?: string
+          scale?: number | null
+          start_time: number
+          x?: number | null
+          y?: number | null
+        }
+        Update: {
+          animation?: string | null
+          card_id?: string
+          content?: string
+          created_at?: string | null
+          end_time?: number
+          id?: string
+          overlay_type?: string
+          scale?: number | null
+          start_time?: number
+          x?: number | null
+          y?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_video_overlays_card_id_fkey"
+            columns: ["card_id"]
+            isOneToOne: false
+            referencedRelation: "social_content_cards"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_whatsapp_settings: {
         Row: {
           client_name: string | null
