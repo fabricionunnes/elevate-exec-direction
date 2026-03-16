@@ -7,8 +7,11 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { toast } from "sonner";
-import { MessageCircle, Save, Loader2, RefreshCw, Users } from "lucide-react";
+import { MessageCircle, Save, Loader2, RefreshCw, Users, ChevronsUpDown, Check } from "lucide-react";
+import { cn } from "@/lib/utils";
 
 interface Props {
   projectId: string;
@@ -54,6 +57,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   const [saving, setSaving] = useState(false);
   const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
+  const [groupOpen, setGroupOpen] = useState(false);
 
   const [selectedInstance, setSelectedInstance] = useState<string>("");
   const [notifyEnabled, setNotifyEnabled] = useState(true);
@@ -292,27 +296,65 @@ export function HRWhatsAppConfig({ projectId }: Props) {
               <span className="text-sm text-muted-foreground">Buscando grupos...</span>
             </div>
           ) : groups.length > 0 ? (
-            <Select value={notifyGroupJid} onValueChange={setNotifyGroupJid}>
-              <SelectTrigger>
-                <SelectValue placeholder="Selecione um grupo (ou deixe vazio)" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="none">
-                  <span className="text-muted-foreground">Nenhum (enviar para telefone)</span>
-                </SelectItem>
-                {groups.map((group) => (
-                  <SelectItem key={group.id} value={group.id}>
-                    <div className="flex items-center gap-2">
-                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
-                      <span>{group.subject}</span>
-                      <span className="text-xs text-muted-foreground">
-                        ({group.size} membros)
-                      </span>
-                    </div>
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={groupOpen} onOpenChange={setGroupOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={groupOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {notifyGroupJid && notifyGroupJid !== "none"
+                    ? (() => {
+                        const selected = groups.find((g) => g.id === notifyGroupJid);
+                        return selected ? (
+                          <span className="flex items-center gap-2 truncate">
+                            <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                            {selected.subject}
+                            <span className="text-xs text-muted-foreground">({selected.size} membros)</span>
+                          </span>
+                        ) : notifyGroupJid;
+                      })()
+                    : <span className="text-muted-foreground">Selecione um grupo (ou deixe vazio)</span>}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command>
+                  <CommandInput placeholder="Buscar grupo pelo nome..." />
+                  <CommandList>
+                    <CommandEmpty>Nenhum grupo encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      <CommandItem
+                        value="none"
+                        onSelect={() => {
+                          setNotifyGroupJid("none");
+                          setGroupOpen(false);
+                        }}
+                      >
+                        <Check className={cn("mr-2 h-4 w-4", (!notifyGroupJid || notifyGroupJid === "none") ? "opacity-100" : "opacity-0")} />
+                        <span className="text-muted-foreground">Nenhum (enviar para telefone)</span>
+                      </CommandItem>
+                      {groups.map((group) => (
+                        <CommandItem
+                          key={group.id}
+                          value={group.subject}
+                          onSelect={() => {
+                            setNotifyGroupJid(group.id);
+                            setGroupOpen(false);
+                          }}
+                        >
+                          <Check className={cn("mr-2 h-4 w-4", notifyGroupJid === group.id ? "opacity-100" : "opacity-0")} />
+                          <Users className="mr-2 h-3.5 w-3.5 text-muted-foreground" />
+                          <span className="truncate">{group.subject}</span>
+                          <span className="ml-auto text-xs text-muted-foreground">({group.size} membros)</span>
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           ) : (
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground">
