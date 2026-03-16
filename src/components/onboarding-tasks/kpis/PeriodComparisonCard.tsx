@@ -241,7 +241,7 @@ export const PeriodComparisonCard = ({
                 </Badge>
               </div>
 
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-3 gap-4">
                 <div className="space-y-1">
                   <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
                     Período Atual
@@ -256,6 +256,21 @@ export const PeriodComparisonCard = ({
                   </p>
                   <p className="text-lg font-bold text-muted-foreground">
                     {formatValue(comp.previousTotal, comp.kpiType)}
+                  </p>
+                </div>
+                <div className="space-y-1">
+                  <p className="text-[10px] uppercase tracking-wider text-muted-foreground font-medium">
+                    Diferença
+                  </p>
+                  <p className={`text-lg font-bold ${
+                    comp.currentTotal - comp.previousTotal > 0
+                      ? "text-emerald-600 dark:text-emerald-400"
+                      : comp.currentTotal - comp.previousTotal < 0
+                      ? "text-red-600 dark:text-red-400"
+                      : "text-muted-foreground"
+                  }`}>
+                    {comp.currentTotal - comp.previousTotal > 0 ? "+" : ""}
+                    {formatValue(comp.currentTotal - comp.previousTotal, comp.kpiType)}
                   </p>
                 </div>
               </div>
