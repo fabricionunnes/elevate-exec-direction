@@ -1,87 +1,86 @@
 
 
-## Plano: Importação Histórica das Planilhas no Financeiro
+# Integração Bidirecional CRM Comercial ↔ Clint
 
-### Contexto
+## Contexto
 
-As planilhas são do sistema antigo (Conta Azul) e precisam ser importadas nas tabelas corretas:
-- **Contas a Receber** → tabela `company_invoices` (~99 registros, todos do financeiro principal da empresa)
-- **Contas a Pagar** → tabela `financial_payables` (~2.571 registros)
+A Clint possui uma API REST pública (`api.clint.digital/v1`) com endpoints para **contatos**, **negócios (deals)**, **origens**, **tags** e **grupos**. A autenticação é feita via `api-token` no header. Importante: a API da Clint **não suporta atividades** nem **atendimento/mensagens** — essas funcionalidades ficam de fora.
 
-Estas são as tabelas usadas na página de Recorrências (`/onboarding-tasks/financeiro/recorrencias`), e **não** as tabelas `client_financial_*` que são per-project.
+O sistema já possui uma integração parcial com a Clint via `sheets-webhook` (Google Sheets), mas não há integração direta via API.
 
-### Regras de importação
+## Escopo da Integração
 
-1. **Saldos bancários não serão alterados** — inserção direta, sem trigger de saldo
-2. **Deduplicação para Recebíveis**: `client_name + due_date + amount + description` — se já existir, pula
-3. **Contas a pagar em atraso**: mantidas como `pending` (o sistema já trata como vencido pela data)
-4. **Status mapping**:
-   - "Quitado" → `paid`
-   - "Atrasado" → `pending` (com due_date no passado = overdue automaticamente)
-   - "Quitado parcial" → `partial`
+### Direção 1: Clint → CRM Comercial (Webhook)
+A Clint suporta webhooks. Quando algo muda na Clint, ela envia um POST para nosso sistema.
 
-### Implementação
+### Direção 2: CRM Comercial → Clint (API REST)
+Quando algo muda no CRM Comercial, chamamos a API da Clint para sincronizar.
 
-Criarei uma **edge function** temporária `import-historical-data` que:
+## Limitações da API Clint
+- **Atividades/tarefas** não estão disponíveis na API pública
+- **Mensagens** (WhatsApp, Instagram, email) não estão disponíveis
+- Disponível apenas no plano **Elite** da Clint
 
-1. **Recebe** os dados já processados (hardcoded no código da function, parseados das planilhas)
-2. **Para cada recebível** (`company_invoices`):
-   - Busca `company_id` na tabela `onboarding_companies` pelo nome do cliente
-   - Se não achar, usa `custom_receiver_name`
-   - Checa duplicata antes de inserir
-   - Mapeia: `amount_cents` (valor * 100), `paid_amount_cents`, `due_date`, `status`, `description`, `notes`, `payment_method`, `bank_id`
-3. **Para cada conta a pagar** (`financial_payables`):
-   - Mapeia: `supplier_name`, `amount`, `due_date`, `status`, `paid_amount`, `paid_date`, `description`, `notes`, `payment_method`, `category_id`, `cost_center_id`
-4. **Bancos** que não existem (Itaú, Greenn, Santander) serão criados na `financial_banks`
-5. **Retorna** relatório: inseridos, duplicados ignorados, erros
+## Dados Sincronizáveis
 
-### Mapeamento de campos
+| Dado | Clint → CRM | CRM → Clint |
+|------|:-----------:|:-----------:|
+| Contatos (nome, telefone, email) | ✓ | ✓ |
+| Negócios (deals/oportunidades) | ✓ | ✓ |
+| Tags | ✓ | ✓ |
+| Origens | ✓ | ✓ |
+| Status de perda | ✓ | ✓ |
+| Atividades | ✗ | ✗ |
+| Mensagens | ✗ | ✗ |
 
-**Contas a Receber (company_invoices)**:
-```text
-Planilha                    → DB
-Nome do cliente             → company_id (busca) ou custom_receiver_name
-Descrição                   → description
-Valor original (R$)         → amount_cents (x100)
-Valor recebido (R$)         → paid_amount_cents (x100)
-Data de vencimento          → due_date
-Data último pagamento       → paid_at
-Situação                    → status (paid/pending/partial)
-Forma de recebimento        → payment_method
-Conta bancária              → bank_id
-Observações                 → notes
-Categoria 1                 → category_id (match por nome)
-Centro de Custo 1           → cost_center_id (match por nome)
-```
+## Plano Técnico
 
-**Contas a Pagar (financial_payables)**:
-```text
-Planilha                    → DB
-Nome do fornecedor          → supplier_name
-Descrição                   → description
-Valor original (R$)         → amount
-Valor pago (R$)             → paid_amount
-Data de vencimento          → due_date
-Data último pagamento       → paid_date
-Situação                    → status
-Forma de pagamento          → payment_method
-Conta bancária              → bank_id
-Observações                 → notes
-Categoria 1                 → category_id
-Centro de Custo 1           → cost_center_id
-```
+### 1. Tabela de configuração da integração
+Criar tabela `crm_clint_config` para armazenar:
+- `project_id` (qual projeto/pipeline usar)
+- `api_token` (encrypted via secret)
+- `webhook_secret` (para validar webhooks)
+- `pipeline_mapping` (JSON mapeando pipelines CRM ↔ funis Clint)
+- `sync_enabled`, `sync_direction` (bidirecional, apenas entrada, apenas saída)
+- `last_sync_at`
 
-### Etapas
+Criar tabela `crm_clint_sync_log` para rastrear IDs sincronizados:
+- `crm_lead_id` ↔ `clint_contact_id`
+- `crm_lead_id` ↔ `clint_deal_id`
+- `sync_status`, `last_synced_at`
 
-1. Criar bancos faltantes: "Itaú - Conta Corrente", "Greenn", "Santander" na `financial_banks`
-2. Criar edge function com os dados parseados das planilhas
-3. Executar a function uma única vez
-4. Verificar os totais e validar
-5. Remover a edge function após uso
+### 2. Edge Function: `clint-webhook` (Clint → CRM)
+- Recebe webhooks da Clint quando contatos/negócios são criados ou atualizados
+- Mapeia campos da Clint para `crm_leads` (nome, telefone, email, empresa, valor da oportunidade)
+- Usa `crm_clint_sync_log` para evitar duplicatas e loops de sincronização
+- Cria atividades no histórico do lead
 
-### Considerações de segurança
+### 3. Edge Function: `clint-sync` (CRM → Clint)
+- Chamada quando leads são criados/atualizados no CRM Comercial
+- Envia dados para a API da Clint via `POST /v1/contacts` e `POST /v1/deals`
+- Atualiza `crm_clint_sync_log` com os IDs da Clint
+- Inclui flag `syncing` para evitar loop infinito (webhook recebido de volta)
 
-- A function só insere dados, não atualiza nem deleta
-- Nenhum saldo bancário é alterado
-- A deduplicação protege contra execuções duplicadas
+### 4. Tela de configuração
+- Adicionar aba "Integrações" nas configurações do CRM
+- Campos: API Token da Clint, mapeamento de pipelines, toggle de sincronização
+- Botão de teste de conexão
+- Log de sincronização visível
+
+### 5. Hooks no frontend
+- Após criar/editar lead no CRM, chamar `clint-sync` em background
+- Após mover lead de etapa, sincronizar status do deal na Clint
+
+## Pré-requisitos
+- Você precisa ter o **plano Elite** da Clint para acesso à API
+- Precisaremos do seu **API Token** da Clint (disponível em Conta → API na plataforma Clint)
+- Configurar o webhook na Clint apontando para nossa Edge Function
+
+## Ordem de Implementação
+1. Criar tabelas de configuração e sync log (migração)
+2. Criar Edge Function `clint-webhook` (receber dados da Clint)
+3. Criar Edge Function `clint-sync` (enviar dados para Clint)
+4. Criar tela de configuração da integração no CRM
+5. Adicionar hooks de sincronização automática no frontend
+6. Implementar proteção anti-loop e tratamento de erros
 
