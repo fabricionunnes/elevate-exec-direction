@@ -430,8 +430,9 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
           }}
         >
           <div className="relative w-full h-full">
-          <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
-          <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+            <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
+            <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+          </div>
         </div>
 
         {/* Play button overlay when paused */}
