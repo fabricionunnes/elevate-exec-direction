@@ -47,7 +47,7 @@ export const WhatsAppSendButton = ({
     let query = supabase
       .from("whatsapp_instances")
       .select("id")
-      .eq("status", "connected");
+      .in("status", ["connected", "connecting"]);
     
     if (instanceName) {
       query = query.eq("instance_name", instanceName);
@@ -55,7 +55,7 @@ export const WhatsAppSendButton = ({
       const defaultInst = await getDefaultWhatsAppInstance();
       query = query.eq("instance_name", defaultInst);
     }
-    const { data } = await query.single();
+    const { data } = await query.maybeSingle();
     
     const found = !!data;
     setHasInstance(found);
@@ -84,7 +84,7 @@ export const WhatsAppSendButton = ({
       let instQuery = supabase
         .from("whatsapp_instances")
         .select("id, instance_name")
-        .eq("status", "connected");
+        .in("status", ["connected", "connecting"]);
       
       if (instanceName) {
         instQuery = instQuery.eq("instance_name", instanceName);
@@ -92,7 +92,7 @@ export const WhatsAppSendButton = ({
         const defaultInst = await getDefaultWhatsAppInstance();
         instQuery = instQuery.eq("instance_name", defaultInst);
       }
-      const { data: instance } = await instQuery.single();
+      const { data: instance } = await instQuery.maybeSingle();
 
       if (!instance) {
         throw new Error("Nenhuma instância conectada");
