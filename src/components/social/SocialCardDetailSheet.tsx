@@ -1302,6 +1302,8 @@ export const SocialCardDetailSheet = ({
                     <><Sparkles className="h-3.5 w-3.5" /> {aiGenerateMode === "carousel" ? `Gerar Carrossel (${aiCarouselCount} slides)` : "Gerar Imagem"}</>
                   )}
                 </Button>
+                  </>
+                )}
 
               </div>
 
