@@ -1323,6 +1323,23 @@ export const SocialCardDetailSheet = ({
                 />
               </div>
 
+              {/* Video Editor Notes - only for video content types */}
+              {["reels", "stories", "video"].includes(contentType) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Film className="h-4 w-4" />
+                    Direcionamento para o Editor de Vídeo
+                  </Label>
+                  <Textarea
+                    value={videoEditorNotes}
+                    onChange={(e) => setVideoEditorNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Ex: Colocar emoji de fogo quando falar de resultados, legendas estilo Hormozi, cortar trecho dos 0:30 aos 0:45..."
+                    disabled={card.is_locked}
+                  />
+                </div>
+              )}
+
               {/* Final Caption */}
               <div className="space-y-2">
                 <Label className="flex items-center gap-2">
