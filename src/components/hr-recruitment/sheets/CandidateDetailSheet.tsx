@@ -176,6 +176,19 @@ export function CandidateDetailSheet({
       toast.success("Etapa atualizada");
       onUpdate();
       fetchCandidateData();
+
+      // Send WhatsApp notification to client
+      const stageDef = stages.find((s) => s.stage_key === newStage);
+      const jobTitle = candidate.job_opening_id
+        ? jobs.find((j) => j.id === candidate.job_opening_id)?.title || "Vaga"
+        : "Vaga";
+
+      notifyClientStageChange({
+        projectId,
+        candidateName: candidate.name,
+        stageName: stageDef?.name || newStage,
+        jobTitle,
+      });
     }
     setLoading(false);
   };
