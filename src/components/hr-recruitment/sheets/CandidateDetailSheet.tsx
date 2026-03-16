@@ -178,14 +178,14 @@ export function CandidateDetailSheet({
       fetchCandidateData();
 
       // Send WhatsApp notification to client
-      const stageDef = stages.find((s) => s.stage_key === newStage);
+      const stageDef = pipelineStages.find((s) => s.key === newStage);
       const jobTitle = candidate.job_opening_id
         ? jobs.find((j) => j.id === candidate.job_opening_id)?.title || "Vaga"
         : "Vaga";
 
       notifyClientStageChange({
         projectId,
-        candidateName: candidate.name,
+        candidateName: candidate.full_name,
         stageName: stageDef?.name || newStage,
         jobTitle,
       });
