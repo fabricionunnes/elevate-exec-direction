@@ -71,10 +71,11 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   }, [projectId]);
 
   useEffect(() => {
-    if (selectedInstance) {
+    if (selectedInstance && selectedInstance !== groupsLoadedForInstance) {
       fetchGroups(selectedInstance);
-    } else {
+    } else if (!selectedInstance) {
       setGroups([]);
+      setGroupsLoadedForInstance("");
     }
   }, [selectedInstance]);
 
