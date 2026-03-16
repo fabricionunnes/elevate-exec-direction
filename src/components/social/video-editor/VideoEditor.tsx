@@ -21,6 +21,7 @@ interface VideoEditorProps {
   videoUrl: string;
   editorNotes: string;
   disabled?: boolean;
+  onVideoRendered?: (url: string) => void;
 }
 
 const OVERLAY_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
