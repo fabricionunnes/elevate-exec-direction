@@ -54,6 +54,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { usePipelineStages } from "../hooks/usePipelineStages";
+import { notifyClientStageChange } from "../utils/notifyStageChange";
 import {
   Candidate,
   CandidateResume,
