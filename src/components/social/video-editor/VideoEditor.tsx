@@ -96,11 +96,10 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   };
 
   // AI Transcription
-  const handleTranscribe = async () => {
-    setTranscribing(true);
-    try {
+  const pollTranscriptionStatus = async (transcriptId: string) => {
+    for (let attempt = 0; attempt < 60; attempt += 1) {
       const { data, error } = await supabase.functions.invoke("social-transcribe-video", {
-        body: { cardId, videoUrl, editorNotes },
+        body: { action: "status", cardId, transcriptId, editorNotes },
       });
 
       if (error) {
@@ -116,16 +115,55 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
         throw error;
       }
 
-      if (data?.success) {
+      if (data?.status === "queued" || data?.status === "processing") {
+        await new Promise((resolve) => setTimeout(resolve, 2500));
+        continue;
+      }
+
+      if (data?.success && data?.status === "completed") {
         toast.success(
           `Transcrição concluída! ${data.captions_count} legendas e ${data.overlays_count} efeitos sugeridos.`
         );
         if (data.suggested_style) setCaptionStyle(data.suggested_style);
-        await loadCaptions();
-        await loadOverlays();
-      } else if (data?.error) {
-        toast.error(data.error);
+        await Promise.all([loadCaptions(), loadOverlays()]);
+        return;
       }
+
+      if (data?.error) {
+        toast.error(data.error);
+        return;
+      }
+    }
+
+    toast.error("A transcrição está demorando mais do que o esperado. Tente novamente em instantes.");
+  };
+
+  const handleTranscribe = async () => {
+    setTranscribing(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("social-transcribe-video", {
+        body: { action: "start", cardId, videoUrl, editorNotes },
+      });
+
+      if (error) {
+        const status = (error as any)?.status;
+        if (status === 429) {
+          toast.error("Limite de requisições excedido. Tente novamente em alguns segundos.");
+          return;
+        }
+        if (status === 402) {
+          toast.error("Créditos de IA insuficientes.");
+          return;
+        }
+        throw error;
+      }
+
+      if (!data?.transcriptId) {
+        throw new Error("ID da transcrição não retornado");
+      }
+
+      toast.info("Transcrição iniciada. Processando vídeo...");
+      await pollTranscriptionStatus(data.transcriptId);
     } catch (error) {
       console.error("Transcription error:", error);
       toast.error("Erro na transcrição do vídeo");
