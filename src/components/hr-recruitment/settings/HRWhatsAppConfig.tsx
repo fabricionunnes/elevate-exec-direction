@@ -58,6 +58,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [groupsLoadedForInstance, setGroupsLoadedForInstance] = useState<string>("");
 
   const [selectedInstance, setSelectedInstance] = useState<string>("");
   const [notifyEnabled, setNotifyEnabled] = useState(true);
