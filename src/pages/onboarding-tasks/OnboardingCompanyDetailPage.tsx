@@ -273,6 +273,10 @@ const OnboardingCompanyDetailPage = () => {
         notes: data.notes || "",
         is_simulator: data.is_simulator || false,
         goal_not_required: data.goal_not_required || false,
+        owner_name: (data as any).owner_name || "",
+        owner_cpf: (data as any).owner_cpf || "",
+        owner_rg: (data as any).owner_rg || "",
+        owner_marital_status: (data as any).owner_marital_status || "",
       });
       originalStatusRef.current = data.status || "active";
     } catch (error: any) {
