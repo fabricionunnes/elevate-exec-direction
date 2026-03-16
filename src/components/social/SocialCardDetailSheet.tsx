@@ -1640,6 +1640,24 @@ export const SocialCardDetailSheet = ({
               )}
             </TabsContent>
 
+            {/* Video Editor Tab */}
+            <TabsContent value="video-editor" className="mt-0 pr-4">
+              {creativeUrl && creativeType === "video" ? (
+                <VideoEditor
+                  cardId={card.id}
+                  videoUrl={creativeUrl}
+                  editorNotes={(card as any).video_editor_notes || videoEditorNotes || ""}
+                  disabled={card.is_locked}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-3">
+                  <Film className="h-10 w-10" />
+                  <p className="text-sm">Envie um vídeo primeiro para usar o editor</p>
+                  <p className="text-xs">Use a aba "Conteúdo" para fazer upload do vídeo ou selecione "Vídeo" no modo de criativo</p>
+                </div>
+              )}
+            </TabsContent>
+
             <TabsContent value="history" className="mt-0 pr-4">
               {loadingHistory ? (
                 <div className="flex items-center justify-center py-12">
