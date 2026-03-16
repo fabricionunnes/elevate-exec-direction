@@ -153,7 +153,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       }));
 
       setGroups(groupList);
-    } catch (error) {
+      setGroupsLoadedForInstance(instanceId);
       console.error("Error fetching groups:", error);
       setGroups([]);
     } finally {
