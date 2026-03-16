@@ -1697,9 +1697,16 @@ const DashboardMetrics = ({
                               <span className="font-medium text-sm truncate">{getCompanyName(response.project_id)}</span>
                               <span className="text-[10px] px-1.5 py-0.5 bg-muted rounded">{getProjectName(response.project_id)}</span>
                             </div>
-                            {response.respondent_name && (
-                              <p className="text-[10px] text-muted-foreground mt-0.5">{response.respondent_name}</p>
-                            )}
+                            <div className="flex items-center gap-2 mt-0.5">
+                              {response.respondent_name && (
+                                <span className="text-[10px] text-muted-foreground">{response.respondent_name}</span>
+                              )}
+                              {response.created_at && (
+                                <span className="text-[10px] text-muted-foreground">
+                                  {response.respondent_name ? "•" : ""} {new Date(response.created_at).toLocaleDateString("pt-BR")}
+                                </span>
+                              )}
+                            </div>
                             {(response.feedback || response.would_recommend_why || response.what_can_improve) && (
                               <div className="mt-2 space-y-1 text-xs text-foreground/80">
                                 {response.would_recommend_why && <p>"{response.would_recommend_why}"</p>}
