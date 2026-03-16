@@ -8,12 +8,14 @@ import {
   TrendingUp, TrendingDown, DollarSign, AlertTriangle, 
   ArrowUpRight, ArrowDownRight, Wallet, ShieldAlert, ShoppingCart, RefreshCw,
   CalendarIcon, ChevronLeft, ChevronRight, Banknote, CreditCard, PiggyBank,
-  BarChart3, Activity
+  BarChart3, Activity, Building2, Clock, CalendarCheck, CalendarClock
 } from "lucide-react";
 import { 
   BarChart, Bar, XAxis, YAxis, Tooltip, ResponsiveContainer, 
   PieChart, Pie, Cell, Legend, CartesianGrid, LineChart, Line, Area, AreaChart 
 } from "recharts";
+import { DashboardDetailDialog } from "./DashboardDetailDialog";
+import { BankStatementDialog } from "@/components/financial/BankStatementDialog";
 
 interface Props {
   invoices: any[];
@@ -41,14 +43,19 @@ const MONTH_LABELS = ["Jan", "Fev", "Mar", "Abr", "Mai", "Jun", "Jul", "Ago", "S
 const GradientCard = ({ 
   children, 
   gradient, 
-  className = "" 
+  className = "",
+  onClick,
 }: { 
   children: React.ReactNode; 
   gradient: string; 
   className?: string;
+  onClick?: () => void;
 }) => (
-  <div className={`relative overflow-hidden rounded-2xl border border-border/30 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] ${className}`}
-    style={{ background: gradient }}>
+  <div 
+    className={`relative overflow-hidden rounded-2xl border border-border/30 shadow-sm transition-all hover:shadow-md hover:scale-[1.01] ${onClick ? "cursor-pointer" : ""} ${className}`}
+    style={{ background: gradient }}
+    onClick={onClick}
+  >
     <div className="relative">{children}</div>
   </div>
 );
@@ -68,8 +75,16 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   const [selectedYear, setSelectedYear] = useState(now.getFullYear());
   const [selectedMonth, setSelectedMonth] = useState(now.getMonth());
   
+  // Dialog states
+  const [detailDialog, setDetailDialog] = useState<{ open: boolean; title: string; items: any[]; type: "receivable" | "payable" }>({
+    open: false, title: "", items: [], type: "receivable"
+  });
+  const [bankStatementOpen, setBankStatementOpen] = useState(false);
+  const [selectedBankAccount, setSelectedBankAccount] = useState<any>(null);
+
   const monthStr = `${selectedYear}-${String(selectedMonth + 1).padStart(2, "0")}`;
   const isCurrentMonth = selectedYear === now.getFullYear() && selectedMonth === now.getMonth();
+  const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
   
   const goToPrevMonth = () => {
     if (selectedMonth === 0) { setSelectedYear(y => y - 1); setSelectedMonth(11); }
@@ -81,11 +96,28 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
   };
   const goToCurrentMonth = () => { setSelectedYear(now.getFullYear()); setSelectedMonth(now.getMonth()); };
 
+  // Filtered items for the month
+  const monthInvoices = useMemo(() => invoices.filter(i => i.due_date?.startsWith(monthStr)), [invoices, monthStr]);
+  const monthPayables = useMemo(() => payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr), [payables, monthStr]);
+
+  // Breakdowns for receivables
+  const receivableBreakdown = useMemo(() => {
+    const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
+    const dueToday = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date === todayStr);
+    const restOfMonth = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date > todayStr);
+    return { overdue, dueToday, restOfMonth };
+  }, [monthInvoices, todayStr]);
+
+  // Breakdowns for payables
+  const payableBreakdown = useMemo(() => {
+    const overdue = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
+    const dueToday = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date === todayStr);
+    const restOfMonth = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date > todayStr);
+    return { overdue, dueToday, restOfMonth };
+  }, [monthPayables, todayStr]);
+
   // Summary cards
   const summary = useMemo(() => {
-    const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
-    const monthPayables = payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr);
-
     const receitaRecebida = monthInvoices.filter(i => i.status === "paid").reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0);
     const receitaPendente = monthInvoices.filter(i => i.status === "pending" || i.status === "overdue").reduce((s: number, i: any) => s + i.amount_cents, 0);
     const despesaPaga = monthPayables.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0) * 100, 0);
@@ -94,21 +126,14 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const resultado = receitaRecebida - despesaPaga;
 
     return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado };
-  }, [invoices, payables, banks, monthStr]);
+  }, [monthInvoices, monthPayables, banks]);
 
   // Inadimplência mensal
   const inadimplencia = useMemo(() => {
-    const monthInvoices = invoices.filter(i => i.due_date?.startsWith(monthStr));
-    const total = monthInvoices.length;
-    const totalValue = monthInvoices.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
-    
-    // Sempre usar a data de HOJE como referência — só é inadimplente o que já venceu de fato
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
     const overdueCount = overdue.length;
     const overdueValue = overdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
 
-    // Base para % = apenas faturas já vencidas (due_date < hoje), não o total do mês inteiro
     const alreadyDue = monthInvoices.filter(i => i.due_date < todayStr && i.status !== "cancelled");
     const alreadyDueValue = alreadyDue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
     const alreadyDueCount = alreadyDue.length;
@@ -117,38 +142,34 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     const pctValue = alreadyDueValue > 0 ? (overdueValue / alreadyDueValue) * 100 : 0;
 
     return { pctQty, pctValue, overdueCount, total: alreadyDueCount, overdueValue, totalValue: alreadyDueValue };
-  }, [invoices, monthStr]);
+  }, [monthInvoices, todayStr]);
 
-  // Total em atraso geral (todas as faturas, sem filtro de mês)
+  // Total em atraso geral
   const totalOverdueGeral = useMemo(() => {
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const allOverdue = invoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date && i.due_date < todayStr);
     return {
       count: allOverdue.length,
       value: allOverdue.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0),
     };
-  }, [invoices]);
+  }, [invoices, todayStr]);
 
   // Contas a pagar em atraso no período
   const payablesOverduePeriod = useMemo(() => {
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
-    const monthPayables = payables.filter(p => p.due_date?.startsWith(monthStr) || p.reference_month === monthStr);
     const overdue = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
     return {
       count: overdue.length,
       value: overdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
     };
-  }, [payables, monthStr]);
+  }, [monthPayables, todayStr]);
 
   // Total contas a pagar em atraso geral
   const payablesOverdueGeral = useMemo(() => {
-    const todayStr = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}-${String(now.getDate()).padStart(2, "0")}`;
     const allOverdue = payables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < todayStr);
     return {
       count: allOverdue.length,
       value: allOverdue.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0),
     };
-  }, [payables]);
+  }, [payables, todayStr]);
 
   // MRR
   const mrr = useMemo(() => {
@@ -186,11 +207,11 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
     return { count, value };
   }, [invoices, monthStr]);
 
-  // Monthly chart data
+  // Monthly chart data - 12 months
   const monthlyData = useMemo(() => {
     const months: { month: string; label: string; receita: number; despesa: number; resultado: number }[] = [];
 
-    for (let i = 5; i >= 0; i--) {
+    for (let i = 11; i >= 0; i--) {
       const d = new Date(selectedYear, selectedMonth - i, 1);
       const key = `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, "0")}`;
       const label = d.toLocaleDateString("pt-BR", { month: "short", year: "2-digit" });
@@ -210,21 +231,42 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
   // Status distribution
   const statusData = useMemo(() => {
-    const monthInv = invoices.filter(i => i.due_date?.startsWith(monthStr));
-    const paid = monthInv.filter(i => i.status === "paid").length;
-    const pending = monthInv.filter(i => i.status === "pending").length;
-    const overdue = monthInv.filter(i => i.status === "overdue").length;
+    const paid = monthInvoices.filter(i => i.status === "paid").length;
+    const pending = monthInvoices.filter(i => i.status === "pending").length;
+    const overdue = monthInvoices.filter(i => i.status === "overdue").length;
     return [
       { name: "Recebido", value: paid, color: "#10b981" },
       { name: "Pendente", value: pending, color: "#f59e0b" },
       { name: "Vencido", value: overdue, color: "#ef4444" },
     ].filter(d => d.value > 0);
-  }, [invoices, monthStr]);
+  }, [monthInvoices]);
 
   const years = Array.from({ length: 7 }, (_, i) => now.getFullYear() - 3 + i);
 
   const inadimplenciaColor = (pct: number) =>
     pct > 10 ? "#ef4444" : pct > 5 ? "#f59e0b" : "#10b981";
+
+  const openDetail = (title: string, items: any[], type: "receivable" | "payable") => {
+    setDetailDialog({ open: true, title, items, type });
+  };
+
+  const openBankStatement = (bank: any) => {
+    // Map to the shape BankStatementDialog expects
+    setSelectedBankAccount({
+      id: bank.id,
+      name: bank.name,
+      bank_name: bank.bank_name || bank.name,
+      account_type: bank.account_type || "checking",
+      current_balance: (bank.current_balance_cents || 0) / 100,
+      initial_balance: (bank.initial_balance_cents || 0) / 100,
+      agency: bank.agency || null,
+      account_number: bank.account_number || null,
+    });
+    setBankStatementOpen(true);
+  };
+
+  const sumCents = (items: any[]) => items.reduce((s: number, i: any) => s + (i.amount_cents || 0), 0);
+  const sumPayable = (items: any[]) => items.reduce((s: number, p: any) => s + ((p.amount || 0) * 100), 0);
 
   return (
     <div className="space-y-8">
@@ -287,7 +329,10 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             </div>
           </GradientCard>
 
-          <GradientCard gradient="linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)">
+          <GradientCard 
+            gradient="linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
+            onClick={() => openDetail(`A Receber — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled"), "receivable")}
+          >
             <div className="p-4 space-y-2">
               <div className="flex items-center gap-2">
                 <div className="h-7 w-7 rounded-lg bg-indigo-500/15 flex items-center justify-center">
@@ -296,7 +341,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                 <span className="text-xs font-medium text-muted-foreground">A Receber</span>
               </div>
               <div className="text-xl font-bold text-indigo-600">{formatCurrencyCents(summary.receitaPendente)}</div>
-              <p className="text-[11px] text-indigo-600/60">Pendente no mês</p>
+              <p className="text-[11px] text-indigo-600/60">Pendente no mês • Clique para ver</p>
             </div>
           </GradientCard>
 
@@ -316,7 +361,10 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           )}
 
           {canSeePayables && (
-            <GradientCard gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)">
+            <GradientCard 
+              gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+              onClick={() => openDetail(`A Pagar — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled"), "payable")}
+            >
               <div className="p-4 space-y-2">
                 <div className="flex items-center gap-2">
                   <div className="h-7 w-7 rounded-lg bg-amber-500/15 flex items-center justify-center">
@@ -325,7 +373,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                   <span className="text-xs font-medium text-muted-foreground">A Pagar</span>
                 </div>
                 <div className="text-xl font-bold text-amber-600">{formatCurrencyCents(summary.despesaPendente)}</div>
-                <p className="text-[11px] text-amber-600/60">Pendente no mês</p>
+                <p className="text-[11px] text-amber-600/60">Pendente no mês • Clique para ver</p>
               </div>
             </GradientCard>
           )}
@@ -362,6 +410,107 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             </GradientCard>
           )}
         </div>
+      </div>
+
+      {/* ═══ DETALHAMENTO A RECEBER / A PAGAR ═══ */}
+      <div className="grid gap-4 lg:grid-cols-2">
+        {/* A Receber breakdown */}
+        <div>
+          <SectionHeader icon={ArrowDownRight} title="A Receber — Detalhamento" />
+          <div className="grid gap-3 grid-cols-3 mt-3">
+            <GradientCard 
+              gradient="linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)"
+              onClick={() => openDetail(`Vencidos — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, receivableBreakdown.overdue, "receivable")}
+            >
+              <div className="p-4 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                  <span className="text-[11px] font-medium text-muted-foreground">Vencidos</span>
+                </div>
+                <div className="text-lg font-bold text-red-600">{formatCurrencyCents(sumCents(receivableBreakdown.overdue))}</div>
+                <p className="text-[10px] text-red-600/60">{receivableBreakdown.overdue.length} fatura(s)</p>
+              </div>
+            </GradientCard>
+
+            <GradientCard 
+              gradient="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)"
+              onClick={() => openDetail(`Vencem Hoje — ${todayStr}`, receivableBreakdown.dueToday, "receivable")}
+            >
+              <div className="p-4 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <Clock className="h-3.5 w-3.5 text-orange-600" />
+                  <span className="text-[11px] font-medium text-muted-foreground">Vencem Hoje</span>
+                </div>
+                <div className="text-lg font-bold text-orange-600">{formatCurrencyCents(sumCents(receivableBreakdown.dueToday))}</div>
+                <p className="text-[10px] text-orange-600/60">{receivableBreakdown.dueToday.length} fatura(s)</p>
+              </div>
+            </GradientCard>
+
+            <GradientCard 
+              gradient="linear-gradient(135deg, #eef2ff 0%, #e0e7ff 100%)"
+              onClick={() => openDetail(`Restante do Mês — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, receivableBreakdown.restOfMonth, "receivable")}
+            >
+              <div className="p-4 space-y-1.5">
+                <div className="flex items-center gap-2">
+                  <CalendarClock className="h-3.5 w-3.5 text-indigo-600" />
+                  <span className="text-[11px] font-medium text-muted-foreground">Restante</span>
+                </div>
+                <div className="text-lg font-bold text-indigo-600">{formatCurrencyCents(sumCents(receivableBreakdown.restOfMonth))}</div>
+                <p className="text-[10px] text-indigo-600/60">{receivableBreakdown.restOfMonth.length} fatura(s)</p>
+              </div>
+            </GradientCard>
+          </div>
+        </div>
+
+        {/* A Pagar breakdown */}
+        {canSeePayables && (
+          <div>
+            <SectionHeader icon={ArrowUpRight} title="A Pagar — Detalhamento" />
+            <div className="grid gap-3 grid-cols-3 mt-3">
+              <GradientCard 
+                gradient="linear-gradient(135deg, #fef2f2 0%, #fecaca 100%)"
+                onClick={() => openDetail(`Pagáveis Vencidos — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, payableBreakdown.overdue, "payable")}
+              >
+                <div className="p-4 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <AlertTriangle className="h-3.5 w-3.5 text-red-600" />
+                    <span className="text-[11px] font-medium text-muted-foreground">Vencidos</span>
+                  </div>
+                  <div className="text-lg font-bold text-red-600">{formatCurrencyCents(sumPayable(payableBreakdown.overdue))}</div>
+                  <p className="text-[10px] text-red-600/60">{payableBreakdown.overdue.length} conta(s)</p>
+                </div>
+              </GradientCard>
+
+              <GradientCard 
+                gradient="linear-gradient(135deg, #fff7ed 0%, #fed7aa 100%)"
+                onClick={() => openDetail(`Pagáveis Vencem Hoje — ${todayStr}`, payableBreakdown.dueToday, "payable")}
+              >
+                <div className="p-4 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <Clock className="h-3.5 w-3.5 text-orange-600" />
+                    <span className="text-[11px] font-medium text-muted-foreground">Vencem Hoje</span>
+                  </div>
+                  <div className="text-lg font-bold text-orange-600">{formatCurrencyCents(sumPayable(payableBreakdown.dueToday))}</div>
+                  <p className="text-[10px] text-orange-600/60">{payableBreakdown.dueToday.length} conta(s)</p>
+                </div>
+              </GradientCard>
+
+              <GradientCard 
+                gradient="linear-gradient(135deg, #fffbeb 0%, #fef3c7 100%)"
+                onClick={() => openDetail(`Pagáveis Restante do Mês — ${MONTH_LABELS[selectedMonth]}/${selectedYear}`, payableBreakdown.restOfMonth, "payable")}
+              >
+                <div className="p-4 space-y-1.5">
+                  <div className="flex items-center gap-2">
+                    <CalendarClock className="h-3.5 w-3.5 text-amber-600" />
+                    <span className="text-[11px] font-medium text-muted-foreground">Restante</span>
+                  </div>
+                  <div className="text-lg font-bold text-amber-600">{formatCurrencyCents(sumPayable(payableBreakdown.restOfMonth))}</div>
+                  <p className="text-[10px] text-amber-600/60">{payableBreakdown.restOfMonth.length} conta(s)</p>
+                </div>
+              </GradientCard>
+            </div>
+          </div>
+        )}
       </div>
 
       {/* ═══ ATRASOS ═══ */}
@@ -577,12 +726,12 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
             <div className="p-5">
               <div className="flex items-center gap-2 mb-4">
                 <BarChart3 className="h-4 w-4 text-indigo-400" />
-                <h3 className="text-sm font-semibold text-foreground">Receitas vs Despesas (6 meses)</h3>
+                <h3 className="text-sm font-semibold text-foreground">Receitas vs Despesas (12 meses)</h3>
               </div>
               <ResponsiveContainer width="100%" height={300}>
                 <BarChart data={monthlyData} barGap={4}>
                   <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                  <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                  <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                   <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                   <Tooltip 
                     formatter={(value: number) => formatCurrency(value)} 
@@ -650,7 +799,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
           <div className="p-5">
             <div className="flex items-center gap-2 mb-4">
               <TrendingUp className="h-4 w-4 text-blue-400" />
-              <h3 className="text-sm font-semibold text-foreground">Resultado Mensal</h3>
+              <h3 className="text-sm font-semibold text-foreground">Resultado Mensal (12 meses)</h3>
             </div>
             <ResponsiveContainer width="100%" height={250}>
               <AreaChart data={monthlyData}>
@@ -661,7 +810,7 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
                   </linearGradient>
                 </defs>
                 <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border))" strokeOpacity={0.3} />
-                <XAxis dataKey="label" tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
+                <XAxis dataKey="label" tick={{ fontSize: 11, fill: "hsl(var(--muted-foreground))" }} />
                 <YAxis tickFormatter={(v) => `R$${(v / 1000).toFixed(0)}k`} tick={{ fontSize: 12, fill: "hsl(var(--muted-foreground))" }} />
                 <Tooltip 
                   formatter={(value: number) => formatCurrency(value)}
@@ -679,30 +828,59 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
         </GradientCard>
       )}
 
-      {/* Banks Overview */}
-      {banks.length > 0 && (!hasPerm || hasPerm("fin_bank_balances")) && (
-        <GradientCard gradient="linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(99,102,241,0.03) 100%)">
-          <div className="p-5">
-            <div className="flex items-center gap-2 mb-4">
-              <Wallet className="h-4 w-4 text-violet-400" />
-              <h3 className="text-sm font-semibold text-foreground">Saldos por Conta</h3>
-            </div>
-            <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4">
-              {banks.map((bank: any) => (
-                <div key={bank.id} className="flex items-center gap-3 p-3.5 rounded-xl border border-white/10 bg-white/5 backdrop-blur-sm hover:bg-white/10 transition-colors">
+      {/* ═══ CONTAS BANCÁRIAS ═══ */}
+      {banks.length > 0 && canSeeBanks && (
+        <div>
+          <SectionHeader icon={Building2} title="Contas Bancárias" />
+          <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-4 mt-3">
+            {banks.map((bank: any) => (
+              <GradientCard 
+                key={bank.id} 
+                gradient="linear-gradient(135deg, rgba(139,92,246,0.06) 0%, rgba(99,102,241,0.03) 100%)"
+                onClick={() => openBankStatement(bank)}
+              >
+                <div className="p-4 flex items-center gap-3">
                   <div className="h-10 w-10 rounded-xl bg-violet-500/20 flex items-center justify-center flex-shrink-0">
-                    <Wallet className="h-5 w-5 text-violet-400" />
+                    <Building2 className="h-5 w-5 text-violet-400" />
                   </div>
-                  <div className="min-w-0">
+                  <div className="min-w-0 flex-1">
                     <p className="text-sm font-medium text-foreground truncate">{bank.name}</p>
-                    <p className="text-lg font-bold text-violet-400">{formatCurrencyCents(bank.current_balance_cents)}</p>
+                    <p className={`text-lg font-bold ${(bank.current_balance_cents || 0) >= 0 ? "text-violet-600" : "text-destructive"}`}>
+                      {formatCurrencyCents(bank.current_balance_cents || 0)}
+                    </p>
+                    <p className="text-[10px] text-muted-foreground">Clique para ver extrato</p>
                   </div>
                 </div>
-              ))}
-            </div>
+              </GradientCard>
+            ))}
           </div>
-        </GradientCard>
+          <div className="mt-3 p-3 rounded-xl border border-violet-500/20 bg-violet-500/5 flex items-center justify-between">
+            <span className="text-sm font-medium text-muted-foreground">Saldo Total</span>
+            <span className={`text-lg font-bold ${summary.totalBancos >= 0 ? "text-violet-600" : "text-destructive"}`}>
+              {formatCurrencyCents(summary.totalBancos)}
+            </span>
+          </div>
+        </div>
       )}
+
+      {/* Detail Dialog */}
+      <DashboardDetailDialog
+        open={detailDialog.open}
+        onOpenChange={(open) => setDetailDialog(prev => ({ ...prev, open }))}
+        title={detailDialog.title}
+        items={detailDialog.items}
+        type={detailDialog.type}
+        formatCurrencyCents={formatCurrencyCents}
+        formatCurrency={formatCurrency}
+      />
+
+      {/* Bank Statement Dialog */}
+      <BankStatementDialog
+        account={selectedBankAccount}
+        open={bankStatementOpen}
+        onOpenChange={setBankStatementOpen}
+        formatCurrency={(v) => formatCurrency(v)}
+      />
     </div>
   );
 }
