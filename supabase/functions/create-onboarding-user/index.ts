@@ -375,6 +375,22 @@ Deno.serve(async (req) => {
     }
 
     // Original flow for admin-created users
+
+    // Block staff members from being added as client project users
+    const { data: staffCheck } = await supabaseAdmin
+      .from("onboarding_staff")
+      .select("id, name")
+      .eq("email", email.toLowerCase())
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (staffCheck) {
+      return new Response(
+        JSON.stringify({ error: `O email "${email}" pertence ao colaborador "${staffCheck.name}". Não é permitido criar usuários do sistema para membros da equipe interna.` }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // Check if user already exists in onboarding_users for this project (exact email match)
     const { data: existingOnboardingUser } = await supabaseAdmin
       .from("onboarding_users")
