@@ -238,7 +238,7 @@ Deno.serve(async (req) => {
       });
 
       // ── Fetch Ads ──
-      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{thumbnail_url,body,title,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=200&access_token=${token}`;
+      const adsUrl = `${GRAPH_API}/${adAccountId}/ads?fields=name,status,adset_id,adset{name},campaign_id,campaign{name},creative{thumbnail_url,body,title,image_url,object_story_spec},insights.time_range({"since":"${start}","until":"${end}"}).fields(${insightFields})&limit=200&access_token=${token}`;
       const adsRes = await fetchWithTimeout(adsUrl, 60000);
       const adsData = await adsRes.json();
       if (adsData.error) throw new Error(`Ads: ${adsData.error.message}`);
