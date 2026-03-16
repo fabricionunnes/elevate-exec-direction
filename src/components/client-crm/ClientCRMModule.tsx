@@ -1,16 +1,19 @@
 import { useState } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Loader2 } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS, OnboardingUser } from "@/types/onboarding";
+import { useClientCRM } from "./hooks/useClientCRM";
+import { ClientCRMDashboard } from "./ClientCRMDashboard";
+import { ClientCRMDeals } from "./ClientCRMDeals";
+import { ClientCRMContacts } from "./ClientCRMContacts";
+import { ClientCRMActivities } from "./ClientCRMActivities";
+import { ClientCRMWhatsApp } from "./ClientCRMWhatsApp";
+import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
+import { ClientCRMContracts } from "./ClientCRMContracts";
 import {
-  BarChart3,
-  Briefcase,
-  Users,
-  CalendarCheck,
-  MessageCircle,
-  FileText,
-  FileSignature,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
@@ -20,6 +23,7 @@ interface ClientCRMModuleProps {
 
 export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps) => {
   const { hasPermission } = useClientPermissions(projectId);
+  const crm = useClientCRM(projectId);
 
   const tabs = [
     { key: CLIENT_MENU_KEYS.crm_comercial_dashboard, id: "dashboard", label: "Dashboard", icon: BarChart3 },
@@ -40,6 +44,14 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
           Nenhum módulo do CRM está habilitado para este projeto.
         </CardContent>
       </Card>
+    );
+  }
+
+  if (crm.loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
     );
   }
 
@@ -64,80 +76,51 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
         </TabsList>
 
         <TabsContent value="dashboard">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <BarChart3 className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Dashboard do CRM</h3>
-              <p className="text-sm">Visão geral dos seus negócios e métricas de vendas.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMDashboard deals={crm.deals} contacts={crm.contacts} activities={crm.activities} stages={crm.stages} />
         </TabsContent>
 
         <TabsContent value="negocios">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Briefcase className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Negócios</h3>
-              <p className="text-sm">Gerencie seu pipeline de vendas e oportunidades.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMDeals
+            deals={crm.deals}
+            stages={crm.stages}
+            contacts={crm.contacts}
+            onCreateDeal={crm.createDeal}
+            onUpdateDeal={crm.updateDeal}
+            onDeleteDeal={crm.deleteDeal}
+            onMoveDeal={crm.moveDealToStage}
+          />
         </TabsContent>
 
         <TabsContent value="contatos">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Contatos</h3>
-              <p className="text-sm">Base de contatos e leads do seu negócio.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMContacts
+            contacts={crm.contacts}
+            onCreateContact={crm.createContact}
+            onUpdateContact={crm.updateContact}
+            onDeleteContact={crm.deleteContact}
+          />
         </TabsContent>
 
         <TabsContent value="atividades">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <CalendarCheck className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Atividades</h3>
-              <p className="text-sm">Tarefas e follow-ups comerciais.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMActivities
+            activities={crm.activities}
+            deals={crm.deals}
+            contacts={crm.contacts}
+            onCreateActivity={crm.createActivity}
+            onCompleteActivity={crm.completeActivity}
+            onDeleteActivity={crm.deleteActivity}
+          />
         </TabsContent>
 
         <TabsContent value="atendimentos">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <MessageCircle className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Atendimentos</h3>
-              <p className="text-sm">Conecte sua instância do WhatsApp e gerencie conversas com clientes.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve — você poderá conectar sua própria instância aqui</p>
-            </CardContent>
-          </Card>
+          <ClientCRMWhatsApp projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="transcricoes">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <FileText className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Transcrições</h3>
-              <p className="text-sm">Transcrições de reuniões e chamadas comerciais.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMTranscriptions />
         </TabsContent>
 
         <TabsContent value="contratos">
-          <Card>
-            <CardContent className="py-12 text-center text-muted-foreground">
-              <FileSignature className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <h3 className="font-semibold text-lg mb-1">Contratos</h3>
-              <p className="text-sm">Gerencie propostas e contratos comerciais.</p>
-              <p className="text-xs mt-2 text-muted-foreground/70">Em breve</p>
-            </CardContent>
-          </Card>
+          <ClientCRMContracts />
         </TabsContent>
       </Tabs>
     </div>
