@@ -69,7 +69,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
 
   const fetchData = async () => {
     setLoading(true);
-    const [instancesRes, configRes] = await Promise.all([
+    const [instancesRes, configRes, projectRes] = await Promise.all([
       supabase
         .from("whatsapp_instances")
         .select("id, instance_name, display_name, status, api_url, api_key")
@@ -79,18 +79,37 @@ export function HRWhatsAppConfig({ projectId }: Props) {
         .select("*")
         .eq("project_id", projectId)
         .maybeSingle(),
+      supabase
+        .from("onboarding_projects")
+        .select("onboarding_company_id")
+        .eq("id", projectId)
+        .maybeSingle(),
     ]);
 
     setInstances(instancesRes.data || []);
+
+    // Fetch company phone
+    let companyPhone = "";
+    if (projectRes.data?.onboarding_company_id) {
+      const { data: company } = await supabase
+        .from("onboarding_companies")
+        .select("phone")
+        .eq("id", projectRes.data.onboarding_company_id)
+        .maybeSingle();
+      companyPhone = company?.phone || "";
+    }
 
     if (configRes.data) {
       const c = configRes.data as HRWhatsAppConfig;
       setConfig(c);
       setSelectedInstance(c.instance_id || "");
       setNotifyEnabled(c.notify_on_stage_change);
-      setNotifyPhone(c.notify_phone || "");
+      setNotifyPhone(c.notify_phone || companyPhone);
       setNotifyGroupJid(c.notify_group_jid || "");
       setMessageTemplate(c.message_template || DEFAULT_TEMPLATE);
+    } else {
+      // No config yet - pre-fill with company phone
+      setNotifyPhone(companyPhone);
     }
     setLoading(false);
   };
