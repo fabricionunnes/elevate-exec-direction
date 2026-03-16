@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, Wand2, Play, Pause, Trash2, Plus, SmilePlus, Type, Pencil, Check
+  Loader2, Wand2, Play, Pause, Trash2, Plus, SmilePlus, Type, Pencil, Check, Download
 } from "lucide-react";
+import { useVideoRenderer } from "./useVideoRenderer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VideoCaptionOverlay, VideoCaption } from "./VideoCaptionOverlay";
