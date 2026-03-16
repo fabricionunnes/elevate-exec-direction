@@ -1195,7 +1195,9 @@ const OnboardingTasksPage = () => {
       const matchesConsultant = 
         currentUserRole === "consultant" ||
         filterConsultant === "all" || 
-        nonClosedProjects.some(p => p.consultant_id === filterConsultant);
+        company.consultant_id === filterConsultant ||
+        company.cs_id === filterConsultant ||
+        nonClosedProjects.some(p => p.consultant_id === filterConsultant || p.cs_id === filterConsultant);
       
       // Service filter - check if company has any project with the selected service (using slug)
       const matchesService = 
