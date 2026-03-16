@@ -142,7 +142,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
         instance_id: selectedInstance,
         notify_on_stage_change: notifyEnabled,
         notify_phone: notifyPhone.trim() || null,
-        notify_group_jid: notifyGroupJid.trim() || null,
+        notify_group_jid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
         message_template: messageTemplate.trim() || DEFAULT_TEMPLATE,
         updated_at: new Date().toISOString(),
       };
