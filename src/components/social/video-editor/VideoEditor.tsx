@@ -32,7 +32,7 @@ const OVERLAY_TYPE_LABELS: Record<string, { label: string; color: string; icon: 
   broll_keyword: { label: "B-Roll", color: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: "🖼️" },
 };
 
-export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEditorProps) => {
+export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled, onVideoRendered }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
