@@ -24,6 +24,7 @@ import { HRDashboardTab } from "./tabs/HRDashboardTab";
 import { TalentPoolTab } from "./tabs/TalentPoolTab";
 import { CultureManualTab } from "./tabs/CultureManualTab";
 import { CareerPlanTab } from "./tabs/CareerPlanTab";
+import { HRSettingsTab } from "./tabs/HRSettingsTab";
 
 interface HRRecruitmentPanelProps {
   projectId: string;
