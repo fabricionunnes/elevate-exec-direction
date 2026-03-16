@@ -1,0 +1,1 @@
+ALTER TABLE public.social_content_cards ADD COLUMN video_editor_notes TEXT DEFAULT NULL;
