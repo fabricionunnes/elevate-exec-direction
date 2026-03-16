@@ -1,7 +1,7 @@
 import { createClient } from "@supabase/supabase-js";
 
 // Version tag for debugging deployments
-const EVOLUTION_API_FUNC_VERSION = "2026-02-28-v8";
+const EVOLUTION_API_FUNC_VERSION = "2026-03-16-v9";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
