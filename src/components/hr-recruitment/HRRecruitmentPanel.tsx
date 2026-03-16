@@ -160,6 +160,12 @@ export function HRRecruitmentPanel({
             <TrendingUp className="h-4 w-4" />
             <span className="hidden sm:inline">Plano de Carreira</span>
           </TabsTrigger>
+          {isStaff && (
+            <TabsTrigger value="settings" className="gap-2">
+              <Settings className="h-4 w-4" />
+              <span className="hidden sm:inline">Configurações</span>
+            </TabsTrigger>
+          )}
         </TabsList>
 
         <TabsContent value="dashboard" className="mt-6">
