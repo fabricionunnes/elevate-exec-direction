@@ -69,6 +69,7 @@ import { ClientInstagramModule } from "@/components/client-instagram/ClientInsta
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
+import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
