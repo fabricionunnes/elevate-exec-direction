@@ -10,7 +10,8 @@ import {
   BarChart3,
   UserCheck,
   BookOpen,
-  TrendingUp
+  TrendingUp,
+  Settings
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { JobOpeningsTab } from "./tabs/JobOpeningsTab";
