@@ -107,6 +107,18 @@ export function PipelineTab({ projectId, canEdit, onUpdate }: PipelineTabProps) 
     } else {
       toast.success("Candidato movido");
       onUpdate();
+
+      const stageDef = pipelineStages.find((s) => s.key === stageKey);
+      const jobTitle = draggedCandidate.job_opening_id
+        ? jobs.find((j) => j.id === draggedCandidate.job_opening_id)?.title || "Vaga"
+        : "Vaga";
+
+      void notifyClientStageChange({
+        projectId,
+        candidateName: draggedCandidate.full_name,
+        stageName: stageDef?.name || stageKey,
+        jobTitle,
+      });
     }
 
     setDraggedCandidate(null);
