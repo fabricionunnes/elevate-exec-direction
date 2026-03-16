@@ -214,9 +214,9 @@ export default function FinancialOverdueTab({
       const { data: instance } = await supabase
         .from("whatsapp_instances")
         .select("instance_name")
-        .eq("status", "connected")
+        .in("status", ["connected", "connecting"])
         .eq("instance_name", defaultInstName)
-        .single();
+        .maybeSingle();
       if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
         method: 'POST',

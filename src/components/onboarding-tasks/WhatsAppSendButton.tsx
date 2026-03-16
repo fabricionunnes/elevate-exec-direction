@@ -47,7 +47,7 @@ export const WhatsAppSendButton = ({
     let query = supabase
       .from("whatsapp_instances")
       .select("id")
-      .eq("status", "connected");
+      .in("status", ["connected", "connecting"]);
     
     if (instanceName) {
       query = query.eq("instance_name", instanceName);
@@ -55,7 +55,7 @@ export const WhatsAppSendButton = ({
       const defaultInst = await getDefaultWhatsAppInstance();
       query = query.eq("instance_name", defaultInst);
     }
-    const { data } = await query.single();
+    const { data } = await query.maybeSingle();
     
     const found = !!data;
     setHasInstance(found);
