@@ -211,13 +211,6 @@ export default function FinancialOverdueTab({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
       const defaultInstName = await getDefaultWhatsAppInstance();
-      const { data: instance } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_name")
-        .in("status", ["connected", "connecting"])
-        .eq("instance_name", defaultInstName)
-        .maybeSingle();
-      if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
