@@ -27,6 +27,10 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [videoNaturalWidth, setVideoNaturalWidth] = useState(0);
+  const [videoNaturalHeight, setVideoNaturalHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const [captions, setCaptions] = useState<VideoCaption[]>([]);
   const [overlays, setOverlays] = useState<VideoOverlay[]>([]);
   const [captionStyle, setCaptionStyle] = useState<CaptionStyleKey>("default");
@@ -35,6 +39,29 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const animFrame = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate the rendered video rect inside the container (object-contain)
+  const videoRect = useMemo(() => {
+    if (!videoNaturalWidth || !videoNaturalHeight || !containerWidth || !containerHeight) {
+      return { left: 0, top: 0, width: containerWidth || 0, height: containerHeight || 0 };
+    }
+    const videoAspect = videoNaturalWidth / videoNaturalHeight;
+    const containerAspect = containerWidth / containerHeight;
+    let renderW: number, renderH: number, offsetX: number, offsetY: number;
+    if (videoAspect > containerAspect) {
+      renderW = containerWidth;
+      renderH = containerWidth / videoAspect;
+      offsetX = 0;
+      offsetY = (containerHeight - renderH) / 2;
+    } else {
+      renderH = containerHeight;
+      renderW = containerHeight * videoAspect;
+      offsetX = (containerWidth - renderW) / 2;
+      offsetY = 0;
+    }
+    return { left: offsetX, top: offsetY, width: renderW, height: renderH };
+  }, [videoNaturalWidth, videoNaturalHeight, containerWidth, containerHeight]);
 
   // Load existing captions and overlays
   useEffect(() => {
