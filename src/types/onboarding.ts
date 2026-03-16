@@ -67,6 +67,15 @@ export const CLIENT_MENU_KEYS = {
   contrato_rotina: "contrato_rotina",
   acoes_comerciais: "acoes_comerciais",
   meta_ads: "meta_ads",
+  // CRM Comercial - menu principal + sub-permissões
+  crm_comercial: "crm_comercial",
+  crm_comercial_dashboard: "crm_comercial_dashboard",
+  crm_comercial_negocios: "crm_comercial_negocios",
+  crm_comercial_contatos: "crm_comercial_contatos",
+  crm_comercial_atividades: "crm_comercial_atividades",
+  crm_comercial_atendimentos: "crm_comercial_atendimentos",
+  crm_comercial_transcricoes: "crm_comercial_transcricoes",
+  crm_comercial_contratos: "crm_comercial_contratos",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
