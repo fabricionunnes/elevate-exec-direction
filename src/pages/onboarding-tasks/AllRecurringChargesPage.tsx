@@ -1944,7 +1944,7 @@ export default function AllRecurringChargesPage() {
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Vencidos</CardTitle></CardHeader>
                   <CardContent>
-                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status === "overdue").reduce((s, p) => s + p.amount, 0))}</div>
+                    <div className="text-2xl font-bold text-destructive">{formatCurrency(filteredPayables.filter(p => p.status !== "paid" && p.status !== "cancelled" && p.due_date && p.due_date < new Date().toISOString().split("T")[0]).reduce((s, p) => s + p.amount, 0))}</div>
                   </CardContent>
                 </Card>
               </div>
