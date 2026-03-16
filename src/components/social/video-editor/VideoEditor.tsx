@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, Wand2, Play, Pause, Trash2, Plus, GripVertical, SmilePlus
+  Loader2, Wand2, Play, Pause, Trash2, Plus, SmilePlus, Type, Pencil, Check
 } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
@@ -21,6 +21,14 @@ interface VideoEditorProps {
   editorNotes: string;
   disabled?: boolean;
 }
+
+const OVERLAY_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
+  headline: { label: "Headline", color: "bg-red-500/20 text-red-400 border-red-500/30", icon: "📢" },
+  emoji: { label: "Emoji", color: "bg-amber-500/20 text-amber-400 border-amber-500/30", icon: "😀" },
+  text_highlight: { label: "Destaque", color: "bg-blue-500/20 text-blue-400 border-blue-500/30", icon: "✨" },
+  zoom_cue: { label: "Zoom", color: "bg-green-500/20 text-green-400 border-green-500/30", icon: "🔍" },
+  broll_keyword: { label: "B-Roll", color: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: "🖼️" },
+};
 
 export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
@@ -37,6 +45,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [transcribing, setTranscribing] = useState(false);
   const [saving, setSaving] = useState(false);
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
+  const [editingOverlayId, setEditingOverlayId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const animFrame = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
@@ -62,6 +71,9 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
     }
     return { left: offsetX, top: offsetY, width: renderW, height: renderH };
   }, [videoNaturalWidth, videoNaturalHeight, containerWidth, containerHeight]);
+
+  // Find headline overlay
+  const headline = overlays.find((o) => o.overlay_type === "headline");
 
   // Load existing captions and overlays
   useEffect(() => {
@@ -149,7 +161,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
 
       if (data?.success && data?.status === "completed") {
         toast.success(
-          `Transcrição concluída! ${data.captions_count} legendas e ${data.overlays_count} efeitos sugeridos.`
+          `Edição concluída! ${data.captions_count} legendas e ${data.overlays_count} efeitos gerados.`
         );
         if (data.suggested_style) setCaptionStyle(data.suggested_style);
         await Promise.all([loadCaptions(), loadOverlays()]);
@@ -189,7 +201,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
         throw new Error("ID da transcrição não retornado");
       }
 
-      toast.info("Transcrição iniciada. Processando vídeo...");
+      toast.info("Transcrição iniciada. Processando vídeo e gerando edição rica...");
       await pollTranscriptionStatus(data.transcriptId);
     } catch (error) {
       console.error("Transcription error:", error);
@@ -215,6 +227,22 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
       setEditingCaptionId(null);
     } catch (error) {
       toast.error("Erro ao salvar legenda");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const saveOverlay = async (overlay: VideoOverlay) => {
+    setSaving(true);
+    try {
+      await supabase
+        .from("social_video_overlays")
+        .update({ content: overlay.content })
+        .eq("id", overlay.id);
+      setEditingOverlayId(null);
+      toast.success("Overlay salvo");
+    } catch {
+      toast.error("Erro ao salvar overlay");
     } finally {
       setSaving(false);
     }
@@ -292,8 +320,68 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
 
   const commonEmojis = ["🔥", "💰", "⚡", "💡", "🎯", "🚀", "💪", "👆", "✅", "❌", "⬆️", "📈", "🏆", "💎", "👀", "🤯"];
 
+  // Group overlays by type for the panel
+  const overlaysByType = useMemo(() => {
+    const groups: Record<string, VideoOverlay[]> = {};
+    for (const o of overlays) {
+      const type = o.overlay_type || "emoji";
+      if (!groups[type]) groups[type] = [];
+      groups[type].push(o);
+    }
+    return groups;
+  }, [overlays]);
+
   return (
     <div className="space-y-4">
+      {/* Headline Editor */}
+      {headline && (
+        <div className="p-3 rounded-lg border border-red-500/30 bg-red-500/5 space-y-2">
+          <div className="flex items-center gap-2">
+            <Type className="h-4 w-4 text-red-400" />
+            <Label className="text-sm font-semibold text-red-400">Headline / Gancho</Label>
+          </div>
+          <div className="flex items-center gap-2">
+            {editingOverlayId === headline.id ? (
+              <>
+                <Input
+                  value={headline.content}
+                  onChange={(e) =>
+                    setOverlays((prev) =>
+                      prev.map((o) => o.id === headline.id ? { ...o, content: e.target.value } : o)
+                    )
+                  }
+                  className="flex-1 text-sm font-bold"
+                  placeholder="Headline de impacto..."
+                />
+                <Button
+                  size="icon"
+                  variant="ghost"
+                  className="h-8 w-8"
+                  onClick={() => saveOverlay(headline)}
+                  disabled={saving}
+                >
+                  <Check className="h-4 w-4 text-green-500" />
+                </Button>
+              </>
+            ) : (
+              <>
+                <p className="flex-1 text-sm font-bold text-foreground">{headline.content}</p>
+                {!disabled && (
+                  <Button
+                    size="icon"
+                    variant="ghost"
+                    className="h-8 w-8"
+                    onClick={() => setEditingOverlayId(headline.id)}
+                  >
+                    <Pencil className="h-3.5 w-3.5 text-muted-foreground" />
+                  </Button>
+                )}
+              </>
+            )}
+          </div>
+        </div>
+      )}
+
       {/* Video Player with Overlays */}
       <div
         ref={containerRef}
@@ -375,13 +463,15 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
           </span>
         </div>
 
-        {/* Visual timeline with caption/overlay markers */}
-        <div className="relative h-6 bg-muted rounded-sm overflow-hidden">
+        {/* Visual timeline with color-coded overlay markers */}
+        <div className="relative h-8 bg-muted rounded-sm overflow-hidden">
+          {/* Caption track */}
           {captions.map((c) => (
             <div
               key={c.id}
-              className="absolute top-0 h-3 bg-primary/40 rounded-sm cursor-pointer hover:bg-primary/60 transition-colors"
+              className="absolute h-2 bg-primary/40 rounded-sm cursor-pointer hover:bg-primary/60 transition-colors"
               style={{
+                top: 0,
                 left: `${(c.start_time / duration) * 100}%`,
                 width: `${((c.end_time - c.start_time) / duration) * 100}%`,
               }}
@@ -389,31 +479,44 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
               title={c.text}
             />
           ))}
-          {overlays.map((o) => (
-            <div
-              key={o.id}
-              className="absolute bottom-0 h-3 bg-amber-400/50 rounded-sm cursor-pointer hover:bg-amber-400/70 transition-colors"
-              style={{
-                left: `${(o.start_time / duration) * 100}%`,
-                width: `${Math.max(((o.end_time - o.start_time) / duration) * 100, 1)}%`,
-              }}
-              onClick={() => seekTo(o.start_time)}
-              title={o.content}
-            />
-          ))}
+          {/* Overlay tracks by type */}
+          {overlays.map((o) => {
+            const typeInfo = OVERLAY_TYPE_LABELS[o.overlay_type] || OVERLAY_TYPE_LABELS.emoji;
+            const trackY = o.overlay_type === "headline" ? 8 : o.overlay_type === "text_highlight" ? 12 : o.overlay_type === "zoom_cue" ? 16 : o.overlay_type === "broll_keyword" ? 20 : 24;
+            const colors: Record<string, string> = {
+              headline: "bg-red-400/60",
+              text_highlight: "bg-blue-400/60",
+              zoom_cue: "bg-green-400/60",
+              broll_keyword: "bg-purple-400/60",
+              emoji: "bg-amber-400/50",
+            };
+            return (
+              <div
+                key={o.id}
+                className={cn("absolute h-2 rounded-sm cursor-pointer hover:opacity-80 transition-opacity", colors[o.overlay_type] || colors.emoji)}
+                style={{
+                  top: trackY,
+                  left: `${(o.start_time / duration) * 100}%`,
+                  width: `${Math.max(((o.end_time - o.start_time) / duration) * 100, 0.5)}%`,
+                }}
+                onClick={() => seekTo(o.start_time)}
+                title={`${typeInfo.icon} ${o.content}`}
+              />
+            );
+          })}
           {/* Playhead */}
           <div
             className="absolute top-0 bottom-0 w-0.5 bg-primary z-10"
             style={{ left: `${(currentTime / duration) * 100}%` }}
           />
         </div>
-        <div className="flex items-center gap-3 text-[10px] text-muted-foreground">
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-2 bg-primary/40 rounded-sm" /> Legendas
-          </div>
-          <div className="flex items-center gap-1">
-            <div className="w-3 h-2 bg-amber-400/50 rounded-sm" /> Emojis
-          </div>
+        <div className="flex items-center gap-3 text-[10px] text-muted-foreground flex-wrap">
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-primary/40 rounded-sm" /> Legendas</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-red-400/60 rounded-sm" /> Headline</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-amber-400/50 rounded-sm" /> Emojis</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-blue-400/60 rounded-sm" /> Destaques</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-green-400/60 rounded-sm" /> Zoom</div>
+          <div className="flex items-center gap-1"><div className="w-3 h-2 bg-purple-400/60 rounded-sm" /> B-Roll</div>
         </div>
       </div>
 
@@ -425,11 +528,11 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
         variant={captions.length > 0 ? "outline" : "default"}
       >
         {transcribing ? (
-          <><Loader2 className="h-4 w-4 animate-spin" /> Transcrevendo e analisando...</>
+          <><Loader2 className="h-4 w-4 animate-spin" /> Transcrevendo e editando com IA...</>
         ) : captions.length > 0 ? (
-          <><Wand2 className="h-4 w-4" /> Re-transcrever com IA</>
+          <><Wand2 className="h-4 w-4" /> Re-editar com IA</>
         ) : (
-          <><Wand2 className="h-4 w-4" /> Transcrever e editar com IA</>
+          <><Wand2 className="h-4 w-4" /> Editar vídeo com IA</>
         )}
       </Button>
 
@@ -454,7 +557,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
               <Plus className="h-3 w-3" /> Adicionar
             </Button>
           </div>
-          <ScrollArea className="max-h-[250px]">
+          <ScrollArea className="max-h-[200px]">
             <div className="space-y-1.5 pr-3">
               {captions.map((caption) => (
                 <div
@@ -490,9 +593,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
                             onChange={(e) =>
                               setCaptions((prev) =>
                                 prev.map((c) =>
-                                  c.id === caption.id
-                                    ? { ...c, start_time: Number(e.target.value) }
-                                    : c
+                                  c.id === caption.id ? { ...c, start_time: Number(e.target.value) } : c
                                 )
                               )
                             }
@@ -506,9 +607,7 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
                             onChange={(e) =>
                               setCaptions((prev) =>
                                 prev.map((c) =>
-                                  c.id === caption.id
-                                    ? { ...c, end_time: Number(e.target.value) }
-                                    : c
+                                  c.id === caption.id ? { ...c, end_time: Number(e.target.value) } : c
                                 )
                               )
                             }
@@ -557,20 +656,73 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
         </div>
       )}
 
-      {/* Emoji Overlays */}
-      <div className="space-y-2">
-        <div className="flex items-center justify-between">
-          <Label className="text-sm">Emojis / Efeitos ({overlays.length})</Label>
-          <Button
-            variant="ghost"
-            size="sm"
-            className="h-7 gap-1 text-xs"
-            onClick={() => setShowEmojiPicker(!showEmojiPicker)}
-            disabled={disabled}
-          >
-            <SmilePlus className="h-3 w-3" /> Adicionar
-          </Button>
+      {/* Overlays by Type */}
+      {overlays.length > 0 && (
+        <div className="space-y-3">
+          <Label className="text-sm">Efeitos e Overlays ({overlays.length})</Label>
+
+          {Object.entries(overlaysByType).map(([type, items]) => {
+            if (type === "headline") return null; // headline shown above
+            const typeInfo = OVERLAY_TYPE_LABELS[type] || OVERLAY_TYPE_LABELS.emoji;
+            return (
+              <div key={type} className="space-y-1">
+                <div className="flex items-center gap-1.5">
+                  <span className="text-sm">{typeInfo.icon}</span>
+                  <span className="text-xs font-medium text-muted-foreground">{typeInfo.label} ({items.length})</span>
+                </div>
+                <div className="space-y-1">
+                  {items.map((overlay) => (
+                    <div
+                      key={overlay.id}
+                      className={cn(
+                        "flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors",
+                        currentTime >= overlay.start_time && currentTime <= overlay.end_time
+                          ? cn("bg-muted/30", typeInfo.color)
+                          : "border-border"
+                      )}
+                      onClick={() => seekTo(overlay.start_time)}
+                    >
+                      {type === "emoji" ? (
+                        <span className="text-lg">{overlay.content}</span>
+                      ) : (
+                        <span className="text-xs font-medium truncate max-w-[120px]">{overlay.content}</span>
+                      )}
+                      <span className="text-muted-foreground flex-1 text-right">
+                        {formatTime(overlay.start_time)} → {formatTime(overlay.end_time)}
+                      </span>
+                      {!disabled && (
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          className="h-5 w-5"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            deleteOverlay(overlay.id);
+                          }}
+                        >
+                          <Trash2 className="h-3 w-3 text-muted-foreground" />
+                        </Button>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            );
+          })}
         </div>
+      )}
+
+      {/* Emoji Quick Add */}
+      <div className="space-y-2">
+        <Button
+          variant="ghost"
+          size="sm"
+          className="h-7 gap-1 text-xs"
+          onClick={() => setShowEmojiPicker(!showEmojiPicker)}
+          disabled={disabled}
+        >
+          <SmilePlus className="h-3 w-3" /> Adicionar emoji manual
+        </Button>
 
         {showEmojiPicker && (
           <div className="flex flex-wrap gap-1.5 p-2 border rounded-lg bg-muted/30">
@@ -582,41 +734,6 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
               >
                 {emoji}
               </button>
-            ))}
-          </div>
-        )}
-
-        {overlays.length > 0 && (
-          <div className="space-y-1">
-            {overlays.map((overlay) => (
-              <div
-                key={overlay.id}
-                className={cn(
-                  "flex items-center gap-2 p-1.5 rounded border text-xs cursor-pointer transition-colors",
-                  currentTime >= overlay.start_time && currentTime <= overlay.end_time
-                    ? "border-amber-400 bg-amber-50/10"
-                    : "border-border"
-                )}
-                onClick={() => seekTo(overlay.start_time)}
-              >
-                <span className="text-lg">{overlay.content}</span>
-                <span className="text-muted-foreground flex-1">
-                  {formatTime(overlay.start_time)} → {formatTime(overlay.end_time)}
-                </span>
-                {!disabled && (
-                  <Button
-                    variant="ghost"
-                    size="icon"
-                    className="h-5 w-5"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      deleteOverlay(overlay.id);
-                    }}
-                  >
-                    <Trash2 className="h-3 w-3 text-muted-foreground" />
-                  </Button>
-                )}
-              </div>
             ))}
           </div>
         )}

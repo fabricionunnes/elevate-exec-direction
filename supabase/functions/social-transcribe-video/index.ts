@@ -45,13 +45,13 @@ function jsonResponse(body: unknown, status = 200) {
 function chunkWordsIntoCaptions(
   words: TranscriptWord[] = [],
   fallbackText = "",
-): Array<{ text: string; start_time: number; end_time: number; }> {
+): Array<{ text: string; start_time: number; end_time: number }> {
   if (!words.length) {
     const text = fallbackText.trim();
     return text ? [{ text, start_time: 0, end_time: 3 }] : [];
   }
 
-  const captions: Array<{ text: string; start_time: number; end_time: number; }> = [];
+  const captions: Array<{ text: string; start_time: number; end_time: number }> = [];
   let currentWords: TranscriptWord[] = [];
   let currentStart = words[0].start;
 
@@ -133,30 +133,55 @@ async function getTranscriptionStatus(transcriptId: string, assemblyKey: string)
   return data;
 }
 
-async function generateOverlaysAndStyle(
+async function generateRichEditing(
   transcriptText: string,
   captions: Array<{ text: string; start_time: number; end_time: number }>,
   editorNotes: string | null | undefined,
   lovableApiKey: string | null,
 ) {
+  const emptyResult = {
+    headline: "",
+    overlays: [],
+    suggested_style: defaultStyle,
+  };
+
   if (!lovableApiKey || !transcriptText.trim()) {
-    return { overlays: [], suggested_style: defaultStyle };
+    return emptyResult;
   }
 
   const editorContext = editorNotes ? `\n\nDirecionamento do editor: "${editorNotes}"` : "";
   const timestampedScript = captions
-    .map((caption) => `[${caption.start_time.toFixed(2)}s - ${caption.end_time.toFixed(2)}s] ${caption.text}`)
+    .map((c) => `[${c.start_time.toFixed(2)}s - ${c.end_time.toFixed(2)}s] ${c.text}`)
     .join("\n");
-  const systemPrompt = `Você é um editor de vídeos curtos em português do Brasil. Com base na transcrição com timestamps, crie uma primeira edição BEM MAIS RICA para Reels/TikTok.${editorContext}
 
-Regras:
-- Distribua overlays ao longo de TODO o vídeo, não só no começo.
-- Gere entre 6 e 12 overlays quando houver conteúdo suficiente.
-- Use frases curtas de impacto, emojis, reforços visuais e callouts.
-- Respeite os timestamps existentes da transcrição.
-- Escolha o melhor estilo de legenda para short-form em português.
+  const lastCaptionEnd = captions.length > 0 ? captions[captions.length - 1].end_time : 10;
 
-Use a tool "video_analysis" para retornar os dados estruturados.`;
+  const systemPrompt = `Você é um editor de vídeos curtos profissional para Reels/TikTok em português do Brasil. Sua tarefa é criar uma edição RICA e COMPLETA com base na transcrição.${editorContext}
+
+REGRAS IMPORTANTES:
+1. HEADLINE: Crie uma frase de gancho impactante e curta (máx 8 palavras) que capture a atenção nos primeiros 2 segundos. Deve ser provocativa, gerar curiosidade.
+
+2. OVERLAYS - Distribua ao longo de TODO o vídeo (0s até ${lastCaptionEnd.toFixed(1)}s). Tipos:
+   - "emoji": Emojis que reforçam o que está sendo dito (🔥💰⚡🎯🚀💡✅❌📈🏆💎👀🤯💪)
+   - "text_highlight": Frases curtas de impacto visual que aparecem na tela (ex: "ATENÇÃO!", "Isso é CRUCIAL", "Anota aí")
+   - "zoom_cue": Marcações de momentos que merecem zoom/ênfase (será aplicado efeito de zoom no player)
+   - "broll_keyword": Palavras-chave para imagens de apoio que ilustram o que está sendo dito (ex: "dinheiro", "crescimento", "equipe")
+
+3. Gere PELO MENOS:
+   - 8-15 overlays de emoji distribuídos
+   - 4-8 text_highlights em momentos-chave
+   - 3-6 zoom_cues em frases impactantes
+   - 3-6 broll_keywords para ilustrações
+
+4. Posicionamento (x, y em %):
+   - Emojis: variar posição (topo, laterais, centro)
+   - text_highlight: centro-superior (x:50, y:15-25)
+   - zoom_cue: centro (x:50, y:50)
+   - broll_keyword: centro (x:50, y:50)
+
+5. Escolha o melhor estilo de legenda.
+
+Use a tool "rich_video_edit" para retornar os dados.`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -170,31 +195,38 @@ Use a tool "video_analysis" para retornar os dados estruturados.`;
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: `Transcrição completa:\n${transcriptText}\n\nLegenda segmentada com timestamps:\n${timestampedScript}\n\nRetorne overlays distribuídos ao longo do vídeo inteiro.${editorContext}`,
+          content: `Transcrição completa:\n${transcriptText}\n\nLegenda segmentada com timestamps:\n${timestampedScript}\n\nCrie uma edição profissional rica com headline, overlays variados (emoji, text_highlight, zoom_cue, broll_keyword) distribuídos ao longo de todo o vídeo.${editorContext}`,
         },
       ],
       tools: [
         {
           type: "function",
           function: {
-            name: "video_analysis",
-            description: "Return overlay suggestions and caption style from transcript",
+            name: "rich_video_edit",
+            description: "Return headline, rich overlays and caption style for the video",
             parameters: {
               type: "object",
               properties: {
+                headline: {
+                  type: "string",
+                  description: "Short hook phrase for the first 2 seconds (max 8 words)",
+                },
                 overlays: {
                   type: "array",
                   items: {
                     type: "object",
                     properties: {
+                      overlay_type: {
+                        type: "string",
+                        enum: ["emoji", "text_highlight", "zoom_cue", "broll_keyword"],
+                      },
                       content: { type: "string" },
                       start_time: { type: "number" },
                       end_time: { type: "number" },
                       x: { type: "number" },
                       y: { type: "number" },
-                      reason: { type: "string" },
                     },
-                    required: ["content", "start_time", "end_time"],
+                    required: ["overlay_type", "content", "start_time", "end_time"],
                   },
                 },
                 suggested_style: {
@@ -202,12 +234,12 @@ Use a tool "video_analysis" para retornar os dados estruturados.`;
                   enum: ["default", "hormozi", "captions", "minimal", "bold", "neon"],
                 },
               },
-              required: ["overlays", "suggested_style"],
+              required: ["headline", "overlays", "suggested_style"],
             },
           },
         },
       ],
-      tool_choice: { type: "function", function: { name: "video_analysis" } },
+      tool_choice: { type: "function", function: { name: "rich_video_edit" } },
     }),
   });
 
@@ -227,18 +259,19 @@ Use a tool "video_analysis" para retornar os dados estruturados.`;
 
     const errorText = await response.text();
     console.error("AI gateway overlay error:", response.status, errorText);
-    return { overlays: [], suggested_style: defaultStyle };
+    return emptyResult;
   }
 
   const result = await response.json();
   const toolCall = result.choices?.[0]?.message?.tool_calls?.[0];
 
   if (!toolCall?.function?.arguments) {
-    return { overlays: [], suggested_style: defaultStyle };
+    return emptyResult;
   }
 
   const parsed = JSON.parse(toolCall.function.arguments);
   return {
+    headline: parsed?.headline ?? "",
     overlays: parsed?.overlays ?? [],
     suggested_style: parsed?.suggested_style ?? defaultStyle,
   };
@@ -248,13 +281,27 @@ async function persistAnalysis(
   supabase: ReturnType<typeof createClient>,
   cardId: string,
   captions: Array<{ text: string; start_time: number; end_time: number }>,
-  overlays: Array<{ content: string; start_time: number; end_time: number; x?: number; y?: number }>,
+  overlays: Array<{ overlay_type?: string; content: string; start_time: number; end_time: number; x?: number; y?: number }>,
   stylePreset: string,
+  headline: string,
 ) {
   await Promise.all([
     supabase.from("social_video_captions").delete().eq("card_id", cardId),
     supabase.from("social_video_overlays").delete().eq("card_id", cardId),
   ]);
+
+  // Save headline as a special overlay
+  if (headline) {
+    const firstCaptionEnd = captions.length > 0 ? Math.min(captions[0].end_time, 3) : 3;
+    overlays.unshift({
+      overlay_type: "headline",
+      content: headline,
+      start_time: 0,
+      end_time: firstCaptionEnd,
+      x: 50,
+      y: 12,
+    });
+  }
 
   if (captions.length) {
     const captionRows: CaptionRow[] = captions.map((caption, index) => ({
@@ -273,7 +320,7 @@ async function persistAnalysis(
   if (overlays.length) {
     const overlayRows: OverlayRow[] = overlays.map((overlay) => ({
       card_id: cardId,
-      overlay_type: "emoji",
+      overlay_type: overlay.overlay_type || "emoji",
       content: overlay.content,
       x: overlay.x ?? 50,
       y: overlay.y ?? 20,
@@ -340,21 +387,22 @@ serve(async (req) => {
       }
 
       const captions = chunkWordsIntoCaptions(transcript.words, transcript.text);
-      const { overlays, suggested_style } = await generateOverlaysAndStyle(
-        transcript.text || captions.map((caption) => caption.text).join(" "),
+      const { headline, overlays, suggested_style } = await generateRichEditing(
+        transcript.text || captions.map((c) => c.text).join(" "),
         captions,
         editorNotes,
         lovableApiKey,
       );
 
-      await persistAnalysis(supabase, cardId, captions, overlays, suggested_style || defaultStyle);
+      await persistAnalysis(supabase, cardId, captions, overlays, suggested_style || defaultStyle, headline);
 
       return jsonResponse({
         success: true,
         status: "completed",
         captions_count: captions.length,
-        overlays_count: overlays.length,
+        overlays_count: overlays.length + (headline ? 1 : 0),
         suggested_style: suggested_style || defaultStyle,
+        headline,
       });
     }
 
