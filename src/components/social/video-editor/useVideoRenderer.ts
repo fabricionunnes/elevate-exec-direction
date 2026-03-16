@@ -199,12 +199,11 @@ export function useVideoRenderer({ cardId, onRendered }: UseVideoRendererProps) 
 
       // Upload to storage
       setProgress(95);
-      const fileName = `edited_${cardId}_${Date.now()}.webm`;
-      const filePath = `social-creatives/${fileName}`;
+      const fileName = `${cardId}/edited_${Date.now()}.webm`;
 
       const { error: uploadError } = await supabase.storage
-        .from("social-creatives")
-        .upload(filePath, blob, {
+        .from("social-content")
+        .upload(fileName, blob, {
           contentType: "video/webm",
           upsert: true,
         });
@@ -212,8 +211,8 @@ export function useVideoRenderer({ cardId, onRendered }: UseVideoRendererProps) 
       if (uploadError) throw uploadError;
 
       const { data: { publicUrl } } = supabase.storage
-        .from("social-creatives")
-        .getPublicUrl(filePath);
+        .from("social-content")
+        .getPublicUrl(fileName);
 
       // Update the card's creative_url
       const { error: updateError } = await supabase
