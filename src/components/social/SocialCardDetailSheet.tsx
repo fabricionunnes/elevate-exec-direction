@@ -141,6 +141,7 @@ export const SocialCardDetailSheet = ({
   const [creativeType, setCreativeType] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [cardColor, setCardColor] = useState<string | null>(null);
+  const [videoEditorNotes, setVideoEditorNotes] = useState("");
   
   // AI image generation
   const [aiPrompt, setAiPrompt] = useState("");
