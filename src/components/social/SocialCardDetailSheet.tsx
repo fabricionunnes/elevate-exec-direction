@@ -403,6 +403,7 @@ export const SocialCardDetailSheet = ({
         creative_url: creativeUrl || null,
         creative_type: creativeType,
         card_color: cardColor,
+        video_editor_notes: videoEditorNotes || null,
       };
 
       const { error } = await supabase
