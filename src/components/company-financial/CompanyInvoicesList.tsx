@@ -586,10 +586,13 @@ export function CompanyInvoicesList({ companyId }: Props) {
               {invoices.map((inv) => {
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
+                const isPartial = inv.status === "partial";
                 const todayStr = new Date().toLocaleDateString("en-CA");
                 const isDueToday = inv.due_date === todayStr && inv.status === "pending";
                 const dueDate = new Date(inv.due_date + "T12:00:00");
-                const displayAmount = isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
+                const displayAmount = isPartial && inv.paid_amount_cents
+                  ? Math.max(0, (isOverdue ? inv.total_with_fees_cents : inv.amount_cents) - inv.paid_amount_cents)
+                  : isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
 
                 // Determine badge display
                 let badgeClass = "bg-blue-500/10 text-blue-600 border-blue-500/20";
@@ -599,6 +602,10 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   badgeClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
                   badgeLabel = "Pago";
                   BadgeIcon = CheckCircle2;
+                } else if (isPartial) {
+                  badgeClass = "bg-amber-500/10 text-amber-600 border-amber-500/20";
+                  badgeLabel = "Pago Parcial";
+                  BadgeIcon = Clock;
                 } else if (isOverdue) {
                   badgeClass = "bg-red-500/10 text-red-600 border-red-500/20";
                   badgeLabel = "Vencida";

@@ -759,7 +759,14 @@ export default function FinancialOverdueTab({
                             {inv.installment_number}/{inv.total_installments}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-bold text-red-500">{formatCurrencyCents(inv.total_with_fees_cents)}</TableCell>
+                        <TableCell className="text-right">
+                          <div>
+                            <span className="font-bold text-red-500">{formatCurrencyCents(getOverdueAmount(inv))}</span>
+                            {inv.status === "partial" && inv.paid_amount_cents > 0 && (
+                              <p className="text-xs text-amber-600 font-medium">Pago parcial: {formatCurrencyCents(inv.paid_amount_cents)}</p>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm">
                           <div>
                             <span>{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</span>
