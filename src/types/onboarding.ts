@@ -257,6 +257,46 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Meta Ads",
     group: "Tráfego",
   },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial,
+    label: "CRM Comercial (Menu)",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_dashboard,
+    label: "CRM > Dashboard",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_negocios,
+    label: "CRM > Negócios",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_contatos,
+    label: "CRM > Contatos",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_atividades,
+    label: "CRM > Atividades",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_atendimentos,
+    label: "CRM > Atendimentos",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_transcricoes,
+    label: "CRM > Transcrições",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_contratos,
+    label: "CRM > Contratos",
+    group: "CRM Comercial",
+  },
 ] as const;
 
 // Role labels in Portuguese
