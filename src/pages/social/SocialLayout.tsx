@@ -110,10 +110,12 @@ export const SocialLayout = () => {
     return null;
   }
 
+  const backPath = isClient ? `/onboarding-client/${projectId}` : `/onboarding-tasks/${projectId}`;
+
   const navItems = [
     { to: `/social/${projectId}`, label: "Pipeline", icon: LayoutGrid, end: true },
     { to: `/social/${projectId}/strategy`, label: "Base Estratégica", icon: BookOpen },
-    { to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings },
+    ...(!isClient ? [{ to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings }] : []),
   ];
 
   return (
