@@ -1232,6 +1232,20 @@ const ClientOnboardingPage = () => {
               />
             </motion.div>
           )}
+
+          {activeView === "crm_comercial" && (
+            <motion.div
+              key="crm_comercial"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientCRMModule
+                projectId={projectId || ""}
+                currentUser={currentUser}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
