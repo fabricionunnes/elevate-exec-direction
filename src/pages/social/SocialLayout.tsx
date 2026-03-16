@@ -36,6 +36,7 @@ export const SocialLayout = () => {
   const navigate = useNavigate();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const isClient = useIsClientUser();
 
   useEffect(() => {
     if (projectId) {
