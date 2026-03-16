@@ -138,6 +138,7 @@ export const SocialCardDialog = ({
           objective: effectiveObjective,
           suggested_date: suggestedDate || null,
           suggested_time: suggestedTime || null,
+          video_editor_notes: ["reels", "stories", "video"].includes(contentType) && videoEditorNotes.trim() ? videoEditorNotes.trim() : null,
         };
       } else if (cardType === "task") {
         insertData = {
