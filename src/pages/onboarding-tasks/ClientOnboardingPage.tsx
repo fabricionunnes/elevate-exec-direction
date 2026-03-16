@@ -370,6 +370,7 @@ const ClientOnboardingPage = () => {
         instagram: "Instagram",
         commercial_director: "Diretor Comercial IA",
         other_services: "Outros Serviços",
+        crm_comercial: "CRM Comercial",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
