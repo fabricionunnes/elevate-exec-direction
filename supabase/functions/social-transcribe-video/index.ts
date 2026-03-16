@@ -90,12 +90,13 @@ Use a tool "video_analysis" para retornar os dados estruturados.`;
             role: "user",
             content: [
               {
-                type: "text",
                 text: `Analise este vídeo, transcreva o áudio com timestamps e sugira emojis/efeitos visuais para os momentos mais impactantes.${editorContext}`,
               },
               {
-                type: "image_url",
-                image_url: { url: dataUrl },
+                inline_data: {
+                  mime_type: mimeType,
+                  data: base64Video,
+                },
               },
             ],
           },
