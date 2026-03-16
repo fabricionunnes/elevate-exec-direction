@@ -2860,35 +2860,41 @@ const OnboardingTasksPage = () => {
                         {/* Goal % Indicator - Desktop */}
                         <div 
                           className={`hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-full ${
-                            companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'bg-muted' 
-                              : companyGoalPercent >= 100 
-                                ? 'bg-green-100' 
-                                : companyGoalPercent >= 70 
-                                  ? 'bg-yellow-100' 
-                                  : 'bg-red-100'
+                            (company as any).goal_not_required
+                              ? 'bg-blue-100'
+                              : companyGoalPercent === null || companyGoalPercent === undefined 
+                                ? 'bg-muted' 
+                                : companyGoalPercent >= 100 
+                                  ? 'bg-green-100' 
+                                  : companyGoalPercent >= 70 
+                                    ? 'bg-yellow-100' 
+                                    : 'bg-red-100'
                           }`}
-                          title="Projeção da Meta Principal"
+                          title={(company as any).goal_not_required ? "Meta Não Necessária" : "Projeção da Meta Principal"}
                         >
                           <Target className={`h-3.5 w-3.5 ${
-                            companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-muted-foreground' 
-                              : companyGoalPercent >= 100 
-                                ? 'text-green-600' 
-                                : companyGoalPercent >= 70 
-                                  ? 'text-yellow-600' 
-                                  : 'text-red-600'
+                            (company as any).goal_not_required
+                              ? 'text-blue-600'
+                              : companyGoalPercent === null || companyGoalPercent === undefined 
+                                ? 'text-muted-foreground' 
+                                : companyGoalPercent >= 100 
+                                  ? 'text-green-600' 
+                                  : companyGoalPercent >= 70 
+                                    ? 'text-yellow-600' 
+                                    : 'text-red-600'
                           }`} />
                           <span className={`text-sm font-semibold ${
-                            companyGoalPercent === null || companyGoalPercent === undefined 
-                              ? 'text-muted-foreground' 
-                              : companyGoalPercent >= 100 
-                                ? 'text-green-600' 
-                                : companyGoalPercent >= 70 
-                                  ? 'text-yellow-600' 
-                                  : 'text-red-600'
+                            (company as any).goal_not_required
+                              ? 'text-blue-600'
+                              : companyGoalPercent === null || companyGoalPercent === undefined 
+                                ? 'text-muted-foreground' 
+                                : companyGoalPercent >= 100 
+                                  ? 'text-green-600' 
+                                  : companyGoalPercent >= 70 
+                                    ? 'text-yellow-600' 
+                                    : 'text-red-600'
                           }`}>
-                            {companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
+                            {(company as any).goal_not_required ? '—' : companyGoalPercent === null || companyGoalPercent === undefined ? 'S/M' : `${companyGoalPercent}%`}
                           </span>
                         </div>
                         {/* Contract End Date / Recurring */}
