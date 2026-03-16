@@ -249,10 +249,20 @@ export default function FinancialOverdueTab({
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
             body: JSON.stringify({ instanceName: defaultInstName2, number: phone, text: msg }),
           });
-          if (!response.ok) throw new Error();
+          if (!response.ok) {
+            const errBody = await response.json().catch(() => ({}));
+            if (errBody.connection_closed) {
+              toast.error("Instância WhatsApp desconectada. Reconecte antes de enviar.");
+              return;
+            }
+            throw new Error(errBody.error || `HTTP ${response.status}`);
+          }
           sent++;
           await new Promise(r => setTimeout(r, 1500));
-        } catch { failed++; }
+        } catch (err: any) {
+          console.error("WhatsApp send error:", err);
+          failed++;
+        }
       }
       toast.success(`${sent} mensagem(ns) enviada(s)${failed > 0 ? `, ${failed} falha(s)` : ""}`);
       setSelectedIds(new Set());
