@@ -7,8 +7,9 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Badge } from "@/components/ui/badge";
 import {
-  Loader2, Wand2, Play, Pause, Trash2, Plus, SmilePlus, Type, Pencil, Check
+  Loader2, Wand2, Play, Pause, Trash2, Plus, SmilePlus, Type, Pencil, Check, Download
 } from "lucide-react";
+import { useVideoRenderer } from "./useVideoRenderer";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { VideoCaptionOverlay, VideoCaption } from "./VideoCaptionOverlay";
@@ -20,6 +21,7 @@ interface VideoEditorProps {
   videoUrl: string;
   editorNotes: string;
   disabled?: boolean;
+  onVideoRendered?: (url: string) => void;
 }
 
 const OVERLAY_TYPE_LABELS: Record<string, { label: string; color: string; icon: string }> = {
@@ -30,7 +32,7 @@ const OVERLAY_TYPE_LABELS: Record<string, { label: string; color: string; icon: 
   broll_keyword: { label: "B-Roll", color: "bg-purple-500/20 text-purple-400 border-purple-500/30", icon: "🖼️" },
 };
 
-export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEditorProps) => {
+export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled, onVideoRendered }: VideoEditorProps) => {
   const videoRef = useRef<HTMLVideoElement>(null);
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -49,6 +51,11 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const animFrame = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
+
+  const { renderVideo, rendering, progress: renderProgress } = useVideoRenderer({
+    cardId,
+    onRendered: onVideoRendered,
+  });
 
   // Calculate the rendered video rect inside the container (object-contain)
   const videoRect = useMemo(() => {
@@ -538,6 +545,36 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
           <><Wand2 className="h-4 w-4" /> Editar vídeo com IA</>
         )}
       </Button>
+
+      {/* Render / Export Button */}
+      {(captions.length > 0 || overlays.length > 0) && (
+        <Button
+          onClick={() => renderVideo(videoUrl, captions, overlays, captionStyle)}
+          disabled={rendering || disabled}
+          className="w-full gap-2"
+          variant="default"
+        >
+          {rendering ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Renderizando... {renderProgress}%
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Renderizar e usar como conteúdo
+            </>
+          )}
+        </Button>
+      )}
+      {rendering && (
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${renderProgress}%` }}
+          />
+        </div>
+      )}
 
       {/* Caption Style Picker */}
       {captions.length > 0 && (

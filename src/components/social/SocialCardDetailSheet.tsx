@@ -1648,6 +1648,12 @@ export const SocialCardDetailSheet = ({
                   videoUrl={creativeUrl}
                   editorNotes={(card as any).video_editor_notes || videoEditorNotes || ""}
                   disabled={card.is_locked}
+                  onVideoRendered={(url) => {
+                    setCreativeUrl(url);
+                    setCreativeType("video");
+                    onUpdate();
+                    toast.success("Vídeo editado aplicado como conteúdo!");
+                  }}
                 />
               ) : (
                 <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-3">
