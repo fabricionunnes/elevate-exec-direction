@@ -71,6 +71,9 @@ export const SocialCardDialog = ({
   const [customObjective, setCustomObjective] = useState<string>("");
   const [suggestedTime, setSuggestedTime] = useState("");
   
+  // Video editor notes
+  const [videoEditorNotes, setVideoEditorNotes] = useState("");
+  
   // Attachments for info cards
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
