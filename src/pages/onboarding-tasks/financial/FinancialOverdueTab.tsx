@@ -140,7 +140,8 @@ export default function FinancialOverdueTab({
     const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     const todayStr = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, "0")}-${String(nowBR.getDate()).padStart(2, "0")}`;
     return invoices.filter(inv => {
-      if (inv.status === "paid") return false;
+      if (inv.status === "paid" || inv.status === "cancelled") return false;
+      // For partial payments that are past due, show them with remaining balance
       const isPastDue = inv.due_date < todayStr;
       if (!isPastDue) return false;
       if (selectedMonthFilter !== "all") {
