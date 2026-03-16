@@ -41,25 +41,9 @@ export const WhatsAppSendButton = ({
   const cleanPhone = rawDigits.startsWith("55") ? rawDigits : `55${rawDigits}`;
   const isValidPhone = rawDigits.length >= 10;
 
-  const checkInstance = async () => {
-    if (hasInstance !== null) return hasInstance;
-    
-    let query = supabase
-      .from("whatsapp_instances")
-      .select("id")
-      .in("status", ["connected", "connecting"]);
-    
-    if (instanceName) {
-      query = query.eq("instance_name", instanceName);
-    } else {
-      const defaultInst = await getDefaultWhatsAppInstance();
-      query = query.eq("instance_name", defaultInst);
-    }
-    const { data } = await query.maybeSingle();
-    
-    const found = !!data;
-    setHasInstance(found);
-    return found;
+  const getInstanceName = async () => {
+    if (instanceName) return instanceName;
+    return await getDefaultWhatsAppInstance();
   };
 
   const handleClick = async () => {
