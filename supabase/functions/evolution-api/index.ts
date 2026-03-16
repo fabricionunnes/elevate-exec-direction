@@ -411,9 +411,22 @@ Deno.serve(async (req) => {
         const data = await response.json();
         console.log('[evolution-api] SendText response:', data);
 
+        // Detect "Connection Closed" — instance disconnected on STEVO
+        const dataStr = JSON.stringify(data);
+        if (!response.ok && dataStr.toLowerCase().includes('connection closed')) {
+          console.error('[evolution-api] WhatsApp instance connection closed');
+          return new Response(
+            JSON.stringify({
+              error: 'Instância WhatsApp desconectada no servidor. Reconecte a instância antes de enviar mensagens.',
+              connection_closed: true,
+            }),
+            { status: 503, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
           JSON.stringify(data),
-          { status: response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: response.ok ? 200 : response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
