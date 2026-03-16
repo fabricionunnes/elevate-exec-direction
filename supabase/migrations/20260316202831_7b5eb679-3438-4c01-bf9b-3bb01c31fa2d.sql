@@ -1,0 +1,1 @@
+ALTER TABLE public.meta_ads_ads ADD COLUMN IF NOT EXISTS creative_image_url text, ADD COLUMN IF NOT EXISTS creative_video_url text;
