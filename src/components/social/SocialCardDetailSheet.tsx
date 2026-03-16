@@ -148,7 +148,7 @@ export const SocialCardDetailSheet = ({
   const [generatingAiImage, setGeneratingAiImage] = useState(false);
   const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
   const [generatingPromptSuggestion, setGeneratingPromptSuggestion] = useState(false);
-  const [aiGenerateMode, setAiGenerateMode] = useState<"single" | "carousel">("single");
+  const [aiGenerateMode, setAiGenerateMode] = useState<"single" | "carousel" | "video">("single");
   const [aiCarouselCount, setAiCarouselCount] = useState(3);
   const [aiCarouselConnected, setAiCarouselConnected] = useState(false);
   const [carouselImages, setCarouselImages] = useState<string[]>([]);
@@ -1033,14 +1033,14 @@ export const SocialCardDetailSheet = ({
                 />
               </div>
 
-               {/* AI Image Generation */}
+               {/* AI Image Generation / Video Upload */}
               <div className="space-y-3">
                 <Label className="flex items-center gap-1.5">
                   <Wand2 className="h-3.5 w-3.5" />
                   Gerar Imagem com IA
                 </Label>
 
-                {/* Mode toggle: single vs carousel */}
+                {/* Mode toggle: single vs carousel vs video */}
                 <div className="flex gap-1 p-1 bg-muted rounded-lg">
                   <button
                     type="button"
@@ -1070,8 +1070,81 @@ export const SocialCardDetailSheet = ({
                     <LayoutGrid className="h-3.5 w-3.5" />
                     Carrossel
                   </button>
+                  <button
+                    type="button"
+                    onClick={() => setAiGenerateMode("video")}
+                    className={cn(
+                      "flex-1 text-xs py-1.5 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5",
+                      aiGenerateMode === "video" 
+                        ? "bg-background text-foreground shadow-sm" 
+                        : "text-muted-foreground hover:text-foreground"
+                    )}
+                    disabled={card.is_locked}
+                  >
+                    <Film className="h-3.5 w-3.5" />
+                    Vídeo
+                  </button>
                 </div>
 
+                {/* Video upload mode */}
+                {aiGenerateMode === "video" && (
+                  <div className="space-y-3 p-4 border-2 border-dashed border-border rounded-lg bg-muted/30">
+                    <div className="flex flex-col items-center gap-2 text-center">
+                      <Video className="h-8 w-8 text-muted-foreground" />
+                      <p className="text-sm text-muted-foreground">
+                        {creativeType === "video" && creativeUrl
+                          ? "Vídeo carregado"
+                          : "Envie o vídeo do conteúdo"
+                        }
+                      </p>
+                      {creativeType === "video" && creativeUrl ? (
+                        <div className="w-full space-y-2">
+                          <video
+                            src={creativeUrl}
+                            controls
+                            className="w-full rounded-md max-h-[200px]"
+                          />
+                          <Button
+                            type="button"
+                            variant="outline"
+                            size="sm"
+                            className="w-full gap-1.5"
+                            onClick={() => fileInputRef.current?.click()}
+                            disabled={card.is_locked || uploading}
+                          >
+                            {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                            Trocar vídeo
+                          </Button>
+                        </div>
+                      ) : (
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="gap-1.5"
+                          onClick={() => {
+                            if (fileInputRef.current) {
+                              fileInputRef.current.accept = "video/*";
+                              fileInputRef.current.click();
+                              // Reset accept after click
+                              setTimeout(() => {
+                                if (fileInputRef.current) fileInputRef.current.accept = "image/*,video/*";
+                              }, 1000);
+                            }
+                          }}
+                          disabled={card.is_locked || uploading}
+                        >
+                          {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                          Selecionar vídeo
+                        </Button>
+                      )}
+                    </div>
+                  </div>
+                )}
+
+                {/* AI generation fields - only for single/carousel */}
+                {aiGenerateMode !== "video" && (
+                  <>
                 {/* Carousel options */}
                 {aiGenerateMode === "carousel" && (
                   <div className="space-y-3 p-3 border border-border rounded-lg bg-muted/30">
@@ -1229,6 +1302,8 @@ export const SocialCardDetailSheet = ({
                     <><Sparkles className="h-3.5 w-3.5" /> {aiGenerateMode === "carousel" ? `Gerar Carrossel (${aiCarouselCount} slides)` : "Gerar Imagem"}</>
                   )}
                 </Button>
+                  </>
+                )}
 
               </div>
 
