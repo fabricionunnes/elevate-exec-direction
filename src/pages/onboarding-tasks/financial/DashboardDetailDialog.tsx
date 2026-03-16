@@ -70,7 +70,7 @@ export function DashboardDetailDialog({
               {items.map((item, idx) => {
                 const isReceivable = type === "receivable";
                 const name = isReceivable
-                  ? (item.company?.name || item.custom_receiver_name || "Sem nome")
+                  ? (item.company_name || item.company?.name || item.custom_receiver_name || "Sem nome")
                   : (item.description || item.supplier_name || "Sem descrição");
                 const dueDate = item.due_date;
                 const status = item.status || "pending";
