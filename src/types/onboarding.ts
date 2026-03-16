@@ -67,6 +67,15 @@ export const CLIENT_MENU_KEYS = {
   contrato_rotina: "contrato_rotina",
   acoes_comerciais: "acoes_comerciais",
   meta_ads: "meta_ads",
+  // CRM Comercial - menu principal + sub-permissões
+  crm_comercial: "crm_comercial",
+  crm_comercial_dashboard: "crm_comercial_dashboard",
+  crm_comercial_negocios: "crm_comercial_negocios",
+  crm_comercial_contatos: "crm_comercial_contatos",
+  crm_comercial_atividades: "crm_comercial_atividades",
+  crm_comercial_atendimentos: "crm_comercial_atendimentos",
+  crm_comercial_transcricoes: "crm_comercial_transcricoes",
+  crm_comercial_contratos: "crm_comercial_contratos",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -247,6 +256,46 @@ export const CLIENT_MENU_STRUCTURE = [
     key: CLIENT_MENU_KEYS.meta_ads,
     label: "Meta Ads",
     group: "Tráfego",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial,
+    label: "CRM Comercial (Menu)",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_dashboard,
+    label: "CRM > Dashboard",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_negocios,
+    label: "CRM > Negócios",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_contatos,
+    label: "CRM > Contatos",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_atividades,
+    label: "CRM > Atividades",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_atendimentos,
+    label: "CRM > Atendimentos",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_transcricoes,
+    label: "CRM > Transcrições",
+    group: "CRM Comercial",
+  },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_contratos,
+    label: "CRM > Contratos",
+    group: "CRM Comercial",
   },
 ] as const;
 

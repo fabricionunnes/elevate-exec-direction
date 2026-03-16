@@ -69,6 +69,7 @@ import { ClientInstagramModule } from "@/components/client-instagram/ClientInsta
 import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
+import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -116,7 +117,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -370,6 +371,7 @@ const ClientOnboardingPage = () => {
         instagram: "Instagram",
         commercial_director: "Diretor Comercial IA",
         other_services: "Outros Serviços",
+        crm_comercial: "CRM Comercial",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -525,6 +527,7 @@ const ClientOnboardingPage = () => {
       { id: "social" as const, icon: Instagram, label: "UNV Social IA", href: `/social/${projectId}`, menuKey: CLIENT_MENU_KEYS.unv_social },
       { id: "commercial_director" as ViewType, icon: BrainCircuit, label: "Diretor Comercial IA", menuKey: CLIENT_MENU_KEYS.diretor_comercial_ia },
       { id: "other_services" as ViewType, icon: ShoppingCart, label: "Outros Serviços", menuKey: CLIENT_MENU_KEYS.outros_servicos },
+      { id: "crm_comercial" as ViewType, icon: Briefcase, label: "CRM Comercial", menuKey: CLIENT_MENU_KEYS.crm_comercial },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1227,6 +1230,20 @@ const ClientOnboardingPage = () => {
               <ClientOtherServicesPanel
                 projectId={projectId || ""}
                 currentUserId={currentUser?.id || ""}
+              />
+            </motion.div>
+          )}
+
+          {activeView === "crm_comercial" && (
+            <motion.div
+              key="crm_comercial"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <ClientCRMModule
+                projectId={projectId || ""}
+                currentUser={currentUser}
               />
             </motion.div>
           )}
