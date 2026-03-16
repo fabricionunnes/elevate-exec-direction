@@ -51,36 +51,13 @@ export const WhatsAppSendButton = ({
       toast.error("Telefone inválido");
       return;
     }
-
-    const hasDefaultInstance = await checkInstance();
-    if (!hasDefaultInstance) {
-      toast.error("Nenhuma instância WhatsApp conectada. Configure em WhatsApp Admin.");
-      return;
-    }
-
     setShowDialog(true);
   };
 
   const handleSend = async (message: string) => {
     setSending(true);
     try {
-      // Get default instance
-      let instQuery = supabase
-        .from("whatsapp_instances")
-        .select("id, instance_name")
-        .in("status", ["connected", "connecting"]);
-      
-      if (instanceName) {
-        instQuery = instQuery.eq("instance_name", instanceName);
-      } else {
-        const defaultInst = await getDefaultWhatsAppInstance();
-        instQuery = instQuery.eq("instance_name", defaultInst);
-      }
-      const { data: instance } = await instQuery.maybeSingle();
-
-      if (!instance) {
-        throw new Error("Nenhuma instância conectada");
-      }
+      const instName = await getInstanceName();
 
       // Get current staff
       const { data: { user } } = await supabase.auth.getUser();
@@ -108,7 +85,7 @@ export const WhatsAppSendButton = ({
           'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
         },
         body: JSON.stringify({
-          instanceName: instance.instance_name,
+          instanceName: instName,
           number: cleanPhone,
           text: message,
         }),
@@ -119,11 +96,17 @@ export const WhatsAppSendButton = ({
         throw new Error(errorData.error || `HTTP ${response.status}`);
       }
 
-      // Log message
+      // Log message - get instance id for logging
+      const { data: instData } = await supabase
+        .from("whatsapp_instances")
+        .select("id")
+        .eq("instance_name", instName)
+        .maybeSingle();
+
       await supabase
         .from("whatsapp_message_log")
         .insert({
-          instance_id: instance.id,
+          instance_id: instData?.id || null,
           phone_number: cleanPhone,
           message,
           message_type: "text",
