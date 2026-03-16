@@ -546,6 +546,36 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled, onVideoRe
         )}
       </Button>
 
+      {/* Render / Export Button */}
+      {(captions.length > 0 || overlays.length > 0) && (
+        <Button
+          onClick={() => renderVideo(videoUrl, captions, overlays, captionStyle)}
+          disabled={rendering || disabled}
+          className="w-full gap-2"
+          variant="default"
+        >
+          {rendering ? (
+            <>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              Renderizando... {renderProgress}%
+            </>
+          ) : (
+            <>
+              <Download className="h-4 w-4" />
+              Renderizar e usar como conteúdo
+            </>
+          )}
+        </Button>
+      )}
+      {rendering && (
+        <div className="w-full bg-muted rounded-full h-2 overflow-hidden">
+          <div
+            className="h-full bg-primary transition-all duration-300"
+            style={{ width: `${renderProgress}%` }}
+          />
+        </div>
+      )}
+
       {/* Caption Style Picker */}
       {captions.length > 0 && (
         <div className="space-y-2">
