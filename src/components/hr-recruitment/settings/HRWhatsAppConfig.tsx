@@ -39,8 +39,14 @@ interface HRWhatsAppConfig {
   message_template: string | null;
 }
 
-const DEFAULT_TEMPLATE = 'O candidato {candidate_name} avançou para a etapa "{stage_name}" na vaga "{job_title}".';
+const DEFAULT_TEMPLATE = `📋 *Atualização de Processo Seletivo*
 
+👤 *Candidato:* {candidate_name}
+💼 *Vaga:* {job_title}
+🔄 *Nova etapa:* {stage_name}
+
+✅ O candidato avançou no pipeline de recrutamento.
+Acompanhe o progresso pelo painel de RH.`;
 export function HRWhatsAppConfig({ projectId }: Props) {
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
   const [config, setConfig] = useState<HRWhatsAppConfig | null>(null);
