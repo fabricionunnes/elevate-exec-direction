@@ -244,6 +244,12 @@ export function HRRecruitmentPanel({
           />
         </TabsContent>
 
+        {isStaff && (
+          <TabsContent value="settings" className="mt-6">
+            <HRSettingsTab projectId={projectId} />
+          </TabsContent>
+        )}
+
       </Tabs>
     </div>
   );
