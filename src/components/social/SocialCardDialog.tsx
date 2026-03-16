@@ -228,6 +228,7 @@ export const SocialCardDialog = ({
     setSuggestedDate("");
     setSuggestedTime("");
     setCardColor(null);
+    setVideoEditorNotes("");
     setPendingFiles([]);
   };
 
