@@ -42,12 +42,13 @@ function jsonResponse(body: unknown, status = 200) {
   });
 }
 
-function chunkWordsIntoCaptions(words: TranscriptWord[] = [], fallbackText = ""): Array<{ text: string; start_time: number; end_time: number; }> {
+function chunkWordsIntoCaptions(
+  words: TranscriptWord[] = [],
+  fallbackText = "",
+): Array<{ text: string; start_time: number; end_time: number; }> {
   if (!words.length) {
     const text = fallbackText.trim();
-    return text
-      ? [{ text, start_time: 0, end_time: 3 }]
-      : [];
+    return text ? [{ text, start_time: 0, end_time: 3 }] : [];
   }
 
   const captions: Array<{ text: string; start_time: number; end_time: number; }> = [];
@@ -62,12 +63,14 @@ function chunkWordsIntoCaptions(words: TranscriptWord[] = [], fallbackText = "")
     }
 
     const elapsedMs = word.end - currentStart;
-    const shouldBreak = currentWords.length >= 6 || elapsedMs >= 2800;
+    const cleanText = word.text.trim();
+    const endsSentence = /[.!?,:;]$/.test(cleanText);
+    const shouldBreak = currentWords.length >= 4 || elapsedMs >= 1800 || endsSentence;
 
     if (shouldBreak) {
       const lastWord = currentWords[currentWords.length - 1];
       captions.push({
-        text: currentWords.map((item) => item.text).join(" ").trim(),
+        text: currentWords.map((item) => item.text).join(" ").replace(/\s+([.,!?;:])/g, "$1").trim(),
         start_time: currentStart / 1000,
         end_time: lastWord.end / 1000,
       });
@@ -81,7 +84,7 @@ function chunkWordsIntoCaptions(words: TranscriptWord[] = [], fallbackText = "")
   if (currentWords.length) {
     const lastWord = currentWords[currentWords.length - 1];
     captions.push({
-      text: currentWords.map((item) => item.text).join(" ").trim(),
+      text: currentWords.map((item) => item.text).join(" ").replace(/\s+([.,!?;:])/g, "$1").trim(),
       start_time: currentStart / 1000,
       end_time: lastWord.end / 1000,
     });
