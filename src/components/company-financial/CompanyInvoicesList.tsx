@@ -433,11 +433,16 @@ export function CompanyInvoicesList({ companyId }: Props) {
     );
   }
 
-  const pendingInvoices = invoices.filter(i => i.status === "pending" || i.status === "overdue");
+  const pendingInvoices = invoices.filter(i => i.status === "pending" || i.status === "overdue" || i.status === "partial");
   const paidInvoices = invoices.filter(i => i.status === "paid");
-  const totalPending = pendingInvoices.reduce((sum, i) =>
-    sum + (i.status === "overdue" ? i.total_with_fees_cents : i.amount_cents), 0
-  );
+  const totalPending = pendingInvoices.reduce((sum, i) => {
+    const isOverdueItem = i.status === "overdue";
+    const baseAmount = isOverdueItem ? i.total_with_fees_cents : i.amount_cents;
+    if (i.status === "partial" && i.paid_amount_cents) {
+      return sum + Math.max(0, baseAmount - i.paid_amount_cents);
+    }
+    return sum + baseAmount;
+  }, 0);
   const totalPaid = paidInvoices.reduce((sum, i) => sum + (i.paid_amount_cents || i.amount_cents), 0);
 
   return (
@@ -583,10 +588,13 @@ export function CompanyInvoicesList({ companyId }: Props) {
               {invoices.map((inv) => {
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
+                const isPartial = inv.status === "partial";
                 const todayStr = new Date().toLocaleDateString("en-CA");
                 const isDueToday = inv.due_date === todayStr && inv.status === "pending";
                 const dueDate = new Date(inv.due_date + "T12:00:00");
-                const displayAmount = isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
+                const displayAmount = isPartial && inv.paid_amount_cents
+                  ? Math.max(0, (isOverdue ? inv.total_with_fees_cents : inv.amount_cents) - inv.paid_amount_cents)
+                  : isOverdue ? inv.total_with_fees_cents : inv.amount_cents;
 
                 // Determine badge display
                 let badgeClass = "bg-blue-500/10 text-blue-600 border-blue-500/20";
@@ -596,6 +604,10 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   badgeClass = "bg-emerald-500/10 text-emerald-600 border-emerald-500/20";
                   badgeLabel = "Pago";
                   BadgeIcon = CheckCircle2;
+                } else if (isPartial) {
+                  badgeClass = "bg-amber-500/10 text-amber-600 border-amber-500/20";
+                  badgeLabel = "Pago Parcial";
+                  BadgeIcon = Clock;
                 } else if (isOverdue) {
                   badgeClass = "bg-red-500/10 text-red-600 border-red-500/20";
                   badgeLabel = "Vencida";

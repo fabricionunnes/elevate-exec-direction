@@ -162,9 +162,9 @@ export function CompanyFinancialSidePanel({
   }
 
   const overdueInvoices = invoices.filter(inv => inv.status === "overdue" || (inv.status === "pending" && isPast(parseISO(inv.due_date))));
-  const pendingInvoices = invoices.filter(inv => inv.status === "pending" && !isPast(parseISO(inv.due_date)));
+  const pendingInvoices = invoices.filter(inv => (inv.status === "pending" && !isPast(parseISO(inv.due_date))) || inv.status === "partial");
   const paidInvoices = invoices.filter(inv => inv.status === "paid");
-  const openInvoices = invoices.filter(inv => inv.status !== "paid");
+  const openInvoices = invoices.filter(inv => inv.status !== "paid" && inv.status !== "cancelled");
 
   const formatCurrency = (cents: number) => {
     return new Intl.NumberFormat("pt-BR", {
@@ -192,10 +192,10 @@ export function CompanyFinancialSidePanel({
         </Badge>
       );
     }
-    if (invoice.status === "parcial") {
+    if (invoice.status === "partial") {
       return (
-        <Badge variant="outline" className="text-[10px] h-5 bg-blue-500/10 text-blue-600 border-blue-500/30">
-          Parcial
+        <Badge variant="outline" className="text-[10px] h-5 bg-amber-500/10 text-amber-600 border-amber-500/30">
+          Pago Parcial
         </Badge>
       );
     }

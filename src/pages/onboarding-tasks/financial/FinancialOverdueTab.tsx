@@ -140,7 +140,8 @@ export default function FinancialOverdueTab({
     const nowBR = new Date(new Date().toLocaleString("en-US", { timeZone: "America/Sao_Paulo" }));
     const todayStr = `${nowBR.getFullYear()}-${String(nowBR.getMonth() + 1).padStart(2, "0")}-${String(nowBR.getDate()).padStart(2, "0")}`;
     return invoices.filter(inv => {
-      if (inv.status === "paid") return false;
+      if (inv.status === "paid" || inv.status === "cancelled") return false;
+      // For partial payments that are past due, show them with remaining balance
       const isPastDue = inv.due_date < todayStr;
       if (!isPastDue) return false;
       if (selectedMonthFilter !== "all") {
@@ -180,7 +181,13 @@ export default function FinancialOverdueTab({
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginated = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total_with_fees_cents, 0);
+  const getOverdueAmount = (inv: any) => {
+    if (inv.status === "partial" && inv.paid_amount_cents) {
+      return Math.max(0, inv.total_with_fees_cents - inv.paid_amount_cents);
+    }
+    return inv.total_with_fees_cents;
+  };
+  const totalOverdue = overdueInvoices.reduce((s, i) => s + getOverdueAmount(i), 0);
   const uniqueCompanies = new Set(overdueInvoices.map(i => i.company_id)).size;
   const avgDays = overdueInvoices.length > 0
     ? Math.round(overdueInvoices.reduce((s, i) => s + daysOverdue(i.due_date), 0) / overdueInvoices.length)
@@ -752,7 +759,14 @@ export default function FinancialOverdueTab({
                             {inv.installment_number}/{inv.total_installments}
                           </Badge>
                         </TableCell>
-                        <TableCell className="text-right font-bold text-red-500">{formatCurrencyCents(inv.total_with_fees_cents)}</TableCell>
+                        <TableCell className="text-right">
+                          <div>
+                            <span className="font-bold text-red-500">{formatCurrencyCents(getOverdueAmount(inv))}</span>
+                            {inv.status === "partial" && inv.paid_amount_cents > 0 && (
+                              <p className="text-xs text-amber-600 font-medium">Pago parcial: {formatCurrencyCents(inv.paid_amount_cents)}</p>
+                            )}
+                          </div>
+                        </TableCell>
                         <TableCell className="text-sm">
                           <div>
                             <span>{inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-"}</span>
