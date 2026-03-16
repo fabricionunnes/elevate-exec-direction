@@ -834,8 +834,17 @@ export const SocialCardDetailSheet = ({
         </SheetHeader>
 
         <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className={cn(
+            "w-full",
+            ["reels", "stories", "video"].includes(contentType) ? "grid grid-cols-6" : "grid grid-cols-5"
+          )}>
             <TabsTrigger value="content">Conteúdo</TabsTrigger>
+            {["reels", "stories", "video"].includes(contentType) && (
+              <TabsTrigger value="video-editor" className="gap-1">
+                <Film className="h-3 w-3" />
+                Editor
+              </TabsTrigger>
+            )}
             <TabsTrigger value="checklist" className="gap-1">
               <ListChecks className="h-3 w-3" />
               Checklist
