@@ -79,6 +79,7 @@ interface ContentCard {
   created_at: string;
   card_type?: "content" | "task" | "info";
   card_color?: string | null;
+  video_editor_notes?: string | null;
 }
 
 interface HistoryItem {
