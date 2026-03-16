@@ -58,6 +58,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupOpen, setGroupOpen] = useState(false);
+  const [groupsLoadedForInstance, setGroupsLoadedForInstance] = useState<string>("");
 
   const [selectedInstance, setSelectedInstance] = useState<string>("");
   const [notifyEnabled, setNotifyEnabled] = useState(true);
@@ -70,10 +71,11 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   }, [projectId]);
 
   useEffect(() => {
-    if (selectedInstance) {
+    if (selectedInstance && selectedInstance !== groupsLoadedForInstance) {
       fetchGroups(selectedInstance);
-    } else {
+    } else if (!selectedInstance) {
       setGroups([]);
+      setGroupsLoadedForInstance("");
     }
   }, [selectedInstance]);
 
@@ -151,6 +153,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       }));
 
       setGroups(groupList);
+      setGroupsLoadedForInstance(instanceId);
     } catch (error) {
       console.error("Error fetching groups:", error);
       setGroups([]);
