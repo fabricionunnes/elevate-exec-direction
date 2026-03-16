@@ -15,6 +15,7 @@ import { GripVertical, Mail, Users } from "lucide-react";
 import { toast } from "sonner";
 import { Candidate } from "../types";
 import { usePipelineStages } from "../hooks/usePipelineStages";
+import { notifyClientStageChange } from "../utils/notifyStageChange";
 import { CandidateDetailSheet } from "../sheets/CandidateDetailSheet";
 
 interface PipelineTabProps {
