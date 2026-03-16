@@ -89,7 +89,6 @@ export const PeriodComparisonCard = ({
     try {
       const startDate = parseDateLocal(dateRange.start);
       const endDate = parseDateLocal(dateRange.end);
-      const periodDays = differenceInDays(endDate, startDate);
 
       // Previous period = same dates but one month earlier
       const prevStart = subMonths(startDate, 1);
