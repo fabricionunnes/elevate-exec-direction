@@ -211,17 +211,10 @@ export default function FinancialOverdueTab({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
       const defaultInstName = await getDefaultWhatsAppInstance();
-      const { data: instance } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_name")
-        .in("status", ["connected", "connecting"])
-        .eq("instance_name", defaultInstName)
-        .maybeSingle();
-      if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
       const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-        body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
+        body: JSON.stringify({ instanceName: defaultInstName, number: phone, text: msg }),
       });
       if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
       toast.success("Mensagem enviada via WhatsApp!");
@@ -239,13 +232,6 @@ export default function FinancialOverdueTab({
       const { data: { session } } = await supabase.auth.getSession();
       if (!session) throw new Error("Não autenticado");
       const defaultInstName2 = await getDefaultWhatsAppInstance();
-      const { data: instance } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_name")
-        .in("status", ["connected", "connecting"])
-        .eq("instance_name", defaultInstName2)
-        .maybeSingle();
-      if (!instance) throw new Error("Nenhuma instância WhatsApp conectada");
 
       let sent = 0, failed = 0;
       for (const inv of selected) {
@@ -261,7 +247,7 @@ export default function FinancialOverdueTab({
           const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-            body: JSON.stringify({ instanceName: instance.instance_name, number: phone, text: msg }),
+            body: JSON.stringify({ instanceName: defaultInstName2, number: phone, text: msg }),
           });
           if (!response.ok) throw new Error();
           sent++;

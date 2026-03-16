@@ -1041,71 +1041,23 @@ export default function AllRecurringChargesPage() {
     const { data: { session } } = await supabase.auth.getSession();
     if (!session) throw new Error("Não autenticado");
 
-    // Try Evolution API first - prefer configured default, then any connected/connecting
+    // Use configured default instance directly - skip status check
     const defaultInstanceName = await getDefaultWhatsAppInstance();
-    let evolutionInstance = null;
-    const { data: preferred } = await supabase
-      .from("whatsapp_instances")
-      .select("instance_name")
-      .eq("instance_name", defaultInstanceName)
-      .in("status", ["connected", "connecting"])
-      .maybeSingle();
     
-    if (preferred) {
-      evolutionInstance = preferred;
-    } else {
-      const { data: any_instance } = await supabase
-        .from("whatsapp_instances")
-        .select("instance_name")
-        .in("status", ["connected", "connecting"])
-        .limit(1)
-        .maybeSingle();
-      evolutionInstance = any_instance;
-    }
-
-    if (evolutionInstance) {
-      try {
-        const response = await fetchWithRetry(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-          body: JSON.stringify({ instanceName: evolutionInstance.instance_name, number: phone, text: message }),
-        });
-        if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
-        return;
-      } catch (err: any) {
-        if (err.name === 'TypeError' && err.message === 'Load failed') {
-          throw new Error("Falha na conexão com o servidor WhatsApp. Tente novamente em alguns segundos.");
-        }
-        throw err;
+    try {
+      const response = await fetchWithRetry(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
+        body: JSON.stringify({ instanceName: defaultInstanceName, number: phone, text: message }),
+      });
+      if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
+      return;
+    } catch (err: any) {
+      if (err.name === 'TypeError' && err.message === 'Load failed') {
+        throw new Error("Falha na conexão com o servidor WhatsApp. Tente novamente em alguns segundos.");
       }
+      throw err;
     }
-
-    // Fallback to Official WhatsApp API
-    const { data: officialInstance } = await supabase
-      .from("whatsapp_official_instances")
-      .select("id")
-      .eq("status", "connected")
-      .limit(1)
-      .maybeSingle();
-
-    if (officialInstance) {
-      try {
-        const response = await fetchWithRetry(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/whatsapp-official-api`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${session.access_token}`, 'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY },
-          body: JSON.stringify({ action: 'sendText', instanceId: officialInstance.id, phone, message }),
-        });
-        if (!response.ok) { const err = await response.json().catch(() => ({})); throw new Error(err.error || `HTTP ${response.status}`); }
-        return;
-      } catch (err: any) {
-        if (err.name === 'TypeError' && err.message === 'Load failed') {
-          throw new Error("Falha na conexão com o servidor WhatsApp. Tente novamente em alguns segundos.");
-        }
-        throw err;
-      }
-    }
-
-    throw new Error("Nenhuma instância WhatsApp conectada");
   };
 
   const financialMonths = useMemo(() => {
