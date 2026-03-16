@@ -250,6 +250,7 @@ export const SocialCardDetailSheet = ({
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
+    setVideoEditorNotes((card as any).video_editor_notes || "");
     loadCarouselImages(card.id, card.creative_url, card.content_type || "");
   };
 
