@@ -11,6 +11,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { PIPELINE_STAGES } from "../types";
+import { HRWhatsAppConfig } from "../settings/HRWhatsAppConfig";
 
 interface HRSettingsTabProps {
   projectId: string;
@@ -208,6 +209,9 @@ export function HRSettingsTab({ projectId }: HRSettingsTabProps) {
         </CardContent>
       </Card>
 
+      {/* WhatsApp Notifications */}
+      <HRWhatsAppConfig projectId={projectId} />
+
       {/* Other Settings */}
       <Card>
         <CardHeader>
@@ -223,7 +227,6 @@ export function HRSettingsTab({ projectId }: HRSettingsTabProps) {
             </p>
             <ul className="list-disc list-inside text-sm text-muted-foreground mt-2 space-y-1">
               <li>Templates de email para candidatos</li>
-              <li>Integração com WhatsApp</li>
               <li>Configuração de notificações</li>
               <li>Permissões por cargo</li>
             </ul>

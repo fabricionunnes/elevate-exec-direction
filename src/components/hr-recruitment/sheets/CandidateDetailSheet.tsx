@@ -54,6 +54,7 @@ import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { usePipelineStages } from "../hooks/usePipelineStages";
+import { notifyClientStageChange } from "../utils/notifyStageChange";
 import {
   Candidate,
   CandidateResume,
@@ -175,6 +176,19 @@ export function CandidateDetailSheet({
       toast.success("Etapa atualizada");
       onUpdate();
       fetchCandidateData();
+
+      // Send WhatsApp notification to client
+      const stageDef = pipelineStages.find((s) => s.key === newStage);
+      const jobTitle = candidate.job_opening_id
+        ? jobs.find((j) => j.id === candidate.job_opening_id)?.title || "Vaga"
+        : "Vaga";
+
+      notifyClientStageChange({
+        projectId,
+        candidateName: candidate.full_name,
+        stageName: stageDef?.name || newStage,
+        jobTitle,
+      });
     }
     setLoading(false);
   };

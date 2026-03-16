@@ -17506,6 +17506,50 @@ export type Database = {
           },
         ]
       }
+      hr_whatsapp_config: {
+        Row: {
+          created_at: string
+          id: string
+          instance_id: string | null
+          message_template: string | null
+          notify_group_jid: string | null
+          notify_on_stage_change: boolean
+          notify_phone: string | null
+          project_id: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          message_template?: string | null
+          notify_group_jid?: string | null
+          notify_on_stage_change?: boolean
+          notify_phone?: string | null
+          project_id: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          message_template?: string | null
+          notify_group_jid?: string | null
+          notify_on_stage_change?: boolean
+          notify_phone?: string | null
+          project_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "hr_whatsapp_config_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       instagram_account_metrics: {
         Row: {
           account_id: string
