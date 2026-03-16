@@ -71,6 +71,9 @@ export const SocialCardDialog = ({
   const [customObjective, setCustomObjective] = useState<string>("");
   const [suggestedTime, setSuggestedTime] = useState("");
   
+  // Video editor notes
+  const [videoEditorNotes, setVideoEditorNotes] = useState("");
+  
   // Attachments for info cards
   const [pendingFiles, setPendingFiles] = useState<File[]>([]);
 
@@ -135,6 +138,7 @@ export const SocialCardDialog = ({
           objective: effectiveObjective,
           suggested_date: suggestedDate || null,
           suggested_time: suggestedTime || null,
+          video_editor_notes: ["reels", "stories", "video"].includes(contentType) && videoEditorNotes.trim() ? videoEditorNotes.trim() : null,
         };
       } else if (cardType === "task") {
         insertData = {
@@ -224,6 +228,7 @@ export const SocialCardDialog = ({
     setSuggestedDate("");
     setSuggestedTime("");
     setCardColor(null);
+    setVideoEditorNotes("");
     setPendingFiles([]);
   };
 
@@ -376,6 +381,22 @@ export const SocialCardDialog = ({
               rows={3}
             />
           </div>
+
+          {/* Video Editor Notes - for video content types */}
+          {cardType === "content" && ["reels", "stories", "video"].includes(contentType) && (
+            <div className="space-y-2">
+              <Label className="flex items-center gap-2">
+                <Film className="h-4 w-4" />
+                Direcionamento para o Editor de Vídeo
+              </Label>
+              <Textarea
+                value={videoEditorNotes}
+                onChange={(e) => setVideoEditorNotes(e.target.value)}
+                rows={3}
+                placeholder="Ex: Colocar emoji de fogo quando falar de resultados, legendas estilo Hormozi..."
+              />
+            </div>
+          )}
 
           {/* Date - for content and task */}
           {(cardType === "content" || cardType === "task") && (

@@ -25254,6 +25254,7 @@ export type Database = {
           suggested_time: string | null
           theme: string
           updated_at: string | null
+          video_editor_notes: string | null
         }
         Insert: {
           approval_count?: number
@@ -25289,6 +25290,7 @@ export type Database = {
           suggested_time?: string | null
           theme: string
           updated_at?: string | null
+          video_editor_notes?: string | null
         }
         Update: {
           approval_count?: number
@@ -25324,6 +25326,7 @@ export type Database = {
           suggested_time?: string | null
           theme?: string
           updated_at?: string | null
+          video_editor_notes?: string | null
         }
         Relationships: [
           {

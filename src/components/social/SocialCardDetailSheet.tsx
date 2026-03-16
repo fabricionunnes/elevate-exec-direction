@@ -79,6 +79,7 @@ interface ContentCard {
   created_at: string;
   card_type?: "content" | "task" | "info";
   card_color?: string | null;
+  video_editor_notes?: string | null;
 }
 
 interface HistoryItem {
@@ -140,6 +141,7 @@ export const SocialCardDetailSheet = ({
   const [creativeType, setCreativeType] = useState<string | null>(null);
   const [isDraggingFile, setIsDraggingFile] = useState(false);
   const [cardColor, setCardColor] = useState<string | null>(null);
+  const [videoEditorNotes, setVideoEditorNotes] = useState("");
   
   // AI image generation
   const [aiPrompt, setAiPrompt] = useState("");
@@ -248,6 +250,7 @@ export const SocialCardDetailSheet = ({
     setCreativeUrl(card.creative_url || "");
     setCreativeType(card.creative_type);
     setCardColor(card.card_color || null);
+    setVideoEditorNotes((card as any).video_editor_notes || "");
     loadCarouselImages(card.id, card.creative_url, card.content_type || "");
   };
 
@@ -400,6 +403,7 @@ export const SocialCardDetailSheet = ({
         creative_url: creativeUrl || null,
         creative_type: creativeType,
         card_color: cardColor,
+        video_editor_notes: videoEditorNotes || null,
       };
 
       const { error } = await supabase
@@ -1318,6 +1322,23 @@ export const SocialCardDetailSheet = ({
                   disabled={card.is_locked}
                 />
               </div>
+
+              {/* Video Editor Notes - only for video content types */}
+              {["reels", "stories", "video"].includes(contentType) && (
+                <div className="space-y-2">
+                  <Label className="flex items-center gap-2">
+                    <Film className="h-4 w-4" />
+                    Direcionamento para o Editor de Vídeo
+                  </Label>
+                  <Textarea
+                    value={videoEditorNotes}
+                    onChange={(e) => setVideoEditorNotes(e.target.value)}
+                    rows={3}
+                    placeholder="Ex: Colocar emoji de fogo quando falar de resultados, legendas estilo Hormozi, cortar trecho dos 0:30 aos 0:45..."
+                    disabled={card.is_locked}
+                  />
+                </div>
+              )}
 
               {/* Final Caption */}
               <div className="space-y-2">
