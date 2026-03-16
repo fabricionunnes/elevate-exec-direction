@@ -101,6 +101,10 @@ interface CompanyForm {
   notes: string;
   is_simulator: boolean;
   goal_not_required: boolean;
+  owner_name: string;
+  owner_cpf: string;
+  owner_rg: string;
+  owner_marital_status: string;
 }
 
 interface Project {
@@ -162,6 +166,10 @@ const OnboardingCompanyDetailPage = () => {
     notes: "",
     is_simulator: false,
     goal_not_required: false,
+    owner_name: "",
+    owner_cpf: "",
+    owner_rg: "",
+    owner_marital_status: "",
   });
 
   // Keep ref in sync with latest form state
@@ -265,6 +273,10 @@ const OnboardingCompanyDetailPage = () => {
         notes: data.notes || "",
         is_simulator: data.is_simulator || false,
         goal_not_required: data.goal_not_required || false,
+        owner_name: (data as any).owner_name || "",
+        owner_cpf: (data as any).owner_cpf || "",
+        owner_rg: (data as any).owner_rg || "",
+        owner_marital_status: (data as any).owner_marital_status || "",
       });
       originalStatusRef.current = data.status || "active";
     } catch (error: any) {
@@ -323,6 +335,10 @@ const OnboardingCompanyDetailPage = () => {
         notes: currentForm.notes || null,
         is_simulator: currentForm.is_simulator,
         goal_not_required: currentForm.goal_not_required,
+        owner_name: currentForm.owner_name || null,
+        owner_cpf: currentForm.owner_cpf || null,
+        owner_rg: currentForm.owner_rg || null,
+        owner_marital_status: currentForm.owner_marital_status || null,
       };
 
       if (isNew) {
@@ -796,6 +812,69 @@ const OnboardingCompanyDetailPage = () => {
                     }}
                     onChange={(addr) => setForm({ ...form, ...addr })}
                   />
+
+                  {/* Responsável pela Empresa */}
+                  <div className="border-t pt-4 mt-4">
+                    <h3 className="text-base font-semibold mb-4 flex items-center gap-2">
+                      <UserCircle className="h-4 w-4" />
+                      Responsável pela Empresa
+                    </h3>
+                    <div className="grid grid-cols-2 gap-4">
+                      <div className="space-y-2">
+                        <Label htmlFor="owner_name">Nome Completo</Label>
+                        <Input
+                          id="owner_name"
+                          value={form.owner_name}
+                          onChange={(e) => setForm({ ...form, owner_name: e.target.value })}
+                          placeholder="Nome completo do responsável"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="owner_cpf">CPF</Label>
+                        <Input
+                          id="owner_cpf"
+                          value={form.owner_cpf}
+                          placeholder="000.000.000-00"
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                            const masked = raw
+                              .replace(/^(\d{3})(\d)/, "$1.$2")
+                              .replace(/^(\d{3}\.\d{3})(\d)/, "$1.$2")
+                              .replace(/^(\d{3}\.\d{3}\.\d{3})(\d)/, "$1-$2");
+                            setForm({ ...form, owner_cpf: masked });
+                          }}
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="owner_rg">RG</Label>
+                        <Input
+                          id="owner_rg"
+                          value={form.owner_rg}
+                          onChange={(e) => setForm({ ...form, owner_rg: e.target.value })}
+                          placeholder="Número do RG"
+                        />
+                      </div>
+                      <div className="space-y-2">
+                        <Label htmlFor="owner_marital_status">Estado Civil</Label>
+                        <Select
+                          value={form.owner_marital_status}
+                          onValueChange={(v) => setForm({ ...form, owner_marital_status: v })}
+                        >
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="solteiro">Solteiro(a)</SelectItem>
+                            <SelectItem value="casado">Casado(a)</SelectItem>
+                            <SelectItem value="divorciado">Divorciado(a)</SelectItem>
+                            <SelectItem value="viuvo">Viúvo(a)</SelectItem>
+                            <SelectItem value="uniao_estavel">União Estável</SelectItem>
+                          </SelectContent>
+                        </Select>
+                      </div>
+                    </div>
+                  </div>
+
                   <div className="space-y-2">
                     <Label htmlFor="status">Status</Label>
                     <Select 
