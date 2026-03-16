@@ -101,6 +101,10 @@ interface CompanyForm {
   notes: string;
   is_simulator: boolean;
   goal_not_required: boolean;
+  owner_name: string;
+  owner_cpf: string;
+  owner_rg: string;
+  owner_marital_status: string;
 }
 
 interface Project {
