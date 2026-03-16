@@ -221,6 +221,13 @@ Deno.serve(async (req) => {
               console.error("Error calling publish function:", publishError);
             }
           }
+
+          // Send WhatsApp notification to client about approval
+          try {
+            await sendClientApprovalNotification(supabase, link.card, board?.project_id, shouldPublishNow);
+          } catch (notifError) {
+            console.error("Error sending approval WhatsApp notification:", notifError);
+          }
         }
       } else {
         // Not enough approvals yet - just log
