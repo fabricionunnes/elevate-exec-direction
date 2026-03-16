@@ -1005,12 +1005,13 @@ export default function AllRecurringChargesPage() {
     } else if (activeTab === "recurring") {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em", "Recebido"]];
       filteredInvoices.forEach(inv => {
-        const base = inv.paid_amount_cents || inv.amount_cents;
+        const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
         const interest = (inv as any).interest_cents || 0;
         const discount = (inv as any).discount_cents || 0;
         const fee = (inv as any).payment_fee_cents || 0;
-        const net = inv.status === "paid" ? (base + interest - discount - fee) : 0;
-        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", inv.status === "paid" ? formatCurrencyCents(net) : ""]);
+        const hasPaid = inv.status === "paid" || inv.status === "partial";
+        const net = hasPaid ? (base + interest - discount - fee) : 0;
+        rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", hasPaid ? formatCurrencyCents(net) : ""]);
       });
     }
     const csv = rows.map(r => r.join(";")).join("\n");
@@ -1070,12 +1071,12 @@ export default function AllRecurringChargesPage() {
     const effectivelyOverdue = filteredInvoices.filter(i => isEffectivelyOverdue(i.status, i.due_date));
     const effectivelyPending = filteredInvoices.filter(i => (i.status === "pending" || i.status === "overdue") && !isEffectivelyOverdue(i.status, i.due_date));
     const pending = filteredInvoices.filter(i => i.status === "pending" || i.status === "overdue");
-    const paid = filteredInvoices.filter(i => i.status === "paid");
+    const paid = filteredInvoices.filter(i => i.status === "paid" || i.status === "partial");
     return {
       totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
       totalPaid: paid.reduce((s, i) => {
-        const base = i.paid_amount_cents || i.amount_cents;
+        const base = i.paid_amount_cents || (i.status === "paid" ? i.amount_cents : 0);
         const interest = (i as any).interest_cents || 0;
         const discount = (i as any).discount_cents || 0;
         const fee = (i as any).payment_fee_cents || 0;
@@ -1675,13 +1676,13 @@ export default function AllRecurringChargesPage() {
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell className="text-right font-medium text-sm">
-                                {inv.status === "paid" ? (() => {
-                                  const base = inv.paid_amount_cents || inv.amount_cents;
+                                {(inv.status === "paid" || inv.status === "partial") ? (() => {
+                                  const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
                                   const interest = (inv as any).interest_cents || 0;
                                   const discount = (inv as any).discount_cents || 0;
                                   const fee = (inv as any).payment_fee_cents || 0;
                                   const net = base + interest - discount - fee;
-                                  return <span className="text-emerald-600">{formatCurrencyCents(net)}</span>;
+                                  return <span className={inv.status === "partial" ? "text-amber-600" : "text-emerald-600"}>{formatCurrencyCents(net)}</span>;
                                 })() : "-"}
                               </TableCell>
                               <TableCell>
