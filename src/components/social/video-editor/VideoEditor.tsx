@@ -295,13 +295,32 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   return (
     <div className="space-y-4">
       {/* Video Player with Overlays */}
-      <div className="relative bg-black rounded-lg overflow-hidden">
+      <div
+        ref={containerRef}
+        className="relative bg-black rounded-lg overflow-hidden"
+        style={{ maxHeight: 500 }}
+      >
         <video
           ref={videoRef}
           src={videoUrl}
-          className="w-full max-h-[400px] object-contain"
+          className="w-full object-contain"
+          style={{ maxHeight: 500 }}
           onLoadedMetadata={() => {
-            if (videoRef.current) setDuration(videoRef.current.duration);
+            if (videoRef.current) {
+              setDuration(videoRef.current.duration);
+              setVideoNaturalWidth(videoRef.current.videoWidth);
+              setVideoNaturalHeight(videoRef.current.videoHeight);
+            }
+            if (containerRef.current) {
+              setContainerWidth(containerRef.current.clientWidth);
+              setContainerHeight(containerRef.current.clientHeight);
+            }
+          }}
+          onResize={() => {
+            if (containerRef.current) {
+              setContainerWidth(containerRef.current.clientWidth);
+              setContainerHeight(containerRef.current.clientHeight);
+            }
           }}
           onEnded={() => {
             setIsPlaying(false);
@@ -309,8 +328,21 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
           }}
           onClick={togglePlay}
         />
-        <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
-        <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+
+        {/* Overlay zone clipped to the actual video rect */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: videoRect.left,
+            top: videoRect.top,
+            width: videoRect.width,
+            height: videoRect.height,
+            overflow: "hidden",
+          }}
+        >
+          <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
+          <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+        </div>
 
         {/* Play button overlay when paused */}
         {!isPlaying && (
