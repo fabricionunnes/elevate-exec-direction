@@ -19804,6 +19804,10 @@ export type Database = {
           name: string
           notes: string | null
           objectives_with_unv: string | null
+          owner_cpf: string | null
+          owner_marital_status: string | null
+          owner_name: string | null
+          owner_rg: string | null
           payment_method: string | null
           phone: string | null
           quarterly_goals: Json | null
@@ -19873,6 +19877,10 @@ export type Database = {
           name: string
           notes?: string | null
           objectives_with_unv?: string | null
+          owner_cpf?: string | null
+          owner_marital_status?: string | null
+          owner_name?: string | null
+          owner_rg?: string | null
           payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
@@ -19942,6 +19950,10 @@ export type Database = {
           name?: string
           notes?: string | null
           objectives_with_unv?: string | null
+          owner_cpf?: string | null
+          owner_marital_status?: string | null
+          owner_name?: string | null
+          owner_rg?: string | null
           payment_method?: string | null
           phone?: string | null
           quarterly_goals?: Json | null
