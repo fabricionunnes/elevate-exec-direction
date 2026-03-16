@@ -284,3 +284,6 @@ verify_jwt = false
 
 [functions.commercial-director-analysis]
 verify_jwt = false
+
+[functions.social-transcribe-video]
+verify_jwt = false

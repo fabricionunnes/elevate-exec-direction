@@ -48,7 +48,7 @@ import { CardTagSelector } from "./CardTagSelector";
 import { CardAttachments } from "./CardAttachments";
 import { CardColorPicker } from "./CardColorPicker";
 import { CardSubtasks } from "./CardSubtasks";
-
+import { VideoEditor } from "./video-editor/VideoEditor";
 interface Stage {
   id: string;
   stage_type: string;
@@ -834,8 +834,17 @@ export const SocialCardDetailSheet = ({
         </SheetHeader>
 
         <Tabs defaultValue="content" className="flex-1 flex flex-col overflow-hidden">
-          <TabsList className="grid grid-cols-5 w-full">
+          <TabsList className={cn(
+            "w-full",
+            ["reels", "stories", "video"].includes(contentType) ? "grid grid-cols-6" : "grid grid-cols-5"
+          )}>
             <TabsTrigger value="content">Conteúdo</TabsTrigger>
+            {["reels", "stories", "video"].includes(contentType) && (
+              <TabsTrigger value="video-editor" className="gap-1">
+                <Film className="h-3 w-3" />
+                Editor
+              </TabsTrigger>
+            )}
             <TabsTrigger value="checklist" className="gap-1">
               <ListChecks className="h-3 w-3" />
               Checklist
@@ -1627,6 +1636,24 @@ export const SocialCardDetailSheet = ({
                       )}
                     </div>
                   ))}
+                </div>
+              )}
+            </TabsContent>
+
+            {/* Video Editor Tab */}
+            <TabsContent value="video-editor" className="mt-0 pr-4">
+              {creativeUrl && creativeType === "video" ? (
+                <VideoEditor
+                  cardId={card.id}
+                  videoUrl={creativeUrl}
+                  editorNotes={(card as any).video_editor_notes || videoEditorNotes || ""}
+                  disabled={card.is_locked}
+                />
+              ) : (
+                <div className="flex flex-col items-center justify-center py-12 text-center text-muted-foreground gap-3">
+                  <Film className="h-10 w-10" />
+                  <p className="text-sm">Envie um vídeo primeiro para usar o editor</p>
+                  <p className="text-xs">Use a aba "Conteúdo" para fazer upload do vídeo ou selecione "Vídeo" no modo de criativo</p>
                 </div>
               )}
             </TabsContent>
