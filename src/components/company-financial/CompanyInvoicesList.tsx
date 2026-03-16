@@ -436,10 +436,12 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const pendingInvoices = invoices.filter(i => i.status === "pending" || i.status === "overdue" || i.status === "partial");
   const paidInvoices = invoices.filter(i => i.status === "paid");
   const totalPending = pendingInvoices.reduce((sum, i) => {
+    const isOverdueItem = i.status === "overdue";
+    const baseAmount = isOverdueItem ? i.total_with_fees_cents : i.amount_cents;
     if (i.status === "partial" && i.paid_amount_cents) {
-      return sum + Math.max(0, (i.status === "overdue" ? i.total_with_fees_cents : i.amount_cents) - i.paid_amount_cents);
+      return sum + Math.max(0, baseAmount - i.paid_amount_cents);
     }
-    return sum + (i.status === "overdue" ? i.total_with_fees_cents : i.amount_cents);
+    return sum + baseAmount;
   }, 0);
   const totalPaid = paidInvoices.reduce((sum, i) => sum + (i.paid_amount_cents || i.amount_cents), 0);
 
