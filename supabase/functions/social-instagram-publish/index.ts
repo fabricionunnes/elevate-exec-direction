@@ -356,6 +356,13 @@ Deno.serve(async (req) => {
       details: { platform: "instagram", post_id: mediaId, post_url: postUrl },
     });
 
+    // 10. Send WhatsApp notification to client about publication
+    try {
+      await sendPublishedNotification(supabaseClient, card, projectId, postUrl);
+    } catch (notifError) {
+      console.error("Error sending publish WhatsApp notification:", notifError);
+    }
+
     return new Response(
       JSON.stringify({ success: true, postId: mediaId, postUrl: postUrl }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
