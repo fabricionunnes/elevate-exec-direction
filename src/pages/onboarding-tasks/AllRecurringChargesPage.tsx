@@ -1675,13 +1675,13 @@ export default function AllRecurringChargesPage() {
                               </TableCell>
                               <TableCell className="text-sm text-muted-foreground">{inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "-"}</TableCell>
                               <TableCell className="text-right font-medium text-sm">
-                                {inv.status === "paid" ? (() => {
-                                  const base = inv.paid_amount_cents || inv.amount_cents;
+                                {(inv.status === "paid" || inv.status === "partial") ? (() => {
+                                  const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
                                   const interest = (inv as any).interest_cents || 0;
                                   const discount = (inv as any).discount_cents || 0;
                                   const fee = (inv as any).payment_fee_cents || 0;
                                   const net = base + interest - discount - fee;
-                                  return <span className="text-emerald-600">{formatCurrencyCents(net)}</span>;
+                                  return <span className={inv.status === "partial" ? "text-amber-600" : "text-emerald-600"}>{formatCurrencyCents(net)}</span>;
                                 })() : "-"}
                               </TableCell>
                               <TableCell>
