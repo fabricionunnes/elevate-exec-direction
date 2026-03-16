@@ -310,6 +310,12 @@ export const SocialCardDialog = ({
                       Carrossel
                     </div>
                   </SelectItem>
+                  <SelectItem value="video">
+                    <div className="flex items-center gap-2">
+                      <Film className="h-4 w-4" />
+                      Vídeo
+                    </div>
+                  </SelectItem>
                   <SelectItem value="reels">
                     <div className="flex items-center gap-2">
                       <Film className="h-4 w-4" />

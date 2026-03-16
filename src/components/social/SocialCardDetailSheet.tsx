@@ -1254,6 +1254,11 @@ export const SocialCardDetailSheet = ({
                           <LayoutGrid className="h-4 w-4" /> Carrossel
                         </span>
                       </SelectItem>
+                      <SelectItem value="video">
+                        <span className="flex items-center gap-2">
+                          <Film className="h-4 w-4" /> Vídeo
+                        </span>
+                      </SelectItem>
                       <SelectItem value="reels">
                         <span className="flex items-center gap-2">
                           <Film className="h-4 w-4" /> Reels
