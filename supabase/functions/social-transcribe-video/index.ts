@@ -135,6 +135,7 @@ async function getTranscriptionStatus(transcriptId: string, assemblyKey: string)
 
 async function generateOverlaysAndStyle(
   transcriptText: string,
+  captions: Array<{ text: string; start_time: number; end_time: number }>,
   editorNotes: string | null | undefined,
   lovableApiKey: string | null,
 ) {
@@ -143,7 +144,19 @@ async function generateOverlaysAndStyle(
   }
 
   const editorContext = editorNotes ? `\n\nDirecionamento do editor: "${editorNotes}"` : "";
-  const systemPrompt = `Você é um editor de vídeo profissional. Com base APENAS na transcrição abaixo, sugira overlays rápidos para vídeo short-form e um estilo de legenda.${editorContext}\n\nUse a tool \"video_analysis\" para retornar os dados estruturados.`;
+  const timestampedScript = captions
+    .map((caption) => `[${caption.start_time.toFixed(2)}s - ${caption.end_time.toFixed(2)}s] ${caption.text}`)
+    .join("\n");
+  const systemPrompt = `Você é um editor de vídeos curtos em português do Brasil. Com base na transcrição com timestamps, crie uma primeira edição BEM MAIS RICA para Reels/TikTok.${editorContext}
+
+Regras:
+- Distribua overlays ao longo de TODO o vídeo, não só no começo.
+- Gere entre 6 e 12 overlays quando houver conteúdo suficiente.
+- Use frases curtas de impacto, emojis, reforços visuais e callouts.
+- Respeite os timestamps existentes da transcrição.
+- Escolha o melhor estilo de legenda para short-form em português.
+
+Use a tool "video_analysis" para retornar os dados estruturados.`;
 
   const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
     method: "POST",
@@ -152,12 +165,12 @@ async function generateOverlaysAndStyle(
       "Content-Type": "application/json",
     },
     body: JSON.stringify({
-      model: "google/gemini-3-flash-preview",
+      model: "google/gemini-2.5-flash",
       messages: [
         { role: "system", content: systemPrompt },
         {
           role: "user",
-          content: `Transcrição:\n${transcriptText}\n\nRetorne sugestões de overlays com timestamps coerentes com o conteúdo falado.${editorContext}`,
+          content: `Transcrição completa:\n${transcriptText}\n\nLegenda segmentada com timestamps:\n${timestampedScript}\n\nRetorne overlays distribuídos ao longo do vídeo inteiro.${editorContext}`,
         },
       ],
       tools: [
