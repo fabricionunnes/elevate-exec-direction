@@ -12,8 +12,9 @@ import { ClientCRMActivities } from "./ClientCRMActivities";
 import { ClientCRMWhatsApp } from "./ClientCRMWhatsApp";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
+import { ClientCRMSettings } from "./ClientCRMSettings";
 import {
-  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
@@ -35,9 +36,13 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
     { key: CLIENT_MENU_KEYS.crm_comercial_contratos, id: "contratos", label: "Contratos", icon: FileSignature },
   ].filter((tab) => hasPermission(tab.key));
 
-  const [activeTab, setActiveTab] = useState(tabs[0]?.id || "dashboard");
+  // Always show settings tab
+  const allTabs = [...tabs, { key: "settings" as any, id: "settings", label: "Configurações", icon: Settings }];
 
-  if (tabs.length === 0) {
+  const [activeTab, setActiveTab] = useState(allTabs[0]?.id || "dashboard");
+
+  if (allTabs.length === 1 && allTabs[0].id === "settings") {
+    // Only settings visible means no CRM modules enabled
     return (
       <Card>
         <CardContent className="py-12 text-center text-muted-foreground">
@@ -67,7 +72,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
         <TabsList className="flex-wrap h-auto gap-1">
-          {tabs.map((tab) => (
+          {allTabs.map((tab) => (
             <TabsTrigger key={tab.id} value={tab.id} className="gap-1.5">
               <tab.icon className="h-3.5 w-3.5" />
               {tab.label}
@@ -84,10 +89,16 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
             deals={crm.deals}
             stages={crm.stages}
             contacts={crm.contacts}
+            pipelines={crm.pipelines}
+            activePipelineId={crm.activePipelineId}
+            setActivePipelineId={(id) => { crm.setActivePipelineId(id); crm.fetchAll(); }}
+            activities={crm.activities}
             onCreateDeal={crm.createDeal}
             onUpdateDeal={crm.updateDeal}
             onDeleteDeal={crm.deleteDeal}
             onMoveDeal={crm.moveDealToStage}
+            onCreateActivity={crm.createActivity}
+            onCompleteActivity={crm.completeActivity}
           />
         </TabsContent>
 
@@ -121,6 +132,17 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
 
         <TabsContent value="contratos">
           <ClientCRMContracts />
+        </TabsContent>
+
+        <TabsContent value="settings">
+          <ClientCRMSettings
+            projectId={projectId}
+            pipelines={crm.pipelines}
+            stages={crm.stages}
+            activePipelineId={crm.activePipelineId}
+            setActivePipelineId={crm.setActivePipelineId}
+            onRefresh={crm.fetchAll}
+          />
         </TabsContent>
       </Tabs>
     </div>
