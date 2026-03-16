@@ -52,6 +52,11 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled, onVideoRe
   const animFrame = useRef<number>(0);
   const containerRef = useRef<HTMLDivElement>(null);
 
+  const { renderVideo, rendering, progress: renderProgress } = useVideoRenderer({
+    cardId,
+    onRendered: onVideoRendered,
+  });
+
   // Calculate the rendered video rect inside the container (object-contain)
   const videoRect = useMemo(() => {
     if (!videoNaturalWidth || !videoNaturalHeight || !containerWidth || !containerHeight) {
