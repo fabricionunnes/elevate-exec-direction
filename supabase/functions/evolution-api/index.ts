@@ -1068,8 +1068,15 @@ Deno.serve(async (req) => {
           if (fetchErr.name === 'AbortError') {
             console.error('[evolution-api] send-text timed out after 25s');
             return new Response(
-              JSON.stringify({ error: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.' }),
-              { status: 504, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+              JSON.stringify({
+                accepted: true,
+                pending: true,
+                timed_out: true,
+                instanceName,
+                number,
+                message: 'Timeout: o servidor WhatsApp não respondeu a tempo. A mensagem pode ter sido enviada.',
+              }),
+              { status: 202, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
             );
           }
           throw fetchErr;
