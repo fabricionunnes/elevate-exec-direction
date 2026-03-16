@@ -421,13 +421,15 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
         <div
           className="absolute pointer-events-none"
           style={{
+            position: "absolute",
             left: videoRect.left,
             top: videoRect.top,
-            width: videoRect.width,
-            height: videoRect.height,
+            width: videoRect.width || "100%",
+            height: videoRect.height || "100%",
             overflow: "hidden",
           }}
         >
+          <div className="relative w-full h-full">
           <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
           <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
         </div>
