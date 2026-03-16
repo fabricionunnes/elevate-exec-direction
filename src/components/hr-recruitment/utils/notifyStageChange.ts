@@ -14,7 +14,7 @@ export async function notifyClientStageChange({
   jobTitle,
 }: NotifyParams) {
   try {
-    // Fetch HR WhatsApp config
+    // Fetch HR WhatsApp config with instance details
     const { data: config } = await supabase
       .from("hr_whatsapp_config")
       .select("*, whatsapp_instances(*)")
@@ -26,7 +26,7 @@ export async function notifyClientStageChange({
     }
 
     const instance = config.whatsapp_instances as any;
-    if (!instance?.api_url || !instance?.api_key || !instance?.instance_name) {
+    if (!instance?.instance_name) {
       console.warn("HR WhatsApp instance not fully configured");
       return;
     }
@@ -39,7 +39,6 @@ export async function notifyClientStageChange({
       .replace(/{stage_name}/g, stageName)
       .replace(/{job_title}/g, jobTitle);
 
-    const baseUrl = instance.api_url.replace(/\/$/, "");
     const recipient = config.notify_group_jid || config.notify_phone;
 
     if (!recipient) {
@@ -47,18 +46,22 @@ export async function notifyClientStageChange({
       return;
     }
 
-    await fetch(`${baseUrl}/message/sendText/${instance.instance_name}`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        apikey: instance.api_key,
-      },
-      body: JSON.stringify({
+    // Use the evolution-api edge function instead of calling the API directly (avoids CORS)
+    const { data, error } = await supabase.functions.invoke("evolution-api", {
+      body: {
+        action: "sendText",
+        instanceId: config.instance_id,
         number: config.notify_group_jid ? undefined : recipient,
         jid: config.notify_group_jid || undefined,
         text: message,
-      }),
+      },
     });
+
+    if (error) {
+      console.error("Error sending HR WhatsApp notification via edge function:", error);
+    } else {
+      console.log("HR WhatsApp notification sent successfully:", data);
+    }
   } catch (error) {
     console.error("Error sending HR WhatsApp notification:", error);
     // Don't throw - notification failure shouldn't block stage change
