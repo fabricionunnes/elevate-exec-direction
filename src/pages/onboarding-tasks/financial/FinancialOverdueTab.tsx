@@ -181,7 +181,13 @@ export default function FinancialOverdueTab({
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginated = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
 
-  const totalOverdue = overdueInvoices.reduce((s, i) => s + i.total_with_fees_cents, 0);
+  const getOverdueAmount = (inv: any) => {
+    if (inv.status === "partial" && inv.paid_amount_cents) {
+      return Math.max(0, inv.total_with_fees_cents - inv.paid_amount_cents);
+    }
+    return inv.total_with_fees_cents;
+  };
+  const totalOverdue = overdueInvoices.reduce((s, i) => s + getOverdueAmount(i), 0);
   const uniqueCompanies = new Set(overdueInvoices.map(i => i.company_id)).size;
   const avgDays = overdueInvoices.length > 0
     ? Math.round(overdueInvoices.reduce((s, i) => s + daysOverdue(i.due_date), 0) / overdueInvoices.length)
