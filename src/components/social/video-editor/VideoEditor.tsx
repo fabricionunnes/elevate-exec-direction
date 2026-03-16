@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect, useCallback } from "react";
+import { useState, useRef, useEffect, useCallback, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,10 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [isPlaying, setIsPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
+  const [videoNaturalWidth, setVideoNaturalWidth] = useState(0);
+  const [videoNaturalHeight, setVideoNaturalHeight] = useState(0);
+  const [containerWidth, setContainerWidth] = useState(0);
+  const [containerHeight, setContainerHeight] = useState(0);
   const [captions, setCaptions] = useState<VideoCaption[]>([]);
   const [overlays, setOverlays] = useState<VideoOverlay[]>([]);
   const [captionStyle, setCaptionStyle] = useState<CaptionStyleKey>("default");
@@ -35,6 +39,29 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   const [editingCaptionId, setEditingCaptionId] = useState<string | null>(null);
   const [showEmojiPicker, setShowEmojiPicker] = useState(false);
   const animFrame = useRef<number>(0);
+  const containerRef = useRef<HTMLDivElement>(null);
+
+  // Calculate the rendered video rect inside the container (object-contain)
+  const videoRect = useMemo(() => {
+    if (!videoNaturalWidth || !videoNaturalHeight || !containerWidth || !containerHeight) {
+      return { left: 0, top: 0, width: containerWidth || 0, height: containerHeight || 0 };
+    }
+    const videoAspect = videoNaturalWidth / videoNaturalHeight;
+    const containerAspect = containerWidth / containerHeight;
+    let renderW: number, renderH: number, offsetX: number, offsetY: number;
+    if (videoAspect > containerAspect) {
+      renderW = containerWidth;
+      renderH = containerWidth / videoAspect;
+      offsetX = 0;
+      offsetY = (containerHeight - renderH) / 2;
+    } else {
+      renderH = containerHeight;
+      renderW = containerHeight * videoAspect;
+      offsetX = (containerWidth - renderW) / 2;
+      offsetY = 0;
+    }
+    return { left: offsetX, top: offsetY, width: renderW, height: renderH };
+  }, [videoNaturalWidth, videoNaturalHeight, containerWidth, containerHeight]);
 
   // Load existing captions and overlays
   useEffect(() => {
@@ -268,13 +295,32 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
   return (
     <div className="space-y-4">
       {/* Video Player with Overlays */}
-      <div className="relative bg-black rounded-lg overflow-hidden">
+      <div
+        ref={containerRef}
+        className="relative bg-black rounded-lg overflow-hidden"
+        style={{ maxHeight: 500 }}
+      >
         <video
           ref={videoRef}
           src={videoUrl}
-          className="w-full max-h-[400px] object-contain"
+          className="w-full object-contain"
+          style={{ maxHeight: 500 }}
           onLoadedMetadata={() => {
-            if (videoRef.current) setDuration(videoRef.current.duration);
+            if (videoRef.current) {
+              setDuration(videoRef.current.duration);
+              setVideoNaturalWidth(videoRef.current.videoWidth);
+              setVideoNaturalHeight(videoRef.current.videoHeight);
+            }
+            if (containerRef.current) {
+              setContainerWidth(containerRef.current.clientWidth);
+              setContainerHeight(containerRef.current.clientHeight);
+            }
+          }}
+          onResize={() => {
+            if (containerRef.current) {
+              setContainerWidth(containerRef.current.clientWidth);
+              setContainerHeight(containerRef.current.clientHeight);
+            }
           }}
           onEnded={() => {
             setIsPlaying(false);
@@ -282,8 +328,21 @@ export const VideoEditor = ({ cardId, videoUrl, editorNotes, disabled }: VideoEd
           }}
           onClick={togglePlay}
         />
-        <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
-        <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+
+        {/* Overlay zone clipped to the actual video rect */}
+        <div
+          className="absolute pointer-events-none"
+          style={{
+            left: videoRect.left,
+            top: videoRect.top,
+            width: videoRect.width,
+            height: videoRect.height,
+            overflow: "hidden",
+          }}
+        >
+          <VideoCaptionOverlay captions={captions} currentTime={currentTime} styleOverride={captionStyle} />
+          <VideoOverlayLayer overlays={overlays} currentTime={currentTime} />
+        </div>
 
         {/* Play button overlay when paused */}
         {!isPlaying && (

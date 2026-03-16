@@ -26,9 +26,9 @@ export const VideoCaptionOverlay = ({ captions, currentTime, styleOverride }: Vi
   const style = CAPTION_STYLES[styleOverride || activeCaption.style_preset] || CAPTION_STYLES.default;
 
   return (
-    <div className="absolute bottom-8 left-0 right-0 flex justify-center pointer-events-none z-10">
-      <div className={cn(style.bg, "max-w-[90%] text-center")}>
-        <span className={style.className}>{activeCaption.text}</span>
+    <div className="absolute bottom-[8%] left-[5%] right-[5%] flex justify-center pointer-events-none z-10">
+      <div className={cn(style.bg, "max-w-full text-center px-3 py-1.5")}>
+        <span className={cn(style.className, "text-sm sm:text-base md:text-lg leading-tight break-words")}>{activeCaption.text}</span>
       </div>
     </div>
   );
