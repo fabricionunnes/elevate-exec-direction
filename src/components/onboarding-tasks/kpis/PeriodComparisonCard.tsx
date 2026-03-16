@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { ArrowUpRight, ArrowDownRight, Minus, GitCompareArrows } from "lucide-react";
-import { format, differenceInDays, subDays } from "date-fns";
+import { format, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { parseDateLocal } from "@/lib/dateUtils";
 
@@ -89,11 +89,10 @@ export const PeriodComparisonCard = ({
     try {
       const startDate = parseDateLocal(dateRange.start);
       const endDate = parseDateLocal(dateRange.end);
-      const periodDays = differenceInDays(endDate, startDate);
 
-      // Calculate previous period with same duration
-      const prevEnd = subDays(startDate, 1);
-      const prevStart = subDays(prevEnd, periodDays);
+      // Previous period = same dates but one month earlier
+      const prevStart = subMonths(startDate, 1);
+      const prevEnd = subMonths(endDate, 1);
 
       const prevStartStr = format(prevStart, "yyyy-MM-dd");
       const prevEndStr = format(prevEnd, "yyyy-MM-dd");
