@@ -335,6 +335,10 @@ const OnboardingCompanyDetailPage = () => {
         notes: currentForm.notes || null,
         is_simulator: currentForm.is_simulator,
         goal_not_required: currentForm.goal_not_required,
+        owner_name: currentForm.owner_name || null,
+        owner_cpf: currentForm.owner_cpf || null,
+        owner_rg: currentForm.owner_rg || null,
+        owner_marital_status: currentForm.owner_marital_status || null,
       };
 
       if (isNew) {
