@@ -1072,7 +1072,10 @@ export default function AllRecurringChargesPage() {
     const effectivelyPending = filteredInvoices.filter(i => (i.status === "pending" || i.status === "overdue") && !isEffectivelyOverdue(i.status, i.due_date));
     const pending = filteredInvoices.filter(i => i.status === "pending" || i.status === "overdue");
     const paid = filteredInvoices.filter(i => i.status === "paid" || i.status === "partial");
+    const totalAll = filteredInvoices.reduce((s, i) => s + i.amount_cents, 0);
     return {
+      totalAll,
+      totalCount: filteredInvoices.length,
       totalPending: pending.reduce((s, i) => s + (isEffectivelyOverdue(i.status, i.due_date) ? i.total_with_fees_cents : i.amount_cents), 0),
       pendingCount: pending.length,
       totalPaid: paid.reduce((s, i) => {
@@ -1468,7 +1471,14 @@ export default function AllRecurringChargesPage() {
               </Card>
 
               {/* Summary */}
-              <div className="grid gap-3 grid-cols-1 sm:grid-cols-3">
+              <div className="grid gap-3 grid-cols-1 sm:grid-cols-2 lg:grid-cols-4">
+                <Card>
+                  <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">Total</CardTitle></CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">{formatCurrencyCents(invoiceSummary.totalAll)}</div>
+                    <p className="text-xs text-muted-foreground">{invoiceSummary.totalCount} parcelas</p>
+                  </CardContent>
+                </Card>
                 <Card>
                   <CardHeader className="pb-2"><CardTitle className="text-sm text-muted-foreground">A Receber</CardTitle></CardHeader>
                   <CardContent>
