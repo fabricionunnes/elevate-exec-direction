@@ -261,6 +261,8 @@ Deno.serve(async (req) => {
           creative_body: creative.body || null,
           creative_title: creative.title || null,
           creative_link_url: creative.object_story_spec?.link_data?.link || null,
+          creative_image_url: creative.image_url || creative.object_story_spec?.link_data?.picture || creative.object_story_spec?.photo_data?.url || null,
+          creative_video_url: creative.object_story_spec?.video_data?.image_url || null,
           impressions: Number(ins.impressions || 0),
           reach: Number(ins.reach || 0),
           clicks: Number(ins.clicks || 0),

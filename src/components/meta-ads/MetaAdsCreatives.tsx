@@ -2,7 +2,8 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, ExternalLink } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { Loader2, ExternalLink, Play } from "lucide-react";
 import { motion } from "framer-motion";
 
 interface Props { projectId: string; dateStart: string; dateStop: string; }
@@ -18,6 +19,7 @@ const statusColors: Record<string, string> = {
 export const MetaAdsCreatives = ({ projectId, dateStart, dateStop }: Props) => {
   const [ads, setAds] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedAd, setSelectedAd] = useState<any | null>(null);
 
   useEffect(() => {
     const fetch = async () => {
@@ -34,56 +36,146 @@ export const MetaAdsCreatives = ({ projectId, dateStart, dateStop }: Props) => {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (ads.length === 0) return <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum anúncio encontrado</CardContent></Card>;
 
+  const hasVideo = (ad: any) => !!ad.creative_video_url;
+  const getMediaUrl = (ad: any) => ad.creative_image_url || ad.creative_thumbnail_url;
+
   return (
-    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
-      {ads.map((ad, i) => (
-        <motion.div key={ad.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
-          <Card className="overflow-hidden hover:shadow-lg transition-all group">
-            {/* Creative thumbnail */}
-            {ad.creative_thumbnail_url && (
-              <div className="aspect-video bg-muted overflow-hidden">
-                <img src={ad.creative_thumbnail_url} alt={ad.ad_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
-              </div>
-            )}
-            <CardContent className="p-4 space-y-3">
-              {/* Header */}
-              <div className="flex items-start justify-between gap-2">
-                <div className="min-w-0">
-                  <h4 className="font-semibold text-sm truncate">{ad.ad_name || "Sem nome"}</h4>
-                  <p className="text-[10px] text-muted-foreground truncate">{ad.campaign_name} › {ad.adset_name}</p>
+    <>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 mt-4">
+        {ads.map((ad, i) => (
+          <motion.div key={ad.id} initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: i * 0.05 }}>
+            <Card
+              className="overflow-hidden hover:shadow-lg transition-all group cursor-pointer"
+              onClick={() => setSelectedAd(ad)}
+            >
+              {/* Creative thumbnail */}
+              {(ad.creative_thumbnail_url || ad.creative_image_url) && (
+                <div className="aspect-video bg-muted overflow-hidden relative">
+                  <img src={ad.creative_thumbnail_url || ad.creative_image_url} alt={ad.ad_name} className="w-full h-full object-cover group-hover:scale-105 transition-transform duration-300" />
+                  {hasVideo(ad) && (
+                    <div className="absolute inset-0 flex items-center justify-center bg-black/20">
+                      <div className="bg-white/90 rounded-full p-3">
+                        <Play className="h-6 w-6 text-primary fill-primary" />
+                      </div>
+                    </div>
+                  )}
                 </div>
-                <Badge variant="secondary" className={`text-[10px] flex-shrink-0 ${statusColors[ad.status] || ""}`}>
-                  {ad.status}
-                </Badge>
-              </div>
-
-              {/* Creative text */}
-              {ad.creative_body && (
-                <p className="text-xs text-muted-foreground line-clamp-2">{ad.creative_body}</p>
               )}
+              <CardContent className="p-4 space-y-3">
+                {/* Header */}
+                <div className="flex items-start justify-between gap-2">
+                  <div className="min-w-0">
+                    <h4 className="font-semibold text-sm truncate">{ad.ad_name || "Sem nome"}</h4>
+                    <p className="text-[10px] text-muted-foreground truncate">{ad.campaign_name} › {ad.adset_name}</p>
+                  </div>
+                  <Badge variant="secondary" className={`text-[10px] flex-shrink-0 ${statusColors[ad.status] || ""}`}>
+                    {ad.status}
+                  </Badge>
+                </div>
 
-              {/* Metrics grid */}
-              <div className="grid grid-cols-3 gap-2 pt-2 border-t">
-                <Metric label="Gasto" value={formatCurrency(Number(ad.spend))} highlight />
-                <Metric label="Cliques" value={formatNumber(Number(ad.clicks))} />
-                <Metric label="CTR" value={`${Number(ad.ctr).toFixed(2)}%`} />
-                <Metric label="CPC" value={formatCurrency(Number(ad.cpc))} />
-                <Metric label="Impressões" value={formatNumber(Number(ad.impressions))} />
-                <Metric label="ROAS" value={`${Number(ad.roas).toFixed(2)}x`} />
+                {/* Creative text */}
+                {ad.creative_body && (
+                  <p className="text-xs text-muted-foreground line-clamp-2">{ad.creative_body}</p>
+                )}
+
+                {/* Metrics grid */}
+                <div className="grid grid-cols-3 gap-2 pt-2 border-t">
+                  <Metric label="Gasto" value={formatCurrency(Number(ad.spend))} highlight />
+                  <Metric label="Cliques" value={formatNumber(Number(ad.clicks))} />
+                  <Metric label="CTR" value={`${Number(ad.ctr).toFixed(2)}%`} />
+                  <Metric label="CPC" value={formatCurrency(Number(ad.cpc))} />
+                  <Metric label="Impressões" value={formatNumber(Number(ad.impressions))} />
+                  <Metric label="ROAS" value={`${Number(ad.roas).toFixed(2)}x`} />
+                </div>
+
+                {/* Link */}
+                {ad.creative_link_url && (
+                  <a href={ad.creative_link_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline" onClick={(e) => e.stopPropagation()}>
+                    <ExternalLink className="h-3 w-3" />
+                    Ver destino
+                  </a>
+                )}
+              </CardContent>
+            </Card>
+          </motion.div>
+        ))}
+      </div>
+
+      {/* Creative Preview Dialog */}
+      <Dialog open={!!selectedAd} onOpenChange={(open) => !open && setSelectedAd(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {selectedAd && (
+            <>
+              <DialogHeader>
+                <DialogTitle className="text-base">{selectedAd.ad_name || "Sem nome"}</DialogTitle>
+                <p className="text-xs text-muted-foreground">{selectedAd.campaign_name} › {selectedAd.adset_name}</p>
+              </DialogHeader>
+
+              <div className="space-y-4">
+                {/* Media */}
+                {hasVideo(selectedAd) && selectedAd.creative_video_url ? (
+                  <div className="rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={selectedAd.creative_video_url}
+                      alt={selectedAd.ad_name}
+                      className="w-full object-contain max-h-[60vh]"
+                    />
+                    <p className="text-xs text-muted-foreground text-center py-2">
+                      Pré-visualização do vídeo (thumbnail)
+                    </p>
+                  </div>
+                ) : getMediaUrl(selectedAd) ? (
+                  <div className="rounded-lg overflow-hidden bg-muted">
+                    <img
+                      src={getMediaUrl(selectedAd)}
+                      alt={selectedAd.ad_name}
+                      className="w-full object-contain max-h-[60vh]"
+                    />
+                  </div>
+                ) : (
+                  <div className="rounded-lg bg-muted flex items-center justify-center py-20">
+                    <p className="text-sm text-muted-foreground">Criativo não disponível</p>
+                  </div>
+                )}
+
+                {/* Creative text */}
+                {selectedAd.creative_body && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Texto do anúncio</p>
+                    <p className="text-sm whitespace-pre-wrap">{selectedAd.creative_body}</p>
+                  </div>
+                )}
+
+                {selectedAd.creative_title && (
+                  <div className="space-y-1">
+                    <p className="text-xs font-medium text-muted-foreground">Título</p>
+                    <p className="text-sm font-semibold">{selectedAd.creative_title}</p>
+                  </div>
+                )}
+
+                {/* Metrics */}
+                <div className="grid grid-cols-3 sm:grid-cols-6 gap-3 pt-3 border-t">
+                  <Metric label="Gasto" value={formatCurrency(Number(selectedAd.spend))} highlight />
+                  <Metric label="Cliques" value={formatNumber(Number(selectedAd.clicks))} />
+                  <Metric label="CTR" value={`${Number(selectedAd.ctr).toFixed(2)}%`} />
+                  <Metric label="CPC" value={formatCurrency(Number(selectedAd.cpc))} />
+                  <Metric label="Impressões" value={formatNumber(Number(selectedAd.impressions))} />
+                  <Metric label="ROAS" value={`${Number(selectedAd.roas).toFixed(2)}x`} />
+                </div>
+
+                {/* Link */}
+                {selectedAd.creative_link_url && (
+                  <a href={selectedAd.creative_link_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1.5 text-sm text-primary hover:underline">
+                    <ExternalLink className="h-4 w-4" />
+                    Ver página de destino
+                  </a>
+                )}
               </div>
-
-              {/* Link */}
-              {ad.creative_link_url && (
-                <a href={ad.creative_link_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs text-primary hover:underline">
-                  <ExternalLink className="h-3 w-3" />
-                  Ver destino
-                </a>
-              )}
-            </CardContent>
-          </Card>
-        </motion.div>
-      ))}
-    </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
+    </>
   );
 };
 
