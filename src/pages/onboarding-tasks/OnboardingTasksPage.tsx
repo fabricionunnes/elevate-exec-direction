@@ -1089,6 +1089,13 @@ const OnboardingTasksPage = () => {
 
     activeCompanies.forEach(company => {
       const companyId = company.id;
+      
+      // Skip goal projection for companies where goal is not required
+      if ((company as any).goal_not_required) {
+        map.set(companyId, null); // Will show "—" instead of "S/M"
+        return;
+      }
+      
       const allCompanyKpis = companyKpis.filter(k => k.company_id === companyId);
       const mainGoalKpis = allCompanyKpis.filter(k => k.is_main_goal === true);
       const monetaryKpis = allCompanyKpis.filter(k => k.kpi_type === "monetary");
