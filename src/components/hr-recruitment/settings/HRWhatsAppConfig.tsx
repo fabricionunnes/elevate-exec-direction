@@ -8,7 +8,7 @@ import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { MessageCircle, Save, Loader2 } from "lucide-react";
+import { MessageCircle, Save, Loader2, RefreshCw, Users } from "lucide-react";
 
 interface Props {
   projectId: string;
@@ -19,6 +19,14 @@ interface WhatsAppInstance {
   instance_name: string;
   display_name: string;
   status: string | null;
+  api_url: string | null;
+  api_key: string | null;
+}
+
+interface WhatsAppGroup {
+  id: string;
+  subject: string;
+  size: number;
 }
 
 interface HRWhatsAppConfig {
@@ -38,6 +46,8 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   const [config, setConfig] = useState<HRWhatsAppConfig | null>(null);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
 
   const [selectedInstance, setSelectedInstance] = useState<string>("");
   const [notifyEnabled, setNotifyEnabled] = useState(true);
@@ -49,12 +59,20 @@ export function HRWhatsAppConfig({ projectId }: Props) {
     fetchData();
   }, [projectId]);
 
+  useEffect(() => {
+    if (selectedInstance) {
+      fetchGroups(selectedInstance);
+    } else {
+      setGroups([]);
+    }
+  }, [selectedInstance]);
+
   const fetchData = async () => {
     setLoading(true);
     const [instancesRes, configRes] = await Promise.all([
       supabase
         .from("whatsapp_instances")
-        .select("id, instance_name, display_name, status")
+        .select("id, instance_name, display_name, status, api_url, api_key")
         .order("display_name"),
       supabase
         .from("hr_whatsapp_config")
@@ -77,6 +95,41 @@ export function HRWhatsAppConfig({ projectId }: Props) {
     setLoading(false);
   };
 
+  const fetchGroups = async (instanceId: string) => {
+    const instance = instances.find((i) => i.id === instanceId);
+    if (!instance?.api_url || !instance?.api_key || !instance?.instance_name) {
+      setGroups([]);
+      return;
+    }
+
+    setLoadingGroups(true);
+    try {
+      const baseUrl = instance.api_url.replace(/\/$/, "");
+      const response = await fetch(
+        `${baseUrl}/group/fetchAllGroups/${instance.instance_name}?getParticipants=false`,
+        {
+          headers: { apikey: instance.api_key },
+        }
+      );
+
+      if (!response.ok) throw new Error("Erro ao buscar grupos");
+
+      const data = await response.json();
+      const groupList: WhatsAppGroup[] = (Array.isArray(data) ? data : []).map((g: any) => ({
+        id: g.id || g.jid,
+        subject: g.subject || g.name || "Sem nome",
+        size: g.size || g.participants?.length || 0,
+      }));
+
+      setGroups(groupList);
+    } catch (error) {
+      console.error("Error fetching groups:", error);
+      setGroups([]);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
+
   const handleSave = async () => {
     if (!selectedInstance) {
       toast.error("Selecione uma instância do WhatsApp");
@@ -89,7 +142,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
         instance_id: selectedInstance,
         notify_on_stage_change: notifyEnabled,
         notify_phone: notifyPhone.trim() || null,
-        notify_group_jid: notifyGroupJid.trim() || null,
+        notify_group_jid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
         message_template: messageTemplate.trim() || DEFAULT_TEMPLATE,
         updated_at: new Date().toISOString(),
       };
@@ -188,14 +241,65 @@ export function HRWhatsAppConfig({ projectId }: Props) {
         </div>
 
         <div className="space-y-2">
-          <Label>JID do Grupo (opcional)</Label>
-          <Input
-            placeholder="120363XXXXXXX@g.us"
-            value={notifyGroupJid}
-            onChange={(e) => setNotifyGroupJid(e.target.value)}
-          />
+          <div className="flex items-center justify-between">
+            <Label>Grupo do WhatsApp (opcional)</Label>
+            {selectedInstance && (
+              <Button
+                variant="ghost"
+                size="sm"
+                onClick={() => fetchGroups(selectedInstance)}
+                disabled={loadingGroups}
+                className="h-7 text-xs gap-1"
+              >
+                {loadingGroups ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <RefreshCw className="h-3 w-3" />
+                )}
+                Atualizar
+              </Button>
+            )}
+          </div>
+
+          {loadingGroups ? (
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+              <Loader2 className="h-4 w-4 animate-spin text-muted-foreground" />
+              <span className="text-sm text-muted-foreground">Buscando grupos...</span>
+            </div>
+          ) : groups.length > 0 ? (
+            <Select value={notifyGroupJid} onValueChange={setNotifyGroupJid}>
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione um grupo (ou deixe vazio)" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="none">
+                  <span className="text-muted-foreground">Nenhum (enviar para telefone)</span>
+                </SelectItem>
+                {groups.map((group) => (
+                  <SelectItem key={group.id} value={group.id}>
+                    <div className="flex items-center gap-2">
+                      <Users className="h-3.5 w-3.5 text-muted-foreground" />
+                      <span>{group.subject}</span>
+                      <span className="text-xs text-muted-foreground">
+                        ({group.size} membros)
+                      </span>
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          ) : (
+            <div className="p-3 bg-muted/50 rounded-lg">
+              <p className="text-sm text-muted-foreground">
+                {selectedInstance
+                  ? "Nenhum grupo encontrado. Verifique se a instância está conectada."
+                  : "Selecione uma instância para carregar os grupos."}
+              </p>
+            </div>
+          )}
+
           <p className="text-xs text-muted-foreground">
-            Se preferir enviar para um grupo do WhatsApp, informe o JID do grupo.
+            Se preferir enviar para um grupo do WhatsApp, selecione acima.
           </p>
         </div>
 
