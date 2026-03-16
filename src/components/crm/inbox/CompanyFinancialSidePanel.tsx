@@ -63,33 +63,63 @@ export function CompanyFinancialSidePanel({
 
       // Try Evolution API first, then Official
       if (instanceId) {
-        const { error } = await supabase.functions.invoke("evolution-api", {
-          body: { action: "sendText", instanceId, phone: contactPhone, message: msg },
+        const { data: instById } = await supabase
+          .from("whatsapp_instances")
+          .select("instance_name")
+          .eq("id", instanceId)
+          .maybeSingle();
+
+        if (!instById?.instance_name) {
+          throw new Error("Instância não encontrada");
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ instanceName: instById.instance_name, number: contactPhone, text: msg }),
         });
-        if (error) throw new Error("Erro ao enviar");
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${response.status}`);
+        }
       } else if (officialInstanceId) {
         const { error } = await supabase.functions.invoke("whatsapp-official-api", {
           body: { action: "sendText", instanceId: officialInstanceId, phone: contactPhone, message: msg },
         });
         if (error) throw error;
       } else {
-        // Fallback: use default instance
         const { data: defaultConfig } = await supabase
           .from("whatsapp_default_config")
           .select("setting_value")
           .eq("setting_key", "default_instance")
           .limit(1)
           .maybeSingle();
-        const instanceName = (defaultConfig as any)?.setting_value;
-        if (!instanceName) { toast.error("Nenhuma instância configurada"); return; }
-        
-        const { data: inst } = await supabase.from("whatsapp_instances").select("id").eq("instance_name", instanceName).maybeSingle();
-        if (!inst) { toast.error("Instância não encontrada"); return; }
 
-        const { error: sendErr } = await supabase.functions.invoke("evolution-api", {
-          body: { action: "sendText", instanceId: inst.id, phone: contactPhone, message: msg },
+        const instanceName = (defaultConfig as any)?.setting_value;
+        if (!instanceName) {
+          toast.error("Nenhuma instância configurada");
+          return;
+        }
+
+        const response = await fetch(`${import.meta.env.VITE_SUPABASE_URL}/functions/v1/evolution-api?action=send-text`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${session.access_token}`,
+            'apikey': import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({ instanceName, number: contactPhone, text: msg }),
         });
-        if (sendErr) throw new Error("Erro ao enviar");
+
+        if (!response.ok) {
+          const err = await response.json().catch(() => ({}));
+          throw new Error(err.error || `HTTP ${response.status}`);
+        }
       }
 
       toast.success("Link enviado por WhatsApp!");
