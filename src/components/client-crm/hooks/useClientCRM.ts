@@ -148,7 +148,7 @@ export function useClientCRM(projectId: string) {
     ]);
 
     setStages((stagesRes.data || []) as ClientStage[]);
-    setDeals((dealsRes.data || []) as ClientDeal[]);
+    setDeals((dealsRes.data || []) as unknown as ClientDeal[]);
   };
 
   useEffect(() => {
