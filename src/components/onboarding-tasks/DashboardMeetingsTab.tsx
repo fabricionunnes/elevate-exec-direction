@@ -52,6 +52,7 @@ import { toast } from "sonner";
 interface StaffOption {
   id: string;
   name: string;
+  user_id: string | null;
 }
 
 interface Meeting {
