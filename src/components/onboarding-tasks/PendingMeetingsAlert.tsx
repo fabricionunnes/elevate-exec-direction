@@ -130,6 +130,11 @@ export const PendingMeetingsAlert = () => {
 
       if (error) throw error;
 
+      // Trigger CSAT survey send
+      import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+        triggerCSATAfterFinalization(selectedMeeting.id, selectedMeeting.project_id);
+      });
+
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
       setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false });

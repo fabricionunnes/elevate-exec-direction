@@ -706,6 +706,13 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         }
       }
 
+      // Trigger CSAT survey send
+      if (!finalizeForm.isNoShow) {
+        import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+          triggerCSATAfterFinalization(meetingToFinalize.id, projectId);
+        });
+      }
+
       toast.success(finalizeForm.isNoShow ? "Reunião marcada como No Show!" : "Reunião finalizada com sucesso!");
       setMeetingToFinalize(null);
       setFinalizeForm({ notes: "", attendees: "", recordingLink: "", isNoShow: false });

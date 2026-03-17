@@ -220,6 +220,12 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         .eq("id", meetingToFinalize.id);
 
       if (error) throw error;
+
+      // Trigger CSAT survey send
+      import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+        triggerCSATAfterFinalization(meetingToFinalize.id, meetingToFinalize.project_id);
+      });
+
       toast.success("Reunião finalizada com sucesso!");
       setMeetingToFinalize(null);
       fetchMeetings();
