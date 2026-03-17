@@ -45,6 +45,7 @@ export const PendingMeetingsAlert = () => {
     attendees: "",
     recordingLink: "",
     isInternal: false,
+    isNoShow: false,
   });
 
   useEffect(() => {
