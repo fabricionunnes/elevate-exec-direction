@@ -6,7 +6,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Save, Sparkles, Building2, MessageSquare, Hash, BookOpen, RefreshCw } from "lucide-react";
+import { Loader2, Save, Sparkles, Building2, MessageSquare, Hash, BookOpen, Palette, Type, X, Plus } from "lucide-react";
 import { toast } from "sonner";
 
 interface SocialCompanyInfoTabProps {
@@ -22,6 +22,10 @@ interface CompanyProfile {
   official_hashtags: string[] | null;
   ai_generated_summary: string | null;
   ai_generated_at: string | null;
+  brand_colors: string[] | null;
+  brand_fonts: string | null;
+  visual_style: string | null;
+  visual_style_prompt: string | null;
 }
 
 export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) => {
@@ -38,13 +42,19 @@ export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) =
   const [communicationRules, setCommunicationRules] = useState("");
   const [hashtags, setHashtags] = useState("");
 
+  // Visual identity state
+  const [brandColors, setBrandColors] = useState<string[]>([]);
+  const [newColor, setNewColor] = useState("#000000");
+  const [brandFonts, setBrandFonts] = useState("");
+  const [visualStyle, setVisualStyle] = useState("");
+  const [visualStylePrompt, setVisualStylePrompt] = useState("");
+
   useEffect(() => {
     loadData();
   }, [projectId]);
 
   const loadData = async () => {
     try {
-      // Load company profile
       const { data: profileData, error: profileError } = await supabase
         .from("social_company_profiles")
         .select("*")
@@ -54,15 +64,18 @@ export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) =
       if (profileError && profileError.code !== "PGRST116") throw profileError;
 
       if (profileData) {
-        setProfile(profileData);
+        setProfile(profileData as any);
         setBrandIdentity(profileData.brand_identity || "");
         setPositioning(profileData.positioning || "");
         setToneOfVoice(profileData.tone_of_voice || "");
         setCommunicationRules(profileData.communication_rules || "");
         setHashtags(profileData.official_hashtags?.join(", ") || "");
+        setBrandColors((profileData as any).brand_colors || []);
+        setBrandFonts((profileData as any).brand_fonts || "");
+        setVisualStyle((profileData as any).visual_style || "");
+        setVisualStylePrompt((profileData as any).visual_style_prompt || "");
       }
 
-      // Check if briefing exists
       const { data: briefingData } = await supabase
         .from("social_briefing_forms")
         .select("id, is_complete")
@@ -94,7 +107,11 @@ export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) =
           tone_of_voice: toneOfVoice || null,
           communication_rules: communicationRules || null,
           official_hashtags: hashtagsArray.length > 0 ? hashtagsArray : null,
-        }, { onConflict: "project_id" });
+          brand_colors: brandColors.length > 0 ? brandColors : null,
+          brand_fonts: brandFonts || null,
+          visual_style: visualStyle || null,
+          visual_style_prompt: visualStylePrompt || null,
+        } as any, { onConflict: "project_id" });
 
       if (error) throw error;
       toast.success("Informações salvas!");
@@ -126,6 +143,17 @@ export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) =
     } finally {
       setGenerating(false);
     }
+  };
+
+  const addColor = () => {
+    if (newColor && !brandColors.includes(newColor)) {
+      setBrandColors(prev => [...prev, newColor]);
+      setNewColor("#000000");
+    }
+  };
+
+  const removeColor = (color: string) => {
+    setBrandColors(prev => prev.filter(c => c !== color));
   };
 
   if (loading) {
@@ -195,6 +223,113 @@ export const SocialCompanyInfoTab = ({ projectId }: SocialCompanyInfoTabProps) =
           </CardContent>
         </Card>
       )}
+
+      {/* Visual Identity - NEW SECTION */}
+      <Card className="border-primary/30">
+        <CardHeader>
+          <div className="flex items-center gap-2">
+            <Palette className="h-4 w-4 text-primary" />
+            <CardTitle className="text-base">Identidade Visual (para geração de imagens)</CardTitle>
+          </div>
+          <CardDescription>
+            Defina cores, fontes e estilo visual para que todas as imagens geradas sigam o branding da marca
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-5">
+          {/* Brand Colors */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Palette className="h-3.5 w-3.5" />
+              Cores da Marca
+            </Label>
+            <div className="flex flex-wrap gap-2 mb-2">
+              {brandColors.map((color) => (
+                <div
+                  key={color}
+                  className="flex items-center gap-1.5 px-2 py-1 rounded-md border bg-background"
+                >
+                  <div
+                    className="w-5 h-5 rounded-sm border"
+                    style={{ backgroundColor: color }}
+                  />
+                  <span className="text-xs font-mono">{color}</span>
+                  <button
+                    onClick={() => removeColor(color)}
+                    className="ml-1 text-muted-foreground hover:text-destructive"
+                  >
+                    <X className="h-3 w-3" />
+                  </button>
+                </div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              <input
+                type="color"
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                className="w-10 h-9 rounded cursor-pointer border"
+              />
+              <Input
+                value={newColor}
+                onChange={(e) => setNewColor(e.target.value)}
+                placeholder="#FF0000"
+                className="w-28 font-mono text-sm"
+              />
+              <Button size="sm" variant="outline" onClick={addColor} className="gap-1">
+                <Plus className="h-3.5 w-3.5" />
+                Adicionar
+              </Button>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              Adicione as cores principais da marca. Elas serão usadas como paleta obrigatória nas imagens geradas.
+            </p>
+          </div>
+
+          {/* Brand Fonts */}
+          <div className="space-y-2">
+            <Label className="flex items-center gap-1.5">
+              <Type className="h-3.5 w-3.5" />
+              Fontes da Marca
+            </Label>
+            <Input
+              placeholder="Ex: Montserrat para títulos, Open Sans para corpo"
+              value={brandFonts}
+              onChange={(e) => setBrandFonts(e.target.value)}
+            />
+            <p className="text-xs text-muted-foreground">
+              Descreva as fontes que a marca usa. A IA tentará replicar esse estilo tipográfico.
+            </p>
+          </div>
+
+          {/* Visual Style */}
+          <div className="space-y-2">
+            <Label>Estilo Visual</Label>
+            <Textarea
+              placeholder="Ex: Minimalista e clean, com muito espaço em branco. Fotos de alta qualidade com overlay de gradiente nas cores da marca. Elementos geométricos sutis."
+              value={visualStyle}
+              onChange={(e) => setVisualStyle(e.target.value)}
+              rows={3}
+            />
+            <p className="text-xs text-muted-foreground">
+              Descreva o estilo visual da marca: minimalista, moderno, rústico, luxuoso, etc.
+            </p>
+          </div>
+
+          {/* Visual Style Prompt */}
+          <div className="space-y-2">
+            <Label>Instruções extras para IA (avançado)</Label>
+            <Textarea
+              placeholder="Ex: Sempre usar fundos escuros, nunca usar fotos de pessoas, preferir ícones flat..."
+              value={visualStylePrompt}
+              onChange={(e) => setVisualStylePrompt(e.target.value)}
+              rows={2}
+            />
+            <p className="text-xs text-muted-foreground">
+              Instruções adicionais que serão enviadas diretamente ao modelo de IA na geração de imagens.
+            </p>
+          </div>
+        </CardContent>
+      </Card>
 
       {/* Manual Fields */}
       <div className="grid gap-6">

@@ -25172,6 +25172,8 @@ export type Database = {
         Row: {
           ai_generated_at: string | null
           ai_generated_summary: string | null
+          brand_colors: string[] | null
+          brand_fonts: string | null
           brand_identity: string | null
           briefing_id: string | null
           communication_rules: string | null
@@ -25182,10 +25184,14 @@ export type Database = {
           project_id: string
           tone_of_voice: string | null
           updated_at: string
+          visual_style: string | null
+          visual_style_prompt: string | null
         }
         Insert: {
           ai_generated_at?: string | null
           ai_generated_summary?: string | null
+          brand_colors?: string[] | null
+          brand_fonts?: string | null
           brand_identity?: string | null
           briefing_id?: string | null
           communication_rules?: string | null
@@ -25196,10 +25202,14 @@ export type Database = {
           project_id: string
           tone_of_voice?: string | null
           updated_at?: string
+          visual_style?: string | null
+          visual_style_prompt?: string | null
         }
         Update: {
           ai_generated_at?: string | null
           ai_generated_summary?: string | null
+          brand_colors?: string[] | null
+          brand_fonts?: string | null
           brand_identity?: string | null
           briefing_id?: string | null
           communication_rules?: string | null
@@ -25210,6 +25220,8 @@ export type Database = {
           project_id?: string
           tone_of_voice?: string | null
           updated_at?: string
+          visual_style?: string | null
+          visual_style_prompt?: string | null
         }
         Relationships: [
           {

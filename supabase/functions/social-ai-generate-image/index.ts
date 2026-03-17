@@ -181,7 +181,6 @@ Deno.serve(async (req) => {
       const panoramicWidth = slideWidth * carouselCount;
 
       // Build prompt for a single wide panoramic image
-      const brandColors = extractBrandColors(profile, briefing);
       let panoramicPrompt = `Generate a SINGLE WIDE PANORAMIC IMAGE for an Instagram carousel with ${carouselCount} slides.
 
 The image must be a very wide horizontal panorama (ratio approximately ${carouselCount}:1.25).
@@ -201,9 +200,9 @@ Visual Request: ${prompt}
       if (briefing?.brand_perception) {
         panoramicPrompt += `\nBrand personality: ${briefing.brand_perception}`;
       }
-      if (brandColors) {
-        panoramicPrompt += `\nBRAND COLORS (MUST USE): ${brandColors}`;
-      }
+
+      // Add full brand style block for consistency
+      panoramicPrompt += buildBrandStyleBlock(profile, briefing);
 
       // Add slide text instructions
       const hasSlideTexts = slideTexts && Array.isArray(slideTexts) && slideTexts.some((t: string) => t && t.trim());
@@ -223,16 +222,12 @@ QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese.${hasSlideTexts ? '' : ' Prefer NO text if possible.'}
 REALISM: 100% physically realistic, correct proportions and perspective.
 
-ABSOLUTELY FORBIDDEN - DO NOT RENDER ANY OF THE FOLLOWING IN THE IMAGE:
-- NO pixel measurements, coordinates, or dimensions (e.g. "1080px", "0-1080", "px")
-- NO panel/section labels, numbers, or indicators (e.g. "Panel 1", "1/5", "2/5", "Section 1")
-- NO aspect ratio text (e.g. "4:5", "16:9")
-- NO UI elements, borders between sections, dotted lines, or grid markers
+ABSOLUTELY FORBIDDEN:
+- NO pixel measurements, coordinates, or dimensions
+- NO panel/section labels, numbers, or indicators
+- NO aspect ratio text, UI elements, borders, grid markers
 - NO technical annotations of any kind
-The image must be a CLEAN, SEAMLESS panoramic artwork with ZERO technical overlays.
-
-CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
-The logo will be added separately after generation. Do NOT invent or hallucinate any logos.
+- NO logos, brand marks, watermarks, or company name text (logo added separately)
 `;
 
       // Add reference image if provided
@@ -547,32 +542,100 @@ async function resizeAndCropToExact(
 function extractBrandColors(profile: any, briefing: any): string {
   const colors: string[] = [];
   
-  // Try to get colors from profile
-  if (profile?.brand_colors) {
-    if (Array.isArray(profile.brand_colors)) {
-      colors.push(...profile.brand_colors);
-    } else if (typeof profile.brand_colors === 'string') {
-      colors.push(profile.brand_colors);
-    }
+  // Priority 1: Explicit brand_colors array from profile
+  if (profile?.brand_colors && Array.isArray(profile.brand_colors) && profile.brand_colors.length > 0) {
+    colors.push(...profile.brand_colors);
   }
   
-  // Try to get from brand_identity if it mentions colors
-  if (profile?.brand_identity && typeof profile.brand_identity === 'string') {
+  // Priority 2: Try to get from brand_identity if it mentions colors
+  if (colors.length === 0 && profile?.brand_identity && typeof profile.brand_identity === 'string') {
     const colorMatches = profile.brand_identity.match(/#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgb\([^)]+\)|rgba\([^)]+\)/g);
     if (colorMatches) colors.push(...colorMatches);
   }
   
-  // Check briefing for color info
-  if (briefing?.brand_perception && typeof briefing.brand_perception === 'string') {
+  // Priority 3: Check briefing for color info
+  if (colors.length === 0 && briefing?.brand_perception && typeof briefing.brand_perception === 'string') {
     const colorMatches = briefing.brand_perception.match(/#[0-9A-Fa-f]{6}|#[0-9A-Fa-f]{3}|rgb\([^)]+\)|rgba\([^)]+\)/g);
     if (colorMatches) colors.push(...colorMatches);
   }
   
   if (colors.length > 0) {
-    return colors.slice(0, 5).join(", ");
+    return colors.slice(0, 8).join(", ");
   }
   
   return "";
+}
+
+function buildBrandStyleBlock(profile: any, briefing: any): string {
+  let block = "";
+  
+  const brandColors = extractBrandColors(profile, briefing);
+  const brandFonts = profile?.brand_fonts;
+  const visualStyle = profile?.visual_style;
+  const visualStylePrompt = profile?.visual_style_prompt;
+  
+  if (brandColors || brandFonts || visualStyle) {
+    block += `
+============================================
+BRAND IDENTITY SYSTEM (MANDATORY — FOLLOW STRICTLY):
+============================================
+ALL images for this brand MUST follow a CONSISTENT visual identity. Every image generated should look like it belongs to the SAME Instagram feed — same color palette, same typography style, same visual language.
+`;
+  }
+  
+  if (brandColors) {
+    block += `
+COLOR PALETTE (STRICT — USE ONLY THESE):
+- Primary brand colors: ${brandColors}
+- These colors MUST dominate the image design (backgrounds, overlays, text colors, gradients, shapes)
+- DO NOT introduce random colors outside this palette
+- You may use lighter/darker tints of these colors for variety, but stay within the brand family
+- White and very dark tones can be used as neutrals alongside the brand colors
+- Every image should be IMMEDIATELY recognizable as belonging to this brand through its colors
+`;
+  }
+  
+  if (brandFonts) {
+    block += `
+TYPOGRAPHY STYLE (STRICT):
+- Brand fonts: ${brandFonts}
+- ALL text in the image must follow this typography style
+- Use bold/heavy weights for headlines, lighter weights for body text
+- Maintain CONSISTENT font sizes and styles across all images
+- If the exact font is not available, use the CLOSEST match in style (sans-serif, serif, geometric, etc.)
+`;
+  }
+  
+  if (visualStyle) {
+    block += `
+VISUAL STYLE (STRICT):
+${visualStyle}
+- This style MUST be consistent across ALL images — same feel, same aesthetic, same design language
+- Small variations are allowed (different layouts, different content), but the OVERALL LOOK must be unified
+`;
+  }
+  
+  if (visualStylePrompt) {
+    block += `
+ADDITIONAL BRAND INSTRUCTIONS:
+${visualStylePrompt}
+`;
+  }
+  
+  if (!brandColors && !brandFonts && !visualStyle) {
+    // Even without explicit settings, encourage consistency
+    block += `
+============================================
+VISUAL CONSISTENCY (IMPORTANT):
+============================================
+- Maintain a COHESIVE visual style suitable for a professional Instagram feed
+- Use a LIMITED color palette (max 3-4 colors) consistently
+- Keep typography style consistent
+- Every image should look like it belongs to the SAME brand
+`;
+  }
+  
+  return block;
 }
 
 function buildEnhancedPrompt(
@@ -583,11 +646,7 @@ function buildEnhancedPrompt(
   includeLogo: boolean,
   referenceImageUrl: string | null = null
 ): string {
-  // Determine aspect ratio and dimensions based on format
-  // Instagram Feed: 1080x1350 (4:5 aspect ratio)
-  // Stories/Reels: 1080x1920 (9:16 aspect ratio)
-  // Cover: 1920x1080 (16:9 aspect ratio)
-  let aspectRatio = "4:5"; // Default for feed posts (1080x1350)
+  let aspectRatio = "4:5";
   let dimensions = "1080x1350";
   if (format === "story" || format === "reel") {
     aspectRatio = "9:16";
@@ -600,142 +659,69 @@ function buildEnhancedPrompt(
     dimensions = "1080x1350";
   }
 
-  // Extract brand colors
-  const brandColors = extractBrandColors(profile, briefing);
-
-  let prompt = `CRITICAL: Generate a HIGH-QUALITY professional image with EXACT dimensions ${dimensions} pixels and ${aspectRatio} aspect ratio.
-
-This is for Instagram ${format || "feed post"}.
-The image MUST be portrait orientation (taller than wide) with exact ${aspectRatio} ratio.
-Width: ${dimensions.split("x")[0]} pixels
-Height: ${dimensions.split("x")[1]} pixels
+  let prompt = `Generate a HIGH-QUALITY professional image with EXACT dimensions ${dimensions} pixels and ${aspectRatio} aspect ratio for Instagram ${format || "feed post"}.
 
 Visual Request: ${basePrompt}
 
 `;
 
-  // Add brand context
+  // Add brand context from profile
   if (profile?.tone_of_voice) {
     prompt += `Brand tone: ${profile.tone_of_voice}\n`;
   }
-
   if (briefing?.brand_perception) {
     prompt += `Brand personality: ${briefing.brand_perception}\n`;
   }
 
-  // Add brand colors if available
-  if (brandColors) {
-    prompt += `
-BRAND COLOR PALETTE (MUST USE):
-- Use these exact brand colors: ${brandColors}
-- The design should primarily use these colors
-- Maintain color harmony with the brand palette
-`;
-  }
+  // Add the comprehensive brand style block
+  prompt += buildBrandStyleBlock(profile, briefing);
 
-  // Add style guidelines with MAXIMUM QUALITY emphasis
   prompt += `
 ============================================
-PHYSICAL REALISM REQUIREMENTS (ABSOLUTELY CRITICAL):
+PHYSICAL REALISM REQUIREMENTS:
 ============================================
-- The image MUST be 100% PHYSICALLY REALISTIC and POSSIBLE in the real world
-- ALL people, objects, and scenes must follow real-world physics and spatial logic
-- People must be positioned in REALISTIC places:
-  * People sit on CHAIRS at the sides of tables, NEVER on top of tables or in the middle
-  * People stand on the FLOOR, not floating or in impossible positions
-  * Hands, arms, and body parts must be anatomically correct and natural
-- Perspective and depth must be correct:
-  * Objects closer to the camera should be larger
-  * Correct vanishing points and horizon lines
-  * Realistic shadows matching light sources
-- NO surreal, impossible, or physically incorrect compositions
-- The scene should look like a HIGH-END PROFESSIONAL PHOTOGRAPH
-- If showing a meeting room: people sit AROUND the table on chairs, NOT on the table
-- If showing an office: furniture is in logical positions, people interact naturally
+- 100% physically realistic, correct proportions and perspective
+- People in realistic positions, correct anatomy
+- Professional studio-grade photography/design quality
+- Realistic shadows matching light sources
 
 ============================================
-IMAGE QUALITY REQUIREMENTS (ABSOLUTELY CRITICAL):
+IMAGE QUALITY:
 ============================================
-- Generate at the MAXIMUM possible resolution and quality
-- ULTRA-SHARP details - no blur, no pixelation, no artifacts
-- PROFESSIONAL studio-grade photography/design quality
-- Rich, vibrant colors with proper contrast and saturation
+- ULTRA-SHARP details, no blur, no pixelation, no artifacts
+- Rich, vibrant colors with proper contrast
 - CLEAN, CRISP edges and precise details
-- NO compression artifacts, NO noise, NO grain
-- Render ALL elements with PERFECT clarity
-- Text (if any) must be CRYSTAL CLEAR and razor-sharp - NO pixelation or blur on text
-- 8K-level detail quality
 - Professional lighting with realistic shadows and highlights
 
 ============================================
-SAFE ZONE - LOGO & ELEMENT POSITIONING (CRITICAL):
+SAFE ZONE:
 ============================================
-- The image will be cropped from a square to ${aspectRatio} format
-- Keep ALL important elements in the ABSOLUTE CENTER 50% of the image
-- Leave AT LEAST 25% padding from ALL edges (top, bottom, left, right)
-- NEVER place logos, text, faces, or important elements anywhere near the edges
-- The logo (if included) MUST be positioned in the EXACT CENTER or in the CENTER of the safe zone
-- NO important elements should be cut off when cropped
-`;
+- Keep important elements in the center 50% of the image
+- Leave at least 25% padding from all edges
+- Leave bottom-right corner clean for logo overlay
 
-  // Logo is ALWAYS applied via programmatic canvas overlay, NEVER by AI generation
-  // We must tell the AI explicitly NOT to include logos to prevent hallucinated/fake logos
-  prompt += `
 ============================================
-LOGO / BRAND MARK INSTRUCTIONS (ABSOLUTELY CRITICAL):
+LOGO (CRITICAL):
 ============================================
-- Do NOT include any logo, brand mark, watermark, or company name text in the image
-- The logo will be added separately AFTER image generation via a precise overlay process
-- If you include any fabricated or hallucinated logo, it will be WRONG and ruin the image
-- Leave the bottom-right corner area clean/simple so the real logo can be overlaid there
-- This is NON-NEGOTIABLE — NO logos or brand marks of any kind in the generated image
+- Do NOT include any logo, brand mark, watermark, or company name text
+- The logo will be added separately after generation
+- This is NON-NEGOTIABLE
+
+============================================
+LANGUAGE:
+============================================
+- Any text MUST be in correct Brazilian Portuguese with proper accents (á, é, í, ó, ú, ã, õ, ê, â, ç)
+- PREFER creating images WITHOUT text — let the design speak
+- If text is essential, keep to 1-3 words maximum, large and centered
+- Do NOT render technical labels (px, ratios, panel numbers)
 `;
 
   if (referenceImageUrl) {
     prompt += `
-============================================
-REFERENCE IMAGE INSTRUCTIONS:
-============================================
-- I am providing a reference image that MUST be incorporated into this design
-- The subject from the reference image should appear prominently in the generated image
-- Position the reference subject in the CENTER SAFE ZONE
-- Maintain the key visual features and recognizable elements of the reference subject
-- Integrate the reference subject naturally into the overall composition
-- The reference subject should be the focal point or a key element of the image
+REFERENCE IMAGE: Incorporate the provided reference image naturally into the design, maintaining its key visual features as the focal point.
 `;
   }
-
-  prompt += `
-============================================
-LANGUAGE & TEXT REQUIREMENTS (ABSOLUTELY CRITICAL):
-============================================
-- If ANY text appears in the image, it MUST be in 100% CORRECT Brazilian Portuguese
-- VERIFY EVERY WORD for correct spelling before generating
-- Common words that MUST be spelled correctly:
-  * "crescimento" (NOT "cresiemento" or "crecimento")
-  * "estrutura" (NOT "estructura")
-  * "negócio" (NOT "negocio" without accent)
-  * "você" (NOT "voce" without accent)
-  * "é" (NOT "e" without accent when it's the verb)
-  * "não" (NOT "nao" without tilde)
-- Double-check all spelling, grammar, and accents before generating
-- Common Portuguese accents that MUST be correct: á, é, í, ó, ú, ã, õ, ê, â, ç
-- Do NOT generate text with spelling errors, wrong accents, or grammatical mistakes
-- If UNSURE about any spelling, DO NOT include text - leave space for text overlay later
-- TRIPLE CHECK any Portuguese text for correctness
-
-============================================
-FINAL INSTRUCTIONS:
-============================================
-- STRONGLY PREFER creating images WITHOUT text - let the design speak for itself
-- If text is absolutely essential, keep it to 1-3 words maximum, CENTERED and LARGE
-- Do NOT render technical labels or UI text (e.g. "1080px", "px", "4:5", "1/3", counters, sizing tags)
-- Create a visually striking image that works as a background for text overlays added later
-- MAXIMUM resolution, PROFESSIONAL quality, STUDIO-GRADE output
-- Every pixel must be perfect
-`;
 
   return prompt;
 }
 
-// buildConnectedCarouselPrompt removed - panoramic split approach is now used directly in the handler
