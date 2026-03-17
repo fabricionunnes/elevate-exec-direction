@@ -39,6 +39,7 @@ interface HRWhatsAppConfig {
   notify_on_stage_change: boolean;
   notify_phone: string | null;
   notify_group_jid: string | null;
+  notify_group_name: string | null;
   message_template: string | null;
 }
 
