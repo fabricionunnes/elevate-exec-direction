@@ -165,6 +165,7 @@ const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPag
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
 const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
+const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnalysisPublicPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
