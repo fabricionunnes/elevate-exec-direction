@@ -224,11 +224,26 @@ const TaskManagerPage = () => {
     setEditingTask(task);
   }, []);
 
+  const companies = useMemo(() => {
+    const unique = new Map<string, string>();
+    tasks.forEach(t => {
+      if (t.company_name && t.company_name !== "Sem empresa") {
+        unique.set(t.company_name, t.company_name);
+      }
+    });
+    return Array.from(unique.values()).sort();
+  }, [tasks]);
+
+  const filteredTasks = useMemo(() => {
+    if (selectedCompany === "all") return tasks;
+    return tasks.filter(t => t.company_name === selectedCompany);
+  }, [tasks, selectedCompany]);
+
   const statusCounts = useMemo(() => {
     const today = new Date();
     today.setHours(0, 0, 0, 0);
     const counts = { overdue: 0, pending: 0, in_progress: 0, completed: 0 };
-    tasks.forEach(t => {
+    filteredTasks.forEach(t => {
       if (t.status === "inactive") return;
       const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
       if (isOverdue) {
@@ -238,7 +253,7 @@ const TaskManagerPage = () => {
       }
     });
     return counts;
-  }, [tasks]);
+  }, [filteredTasks]);
 
   return (
     <div className="min-h-screen bg-background">
