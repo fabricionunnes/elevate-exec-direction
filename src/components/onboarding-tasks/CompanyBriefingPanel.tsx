@@ -170,8 +170,43 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     }
     if (projectId) {
       fetchCACForms();
+      fetchTrafficForm();
     }
   }, [companyId, projectId]);
+
+  const fetchTrafficForm = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("traffic_analysis_forms")
+        .select("id, access_token, status, submitted_at, created_at")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!error) setTrafficForm(data);
+    } catch (err) {
+      console.error("Error fetching traffic form:", err);
+    }
+  };
+
+  const createTrafficForm = async () => {
+    if (!projectId) return;
+    setCreatingTrafficForm(true);
+    try {
+      const { data, error } = await supabase
+        .from("traffic_analysis_forms")
+        .insert({ project_id: projectId })
+        .select("id, access_token, status, submitted_at, created_at")
+        .single();
+      if (error) throw error;
+      setTrafficForm(data);
+      toast.success("Formulário de tráfego criado!");
+    } catch (err) {
+      console.error("Error creating traffic form:", err);
+      toast.error("Erro ao criar formulário");
+    } finally {
+      setCreatingTrafficForm(false);
+    }
+  };
 
   const fetchSalesHistory = async () => {
     try {
