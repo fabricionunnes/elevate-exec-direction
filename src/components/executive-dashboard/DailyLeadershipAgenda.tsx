@@ -241,7 +241,8 @@ export function DailyLeadershipAgenda() {
         .from("onboarding_tasks")
         .select("id", { count: "exact", head: true })
         .lt("due_date", today)
-        .neq("status", "completed");
+        .neq("status", "completed")
+        .neq("status", "inactive");
       setOverdueTasks(overdueCount || 0);
 
       // Fetch today's meetings
