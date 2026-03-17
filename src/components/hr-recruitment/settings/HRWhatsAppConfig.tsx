@@ -298,7 +298,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
                 ) : (
                   <RefreshCw className="h-3 w-3" />
                 )}
-                Atualizar
+                {groups.length > 0 ? "Atualizar" : "Buscar grupos"}
               </Button>
             )}
           </div>
@@ -320,13 +320,13 @@ export function HRWhatsAppConfig({ projectId }: Props) {
                   {notifyGroupJid && notifyGroupJid !== "none"
                     ? (() => {
                         const selected = groups.find((g) => g.id === notifyGroupJid);
-                        return selected ? (
+                        return (
                           <span className="flex items-center gap-2 truncate">
                             <Users className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
-                            {selected.subject}
-                            <span className="text-xs text-muted-foreground">({selected.size} membros)</span>
+                            {selected?.subject || notifyGroupName || notifyGroupJid}
+                            {selected && <span className="text-xs text-muted-foreground">({selected.size} membros)</span>}
                           </span>
-                        ) : notifyGroupJid;
+                        );
                       })()
                     : <span className="text-muted-foreground">Selecione um grupo (ou deixe vazio)</span>}
                   <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
@@ -342,6 +342,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
                         value="none"
                         onSelect={() => {
                           setNotifyGroupJid("none");
+                          setNotifyGroupName("");
                           setGroupOpen(false);
                         }}
                       >
@@ -354,6 +355,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
                           value={group.subject}
                           onSelect={() => {
                             setNotifyGroupJid(group.id);
+                            setNotifyGroupName(group.subject);
                             setGroupOpen(false);
                           }}
                         >
@@ -368,11 +370,27 @@ export function HRWhatsAppConfig({ projectId }: Props) {
                 </Command>
               </PopoverContent>
             </Popover>
+          ) : notifyGroupJid && notifyGroupJid !== "none" && notifyGroupName ? (
+            <div className="flex items-center gap-2 p-3 bg-muted/50 rounded-lg">
+              <Users className="h-4 w-4 text-muted-foreground shrink-0" />
+              <span className="text-sm font-medium truncate">{notifyGroupName}</span>
+              <Button
+                variant="ghost"
+                size="sm"
+                className="ml-auto h-7 text-xs"
+                onClick={() => {
+                  setNotifyGroupJid("");
+                  setNotifyGroupName("");
+                }}
+              >
+                Remover
+              </Button>
+            </div>
           ) : (
             <div className="p-3 bg-muted/50 rounded-lg">
               <p className="text-sm text-muted-foreground">
                 {selectedInstance
-                  ? "Nenhum grupo encontrado. Verifique se a instância está conectada."
+                  ? 'Clique em "Buscar grupos" para carregar os grupos disponíveis.'
                   : "Selecione uma instância para carregar os grupos."}
               </p>
             </div>
