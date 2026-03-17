@@ -28394,7 +28394,7 @@ export type Database = {
           {
             foreignKeyName: "whitelabel_subscriptions_tenant_id_fkey"
             columns: ["tenant_id"]
-            isOneToOne: false
+            isOneToOne: true
             referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },

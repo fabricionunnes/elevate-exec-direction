@@ -507,6 +507,9 @@ const App = () => (
             <Route path="/checkout" element={<CheckoutPage />} />
             <Route path="/fatura" element={<PublicInvoicePage />} />
             
+            {/* White-Label Admin */}
+            <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
+            
             <Route path="*" element={<NotFound />} />
           </Routes>
           </Suspense>
