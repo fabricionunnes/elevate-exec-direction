@@ -1,0 +1,63 @@
+import { useState } from "react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { Building2, Palette, Users, CreditCard, Globe } from "lucide-react";
+import { useTenant } from "@/contexts/TenantContext";
+import { TenantBrandingSettings } from "@/components/whitelabel/TenantBrandingSettings";
+import { TenantUsersManagement } from "@/components/whitelabel/TenantUsersManagement";
+import { TenantUsageDashboard } from "@/components/whitelabel/TenantUsageDashboard";
+import { TenantDomainSettings } from "@/components/whitelabel/TenantDomainSettings";
+
+export default function WhitelabelAdminPage() {
+  const { tenant, isWhiteLabel } = useTenant();
+  const [activeTab, setActiveTab] = useState("usage");
+
+  return (
+    <div className="min-h-screen bg-background">
+      <div className="container mx-auto py-6 px-4 max-w-6xl">
+        <div className="mb-6">
+          <h1 className="text-2xl font-bold text-foreground flex items-center gap-2">
+            <Building2 className="h-6 w-6 text-primary" />
+            Painel White-Label
+          </h1>
+          <p className="text-muted-foreground mt-1">
+            Gerencie a personalização, usuários e assinatura do seu tenant
+          </p>
+        </div>
+
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="space-y-4">
+          <TabsList className="grid w-full grid-cols-2 md:grid-cols-4 h-auto">
+            <TabsTrigger value="usage" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <CreditCard className="h-4 w-4" />
+              <span className="hidden sm:inline">Uso &</span> Billing
+            </TabsTrigger>
+            <TabsTrigger value="branding" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Palette className="h-4 w-4" />
+              Branding
+            </TabsTrigger>
+            <TabsTrigger value="users" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Users className="h-4 w-4" />
+              Usuários
+            </TabsTrigger>
+            <TabsTrigger value="domain" className="flex items-center gap-1.5 text-xs sm:text-sm">
+              <Globe className="h-4 w-4" />
+              Domínio
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="usage">
+            <TenantUsageDashboard />
+          </TabsContent>
+          <TabsContent value="branding">
+            <TenantBrandingSettings />
+          </TabsContent>
+          <TabsContent value="users">
+            <TenantUsersManagement />
+          </TabsContent>
+          <TabsContent value="domain">
+            <TenantDomainSettings />
+          </TabsContent>
+        </Tabs>
+      </div>
+    </div>
+  );
+}
