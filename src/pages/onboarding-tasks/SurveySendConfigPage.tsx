@@ -89,6 +89,52 @@ export default function SurveySendConfigPage() {
   const [logsStatusFilter, setLogsStatusFilter] = useState<string | null>(null);
   const [logsPage, setLogsPage] = useState(1);
   const LOGS_PER_PAGE = 10;
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResend = async (log: SendLog) => {
+    if (!log.company_id) {
+      toast.error("Empresa não identificada para reenvio");
+      return;
+    }
+    setResendingId(log.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/survey-sender`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            type: log.survey_type,
+            manual: true,
+            test: true,
+            test_company_id: log.company_id,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.sent > 0) {
+        toast.success(`Pesquisa reenviada para ${log.contact_name || "empresa"}!`);
+      } else {
+        toast.warning("Nenhuma mensagem enviada. Verifique telefone e projeto.");
+      }
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao reenviar");
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
