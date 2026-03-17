@@ -178,31 +178,27 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       toast.error("Selecione uma instância do WhatsApp");
       return;
     }
-    setSaving(true);
-    try {
-      const payload = {
-        project_id: projectId,
-        instance_id: selectedInstance,
-        notify_on_stage_change: notifyEnabled,
-        notify_phone: notifyPhone.trim() || null,
-        notify_group_jid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
-        message_template: messageTemplate.trim() || DEFAULT_TEMPLATE,
-        updated_at: new Date().toISOString(),
-      };
 
-      if (config) {
-        const { project_id, ...updatePayload } = payload;
-        const { error } = await supabase
-          .from("hr_whatsapp_config")
-          .update(updatePayload)
-          .eq("id", config.id);
-        if (error) throw error;
-      } else {
-        // Use upsert to avoid duplicate insert errors
-        const { error } = await supabase
-          .from("hr_whatsapp_config")
-          .upsert(payload, { onConflict: "project_id" });
-        if (error) throw error;
+    setSaving(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("hr-whatsapp-config", {
+        body: {
+          action: "save",
+          projectId,
+          instanceId: selectedInstance,
+          notifyOnStageChange: notifyEnabled,
+          notifyPhone: notifyPhone.trim() || null,
+          notifyGroupJid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
+          messageTemplate: messageTemplate.trim() || DEFAULT_TEMPLATE,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.config) {
+        setConfig(data.config as HRWhatsAppConfig);
       }
 
       toast.success("Configuração salva com sucesso!");
