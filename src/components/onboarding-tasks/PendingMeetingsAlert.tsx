@@ -121,20 +121,23 @@ export const PendingMeetingsAlert = () => {
       const { error } = await supabase
         .from("onboarding_meeting_notes")
         .update({
-          notes: formData.notes.trim(),
+          notes: formData.isNoShow ? (formData.notes.trim() || "Cliente não compareceu") : formData.notes.trim(),
           attendees: formData.attendees.trim() || null,
           recording_link: formData.recordingLink.trim() || null,
           is_finalized: true,
           is_internal: formData.isInternal,
+          is_no_show: formData.isNoShow,
         })
         .eq("id", selectedMeeting.id);
 
       if (error) throw error;
 
-      // Trigger CSAT survey send
-      import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
-        triggerCSATAfterFinalization(selectedMeeting.id, selectedMeeting.project_id);
-      });
+      // Only trigger CSAT survey if client showed up
+      if (!formData.isNoShow) {
+        import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+          triggerCSATAfterFinalization(selectedMeeting.id, selectedMeeting.project_id);
+        });
+      }
 
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
