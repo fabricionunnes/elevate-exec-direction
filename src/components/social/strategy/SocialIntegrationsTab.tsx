@@ -140,8 +140,9 @@ export const SocialIntegrationsTab = ({ projectId }: SocialIntegrationsTabProps)
   const handleConnectInstagram = async () => {
     setConnecting("instagram");
     try {
+      const redirectUri = window.location.origin + "/";
       const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
-        body: { projectId, action: "get_auth_url" },
+        body: { projectId, action: "get_auth_url", redirectUri },
       });
 
       if (error) throw error;
