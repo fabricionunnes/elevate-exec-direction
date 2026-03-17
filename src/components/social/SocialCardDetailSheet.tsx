@@ -691,6 +691,25 @@ export const SocialCardDetailSheet = ({
     
     setDeleting(true);
     try {
+      // If published on Instagram, delete from there first
+      if (card.instagram_post_id) {
+        toast.loading("Removendo do Instagram...", { id: "ig-delete" });
+        try {
+          const { data, error: igError } = await supabase.functions.invoke("social-instagram-delete", {
+            body: { cardId: card.id, projectId },
+          });
+          if (igError) {
+            console.error("Error deleting from Instagram:", igError);
+            toast.error("Erro ao remover do Instagram, mas o card será excluído localmente", { id: "ig-delete" });
+          } else {
+            toast.success("Removido do Instagram", { id: "ig-delete" });
+          }
+        } catch (err) {
+          console.error("Error calling Instagram delete:", err);
+          toast.dismiss("ig-delete");
+        }
+      }
+
       // Delete related records first (cascade might not handle all)
       await supabase
         .from("social_content_history")
