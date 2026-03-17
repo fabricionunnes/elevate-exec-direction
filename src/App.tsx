@@ -236,6 +236,9 @@ const CustomerPointsPublicForm = lazy(() => import("./pages/customer-points/Cust
 const CustomerPointsSalespersonForm = lazy(() => import("./pages/customer-points/CustomerPointsSalespersonForm"));
 const CustomerPointsSalespersonTokens = lazy(() => import("./pages/customer-points/CustomerPointsSalespersonTokens"));
 
+// White-Label Admin
+const WhitelabelAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelAdminPage"));
+
 // OnboardingStaffLayout needs to be lazy too
 const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
 
