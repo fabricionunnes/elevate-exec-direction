@@ -43,6 +43,7 @@ const TaskManagerPage = () => {
   const [currentStaff, setCurrentStaff] = useState<StaffMember | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
   const [selectedStaffId, setSelectedStaffId] = useState<string>("mine");
+  const [selectedCompany, setSelectedCompany] = useState<string>("all");
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban" | "calendar">("kanban");
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
