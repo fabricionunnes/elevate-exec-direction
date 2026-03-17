@@ -291,20 +291,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         return !m.is_finalized && isAfter(meetingDate, now);
       }
       if (statusFilter === "pending_finalization") {
-        const isPastAndOpen = !m.is_finalized && isBefore(meetingDate, now);
-        if (!isPastAndOpen) return false;
-        // Admin/Master with "all" filter: show all pending
-        if (isAdminOrMaster && selectedStaffId === "all") return true;
-        // Admin/Master with specific staff filter: show only that staff's calendar or projects
-        if (isAdminOrMaster && selectedStaffId !== "all") {
-          if (m.calendar_owner_id === selectedStaffId) return true;
-          const company = m.project?.onboarding_company;
-          return company?.consultant_id === selectedStaffId || company?.cs_id === selectedStaffId;
-        }
-        // Non-admin: show own calendar OR meetings from own projects
-        if (m.calendar_owner_id === staffId) return true;
-        const company = m.project?.onboarding_company;
-        return company?.consultant_id === staffId || company?.cs_id === staffId;
+        return !m.is_finalized && isBefore(meetingDate, now);
       }
       if (statusFilter === "finalized") {
         return m.is_finalized;
