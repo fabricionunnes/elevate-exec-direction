@@ -2776,7 +2776,7 @@ const OnboardingTasksPage = () => {
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
-                              {getStatusBadge(company.status)}
+                              {getStatusBadge(company.status, company.projects?.find((p: any) => p.status === "notice_period")?.notice_end_date)}
                               {/* Tag "Empresa Nova" for companies started within last 30 days.
                                   Fallback: if contract_start_date is missing (ex: leads coming from integrations), use created_at. */}
                               {differenceInDays(
