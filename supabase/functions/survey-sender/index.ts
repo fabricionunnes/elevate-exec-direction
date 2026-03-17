@@ -159,46 +159,84 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
         .limit(1)
         .maybeSingle();
 
-      // If responded recently (minimum 30 days, or frequencyDays if greater), skip
+      const minDaysBetweenResponses = Math.max(30, frequencyDays);
+
+      // If responded recently, skip. If responded 30+ days ago, start a NEW cycle (attempt 1).
       if (lastResponse) {
         const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
-        const minDaysBetweenResponses = Math.max(30, frequencyDays);
         if (daysSinceResponse < minDaysBetweenResponses) {
           console.log(`Company ${companyName} (${companyId}) skipped: last NPS response was ${daysSinceResponse} days ago (min: ${minDaysBetweenResponses})`);
           continue;
         }
-      }
+        // 30+ days since last response — check if we already started a new cycle after this response
+        const { data: logsAfterResponse } = await supabase
+          .from("survey_send_log")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("survey_type", "nps")
+          .in("status", ["sent", "pending"])
+          .gt("created_at", lastResponse.created_at)
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-      // Check last send log for this company
-      const { data: lastLogs } = await supabase
-        .from("survey_send_log")
-        .select("*")
-        .eq("company_id", companyId)
-        .eq("survey_type", "nps")
-        .in("status", ["sent", "pending"])
-        .order("created_at", { ascending: false })
-        .limit(1);
+        const logAfterResponse = logsAfterResponse?.[0];
 
-      const lastLog = lastLogs?.[0];
+        if (!logAfterResponse) {
+          // No sends after the last response — start fresh cycle
+          ruleToSend = rules[0];
+          attemptNumber = 1;
+          console.log(`Company ${companyName} (${companyId}): ${daysSinceResponse} days since last NPS response, starting new cycle`);
+        } else {
+          // Already sent after the response — handle follow-ups within this cycle
+          const daysSinceLastSend = daysBetween(new Date(logAfterResponse.sent_at || logAfterResponse.created_at), now);
+          attemptNumber = (logAfterResponse.attempt_number || 0) + 1;
 
-      if (!lastLog) {
-        ruleToSend = rules[0];
-        attemptNumber = 1;
+          if (attemptNumber > maxFollowUps) continue;
+
+          const ruleIndex = attemptNumber - 1;
+          if (ruleIndex < rules.length) {
+            const currentRule = rules[ruleIndex];
+            const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
+            const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
+            if (daysSinceLastSend < daysNeeded) {
+              ruleToSend = null;
+            } else {
+              ruleToSend = currentRule;
+            }
+          }
+        }
       } else {
-        const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
-        attemptNumber = (lastLog.attempt_number || 0) + 1;
+        // Never responded — check send logs normally
+        const { data: lastLogs } = await supabase
+          .from("survey_send_log")
+          .select("*")
+          .eq("company_id", companyId)
+          .eq("survey_type", "nps")
+          .in("status", ["sent", "pending"])
+          .order("created_at", { ascending: false })
+          .limit(1);
 
-        if (attemptNumber > maxFollowUps) continue;
+        const lastLog = lastLogs?.[0];
 
-        const ruleIndex = attemptNumber - 1;
-        if (ruleIndex < rules.length) {
-          const currentRule = rules[ruleIndex];
-          const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
-          const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
-          if (daysSinceLastSend < daysNeeded) {
-            ruleToSend = null;
-          } else {
-            ruleToSend = currentRule;
+        if (!lastLog) {
+          ruleToSend = rules[0];
+          attemptNumber = 1;
+        } else {
+          const daysSinceLastSend = daysBetween(new Date(lastLog.sent_at || lastLog.created_at), now);
+          attemptNumber = (lastLog.attempt_number || 0) + 1;
+
+          if (attemptNumber > maxFollowUps) continue;
+
+          const ruleIndex = attemptNumber - 1;
+          if (ruleIndex < rules.length) {
+            const currentRule = rules[ruleIndex];
+            const prevRule = ruleIndex > 0 ? rules[ruleIndex - 1] : null;
+            const daysNeeded = prevRule ? currentRule.day_offset - prevRule.day_offset : currentRule.day_offset;
+            if (daysSinceLastSend < daysNeeded) {
+              ruleToSend = null;
+            } else {
+              ruleToSend = currentRule;
+            }
           }
         }
       }
