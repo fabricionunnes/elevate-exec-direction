@@ -96,19 +96,34 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
-      let query = supabase
-        .from("onboarding_tasks")
-        .select(`
-          id, title, description, status, priority, due_date, start_date,
-          project_id, responsible_staff_id, assignee_id, tags, recurrence,
-          onboarding_projects!inner(product_name, onboarding_companies(name))
-        `)
-        .neq("status", "inactive")
-        .order("due_date", { ascending: true, nullsFirst: false });
+      // Fetch non-completed tasks first (pending + in_progress), then completed separately with limit
+      const fetchTasks = async (statusFilter: string[], limit: number) => {
+        let q = supabase
+          .from("onboarding_tasks")
+          .select(`
+            id, title, description, status, priority, due_date, start_date,
+            project_id, responsible_staff_id, assignee_id, tags, recurrence,
+            onboarding_projects!inner(product_name, onboarding_companies(name))
+          `)
+          .in("status", statusFilter)
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .limit(limit);
 
-      if (staffIdToFilter) {
-        query = query.eq("responsible_staff_id", staffIdToFilter);
-      }
+        if (staffIdToFilter) {
+          q = q.eq("responsible_staff_id", staffIdToFilter);
+        }
+        return q;
+      };
+
+      // Fetch pending + in_progress (up to 5000)
+      const { data: activeTasks, error: activeErr } = await fetchTasks(["pending", "in_progress"], 5000);
+      if (activeErr) throw activeErr;
+
+      // Fetch recent completed (up to 200)
+      const { data: completedTasks, error: completedErr } = await fetchTasks(["completed"], 200);
+      if (completedErr) throw completedErr;
+
+      const data = [...(activeTasks || []), ...(completedTasks || [])];
 
       // For non-admin consultants, filter by their assigned companies/projects
       if (!isAdmin && currentStaff) {
