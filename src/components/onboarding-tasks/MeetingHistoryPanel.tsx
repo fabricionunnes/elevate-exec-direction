@@ -483,10 +483,10 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     const normalizedCompanyName = nameToUse.toLowerCase().trim();
     
     // Extract meaningful keywords from company name (ignore common words)
-    const stopWords = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'ltda', 'me', 'eireli', 'sa', 's/a', 'comercio', 'servicos']);
+    const stopWords = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'ltda', 'me', 'eireli', 'sa', 's/a', 'cia', 'comercio', 'servicos', 'grupo', 'empresa']);
     const companyKeywords = normalizedCompanyName
       .split(/[\s\-_,.|]+/)
-      .filter(word => word.length >= 3 && !stopWords.has(word));
+      .filter(word => word.length >= 4 && !stopWords.has(word));
     
     return events.filter(event => {
       const title = (event.title || "").toLowerCase();
@@ -498,9 +498,12 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
         return true;
       }
       
-      // Check if any significant keyword from the company name appears in the event
-      // Require at least one keyword match (for companies with distinctive names)
-      return companyKeywords.some(keyword => combined.includes(keyword));
+      // Check if any significant keyword from the company name appears as a whole word in the event
+      // Use word boundary matching to avoid partial matches (e.g. "cia" in "comercial")
+      return companyKeywords.some(keyword => {
+        const regex = new RegExp(`\\b${keyword.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\b`, 'i');
+        return regex.test(combined);
+      });
     });
   };
 
