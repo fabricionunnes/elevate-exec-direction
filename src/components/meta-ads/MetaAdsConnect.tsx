@@ -43,7 +43,7 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = window.location.origin;
+      const redirectUri = `${window.location.origin}/meta-ads-callback`;
       // Store the exact redirect_uri so the callback page uses the same one
       sessionStorage.setItem("meta_ads_redirect_uri", redirectUri);
       const { data, error } = await supabase.functions.invoke("meta-ads-sync", {
