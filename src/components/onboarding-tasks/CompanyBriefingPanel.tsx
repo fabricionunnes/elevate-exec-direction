@@ -156,6 +156,10 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   // Contract documents state
   const [contractDocuments, setContractDocuments] = useState<any[]>([]);
   const [uploadingContract, setUploadingContract] = useState(false);
+  // Traffic analysis state
+  const [trafficForm, setTrafficForm] = useState<any>(null);
+  const [creatingTrafficForm, setCreatingTrafficForm] = useState(false);
+
   useEffect(() => {
     if (companyId) {
       fetchCompanyData();
