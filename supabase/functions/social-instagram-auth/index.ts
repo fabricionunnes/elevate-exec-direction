@@ -82,7 +82,6 @@ Deno.serve(async (req) => {
         throw new Error("code and projectId are required");
       }
 
-      // Use client-provided redirectUri to match what was used in auth URL
       const redirectUri = clientRedirectUri || DEFAULT_SITE_URL;
       console.log("Exchanging code for access token for project:", projectId, "with redirect_uri:", redirectUri);
 
@@ -102,7 +101,6 @@ Deno.serve(async (req) => {
       }
 
       const shortLivedToken = tokenData.access_token;
-      console.log("Short-lived token obtained");
 
       // Step 2: Exchange for long-lived token
       const longLivedUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
@@ -120,13 +118,13 @@ Deno.serve(async (req) => {
       }
 
       const longLivedToken = longLivedData.access_token;
-      const expiresIn = longLivedData.expires_in || 5184000; // ~60 days default
-      console.log("Long-lived token obtained, expires in:", expiresIn);
+      const expiresIn = longLivedData.expires_in || 5184000;
 
-      // Step 3: Get connected Instagram Business accounts
+      // Step 3: Get ALL connected Instagram Business accounts
       const accountsUrl = new URL("https://graph.facebook.com/v19.0/me/accounts");
       accountsUrl.searchParams.set("access_token", longLivedToken);
       accountsUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username,profile_picture_url,followers_count}");
+      accountsUrl.searchParams.set("limit", "100");
 
       const accountsResponse = await fetch(accountsUrl.toString());
       const accountsData = await accountsResponse.json();
@@ -136,13 +134,12 @@ Deno.serve(async (req) => {
         throw new Error(accountsData.error.message || "Failed to fetch accounts");
       }
 
-      let instagramAccount: any = null;
-
+      // Collect ALL Instagram accounts
+      const instagramAccounts: any[] = [];
       for (const page of accountsData.data || []) {
         if (page.instagram_business_account) {
           const igAccount = page.instagram_business_account;
           
-          // Get page access token for this specific page
           const pageTokenUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
           pageTokenUrl.searchParams.set("fields", "access_token");
           pageTokenUrl.searchParams.set("access_token", longLivedToken);
@@ -150,7 +147,7 @@ Deno.serve(async (req) => {
           const pageTokenResponse = await fetch(pageTokenUrl.toString());
           const pageTokenData = await pageTokenResponse.json();
 
-          instagramAccount = {
+          instagramAccounts.push({
             instagram_user_id: igAccount.id,
             username: igAccount.username,
             profile_picture_url: igAccount.profile_picture_url,
@@ -158,19 +155,57 @@ Deno.serve(async (req) => {
             facebook_page_id: page.id,
             facebook_page_name: page.name,
             access_token: pageTokenData.access_token || longLivedToken,
-          };
-          break; // Use the first account found
+          });
         }
       }
 
-      if (!instagramAccount) {
+      if (instagramAccounts.length === 0) {
         throw new Error("Nenhuma conta Instagram Business conectada foi encontrada. Certifique-se de que sua página do Facebook está conectada a uma conta Instagram Business ou Creator.");
       }
 
+      // If multiple accounts, return the list for the user to choose
+      if (instagramAccounts.length > 1) {
+        // Store the token temporarily so we can use it when the user picks an account
+        // We'll store in a temporary record
+        const tempData = {
+          longLivedToken,
+          expiresIn,
+          accounts: instagramAccounts,
+        };
+
+        // Save temp data keyed by projectId
+        await supabase
+          .from("social_instagram_accounts")
+          .upsert({
+            project_id: projectId,
+            instagram_user_id: "pending_selection",
+            instagram_username: null,
+            access_token: longLivedToken,
+            token_expires_at: new Date(Date.now() + expiresIn * 1000).toISOString(),
+            is_connected: false,
+          }, { onConflict: "project_id", ignoreDuplicates: false });
+
+        return new Response(JSON.stringify({ 
+          success: true,
+          multiple: true,
+          accounts: instagramAccounts.map(a => ({
+            instagram_user_id: a.instagram_user_id,
+            username: a.username,
+            profile_picture_url: a.profile_picture_url,
+            followers_count: a.followers_count,
+            facebook_page_name: a.facebook_page_name,
+          })),
+          projectId,
+        }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      // Single account — save directly
+      const instagramAccount = instagramAccounts[0];
       const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-      // Step 4: Save to social_instagram_accounts table
-      const { data: savedAccount, error: upsertError } = await supabase
+      const { error: upsertError } = await supabase
         .from("social_instagram_accounts")
         .upsert({
           project_id: projectId,
@@ -182,10 +217,7 @@ Deno.serve(async (req) => {
           access_token: instagramAccount.access_token,
           token_expires_at: expiresAt.toISOString(),
           is_connected: true,
-        }, { 
-          onConflict: "project_id",
-          ignoreDuplicates: false 
-        })
+        }, { onConflict: "project_id", ignoreDuplicates: false })
         .select()
         .single();
 
@@ -194,7 +226,6 @@ Deno.serve(async (req) => {
         throw new Error("Failed to save Instagram account");
       }
 
-      // Also update social_integrations table
       await supabase
         .from("social_integrations")
         .upsert({
@@ -205,14 +236,78 @@ Deno.serve(async (req) => {
           last_sync_at: new Date().toISOString(),
         }, { onConflict: "project_id,platform" });
 
-      console.log("Instagram account saved for project:", projectId);
-
       return new Response(JSON.stringify({ 
         success: true,
         account: {
           username: instagramAccount.username,
           profile_picture_url: instagramAccount.profile_picture_url,
         }
+      }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Action: Select a specific account (after multiple were found)
+    if (action === "select_account") {
+      const { projectId, instagramUserId, username, profilePictureUrl, followersCount, facebookPageId, facebookPageName } = body;
+
+      if (!projectId || !instagramUserId) {
+        throw new Error("projectId and instagramUserId are required");
+      }
+
+      // Retrieve the stored token from the pending record
+      const { data: pendingAccount, error: fetchErr } = await supabase
+        .from("social_instagram_accounts")
+        .select("access_token, token_expires_at")
+        .eq("project_id", projectId)
+        .single();
+
+      if (fetchErr || !pendingAccount?.access_token) {
+        throw new Error("Token expirado. Reconecte o Instagram.");
+      }
+
+      // Get the page-specific access token
+      const longLivedToken = pendingAccount.access_token;
+      const pageTokenUrl = new URL(`https://graph.facebook.com/v19.0/${facebookPageId}`);
+      pageTokenUrl.searchParams.set("fields", "access_token");
+      pageTokenUrl.searchParams.set("access_token", longLivedToken);
+      
+      const pageTokenResponse = await fetch(pageTokenUrl.toString());
+      const pageTokenData = await pageTokenResponse.json();
+      const pageAccessToken = pageTokenData.access_token || longLivedToken;
+
+      const { error: upsertError } = await supabase
+        .from("social_instagram_accounts")
+        .upsert({
+          project_id: projectId,
+          instagram_user_id: instagramUserId,
+          instagram_username: username,
+          profile_picture_url: profilePictureUrl,
+          followers_count: followersCount,
+          facebook_page_id: facebookPageId,
+          access_token: pageAccessToken,
+          token_expires_at: pendingAccount.token_expires_at,
+          is_connected: true,
+        }, { onConflict: "project_id", ignoreDuplicates: false });
+
+      if (upsertError) {
+        console.error("Error saving selected account:", upsertError);
+        throw new Error("Failed to save Instagram account");
+      }
+
+      await supabase
+        .from("social_integrations")
+        .upsert({
+          project_id: projectId,
+          platform: "instagram",
+          status: "connected",
+          account_name: `@${username}`,
+          last_sync_at: new Date().toISOString(),
+        }, { onConflict: "project_id,platform" });
+
+      return new Response(JSON.stringify({ 
+        success: true,
+        account: { username, profile_picture_url: profilePictureUrl }
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
