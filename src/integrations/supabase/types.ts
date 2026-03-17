@@ -28661,7 +28661,11 @@ export type Database = {
         | "rh_client"
         | "estoque"
         | "financeiro"
-      onboarding_task_status: "pending" | "in_progress" | "completed"
+      onboarding_task_status:
+        | "pending"
+        | "in_progress"
+        | "completed"
+        | "inactive"
       onboarding_ticket_status: "open" | "in_progress" | "resolved" | "closed"
       plan_status: "draft" | "published" | "archived"
       portal_role: "admin_unv" | "admin_company" | "member"
@@ -28913,7 +28917,12 @@ export const Constants = {
         "estoque",
         "financeiro",
       ],
-      onboarding_task_status: ["pending", "in_progress", "completed"],
+      onboarding_task_status: [
+        "pending",
+        "in_progress",
+        "completed",
+        "inactive",
+      ],
       onboarding_ticket_status: ["open", "in_progress", "resolved", "closed"],
       plan_status: ["draft", "published", "archived"],
       portal_role: ["admin_unv", "admin_company", "member"],
