@@ -8,6 +8,7 @@ import { ArrowLeft, LayoutGrid, CalendarDays, Loader2, RefreshCw } from "lucide-
 import { toast } from "sonner";
 import { TaskKanbanBoard } from "@/components/task-manager/TaskKanbanBoard";
 import { TaskCalendarView } from "@/components/task-manager/TaskCalendarView";
+import { TaskManagerEditDialog } from "@/components/task-manager/TaskManagerEditDialog";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskStatus = Database["public"]["Enums"]["onboarding_task_status"];
@@ -44,6 +45,7 @@ const TaskManagerPage = () => {
   const [selectedStaffId, setSelectedStaffId] = useState<string>("mine");
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban" | "calendar">("kanban");
+  const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
 
   useEffect(() => {
     loadInitialData();
@@ -96,7 +98,6 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
-      // For non-admin consultants, get allowed project IDs first
       let allowedProjectIds: string[] | null = null;
       if (!isAdmin && currentStaff) {
         const { data: assignedProjects } = await supabase
@@ -160,9 +161,7 @@ const TaskManagerPage = () => {
         .filter((t: any) => {
           const project = t.onboarding_projects;
           if (!project) return false;
-          // Exclude inactive/completed projects
           if (project.status && !["active", "notice"].includes(project.status)) return false;
-          // Exclude inactive companies
           const company = project.onboarding_companies;
           if (company?.status && company.status !== "active") return false;
           return true;
@@ -195,11 +194,8 @@ const TaskManagerPage = () => {
   };
 
   const updateTaskStatus = useCallback(async (taskId: string, newStatus: TaskStatus) => {
-    // Optimistic update
     setTasks(prev => prev.map(t =>
-      t.id === taskId
-        ? { ...t, status: newStatus, ...(newStatus === "completed" ? {} : {}) }
-        : t
+      t.id === taskId ? { ...t, status: newStatus } : t
     ));
 
     try {
@@ -218,14 +214,26 @@ const TaskManagerPage = () => {
     } catch (err) {
       console.error(err);
       toast.error("Erro ao atualizar status");
-      loadTasks(); // Revert
+      loadTasks();
     }
   }, []);
 
+  const handleTaskClick = useCallback((task: TaskWithProject) => {
+    setEditingTask(task);
+  }, []);
+
   const statusCounts = useMemo(() => {
-    const counts = { pending: 0, in_progress: 0, completed: 0 };
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+    const counts = { overdue: 0, pending: 0, in_progress: 0, completed: 0 };
     tasks.forEach(t => {
-      if (t.status in counts) counts[t.status as keyof typeof counts]++;
+      if (t.status === "inactive") return;
+      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      if (isOverdue) {
+        counts.overdue++;
+      } else if (t.status in counts) {
+        counts[t.status as keyof typeof counts]++;
+      }
     });
     return counts;
   }, [tasks]);
@@ -241,6 +249,9 @@ const TaskManagerPage = () => {
             <div>
               <h1 className="text-lg font-bold">Gerenciador de Tarefas</h1>
               <p className="text-xs text-muted-foreground">
+                {statusCounts.overdue > 0 && (
+                  <span className="text-red-500 font-medium">{statusCounts.overdue} em atraso · </span>
+                )}
                 {statusCounts.pending} pendentes · {statusCounts.in_progress} em progresso · {statusCounts.completed} concluídas
               </p>
             </div>
@@ -288,11 +299,20 @@ const TaskManagerPage = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : view === "kanban" ? (
-          <TaskKanbanBoard tasks={tasks} onStatusChange={updateTaskStatus} />
+          <TaskKanbanBoard tasks={tasks} onStatusChange={updateTaskStatus} onTaskClick={handleTaskClick} />
         ) : (
           <TaskCalendarView tasks={tasks} onStatusChange={updateTaskStatus} />
         )}
       </div>
+
+      <TaskManagerEditDialog
+        task={editingTask}
+        onClose={() => setEditingTask(null)}
+        onTaskUpdated={loadTasks}
+        staffList={staff}
+        isAdmin={isAdmin}
+        currentStaffId={currentStaff?.id || null}
+      />
     </div>
   );
 };

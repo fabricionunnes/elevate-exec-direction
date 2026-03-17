@@ -10,9 +10,10 @@ interface Props {
   color: string;
   tasks: TaskWithProject[];
   count: number;
+  onTaskClick: (task: TaskWithProject) => void;
 }
 
-export const KanbanColumn = ({ id, label, color, tasks, count }: Props) => {
+export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick }: Props) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
@@ -29,7 +30,9 @@ export const KanbanColumn = ({ id, label, color, tasks, count }: Props) => {
       <ScrollArea className="flex-1 p-2" style={{ maxHeight: "calc(100vh - 240px)" }}>
         <div className="space-y-2">
           {tasks.map(task => (
-            <TaskCard key={task.id} task={task} />
+            <div key={task.id} onClick={() => onTaskClick(task)} className="cursor-pointer">
+              <TaskCard task={task} />
+            </div>
           ))}
           {tasks.length === 0 && (
             <p className="text-xs text-muted-foreground text-center py-8">

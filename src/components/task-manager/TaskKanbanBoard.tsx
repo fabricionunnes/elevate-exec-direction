@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import {
   DndContext,
   DragEndEvent,
@@ -9,7 +9,6 @@ import {
   useSensors,
   closestCorners,
 } from "@dnd-kit/core";
-import { useState } from "react";
 import type { TaskWithProject } from "@/pages/onboarding-tasks/TaskManagerPage";
 import type { Database } from "@/integrations/supabase/types";
 import { KanbanColumn } from "./KanbanColumn";
@@ -17,7 +16,8 @@ import { TaskCard } from "./TaskCard";
 
 type TaskStatus = Database["public"]["Enums"]["onboarding_task_status"];
 
-const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
+const COLUMNS: { id: TaskStatus | "overdue"; label: string; color: string }[] = [
+  { id: "overdue", label: "Em Atraso", color: "border-t-red-500" },
   { id: "pending", label: "Pendente", color: "border-t-yellow-500" },
   { id: "in_progress", label: "Em Progresso", color: "border-t-blue-500" },
   { id: "completed", label: "Concluída", color: "border-t-green-500" },
@@ -26,27 +26,39 @@ const COLUMNS: { id: TaskStatus; label: string; color: string }[] = [
 interface Props {
   tasks: TaskWithProject[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
+  onTaskClick: (task: TaskWithProject) => void;
 }
 
-export const TaskKanbanBoard = ({ tasks, onStatusChange }: Props) => {
+export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick }: Props) => {
   const [activeTask, setActiveTask] = useState<TaskWithProject | null>(null);
 
   const sensors = useSensors(
     useSensor(PointerSensor, { activationConstraint: { distance: 8 } })
   );
 
-  const tasksByStatus = useMemo(() => {
-    const map: Record<TaskStatus, TaskWithProject[]> = {
+  const tasksByColumn = useMemo(() => {
+    const today = new Date();
+    today.setHours(0, 0, 0, 0);
+
+    const map: Record<string, TaskWithProject[]> = {
+      overdue: [],
       pending: [],
       in_progress: [],
       completed: [],
-      inactive: [],
     };
+
     tasks.forEach(t => {
-      if (t.status !== "inactive") {
-        map[t.status]?.push(t);
+      if (t.status === "inactive") return;
+
+      // Check if overdue: has due_date in the past and not completed
+      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      if (isOverdue) {
+        map.overdue.push(t);
+      } else if (map[t.status]) {
+        map[t.status].push(t);
       }
     });
+
     return map;
   }, [tasks]);
 
@@ -61,10 +73,13 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange }: Props) => {
     if (!over) return;
 
     const taskId = active.id as string;
-    const newStatus = over.id as TaskStatus;
+    const targetColumn = over.id as string;
+
+    // Map "overdue" drops to "pending" since overdue is not a real status
+    const newStatus: TaskStatus = targetColumn === "overdue" ? "pending" : targetColumn as TaskStatus;
 
     const task = tasks.find(t => t.id === taskId);
-    if (task && task.status !== newStatus && COLUMNS.some(c => c.id === newStatus)) {
+    if (task && task.status !== newStatus && ["pending", "in_progress", "completed"].includes(newStatus)) {
       onStatusChange(taskId, newStatus);
     }
   };
@@ -76,15 +91,16 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange }: Props) => {
       onDragStart={handleDragStart}
       onDragEnd={handleDragEnd}
     >
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4 min-h-[calc(100vh-180px)]">
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4 min-h-[calc(100vh-180px)]">
         {COLUMNS.map(col => (
           <KanbanColumn
             key={col.id}
             id={col.id}
             label={col.label}
             color={col.color}
-            tasks={tasksByStatus[col.id] || []}
-            count={tasksByStatus[col.id]?.length || 0}
+            tasks={tasksByColumn[col.id] || []}
+            count={tasksByColumn[col.id]?.length || 0}
+            onTaskClick={onTaskClick}
           />
         ))}
       </div>
