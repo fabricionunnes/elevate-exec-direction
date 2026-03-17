@@ -163,8 +163,8 @@ Deno.serve(async (req) => {
         throw new Error("Nenhuma conta Instagram Business conectada foi encontrada. Certifique-se de que sua página do Facebook está conectada a uma conta Instagram Business ou Creator.");
       }
 
-      // If multiple accounts, return the list for the user to choose
-      if (instagramAccounts.length > 1) {
+      // Always show selection UI so the user can confirm which account to connect
+      if (instagramAccounts.length >= 1) {
         // Store the token temporarily so we can use it when the user picks an account
         // We'll store in a temporary record
         const tempData = {
