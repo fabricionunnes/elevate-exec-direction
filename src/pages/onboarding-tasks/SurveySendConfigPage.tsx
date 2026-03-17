@@ -713,11 +713,12 @@ export default function SurveySendConfigPage() {
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
                   <TableHead className="text-center w-[80px]">Ação</TableHead>
+                </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={logsTab === "csat" ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={logsTab === "csat" ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       {logsStatusFilter ? "Nenhum registro com este status" : "Nenhum envio registrado ainda"}
                     </TableCell>
                   </TableRow>
@@ -748,6 +749,24 @@ export default function SurveySendConfigPage() {
                       <TableCell>{getStatusBadge(log.status)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {log.sent_at ? format(parseISO(log.sent_at), "dd/MM/yyyy HH:mm") : "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {["sent", "failed", "pending"].includes(log.status) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={resendingId === log.id}
+                            onClick={() => handleResend(log)}
+                            title="Reenviar pesquisa"
+                          >
+                            {resendingId === log.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
