@@ -79,7 +79,7 @@ const SECTIONS: FormSection[] = [
     fields: [
       { key: "has_run_ads", label: "Você já investiu em tráfego pago (anúncios online)?", type: "yesno", required: true },
       { key: "platforms_used", label: "Quais plataformas de anúncio você utiliza ou já utilizou?", type: "text", placeholder: "Ex: Meta Ads (Facebook/Instagram), Google Ads, TikTok Ads, LinkedIn Ads...", required: true },
-      { key: "monthly_budget", label: "Qual é o investimento mensal atual em mídia paga?", type: "text", placeholder: "Ex: R$ 2.000/mês, R$ 5.000/mês...", required: true },
+      { key: "monthly_budget", label: "Qual é o investimento mensal atual em mídia paga?", type: "currency", placeholder: "R$ 0,00", required: true },
       { key: "budget_management", label: "Quem gerencia atualmente o tráfego pago?", type: "text", placeholder: "Ex: Eu mesmo, agência X, gestor interno...", required: true },
     ],
   },
