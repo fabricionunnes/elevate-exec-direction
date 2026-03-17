@@ -124,6 +124,13 @@ export default function SurveySendConfigPage() {
       }
       const result = await response.json();
       if (result.sent > 0) {
+        // Update the original log status to "sent" if it was failed/pending
+        if (["failed", "pending"].includes(log.status)) {
+          await supabase
+            .from("survey_send_log")
+            .update({ status: "sent", sent_at: new Date().toISOString(), error_message: null })
+            .eq("id", log.id);
+        }
         toast.success(`Pesquisa reenviada para ${log.contact_name || "empresa"}!`);
       } else {
         toast.warning("Nenhuma mensagem enviada. Verifique telefone e projeto.");
