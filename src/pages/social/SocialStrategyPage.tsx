@@ -20,51 +20,55 @@ export const SocialStrategyPage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Header */}
-      <div className="p-4 border-b bg-card">
-        <h2 className="text-xl font-semibold">Base Estratégica do Social Media</h2>
-        <p className="text-sm text-muted-foreground mt-1">
-          Fundamentos e referências para toda a produção de conteúdo
+      <div className="p-3 md:p-4 border-b bg-card">
+        <h2 className="text-lg md:text-xl font-semibold">Base Estratégica</h2>
+        <p className="text-xs md:text-sm text-muted-foreground mt-1">
+          Fundamentos e referências para produção de conteúdo
         </p>
       </div>
 
       {/* Tabs Navigation */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <div className="border-b bg-card px-4">
-          <TabsList className="h-12 bg-transparent gap-2">
+        <div className="border-b bg-card px-2 md:px-4 overflow-x-auto">
+          <TabsList className="h-11 md:h-12 bg-transparent gap-1 md:gap-2 w-max min-w-full md:w-auto">
             <TabsTrigger 
               value="company-info" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-2 md:px-3"
             >
-              <Building2 className="h-4 w-4" />
-              Informações da Empresa
+              <Building2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Informações da Empresa</span>
+              <span className="sm:hidden">Empresa</span>
             </TabsTrigger>
             <TabsTrigger 
               value="inspiration" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-2 md:px-3"
             >
-              <Lightbulb className="h-4 w-4" />
-              Pesquisas & Inspirações
+              <Lightbulb className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Pesquisas & Inspirações</span>
+              <span className="sm:hidden">Inspirações</span>
             </TabsTrigger>
             <TabsTrigger 
               value="briefing" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-2 md:px-3"
             >
-              <FileText className="h-4 w-4" />
+              <FileText className="h-3.5 w-3.5 md:h-4 md:w-4" />
               Briefing
             </TabsTrigger>
             <TabsTrigger 
               value="ai" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-2 md:px-3"
             >
-              <Sparkles className="h-4 w-4" />
-              IA Criativa
+              <Sparkles className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">IA Criativa</span>
+              <span className="sm:hidden">IA</span>
             </TabsTrigger>
             <TabsTrigger 
               value="integrations" 
-              className="gap-2 data-[state=active]:bg-primary/10 data-[state=active]:text-primary"
+              className="gap-1.5 md:gap-2 text-xs md:text-sm whitespace-nowrap data-[state=active]:bg-primary/10 data-[state=active]:text-primary px-2 md:px-3"
             >
-              <Link2 className="h-4 w-4" />
-              Integrações
+              <Link2 className="h-3.5 w-3.5 md:h-4 md:w-4" />
+              <span className="hidden sm:inline">Integrações</span>
+              <span className="sm:hidden">Integr.</span>
             </TabsTrigger>
           </TabsList>
         </div>

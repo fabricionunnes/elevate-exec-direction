@@ -272,45 +272,51 @@ export const SocialPipelinePage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Toolbar */}
-      <div className="p-4 border-b bg-card flex items-center justify-between">
+      <div className="p-2 md:p-4 border-b bg-card flex flex-col sm:flex-row items-stretch sm:items-center justify-between gap-2">
         <div className="flex items-center gap-2">
-          <Button onClick={() => setCreateDialogOpen(true)} className="gap-2">
+          <Button onClick={() => setCreateDialogOpen(true)} size="sm" className="gap-2 flex-1 sm:flex-none">
             <Plus className="h-4 w-4" />
-            Novo Conteúdo
+            <span className="hidden xs:inline">Novo Conteúdo</span>
+            <span className="xs:hidden">Novo</span>
           </Button>
-          <div className="flex items-center border rounded-lg overflow-hidden ml-2">
+          <Button variant="ghost" size="icon" onClick={loadData} className="shrink-0 sm:hidden">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
+        </div>
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center border rounded-lg overflow-hidden flex-1 sm:flex-none">
             <Button
               variant={viewMode === "kanban" ? "default" : "ghost"}
               size="sm"
-              className="rounded-none gap-1.5"
+              className="rounded-none gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm"
               onClick={() => setViewMode("kanban")}
             >
               <LayoutGrid className="h-4 w-4" />
-              Kanban
+              <span className="hidden sm:inline">Kanban</span>
             </Button>
             <Button
               variant={viewMode === "calendar" ? "default" : "ghost"}
               size="sm"
-              className="rounded-none gap-1.5"
+              className="rounded-none gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm"
               onClick={() => setViewMode("calendar")}
             >
               <CalendarDays className="h-4 w-4" />
-              Calendário
+              <span className="hidden sm:inline">Calendário</span>
             </Button>
             <Button
               variant={viewMode === "performance" ? "default" : "ghost"}
               size="sm"
-              className="rounded-none gap-1.5"
+              className="rounded-none gap-1.5 flex-1 sm:flex-none text-xs sm:text-sm"
               onClick={() => setViewMode("performance")}
             >
               <BarChart3 className="h-4 w-4" />
-              Performance
+              <span className="hidden sm:inline">Performance</span>
             </Button>
           </div>
+          <Button variant="ghost" size="icon" onClick={loadData} className="shrink-0 hidden sm:flex">
+            <RefreshCw className="h-4 w-4" />
+          </Button>
         </div>
-        <Button variant="ghost" size="icon" onClick={loadData}>
-          <RefreshCw className="h-4 w-4" />
-        </Button>
       </div>
 
       {/* Content */}

@@ -1,10 +1,18 @@
-import { Outlet, useParams, useNavigate, Link } from "react-router-dom";
+import { Outlet, useParams, useNavigate, Link, useLocation } from "react-router-dom";
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2, BookOpen } from "lucide-react";
+import { ArrowLeft, Instagram, Settings, LayoutGrid, Loader2, BookOpen, Menu } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
+import { useIsMobile } from "@/hooks/use-mobile";
+import {
+  Sheet,
+  SheetContent,
+  SheetHeader,
+  SheetTitle,
+  SheetTrigger,
+} from "@/components/ui/sheet";
 
 const useIsClientUser = () => {
   const [isClient, setIsClient] = useState(false);
@@ -34,9 +42,12 @@ interface ProjectInfo {
 export const SocialLayout = () => {
   const { projectId } = useParams<{ projectId: string }>();
   const navigate = useNavigate();
+  const location = useLocation();
   const [project, setProject] = useState<ProjectInfo | null>(null);
   const [loading, setLoading] = useState(true);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const isClient = useIsClientUser();
+  const isMobile = useIsMobile();
 
   useEffect(() => {
     if (projectId) {
@@ -46,7 +57,6 @@ export const SocialLayout = () => {
 
   const loadProjectInfo = async () => {
     try {
-      // Load project info
       const { data: projectData, error: projectError } = await supabase
         .from("onboarding_projects")
         .select(`
@@ -59,7 +69,6 @@ export const SocialLayout = () => {
 
       if (projectError) throw projectError;
 
-      // Check if board exists, create if not
       let { data: board, error: boardError } = await supabase
         .from("social_content_boards")
         .select("id")
@@ -67,7 +76,6 @@ export const SocialLayout = () => {
         .single();
 
       if (boardError && boardError.code === "PGRST116") {
-        // Board doesn't exist, create it
         const { data: newBoard, error: createError } = await supabase
           .from("social_content_boards")
           .insert({ project_id: projectId, name: "Pipeline de Conteúdo" })
@@ -77,7 +85,6 @@ export const SocialLayout = () => {
         if (createError) throw createError;
         board = newBoard;
 
-        // Create default stages
         await supabase.rpc("create_social_default_stages", { p_board_id: board.id });
       } else if (boardError) {
         throw boardError;
@@ -118,41 +125,48 @@ export const SocialLayout = () => {
     ...(!isClient ? [{ to: `/social/${projectId}/settings`, label: "Configurações", icon: Settings }] : []),
   ];
 
+  const isActive = (item: typeof navItems[0]) => {
+    const currentPath = location.pathname;
+    if (item.end) {
+      return currentPath === item.to;
+    }
+    return currentPath.startsWith(item.to);
+  };
+
   return (
     <div className="min-h-screen bg-background flex flex-col">
       {/* Header */}
       <header className="border-b bg-card sticky top-0 z-40">
-        <div className="flex items-center justify-between px-4 py-3">
-          <div className="flex items-center gap-3">
+        <div className="flex items-center justify-between px-3 md:px-4 py-2 md:py-3">
+          <div className="flex items-center gap-2 md:gap-3 min-w-0">
             <Button
               variant="ghost"
               size="icon"
+              className="shrink-0"
               onClick={() => navigate(backPath)}
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div className="flex items-center gap-2">
-              <div className="h-9 w-9 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
-                <Instagram className="h-5 w-5 text-white" />
+            <div className="flex items-center gap-2 min-w-0">
+              <div className="h-8 w-8 md:h-9 md:w-9 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center shrink-0">
+                <Instagram className="h-4 w-4 md:h-5 md:w-5 text-white" />
               </div>
-              <div>
-                <h1 className="font-semibold text-lg">UNV Social</h1>
-                <p className="text-xs text-muted-foreground">
+              <div className="min-w-0">
+                <h1 className="font-semibold text-base md:text-lg leading-tight">UNV Social</h1>
+                <p className="text-xs text-muted-foreground truncate">
                   {project.company_name || project.product_name}
                 </p>
               </div>
             </div>
           </div>
 
-          {/* Navigation */}
-          <nav className="flex items-center gap-1">
-            {navItems.map((item) => {
-              const isActive = window.location.hash.endsWith(item.to) || 
-                (item.end && window.location.hash === `#${item.to}`);
-              return (
+          {/* Desktop Navigation */}
+          {!isMobile && (
+            <nav className="flex items-center gap-1">
+              {navItems.map((item) => (
                 <Link key={item.to} to={item.to}>
                   <Button
-                    variant={isActive ? "secondary" : "ghost"}
+                    variant={isActive(item) ? "secondary" : "ghost"}
                     size="sm"
                     className="gap-2"
                   >
@@ -160,9 +174,47 @@ export const SocialLayout = () => {
                     {item.label}
                   </Button>
                 </Link>
-              );
-            })}
-          </nav>
+              ))}
+            </nav>
+          )}
+
+          {/* Mobile Menu */}
+          {isMobile && (
+            <Sheet open={mobileMenuOpen} onOpenChange={setMobileMenuOpen}>
+              <SheetTrigger asChild>
+                <Button variant="ghost" size="icon" className="shrink-0">
+                  <Menu className="h-5 w-5" />
+                </Button>
+              </SheetTrigger>
+              <SheetContent side="right" className="w-64 p-0">
+                <SheetHeader className="p-4 border-b">
+                  <SheetTitle className="text-left flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-lg bg-gradient-to-br from-pink-500 to-purple-600 flex items-center justify-center">
+                      <Instagram className="h-4 w-4 text-white" />
+                    </div>
+                    UNV Social
+                  </SheetTitle>
+                </SheetHeader>
+                <nav className="flex flex-col p-2 gap-1">
+                  {navItems.map((item) => (
+                    <Link
+                      key={item.to}
+                      to={item.to}
+                      onClick={() => setMobileMenuOpen(false)}
+                    >
+                      <Button
+                        variant={isActive(item) ? "secondary" : "ghost"}
+                        className="w-full justify-start gap-3"
+                      >
+                        <item.icon className="h-4 w-4" />
+                        {item.label}
+                      </Button>
+                    </Link>
+                  ))}
+                </nav>
+              </SheetContent>
+            </Sheet>
+          )}
         </div>
       </header>
 
