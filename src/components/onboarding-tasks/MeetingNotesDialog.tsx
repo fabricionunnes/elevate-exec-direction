@@ -163,6 +163,24 @@ export const MeetingNotesDialog = ({
 
       if (error) throw error;
 
+      // Trigger CSAT survey send - get the meeting ID from the insert result
+      // For inserts, we need to get the created meeting ID
+      const { data: createdMeeting } = await supabase
+        .from("onboarding_meeting_notes")
+        .select("id")
+        .eq("project_id", selectedProjectId)
+        .eq("subject", subject.trim())
+        .eq("is_finalized", true)
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (createdMeeting) {
+        import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+          triggerCSATAfterFinalization(createdMeeting.id, selectedProjectId);
+        });
+      }
+
       toast.success("Registro da reunião salvo com sucesso!");
       resetForm();
       onOpenChange(false);
