@@ -177,6 +177,7 @@ export default function RescheduleTasks() {
         `)
         .not('due_date', 'is', null)
         .neq('status', 'completed')
+        .neq('status', 'inactive')
         .in('onboarding_projects.status', ['active', 'cancellation_signaled'])
         .order('due_date', { ascending: true });
 
