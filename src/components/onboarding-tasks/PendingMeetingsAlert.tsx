@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { formatDateTimeLocal } from "@/lib/dateUtils";
-import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2, Lock } from "lucide-react";
+import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2, Lock, UserX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface PendingMeeting {
@@ -45,6 +45,7 @@ export const PendingMeetingsAlert = () => {
     attendees: "",
     recordingLink: "",
     isInternal: false,
+    isNoShow: false,
   });
 
   useEffect(() => {
@@ -110,7 +111,7 @@ export const PendingMeetingsAlert = () => {
   const handleFinalize = async () => {
     if (!selectedMeeting) return;
 
-    if (!formData.notes.trim()) {
+    if (!formData.isNoShow && !formData.notes.trim()) {
       toast.error("Descreva o que foi tratado na reunião");
       return;
     }
@@ -120,24 +121,27 @@ export const PendingMeetingsAlert = () => {
       const { error } = await supabase
         .from("onboarding_meeting_notes")
         .update({
-          notes: formData.notes.trim(),
+          notes: formData.isNoShow ? (formData.notes.trim() || "Cliente não compareceu") : formData.notes.trim(),
           attendees: formData.attendees.trim() || null,
           recording_link: formData.recordingLink.trim() || null,
           is_finalized: true,
           is_internal: formData.isInternal,
+          is_no_show: formData.isNoShow,
         })
         .eq("id", selectedMeeting.id);
 
       if (error) throw error;
 
-      // Trigger CSAT survey send
-      import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
-        triggerCSATAfterFinalization(selectedMeeting.id, selectedMeeting.project_id);
-      });
+      // Only trigger CSAT survey if client showed up
+      if (!formData.isNoShow) {
+        import("@/utils/triggerCSATSend").then(({ triggerCSATAfterFinalization }) => {
+          triggerCSATAfterFinalization(selectedMeeting.id, selectedMeeting.project_id);
+        });
+      }
 
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
-      setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false });
+      setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false, isNoShow: false });
       fetchPendingMeetings();
     } catch (error) {
       console.error("Error finalizing meeting:", error);
@@ -154,6 +158,7 @@ export const PendingMeetingsAlert = () => {
       attendees: "",
       recordingLink: "",
       isInternal: false,
+      isNoShow: false,
     });
   };
 
@@ -276,6 +281,21 @@ export const PendingMeetingsAlert = () => {
                   value={formData.recordingLink}
                   onChange={(e) => setFormData({ ...formData, recordingLink: e.target.value })}
                 />
+              </div>
+
+              {/* No Show Checkbox */}
+              <div className="flex items-center space-x-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <Checkbox
+                  id="is-no-show-finalize"
+                  checked={formData.isNoShow}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isNoShow: checked === true })}
+                />
+                <div className="flex items-center gap-2">
+                  <UserX className="h-4 w-4 text-destructive" />
+                  <Label htmlFor="is-no-show-finalize" className="text-sm font-normal cursor-pointer">
+                    Cliente não compareceu
+                  </Label>
+                </div>
               </div>
 
               {/* Internal Meeting Checkbox */}
