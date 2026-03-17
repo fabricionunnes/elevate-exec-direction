@@ -81,4 +81,6 @@ export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragg
       </div>
     </Card>
   );
-};
+});
+
+TaskCard.displayName = "TaskCard";
