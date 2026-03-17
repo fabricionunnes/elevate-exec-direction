@@ -445,6 +445,20 @@ export default function TrafficAnalysisPublicPage() {
                     rows={3}
                     className="resize-none"
                   />
+                ) : field.type === "currency" ? (
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                      value={formData[field.key] || ""}
+                      onChange={(e) => {
+                        const formatted = formatCurrency(e.target.value);
+                        setFormData((d) => ({ ...d, [field.key]: formatted }));
+                      }}
+                      placeholder={field.placeholder}
+                      className="pl-10"
+                      inputMode="numeric"
+                    />
+                  </div>
                 ) : (
                   <Input
                     value={formData[field.key] || ""}
