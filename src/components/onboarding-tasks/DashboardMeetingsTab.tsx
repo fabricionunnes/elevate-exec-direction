@@ -269,12 +269,16 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   // Pre-filter by selected staff - only show meetings from that staff's calendar
   const staffFilteredMeetings = useMemo(() => {
     if (selectedStaffId === "all" || !isAdminOrMaster) return meetings;
+    // Find the user_id for the selected staff
+    const selectedStaff = staffOptions.find((s) => s.id === selectedStaffId);
+    const selectedUserIds = [selectedStaffId];
+    if (selectedStaff?.user_id) selectedUserIds.push(selectedStaff.user_id);
     return meetings.filter((m) => {
-      // Primary filter: calendar owner
-      if (m.calendar_owner_id === selectedStaffId) return true;
+      // Match by calendar_owner_id (which stores user_id)
+      if (m.calendar_owner_id && selectedUserIds.includes(m.calendar_owner_id)) return true;
       return false;
     });
-  }, [meetings, selectedStaffId, isAdminOrMaster]);
+  }, [meetings, selectedStaffId, isAdminOrMaster, staffOptions]);
 
   const filteredMeetings = useMemo(() => {
     return staffFilteredMeetings.filter((m) => {
