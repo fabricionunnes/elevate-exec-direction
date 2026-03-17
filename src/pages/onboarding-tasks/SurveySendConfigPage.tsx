@@ -89,6 +89,52 @@ export default function SurveySendConfigPage() {
   const [logsStatusFilter, setLogsStatusFilter] = useState<string | null>(null);
   const [logsPage, setLogsPage] = useState(1);
   const LOGS_PER_PAGE = 10;
+  const [resendingId, setResendingId] = useState<string | null>(null);
+
+  const handleResend = async (log: SendLog) => {
+    if (!log.company_id) {
+      toast.error("Empresa não identificada para reenvio");
+      return;
+    }
+    setResendingId(log.id);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) throw new Error("Não autenticado");
+
+      const response = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/survey-sender`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+          body: JSON.stringify({
+            type: log.survey_type,
+            manual: true,
+            test: true,
+            test_company_id: log.company_id,
+          }),
+        }
+      );
+      if (!response.ok) {
+        const err = await response.json().catch(() => ({}));
+        throw new Error(err.error || `HTTP ${response.status}`);
+      }
+      const result = await response.json();
+      if (result.sent > 0) {
+        toast.success(`Pesquisa reenviada para ${log.contact_name || "empresa"}!`);
+      } else {
+        toast.warning("Nenhuma mensagem enviada. Verifique telefone e projeto.");
+      }
+      loadData();
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao reenviar");
+    } finally {
+      setResendingId(null);
+    }
+  };
 
   const loadData = useCallback(async () => {
     setLoading(true);
@@ -666,12 +712,13 @@ export default function SurveySendConfigPage() {
                   <TableHead className="text-center">Tentativa</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
+                  <TableHead className="text-center w-[80px]">Ação</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {paginatedLogs.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={logsTab === "csat" ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                    <TableCell colSpan={logsTab === "csat" ? 7 : 6} className="text-center py-8 text-muted-foreground">
                       {logsStatusFilter ? "Nenhum registro com este status" : "Nenhum envio registrado ainda"}
                     </TableCell>
                   </TableRow>
@@ -702,6 +749,24 @@ export default function SurveySendConfigPage() {
                       <TableCell>{getStatusBadge(log.status)}</TableCell>
                       <TableCell className="text-xs text-muted-foreground">
                         {log.sent_at ? format(parseISO(log.sent_at), "dd/MM/yyyy HH:mm") : "-"}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {["sent", "failed", "pending"].includes(log.status) && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            className="h-7 w-7"
+                            disabled={resendingId === log.id}
+                            onClick={() => handleResend(log)}
+                            title="Reenviar pesquisa"
+                          >
+                            {resendingId === log.id ? (
+                              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                            ) : (
+                              <RefreshCw className="h-3.5 w-3.5" />
+                            )}
+                          </Button>
+                        )}
                       </TableCell>
                     </TableRow>
                   ))
