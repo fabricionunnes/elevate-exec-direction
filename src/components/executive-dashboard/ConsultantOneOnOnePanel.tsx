@@ -358,7 +358,8 @@ export function ConsultantOneOnOnePanel() {
             .select("project_id")
             .in("project_id", projectIds)
             .lt("due_date", today)
-            .neq("status", "completed"),
+            .neq("status", "completed")
+            .neq("status", "inactive"),
           
           // All meetings for all projects (last 30 days only)
           supabase
