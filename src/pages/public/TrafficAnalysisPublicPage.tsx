@@ -49,7 +49,14 @@ interface ProjectInfo {
   company_name: string | null;
 }
 
-type FieldType = "yesno" | "text" | "textarea";
+type FieldType = "yesno" | "text" | "textarea" | "currency";
+
+const formatCurrency = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 interface FormField {
   key: string;
