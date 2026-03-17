@@ -1413,7 +1413,95 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
         </Card>
       )}
 
-      {/* Notas */}
+      {/* Diagnóstico de Tráfego Pago */}
+      {projectId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <BarChart3 className="h-5 w-5" />
+              Diagnóstico de Tráfego Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {trafficForm ? (
+              <>
+                {/* Status */}
+                <div className="flex items-center gap-2">
+                  <Badge variant={trafficForm.submitted_at ? "default" : "secondary"}>
+                    {trafficForm.submitted_at ? "Respondido" : "Pendente"}
+                  </Badge>
+                  {trafficForm.submitted_at && (
+                    <span className="text-xs text-muted-foreground">
+                      em {format(new Date(trafficForm.submitted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  )}
+                </div>
+
+                {/* Link */}
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  <Link2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <code className="text-sm flex-1 truncate">
+                    {getPublicBaseUrl()}?public=traffic-analysis&token={trafficForm.access_token}
+                  </code>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      navigator.clipboard.writeText(
+                        `${getPublicBaseUrl()}?public=traffic-analysis&token=${trafficForm.access_token}`
+                      );
+                      toast.success("Link copiado!");
+                    }}
+                  >
+                    <Copy className="h-4 w-4 mr-1" />
+                    Copiar
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(
+                      `${getPublicBaseUrl()}?public=traffic-analysis&token=${trafficForm.access_token}`,
+                      "_blank"
+                    )}
+                  >
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+
+                {/* Respostas se submetido */}
+                {trafficForm.submitted_at && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => window.open(
+                      `${getPublicBaseUrl()}/#/traffic-analysis/${trafficForm.access_token}`,
+                      "_blank"
+                    )}
+                  >
+                    <ExternalLink className="h-4 w-4 mr-2" />
+                    Ver Respostas
+                  </Button>
+                )}
+              </>
+            ) : (
+              <div className="text-center py-4 space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Nenhum formulário de diagnóstico de tráfego pago criado ainda.
+                </p>
+                <Button onClick={createTrafficForm} disabled={creatingTrafficForm}>
+                  {creatingTrafficForm ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <BarChart3 className="h-4 w-4 mr-2" />
+                  )}
+                  Criar Formulário
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
       <Card>
         <CardHeader>
           <CardTitle className="flex items-center gap-2">
