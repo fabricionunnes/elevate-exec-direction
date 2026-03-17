@@ -137,6 +137,7 @@ const TaskManagerPage = () => {
             onboarding_projects!inner(product_name, status, onboarding_companies(name, status))
           `)
           .in("status", statuses)
+          .in("onboarding_projects.status", ["active", "notice"])
           .order("due_date", { ascending: true, nullsFirst: false })
           .limit(limit);
 
