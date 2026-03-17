@@ -131,11 +131,13 @@ Deno.serve(async (req) => {
 
       if (accountsData.error) {
         console.error("Accounts fetch error:", accountsData.error);
-        throw new Error(accountsData.error.message || "Failed to fetch accounts");
+        throw new Error(tokenData.error.message || "Failed to fetch accounts");
       }
 
+      console.log("[Instagram OAuth] Facebook pages returned:", (accountsData.data || []).length);
+
       const instagramAccountsMap = new Map<string, any>();
-      const registerAccount = (page: any, igAccount: any, pageAccessToken?: string | null) => {
+      const registerAccount = (page: any, igAccount: any, source: string, pageAccessToken?: string | null) => {
         if (!igAccount?.id) return;
 
         instagramAccountsMap.set(igAccount.id, {
@@ -147,11 +149,15 @@ Deno.serve(async (req) => {
           facebook_page_name: page.name,
           access_token: pageAccessToken || page.access_token || longLivedToken,
         });
+
+        console.log(`[Instagram OAuth] Registered @${igAccount.username || igAccount.id} from ${source} on page ${page.name} (${page.id})`);
       };
 
       for (const page of accountsData.data || []) {
-        registerAccount(page, page.instagram_business_account, page.access_token);
-        registerAccount(page, page.connected_instagram_account, page.access_token);
+        console.log(`[Instagram OAuth] Inspecting page ${page.name} (${page.id}) | has instagram_business_account=${Boolean(page.instagram_business_account)} | has connected_instagram_account=${Boolean(page.connected_instagram_account)}`);
+
+        registerAccount(page, page.instagram_business_account, "instagram_business_account", page.access_token);
+        registerAccount(page, page.connected_instagram_account, "connected_instagram_account", page.access_token);
 
         const pageInstagramAccountsUrl = new URL(`https://graph.facebook.com/v22.0/${page.id}/instagram_accounts`);
         pageInstagramAccountsUrl.searchParams.set("access_token", page.access_token || longLivedToken);
@@ -166,12 +172,15 @@ Deno.serve(async (req) => {
           continue;
         }
 
+        console.log(`[Instagram OAuth] instagram_accounts for page ${page.name} (${page.id}):`, (pageInstagramAccountsData.data || []).length);
+
         for (const igAccount of pageInstagramAccountsData.data || []) {
-          registerAccount(page, igAccount, page.access_token);
+          registerAccount(page, igAccount, "page.instagram_accounts", page.access_token);
         }
       }
 
       const instagramAccounts = Array.from(instagramAccountsMap.values());
+      console.log("[Instagram OAuth] Total unique Instagram accounts found:", instagramAccounts.length);
 
       if (instagramAccounts.length === 0) {
         throw new Error("Nenhuma conta Instagram Business conectada foi encontrada. Certifique-se de que sua página do Facebook está conectada a uma conta Instagram Business ou Creator.");
