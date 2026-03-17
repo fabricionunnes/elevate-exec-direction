@@ -81,49 +81,60 @@ export function HRWhatsAppConfig({ projectId }: Props) {
 
   const fetchData = async () => {
     setLoading(true);
-    const [instancesRes, configRes, projectRes] = await Promise.all([
-      supabase
-        .from("whatsapp_instances")
-        .select("id, instance_name, display_name, status, api_url, api_key")
-        .order("display_name"),
-      supabase
-        .from("hr_whatsapp_config")
-        .select("*")
-        .eq("project_id", projectId)
-        .maybeSingle(),
-      supabase
-        .from("onboarding_projects")
-        .select("onboarding_company_id")
-        .eq("id", projectId)
-        .maybeSingle(),
-    ]);
 
-    setInstances(instancesRes.data || []);
+    try {
+      const [instancesRes, configRes, projectRes] = await Promise.all([
+        supabase
+          .from("whatsapp_instances")
+          .select("id, instance_name, display_name, status, api_url, api_key")
+          .order("display_name"),
+        supabase.functions.invoke("hr-whatsapp-config", {
+          body: {
+            action: "get",
+            projectId,
+          },
+        }),
+        supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id")
+          .eq("id", projectId)
+          .maybeSingle(),
+      ]);
 
-    // Fetch company phone
-    let companyPhone = "";
-    if (projectRes.data?.onboarding_company_id) {
-      const { data: company } = await supabase
-        .from("onboarding_companies")
-        .select("phone")
-        .eq("id", projectRes.data.onboarding_company_id)
-        .maybeSingle();
-      companyPhone = company?.phone || "";
+      if (configRes.error) throw configRes.error;
+      if (configRes.data?.error) throw new Error(configRes.data.error);
+
+      setInstances(instancesRes.data || []);
+
+      let companyPhone = "";
+      if (projectRes.data?.onboarding_company_id) {
+        const { data: company } = await supabase
+          .from("onboarding_companies")
+          .select("phone")
+          .eq("id", projectRes.data.onboarding_company_id)
+          .maybeSingle();
+        companyPhone = company?.phone || "";
+      }
+
+      const loadedConfig = (configRes.data?.config || null) as HRWhatsAppConfig | null;
+
+      if (loadedConfig) {
+        setConfig(loadedConfig);
+        setSelectedInstance(loadedConfig.instance_id || "");
+        setNotifyEnabled(loadedConfig.notify_on_stage_change);
+        setNotifyPhone(loadedConfig.notify_phone || companyPhone);
+        setNotifyGroupJid(loadedConfig.notify_group_jid || "");
+        setMessageTemplate(loadedConfig.message_template || DEFAULT_TEMPLATE);
+      } else {
+        setConfig(null);
+        setNotifyPhone(companyPhone);
+      }
+    } catch (error) {
+      console.error("Error loading HR WhatsApp config:", error);
+      toast.error("Erro ao carregar configuração do WhatsApp");
+    } finally {
+      setLoading(false);
     }
-
-    if (configRes.data) {
-      const c = configRes.data as HRWhatsAppConfig;
-      setConfig(c);
-      setSelectedInstance(c.instance_id || "");
-      setNotifyEnabled(c.notify_on_stage_change);
-      setNotifyPhone(c.notify_phone || companyPhone);
-      setNotifyGroupJid(c.notify_group_jid || "");
-      setMessageTemplate(c.message_template || DEFAULT_TEMPLATE);
-    } else {
-      // No config yet - pre-fill with company phone
-      setNotifyPhone(companyPhone);
-    }
-    setLoading(false);
   };
 
   const fetchGroups = async (instanceId: string) => {
@@ -167,31 +178,27 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       toast.error("Selecione uma instância do WhatsApp");
       return;
     }
-    setSaving(true);
-    try {
-      const payload = {
-        project_id: projectId,
-        instance_id: selectedInstance,
-        notify_on_stage_change: notifyEnabled,
-        notify_phone: notifyPhone.trim() || null,
-        notify_group_jid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
-        message_template: messageTemplate.trim() || DEFAULT_TEMPLATE,
-        updated_at: new Date().toISOString(),
-      };
 
-      if (config) {
-        const { project_id, ...updatePayload } = payload;
-        const { error } = await supabase
-          .from("hr_whatsapp_config")
-          .update(updatePayload)
-          .eq("id", config.id);
-        if (error) throw error;
-      } else {
-        // Use upsert to avoid duplicate insert errors
-        const { error } = await supabase
-          .from("hr_whatsapp_config")
-          .upsert(payload, { onConflict: "project_id" });
-        if (error) throw error;
+    setSaving(true);
+
+    try {
+      const { data, error } = await supabase.functions.invoke("hr-whatsapp-config", {
+        body: {
+          action: "save",
+          projectId,
+          instanceId: selectedInstance,
+          notifyOnStageChange: notifyEnabled,
+          notifyPhone: notifyPhone.trim() || null,
+          notifyGroupJid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
+          messageTemplate: messageTemplate.trim() || DEFAULT_TEMPLATE,
+        },
+      });
+
+      if (error) throw error;
+      if (data?.error) throw new Error(data.error);
+
+      if (data?.config) {
+        setConfig(data.config as HRWhatsAppConfig);
       }
 
       toast.success("Configuração salva com sucesso!");
