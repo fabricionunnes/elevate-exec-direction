@@ -27313,6 +27313,122 @@ export type Database = {
           },
         ]
       }
+      traffic_analysis_forms: {
+        Row: {
+          ab_testing: string | null
+          access_token: string
+          ad_frequency_issue: string | null
+          additional_info: string | null
+          average_cpa: string | null
+          average_cpl: string | null
+          average_roas: string | null
+          best_performing_campaign: string | null
+          biggest_challenge: string | null
+          budget_management: string | null
+          conversion_tracking: string | null
+          created_at: string
+          creative_production: string | null
+          current_campaigns_types: string | null
+          expected_results: string | null
+          geographic_targeting: string | null
+          has_run_ads: boolean | null
+          id: string
+          landing_page_experience: string | null
+          landing_page_url: string | null
+          lookalike_audiences: string | null
+          main_objective: string | null
+          monthly_budget: string | null
+          pixel_installed: string | null
+          platforms_used: string | null
+          previous_agency: string | null
+          project_id: string
+          retargeting_strategy: string | null
+          status: string
+          submitted_at: string | null
+          target_audience_description: string | null
+          updated_at: string
+          worst_performing_campaign: string | null
+        }
+        Insert: {
+          ab_testing?: string | null
+          access_token?: string
+          ad_frequency_issue?: string | null
+          additional_info?: string | null
+          average_cpa?: string | null
+          average_cpl?: string | null
+          average_roas?: string | null
+          best_performing_campaign?: string | null
+          biggest_challenge?: string | null
+          budget_management?: string | null
+          conversion_tracking?: string | null
+          created_at?: string
+          creative_production?: string | null
+          current_campaigns_types?: string | null
+          expected_results?: string | null
+          geographic_targeting?: string | null
+          has_run_ads?: boolean | null
+          id?: string
+          landing_page_experience?: string | null
+          landing_page_url?: string | null
+          lookalike_audiences?: string | null
+          main_objective?: string | null
+          monthly_budget?: string | null
+          pixel_installed?: string | null
+          platforms_used?: string | null
+          previous_agency?: string | null
+          project_id: string
+          retargeting_strategy?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_audience_description?: string | null
+          updated_at?: string
+          worst_performing_campaign?: string | null
+        }
+        Update: {
+          ab_testing?: string | null
+          access_token?: string
+          ad_frequency_issue?: string | null
+          additional_info?: string | null
+          average_cpa?: string | null
+          average_cpl?: string | null
+          average_roas?: string | null
+          best_performing_campaign?: string | null
+          biggest_challenge?: string | null
+          budget_management?: string | null
+          conversion_tracking?: string | null
+          created_at?: string
+          creative_production?: string | null
+          current_campaigns_types?: string | null
+          expected_results?: string | null
+          geographic_targeting?: string | null
+          has_run_ads?: boolean | null
+          id?: string
+          landing_page_experience?: string | null
+          landing_page_url?: string | null
+          lookalike_audiences?: string | null
+          main_objective?: string | null
+          monthly_budget?: string | null
+          pixel_installed?: string | null
+          platforms_used?: string | null
+          previous_agency?: string | null
+          project_id?: string
+          retargeting_strategy?: string | null
+          status?: string
+          submitted_at?: string | null
+          target_audience_description?: string | null
+          updated_at?: string
+          worst_performing_campaign?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "traffic_analysis_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       user_google_tokens: {
         Row: {
           access_token: string
