@@ -1836,14 +1836,23 @@ const OnboardingTasksPage = () => {
     }
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, noticeEndDate?: string | null) => {
     switch (status) {
       case "active":
         return <Badge className="bg-green-500">Ativo</Badge>;
       case "cancellation_signaled":
         return <Badge className="bg-amber-500">Sinalizou Cancelamento</Badge>;
       case "notice_period":
-        return <Badge className="bg-orange-500">Cumprindo Aviso</Badge>;
+        return (
+          <span className="inline-flex items-center gap-1">
+            <Badge className="bg-orange-500">Cumprindo Aviso</Badge>
+            {noticeEndDate && (
+              <span className="text-[10px] text-orange-600 font-medium whitespace-nowrap">
+                até {format(new Date(noticeEndDate + "T12:00:00"), "dd/MM/yyyy")}
+              </span>
+            )}
+          </span>
+        );
       case "closed":
         return <Badge variant="destructive">Encerrado</Badge>;
       default:
@@ -2767,7 +2776,7 @@ const OnboardingTasksPage = () => {
                           <div className="flex flex-wrap items-center gap-1 sm:gap-2">
                             <h3 className="text-sm sm:text-base md:text-lg font-bold text-foreground uppercase tracking-wide break-words max-w-full">{company.name}</h3>
                             <div className="flex flex-wrap items-center gap-1">
-                              {getStatusBadge(company.status)}
+                              {getStatusBadge(company.status, (company.projects as any[])?.find((p: any) => p.status === "notice_period")?.notice_end_date)}
                               {/* Tag "Empresa Nova" for companies started within last 30 days.
                                   Fallback: if contract_start_date is missing (ex: leads coming from integrations), use created_at. */}
                               {differenceInDays(
@@ -2993,7 +3002,7 @@ const OnboardingTasksPage = () => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                                {getStatusBadge(project.status)}
+                                {getStatusBadge(project.status, (project as any).notice_end_date)}
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
                             </div>
