@@ -14,19 +14,30 @@ export async function notifyClientStageChange({
   jobTitle,
 }: NotifyParams) {
   try {
-    const { data: config } = await supabase
-      .from("hr_whatsapp_config")
-      .select("*, whatsapp_instances(*)")
-      .eq("project_id", projectId)
-      .maybeSingle();
+    // Fetch config via edge function to bypass RLS
+    const { data: configData, error: configError } = await supabase.functions.invoke("hr-whatsapp-config", {
+      body: { action: "get", projectId },
+    });
 
+    if (configError || configData?.error) {
+      console.warn("Could not fetch HR WhatsApp config:", configError || configData?.error);
+      return;
+    }
+
+    const config = configData?.config;
     if (!config || !config.notify_on_stage_change || !config.instance_id) {
       return;
     }
 
-    const instance = config.whatsapp_instances as any;
+    // We need the instance_name, fetch it
+    const { data: instance } = await supabase
+      .from("whatsapp_instances")
+      .select("instance_name")
+      .eq("id", config.instance_id)
+      .maybeSingle();
+
     if (!instance?.instance_name) {
-      console.warn("HR WhatsApp instance not fully configured");
+      console.warn("HR WhatsApp instance not found for id:", config.instance_id);
       return;
     }
 
@@ -58,19 +69,18 @@ export async function notifyClientStageChange({
     });
 
     if (error) {
-      console.error("Error sending HR WhatsApp notification via edge function:", error);
+      console.error("Error sending HR WhatsApp notification:", error);
       return;
     }
 
     if (data?.error) {
-      console.error("Evolution API returned an error for HR notification:", data);
+      console.error("Evolution API error for HR notification:", data);
       return;
     }
 
     console.log("HR WhatsApp notification sent successfully:", {
       recipient,
       usedGroup: Boolean(groupRecipient),
-      data,
     });
   } catch (error) {
     console.error("Error sending HR WhatsApp notification:", error);
