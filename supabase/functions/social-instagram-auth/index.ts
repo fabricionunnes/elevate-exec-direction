@@ -120,10 +120,10 @@ Deno.serve(async (req) => {
       const longLivedToken = longLivedData.access_token;
       const expiresIn = longLivedData.expires_in || 5184000;
 
-      // Step 3: Get ALL connected Instagram Business accounts
+      // Step 3: Get ALL connected Instagram professional accounts across all accessible Facebook Pages
       const accountsUrl = new URL("https://graph.facebook.com/v19.0/me/accounts");
       accountsUrl.searchParams.set("access_token", longLivedToken);
-      accountsUrl.searchParams.set("fields", "id,name,instagram_business_account{id,username,profile_picture_url,followers_count}");
+      accountsUrl.searchParams.set("fields", "id,name,access_token,instagram_business_account{id,username,profile_picture_url,followers_count},connected_instagram_account{id,username,profile_picture_url,followers_count}");
       accountsUrl.searchParams.set("limit", "100");
 
       const accountsResponse = await fetch(accountsUrl.toString());
@@ -134,30 +134,44 @@ Deno.serve(async (req) => {
         throw new Error(accountsData.error.message || "Failed to fetch accounts");
       }
 
-      // Collect ALL Instagram accounts
-      const instagramAccounts: any[] = [];
-      for (const page of accountsData.data || []) {
-        if (page.instagram_business_account) {
-          const igAccount = page.instagram_business_account;
-          
-          const pageTokenUrl = new URL(`https://graph.facebook.com/v19.0/${page.id}`);
-          pageTokenUrl.searchParams.set("fields", "access_token");
-          pageTokenUrl.searchParams.set("access_token", longLivedToken);
-          
-          const pageTokenResponse = await fetch(pageTokenUrl.toString());
-          const pageTokenData = await pageTokenResponse.json();
+      const instagramAccountsMap = new Map<string, any>();
+      const registerAccount = (page: any, igAccount: any, pageAccessToken?: string | null) => {
+        if (!igAccount?.id) return;
 
-          instagramAccounts.push({
-            instagram_user_id: igAccount.id,
-            username: igAccount.username,
-            profile_picture_url: igAccount.profile_picture_url,
-            followers_count: igAccount.followers_count,
-            facebook_page_id: page.id,
-            facebook_page_name: page.name,
-            access_token: pageTokenData.access_token || longLivedToken,
-          });
+        instagramAccountsMap.set(igAccount.id, {
+          instagram_user_id: igAccount.id,
+          username: igAccount.username,
+          profile_picture_url: igAccount.profile_picture_url ?? null,
+          followers_count: igAccount.followers_count ?? 0,
+          facebook_page_id: page.id,
+          facebook_page_name: page.name,
+          access_token: pageAccessToken || page.access_token || longLivedToken,
+        });
+      };
+
+      for (const page of accountsData.data || []) {
+        registerAccount(page, page.instagram_business_account, page.access_token);
+        registerAccount(page, page.connected_instagram_account, page.access_token);
+
+        const pageInstagramAccountsUrl = new URL(`https://graph.facebook.com/v22.0/${page.id}/instagram_accounts`);
+        pageInstagramAccountsUrl.searchParams.set("access_token", page.access_token || longLivedToken);
+        pageInstagramAccountsUrl.searchParams.set("fields", "id,username,profile_picture_url,followers_count");
+        pageInstagramAccountsUrl.searchParams.set("limit", "100");
+
+        const pageInstagramAccountsResponse = await fetch(pageInstagramAccountsUrl.toString());
+        const pageInstagramAccountsData = await pageInstagramAccountsResponse.json();
+
+        if (pageInstagramAccountsData.error) {
+          console.warn(`Failed to fetch instagram_accounts for page ${page.id}:`, pageInstagramAccountsData.error);
+          continue;
+        }
+
+        for (const igAccount of pageInstagramAccountsData.data || []) {
+          registerAccount(page, igAccount, page.access_token);
         }
       }
+
+      const instagramAccounts = Array.from(instagramAccountsMap.values());
 
       if (instagramAccounts.length === 0) {
         throw new Error("Nenhuma conta Instagram Business conectada foi encontrada. Certifique-se de que sua página do Facebook está conectada a uma conta Instagram Business ou Creator.");
