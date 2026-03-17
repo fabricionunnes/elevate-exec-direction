@@ -17513,6 +17513,7 @@ export type Database = {
           instance_id: string | null
           message_template: string | null
           notify_group_jid: string | null
+          notify_group_name: string | null
           notify_on_stage_change: boolean
           notify_phone: string | null
           project_id: string
@@ -17524,6 +17525,7 @@ export type Database = {
           instance_id?: string | null
           message_template?: string | null
           notify_group_jid?: string | null
+          notify_group_name?: string | null
           notify_on_stage_change?: boolean
           notify_phone?: string | null
           project_id: string
@@ -17535,6 +17537,7 @@ export type Database = {
           instance_id?: string | null
           message_template?: string | null
           notify_group_jid?: string | null
+          notify_group_name?: string | null
           notify_on_stage_change?: boolean
           notify_phone?: string | null
           project_id?: string

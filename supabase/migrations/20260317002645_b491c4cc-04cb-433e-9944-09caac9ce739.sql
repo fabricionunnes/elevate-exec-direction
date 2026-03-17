@@ -1,0 +1,1 @@
+ALTER TABLE public.hr_whatsapp_config ADD COLUMN IF NOT EXISTS notify_group_name text;
