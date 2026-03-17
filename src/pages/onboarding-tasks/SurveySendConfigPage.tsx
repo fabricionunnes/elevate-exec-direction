@@ -712,7 +712,7 @@ export default function SurveySendConfigPage() {
                   <TableHead className="text-center">Tentativa</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead>Data</TableHead>
-                </TableRow>
+                  <TableHead className="text-center w-[80px]">Ação</TableHead>
               </TableHeader>
               <TableBody>
                 {paginatedLogs.length === 0 ? (
