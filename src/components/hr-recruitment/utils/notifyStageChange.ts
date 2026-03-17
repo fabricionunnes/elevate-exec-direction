@@ -39,31 +39,22 @@ export async function notifyClientStageChange({
       .replace(/{stage_name}/g, stageName)
       .replace(/{job_title}/g, jobTitle);
 
-    const isGroup = Boolean(config.notify_group_jid);
-    const recipient = isGroup ? config.notify_group_jid : config.notify_phone;
+    const groupRecipient = config.notify_group_jid?.trim() || null;
+    const phoneRecipient = config.notify_phone?.replace(/\D/g, "") || null;
+    const recipient = groupRecipient || phoneRecipient;
 
     if (!recipient) {
       console.warn("No recipient configured for HR WhatsApp notifications");
       return;
     }
 
-    const action = isGroup ? "sendGroupText" : "sendText";
-    const body = isGroup
-      ? {
-          action,
-          instanceId: config.instance_id,
-          groupJid: recipient,
-          message,
-        }
-      : {
-          action,
-          instanceId: config.instance_id,
-          phone: recipient,
-          message,
-        };
-
     const { data, error } = await supabase.functions.invoke("evolution-api", {
-      body,
+      body: {
+        action: "sendText",
+        instanceId: config.instance_id,
+        phone: recipient,
+        message,
+      },
     });
 
     if (error) {
@@ -76,7 +67,11 @@ export async function notifyClientStageChange({
       return;
     }
 
-    console.log("HR WhatsApp notification sent successfully:", data);
+    console.log("HR WhatsApp notification sent successfully:", {
+      recipient,
+      usedGroup: Boolean(groupRecipient),
+      data,
+    });
   } catch (error) {
     console.error("Error sending HR WhatsApp notification:", error);
   }
