@@ -19,7 +19,7 @@ const priorityConfig: Record<string, { label: string; class: string }> = {
   low: { label: "Baixa", class: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
-export const TaskCard = ({ task, isDragging }: Props) => {
+export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragging }, _ref) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
   });
