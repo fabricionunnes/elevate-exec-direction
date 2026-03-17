@@ -179,7 +179,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     try {
       const { data, error } = await supabase
         .from("traffic_analysis_forms")
-        .select("id, access_token, status, submitted_at, created_at")
+        .select("*")
         .eq("project_id", projectId)
         .maybeSingle();
       if (!error) setTrafficForm(data);
@@ -195,7 +195,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
       const { data, error } = await supabase
         .from("traffic_analysis_forms")
         .insert({ project_id: projectId })
-        .select("id, access_token, status, submitted_at, created_at")
+        .select("*")
         .single();
       if (error) throw error;
       setTrafficForm(data);
@@ -1468,20 +1468,51 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                   </Button>
                 </div>
 
-                {/* Respostas se submetido */}
-                {trafficForm.submitted_at && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => window.open(
-                      `${getPublicBaseUrl()}/#/traffic-analysis/${trafficForm.access_token}`,
-                      "_blank"
-                    )}
-                  >
-                    <ExternalLink className="h-4 w-4 mr-2" />
-                    Ver Respostas
-                  </Button>
-                )}
+                {/* Respostas inline se submetido */}
+                {trafficForm.submitted_at && (() => {
+                  const answers = [
+                    { label: "Já investiu em tráfego pago?", value: trafficForm.has_run_ads === true ? "Sim" : trafficForm.has_run_ads === false ? "Não" : null },
+                    { label: "Plataformas utilizadas", value: trafficForm.platforms_used },
+                    { label: "Investimento mensal", value: trafficForm.monthly_budget },
+                    { label: "Quem gerencia o tráfego", value: trafficForm.budget_management },
+                    { label: "Objetivo principal", value: trafficForm.main_objective },
+                    { label: "Público-alvo", value: trafficForm.target_audience_description },
+                    { label: "Segmentação geográfica", value: trafficForm.geographic_targeting },
+                    { label: "Tipos de campanha", value: trafficForm.current_campaigns_types },
+                    { label: "Melhor campanha", value: trafficForm.best_performing_campaign },
+                    { label: "Pior campanha", value: trafficForm.worst_performing_campaign },
+                    { label: "CPL médio", value: trafficForm.average_cpl },
+                    { label: "CPA médio", value: trafficForm.average_cpa },
+                    { label: "ROAS atual", value: trafficForm.average_roas },
+                    { label: "Acompanha conversões?", value: trafficForm.conversion_tracking },
+                    { label: "Pixel instalado?", value: trafficForm.pixel_installed },
+                    { label: "URL da landing page", value: trafficForm.landing_page_url },
+                    { label: "Experiência da landing page", value: trafficForm.landing_page_experience },
+                    { label: "Produção de criativos", value: trafficForm.creative_production },
+                    { label: "Problema de frequência?", value: trafficForm.ad_frequency_issue },
+                    { label: "Estratégia de retargeting", value: trafficForm.retargeting_strategy },
+                    { label: "Públicos lookalike", value: trafficForm.lookalike_audiences },
+                    { label: "Testes A/B", value: trafficForm.ab_testing },
+                    { label: "Maior desafio", value: trafficForm.biggest_challenge },
+                    { label: "Agência anterior", value: trafficForm.previous_agency },
+                    { label: "Resultados esperados", value: trafficForm.expected_results },
+                    { label: "Informações adicionais", value: trafficForm.additional_info },
+                  ].filter(a => a.value);
+
+                  return answers.length > 0 ? (
+                    <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
+                      <h4 className="text-sm font-semibold">Respostas do cliente</h4>
+                      <div className="grid gap-3">
+                        {answers.map((a, i) => (
+                          <div key={i} className="space-y-0.5">
+                            <p className="text-xs font-medium text-muted-foreground">{a.label}</p>
+                            <p className="text-sm whitespace-pre-wrap">{a.value}</p>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
               </>
             ) : (
               <div className="text-center py-4 space-y-3">
