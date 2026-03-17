@@ -180,9 +180,11 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       };
 
       if (config) {
+        // Don't include project_id in update to avoid conflicts
+        const { project_id, ...updatePayload } = payload;
         const { error } = await supabase
           .from("hr_whatsapp_config")
-          .update(payload)
+          .update(updatePayload)
           .eq("id", config.id);
         if (error) throw error;
       } else {
