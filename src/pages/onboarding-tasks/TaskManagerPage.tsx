@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { TaskKanbanBoard } from "@/components/task-manager/TaskKanbanBoard";
 import { TaskCalendarView } from "@/components/task-manager/TaskCalendarView";
 import { TaskManagerEditDialog } from "@/components/task-manager/TaskManagerEditDialog";
+import { BulkActionsBar } from "@/components/task-manager/BulkActionsBar";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskStatus = Database["public"]["Enums"]["onboarding_task_status"];
@@ -47,6 +48,7 @@ const TaskManagerPage = () => {
   const [loading, setLoading] = useState(true);
   const [view, setView] = useState<"kanban" | "calendar">("kanban");
   const [editingTask, setEditingTask] = useState<TaskWithProject | null>(null);
+  const [selectedTaskIds, setSelectedTaskIds] = useState<Set<string>>(new Set());
 
   useEffect(() => {
     loadInitialData();
@@ -57,6 +59,11 @@ const TaskManagerPage = () => {
       loadTasks();
     }
   }, [selectedStaffId, currentStaff]);
+
+  // Clear selection when filters change
+  useEffect(() => {
+    setSelectedTaskIds(new Set());
+  }, [selectedStaffId, selectedCompany]);
 
   const loadInitialData = async () => {
     try {
@@ -99,8 +106,11 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
+      // Determine which projects this staff member is responsible for
       let allowedProjectIds: string[] | null = null;
+
       if (!isAdmin && currentStaff) {
+        // Non-admin: only see tasks from projects/companies they're assigned to
         const { data: assignedProjects } = await supabase
           .from("onboarding_projects")
           .select("id")
@@ -110,6 +120,35 @@ const TaskManagerPage = () => {
           .from("onboarding_companies")
           .select("id")
           .or(`consultant_id.eq.${currentStaff.id},cs_id.eq.${currentStaff.id}`);
+
+        const projectIds = new Set(assignedProjects?.map(p => p.id) || []);
+
+        if (companyProjects?.length) {
+          const { data: projectsFromCompanies } = await supabase
+            .from("onboarding_projects")
+            .select("id")
+            .in("onboarding_company_id", companyProjects.map(c => c.id));
+          projectsFromCompanies?.forEach(p => projectIds.add(p.id));
+        }
+
+        allowedProjectIds = Array.from(projectIds);
+        if (allowedProjectIds.length === 0) {
+          setTasks([]);
+          setLoading(false);
+          return;
+        }
+      } else if (isAdmin && staffIdToFilter) {
+        // Admin filtering by a specific consultant: show only tasks from projects where
+        // that consultant is the consultant_id or cs_id on the project or company
+        const { data: assignedProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .or(`consultant_id.eq.${staffIdToFilter},cs_id.eq.${staffIdToFilter}`);
+
+        const { data: companyProjects } = await supabase
+          .from("onboarding_companies")
+          .select("id")
+          .or(`consultant_id.eq.${staffIdToFilter},cs_id.eq.${staffIdToFilter}`);
 
         const projectIds = new Set(assignedProjects?.map(p => p.id) || []);
 
@@ -142,9 +181,6 @@ const TaskManagerPage = () => {
           .order("due_date", { ascending: true, nullsFirst: false })
           .limit(limit);
 
-        if (staffIdToFilter) {
-          q = q.eq("responsible_staff_id", staffIdToFilter);
-        }
         if (allowedProjectIds) {
           q = q.in("project_id", allowedProjectIds);
         }
@@ -223,6 +259,76 @@ const TaskManagerPage = () => {
   const handleTaskClick = useCallback((task: TaskWithProject) => {
     setEditingTask(task);
   }, []);
+
+  const toggleTaskSelection = useCallback((taskId: string) => {
+    setSelectedTaskIds(prev => {
+      const next = new Set(prev);
+      if (next.has(taskId)) {
+        next.delete(taskId);
+      } else {
+        next.add(taskId);
+      }
+      return next;
+    });
+  }, []);
+
+  const clearSelection = useCallback(() => {
+    setSelectedTaskIds(new Set());
+  }, []);
+
+  const handleBulkStatusChange = useCallback(async (newStatus: TaskStatus) => {
+    const ids = Array.from(selectedTaskIds);
+    if (ids.length === 0) return;
+
+    // Optimistic update
+    setTasks(prev => prev.map(t =>
+      selectedTaskIds.has(t.id) ? { ...t, status: newStatus } : t
+    ));
+    setSelectedTaskIds(new Set());
+
+    try {
+      const updateData: any = { status: newStatus, updated_at: new Date().toISOString() };
+      if (newStatus === "completed") {
+        updateData.completed_at = new Date().toISOString();
+      }
+
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .update(updateData)
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`${ids.length} tarefa(s) atualizada(s)`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao atualizar tarefas");
+      loadTasks();
+    }
+  }, [selectedTaskIds]);
+
+  const handleBulkStaffChange = useCallback(async (staffId: string | null) => {
+    const ids = Array.from(selectedTaskIds);
+    if (ids.length === 0) return;
+
+    setTasks(prev => prev.map(t =>
+      selectedTaskIds.has(t.id) ? { ...t, responsible_staff_id: staffId } : t
+    ));
+    setSelectedTaskIds(new Set());
+
+    try {
+      const { error } = await supabase
+        .from("onboarding_tasks")
+        .update({ responsible_staff_id: staffId, updated_at: new Date().toISOString() })
+        .in("id", ids);
+
+      if (error) throw error;
+      toast.success(`${ids.length} tarefa(s) transferida(s)`);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao transferir tarefas");
+      loadTasks();
+    }
+  }, [selectedTaskIds]);
 
   const companies = useMemo(() => {
     const unique = new Map<string, string>();
@@ -330,11 +436,27 @@ const TaskManagerPage = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : view === "kanban" ? (
-          <TaskKanbanBoard tasks={filteredTasks} onStatusChange={updateTaskStatus} onTaskClick={handleTaskClick} />
+          <TaskKanbanBoard
+            tasks={filteredTasks}
+            onStatusChange={updateTaskStatus}
+            onTaskClick={handleTaskClick}
+            selectedTaskIds={selectedTaskIds}
+            onToggleSelection={toggleTaskSelection}
+          />
         ) : (
           <TaskCalendarView tasks={filteredTasks} onStatusChange={updateTaskStatus} />
         )}
       </div>
+
+      {selectedTaskIds.size > 0 && (
+        <BulkActionsBar
+          count={selectedTaskIds.size}
+          onClear={clearSelection}
+          onStatusChange={handleBulkStatusChange}
+          onStaffChange={isAdmin ? handleBulkStaffChange : undefined}
+          staffList={staff}
+        />
+      )}
 
       <TaskManagerEditDialog
         task={editingTask}

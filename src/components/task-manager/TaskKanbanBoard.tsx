@@ -27,9 +27,11 @@ interface Props {
   tasks: TaskWithProject[];
   onStatusChange: (taskId: string, newStatus: TaskStatus) => void;
   onTaskClick: (task: TaskWithProject) => void;
+  selectedTaskIds?: Set<string>;
+  onToggleSelection?: (taskId: string) => void;
 }
 
-export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick }: Props) => {
+export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick, selectedTaskIds, onToggleSelection }: Props) => {
   const [activeTask, setActiveTask] = useState<TaskWithProject | null>(null);
 
   const sensors = useSensors(
@@ -50,7 +52,6 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick }: Props) =
     tasks.forEach(t => {
       if (t.status === "inactive") return;
 
-      // Check if overdue: has due_date in the past and not completed
       const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
       if (isOverdue) {
         map.overdue.push(t);
@@ -75,7 +76,6 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick }: Props) =
     const taskId = active.id as string;
     const targetColumn = over.id as string;
 
-    // Map "overdue" drops to "pending" since overdue is not a real status
     const newStatus: TaskStatus = targetColumn === "overdue" ? "pending" : targetColumn as TaskStatus;
 
     const task = tasks.find(t => t.id === taskId);
@@ -101,6 +101,8 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick }: Props) =
             tasks={tasksByColumn[col.id] || []}
             count={tasksByColumn[col.id]?.length || 0}
             onTaskClick={onTaskClick}
+            selectedTaskIds={selectedTaskIds}
+            onToggleSelection={onToggleSelection}
           />
         ))}
       </div>
