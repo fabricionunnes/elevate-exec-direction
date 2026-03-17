@@ -12,6 +12,7 @@ type RequestBody = {
   notifyOnStageChange?: boolean;
   notifyPhone?: string | null;
   notifyGroupJid?: string | null;
+  notifyGroupName?: string | null;
   messageTemplate?: string | null;
 };
 
