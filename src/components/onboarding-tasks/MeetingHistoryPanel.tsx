@@ -483,7 +483,15 @@ export const MeetingHistoryPanel = ({ projectId, onTasksRefresh }: MeetingHistor
     const normalizedCompanyName = nameToUse.toLowerCase().trim();
     
     // Extract meaningful keywords from company name (ignore common words)
-    const stopWords = new Set(['e', 'de', 'da', 'do', 'das', 'dos', 'ltda', 'me', 'eireli', 'sa', 's/a', 'cia', 'comercio', 'servicos', 'grupo', 'empresa']);
+    const stopWords = new Set([
+      'e', 'de', 'da', 'do', 'das', 'dos', 'ltda', 'me', 'eireli', 'sa', 's/a',
+      'cia', 'comercio', 'comercial', 'servicos', 'grupo', 'empresa', 'empresarial',
+      'vendas', 'nacional', 'universidade', 'instituto', 'centro', 'sistema',
+      'solucoes', 'consultoria', 'gestao', 'digital', 'tecnologia', 'brasil',
+      'industrial', 'producao', 'marketing', 'negocios', 'projetos', 'global',
+      'prime', 'premium', 'plus', 'pro', 'master', 'total', 'nova', 'novo',
+      'clinica', 'medica', 'saude', 'farma', 'beleza', 'espaco',
+    ]);
     const companyKeywords = normalizedCompanyName
       .split(/[\s\-_,.|]+/)
       .filter(word => word.length >= 4 && !stopWords.has(word));
