@@ -510,6 +510,7 @@ const App = () => (
             
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
+            <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
