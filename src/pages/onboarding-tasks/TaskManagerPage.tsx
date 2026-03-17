@@ -96,23 +96,9 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
-      let query = supabase
-        .from("onboarding_tasks")
-        .select(`
-          id, title, description, status, priority, due_date, start_date,
-          project_id, responsible_staff_id, assignee_id, tags, recurrence,
-          onboarding_projects!inner(product_name, onboarding_companies(name))
-        `)
-        .neq("status", "inactive")
-        .order("due_date", { ascending: true, nullsFirst: false });
-
-      if (staffIdToFilter) {
-        query = query.eq("responsible_staff_id", staffIdToFilter);
-      }
-
-      // For non-admin consultants, filter by their assigned companies/projects
+      // For non-admin consultants, get allowed project IDs first
+      let allowedProjectIds: string[] | null = null;
       if (!isAdmin && currentStaff) {
-        // Get projects for this consultant
         const { data: assignedProjects } = await supabase
           .from("onboarding_projects")
           .select("id")
@@ -123,27 +109,56 @@ const TaskManagerPage = () => {
           .select("id")
           .or(`consultant_id.eq.${currentStaff.id},cs_id.eq.${currentStaff.id}`);
 
+        const projectIds = new Set(assignedProjects?.map(p => p.id) || []);
+
         if (companyProjects?.length) {
           const { data: projectsFromCompanies } = await supabase
             .from("onboarding_projects")
             .select("id")
             .in("onboarding_company_id", companyProjects.map(c => c.id));
+          projectsFromCompanies?.forEach(p => projectIds.add(p.id));
+        }
 
-          const allProjectIds = new Set([
-            ...(assignedProjects?.map(p => p.id) || []),
-            ...(projectsFromCompanies?.map(p => p.id) || []),
-          ]);
-
-          if (allProjectIds.size > 0) {
-            query = query.in("project_id", Array.from(allProjectIds));
-          }
+        allowedProjectIds = Array.from(projectIds);
+        if (allowedProjectIds.length === 0) {
+          setTasks([]);
+          setLoading(false);
+          return;
         }
       }
 
-      const { data, error } = await query;
-      if (error) throw error;
+      const buildQuery = (statuses: ("pending" | "in_progress" | "completed")[], limit: number) => {
+        let q = supabase
+          .from("onboarding_tasks")
+          .select(`
+            id, title, description, status, priority, due_date, start_date,
+            project_id, responsible_staff_id, assignee_id, tags, recurrence,
+            onboarding_projects!inner(product_name, onboarding_companies(name))
+          `)
+          .in("status", statuses)
+          .order("due_date", { ascending: true, nullsFirst: false })
+          .limit(limit);
 
-      const mapped: TaskWithProject[] = (data || []).map((t: any) => ({
+        if (staffIdToFilter) {
+          q = q.eq("responsible_staff_id", staffIdToFilter);
+        }
+        if (allowedProjectIds) {
+          q = q.in("project_id", allowedProjectIds);
+        }
+        return q;
+      };
+
+      const [activeRes, completedRes] = await Promise.all([
+        buildQuery(["pending", "in_progress"], 5000),
+        buildQuery(["completed"], 200),
+      ]);
+
+      if (activeRes.error) throw activeRes.error;
+      if (completedRes.error) throw completedRes.error;
+
+      const allData = [...(activeRes.data || []), ...(completedRes.data || [])];
+
+      const mapped: TaskWithProject[] = allData.map((t: any) => ({
         id: t.id,
         title: t.title,
         description: t.description,

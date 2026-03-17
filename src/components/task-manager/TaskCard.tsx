@@ -1,3 +1,4 @@
+import React from "react";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
@@ -18,7 +19,7 @@ const priorityConfig: Record<string, { label: string; class: string }> = {
   low: { label: "Baixa", class: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
-export const TaskCard = ({ task, isDragging }: Props) => {
+export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragging }, _ref) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
   });
@@ -80,4 +81,6 @@ export const TaskCard = ({ task, isDragging }: Props) => {
       </div>
     </Card>
   );
-};
+});
+
+TaskCard.displayName = "TaskCard";
