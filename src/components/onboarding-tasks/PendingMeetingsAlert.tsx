@@ -111,7 +111,7 @@ export const PendingMeetingsAlert = () => {
   const handleFinalize = async () => {
     if (!selectedMeeting) return;
 
-    if (!formData.notes.trim()) {
+    if (!formData.isNoShow && !formData.notes.trim()) {
       toast.error("Descreva o que foi tratado na reunião");
       return;
     }
