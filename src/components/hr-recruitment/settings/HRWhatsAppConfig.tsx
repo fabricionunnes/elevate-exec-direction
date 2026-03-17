@@ -72,14 +72,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
     fetchData();
   }, [projectId]);
 
-  useEffect(() => {
-    if (selectedInstance && selectedInstance !== groupsLoadedForInstance) {
-      fetchGroups(selectedInstance);
-    } else if (!selectedInstance) {
-      setGroups([]);
-      setGroupsLoadedForInstance("");
-    }
-  }, [selectedInstance]);
+  // Only fetch groups when user explicitly requests, not on load
 
   const fetchData = async () => {
     setLoading(true);
