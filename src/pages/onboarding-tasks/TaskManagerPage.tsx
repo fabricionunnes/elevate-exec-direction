@@ -330,9 +330,9 @@ const TaskManagerPage = () => {
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
           </div>
         ) : view === "kanban" ? (
-          <TaskKanbanBoard tasks={tasks} onStatusChange={updateTaskStatus} onTaskClick={handleTaskClick} />
+          <TaskKanbanBoard tasks={filteredTasks} onStatusChange={updateTaskStatus} onTaskClick={handleTaskClick} />
         ) : (
-          <TaskCalendarView tasks={tasks} onStatusChange={updateTaskStatus} />
+          <TaskCalendarView tasks={filteredTasks} onStatusChange={updateTaskStatus} />
         )}
       </div>
 
