@@ -133,7 +133,7 @@ const TaskManagerPage = () => {
           .select(`
             id, title, description, status, priority, due_date, start_date,
             project_id, responsible_staff_id, assignee_id, tags, recurrence,
-            onboarding_projects!inner(product_name, onboarding_companies(name))
+            onboarding_projects!inner(product_name, status, onboarding_companies(name, status))
           `)
           .in("status", statuses)
           .order("due_date", { ascending: true, nullsFirst: false })
