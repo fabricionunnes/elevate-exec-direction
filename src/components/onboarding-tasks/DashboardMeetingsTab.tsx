@@ -52,6 +52,7 @@ import { toast } from "sonner";
 interface StaffOption {
   id: string;
   name: string;
+  user_id: string | null;
 }
 
 interface Meeting {
@@ -111,7 +112,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   const fetchStaffOptions = async () => {
     const { data } = await supabase
       .from("onboarding_staff")
-      .select("id, name")
+      .select("id, name, user_id")
       .eq("is_active", true)
       .in("role", ["cs", "consultant", "admin", "master"])
       .order("name");
@@ -268,12 +269,16 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   // Pre-filter by selected staff - only show meetings from that staff's calendar
   const staffFilteredMeetings = useMemo(() => {
     if (selectedStaffId === "all" || !isAdminOrMaster) return meetings;
+    // Find the user_id for the selected staff
+    const selectedStaff = staffOptions.find((s) => s.id === selectedStaffId);
+    const selectedUserIds = [selectedStaffId];
+    if (selectedStaff?.user_id) selectedUserIds.push(selectedStaff.user_id);
     return meetings.filter((m) => {
-      // Primary filter: calendar owner
-      if (m.calendar_owner_id === selectedStaffId) return true;
+      // Match by calendar_owner_id (which stores user_id)
+      if (m.calendar_owner_id && selectedUserIds.includes(m.calendar_owner_id)) return true;
       return false;
     });
-  }, [meetings, selectedStaffId, isAdminOrMaster]);
+  }, [meetings, selectedStaffId, isAdminOrMaster, staffOptions]);
 
   const filteredMeetings = useMemo(() => {
     return staffFilteredMeetings.filter((m) => {
@@ -286,20 +291,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
         return !m.is_finalized && isAfter(meetingDate, now);
       }
       if (statusFilter === "pending_finalization") {
-        const isPastAndOpen = !m.is_finalized && isBefore(meetingDate, now);
-        if (!isPastAndOpen) return false;
-        // Admin/Master with "all" filter: show all pending
-        if (isAdminOrMaster && selectedStaffId === "all") return true;
-        // Admin/Master with specific staff filter: show only that staff's calendar or projects
-        if (isAdminOrMaster && selectedStaffId !== "all") {
-          if (m.calendar_owner_id === selectedStaffId) return true;
-          const company = m.project?.onboarding_company;
-          return company?.consultant_id === selectedStaffId || company?.cs_id === selectedStaffId;
-        }
-        // Non-admin: show own calendar OR meetings from own projects
-        if (m.calendar_owner_id === staffId) return true;
-        const company = m.project?.onboarding_company;
-        return company?.consultant_id === staffId || company?.cs_id === staffId;
+        return !m.is_finalized && isBefore(meetingDate, now);
       }
       if (statusFilter === "finalized") {
         return m.is_finalized;
@@ -311,18 +303,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
 
   const counts = useMemo(() => {
     const upcoming = staffFilteredMeetings.filter((m) => !m.is_finalized && isAfter(parseISO(m.meeting_date), now)).length;
-    const pending = staffFilteredMeetings.filter((m) => {
-      if (!(!m.is_finalized && isBefore(parseISO(m.meeting_date), now))) return false;
-      if (isAdminOrMaster && selectedStaffId === "all") return true;
-      if (isAdminOrMaster && selectedStaffId !== "all") {
-        if (m.calendar_owner_id === selectedStaffId) return true;
-        const company = m.project?.onboarding_company;
-        return company?.consultant_id === selectedStaffId || company?.cs_id === selectedStaffId;
-      }
-      if (m.calendar_owner_id === staffId) return true;
-      const company = m.project?.onboarding_company;
-      return company?.consultant_id === staffId || company?.cs_id === staffId;
-    }).length;
+    const pending = staffFilteredMeetings.filter((m) => !m.is_finalized && isBefore(parseISO(m.meeting_date), now)).length;
     const finalized = staffFilteredMeetings.filter((m) => m.is_finalized).length;
     return { upcoming, pending, finalized, all: staffFilteredMeetings.length };
   }, [staffFilteredMeetings, now, staffId, selectedStaffId, isAdminOrMaster]);
