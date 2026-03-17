@@ -418,6 +418,7 @@ export function ConsultantOneOnOnePanel() {
             .select("id, project_id, title, due_date, status")
             .in("project_id", projectIds)
             .neq("status", "completed")
+            .neq("status", "inactive")
             .gte("due_date", today)
             .order("due_date", { ascending: true })
             .limit(500),
