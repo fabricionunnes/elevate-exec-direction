@@ -28,6 +28,7 @@ const publicRoutes = [
   "/banco-talentos",
   "/job-application",
   "/social-briefing",
+  "/traffic-analysis",
   "/career-plan",
   "/pagamento",
   "/checkout",
