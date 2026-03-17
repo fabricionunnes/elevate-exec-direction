@@ -385,7 +385,7 @@ export const SocialSettingsPage = () => {
               <div className="space-y-3">
                 {approvalContacts.map((contact, index) => (
                   <div key={contact.id} className="flex items-start gap-2 p-3 border rounded-lg bg-muted/30">
-                    <div className="flex-1 grid grid-cols-2 gap-2">
+                    <div className="flex-1 grid grid-cols-1 sm:grid-cols-2 gap-2">
                       <div className="space-y-1">
                         <Label className="text-xs text-muted-foreground">Nome</Label>
                         <Input
