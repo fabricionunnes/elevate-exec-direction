@@ -3002,7 +3002,7 @@ const OnboardingTasksPage = () => {
                                 </div>
                               </div>
                               <div className="flex items-center gap-1 sm:gap-2 shrink-0">
-                                {getStatusBadge(project.status)}
+                                {getStatusBadge(project.status, (project as any).notice_end_date)}
                                 <ChevronRight className="h-4 w-4 text-muted-foreground" />
                               </div>
                             </div>
