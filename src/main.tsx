@@ -109,10 +109,14 @@ if (publicParam) {
     // expects job=...
     forceHashRoute("/job-application", window.location.search);
   } else if (publicParam === "social-briefing") {
-    // expects token=...
     const token = urlSearch.get("token");
     if (token) {
       forceHashRoute(`/social-briefing/${encodeURIComponent(token)}`, "");
+    }
+  } else if (publicParam === "traffic-analysis") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/traffic-analysis/${encodeURIComponent(token)}`, "");
     }
   } else if (publicParam === "career-plan") {
     // expects project=...

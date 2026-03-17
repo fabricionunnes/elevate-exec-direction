@@ -373,6 +373,7 @@ const App = () => (
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
+            <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />
