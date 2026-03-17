@@ -97,10 +97,10 @@ Deno.serve(async (req) => {
       const NOTIFY_PHONE = "5531989840003";
 
       // Find the "financeiro-unv" WhatsApp instance
+      // Allow sending regardless of local status (connected/connecting) - delegate validation to server
       const { data: finInstance } = await supabase
         .from("whatsapp_instances")
         .select("api_url, api_key, instance_name")
-        .eq("status", "connected")
         .eq("instance_name", "financeiro-unv")
         .maybeSingle();
 
@@ -142,12 +142,12 @@ Deno.serve(async (req) => {
 
       const defaultInstanceName = defaultConfig?.setting_value || "fabricionunnes";
 
+      // Allow sending regardless of local status - delegate validation to server
       const { data: whatsappInstance } = await supabase
         .from("whatsapp_instances")
         .select("api_url, api_key, instance_name")
-        .eq("status", "connected")
         .eq("instance_name", defaultInstanceName)
-        .single();
+        .maybeSingle();
 
       if (whatsappInstance?.api_url && whatsappInstance?.api_key) {
         const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
