@@ -1,0 +1,20 @@
+DELETE FROM onboarding_meeting_notes 
+WHERE id IN (
+  '5c223485-1173-4ab7-8283-c6f51b8e69fe',
+  '013d18e5-7c48-4c6a-bc11-13ced6e139bb',
+  'bb05ac12-778e-4417-9bd8-3ff2146f624f',
+  '0832051f-b7cf-46b4-829b-bc07f7e786ee',
+  '4233b9dc-9e2f-4bba-a55f-1d675e66e082',
+  '3903fb2f-b59b-4f3d-a1ce-b7aed1848a37',
+  '184a4628-97ea-484e-9fc9-4e85425443a1',
+  '5e2159a1-617e-46c7-aeff-eb446f465ecd',
+  '2da75829-8ecc-4e86-8467-07622d7dc156',
+  'cfb371fd-76bb-47cd-8d52-438af8219312',
+  '8d18922e-7ace-44fc-8441-01062b5273b3',
+  'a99dc32e-3a7e-44b0-8631-f40110ae4a8a',
+  '1b2e6371-50f4-4ad5-bd5b-8433f8c91e63',
+  '70c6bd25-d058-4099-b3e9-1a2d32106659',
+  '678a6257-732e-40a8-b217-fd2a09195c8d',
+  'f4539ed2-4573-4774-9663-e608e3237bcf',
+  '76612bbc-ab1f-4c51-a8f1-88cbbfa346a7'
+);
