@@ -283,6 +283,21 @@ export const PendingMeetingsAlert = () => {
                 />
               </div>
 
+              {/* No Show Checkbox */}
+              <div className="flex items-center space-x-2 p-3 bg-destructive/10 rounded-lg border border-destructive/20">
+                <Checkbox
+                  id="is-no-show-finalize"
+                  checked={formData.isNoShow}
+                  onCheckedChange={(checked) => setFormData({ ...formData, isNoShow: checked === true })}
+                />
+                <div className="flex items-center gap-2">
+                  <UserX className="h-4 w-4 text-destructive" />
+                  <Label htmlFor="is-no-show-finalize" className="text-sm font-normal cursor-pointer">
+                    Cliente não compareceu
+                  </Label>
+                </div>
+              </div>
+
               {/* Internal Meeting Checkbox */}
               <div className="flex items-center space-x-2 p-3 bg-muted/50 rounded-lg">
                 <Checkbox
