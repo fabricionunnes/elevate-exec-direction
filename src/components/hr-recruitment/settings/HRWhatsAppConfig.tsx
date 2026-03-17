@@ -65,6 +65,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
   const [notifyEnabled, setNotifyEnabled] = useState(true);
   const [notifyPhone, setNotifyPhone] = useState("");
   const [notifyGroupJid, setNotifyGroupJid] = useState("");
+  const [notifyGroupName, setNotifyGroupName] = useState("");
   const [messageTemplate, setMessageTemplate] = useState(DEFAULT_TEMPLATE);
 
   useEffect(() => {
