@@ -197,8 +197,8 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       toast.success("Configuração salva com sucesso!");
       await fetchData();
     } catch (error: any) {
-      console.error("Error saving HR WhatsApp config:", error);
-      toast.error("Erro ao salvar configuração");
+      console.error("Error saving HR WhatsApp config:", error?.message || error?.code || error);
+      toast.error(`Erro ao salvar configuração: ${error?.message || "erro desconhecido"}`);
     } finally {
       setSaving(false);
     }
