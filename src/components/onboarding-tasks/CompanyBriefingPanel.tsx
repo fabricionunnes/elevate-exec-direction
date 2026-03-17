@@ -179,7 +179,7 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     try {
       const { data, error } = await supabase
         .from("traffic_analysis_forms")
-        .select("id, access_token, status, submitted_at, created_at")
+        .select("*")
         .eq("project_id", projectId)
         .maybeSingle();
       if (!error) setTrafficForm(data);
