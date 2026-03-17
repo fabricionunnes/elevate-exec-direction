@@ -180,9 +180,11 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       };
 
       if (config) {
+        // Don't include project_id in update to avoid conflicts
+        const { project_id, ...updatePayload } = payload;
         const { error } = await supabase
           .from("hr_whatsapp_config")
-          .update(payload)
+          .update(updatePayload)
           .eq("id", config.id);
         if (error) throw error;
       } else {
@@ -195,8 +197,8 @@ export function HRWhatsAppConfig({ projectId }: Props) {
       toast.success("Configuração salva com sucesso!");
       await fetchData();
     } catch (error: any) {
-      console.error("Error saving HR WhatsApp config:", error);
-      toast.error("Erro ao salvar configuração");
+      console.error("Error saving HR WhatsApp config:", error?.message || error?.code || error);
+      toast.error(`Erro ao salvar configuração: ${error?.message || "erro desconhecido"}`);
     } finally {
       setSaving(false);
     }
