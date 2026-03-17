@@ -771,7 +771,8 @@ export function ConsultantOneOnOnePanel() {
             supabase
               .from("onboarding_tasks")
               .select("project_id, status")
-              .in("project_id", newProjectIds),
+              .in("project_id", newProjectIds)
+              .neq("status", "inactive"),
             supabase
               .from("onboarding_meeting_notes")
               .select("project_id, meeting_date")

@@ -216,6 +216,7 @@ const DashboardMetrics = ({
           const { data, error } = await supabase
             .from("onboarding_tasks")
             .select("id, title, status, due_date, project_id, completed_at, responsible_staff_id")
+            .neq("status", "inactive")
             .range(from, from + pageSize - 1);
 
           if (error) throw error;
