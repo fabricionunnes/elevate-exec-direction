@@ -219,6 +219,11 @@ export default function SocialInstagramCallback() {
                 </Card>
               ))}
             </div>
+            {accounts.length <= 1 && (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded-lg p-3 text-left">
+                💡 Não encontrou todas as contas? Apenas contas <strong>Instagram Business ou Creator</strong> vinculadas a uma <strong>Página do Facebook</strong> aparecem aqui. Verifique se as outras contas estão configuradas como Business/Creator e conectadas a uma página.
+              </p>
+            )}
           </>
         )}
 
