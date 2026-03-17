@@ -111,7 +111,7 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
   const fetchStaffOptions = async () => {
     const { data } = await supabase
       .from("onboarding_staff")
-      .select("id, name")
+      .select("id, name, user_id")
       .eq("is_active", true)
       .in("role", ["cs", "consultant", "admin", "master"])
       .order("name");
