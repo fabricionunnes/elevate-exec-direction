@@ -49,9 +49,23 @@ interface ProjectInfo {
   company_name: string | null;
 }
 
-const SECTIONS = [
-  {
-    title: "📊 Visão Geral",
+type FieldType = "yesno" | "text" | "textarea";
+
+interface FormField {
+  key: string;
+  label: string;
+  type: FieldType;
+  placeholder?: string;
+  required: boolean;
+}
+
+interface FormSection {
+  title: string;
+  description: string;
+  fields: FormField[];
+}
+
+const SECTIONS: FormSection[] = [
     description: "Informações básicas sobre seu histórico com tráfego pago",
     fields: [
       { key: "has_run_ads", label: "Você já investiu em tráfego pago (anúncios online)?", type: "yesno" as const, required: true },
