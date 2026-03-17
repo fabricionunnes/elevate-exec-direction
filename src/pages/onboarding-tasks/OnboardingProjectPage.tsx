@@ -495,6 +495,7 @@ const OnboardingProjectPage = () => {
           responsible_staff:onboarding_staff(id, name)
         `)
         .eq("project_id", projectId)
+        .neq("status", "inactive")
         .order("sort_order");
 
       if (tasksError) throw tasksError;

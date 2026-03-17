@@ -248,6 +248,7 @@ const OnboardingTasksPage = () => {
         const { data, error } = await supabase
           .from("onboarding_tasks")
           .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
+          .neq("status", "inactive")
           .range(from, from + pageSize - 1);
 
         if (error) throw error;
