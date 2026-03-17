@@ -326,7 +326,8 @@ export function DailyLeadershipAgenda() {
         const { data: taskCounts } = await supabase
           .from("onboarding_tasks")
           .select("project_id, status")
-          .in("project_id", projectIds);
+          .in("project_id", projectIds)
+          .neq("status", "inactive");
 
         // Fetch last meeting for each project
         const { data: meetings } = await supabase
