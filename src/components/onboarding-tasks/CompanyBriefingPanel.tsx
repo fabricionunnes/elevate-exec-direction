@@ -36,6 +36,7 @@ import {
   Trash2,
   Loader2,
   File,
+  BarChart3,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
