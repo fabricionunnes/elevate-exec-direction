@@ -165,6 +165,7 @@ const CultureFormPage = lazy(() => import("./pages/hr-recruitment/CultureFormPag
 const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/PublicCareerPlanFormPage"));
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
 const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
+const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnalysisPublicPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
@@ -372,6 +373,7 @@ const App = () => (
             <Route path="/job-application" element={<PublicJobApplicationPage />} />
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
+            <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />
