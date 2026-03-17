@@ -141,7 +141,7 @@ export const PendingMeetingsAlert = () => {
 
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
-      setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false });
+      setFormData({ notes: "", attendees: "", recordingLink: "", isInternal: false, isNoShow: false });
       fetchPendingMeetings();
     } catch (error) {
       console.error("Error finalizing meeting:", error);
