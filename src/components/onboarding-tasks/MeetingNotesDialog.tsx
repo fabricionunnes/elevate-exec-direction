@@ -146,7 +146,7 @@ export const MeetingNotesDialog = ({
 
     setLoading(true);
     try {
-      const { error } = await supabase.from("onboarding_meeting_notes").insert({
+      const { data: insertedMeeting, error } = await supabase.from("onboarding_meeting_notes").insert({
         project_id: selectedProjectId,
         staff_id: currentStaffId,
         google_event_id: event?.id || null,
@@ -159,7 +159,7 @@ export const MeetingNotesDialog = ({
         recording_link: recordingLink.trim() || null,
         is_finalized: true,
         is_internal: isInternal,
-      });
+      }).select("id").single();
 
       if (error) throw error;
 
