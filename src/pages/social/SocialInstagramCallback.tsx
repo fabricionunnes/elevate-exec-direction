@@ -36,20 +36,23 @@ export default function SocialInstagramCallback() {
     try {
       // Decode state
       const state = JSON.parse(atob(stateParam));
-      const { projectId: pId, redirectUri } = state;
+      const { projectId: pId, redirectUri, flow } = state;
       setProjectId(pId);
 
       setMessage("Trocando código por token de acesso...");
 
-      const callbackRedirectUri = redirectUri || `https://elevate-exec-direction.lovable.app/#/social/instagram-callback`;
+      // Use the redirectUri from state (which matches what was used in the auth URL)
+      // Fallback to current origin for backward compatibility
+      const callbackRedirectUri = redirectUri || window.location.origin + "/";
 
-      const { data, error } = await supabase.functions.invoke("instagram-project-oauth", {
-        body: {
-          action: "callback",
-          code,
-          projectId: pId,
-          redirectUri: callbackRedirectUri,
-        },
+      // Determine which edge function to call based on flow
+      const edgeFunction = flow === "social" ? "social-instagram-auth" : "instagram-project-oauth";
+      const bodyPayload = flow === "social"
+        ? { action: "exchange", code, projectId: pId, redirectUri: callbackRedirectUri }
+        : { action: "callback", code, projectId: pId, redirectUri: callbackRedirectUri };
+
+      const { data, error } = await supabase.functions.invoke(edgeFunction, {
+        body: bodyPayload,
       });
 
       if (error) throw error;

@@ -10,11 +10,11 @@ const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 
-// Normalize SITE_URL to always have trailing slash for Meta Strict Mode compatibility
+// Fallback SITE_URL — prefer client-provided redirectUri
 const rawSiteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
-const SITE_URL = rawSiteUrl.endsWith("/") ? rawSiteUrl : `${rawSiteUrl}/`;
+const DEFAULT_SITE_URL = rawSiteUrl.endsWith("/") ? rawSiteUrl : `${rawSiteUrl}/`;
 
-console.log("Social Instagram Auth - Configured redirect_uri:", SITE_URL);
+console.log("Social Instagram Auth - Default redirect_uri:", DEFAULT_SITE_URL);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -35,11 +35,15 @@ Deno.serve(async (req) => {
 
     // Action: Get authorization URL
     if (action === "get_auth_url") {
-      const { projectId } = body;
+      const { projectId, redirectUri: clientRedirectUri } = body;
       
       if (!projectId) {
         throw new Error("projectId is required");
       }
+
+      // Use client-provided redirectUri (from window.location.origin) or fallback
+      const redirectUri = clientRedirectUri || DEFAULT_SITE_URL;
+      console.log("Social Instagram Auth - Using redirect_uri:", redirectUri);
 
       // Instagram Business scopes for content publishing
       const scopes = [
@@ -53,12 +57,12 @@ Deno.serve(async (req) => {
       ].join(",");
 
       // Mark this as "social" flow to differentiate from CRM OAuth
-      const state = JSON.stringify({ projectId, flow: "social" });
+      const state = JSON.stringify({ projectId, flow: "social", redirectUri });
       const encodedState = btoa(state);
 
       const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
       authUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
-      authUrl.searchParams.set("redirect_uri", SITE_URL);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("scope", scopes);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("state", encodedState);
@@ -72,19 +76,21 @@ Deno.serve(async (req) => {
 
     // Action: Exchange code for tokens
     if (action === "exchange") {
-      const { code, projectId } = body;
+      const { code, projectId, redirectUri: clientRedirectUri } = body;
 
       if (!code || !projectId) {
         throw new Error("code and projectId are required");
       }
 
-      console.log("Exchanging code for access token for project:", projectId);
+      // Use client-provided redirectUri to match what was used in auth URL
+      const redirectUri = clientRedirectUri || DEFAULT_SITE_URL;
+      console.log("Exchanging code for access token for project:", projectId, "with redirect_uri:", redirectUri);
 
       // Step 1: Exchange code for short-lived token
       const tokenUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
       tokenUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
       tokenUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
-      tokenUrl.searchParams.set("redirect_uri", SITE_URL);
+      tokenUrl.searchParams.set("redirect_uri", redirectUri);
       tokenUrl.searchParams.set("code", code);
 
       const tokenResponse = await fetch(tokenUrl.toString());

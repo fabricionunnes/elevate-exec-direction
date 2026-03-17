@@ -220,8 +220,10 @@ export const SocialSettingsPage = () => {
   const handleConnectInstagram = async () => {
     setConnectingInstagram(true);
     try {
+      // Use current origin so redirect_uri matches regardless of domain
+      const redirectUri = window.location.origin + "/";
       const { data, error } = await supabase.functions.invoke("social-instagram-auth", {
-        body: { projectId: project.id, action: "get_auth_url" },
+        body: { projectId: project.id, action: "get_auth_url", redirectUri },
       });
 
       if (error) throw error;
