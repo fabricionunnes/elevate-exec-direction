@@ -138,13 +138,17 @@ Deno.serve(async (req) => {
       let views = 0;
 
       try {
-        const insightsUrl = `${GRAPH_API_BASE}/${matchedMedia.id}/insights?metric=saved,shares,reach,impressions&access_token=${accessToken}`;
+        // v22.0+ requires metric_type=total_value for lifetime metrics
+        const insightsUrl = `${GRAPH_API_BASE}/${matchedMedia.id}/insights?metric=saved,shares,reach,impressions&metric_type=total_value&access_token=${accessToken}`;
         const insightsResponse = await fetch(insightsUrl);
         const insightsData = await insightsResponse.json();
 
+        console.log(`Insights for media ${matchedMedia.id}:`, JSON.stringify(insightsData).substring(0, 500));
+
         if (insightsData.data) {
           for (const insight of insightsData.data) {
-            const value = insight.values?.[0]?.value || 0;
+            // v22.0+ uses total_value.value, older uses values[0].value
+            const value = insight.total_value?.value ?? insight.values?.[0]?.value ?? 0;
             switch (insight.name) {
               case "saved": saves = value; break;
               case "shares": shares = value; break;
@@ -152,17 +156,17 @@ Deno.serve(async (req) => {
               case "impressions": impressions = value; break;
             }
           }
+        } else if (insightsData.error) {
+          console.warn(`Insights API error for ${matchedMedia.id}:`, insightsData.error.message);
         }
 
         // For video/reels, fetch video views
         if (matchedMedia.media_type === "VIDEO" || matchedMedia.media_type === "REELS") {
           try {
-            const videoInsightsUrl = `${GRAPH_API_BASE}/${matchedMedia.id}/insights?metric=plays&access_token=${accessToken}`;
+            const videoInsightsUrl = `${GRAPH_API_BASE}/${matchedMedia.id}/insights?metric=plays&metric_type=total_value&access_token=${accessToken}`;
             const videoResponse = await fetch(videoInsightsUrl);
             const videoData = await videoResponse.json();
-            if (videoData.data?.[0]?.values?.[0]?.value) {
-              views = videoData.data[0].values[0].value;
-            }
+            views = videoData.data?.[0]?.total_value?.value ?? videoData.data?.[0]?.values?.[0]?.value ?? 0;
           } catch (e) {
             console.warn("Could not fetch video views:", e);
           }
