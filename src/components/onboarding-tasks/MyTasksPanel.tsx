@@ -44,7 +44,7 @@ interface MyTask {
   title: string;
   description: string | null;
   due_date: string | null;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "inactive";
   completed_at: string | null;
   priority: string | null;
   project_id: string;
