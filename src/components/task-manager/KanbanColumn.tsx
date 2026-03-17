@@ -11,9 +11,11 @@ interface Props {
   tasks: TaskWithProject[];
   count: number;
   onTaskClick: (task: TaskWithProject) => void;
+  selectedTaskIds?: Set<string>;
+  onToggleSelection?: (taskId: string) => void;
 }
 
-export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick }: Props) => {
+export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick, selectedTaskIds, onToggleSelection }: Props) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
   return (
@@ -31,7 +33,11 @@ export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick }: Pr
         <div className="space-y-2">
           {tasks.map(task => (
             <div key={task.id} onClick={() => onTaskClick(task)} className="cursor-pointer">
-              <TaskCard task={task} />
+              <TaskCard
+                task={task}
+                isSelected={selectedTaskIds?.has(task.id)}
+                onToggleSelection={onToggleSelection}
+              />
             </div>
           ))}
           {tasks.length === 0 && (

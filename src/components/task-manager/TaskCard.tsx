@@ -3,6 +3,7 @@ import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Building2, CalendarDays, FolderOpen } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -11,6 +12,8 @@ import type { TaskWithProject } from "@/pages/onboarding-tasks/TaskManagerPage";
 interface Props {
   task: TaskWithProject;
   isDragging?: boolean;
+  isSelected?: boolean;
+  onToggleSelection?: (taskId: string) => void;
 }
 
 const priorityConfig: Record<string, { label: string; class: string }> = {
@@ -19,7 +22,7 @@ const priorityConfig: Record<string, { label: string; class: string }> = {
   low: { label: "Baixa", class: "bg-green-500/10 text-green-600 border-green-500/20" },
 };
 
-export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragging }, _ref) => {
+export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragging, isSelected, onToggleSelection }, _ref) => {
   const { attributes, listeners, setNodeRef, transform } = useDraggable({
     id: task.id,
   });
@@ -31,6 +34,11 @@ export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragg
   const priority = task.priority ? priorityConfig[task.priority] : null;
   const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "completed";
 
+  const handleCheckboxClick = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    onToggleSelection?.(task.id);
+  };
+
   return (
     <Card
       ref={setNodeRef}
@@ -39,10 +47,17 @@ export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragg
       {...attributes}
       className={`p-3 cursor-grab active:cursor-grabbing select-none transition-shadow hover:shadow-md ${
         isDragging ? "opacity-80 shadow-lg ring-2 ring-primary/30 rotate-2" : ""
-      } ${isOverdue ? "border-red-500/40" : ""}`}
+      } ${isOverdue ? "border-red-500/40" : ""} ${isSelected ? "ring-2 ring-primary bg-primary/5" : ""}`}
     >
       <div className="space-y-2">
-        <p className="text-sm font-medium leading-tight line-clamp-2">{task.title}</p>
+        <div className="flex items-start gap-2">
+          {onToggleSelection && (
+            <div onClick={handleCheckboxClick} className="pt-0.5 shrink-0">
+              <Checkbox checked={!!isSelected} className="pointer-events-none" />
+            </div>
+          )}
+          <p className="text-sm font-medium leading-tight line-clamp-2 flex-1">{task.title}</p>
+        </div>
 
         <div className="flex items-center gap-1.5 text-xs text-muted-foreground">
           <Building2 className="h-3 w-3 shrink-0" />
