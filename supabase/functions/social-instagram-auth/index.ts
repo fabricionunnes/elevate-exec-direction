@@ -35,11 +35,15 @@ Deno.serve(async (req) => {
 
     // Action: Get authorization URL
     if (action === "get_auth_url") {
-      const { projectId } = body;
+      const { projectId, redirectUri: clientRedirectUri } = body;
       
       if (!projectId) {
         throw new Error("projectId is required");
       }
+
+      // Use client-provided redirectUri (from window.location.origin) or fallback
+      const redirectUri = clientRedirectUri || DEFAULT_SITE_URL;
+      console.log("Social Instagram Auth - Using redirect_uri:", redirectUri);
 
       // Instagram Business scopes for content publishing
       const scopes = [
@@ -53,12 +57,12 @@ Deno.serve(async (req) => {
       ].join(",");
 
       // Mark this as "social" flow to differentiate from CRM OAuth
-      const state = JSON.stringify({ projectId, flow: "social" });
+      const state = JSON.stringify({ projectId, flow: "social", redirectUri });
       const encodedState = btoa(state);
 
       const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
       authUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
-      authUrl.searchParams.set("redirect_uri", SITE_URL);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
       authUrl.searchParams.set("scope", scopes);
       authUrl.searchParams.set("response_type", "code");
       authUrl.searchParams.set("state", encodedState);
