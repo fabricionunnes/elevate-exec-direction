@@ -73,7 +73,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     .from("onboarding_projects")
     .select(`
       id, product_name, status,
-      onboarding_companies!inner(id, name, phone, status)
+      onboarding_companies!inner(id, name, phone, status, contract_start_date)
     `);
 
   // In test mode, allow any project status; in normal mode only active projects
@@ -112,6 +112,16 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (!isTest && company.status !== "active") continue;
     // In test mode, only include the selected company
     if (isTest && testCompanyId && company.id !== testCompanyId) continue;
+
+    // Skip companies with less than 30 days since contract start (new companies)
+    if (!isTest && company.contract_start_date) {
+      const daysSinceStart = daysBetween(new Date(company.contract_start_date), now);
+      if (daysSinceStart < 30) {
+        console.log(`Company ${company.name} (${company.id}) skipped: only ${daysSinceStart} days since contract start`);
+        continue;
+      }
+    }
+
     const phone = cleanPhone(company.phone);
     if (!phone) {
       console.log(`Company ${company.name} (${company.id}) has no valid phone: ${company.phone}`);
@@ -149,10 +159,14 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
         .limit(1)
         .maybeSingle();
 
-      // If responded recently, skip
+      // If responded recently (minimum 30 days, or frequencyDays if greater), skip
       if (lastResponse) {
         const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
-        if (daysSinceResponse < frequencyDays) continue;
+        const minDaysBetweenResponses = Math.max(30, frequencyDays);
+        if (daysSinceResponse < minDaysBetweenResponses) {
+          console.log(`Company ${companyName} (${companyId}) skipped: last NPS response was ${daysSinceResponse} days ago (min: ${minDaysBetweenResponses})`);
+          continue;
+        }
       }
 
       // Check last send log for this company
