@@ -151,6 +151,7 @@ const SegmentsAnalysisPage = lazy(() => import("./pages/onboarding-tasks/Segment
 const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoicePage"));
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
+const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
