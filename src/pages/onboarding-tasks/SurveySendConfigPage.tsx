@@ -678,7 +678,18 @@ export default function SurveySendConfigPage() {
                 ) : (
                   paginatedLogs.map(log => (
                     <TableRow key={log.id}>
-                      <TableCell className="text-sm font-medium">{log.contact_name || "-"}</TableCell>
+                      <TableCell className="text-sm font-medium">
+                        {log.company_id ? (
+                          <button
+                            className="text-primary hover:underline cursor-pointer text-left"
+                            onClick={() => navigate(`/onboarding-tasks/companies/${log.company_id}`)}
+                          >
+                            {log.contact_name || "-"}
+                          </button>
+                        ) : (
+                          log.contact_name || "-"
+                        )}
+                      </TableCell>
                       <TableCell className="text-sm text-muted-foreground">{log.phone}</TableCell>
                       {logsTab === "csat" && (
                         <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
