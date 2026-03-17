@@ -535,6 +535,12 @@ export const MeetingsPanel = ({ open, onOpenChange, staffId, staffRole }: Meetin
                                 <Clock className="h-3 w-3" />
                                 {format(meetingDate, "HH:mm")}
                               </span>
+                              {meeting.calendar_owner_name && (
+                                <span className="flex items-center gap-1 truncate">
+                                  <Users className="h-3 w-3" />
+                                  {meeting.calendar_owner_name}
+                                </span>
+                              )}
                               {meeting.project && (
                                 <span className="flex items-center gap-1 truncate">
                                   <Building2 className="h-3 w-3" />
