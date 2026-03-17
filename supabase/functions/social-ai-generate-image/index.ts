@@ -181,7 +181,6 @@ Deno.serve(async (req) => {
       const panoramicWidth = slideWidth * carouselCount;
 
       // Build prompt for a single wide panoramic image
-      const brandColors = extractBrandColors(profile, briefing);
       let panoramicPrompt = `Generate a SINGLE WIDE PANORAMIC IMAGE for an Instagram carousel with ${carouselCount} slides.
 
 The image must be a very wide horizontal panorama (ratio approximately ${carouselCount}:1.25).
@@ -201,9 +200,9 @@ Visual Request: ${prompt}
       if (briefing?.brand_perception) {
         panoramicPrompt += `\nBrand personality: ${briefing.brand_perception}`;
       }
-      if (brandColors) {
-        panoramicPrompt += `\nBRAND COLORS (MUST USE): ${brandColors}`;
-      }
+
+      // Add full brand style block for consistency
+      panoramicPrompt += buildBrandStyleBlock(profile, briefing);
 
       // Add slide text instructions
       const hasSlideTexts = slideTexts && Array.isArray(slideTexts) && slideTexts.some((t: string) => t && t.trim());
@@ -223,16 +222,12 @@ QUALITY: Ultra-high resolution, professional studio quality, crisp and sharp.
 LANGUAGE: Any text MUST be in correct Brazilian Portuguese.${hasSlideTexts ? '' : ' Prefer NO text if possible.'}
 REALISM: 100% physically realistic, correct proportions and perspective.
 
-ABSOLUTELY FORBIDDEN - DO NOT RENDER ANY OF THE FOLLOWING IN THE IMAGE:
-- NO pixel measurements, coordinates, or dimensions (e.g. "1080px", "0-1080", "px")
-- NO panel/section labels, numbers, or indicators (e.g. "Panel 1", "1/5", "2/5", "Section 1")
-- NO aspect ratio text (e.g. "4:5", "16:9")
-- NO UI elements, borders between sections, dotted lines, or grid markers
+ABSOLUTELY FORBIDDEN:
+- NO pixel measurements, coordinates, or dimensions
+- NO panel/section labels, numbers, or indicators
+- NO aspect ratio text, UI elements, borders, grid markers
 - NO technical annotations of any kind
-The image must be a CLEAN, SEAMLESS panoramic artwork with ZERO technical overlays.
-
-CRITICAL - LOGO: Do NOT include any logo, brand mark, watermark, or company name text in the image.
-The logo will be added separately after generation. Do NOT invent or hallucinate any logos.
+- NO logos, brand marks, watermarks, or company name text (logo added separately)
 `;
 
       // Add reference image if provided
