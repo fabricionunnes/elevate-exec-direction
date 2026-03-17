@@ -38,7 +38,7 @@ interface ParsedTask {
   notes: string;
   createdAt: string;
   completedAt: string | null;
-  status: 'pending' | 'in_progress' | 'completed';
+  status: 'pending' | 'in_progress' | 'completed' | 'inactive';
 }
 
 interface ParsedData {
