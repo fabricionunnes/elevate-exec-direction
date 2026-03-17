@@ -86,6 +86,9 @@ export default function SurveySendConfigPage() {
   const [testSelectedCompany, setTestSelectedCompany] = useState<string | null>(null);
   const [sendingTest, setSendingTest] = useState(false);
   const [loadingCompanies, setLoadingCompanies] = useState(false);
+  const [logsStatusFilter, setLogsStatusFilter] = useState<string | null>(null);
+  const [logsPage, setLogsPage] = useState(1);
+  const LOGS_PER_PAGE = 10;
 
   const loadData = useCallback(async () => {
     setLoading(true);
