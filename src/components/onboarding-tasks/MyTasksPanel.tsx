@@ -91,6 +91,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           )
         `)
         .eq("responsible_staff_id", staffId)
+        .neq("status", "inactive")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (error) throw error;
