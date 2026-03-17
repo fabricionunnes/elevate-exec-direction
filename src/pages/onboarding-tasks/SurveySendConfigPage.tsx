@@ -571,12 +571,31 @@ export default function SurveySendConfigPage() {
     );
   };
 
+  const [logsStatusFilter, setLogsStatusFilter] = useState<string | null>(null);
+  const [logsPage, setLogsPage] = useState(1);
+  const LOGS_PER_PAGE = 10;
+
   const renderLogsPanel = () => {
-    const filteredLogs = logs.filter(l => l.survey_type === logsTab);
-    const respondedCount = filteredLogs.filter(l => l.status === "responded").length;
-    const sentCount = filteredLogs.filter(l => l.status === "sent").length;
-    const pendingCount = filteredLogs.filter(l => l.status === "pending").length;
-    const failedCount = filteredLogs.filter(l => l.status === "failed").length;
+    const typeLogs = logs.filter(l => l.survey_type === logsTab);
+    const respondedCount = typeLogs.filter(l => l.status === "responded").length;
+    const sentCount = typeLogs.filter(l => l.status === "sent").length;
+    const pendingCount = typeLogs.filter(l => l.status === "pending").length;
+    const failedCount = typeLogs.filter(l => l.status === "failed").length;
+
+    const filteredLogs = logsStatusFilter
+      ? typeLogs.filter(l => l.status === logsStatusFilter)
+      : typeLogs;
+
+    const totalPages = Math.max(1, Math.ceil(filteredLogs.length / LOGS_PER_PAGE));
+    const currentPage = Math.min(logsPage, totalPages);
+    const paginatedLogs = filteredLogs.slice((currentPage - 1) * LOGS_PER_PAGE, currentPage * LOGS_PER_PAGE);
+
+    const statusCards = [
+      { key: "sent", label: "Enviados", value: sentCount, color: "text-blue-600", bgActive: "ring-2 ring-blue-500 bg-blue-50 dark:bg-blue-950" },
+      { key: "responded", label: "Respondidos", value: respondedCount, color: "text-green-600", bgActive: "ring-2 ring-green-500 bg-green-50 dark:bg-green-950" },
+      { key: "pending", label: "Pendentes", value: pendingCount, color: "text-yellow-600", bgActive: "ring-2 ring-yellow-500 bg-yellow-50 dark:bg-yellow-950" },
+      { key: "failed", label: "Falhas", value: failedCount, color: "text-red-600", bgActive: "ring-2 ring-red-500 bg-red-50 dark:bg-red-950" },
+    ];
 
     return (
       <div className="space-y-4">
@@ -584,79 +603,127 @@ export default function SurveySendConfigPage() {
           <Button
             variant={logsTab === "nps" ? "default" : "outline"}
             size="sm"
-            onClick={() => setLogsTab("nps")}
+            onClick={() => { setLogsTab("nps"); setLogsStatusFilter(null); setLogsPage(1); }}
           >
             NPS
           </Button>
           <Button
             variant={logsTab === "csat" ? "default" : "outline"}
             size="sm"
-            onClick={() => setLogsTab("csat")}
+            onClick={() => { setLogsTab("csat"); setLogsStatusFilter(null); setLogsPage(1); }}
           >
             CSAT
           </Button>
         </div>
 
-        {/* Summary cards */}
+        {/* Summary cards - clickable */}
         <div className="grid grid-cols-2 sm:grid-cols-4 gap-3">
-          {[
-            { label: "Enviados", value: sentCount, color: "text-blue-600" },
-            { label: "Respondidos", value: respondedCount, color: "text-green-600" },
-            { label: "Pendentes", value: pendingCount, color: "text-yellow-600" },
-            { label: "Falhas", value: failedCount, color: "text-red-600" },
-          ].map(s => (
-            <Card key={s.label} className="p-3">
+          {statusCards.map(s => (
+            <Card
+              key={s.key}
+              className={cn(
+                "p-3 cursor-pointer transition-all hover:shadow-md",
+                logsStatusFilter === s.key ? s.bgActive : "hover:bg-muted/50"
+              )}
+              onClick={() => {
+                setLogsStatusFilter(logsStatusFilter === s.key ? null : s.key);
+                setLogsPage(1);
+              }}
+            >
               <p className="text-xs text-muted-foreground">{s.label}</p>
               <p className={cn("text-xl font-bold", s.color)}>{s.value}</p>
+              {logsStatusFilter === s.key && (
+                <p className="text-[10px] text-muted-foreground mt-1">Clique para remover filtro</p>
+              )}
             </Card>
           ))}
         </div>
 
+        {logsStatusFilter && (
+          <div className="flex items-center gap-2">
+            <Badge variant="secondary" className="gap-1">
+              Filtro: {statusCards.find(s => s.key === logsStatusFilter)?.label}
+              <button
+                className="ml-1 hover:text-foreground"
+                onClick={() => { setLogsStatusFilter(null); setLogsPage(1); }}
+              >
+                ✕
+              </button>
+            </Badge>
+            <span className="text-xs text-muted-foreground">{filteredLogs.length} registro(s)</span>
+          </div>
+        )}
+
         {/* Logs table */}
         <Card>
           <CardContent className="p-0">
-            <ScrollArea className="max-h-[500px]">
-              <Table>
-                <TableHeader>
-                  <TableRow className="bg-muted/50">
-                    <TableHead>Contato</TableHead>
-                    <TableHead>Telefone</TableHead>
-                    {logsTab === "csat" && <TableHead>Assunto</TableHead>}
-                    <TableHead className="text-center">Tentativa</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Data</TableHead>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead>Contato</TableHead>
+                  <TableHead>Telefone</TableHead>
+                  {logsTab === "csat" && <TableHead>Assunto</TableHead>}
+                  <TableHead className="text-center">Tentativa</TableHead>
+                  <TableHead>Status</TableHead>
+                  <TableHead>Data</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {paginatedLogs.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={logsTab === "csat" ? 6 : 5} className="text-center py-8 text-muted-foreground">
+                      {logsStatusFilter ? "Nenhum registro com este status" : "Nenhum envio registrado ainda"}
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredLogs.length === 0 ? (
-                    <TableRow>
-                      <TableCell colSpan={logsTab === "csat" ? 6 : 5} className="text-center py-8 text-muted-foreground">
-                        Nenhum envio registrado ainda
+                ) : (
+                  paginatedLogs.map(log => (
+                    <TableRow key={log.id}>
+                      <TableCell className="text-sm font-medium">{log.contact_name || "-"}</TableCell>
+                      <TableCell className="text-sm text-muted-foreground">{log.phone}</TableCell>
+                      {logsTab === "csat" && (
+                        <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
+                          {log.meeting_subject || "-"}
+                        </TableCell>
+                      )}
+                      <TableCell className="text-center">
+                        <Badge variant="outline" className="text-xs font-mono">{log.attempt_number}</Badge>
+                      </TableCell>
+                      <TableCell>{getStatusBadge(log.status)}</TableCell>
+                      <TableCell className="text-xs text-muted-foreground">
+                        {log.sent_at ? format(parseISO(log.sent_at), "dd/MM/yyyy HH:mm") : "-"}
                       </TableCell>
                     </TableRow>
-                  ) : (
-                    filteredLogs.map(log => (
-                      <TableRow key={log.id}>
-                        <TableCell className="text-sm font-medium">{log.contact_name || "-"}</TableCell>
-                        <TableCell className="text-sm text-muted-foreground">{log.phone}</TableCell>
-                        {logsTab === "csat" && (
-                          <TableCell className="text-sm text-muted-foreground max-w-[200px] truncate">
-                            {log.meeting_subject || "-"}
-                          </TableCell>
-                        )}
-                        <TableCell className="text-center">
-                          <Badge variant="outline" className="text-xs font-mono">{log.attempt_number}</Badge>
-                        </TableCell>
-                        <TableCell>{getStatusBadge(log.status)}</TableCell>
-                        <TableCell className="text-xs text-muted-foreground">
-                          {log.sent_at ? format(parseISO(log.sent_at), "dd/MM/yyyy HH:mm") : "-"}
-                        </TableCell>
-                      </TableRow>
-                    ))
-                  )}
-                </TableBody>
-              </Table>
-            </ScrollArea>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+
+            {/* Pagination */}
+            {totalPages > 1 && (
+              <div className="flex items-center justify-between px-4 py-3 border-t">
+                <p className="text-xs text-muted-foreground">
+                  Página {currentPage} de {totalPages} ({filteredLogs.length} registros)
+                </p>
+                <div className="flex items-center gap-1">
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage <= 1}
+                    onClick={() => setLogsPage(p => p - 1)}
+                  >
+                    Anterior
+                  </Button>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={currentPage >= totalPages}
+                    onClick={() => setLogsPage(p => p + 1)}
+                  >
+                    Próxima
+                  </Button>
+                </div>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
