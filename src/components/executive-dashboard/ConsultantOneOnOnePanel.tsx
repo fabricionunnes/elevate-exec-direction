@@ -358,7 +358,8 @@ export function ConsultantOneOnOnePanel() {
             .select("project_id")
             .in("project_id", projectIds)
             .lt("due_date", today)
-            .neq("status", "completed"),
+            .neq("status", "completed")
+            .neq("status", "inactive"),
           
           // All meetings for all projects (last 30 days only)
           supabase
@@ -417,6 +418,7 @@ export function ConsultantOneOnOnePanel() {
             .select("id, project_id, title, due_date, status")
             .in("project_id", projectIds)
             .neq("status", "completed")
+            .neq("status", "inactive")
             .gte("due_date", today)
             .order("due_date", { ascending: true })
             .limit(500),
@@ -769,7 +771,8 @@ export function ConsultantOneOnOnePanel() {
             supabase
               .from("onboarding_tasks")
               .select("project_id, status")
-              .in("project_id", newProjectIds),
+              .in("project_id", newProjectIds)
+              .neq("status", "inactive"),
             supabase
               .from("onboarding_meeting_notes")
               .select("project_id, meeting_date")

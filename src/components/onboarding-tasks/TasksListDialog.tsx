@@ -409,7 +409,7 @@ export function TasksListDialog({ open, onOpenChange, type, taskIds, status, pro
         `
         )
         .in("project_id", baseProjectIds)
-        .eq("status", status as "pending" | "in_progress" | "completed")
+        .eq("status", status as "pending" | "in_progress" | "completed" | "inactive")
         .order("due_date", { ascending: true })
         .limit(200);
 

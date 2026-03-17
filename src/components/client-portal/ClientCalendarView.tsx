@@ -36,7 +36,7 @@ interface OnboardingTask {
   description: string | null;
   due_date: string | null;
   completed_at: string | null;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "inactive";
   observations: string | null;
   assignee?: { id: string; name: string; role: string };
   responsible_staff?: { id: string; name: string } | null;

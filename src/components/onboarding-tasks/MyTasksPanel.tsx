@@ -44,7 +44,7 @@ interface MyTask {
   title: string;
   description: string | null;
   due_date: string | null;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "inactive";
   completed_at: string | null;
   priority: string | null;
   project_id: string;
@@ -91,6 +91,7 @@ export const MyTasksPanel = ({ open, onOpenChange, staffId }: MyTasksPanelProps)
           )
         `)
         .eq("responsible_staff_id", staffId)
+        .neq("status", "inactive")
         .order("due_date", { ascending: true, nullsFirst: false });
 
       if (error) throw error;

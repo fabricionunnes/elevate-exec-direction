@@ -248,6 +248,7 @@ const OnboardingTasksPage = () => {
         const { data, error } = await supabase
           .from("onboarding_tasks")
           .select("id, status, due_date, project_id, responsible_staff_id, completed_at")
+          .neq("status", "inactive")
           .range(from, from + pageSize - 1);
 
         if (error) throw error;
@@ -1632,7 +1633,8 @@ const OnboardingTasksPage = () => {
             const { data: tasks } = await supabase
               .from("onboarding_tasks")
               .select("status, due_date, completed_at")
-              .eq("project_id", project.id);
+              .eq("project_id", project.id)
+              .neq("status", "inactive");
 
             if (tasks && tasks.length > 0) {
               const completed = tasks.filter(t => t.status === "completed").length;

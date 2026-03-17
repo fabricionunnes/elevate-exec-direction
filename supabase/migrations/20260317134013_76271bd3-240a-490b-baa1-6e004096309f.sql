@@ -1,0 +1,1 @@
+ALTER TYPE public.onboarding_task_status ADD VALUE 'inactive';

@@ -262,7 +262,8 @@ export const useHealthScore = (projectId: string | undefined) => {
       const { data: tasks } = await supabase
         .from("onboarding_tasks")
         .select("status, due_date, completed_at")
-        .eq("project_id", projectId);
+        .eq("project_id", projectId)
+        .neq("status", "inactive");
 
       if (tasks && tasks.length > 0) {
         const completed = tasks.filter(t => t.status === "completed").length;

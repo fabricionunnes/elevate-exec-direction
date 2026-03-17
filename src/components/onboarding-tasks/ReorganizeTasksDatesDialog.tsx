@@ -26,7 +26,7 @@ interface OnboardingTask {
   id: string;
   title: string;
   due_date: string | null;
-  status: "pending" | "in_progress" | "completed";
+  status: "pending" | "in_progress" | "completed" | "inactive";
   sort_order: number;
 }
 

@@ -72,6 +72,7 @@ export const TaskNotificationsDialog = () => {
         `)
         .or(`responsible_staff_id.eq.${staffMember.id},responsible_staff_id.is.null`)
         .neq("status", "completed")
+        .neq("status", "inactive")
         .not("due_date", "is", null)
         .lte("due_date", todayStr)
         .order("due_date", { ascending: true });
