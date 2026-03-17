@@ -105,8 +105,8 @@ const SECTIONS: FormSection[] = [
     title: "💰 Métricas e Resultados",
     description: "Números atuais para entender a performance",
     fields: [
-      { key: "average_cpl", label: "Qual o seu custo médio por lead (CPL) atual?", type: "text", placeholder: "Ex: R$ 15, R$ 30, não sei...", required: false },
-      { key: "average_cpa", label: "Qual o custo médio por aquisição/venda (CPA)?", type: "text", placeholder: "Ex: R$ 100, R$ 250, não sei...", required: false },
+      { key: "average_cpl", label: "Qual o seu custo médio por lead (CPL) atual?", type: "currency", placeholder: "R$ 0,00", required: false },
+      { key: "average_cpa", label: "Qual o custo médio por aquisição/venda (CPA)?", type: "currency", placeholder: "R$ 0,00", required: false },
       { key: "average_roas", label: "Qual o ROAS (retorno sobre investimento em anúncios) atual?", type: "text", placeholder: "Ex: 3x, 5x, não sei calcular...", required: false },
       { key: "conversion_tracking", label: "Você acompanha conversões? Como mede os resultados das campanhas?", type: "textarea", placeholder: "Ex: Pelo gerenciador de anúncios, planilha, CRM, não acompanho...", required: true },
     ],
