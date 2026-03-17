@@ -12,6 +12,7 @@ type RequestBody = {
   notifyOnStageChange?: boolean;
   notifyPhone?: string | null;
   notifyGroupJid?: string | null;
+  notifyGroupName?: string | null;
   messageTemplate?: string | null;
 };
 
@@ -128,6 +129,7 @@ Deno.serve(async (req) => {
         notify_on_stage_change: Boolean(body.notifyOnStageChange),
         notify_phone: body.notifyPhone?.trim() || null,
         notify_group_jid: body.notifyGroupJid?.trim() || null,
+        notify_group_name: body.notifyGroupName?.trim() || null,
         message_template: body.messageTemplate?.trim() || null,
         updated_at: new Date().toISOString(),
       };
