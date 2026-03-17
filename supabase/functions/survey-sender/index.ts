@@ -112,6 +112,16 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (!isTest && company.status !== "active") continue;
     // In test mode, only include the selected company
     if (isTest && testCompanyId && company.id !== testCompanyId) continue;
+
+    // Skip companies with less than 30 days since contract start (new companies)
+    if (!isTest && company.contract_start_date) {
+      const daysSinceStart = daysBetween(new Date(company.contract_start_date), now);
+      if (daysSinceStart < 30) {
+        console.log(`Company ${company.name} (${company.id}) skipped: only ${daysSinceStart} days since contract start`);
+        continue;
+      }
+    }
+
     const phone = cleanPhone(company.phone);
     if (!phone) {
       console.log(`Company ${company.name} (${company.id}) has no valid phone: ${company.phone}`);
