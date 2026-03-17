@@ -20264,6 +20264,7 @@ export type Database = {
           swot_threats: string | null
           swot_weaknesses: string | null
           target_audience: string | null
+          tenant_id: string | null
           tools_used: string | null
           updated_at: string
           website: string | null
@@ -20337,6 +20338,7 @@ export type Database = {
           swot_threats?: string | null
           swot_weaknesses?: string | null
           target_audience?: string | null
+          tenant_id?: string | null
           tools_used?: string | null
           updated_at?: string
           website?: string | null
@@ -20410,6 +20412,7 @@ export type Database = {
           swot_threats?: string | null
           swot_weaknesses?: string | null
           target_audience?: string | null
+          tenant_id?: string | null
           tools_used?: string | null
           updated_at?: string
           website?: string | null
@@ -20427,6 +20430,13 @@ export type Database = {
             columns: ["cs_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_companies_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -20977,6 +20987,7 @@ export type Database = {
           retention_notes: string | null
           retention_status: string | null
           status: string
+          tenant_id: string | null
           updated_at: string
         }
         Insert: {
@@ -21015,6 +21026,7 @@ export type Database = {
           retention_notes?: string | null
           retention_status?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Update: {
@@ -21053,6 +21065,7 @@ export type Database = {
           retention_notes?: string | null
           retention_status?: string | null
           status?: string
+          tenant_id?: string | null
           updated_at?: string
         }
         Relationships: [
@@ -21089,6 +21102,13 @@ export type Database = {
             columns: ["onboarding_company_id"]
             isOneToOne: false
             referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_projects_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
             referencedColumns: ["id"]
           },
         ]
@@ -28333,6 +28353,136 @@ export type Database = {
           },
         ]
       }
+      whitelabel_subscriptions: {
+        Row: {
+          active_projects_count: number
+          billing_cycle: string
+          created_at: string
+          current_period_end: string | null
+          current_period_start: string | null
+          id: string
+          price_per_project: number
+          status: string
+          tenant_id: string
+          updated_at: string
+        }
+        Insert: {
+          active_projects_count?: number
+          billing_cycle?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          price_per_project?: number
+          status?: string
+          tenant_id: string
+          updated_at?: string
+        }
+        Update: {
+          active_projects_count?: number
+          billing_cycle?: string
+          created_at?: string
+          current_period_end?: string | null
+          current_period_start?: string | null
+          id?: string
+          price_per_project?: number
+          status?: string
+          tenant_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_subscriptions_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whitelabel_tenant_users: {
+        Row: {
+          created_at: string
+          id: string
+          role: string
+          tenant_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          role?: string
+          tenant_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          role?: string
+          tenant_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "whitelabel_tenant_users_tenant_id_fkey"
+            columns: ["tenant_id"]
+            isOneToOne: false
+            referencedRelation: "whitelabel_tenants"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      whitelabel_tenants: {
+        Row: {
+          created_at: string
+          custom_domain: string | null
+          favicon_url: string | null
+          id: string
+          is_dark_mode: boolean
+          logo_url: string | null
+          max_active_projects: number
+          name: string
+          owner_user_id: string | null
+          platform_name: string
+          slug: string
+          status: string
+          theme_colors: Json | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_domain?: string | null
+          favicon_url?: string | null
+          id?: string
+          is_dark_mode?: boolean
+          logo_url?: string | null
+          max_active_projects?: number
+          name: string
+          owner_user_id?: string | null
+          platform_name?: string
+          slug: string
+          status?: string
+          theme_colors?: Json | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_domain?: string | null
+          favicon_url?: string | null
+          id?: string
+          is_dark_mode?: boolean
+          logo_url?: string | null
+          max_active_projects?: number
+          name?: string
+          owner_user_id?: string | null
+          platform_name?: string
+          slug?: string
+          status?: string
+          theme_colors?: Json | null
+          updated_at?: string
+        }
+        Relationships: []
+      }
     }
     Views: {
       [_ in never]: never
@@ -28458,6 +28608,7 @@ export type Database = {
           total_tasks: number
         }[]
       }
+      get_user_tenant_id: { Args: never; Returns: string }
       has_appointment_access: {
         Args: { check_project_id: string }
         Returns: boolean
@@ -28544,6 +28695,8 @@ export type Database = {
         Args: { check_user_id: string }
         Returns: boolean
       }
+      is_tenant_admin: { Args: { check_tenant_id: string }; Returns: boolean }
+      is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
       record_ad_click: {
         Args: {
           p_ad_id: string

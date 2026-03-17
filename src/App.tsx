@@ -8,6 +8,7 @@ import { ScrollToTop } from "./components/ScrollToTop";
 import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
+import { TenantProvider } from "@/contexts/TenantContext";
 
 // Only HomePage is eager – everything else is lazy
 import HomePage from "./pages/HomePage";
@@ -252,6 +253,7 @@ const App = () => (
   <ErrorBoundary>
     <QueryClientProvider client={queryClient}>
       <ThemeCustomizationProvider>
+      <TenantProvider>
         <TooltipProvider>
           <Toaster />
           <Sonner />
@@ -507,6 +509,7 @@ const App = () => (
           </Suspense>
           </HashRouter>
         </TooltipProvider>
+      </TenantProvider>
       </ThemeCustomizationProvider>
     </QueryClientProvider>
   </ErrorBoundary>
