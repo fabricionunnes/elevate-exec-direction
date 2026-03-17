@@ -49,7 +49,14 @@ interface ProjectInfo {
   company_name: string | null;
 }
 
-type FieldType = "yesno" | "text" | "textarea";
+type FieldType = "yesno" | "text" | "textarea" | "currency";
+
+const formatCurrency = (value: string): string => {
+  const digits = value.replace(/\D/g, "");
+  if (!digits) return "";
+  const cents = parseInt(digits, 10);
+  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
 
 interface FormField {
   key: string;
@@ -72,7 +79,7 @@ const SECTIONS: FormSection[] = [
     fields: [
       { key: "has_run_ads", label: "Você já investiu em tráfego pago (anúncios online)?", type: "yesno", required: true },
       { key: "platforms_used", label: "Quais plataformas de anúncio você utiliza ou já utilizou?", type: "text", placeholder: "Ex: Meta Ads (Facebook/Instagram), Google Ads, TikTok Ads, LinkedIn Ads...", required: true },
-      { key: "monthly_budget", label: "Qual é o investimento mensal atual em mídia paga?", type: "text", placeholder: "Ex: R$ 2.000/mês, R$ 5.000/mês...", required: true },
+      { key: "monthly_budget", label: "Qual é o investimento mensal atual em mídia paga?", type: "currency", placeholder: "R$ 0,00", required: true },
       { key: "budget_management", label: "Quem gerencia atualmente o tráfego pago?", type: "text", placeholder: "Ex: Eu mesmo, agência X, gestor interno...", required: true },
     ],
   },
@@ -438,6 +445,20 @@ export default function TrafficAnalysisPublicPage() {
                     rows={3}
                     className="resize-none"
                   />
+                ) : field.type === "currency" ? (
+                  <div className="relative">
+                    <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+                    <Input
+                      value={formData[field.key] || ""}
+                      onChange={(e) => {
+                        const formatted = formatCurrency(e.target.value);
+                        setFormData((d) => ({ ...d, [field.key]: formatted }));
+                      }}
+                      placeholder={field.placeholder}
+                      className="pl-10"
+                      inputMode="numeric"
+                    />
+                  </div>
                 ) : (
                   <Input
                     value={formData[field.key] || ""}
