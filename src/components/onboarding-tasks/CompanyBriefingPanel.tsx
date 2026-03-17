@@ -1500,13 +1500,23 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                   ].filter(a => a.value);
 
                   return answers.length > 0 ? (
-                    <div className="space-y-3 border rounded-lg p-4 bg-muted/30">
-                      <h4 className="text-sm font-semibold">Respostas do cliente</h4>
-                      <div className="grid gap-3">
+                    <div className="mt-4 rounded-xl border border-border/60 overflow-hidden">
+                      <div className="bg-primary/5 border-b border-border/60 px-5 py-3 flex items-center gap-2">
+                        <BarChart3 className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">Respostas do Diagnóstico</h4>
+                        <Badge variant="secondary" className="ml-auto text-[10px]">
+                          {answers.length} respostas
+                        </Badge>
+                      </div>
+                      <div className="divide-y divide-border/40">
                         {answers.map((a, i) => (
-                          <div key={i} className="space-y-0.5">
-                            <p className="text-xs font-medium text-muted-foreground">{a.label}</p>
-                            <p className="text-sm whitespace-pre-wrap">{a.value}</p>
+                          <div key={i} className="px-5 py-3 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 hover:bg-muted/30 transition-colors">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap min-w-[160px] pt-0.5">
+                              {a.label}
+                            </span>
+                            <span className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">
+                              {a.value}
+                            </span>
                           </div>
                         ))}
                       </div>
