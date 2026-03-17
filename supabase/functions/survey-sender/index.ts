@@ -73,7 +73,7 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     .from("onboarding_projects")
     .select(`
       id, product_name, status,
-      onboarding_companies!inner(id, name, phone, status)
+      onboarding_companies!inner(id, name, phone, status, contract_start_date)
     `);
 
   // In test mode, allow any project status; in normal mode only active projects
