@@ -771,8 +771,10 @@ const OnboardingTasksPage = () => {
       if (!filteredProjectIds.has(t.project_id)) return false;
 
       // Filter by responsible staff when a consultant/staff is selected
-      if (filterConsultant !== "all" && t.responsible_staff_id && t.responsible_staff_id !== filterConsultant) {
-        return false;
+      if (filterConsultant !== "all") {
+        if (!t.responsible_staff_id || t.responsible_staff_id !== filterConsultant) {
+          return false;
+        }
       }
 
       const dueDate = normalizeDueDate(t.due_date);
