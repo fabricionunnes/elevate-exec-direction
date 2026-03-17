@@ -35,6 +35,7 @@ interface ContentCard {
   scheduled_at: string | null;
   published_at: string | null;
   instagram_post_url: string | null;
+  instagram_post_id: string | null;
   is_locked: boolean;
   sort_order: number;
   created_at: string;
