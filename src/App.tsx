@@ -508,6 +508,7 @@ const App = () => (
           </Suspense>
           </HashRouter>
         </TooltipProvider>
+      </TenantProvider>
       </ThemeCustomizationProvider>
     </QueryClientProvider>
   </ErrorBoundary>
