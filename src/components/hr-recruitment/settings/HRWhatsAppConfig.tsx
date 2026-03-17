@@ -119,6 +119,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
         setNotifyEnabled(loadedConfig.notify_on_stage_change);
         setNotifyPhone(loadedConfig.notify_phone || companyPhone);
         setNotifyGroupJid(loadedConfig.notify_group_jid || "");
+        setNotifyGroupName(loadedConfig.notify_group_name || "");
         setMessageTemplate(loadedConfig.message_template || DEFAULT_TEMPLATE);
       } else {
         setConfig(null);
