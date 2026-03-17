@@ -76,19 +76,21 @@ Deno.serve(async (req) => {
 
     // Action: Exchange code for tokens
     if (action === "exchange") {
-      const { code, projectId } = body;
+      const { code, projectId, redirectUri: clientRedirectUri } = body;
 
       if (!code || !projectId) {
         throw new Error("code and projectId are required");
       }
 
-      console.log("Exchanging code for access token for project:", projectId);
+      // Use client-provided redirectUri to match what was used in auth URL
+      const redirectUri = clientRedirectUri || DEFAULT_SITE_URL;
+      console.log("Exchanging code for access token for project:", projectId, "with redirect_uri:", redirectUri);
 
       // Step 1: Exchange code for short-lived token
       const tokenUrl = new URL("https://graph.facebook.com/v19.0/oauth/access_token");
       tokenUrl.searchParams.set("client_id", FACEBOOK_APP_ID);
       tokenUrl.searchParams.set("client_secret", FACEBOOK_APP_SECRET);
-      tokenUrl.searchParams.set("redirect_uri", SITE_URL);
+      tokenUrl.searchParams.set("redirect_uri", redirectUri);
       tokenUrl.searchParams.set("code", code);
 
       const tokenResponse = await fetch(tokenUrl.toString());
