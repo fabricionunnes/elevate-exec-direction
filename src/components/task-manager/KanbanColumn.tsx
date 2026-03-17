@@ -1,5 +1,6 @@
 import { useDroppable } from "@dnd-kit/core";
 import { Badge } from "@/components/ui/badge";
+import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { TaskCard } from "./TaskCard";
 import type { TaskWithProject } from "@/pages/onboarding-tasks/TaskManagerPage";
@@ -18,6 +19,19 @@ interface Props {
 export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick, selectedTaskIds, onToggleSelection }: Props) => {
   const { isOver, setNodeRef } = useDroppable({ id });
 
+  const allSelected = tasks.length > 0 && selectedTaskIds && tasks.every(t => selectedTaskIds.has(t.id));
+  const someSelected = tasks.length > 0 && selectedTaskIds && tasks.some(t => selectedTaskIds.has(t.id)) && !allSelected;
+
+  const handleSelectAll = (e: React.MouseEvent) => {
+    e.stopPropagation();
+    if (!onToggleSelection) return;
+    if (allSelected) {
+      tasks.forEach(t => { if (selectedTaskIds?.has(t.id)) onToggleSelection(t.id); });
+    } else {
+      tasks.forEach(t => { if (!selectedTaskIds?.has(t.id)) onToggleSelection(t.id); });
+    }
+  };
+
   return (
     <div
       ref={setNodeRef}
@@ -26,7 +40,17 @@ export const KanbanColumn = ({ id, label, color, tasks, count, onTaskClick, sele
       }`}
     >
       <div className="flex items-center justify-between px-4 py-3 border-b">
-        <h3 className="font-semibold text-sm">{label}</h3>
+        <div className="flex items-center gap-2">
+          {onToggleSelection && tasks.length > 0 && (
+            <div onClick={handleSelectAll} className="cursor-pointer">
+              <Checkbox
+                checked={allSelected ? true : someSelected ? "indeterminate" : false}
+                className="pointer-events-none"
+              />
+            </div>
+          )}
+          <h3 className="font-semibold text-sm">{label}</h3>
+        </div>
         <Badge variant="secondary" className="text-xs">{count}</Badge>
       </div>
       <ScrollArea className="flex-1 p-2" style={{ maxHeight: "calc(100vh - 240px)" }}>
