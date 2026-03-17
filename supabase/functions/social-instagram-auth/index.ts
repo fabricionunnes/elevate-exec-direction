@@ -193,6 +193,7 @@ Deno.serve(async (req) => {
             username: a.username,
             profile_picture_url: a.profile_picture_url,
             followers_count: a.followers_count,
+            facebook_page_id: a.facebook_page_id,
             facebook_page_name: a.facebook_page_name,
           })),
           projectId,
