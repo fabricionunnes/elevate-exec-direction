@@ -2174,6 +2174,11 @@ const OnboardingTasksPage = () => {
               Novo Projeto
             </Button>
 
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/task-manager")}>
+              <LayoutGrid className="h-4 w-4 mr-2" />
+              Gerenciador
+            </Button>
+
             <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/office")}>
               <Video className="h-4 w-4 mr-2" />
               Escritório
