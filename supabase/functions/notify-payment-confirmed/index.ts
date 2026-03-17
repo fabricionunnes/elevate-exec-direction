@@ -97,10 +97,10 @@ Deno.serve(async (req) => {
       const NOTIFY_PHONE = "5531989840003";
 
       // Find the "financeiro-unv" WhatsApp instance
+      // Allow sending regardless of local status (connected/connecting) - delegate validation to server
       const { data: finInstance } = await supabase
         .from("whatsapp_instances")
         .select("api_url, api_key, instance_name")
-        .eq("status", "connected")
         .eq("instance_name", "financeiro-unv")
         .maybeSingle();
 
