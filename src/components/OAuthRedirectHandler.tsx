@@ -15,48 +15,42 @@ export function OAuthRedirectHandler() {
   useEffect(() => {
     // Get the full URL to check for OAuth params
     const fullUrl = window.location.href;
-    
+    const pathname = window.location.pathname;
+
     // Check if there are query params before the hash (OAuth callback pattern)
     const queryStart = fullUrl.indexOf("?");
     const hashStart = fullUrl.indexOf("#");
-    
-    // OAuth callback: params are before the hash or there's no hash
-    if (queryStart !== -1 && (hashStart === -1 || queryStart < hashStart)) {
-      let queryString: string;
-      
-      if (hashStart !== -1 && hashStart > queryStart) {
-        queryString = fullUrl.substring(queryStart, hashStart);
-      } else {
-        queryString = fullUrl.substring(queryStart);
-      }
-      
+    const hasOAuthQueryOutsideHash = queryStart !== -1 && (hashStart === -1 || queryStart < hashStart);
+    const isDirectMetaAdsCallback = pathname === "/meta-ads-callback" && window.location.search;
+
+    if (hasOAuthQueryOutsideHash || isDirectMetaAdsCallback) {
+      const queryString = window.location.search || (hashStart !== -1 && hashStart > queryStart
+        ? fullUrl.substring(queryStart, hashStart)
+        : fullUrl.substring(queryStart));
+
       const params = new URLSearchParams(queryString);
       const code = params.get("code");
       const state = params.get("state");
-      
-      // If we have OAuth code and state, redirect to Instagram callback
+
+      // If we have OAuth code and state, redirect to the proper callback
       if (code && state) {
         try {
-          // Try to decode state to check the provider
           const decodedState = JSON.parse(atob(state));
-          
-          // Check if it's a Meta Ads OAuth callback
+
           if (decodedState.flow === "meta_ads") {
             const callbackUrl = `/meta-ads-callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
             navigate(callbackUrl, { replace: true });
             return;
           }
-          
-          // Check if it's a Social module OAuth callback (UNV Social)
+
           if (decodedState.flow === "social" || (decodedState.redirectUri && decodedState.redirectUri.includes("/social/instagram-callback"))) {
             const callbackUrl = `/social/instagram-callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
             navigate(callbackUrl, { replace: true });
             return;
           }
-          
-          // Check if it's a CRM Instagram/Facebook OAuth callback
+
           if (decodedState.redirectUri || decodedState.staffId) {
             const callbackUrl = `/auth/instagram/callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
@@ -67,8 +61,7 @@ export function OAuthRedirectHandler() {
           // If we can't decode state, ignore
         }
       }
-      
-      // Check for error callback
+
       const error = params.get("error");
       if (error) {
         const stateParam = params.get("state");
@@ -77,7 +70,6 @@ export function OAuthRedirectHandler() {
           try {
             const decodedState = JSON.parse(atob(stateParam));
 
-            // Keep Meta Ads errors in Meta Ads callback route
             if (decodedState.flow === "meta_ads") {
               const callbackUrl = `/meta-ads-callback${queryString}`;
               window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
@@ -89,7 +81,6 @@ export function OAuthRedirectHandler() {
           }
         }
 
-        // Fallback to CRM Instagram callback
         const callbackUrl = `/auth/instagram/callback${queryString}`;
         window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
         navigate(callbackUrl, { replace: true });
