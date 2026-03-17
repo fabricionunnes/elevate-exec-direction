@@ -16,7 +16,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { formatDateTimeLocal } from "@/lib/dateUtils";
-import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2, Lock } from "lucide-react";
+import { AlertTriangle, Video, Calendar, Clock, Loader2, PlayCircle, Building2, Lock, UserX } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 
 interface PendingMeeting {
