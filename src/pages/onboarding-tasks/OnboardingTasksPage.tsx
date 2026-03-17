@@ -770,13 +770,18 @@ const OnboardingTasksPage = () => {
       if (!t.due_date || t.status === "completed") return false;
       if (!filteredProjectIds.has(t.project_id)) return false;
 
+      // Filter by responsible staff when a consultant/staff is selected
+      if (filterConsultant !== "all" && t.responsible_staff_id && t.responsible_staff_id !== filterConsultant) {
+        return false;
+      }
+
       const dueDate = normalizeDueDate(t.due_date);
 
       // Overdue tasks: show ALL overdue regardless of period filter
       // This ensures we see the full backlog of pending work
       return isBefore(dueDate, todayStart);
     });
-  }, [allTasks, filteredProjectIds]);
+  }, [allTasks, filteredProjectIds, filterConsultant]);
 
   const todayTasks = useMemo(() => {
     const today = startOfDay(new Date());
@@ -784,13 +789,18 @@ const OnboardingTasksPage = () => {
       if (!t.due_date || t.status === "completed") return false;
       if (!filteredProjectIds.has(t.project_id)) return false;
 
+      // Filter by responsible staff when a consultant/staff is selected
+      if (filterConsultant !== "all" && t.responsible_staff_id && t.responsible_staff_id !== filterConsultant) {
+        return false;
+      }
+
       const dueDate = normalizeDueDate(t.due_date);
 
       // Today tasks: show ALL tasks due today regardless of period filter
       // This ensures we always see what needs to be done today
       return dueDate.getTime() === today.getTime();
     });
-  }, [allTasks, filteredProjectIds]);
+  }, [allTasks, filteredProjectIds, filterConsultant]);
 
 
 
