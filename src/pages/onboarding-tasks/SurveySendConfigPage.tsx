@@ -574,9 +574,6 @@ export default function SurveySendConfigPage() {
     );
   };
 
-  const [logsStatusFilter, setLogsStatusFilter] = useState<string | null>(null);
-  const [logsPage, setLogsPage] = useState(1);
-  const LOGS_PER_PAGE = 10;
 
   const renderLogsPanel = () => {
     const typeLogs = logs.filter(l => l.survey_type === logsTab);
