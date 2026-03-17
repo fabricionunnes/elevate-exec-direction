@@ -159,10 +159,14 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
         .limit(1)
         .maybeSingle();
 
-      // If responded recently, skip
+      // If responded recently (minimum 30 days, or frequencyDays if greater), skip
       if (lastResponse) {
         const daysSinceResponse = daysBetween(new Date(lastResponse.created_at), now);
-        if (daysSinceResponse < frequencyDays) continue;
+        const minDaysBetweenResponses = Math.max(30, frequencyDays);
+        if (daysSinceResponse < minDaysBetweenResponses) {
+          console.log(`Company ${companyName} (${companyId}) skipped: last NPS response was ${daysSinceResponse} days ago (min: ${minDaysBetweenResponses})`);
+          continue;
+        }
       }
 
       // Check last send log for this company
