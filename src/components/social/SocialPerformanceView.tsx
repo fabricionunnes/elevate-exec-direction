@@ -3,7 +3,6 @@ import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import {
   Select,
   SelectContent,
@@ -26,6 +25,8 @@ import {
   Video,
   Film,
   RefreshCw,
+  ChevronLeft,
+  ChevronRight,
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -87,11 +88,14 @@ const rankIcons = [
 
 type SortBy = "engagement" | "likes" | "comments" | "saves" | "shares" | "views" | "reach";
 
+const ITEMS_PER_PAGE = 10;
+
 export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: SocialPerformanceViewProps) => {
   const [metrics, setMetrics] = useState<PostMetric[]>([]);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [sortBy, setSortBy] = useState<SortBy>("engagement");
+  const [currentPage, setCurrentPage] = useState(1);
 
   const publishedCards = useMemo(
     () => cards.filter((c) => c.card_type === "content" && c.published_at),
@@ -107,6 +111,11 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
   useEffect(() => {
     loadMetrics();
   }, [boardId]);
+
+  // Reset page when sort changes
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [sortBy]);
 
   const loadMetrics = async () => {
     setLoading(true);
@@ -179,6 +188,13 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
         }
       });
   }, [publishedCards, metrics, sortBy]);
+
+  // Pagination
+  const totalPages = Math.max(1, Math.ceil(rankedCards.length / ITEMS_PER_PAGE));
+  const paginatedCards = useMemo(() => {
+    const start = (currentPage - 1) * ITEMS_PER_PAGE;
+    return rankedCards.slice(start, start + ITEMS_PER_PAGE);
+  }, [rankedCards, currentPage]);
 
   const totals = useMemo(() => {
     return metrics.reduce(
@@ -279,25 +295,26 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
       </div>
 
       {/* Cards List */}
-      <ScrollArea className="flex-1">
-        {rankedCards.length === 0 ? (
+      <div className="flex-1">
+        {paginatedCards.length === 0 ? (
           <div className="flex flex-col items-center justify-center py-12 text-muted-foreground gap-2">
             <Trophy className="h-10 w-10 opacity-30" />
             <p>Nenhum post publicado ainda</p>
             <p className="text-xs">Publique conteúdos e sincronize para ver o ranking</p>
           </div>
         ) : (
-          <div className="space-y-3 pr-2">
-            {rankedCards.map(({ card, metrics: m }, index) => {
+          <div className="space-y-3">
+            {paginatedCards.map(({ card, metrics: m }, index) => {
+              const globalIndex = (currentPage - 1) * ITEMS_PER_PAGE + index;
               const stage = stageMap[card.stage_id];
               const hasMetrics = m && (m.likes + m.comments + m.saves + m.shares + m.views) > 0;
               return (
                 <Card
                   key={card.id}
-                  className={`border-l-4 ${hasMetrics && index < 3 ? "shadow-md" : ""}`}
+                  className={`border-l-4 ${hasMetrics && globalIndex < 3 ? "shadow-md" : ""}`}
                   style={{
                     borderLeftColor: hasMetrics
-                      ? (index === 0 ? "#EAB308" : index === 1 ? "#9CA3AF" : index === 2 ? "#B45309" : (stage?.color || "hsl(var(--primary))"))
+                      ? (globalIndex === 0 ? "#EAB308" : globalIndex === 1 ? "#9CA3AF" : globalIndex === 2 ? "#B45309" : (stage?.color || "hsl(var(--primary))"))
                       : (stage?.color || "hsl(var(--muted))")
                   }}
                 >
@@ -305,8 +322,8 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
                     <div className="flex items-start gap-3">
                       {/* Rank */}
                       <div className="flex flex-col items-center justify-center min-w-[40px]">
-                        {hasMetrics && index < 3 ? rankIcons[index] : (
-                          <span className="text-lg font-bold text-muted-foreground">#{index + 1}</span>
+                        {hasMetrics && globalIndex < 3 ? rankIcons[globalIndex] : (
+                          <span className="text-lg font-bold text-muted-foreground">#{globalIndex + 1}</span>
                         )}
                       </div>
 
@@ -373,7 +390,32 @@ export const SocialPerformanceView = ({ cards, stages, boardId, projectId }: Soc
             })}
           </div>
         )}
-      </ScrollArea>
+      </div>
+
+      {/* Pagination */}
+      {totalPages > 1 && (
+        <div className="flex items-center justify-center gap-3 py-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.max(1, p - 1))}
+            disabled={currentPage === 1}
+          >
+            <ChevronLeft className="h-4 w-4" />
+          </Button>
+          <span className="text-sm text-muted-foreground">
+            Página {currentPage} de {totalPages}
+          </span>
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={() => setCurrentPage((p) => Math.min(totalPages, p + 1))}
+            disabled={currentPage === totalPages}
+          >
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </div>
+      )}
     </div>
   );
 };
