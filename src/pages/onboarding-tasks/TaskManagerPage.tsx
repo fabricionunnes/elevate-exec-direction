@@ -290,6 +290,20 @@ const TaskManagerPage = () => {
               </Select>
             )}
 
+            {companies.length > 1 && (
+              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                <SelectTrigger className="w-[220px]">
+                  <SelectValue placeholder="Filtrar por empresa" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="all">Todas as empresas</SelectItem>
+                  {companies.map(c => (
+                    <SelectItem key={c} value={c}>{c}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+
             <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "calendar")}>
               <TabsList>
                 <TabsTrigger value="kanban" className="gap-1.5">
