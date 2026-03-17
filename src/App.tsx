@@ -238,6 +238,7 @@ const CustomerPointsSalespersonTokens = lazy(() => import("./pages/customer-poin
 
 // White-Label Admin
 const WhitelabelAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelAdminPage"));
+const WhitelabelUNVAdminPage = lazy(() => import("./pages/whitelabel/WhitelabelUNVAdminPage"));
 
 // OnboardingStaffLayout needs to be lazy too
 const OnboardingStaffLayout = lazy(() => import("./components/onboarding-tasks/OnboardingStaffLayout").then(m => ({ default: m.OnboardingStaffLayout })));
@@ -509,6 +510,7 @@ const App = () => (
             
             {/* White-Label Admin */}
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
+            <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
             
             <Route path="*" element={<NotFound />} />
           </Routes>
