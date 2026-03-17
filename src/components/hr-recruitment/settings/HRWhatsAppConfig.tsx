@@ -178,6 +178,10 @@ export function HRWhatsAppConfig({ projectId }: Props) {
     setSaving(true);
 
     try {
+      const selectedGroupName = notifyGroupJid && notifyGroupJid !== "none"
+        ? (groups.find(g => g.id === notifyGroupJid)?.subject || notifyGroupName || notifyGroupJid)
+        : null;
+
       const { data, error } = await supabase.functions.invoke("hr-whatsapp-config", {
         body: {
           action: "save",
@@ -186,6 +190,7 @@ export function HRWhatsAppConfig({ projectId }: Props) {
           notifyOnStageChange: notifyEnabled,
           notifyPhone: notifyPhone.trim() || null,
           notifyGroupJid: notifyGroupJid.trim() && notifyGroupJid !== "none" ? notifyGroupJid.trim() : null,
+          notifyGroupName: selectedGroupName,
           messageTemplate: messageTemplate.trim() || DEFAULT_TEMPLATE,
         },
       });
