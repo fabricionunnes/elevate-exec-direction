@@ -133,7 +133,7 @@ const TaskManagerPage = () => {
           .select(`
             id, title, description, status, priority, due_date, start_date,
             project_id, responsible_staff_id, assignee_id, tags, recurrence,
-            onboarding_projects!inner(product_name, onboarding_companies(name))
+            onboarding_projects!inner(product_name, status, onboarding_companies(name, status))
           `)
           .in("status", statuses)
           .order("due_date", { ascending: true, nullsFirst: false })
@@ -156,7 +156,17 @@ const TaskManagerPage = () => {
       if (activeRes.error) throw activeRes.error;
       if (completedRes.error) throw completedRes.error;
 
-      const allData = [...(activeRes.data || []), ...(completedRes.data || [])];
+      const allData = [...(activeRes.data || []), ...(completedRes.data || [])]
+        .filter((t: any) => {
+          const project = t.onboarding_projects;
+          if (!project) return false;
+          // Exclude inactive/completed projects
+          if (project.status && !["active", "notice"].includes(project.status)) return false;
+          // Exclude inactive companies
+          const company = project.onboarding_companies;
+          if (company?.status && company.status !== "active") return false;
+          return true;
+        });
 
       const mapped: TaskWithProject[] = allData.map((t: any) => ({
         id: t.id,
