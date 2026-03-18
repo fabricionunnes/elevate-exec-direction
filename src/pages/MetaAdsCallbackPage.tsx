@@ -118,7 +118,7 @@ const MetaAdsCallbackPage = () => {
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
         )}
         {status === "success" && (
-          <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+          <CheckCircle className="h-10 w-10 text-primary mx-auto" />
         )}
         {status === "error" && (
           <XCircle className="h-10 w-10 text-destructive mx-auto" />
