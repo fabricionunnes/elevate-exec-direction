@@ -324,50 +324,17 @@ export const SocialCardDetailSheet = ({
     const files = e.dataTransfer.files;
     if (files.length === 0) return;
 
-    const file = files[0];
-    
-    // Check if it's an image or video
-    if (!file.type.startsWith("image/") && !file.type.startsWith("video/")) {
-      toast.error("Apenas imagens e vídeos são permitidos");
-      return;
+    // Validate all files are images or videos
+    for (let i = 0; i < files.length; i++) {
+      if (!files[i].type.startsWith("image/") && !files[i].type.startsWith("video/")) {
+        toast.error("Apenas imagens e vídeos são permitidos");
+        return;
+      }
     }
 
-    setUploading(true);
-    try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${card.id}/${Date.now()}.${fileExt}`;
-
-      const { error: uploadError } = await supabase.storage
-        .from("social-content")
-        .upload(fileName, file, { upsert: true });
-
-      if (uploadError) throw uploadError;
-
-      const { data: { publicUrl } } = supabase.storage
-        .from("social-content")
-        .getPublicUrl(fileName);
-
-      const isVideo = file.type.startsWith("video/");
-      
-      setCreativeUrl(publicUrl);
-      setCreativeType(isVideo ? "video" : "image");
-
-      const { error: updateError } = await supabase
-        .from("social_content_cards")
-        .update({
-          creative_url: publicUrl,
-          creative_type: isVideo ? "video" : "image",
-        })
-        .eq("id", card.id);
-
-      if (updateError) throw updateError;
-
-      toast.success("Arquivo enviado!");
-    } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Erro ao enviar arquivo");
-    } finally {
-      setUploading(false);
+    // Reuse the file input handler by creating a synthetic event
+    const syntheticEvent = { target: { files } } as unknown as React.ChangeEvent<HTMLInputElement>;
+    await handleFileUpload(syntheticEvent);
     }
   };
 
