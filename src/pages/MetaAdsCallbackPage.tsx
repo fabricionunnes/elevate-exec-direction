@@ -3,6 +3,7 @@ import { useSearchParams, useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2, CheckCircle, XCircle } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { getMetaAdsRedirectUri } from "@/lib/metaAds";
 
 const MetaAdsCallbackPage = () => {
   const [searchParams] = useSearchParams();
@@ -14,10 +15,12 @@ const MetaAdsCallbackPage = () => {
     const code = searchParams.get("code");
     const stateParam = searchParams.get("state");
     const error = searchParams.get("error");
+    const errorReason = searchParams.get("error_reason");
+    const errorDescription = searchParams.get("error_description");
 
     if (error) {
       setStatus("error");
-      setMessage("Conexão cancelada ou negada pelo usuário.");
+      setMessage(errorDescription || errorReason || error || "Conexão cancelada ou negada pelo usuário.");
       return;
     }
 
@@ -28,16 +31,18 @@ const MetaAdsCallbackPage = () => {
     }
 
     handleCallback(code, stateParam);
-  }, []);
+  }, [searchParams]);
 
   const handleCallback = async (code: string, stateParam: string) => {
     try {
       let projectId: string;
       let stateRedirectUri: string | undefined;
+      let returnOrigin: string | undefined;
       try {
         const decoded = JSON.parse(atob(stateParam));
         projectId = decoded.project_id;
         stateRedirectUri = decoded.redirect_uri;
+        returnOrigin = decoded.return_origin;
       } catch {
         throw new Error("State inválido");
       }
@@ -47,9 +52,9 @@ const MetaAdsCallbackPage = () => {
       setMessage("Trocando código por token de acesso...");
 
       // Use the exact same redirect_uri that was used to generate the OAuth URL
-      // Priority: sessionStorage > state param > callback route fallback
+      // Priority: sessionStorage > state param > stable fallback
       const storedRedirectUri = sessionStorage.getItem("meta_ads_redirect_uri");
-      const redirectUri = storedRedirectUri || stateRedirectUri || `${window.location.origin}/meta-ads-callback`;
+      const redirectUri = storedRedirectUri || stateRedirectUri || getMetaAdsRedirectUri();
       sessionStorage.removeItem("meta_ads_redirect_uri");
       
       const { data: result, error: err } = await supabase.functions.invoke("meta-ads-sync", {
@@ -88,9 +93,16 @@ const MetaAdsCallbackPage = () => {
       setStatus("success");
       setMessage("Meta Ads conectado com sucesso!");
 
-      // Navigate back to project
+      // Navigate back to the same app origin that initiated the flow when possible
       setTimeout(() => {
-        navigate(`/onboarding-tasks/${projectId}`, { replace: true });
+        const targetPath = `/onboarding-tasks/${projectId}`;
+
+        if (returnOrigin && returnOrigin !== window.location.origin) {
+          window.location.href = `${returnOrigin}/#${targetPath}`;
+          return;
+        }
+
+        navigate(targetPath, { replace: true });
       }, 1500);
     } catch (e: any) {
       console.error("Meta Ads callback error:", e);
@@ -106,7 +118,7 @@ const MetaAdsCallbackPage = () => {
           <Loader2 className="h-10 w-10 animate-spin text-primary mx-auto" />
         )}
         {status === "success" && (
-          <CheckCircle className="h-10 w-10 text-green-500 mx-auto" />
+          <CheckCircle className="h-10 w-10 text-primary mx-auto" />
         )}
         {status === "error" && (
           <XCircle className="h-10 w-10 text-destructive mx-auto" />

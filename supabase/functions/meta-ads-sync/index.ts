@@ -31,7 +31,7 @@ Deno.serve(async (req) => {
 
   try {
     const body = await req.json().catch(() => ({}));
-    const { action, project_id, code, redirect_uri, date_start, date_stop } = body;
+    const { action, project_id, code, redirect_uri, date_start, date_stop, return_origin } = body;
 
     if (!FACEBOOK_APP_ID || !FACEBOOK_APP_SECRET) {
       throw new Error("Facebook App credentials not configured");
@@ -42,7 +42,12 @@ Deno.serve(async (req) => {
     // ──── GET AUTH URL ────
     if (action === "auth_url") {
       const scopes = "ads_read,ads_management,business_management";
-      const state = btoa(JSON.stringify({ project_id, flow: "meta_ads", redirect_uri }));
+      const state = btoa(JSON.stringify({
+        project_id,
+        flow: "meta_ads",
+        redirect_uri,
+        return_origin,
+      }));
       const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${scopes}&state=${encodeURIComponent(state)}&response_type=code`;
       
       return new Response(JSON.stringify({ url }), {
