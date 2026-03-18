@@ -233,8 +233,8 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 6. Enable permission in project_menu_permissions
-    // For gestao_clientes, enable all related keys
+    // 6. Do NOT enable permission yet - it will be enabled by webhook after first payment confirmation
+    // Just ensure the permission record exists (disabled) so webhook can enable it
     const keysToEnable = menu_key === "gestao_clientes"
       ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
       : [menu_key];
@@ -247,16 +247,11 @@ Deno.serve(async (req) => {
         .eq("menu_key", key)
         .single();
 
-      if (existing) {
-        await supabase
-          .from("project_menu_permissions")
-          .update({ is_enabled: true })
-          .eq("id", existing.id);
-      } else {
+      if (!existing) {
         await supabase.from("project_menu_permissions").insert({
           project_id,
           menu_key: key,
-          is_enabled: true,
+          is_enabled: false,
         });
       }
     }
