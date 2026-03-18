@@ -16,6 +16,60 @@ const DEFAULT_SITE_URL = rawSiteUrl.endsWith("/") ? rawSiteUrl : `${rawSiteUrl}/
 
 console.log("Social Instagram Auth - Default redirect_uri:", DEFAULT_SITE_URL);
 
+// Reset failed cards when Instagram is reconnected
+async function resetFailedCards(supabase: any, projectId: string) {
+  try {
+    // Find board for this project
+    const { data: board } = await supabase
+      .from("social_content_boards")
+      .select("id")
+      .eq("project_id", projectId)
+      .single();
+
+    if (!board) {
+      console.log("[ResetCards] No board found for project", projectId);
+      return;
+    }
+
+    // Find the scheduled stage
+    const { data: scheduledStage } = await supabase
+      .from("social_content_stages")
+      .select("id")
+      .eq("board_id", board.id)
+      .eq("stage_type", "scheduled")
+      .single();
+
+    if (!scheduledStage) {
+      console.log("[ResetCards] No scheduled stage found for board", board.id);
+      return;
+    }
+
+    // Reset cards that failed due to publish errors
+    const { data: resetCards, error: resetError } = await supabase
+      .from("social_content_cards")
+      .update({
+        publish_attempts: 0,
+        publish_error: null,
+        stage_id: scheduledStage.id,
+      })
+      .eq("board_id", board.id)
+      .eq("is_locked", true)
+      .not("creative_url", "is", null)
+      .is("published_at", null)
+      .is("instagram_post_id", null)
+      .gte("publish_attempts", 1)
+      .select("id");
+
+    if (resetError) {
+      console.error("[ResetCards] Error resetting cards:", resetError);
+    } else {
+      console.log(`[ResetCards] Reset ${resetCards?.length || 0} failed cards for project ${projectId}`);
+    }
+  } catch (err) {
+    console.error("[ResetCards] Unexpected error:", err);
+  }
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });

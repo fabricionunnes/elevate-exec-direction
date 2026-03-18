@@ -1690,6 +1690,52 @@ export const SocialCardDetailSheet = ({
                     </Button>
                   )}
 
+                {/* Retry publish - show when card has publish error */}
+                {(card as any).publish_error && !card.instagram_post_url && (
+                  <div className="space-y-2">
+                    <div className="flex items-start gap-2 p-3 rounded-lg bg-destructive/10 border border-destructive/20">
+                      <AlertCircle className="h-4 w-4 text-destructive mt-0.5 shrink-0" />
+                      <div className="text-sm">
+                        <p className="font-medium text-destructive">Erro na publicação</p>
+                        <p className="text-muted-foreground mt-1">{(card as any).publish_error}</p>
+                      </div>
+                    </div>
+                    <Button
+                      onClick={async () => {
+                        if (!card) return;
+                        try {
+                          const scheduledStage = stages.find(s => s.stage_type === "scheduled");
+                          if (!scheduledStage) {
+                            toast.error("Estágio 'Agendado' não encontrado");
+                            return;
+                          }
+                          const { error } = await supabase
+                            .from("social_content_cards")
+                            .update({
+                              publish_attempts: 0,
+                              publish_error: null,
+                              stage_id: scheduledStage.id,
+                              is_locked: true,
+                            })
+                            .eq("id", card.id);
+                          if (error) throw error;
+                          toast.success("Card resetado! A publicação será retentada automaticamente.");
+                          onUpdate();
+                          onOpenChange(false);
+                        } catch (err) {
+                          console.error("Error retrying publish:", err);
+                          toast.error("Erro ao retentar publicação");
+                        }
+                      }}
+                      variant="outline"
+                      className="w-full gap-2"
+                    >
+                      <RefreshCw className="h-4 w-4" />
+                      Retentar publicação
+                    </Button>
+                  </div>
+                )
+
                 {/* Already published - show link */}
                 {card.instagram_post_url && (
                   <a
