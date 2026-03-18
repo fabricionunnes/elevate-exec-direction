@@ -688,6 +688,7 @@ export const SocialCardDetailSheet = ({
         setContentType("carrossel");
         setCarouselImages(data.images);
         setAiPrompt("");
+        onUpdate();
         toast.success(`Carrossel com ${data.images.length} imagens gerado!`, { id: "ai-carousel" });
       } else {
         const imageUrl = data?.image_url || data?.images?.[0];
@@ -703,6 +704,7 @@ export const SocialCardDetailSheet = ({
         setCreativeType("image");
         setCarouselImages([]);
         setAiPrompt("");
+        onUpdate();
         toast.success("Imagem gerada e aplicada ao card!");
       }
     } catch (err) {
