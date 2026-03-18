@@ -593,45 +593,47 @@ CTA: ${suggestion.cta}`;
                     />
                   </div>
 
-                  {/* Reference Image Upload */}
+                  {/* Reference Images Upload */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Upload className="h-4 w-4" />
-                      Imagem de Referência (opcional)
+                      Imagens de Referência (opcional)
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Envie uma foto de produto, pessoa ou elemento que deve aparecer na imagem gerada.
+                      Envie fotos de produto, pessoa ou elementos que devem aparecer na imagem gerada. Até 5 imagens.
                     </p>
                     
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       className="hidden"
                       onChange={handleReferenceUpload}
                     />
                     
-                    {referenceImage ? (
-                      <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
-                        <img 
-                          src={referenceImage} 
-                          alt="Referência" 
-                          className="h-16 w-16 object-cover rounded"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">Imagem carregada</p>
-                          <p className="text-xs text-muted-foreground">Esta imagem será incorporada na geração</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={removeReferenceImage}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                    {referenceImages.length > 0 && (
+                      <div className="grid grid-cols-5 gap-2">
+                        {referenceImages.map((imgUrl, index) => (
+                          <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                            <img 
+                              src={imgUrl} 
+                              alt={`Referência ${index + 1}`} 
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeReferenceImage(index)}
+                              className="absolute top-1 right-1 p-0.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
+                    )}
+
+                    {referenceImages.length < 5 && (
                       <Button
                         type="button"
                         variant="outline"
@@ -642,9 +644,9 @@ CTA: ${suggestion.cta}`;
                         {uploadingReference ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Upload className="h-4 w-4" />
+                          <ImagePlus className="h-4 w-4" />
                         )}
-                        {uploadingReference ? "Enviando..." : "Enviar imagem de referência"}
+                        {uploadingReference ? "Enviando..." : `Adicionar imagens (${referenceImages.length}/5)`}
                       </Button>
                     )}
                   </div>
