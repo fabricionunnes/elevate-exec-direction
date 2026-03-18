@@ -1550,7 +1550,7 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noEntries") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("goals", "noEntries")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "noEntries") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("goals", "noEntries")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-orange-500">{goalsMetrics.noEntriesCount}</p>
                 <p className="text-[8px] sm:text-[9px] text-orange-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noEntriesCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
