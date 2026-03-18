@@ -53,11 +53,13 @@ Deno.serve(async (req) => {
     // 1. Get company data from project
     const { data: project } = await supabase
       .from("onboarding_projects")
-      .select("company_id, onboarding_companies(id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode)")
+      .select("company_id, onboarding_company_id, onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode)")
       .eq("id", project_id)
       .single();
 
-    if (!project?.company_id) {
+    const companyId = project?.company_id || project?.onboarding_company_id;
+
+    if (!companyId) {
       return new Response(JSON.stringify({ error: "Projeto sem empresa vinculada" }), {
         status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
