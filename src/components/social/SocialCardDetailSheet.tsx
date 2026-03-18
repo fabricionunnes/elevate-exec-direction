@@ -34,7 +34,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { 
   Loader2, Upload, Image, Film, Video, Calendar, Clock, 
-  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink, Wand2, X
+  MessageSquare, Hash, Sparkles, Send, History, Check, Edit2, AlertCircle, ListChecks, Trash2, Paperclip, Square, LayoutGrid, CircleDashed, Instagram, ExternalLink, Wand2, X, ImagePlus
 } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -149,6 +149,9 @@ export const SocialCardDetailSheet = ({
   const [generatingAiImage, setGeneratingAiImage] = useState(false);
   const [aiIncludeLogo, setAiIncludeLogo] = useState(true);
   const [generatingPromptSuggestion, setGeneratingPromptSuggestion] = useState(false);
+  const [aiReferenceImages, setAiReferenceImages] = useState<string[]>([]);
+  const [uploadingAiReference, setUploadingAiReference] = useState(false);
+  const aiReferenceInputRef = useRef<HTMLInputElement>(null);
   const [aiGenerateMode, setAiGenerateMode] = useState<"single" | "carousel" | "video">("single");
   const [aiCarouselCount, setAiCarouselCount] = useState(3);
   const [aiCarouselConnected, setAiCarouselConnected] = useState(false);
@@ -240,6 +243,7 @@ export const SocialCardDetailSheet = ({
     setObjective(card.objective);
     setCopyText(card.copy_text || "");
     setAiPrompt("");
+    setAiReferenceImages([]);
     if (card.copy_text?.trim()) {
       generatePromptSuggestion(card.copy_text, card.theme || "", card.content_type || "");
     }
@@ -524,6 +528,35 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const handleAiReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const remaining = 5 - aiReferenceImages.length;
+    if (remaining <= 0) { toast.error("Máximo de 5 imagens"); return; }
+    const toProcess = Array.from(files).slice(0, remaining);
+    setUploadingAiReference(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of toProcess) {
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); continue; }
+        const sanitized = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]/g, "_");
+        const fileName = `${projectId}/reference/${Date.now()}-${sanitized}`;
+        const { error } = await supabase.storage.from("social-briefing").upload(fileName, file, { contentType: file.type, upsert: false });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from("social-briefing").getPublicUrl(fileName);
+        newUrls.push(publicUrl);
+      }
+      if (newUrls.length > 0) setAiReferenceImages(prev => [...prev, ...newUrls]);
+    } catch (err) {
+      console.error("Reference upload error:", err);
+      toast.error("Erro ao carregar imagem");
+    } finally {
+      setUploadingAiReference(false);
+      if (aiReferenceInputRef.current) aiReferenceInputRef.current.value = "";
+    }
+  };
+
   const handleGenerateAiImage = async () => {
     if (!card || !aiPrompt.trim()) return;
     setGeneratingAiImage(true);
@@ -539,6 +572,8 @@ export const SocialCardDetailSheet = ({
           format: isCarousel ? "carousel" : "feed_post",
           includeLogoPref: aiIncludeLogo,
           overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
+          referenceImageUrls: aiReferenceImages.length > 0 ? aiReferenceImages : undefined,
+          referenceImageUrl: aiReferenceImages[0] || undefined,
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
             carouselConnected: aiCarouselConnected,
@@ -1314,6 +1349,56 @@ export const SocialCardDetailSheet = ({
                   className="min-h-[60px] text-sm"
                   rows={3}
                 />
+
+                {/* Reference images for AI */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Imagens de referência (opcional)
+                  </Label>
+                  <input
+                    ref={aiReferenceInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleAiReferenceUpload}
+                    disabled={card.is_locked || uploadingAiReference}
+                  />
+                  {aiReferenceImages.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {aiReferenceImages.map((imgUrl, idx) => (
+                        <div key={idx} className="relative h-14 w-14 rounded-md overflow-hidden bg-muted">
+                          <img src={imgUrl} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setAiReferenceImages(prev => prev.filter((_, i) => i !== idx))}
+                            className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/50 text-white hover:bg-black/70"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {aiReferenceImages.length < 5 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5 text-xs"
+                      onClick={() => aiReferenceInputRef.current?.click()}
+                      disabled={card.is_locked || uploadingAiReference || generatingAiImage}
+                    >
+                      {uploadingAiReference ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Enviando...</>
+                      ) : (
+                        <><ImagePlus className="h-3.5 w-3.5" /> Adicionar fotos ({aiReferenceImages.length}/5)</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                     <input
