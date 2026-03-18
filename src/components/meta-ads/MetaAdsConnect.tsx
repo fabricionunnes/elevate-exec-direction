@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { toast } from "sonner";
 import { Loader2, Megaphone, Link2 } from "lucide-react";
+import { getMetaAdsRedirectUri } from "@/lib/metaAds";
 
 interface MetaAdsConnectProps {
   projectId: string;
@@ -38,16 +39,23 @@ export const MetaAdsConnect = ({ projectId, onConnected }: MetaAdsConnectProps) 
         sessionStorage.removeItem("meta_ads_callback");
       }
     }
-  }, [projectId]);
+  }, [projectId, onConnected]);
 
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectUri = `${window.location.origin}/meta-ads-callback`;
-      // Store the exact redirect_uri so the callback page uses the same one
+      const redirectUri = getMetaAdsRedirectUri();
+      const returnOrigin = window.location.origin;
+
+      // Store the exact redirect_uri so the callback page uses the same one when origin matches
       sessionStorage.setItem("meta_ads_redirect_uri", redirectUri);
       const { data, error } = await supabase.functions.invoke("meta-ads-sync", {
-        body: { action: "auth_url", project_id: projectId, redirect_uri: redirectUri },
+        body: {
+          action: "auth_url",
+          project_id: projectId,
+          redirect_uri: redirectUri,
+          return_origin: returnOrigin,
+        },
       });
       if (error || data?.error) throw new Error(data?.error || "Erro ao gerar URL");
 
