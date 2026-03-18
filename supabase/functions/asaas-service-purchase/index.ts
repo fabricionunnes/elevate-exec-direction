@@ -65,16 +65,16 @@ Deno.serve(async (req) => {
     console.log("[asaas-service-purchase] Fetching project:", project_id);
     const { data: project, error: projectError } = await supabase
       .from("onboarding_projects")
-      .select("company_id, onboarding_company_id")
+      .select("company_id, onboarding_company_id, product_id, product_name")
       .eq("id", project_id)
       .single();
 
-    if (projectError) {
+    if (projectError || !project) {
       console.error("[asaas-service-purchase] Project error:", projectError);
       throw new Error("Erro ao buscar projeto");
     }
 
-    const companyId = project?.company_id || project?.onboarding_company_id;
+    const companyId = project.company_id || project.onboarding_company_id;
     console.log("[asaas-service-purchase] companyId:", companyId);
 
     if (!companyId) {
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     // Get company data
     const { data: company, error: companyError } = await supabase
       .from("onboarding_companies")
-      .select("id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode")
+      .select("id, name, email, cnpj, phone, address, address_number, address_complement, address_neighborhood, address_zipcode")
       .eq("id", companyId)
       .single();
 
@@ -96,29 +96,37 @@ Deno.serve(async (req) => {
     }
     console.log("[asaas-service-purchase] Company:", company.name);
 
-    // 2. Get default Asaas account
-    const { data: defaultAccount } = await supabase
+    // 2. Resolve the correct Asaas account for this project
+    const isSocialProject =
+      project.product_id?.toLowerCase() === "social" ||
+      project.product_name?.toLowerCase().includes("social");
+
+    const { data: asaasAccounts, error: accountsError } = await supabase
       .from("asaas_accounts")
-      .select("id, api_key_secret_name")
-      .eq("is_default", true)
+      .select("id, name, api_key_secret_name, is_default")
       .eq("is_active", true)
-      .single();
+      .order("is_default", { ascending: false });
 
-    let ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
-    let asaasAccountId: string | null = null;
-
-    if (defaultAccount?.api_key_secret_name) {
-      const key = Deno.env.get(defaultAccount.api_key_secret_name);
-      if (key) {
-        ASAAS_API_KEY = key;
-        asaasAccountId = defaultAccount.id;
-      }
+    if (accountsError) {
+      console.error("[asaas-service-purchase] Asaas accounts error:", accountsError);
+      throw new Error("Erro ao buscar conta de cobrança");
     }
+
+    const selectedAccount = isSocialProject
+      ? asaasAccounts?.find((account) => account.name?.toLowerCase().includes("social")) ?? asaasAccounts?.[0]
+      : asaasAccounts?.find((account) => account.is_default) ?? asaasAccounts?.[0];
+
+    let ASAAS_API_KEY = selectedAccount?.api_key_secret_name
+      ? Deno.env.get(selectedAccount.api_key_secret_name)
+      : Deno.env.get("ASAAS_API_KEY");
+    const asaasAccountId = selectedAccount?.id ?? null;
+
+    console.log("[asaas-service-purchase] Selected Asaas account:", selectedAccount?.name ?? "default-env");
 
     if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY not configured");
 
     // 3. Find or create Asaas customer
-    let cleanDoc = (company.document || "").replace(/\D/g, "");
+    let cleanDoc = (company.cnpj || "").replace(/\D/g, "");
     if (cleanDoc.length > 0 && cleanDoc.length <= 11) cleanDoc = cleanDoc.padStart(11, "0");
     else if (cleanDoc.length > 11 && cleanDoc.length <= 14) cleanDoc = cleanDoc.padStart(14, "0");
 
@@ -229,13 +237,13 @@ Deno.serve(async (req) => {
         company_id: companyId,
         description: service_name,
         amount_cents,
-        recurrence: "monthly",
+        recurrence: isRecurring ? "monthly" : "unique",
         installments: isRecurring ? 12 : 1,
         payment_method: "boleto",
         next_charge_date: tomorrow,
         customer_name: company.name,
         customer_email: company.email,
-        customer_document: company.document,
+        customer_document: company.cnpj,
         customer_phone: company.phone,
         pagarme_plan_id: subscriptionId,
         pagarme_link_url: invoiceUrl,
@@ -248,20 +256,29 @@ Deno.serve(async (req) => {
 
     if (rcError) console.error("[asaas-service-purchase] Recurring charge error:", rcError);
 
-    // 5. Create first invoice
+    // 5. Create first invoice shown in financial menus
+    let createdInvoiceId: string | null = null;
     if (recurringCharge?.id) {
-      const { error: invError } = await supabase.from("company_invoices").insert({
+      const { data: invoiceData, error: invError } = await supabase.from("company_invoices").insert({
         company_id: companyId,
         recurring_charge_id: recurringCharge.id,
         description: service_name,
         amount_cents,
         due_date: tomorrow,
         status: "pending",
+        payment_method: "boleto",
         installment_number: 1,
         total_installments: isRecurring ? 12 : 1,
-        payment_link_url: invoiceUrl,
-      });
-      if (invError) console.error("[asaas-service-purchase] Invoice error:", invError);
+        payment_link_url: invoiceUrl || null,
+        notes: `Compra self-service: ${service_name} (${billing_type})`,
+      } as any)
+      .select("id")
+      .single();
+      if (invError) {
+        console.error("[asaas-service-purchase] Invoice error:", invError);
+      } else {
+        createdInvoiceId = invoiceData?.id ?? null;
+      }
     }
 
     // 6. Create permission records (disabled - will be enabled by webhook after payment)
@@ -275,7 +292,7 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("project_id", project_id)
         .eq("menu_key", key)
-        .single();
+        .maybeSingle();
 
       if (!existing) {
         await supabase.from("project_menu_permissions").insert({
@@ -287,20 +304,22 @@ Deno.serve(async (req) => {
     }
 
     // 7. Save purchase record
-    const { error: purchaseError } = await supabase.from("service_purchases").insert({
+    const { error: purchaseError } = await supabase.from("service_purchases").upsert({
       project_id,
       service_catalog_id,
       menu_key,
       billing_type: billing_type || "monthly",
       amount_cents,
-      status: "active",
+      status: "pending_payment",
       recurring_charge_id: recurringCharge?.id || null,
       asaas_subscription_id: subscriptionId,
       purchased_by,
-    });
+    }, {
+      onConflict: "project_id,menu_key"
+    } as any);
     if (purchaseError) console.error("[asaas-service-purchase] Purchase record error:", purchaseError);
 
-    // 8. Create financial receivable
+    // 8. Mirror receivable for legacy financial flow
     const amountReais = amount_cents / 100;
     const { error: frError } = await supabase.from("financial_receivables").insert({
       company_id: companyId,
@@ -311,8 +330,8 @@ Deno.serve(async (req) => {
       payment_method: "boleto",
       payment_link: invoiceUrl || null,
       is_recurring: isRecurring,
-      notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}`,
-    });
+      notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}. Fatura: ${createdInvoiceId ?? "n/a"}`,
+    } as any);
     if (frError) console.error("[asaas-service-purchase] Financial receivable error:", frError);
 
     // 9. Notify master and admin staff
