@@ -159,6 +159,12 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   // Traffic analysis state
   const [trafficForm, setTrafficForm] = useState<any>(null);
   const [creatingTrafficForm, setCreatingTrafficForm] = useState(false);
+  // Marketing consultation state
+  const [marketingForm, setMarketingForm] = useState<any>(null);
+  const [creatingMarketingForm, setCreatingMarketingForm] = useState(false);
+  // Financial consultation state
+  const [financialForm, setFinancialForm] = useState<any>(null);
+  const [creatingFinancialForm, setCreatingFinancialForm] = useState(false);
 
   useEffect(() => {
     if (companyId) {
@@ -171,6 +177,8 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     if (projectId) {
       fetchCACForms();
       fetchTrafficForm();
+      fetchMarketingForm();
+      fetchFinancialForm();
     }
   }, [companyId, projectId]);
 
@@ -205,6 +213,74 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
       toast.error("Erro ao criar formulário");
     } finally {
       setCreatingTrafficForm(false);
+    }
+  };
+
+  const fetchMarketingForm = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("marketing_consultation_forms")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!error) setMarketingForm(data);
+    } catch (err) {
+      console.error("Error fetching marketing form:", err);
+    }
+  };
+
+  const createMarketingForm = async () => {
+    if (!projectId) return;
+    setCreatingMarketingForm(true);
+    try {
+      const { data, error } = await supabase
+        .from("marketing_consultation_forms")
+        .insert({ project_id: projectId })
+        .select("*")
+        .single();
+      if (error) throw error;
+      setMarketingForm(data);
+      toast.success("Formulário de marketing criado!");
+    } catch (err) {
+      console.error("Error creating marketing form:", err);
+      toast.error("Erro ao criar formulário");
+    } finally {
+      setCreatingMarketingForm(false);
+    }
+  };
+
+  const fetchFinancialForm = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("financial_consultation_forms")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!error) setFinancialForm(data);
+    } catch (err) {
+      console.error("Error fetching financial form:", err);
+    }
+  };
+
+  const createFinancialForm = async () => {
+    if (!projectId) return;
+    setCreatingFinancialForm(true);
+    try {
+      const { data, error } = await supabase
+        .from("financial_consultation_forms")
+        .insert({ project_id: projectId })
+        .select("*")
+        .single();
+      if (error) throw error;
+      setFinancialForm(data);
+      toast.success("Formulário financeiro criado!");
+    } catch (err) {
+      console.error("Error creating financial form:", err);
+      toast.error("Erro ao criar formulário");
+    } finally {
+      setCreatingFinancialForm(false);
     }
   };
 
@@ -1535,6 +1611,200 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
                   ) : (
                     <BarChart3 className="h-4 w-4 mr-2" />
                   )}
+                  Criar Formulário
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Diagnóstico de Marketing */}
+      {projectId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <Instagram className="h-5 w-5" />
+              Diagnóstico de Marketing
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {marketingForm ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Badge variant={marketingForm.submitted_at ? "default" : "secondary"}>
+                    {marketingForm.submitted_at ? "Respondido" : "Pendente"}
+                  </Badge>
+                  {marketingForm.submitted_at && (
+                    <span className="text-xs text-muted-foreground">
+                      em {format(new Date(marketingForm.submitted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  <Link2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <code className="text-sm flex-1 truncate">
+                    {getPublicBaseUrl()}?public=marketing-consultation&token={marketingForm.access_token}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    navigator.clipboard.writeText(`${getPublicBaseUrl()}?public=marketing-consultation&token=${marketingForm.access_token}`);
+                    toast.success("Link copiado!");
+                  }}>
+                    <Copy className="h-4 w-4 mr-1" /> Copiar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => window.open(`${getPublicBaseUrl()}?public=marketing-consultation&token=${marketingForm.access_token}`, "_blank")}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+                {marketingForm.submitted_at && (() => {
+                  const answers = [
+                    { label: "@ do Instagram", value: marketingForm.instagram_handle },
+                    { label: "Seguidores", value: marketingForm.instagram_followers },
+                    { label: "Frequência de postagem", value: marketingForm.instagram_posting_frequency },
+                    { label: "Tipos de conteúdo", value: marketingForm.instagram_content_types },
+                    { label: "Taxa de engajamento", value: marketingForm.instagram_engagement_rate },
+                    { label: "Melhor post", value: marketingForm.instagram_best_post },
+                    { label: "Pior post", value: marketingForm.instagram_worst_post },
+                    { label: "Uso de Stories", value: marketingForm.instagram_stories_usage },
+                    { label: "Uso de Reels", value: marketingForm.instagram_reels_usage },
+                    { label: "Bio otimizada?", value: marketingForm.instagram_bio_optimized },
+                    { label: "Destaques", value: marketingForm.instagram_highlights },
+                    { label: "Estratégia de hashtags", value: marketingForm.instagram_hashtag_strategy },
+                    { label: "Perfis concorrentes", value: marketingForm.instagram_competitor_profiles },
+                    { label: "Identidade visual", value: marketingForm.brand_visual_identity },
+                    { label: "Tom de voz", value: marketingForm.brand_tone_of_voice },
+                    { label: "Diferencial", value: marketingForm.brand_differentiator },
+                    { label: "Posicionamento", value: marketingForm.brand_positioning },
+                    { label: "Planejamento de conteúdo", value: marketingForm.content_planning },
+                    { label: "Calendário editorial", value: marketingForm.content_calendar },
+                    { label: "Pilares de conteúdo", value: marketingForm.content_pillars },
+                    { label: "Equipe de produção", value: marketingForm.content_production_team },
+                    { label: "Objetivo principal", value: marketingForm.marketing_main_goal },
+                    { label: "Maior desafio", value: marketingForm.marketing_biggest_challenge },
+                    { label: "Resultados esperados", value: marketingForm.marketing_expected_results },
+                    { label: "Informações adicionais", value: marketingForm.marketing_additional_info },
+                  ].filter(a => a.value);
+                  return answers.length > 0 ? (
+                    <div className="mt-4 rounded-xl border border-border/60 overflow-hidden">
+                      <div className="bg-primary/5 border-b border-border/60 px-5 py-3 flex items-center gap-2">
+                        <Instagram className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">Respostas do Diagnóstico</h4>
+                        <Badge variant="secondary" className="ml-auto text-[10px]">{answers.length} respostas</Badge>
+                      </div>
+                      <div className="divide-y divide-border/40">
+                        {answers.map((a, i) => (
+                          <div key={i} className="px-5 py-3 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 hover:bg-muted/30 transition-colors">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap min-w-[160px] pt-0.5">{a.label}</span>
+                            <span className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{a.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </>
+            ) : (
+              <div className="text-center py-4 space-y-3">
+                <p className="text-sm text-muted-foreground">Nenhum formulário de diagnóstico de marketing criado ainda.</p>
+                <Button onClick={createMarketingForm} disabled={creatingMarketingForm}>
+                  {creatingMarketingForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Instagram className="h-4 w-4 mr-2" />}
+                  Criar Formulário
+                </Button>
+              </div>
+            )}
+          </CardContent>
+        </Card>
+      )}
+
+      {/* Diagnóstico Financeiro */}
+      {projectId && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+              <DollarSign className="h-5 w-5" />
+              Diagnóstico Financeiro
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            {financialForm ? (
+              <>
+                <div className="flex items-center gap-2">
+                  <Badge variant={financialForm.submitted_at ? "default" : "secondary"}>
+                    {financialForm.submitted_at ? "Respondido" : "Pendente"}
+                  </Badge>
+                  {financialForm.submitted_at && (
+                    <span className="text-xs text-muted-foreground">
+                      em {format(new Date(financialForm.submitted_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                    </span>
+                  )}
+                </div>
+                <div className="flex items-center gap-2 p-3 rounded-lg bg-muted/50">
+                  <Link2 className="h-4 w-4 text-muted-foreground flex-shrink-0" />
+                  <code className="text-sm flex-1 truncate">
+                    {getPublicBaseUrl()}?public=financial-consultation&token={financialForm.access_token}
+                  </code>
+                  <Button variant="outline" size="sm" onClick={() => {
+                    navigator.clipboard.writeText(`${getPublicBaseUrl()}?public=financial-consultation&token=${financialForm.access_token}`);
+                    toast.success("Link copiado!");
+                  }}>
+                    <Copy className="h-4 w-4 mr-1" /> Copiar
+                  </Button>
+                  <Button variant="outline" size="sm" onClick={() => window.open(`${getPublicBaseUrl()}?public=financial-consultation&token=${financialForm.access_token}`, "_blank")}>
+                    <ExternalLink className="h-4 w-4" />
+                  </Button>
+                </div>
+                {financialForm.submitted_at && (() => {
+                  const answers = [
+                    { label: "Faturamento mensal", value: financialForm.monthly_revenue },
+                    { label: "Fontes de receita", value: financialForm.revenue_sources },
+                    { label: "Ticket médio", value: financialForm.average_ticket },
+                    { label: "Meios de pagamento", value: financialForm.payment_methods },
+                    { label: "Taxa de inadimplência", value: financialForm.default_rate },
+                    { label: "Custos fixos", value: financialForm.fixed_costs },
+                    { label: "Custos variáveis", value: financialForm.variable_costs },
+                    { label: "Custo com folha", value: financialForm.payroll_cost },
+                    { label: "Maior despesa", value: financialForm.biggest_expense },
+                    { label: "Tentativas de redução", value: financialForm.cost_reduction_attempts },
+                    { label: "Controle de fluxo de caixa", value: financialForm.cash_flow_control },
+                    { label: "Ferramenta utilizada", value: financialForm.cash_flow_tool },
+                    { label: "Reserva (meses)", value: financialForm.cash_reserve_months },
+                    { label: "Variação sazonal", value: financialForm.seasonal_variation },
+                    { label: "Possui orçamento?", value: financialForm.has_budget },
+                    { label: "Margem de lucro", value: financialForm.profit_margin },
+                    { label: "Estratégia de precificação", value: financialForm.pricing_strategy },
+                    { label: "Metas financeiras", value: financialForm.financial_goals },
+                    { label: "Regime tributário", value: financialForm.tax_regime },
+                    { label: "Relação com contador", value: financialForm.accountant_relationship },
+                    { label: "Planejamento tributário", value: financialForm.tax_planning },
+                    { label: "Maior desafio", value: financialForm.financial_biggest_challenge },
+                    { label: "Consultor anterior", value: financialForm.previous_consultant },
+                    { label: "Resultados esperados", value: financialForm.expected_financial_results },
+                    { label: "Informações adicionais", value: financialForm.financial_additional_info },
+                  ].filter(a => a.value);
+                  return answers.length > 0 ? (
+                    <div className="mt-4 rounded-xl border border-border/60 overflow-hidden">
+                      <div className="bg-primary/5 border-b border-border/60 px-5 py-3 flex items-center gap-2">
+                        <DollarSign className="h-4 w-4 text-primary" />
+                        <h4 className="text-sm font-bold text-foreground">Respostas do Diagnóstico</h4>
+                        <Badge variant="secondary" className="ml-auto text-[10px]">{answers.length} respostas</Badge>
+                      </div>
+                      <div className="divide-y divide-border/40">
+                        {answers.map((a, i) => (
+                          <div key={i} className="px-5 py-3 flex flex-col sm:flex-row sm:items-start gap-1 sm:gap-4 hover:bg-muted/30 transition-colors">
+                            <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide whitespace-nowrap min-w-[160px] pt-0.5">{a.label}</span>
+                            <span className="text-sm text-foreground whitespace-pre-wrap leading-relaxed">{a.value}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  ) : null;
+                })()}
+              </>
+            ) : (
+              <div className="text-center py-4 space-y-3">
+                <p className="text-sm text-muted-foreground">Nenhum formulário de diagnóstico financeiro criado ainda.</p>
+                <Button onClick={createFinancialForm} disabled={creatingFinancialForm}>
+                  {creatingFinancialForm ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <DollarSign className="h-4 w-4 mr-2" />}
                   Criar Formulário
                 </Button>
               </div>
