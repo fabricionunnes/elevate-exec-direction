@@ -297,7 +297,7 @@ export default function ChurnPredictionPage() {
       </div>
 
       {/* Stats Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-5 gap-4">
+      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-5 gap-3 sm:gap-4">
         <Card className="border-red-500/50 bg-red-500/5">
           <CardContent className="pt-4">
             <div className="flex items-center justify-between">
