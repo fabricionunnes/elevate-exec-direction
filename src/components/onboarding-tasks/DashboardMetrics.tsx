@@ -1500,7 +1500,7 @@ const DashboardMetrics = ({
                 </div>
               </CardContent>
             </Card>
-            <Card className="hidden md:block">
+            <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium">Distribuição</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="h-[70px] sm:h-[100px] flex items-center justify-center">
