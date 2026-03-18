@@ -335,7 +335,6 @@ export const SocialCardDetailSheet = ({
     // Reuse the file input handler by creating a synthetic event
     const syntheticEvent = { target: { files } } as unknown as React.ChangeEvent<HTMLInputElement>;
     await handleFileUpload(syntheticEvent);
-    }
   };
 
   // Combine suggested_date + suggested_time into scheduled_at (UTC ISO)
