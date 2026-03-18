@@ -207,6 +207,13 @@ export default function ConsultoriasAdminPage() {
   const [projects, setProjects] = useState<Project[]>([]);
   const [selectedProjectId, setSelectedProjectId] = useState("");
   const [creating, setCreating] = useState(false);
+  const [projectSearch, setProjectSearch] = useState("");
+
+  const filteredProjects = projects.filter(
+    (p) =>
+      p.company_name?.toLowerCase().includes(projectSearch.toLowerCase()) ||
+      p.product_name?.toLowerCase().includes(projectSearch.toLowerCase())
+  );
 
   useEffect(() => {
     fetchAllForms();
