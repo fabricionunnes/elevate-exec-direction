@@ -1220,6 +1220,7 @@ export const KPIDashboardTab = ({
       proposalToSale,
       leadToSale,
       overallConversion,
+      conversionBaseName: conversionBase?.name || conversionStages[0]?.name,
       avgTicket,
       conversionStages,
       conversionRates,
