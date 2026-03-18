@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
     }
 
     // Handle service purchase permission management
-    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus);
+    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus, paymentValueCents, dueDate);
 
     return new Response(JSON.stringify({ received: true, matched }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
@@ -495,7 +495,7 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
     }
 }
 
-async function handleServicePurchasePermissions(supabase: any, subscriptionId: string | null, paymentId: string, newStatus: string) {
+async function handleServicePurchasePermissions(supabase: any, subscriptionId: string | null, paymentId: string, newStatus: string, paymentValueCents: number = 0, dueDate?: string) {
   try {
     // Check if this payment/subscription is linked to a service purchase
     const searchId = subscriptionId || paymentId;
@@ -503,7 +503,7 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
 
     const { data: purchases } = await supabase
       .from("service_purchases")
-      .select("id, project_id, menu_key, billing_type, status")
+      .select("id, project_id, menu_key, billing_type, status, recurring_charge_id")
       .eq("asaas_subscription_id", searchId);
 
     if (!purchases?.length) return;
@@ -512,25 +512,80 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
       const isRecurring = purchase.billing_type === "monthly";
 
       if (newStatus === "paid") {
-        // Reactivate if blocked
-        if (purchase.status === "blocked") {
-          console.log(`[Asaas Webhook] Reactivating service purchase ${purchase.id} (${purchase.menu_key})`);
+        // Activate on first payment (pending_payment -> active) OR reactivate if blocked
+        if (purchase.status === "pending_payment" || purchase.status === "blocked") {
+          console.log(`[Asaas Webhook] Activating service purchase ${purchase.id} (${purchase.menu_key}) from status: ${purchase.status}`);
           await supabase
             .from("service_purchases")
             .update({ status: "active", blocked_at: null })
             .eq("id", purchase.id);
 
-          // Re-enable permission
+          // Enable permissions
           const keysToEnable = purchase.menu_key === "gestao_clientes"
             ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
             : [purchase.menu_key];
 
           for (const key of keysToEnable) {
-            await supabase
+            const { data: updated } = await supabase
               .from("project_menu_permissions")
               .update({ is_enabled: true })
               .eq("project_id", purchase.project_id)
-              .eq("menu_key", key);
+              .eq("menu_key", key)
+              .select("id");
+
+            if (!updated?.length) {
+              await supabase
+                .from("project_menu_permissions")
+                .upsert({
+                  project_id: purchase.project_id,
+                  menu_key: key,
+                  is_enabled: true,
+                }, { onConflict: "project_id,menu_key" });
+            }
+          }
+          console.log(`[Asaas Webhook] Permissions enabled for ${keysToEnable.join(", ")} on project ${purchase.project_id}`);
+        }
+
+        // Also mark the related invoice as paid if not already matched
+        if (purchase.recurring_charge_id) {
+          const invoiceFilter: any = { recurring_charge_id: purchase.recurring_charge_id };
+          
+          // Build query to find unpaid invoice
+          let query = supabase
+            .from("company_invoices")
+            .select("id, amount_cents, installment_number, total_installments, status, paid_at")
+            .eq("recurring_charge_id", purchase.recurring_charge_id)
+            .not("status", "in", '("paid","partial","cancelled")');
+          
+          if (dueDate) {
+            query = query.eq("due_date", dueDate);
+          }
+          
+          const { data: invoices } = await query.order("due_date", { ascending: true }).limit(1);
+          
+          if (invoices?.length) {
+            const invoice = invoices[0];
+            const discountCents = paymentValueCents > 0 && paymentValueCents < invoice.amount_cents
+              ? invoice.amount_cents - paymentValueCents
+              : 0;
+            const actualPaidCents = paymentValueCents > 0 ? paymentValueCents : invoice.amount_cents;
+
+            await supabase
+              .from("company_invoices")
+              .update({
+                status: "paid",
+                paid_at: new Date().toISOString(),
+                paid_amount_cents: actualPaidCents,
+                discount_cents: discountCents,
+                pagarme_charge_id: paymentId,
+                payment_fee_cents: 199,
+              })
+              .eq("id", invoice.id);
+
+            console.log(`[Asaas Webhook] Service purchase invoice ${invoice.id} marked as paid`);
+
+            // Credit bank
+            await creditAsaasBank(supabase, actualPaidCents, `Serviço: ${purchase.menu_key} (fatura ${invoice.id})`, invoice.id, purchase.recurring_charge_id);
           }
         }
       } else if (newStatus === "overdue" && isRecurring) {
