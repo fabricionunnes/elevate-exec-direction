@@ -274,7 +274,7 @@ Deno.serve(async (req) => {
     // 8. Create financial receivable (staff financial module)
     const amountReais = amount_cents / 100;
     await supabase.from("financial_receivables").insert({
-      company_id: project.company_id,
+      company_id: companyId,
       description: `Compra self-service: ${service_name}`,
       amount: amountReais,
       due_date: tomorrow,
