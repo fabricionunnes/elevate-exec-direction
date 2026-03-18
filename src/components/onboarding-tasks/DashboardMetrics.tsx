@@ -1007,7 +1007,7 @@ const DashboardMetrics = ({
   return (
     <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
       {/* Summary Row - Always Visible - Mobile Optimized */}
-      <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
+      <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
         <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "active") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "active")}>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
@@ -1086,7 +1086,7 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="hidden sm:block">
+        <Card className="hidden lg:block">
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
               <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", npsMetrics.averageNps === null ? "bg-gray-400/10" : npsMetrics.averageNps >= 9 ? "bg-green-500/10" : npsMetrics.averageNps >= 7 ? "bg-yellow-500/10" : "bg-red-500/10")}>
@@ -1103,7 +1103,7 @@ const DashboardMetrics = ({
         </Card>
 
         <Card 
-          className="hidden sm:block cursor-pointer transition-all hover:shadow-md group relative"
+          className="hidden lg:block cursor-pointer transition-all hover:shadow-md group relative"
           onClick={(e) => {
             // If clicking the recalculate button, don't propagate
             if ((e.target as HTMLElement).closest('button')) return;
@@ -1149,7 +1149,7 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("hidden sm:block cursor-pointer transition-all hover:shadow-md", isCardActive("goals", "meeting") && "ring-2 ring-teal-500")} onClick={() => handleCardClick("goals", "meeting")}>
+        <Card className={cn("hidden lg:block cursor-pointer transition-all hover:shadow-md", isCardActive("goals", "meeting") && "ring-2 ring-teal-500")} onClick={() => handleCardClick("goals", "meeting")}>
           <CardContent className="p-2 sm:p-3">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
               <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
@@ -1185,17 +1185,17 @@ const DashboardMetrics = ({
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-5 lg:grid-cols-12 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-12 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
             <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden sm:block", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
             <Card 
               className={cn(
-                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md", 
                 showNotRenewedCompanies && "ring-2 ring-red-400"
               )} 
               onClick={() => setShowNotRenewedCompanies(!showNotRenewedCompanies)}
@@ -1207,7 +1207,7 @@ const DashboardMetrics = ({
             </Card>
             <Card 
               className={cn(
-                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md", 
                 showCompletedCompanies && "ring-2 ring-blue-400"
               )} 
               onClick={() => setShowCompletedCompanies(!showCompletedCompanies)}
@@ -1217,8 +1217,8 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">Concluídos</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
-            <Card className="hidden lg:block"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
+            <Card className={cn("cursor-pointer", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
+            <Card><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
             <Card 
               className={cn(
                 "cursor-pointer transition-all hover:shadow-md", 
@@ -1387,7 +1387,7 @@ const DashboardMetrics = ({
                 </div>
               </CardContent>
             </Card>
-            <Card className="hidden sm:block">
+            <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Percent className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500" />Churn Mensal</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="h-[60px] sm:h-[80px]">
@@ -1500,7 +1500,7 @@ const DashboardMetrics = ({
                 </div>
               </CardContent>
             </Card>
-            <Card className="hidden md:block">
+            <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium">Distribuição</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="h-[70px] sm:h-[100px] flex items-center justify-center">
@@ -1521,7 +1521,7 @@ const DashboardMetrics = ({
         </TabsContent>
 
         <TabsContent value="metas" className="mt-2 sm:mt-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer", isCardActive("goals", "100plus") && "ring-2 ring-green-500")} onClick={() => handleCardClick("goals", "100plus")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-green-500">{goalsMetrics.meetingGoal}</p>
@@ -1550,21 +1550,21 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">&lt;50%</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noEntries") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("goals", "noEntries")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "noEntries") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("goals", "noEntries")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-orange-500">{goalsMetrics.noEntriesCount}</p>
                 <p className="text-[8px] sm:text-[9px] text-orange-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noEntriesCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">S/ Lanç.</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "noGoal") && "ring-2 ring-gray-500")} onClick={() => handleCardClick("goals", "noGoal")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-gray-500">{goalsMetrics.noGoalCount}</p>
                 <p className="text-[8px] sm:text-[9px] text-gray-500/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.noGoalCount / companyMetrics.activeCompanies) * 100) : 0}%</p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">S/ Meta</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasEntries") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasEntries")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "hasEntries") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasEntries")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithEntries}</p>
                 <p className="text-[8px] sm:text-[9px] text-primary/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.totalWithEntries / companyMetrics.activeCompanies) * 100) : 0}%</p>
@@ -1575,14 +1575,14 @@ const DashboardMetrics = ({
         </TabsContent>
 
         <TabsContent value="nps" className="mt-2 sm:mt-3 space-y-3">
-          <div className="grid grid-cols-3 sm:grid-cols-3 lg:grid-cols-6 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
             <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", npsMetrics.averageNps === null ? "text-muted-foreground" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")}>{npsMetrics.averageNps ?? "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Média</p></CardContent></Card>
             <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", npsMetrics.responseRate >= 70 ? "text-green-500" : npsMetrics.responseRate >= 40 ? "text-yellow-500" : "text-orange-500")}>{npsMetrics.responseRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Taxa</p></CardContent></Card>
             <Card className={cn("cursor-pointer", isCardActive("nps", "responded") && "ring-2 ring-blue-500")} onClick={() => handleCardClick("nps", "responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-blue-500">{npsMetrics.respondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Respond.</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "not_responded" && "ring-2 ring-gray-500")} onClick={() => handleNpsCardClick("not_responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{npsMetrics.notRespondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Resp.</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "promoters" && "ring-2 ring-green-500")} onClick={() => handleNpsCardClick("promoters")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{npsMetrics.promoters}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Promotores</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "neutrals" && "ring-2 ring-yellow-500")} onClick={() => handleNpsCardClick("neutrals")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-yellow-500">{npsMetrics.neutrals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Neutros</p></CardContent></Card>
-            <Card className={cn("cursor-pointer hidden lg:block hover:shadow-md transition-all", npsDetailType === "detractors" && "ring-2 ring-red-500")} onClick={() => handleNpsCardClick("detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hover:shadow-md transition-all", npsDetailType === "not_responded" && "ring-2 ring-gray-500")} onClick={() => handleNpsCardClick("not_responded")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-gray-500">{npsMetrics.notRespondedCount}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Não Resp.</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hover:shadow-md transition-all", npsDetailType === "promoters" && "ring-2 ring-green-500")} onClick={() => handleNpsCardClick("promoters")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-green-500">{npsMetrics.promoters}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Promotores</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hover:shadow-md transition-all", npsDetailType === "neutrals" && "ring-2 ring-yellow-500")} onClick={() => handleNpsCardClick("neutrals")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-yellow-500">{npsMetrics.neutrals}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Neutros</p></CardContent></Card>
+            <Card className={cn("cursor-pointer hover:shadow-md transition-all", npsDetailType === "detractors" && "ring-2 ring-red-500")} onClick={() => handleNpsCardClick("detractors")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{npsMetrics.detractors}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Detratores</p></CardContent></Card>
           </div>
           
           {npsDetailType === "not_responded" && (() => {
