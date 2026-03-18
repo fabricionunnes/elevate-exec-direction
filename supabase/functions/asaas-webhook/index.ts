@@ -512,26 +512,38 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
       const isRecurring = purchase.billing_type === "monthly";
 
       if (newStatus === "paid") {
-        // Reactivate if blocked
-        if (purchase.status === "blocked") {
-          console.log(`[Asaas Webhook] Reactivating service purchase ${purchase.id} (${purchase.menu_key})`);
+        // Activate on first payment (pending_payment -> active) OR reactivate if blocked
+        if (purchase.status === "pending_payment" || purchase.status === "blocked") {
+          console.log(`[Asaas Webhook] Activating service purchase ${purchase.id} (${purchase.menu_key}) from status: ${purchase.status}`);
           await supabase
             .from("service_purchases")
             .update({ status: "active", blocked_at: null })
             .eq("id", purchase.id);
 
-          // Re-enable permission
+          // Enable permissions
           const keysToEnable = purchase.menu_key === "gestao_clientes"
             ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
             : [purchase.menu_key];
 
           for (const key of keysToEnable) {
-            await supabase
+            const { data: updated } = await supabase
               .from("project_menu_permissions")
               .update({ is_enabled: true })
               .eq("project_id", purchase.project_id)
-              .eq("menu_key", key);
+              .eq("menu_key", key)
+              .select("id");
+
+            if (!updated?.length) {
+              await supabase
+                .from("project_menu_permissions")
+                .upsert({
+                  project_id: purchase.project_id,
+                  menu_key: key,
+                  is_enabled: true,
+                }, { onConflict: "project_id,menu_key" });
+            }
           }
+          console.log(`[Asaas Webhook] Permissions enabled for ${keysToEnable.join(", ")} on project ${purchase.project_id}`);
         }
       } else if (newStatus === "overdue" && isRecurring) {
         // Block recurring service on overdue
