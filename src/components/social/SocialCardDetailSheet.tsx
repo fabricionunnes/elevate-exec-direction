@@ -556,7 +556,40 @@ export const SocialCardDetailSheet = ({
     }
   };
 
-  const handleAiReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+  const saveCarouselOrder = async (newImages: string[]) => {
+    if (!card) return;
+    try {
+      // Delete existing carousel attachments
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
+
+      // Re-insert in new order
+      for (let i = 0; i < newImages.length; i++) {
+        await supabase.from("social_card_attachments").insert({
+          card_id: card.id,
+          file_url: newImages[i],
+          file_name: `ai-carousel-slide-${i + 1}.png`,
+          file_type: "image",
+        });
+      }
+
+      // Update creative_url to first slide
+      await supabase
+        .from("social_content_cards")
+        .update({ creative_url: newImages[0] })
+        .eq("id", card.id);
+      
+      setCreativeUrl(newImages[0]);
+      toast.success("Ordem atualizada!");
+    } catch (error) {
+      console.error("Error saving carousel order:", error);
+      toast.error("Erro ao reordenar");
+    }
+  };
+
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const remaining = 5 - aiReferenceImages.length;
