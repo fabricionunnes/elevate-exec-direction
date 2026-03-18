@@ -528,6 +528,35 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const handleAiReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
+    const remaining = 5 - aiReferenceImages.length;
+    if (remaining <= 0) { toast.error("Máximo de 5 imagens"); return; }
+    const toProcess = Array.from(files).slice(0, remaining);
+    setUploadingAiReference(true);
+    try {
+      const newUrls: string[] = [];
+      for (const file of toProcess) {
+        if (!file.type.startsWith("image/")) continue;
+        if (file.size > 5 * 1024 * 1024) { toast.error("Imagem muito grande (máx 5MB)"); continue; }
+        const sanitized = file.name.normalize("NFD").replace(/[\u0300-\u036f]/g, "").replace(/[^a-zA-Z0-9.-]/g, "_");
+        const fileName = `${projectId}/reference/${Date.now()}-${sanitized}`;
+        const { error } = await supabase.storage.from("social-briefing").upload(fileName, file, { contentType: file.type, upsert: false });
+        if (error) throw error;
+        const { data: { publicUrl } } = supabase.storage.from("social-briefing").getPublicUrl(fileName);
+        newUrls.push(publicUrl);
+      }
+      if (newUrls.length > 0) setAiReferenceImages(prev => [...prev, ...newUrls]);
+    } catch (err) {
+      console.error("Reference upload error:", err);
+      toast.error("Erro ao carregar imagem");
+    } finally {
+      setUploadingAiReference(false);
+      if (aiReferenceInputRef.current) aiReferenceInputRef.current.value = "";
+    }
+  };
+
   const handleGenerateAiImage = async () => {
     if (!card || !aiPrompt.trim()) return;
     setGeneratingAiImage(true);
@@ -543,6 +572,8 @@ export const SocialCardDetailSheet = ({
           format: isCarousel ? "carousel" : "feed_post",
           includeLogoPref: aiIncludeLogo,
           overlayText: isCarousel ? undefined : (aiImageText.trim() || undefined),
+          referenceImageUrls: aiReferenceImages.length > 0 ? aiReferenceImages : undefined,
+          referenceImageUrl: aiReferenceImages[0] || undefined,
           ...(isCarousel && {
             carouselCount: aiCarouselCount,
             carouselConnected: aiCarouselConnected,
