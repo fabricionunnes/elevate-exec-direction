@@ -1113,13 +1113,23 @@ export const KPIDashboardTab = ({
     const leadsKpi = findKpiByPattern(['lead', 'leads', 'oportunidade', 'oportunidades', 'contato', 'contatos']);
     const serviceKpi = findKpiByPattern(['atendimento', 'atendimentos']);
     const visitsKpi = findKpiByPattern(['visita', 'visitas']);
-    const meetingsKpi = findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações']);
+    // Separate "calls agendadas" from "calls com pitch" for proper funnel staging
+    const callsAgendadasKpi = kpis.find(kpi => 
+      kpi.name.toLowerCase().includes('agendad') && (kpi.name.toLowerCase().includes('call') || kpi.name.toLowerCase().includes('reunião') || kpi.name.toLowerCase().includes('reuniao'))
+    );
+    const pitchKpi = kpis.find(kpi => 
+      kpi.name.toLowerCase().includes('pitch')
+    );
+    // Fallback meetingsKpi: only used if neither specific calls KPI is found
+    const meetingsKpi = !callsAgendadasKpi && !pitchKpi
+      ? findKpiByPattern(['reunião', 'reuniao', 'reuniões', 'reunioes', 'call', 'calls', 'ligação', 'ligações'])
+      : null;
     const proposalsKpi = findKpiByPattern(['proposta', 'propostas', 'orçamento', 'orcamento', 'cotação', 'cotacao']);
     const salesKpi = findKpiByPattern(['venda', 'vendas', 'fechamento', 'fechamentos', 'qtd venda', 'quantidade venda']);
     const revenueKpi = kpis.find(k => k.kpi_type === 'monetary');
 
     // Calculate totals for each found KPI
-    const getKpiTotal = (kpi: KPI | undefined) => {
+    const getKpiTotal = (kpi: KPI | undefined | null) => {
       if (!kpi) return 0;
       return filteredEntries.filter(e => e.kpi_id === kpi.id).reduce((sum, e) => sum + e.value, 0);
     };
@@ -1127,13 +1137,15 @@ export const KPIDashboardTab = ({
     const totalLeads = getKpiTotal(leadsKpi);
     const totalServices = getKpiTotal(serviceKpi);
     const totalVisits = getKpiTotal(visitsKpi);
+    const totalCallsAgendadas = getKpiTotal(callsAgendadasKpi);
+    const totalPitch = getKpiTotal(pitchKpi);
     const totalMeetings = getKpiTotal(meetingsKpi);
     const totalProposals = getKpiTotal(proposalsKpi);
     const totalSales = getKpiTotal(salesKpi);
     const totalRevenue = getKpiTotal(revenueKpi);
 
     // Build conversion stages dynamically based on available data
-    // Priority order: Leads → Atendimentos → Visitas/Reuniões → Propostas → Vendas
+    // Priority order: Leads → Atendimentos → Visitas → Calls Agendadas → Calls com Pitch → Propostas → Vendas
     const conversionStages: Array<{ name: string; value: number; kpiName: string | undefined }> = [];
     
     if (leadsKpi && totalLeads > 0) {
@@ -1144,7 +1156,17 @@ export const KPIDashboardTab = ({
     }
     if (visitsKpi && totalVisits > 0) {
       conversionStages.push({ name: 'Visitas', value: totalVisits, kpiName: visitsKpi.name });
-    } else if (meetingsKpi && totalMeetings > 0) {
+    }
+    // Show Calls Agendadas as a stage if it exists
+    if (callsAgendadasKpi && totalCallsAgendadas > 0) {
+      conversionStages.push({ name: 'Calls Agendadas', value: totalCallsAgendadas, kpiName: callsAgendadasKpi.name });
+    }
+    // Show Calls com Pitch as the next stage (this is the conversion-relevant one)
+    if (pitchKpi && totalPitch > 0) {
+      conversionStages.push({ name: 'Calls c/ Pitch', value: totalPitch, kpiName: pitchKpi.name });
+    }
+    // Fallback: generic meetings if no specific calls KPIs
+    if (!callsAgendadasKpi && !pitchKpi && meetingsKpi && totalMeetings > 0) {
       conversionStages.push({ name: 'Reuniões', value: totalMeetings, kpiName: meetingsKpi.name });
     }
     if (proposalsKpi && totalProposals > 0) {
