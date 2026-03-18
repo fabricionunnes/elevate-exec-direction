@@ -1734,7 +1734,7 @@ export const SocialCardDetailSheet = ({
                       Retentar publicação
                     </Button>
                   </div>
-                )
+                )}
 
                 {/* Already published - show link */}
                 {card.instagram_post_url && (
