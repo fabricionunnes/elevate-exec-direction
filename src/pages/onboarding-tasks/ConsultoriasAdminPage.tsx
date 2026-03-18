@@ -617,21 +617,23 @@ export default function ConsultoriasAdminPage() {
                   <button
                     key={p.id}
                     onClick={() => setSelectedProjectId(p.id)}
-                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b last:border-b-0 overflow-hidden ${
+                    className={`w-full flex items-start gap-3 px-4 py-3 text-left transition-colors border-b last:border-b-0 ${
                       selectedProjectId === p.id
                         ? "bg-primary/5 border-l-2 border-l-primary"
                         : "hover:bg-muted/50"
                     }`}
                   >
-                    <Building2 className={`h-4 w-4 flex-shrink-0 ${selectedProjectId === p.id ? "text-primary" : "text-muted-foreground"}`} />
-                    <div className="min-w-0 flex-1">
-                      <p className={`text-sm font-medium truncate ${selectedProjectId === p.id ? "text-primary" : ""}`}>
+                    <Building2 className={`h-4 w-4 mt-0.5 flex-shrink-0 ${selectedProjectId === p.id ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0 flex-1 space-y-1 overflow-hidden">
+                      <p className={`text-sm font-medium whitespace-normal break-words leading-5 ${selectedProjectId === p.id ? "text-primary" : "text-foreground"}`}>
                         {p.company_name || "Sem empresa"}
                       </p>
-                      <p className="text-xs text-muted-foreground truncate">{p.product_name}</p>
+                      <p className="text-xs text-muted-foreground whitespace-normal break-words leading-4">
+                        {p.product_name}
+                      </p>
                     </div>
                     {selectedProjectId === p.id && (
-                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                      <CheckCircle2 className="h-4 w-4 mt-0.5 text-primary flex-shrink-0" />
                     )}
                   </button>
                 ))
