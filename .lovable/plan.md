@@ -1,86 +1,71 @@
 
 
-# Integração Bidirecional CRM Comercial ↔ Clint
+## Diagnóstico
 
-## Contexto
+O post agendado não foi publicado por **duas razões combinadas**:
 
-A Clint possui uma API REST pública (`api.clint.digital/v1`) com endpoints para **contatos**, **negócios (deals)**, **origens**, **tags** e **grupos**. A autenticação é feita via `api-token` no header. Importante: a API da Clint **não suporta atividades** nem **atendimento/mensagens** — essas funcionalidades ficam de fora.
+1. **Card fora do estágio correto**: O card `53f7e9f1` está no estágio "Entrada do cliente" (`stage_type: idea`), mas o cron job (`social-scheduled-publish`) só busca cards no estágio `scheduled`. Provavelmente foi movido manualmente de volta após as falhas.
 
-O sistema já possui uma integração parcial com a Clint via `sheets-webhook` (Google Sheets), mas não há integração direta via API.
+2. **Tentativas esgotadas**: O card já atingiu 3 tentativas (máximo), e não existe mecanismo para resetar automaticamente o contador quando o Instagram é reconectado.
 
-## Escopo da Integração
+3. **Sem reativação automática**: Quando o token é atualizado (reconexão), nenhum código limpa `publish_attempts` e `publish_error` dos cards que falharam por token inválido.
 
-### Direção 1: Clint → CRM Comercial (Webhook)
-A Clint suporta webhooks. Quando algo muda na Clint, ela envia um POST para nosso sistema.
+---
 
-### Direção 2: CRM Comercial → Clint (API REST)
-Quando algo muda no CRM Comercial, chamamos a API da Clint para sincronizar.
+## Plano de Correção
 
-## Limitações da API Clint
-- **Atividades/tarefas** não estão disponíveis na API pública
-- **Mensagens** (WhatsApp, Instagram, email) não estão disponíveis
-- Disponível apenas no plano **Elite** da Clint
+### 1. Resetar cards falhados ao reconectar Instagram
+No `social-instagram-auth` Edge Function, após salvar o novo token com sucesso (ações `select_account` e o fluxo de conta única), adicionar lógica que:
+- Busca todos os cards do projeto que têm `publish_error` contendo "access token" ou `publish_attempts >= 3`
+- Reseta `publish_attempts = 0`, `publish_error = null`
+- Move esses cards de volta para o estágio `scheduled` (caso estejam em outro estágio)
 
-## Dados Sincronizáveis
+### 2. Corrigir o card existente via migração SQL
+Executar uma query para:
+- Resetar `publish_attempts = 0` e `publish_error = null` do card `53f7e9f1`
+- Mover o card de volta para o estágio `scheduled` do board correspondente
 
-| Dado | Clint → CRM | CRM → Clint |
-|------|:-----------:|:-----------:|
-| Contatos (nome, telefone, email) | ✓ | ✓ |
-| Negócios (deals/oportunidades) | ✓ | ✓ |
-| Tags | ✓ | ✓ |
-| Origens | ✓ | ✓ |
-| Status de perda | ✓ | ✓ |
-| Atividades | ✗ | ✗ |
-| Mensagens | ✗ | ✗ |
+### 3. Adicionar botão "Retentar publicação" na UI
+No `SocialCardDetailSheet.tsx`, quando um card tem `publish_error`, mostrar um botão que:
+- Reseta `publish_attempts` e `publish_error`
+- Move o card para o estágio `scheduled`
+- Permite retentar sem depender exclusivamente do cron
 
-## Plano Técnico
+---
 
-### 1. Tabela de configuração da integração
-Criar tabela `crm_clint_config` para armazenar:
-- `project_id` (qual projeto/pipeline usar)
-- `api_token` (encrypted via secret)
-- `webhook_secret` (para validar webhooks)
-- `pipeline_mapping` (JSON mapeando pipelines CRM ↔ funis Clint)
-- `sync_enabled`, `sync_direction` (bidirecional, apenas entrada, apenas saída)
-- `last_sync_at`
+## Detalhes Técnicos
 
-Criar tabela `crm_clint_sync_log` para rastrear IDs sincronizados:
-- `crm_lead_id` ↔ `clint_contact_id`
-- `crm_lead_id` ↔ `clint_deal_id`
-- `sync_status`, `last_synced_at`
+### Arquivo: `supabase/functions/social-instagram-auth/index.ts`
+Após o upsert bem-sucedido nas ações `select_account` (linha ~315) e fluxo de conta única (linha ~244), adicionar:
 
-### 2. Edge Function: `clint-webhook` (Clint → CRM)
-- Recebe webhooks da Clint quando contatos/negócios são criados ou atualizados
-- Mapeia campos da Clint para `crm_leads` (nome, telefone, email, empresa, valor da oportunidade)
-- Usa `crm_clint_sync_log` para evitar duplicatas e loops de sincronização
-- Cria atividades no histórico do lead
+```typescript
+// Reset failed cards for this project
+const { data: scheduledStage } = await supabase
+  .from("social_content_stages")
+  .select("id")
+  .eq("stage_type", "scheduled")
+  .eq("board_id", /* board do projeto */)
+  .single();
 
-### 3. Edge Function: `clint-sync` (CRM → Clint)
-- Chamada quando leads são criados/atualizados no CRM Comercial
-- Envia dados para a API da Clint via `POST /v1/contacts` e `POST /v1/deals`
-- Atualiza `crm_clint_sync_log` com os IDs da Clint
-- Inclui flag `syncing` para evitar loop infinito (webhook recebido de volta)
+if (scheduledStage) {
+  await supabase
+    .from("social_content_cards")
+    .update({
+      publish_attempts: 0,
+      publish_error: null,
+      stage_id: scheduledStage.id,
+    })
+    .eq("board_id", /* board do projeto */)
+    .eq("is_locked", true)
+    .not("creative_url", "is", null)
+    .is("published_at", null)
+    .gte("publish_attempts", 1);
+}
+```
 
-### 4. Tela de configuração
-- Adicionar aba "Integrações" nas configurações do CRM
-- Campos: API Token da Clint, mapeamento de pipelines, toggle de sincronização
-- Botão de teste de conexão
-- Log de sincronização visível
+### Arquivo: `src/components/social/SocialCardDetailSheet.tsx`
+Adicionar botão "Retentar publicação" visível quando `card.publish_error` existe, que chama update para resetar `publish_attempts` e `publish_error`, e move para `scheduled`.
 
-### 5. Hooks no frontend
-- Após criar/editar lead no CRM, chamar `clint-sync` em background
-- Após mover lead de etapa, sincronizar status do deal na Clint
-
-## Pré-requisitos
-- Você precisa ter o **plano Elite** da Clint para acesso à API
-- Precisaremos do seu **API Token** da Clint (disponível em Conta → API na plataforma Clint)
-- Configurar o webhook na Clint apontando para nossa Edge Function
-
-## Ordem de Implementação
-1. Criar tabelas de configuração e sync log (migração)
-2. Criar Edge Function `clint-webhook` (receber dados da Clint)
-3. Criar Edge Function `clint-sync` (enviar dados para Clint)
-4. Criar tela de configuração da integração no CRM
-5. Adicionar hooks de sincronização automática no frontend
-6. Implementar proteção anti-loop e tratamento de erros
+### Migração SQL (one-time fix)
+Resetar o card atual e movê-lo de volta para `scheduled`.
 
