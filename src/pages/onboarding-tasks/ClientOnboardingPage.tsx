@@ -585,7 +585,7 @@ const ClientOnboardingPage = () => {
       <div className="min-h-screen bg-background flex items-center justify-center p-4">
         <div className="text-center">
           <h2 className="text-lg font-semibold mb-2">Projeto não encontrado</h2>
-          <Button onClick={() => navigate("/")}>Voltar</Button>
+          <Button onClick={() => navigate("/onboarding-tasks/login")}>Voltar</Button>
         </div>
       </div>
     );
