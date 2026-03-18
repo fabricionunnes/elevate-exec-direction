@@ -50,7 +50,7 @@ Deno.serve(async (req) => {
       .from('crm_pipelines')
       .select('id')
       .eq('is_active', true)
-      .order('sort_order', { ascending: true })
+      .order('created_at', { ascending: true })
       .limit(1)
       .maybeSingle();
 
