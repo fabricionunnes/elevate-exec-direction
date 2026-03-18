@@ -240,11 +240,11 @@ ABSOLUTELY FORBIDDEN:
 - NO logos, brand marks, watermarks, or company name text (logo added separately)
 `;
 
-      // Add reference image if provided
-      const panoramicMessageContent: any = referenceImageUrl 
+      // Add reference images if provided
+      const panoramicMessageContent: any = allReferenceUrls.length > 0
         ? [
             { type: "text", text: panoramicPrompt },
-            { type: "image_url", image_url: { url: referenceImageUrl } }
+            ...allReferenceUrls.map(url => ({ type: "image_url", image_url: { url } }))
           ]
         : panoramicPrompt;
 
