@@ -572,34 +572,77 @@ export default function ConsultoriasAdminPage() {
 
       {/* Create Dialog */}
       <Dialog open={createDialogOpen} onOpenChange={setCreateDialogOpen}>
-        <DialogContent>
+        <DialogContent className="sm:max-w-lg">
           <DialogHeader>
-            <DialogTitle>Novo Formulário de {CONSULTATION_TABS.find((t) => t.id === activeTab)?.label}</DialogTitle>
+            <div className="flex items-center gap-3 mb-1">
+              {(() => {
+                const tab = CONSULTATION_TABS.find((t) => t.id === activeTab);
+                const Icon = tab?.icon || Briefcase;
+                return (
+                  <div className={`p-2.5 rounded-xl bg-primary/10`}>
+                    <Icon className={`h-5 w-5 ${tab?.color || "text-primary"}`} />
+                  </div>
+                );
+              })()}
+              <div>
+                <DialogTitle className="text-lg">
+                  Novo Formulário de {CONSULTATION_TABS.find((t) => t.id === activeTab)?.label}
+                </DialogTitle>
+                <p className="text-sm text-muted-foreground mt-0.5">
+                  Selecione o projeto para enviar o diagnóstico
+                </p>
+              </div>
+            </div>
           </DialogHeader>
-          <div className="space-y-4">
-            <div className="space-y-2">
-              <Label>Projeto</Label>
-              <Select value={selectedProjectId} onValueChange={setSelectedProjectId}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o projeto..." />
-                </SelectTrigger>
-                <SelectContent>
-                  {projects.map((p) => (
-                    <SelectItem key={p.id} value={p.id}>
-                      {p.company_name} - {p.product_name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+          <div className="space-y-3 pt-2">
+            <Label className="text-sm font-medium">Projeto / Empresa</Label>
+            <div className="relative">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground z-10" />
+              <Input
+                placeholder="Buscar empresa ou projeto..."
+                value={projectSearch}
+                onChange={(e) => setProjectSearch(e.target.value)}
+                className="pl-10"
+              />
+            </div>
+            <div className="border rounded-lg max-h-[280px] overflow-y-auto">
+              {filteredProjects.length === 0 ? (
+                <div className="p-4 text-center text-sm text-muted-foreground">
+                  Nenhum projeto encontrado
+                </div>
+              ) : (
+                filteredProjects.map((p) => (
+                  <button
+                    key={p.id}
+                    onClick={() => setSelectedProjectId(p.id)}
+                    className={`w-full flex items-center gap-3 px-4 py-3 text-left transition-colors border-b last:border-b-0 ${
+                      selectedProjectId === p.id
+                        ? "bg-primary/5 border-l-2 border-l-primary"
+                        : "hover:bg-muted/50"
+                    }`}
+                  >
+                    <Building2 className={`h-4 w-4 flex-shrink-0 ${selectedProjectId === p.id ? "text-primary" : "text-muted-foreground"}`} />
+                    <div className="min-w-0 flex-1">
+                      <p className={`text-sm font-medium truncate ${selectedProjectId === p.id ? "text-primary" : ""}`}>
+                        {p.company_name || "Sem empresa"}
+                      </p>
+                      <p className="text-xs text-muted-foreground truncate">{p.product_name}</p>
+                    </div>
+                    {selectedProjectId === p.id && (
+                      <CheckCircle2 className="h-4 w-4 text-primary flex-shrink-0" />
+                    )}
+                  </button>
+                ))
+              )}
             </div>
           </div>
-          <DialogFooter>
-            <Button variant="outline" onClick={() => setCreateDialogOpen(false)}>
+          <DialogFooter className="pt-2">
+            <Button variant="outline" onClick={() => { setCreateDialogOpen(false); setProjectSearch(""); }}>
               Cancelar
             </Button>
             <Button onClick={createForm} disabled={creating || !selectedProjectId}>
               {creating && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-              Criar
+              Criar Formulário
             </Button>
           </DialogFooter>
         </DialogContent>
