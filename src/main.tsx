@@ -120,6 +120,16 @@ if (publicParam) {
     if (token) {
       forceHashRoute(`/traffic-analysis/${encodeURIComponent(token)}`, "");
     }
+  } else if (publicParam === "marketing-consultation") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/marketing-consultation/${encodeURIComponent(token)}`, "");
+    }
+  } else if (publicParam === "financial-consultation") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/financial-consultation/${encodeURIComponent(token)}`, "");
+    }
   } else if (publicParam === "career-plan") {
     // expects project=...
     forceHashRoute("/career-plan", window.location.search);
