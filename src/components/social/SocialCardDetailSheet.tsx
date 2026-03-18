@@ -390,22 +390,29 @@ export const SocialCardDetailSheet = ({
       // Calculate scheduled_at from suggested_date + suggested_time
       const scheduledAt = calculateScheduledAt(suggestedDate, suggestedTime);
 
-      const updatePayload: Record<string, unknown> = {
-        theme,
-        content_type: contentType,
-        objective: objective || null,
-        copy_text: copyText || null,
-        final_caption: finalCaption || null,
-        hashtags: hashtags || null,
-        cta: cta || null,
-        suggested_date: suggestedDate || null,
-        suggested_time: suggestedTime || null,
-        scheduled_at: scheduledAt,
-        creative_url: creativeUrl || null,
-        creative_type: creativeType,
-        card_color: cardColor,
-        video_editor_notes: videoEditorNotes || null,
-      };
+      // If card is locked (approved), only allow updating schedule fields
+      const updatePayload: Record<string, unknown> = card.is_locked
+        ? {
+            suggested_date: suggestedDate || null,
+            suggested_time: suggestedTime || null,
+            scheduled_at: scheduledAt,
+          }
+        : {
+            theme,
+            content_type: contentType,
+            objective: objective || null,
+            copy_text: copyText || null,
+            final_caption: finalCaption || null,
+            hashtags: hashtags || null,
+            cta: cta || null,
+            suggested_date: suggestedDate || null,
+            suggested_time: suggestedTime || null,
+            scheduled_at: scheduledAt,
+            creative_url: creativeUrl || null,
+            creative_type: creativeType,
+            card_color: cardColor,
+            video_editor_notes: videoEditorNotes || null,
+          };
 
       const { error } = await supabase
         .from("social_content_cards")
@@ -413,7 +420,7 @@ export const SocialCardDetailSheet = ({
         .eq("id", card.id);
 
       if (error) throw error;
-      toast.success("Conteúdo atualizado!");
+      toast.success(card.is_locked ? "Agendamento atualizado!" : "Conteúdo atualizado!");
       onUpdate();
     } catch (error: any) {
       console.error("Error saving card:", error);
@@ -1501,7 +1508,6 @@ export const SocialCardDetailSheet = ({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        disabled={card.is_locked}
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !suggestedDate && "text-muted-foreground"
@@ -1533,7 +1539,6 @@ export const SocialCardDetailSheet = ({
                     type="time"
                     value={suggestedTime}
                     onChange={(e) => setSuggestedTime(e.target.value)}
-                    disabled={card.is_locked}
                   />
                 </div>
               </div>
@@ -1559,7 +1564,7 @@ export const SocialCardDetailSheet = ({
                 <div className="flex gap-2">
                   <Button
                     onClick={handleSave}
-                    disabled={saving || card.is_locked}
+                    disabled={saving}
                     className="flex-1"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
