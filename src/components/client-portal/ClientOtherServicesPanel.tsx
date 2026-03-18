@@ -4,8 +4,17 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, ShoppingCart, Check, Clock, X, Sparkles } from "lucide-react";
+import {
+  Loader2,
+  ShoppingCart,
+  Check,
+  Clock,
+  Sparkles,
+  ExternalLink,
+  Copy,
+} from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
+import { ServicePurchaseDialog } from "./ServicePurchaseDialog";
 
 interface ServiceCatalogItem {
   id: string;
@@ -24,6 +33,13 @@ interface ServiceRequest {
   created_at: string;
 }
 
+interface ServicePurchase {
+  id: string;
+  menu_key: string;
+  status: string;
+  billing_type: string;
+}
+
 interface ClientOtherServicesPanelProps {
   projectId: string;
   currentUserId: string;
@@ -35,8 +51,9 @@ export const ClientOtherServicesPanel = ({
 }: ClientOtherServicesPanelProps) => {
   const [catalog, setCatalog] = useState<ServiceCatalogItem[]>([]);
   const [requests, setRequests] = useState<ServiceRequest[]>([]);
+  const [purchases, setPurchases] = useState<ServicePurchase[]>([]);
   const [loading, setLoading] = useState(true);
-  const [requesting, setRequesting] = useState<string | null>(null);
+  const [selectedService, setSelectedService] = useState<ServiceCatalogItem | null>(null);
   const { hasPermission } = useClientPermissions(projectId);
 
   useEffect(() => {
@@ -46,7 +63,7 @@ export const ClientOtherServicesPanel = ({
   const fetchData = async () => {
     setLoading(true);
     try {
-      const [catalogRes, requestsRes] = await Promise.all([
+      const [catalogRes, requestsRes, purchasesRes] = await Promise.all([
         supabase
           .from("service_catalog")
           .select("*")
@@ -56,10 +73,15 @@ export const ClientOtherServicesPanel = ({
           .from("service_requests")
           .select("id, menu_key, status, created_at")
           .eq("project_id", projectId),
+        supabase
+          .from("service_purchases")
+          .select("id, menu_key, status, billing_type")
+          .eq("project_id", projectId),
       ]);
 
       if (catalogRes.data) setCatalog(catalogRes.data as ServiceCatalogItem[]);
       if (requestsRes.data) setRequests(requestsRes.data);
+      if (purchasesRes.data) setPurchases(purchasesRes.data as ServicePurchase[]);
     } catch (error) {
       console.error("Error fetching service catalog:", error);
     } finally {
@@ -67,31 +89,8 @@ export const ClientOtherServicesPanel = ({
     }
   };
 
-  const handleRequest = async (service: ServiceCatalogItem) => {
-    setRequesting(service.id);
-    try {
-      const { error } = await supabase.from("service_requests").insert({
-        project_id: projectId,
-        service_catalog_id: service.id,
-        menu_key: service.menu_key,
-        requested_by: currentUserId,
-      });
-
-      if (error) throw error;
-
-      toast.success(`Solicitação enviada para "${service.name}"! Nossa equipe entrará em contato.`);
-      fetchData();
-    } catch (error: any) {
-      console.error("Error requesting service:", error);
-      toast.error(error.message || "Erro ao solicitar serviço");
-    } finally {
-      setRequesting(null);
-    }
-  };
-
   // Filter: only show services the client does NOT have access to
   const availableServices = catalog.filter((service) => {
-    // For gestao_clientes, check all related keys
     if (service.menu_key === "gestao_clientes") {
       const gestaoKeys = ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"];
       return !gestaoKeys.some((key) => hasPermission(key));
@@ -105,6 +104,11 @@ export const ClientOtherServicesPanel = ({
     const approved = requests.find((r) => r.menu_key === menuKey && r.status === "approved");
     if (approved) return "approved";
     return null;
+  };
+
+  const getPurchaseStatus = (menuKey: string) => {
+    const purchase = purchases.find((p) => p.menu_key === menuKey);
+    return purchase?.status || null;
   };
 
   const formatPrice = (price: number) =>
@@ -135,13 +139,14 @@ export const ClientOtherServicesPanel = ({
       <div>
         <h2 className="text-xl font-bold">Outros Serviços</h2>
         <p className="text-muted-foreground text-sm mt-1">
-          Conheça e solicite a liberação de módulos adicionais para potencializar seu negócio.
+          Conheça e contrate módulos adicionais para potencializar seu negócio.
         </p>
       </div>
 
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
         {availableServices.map((service) => {
           const reqStatus = getRequestStatus(service.menu_key);
+          const purchaseStatus = getPurchaseStatus(service.menu_key);
 
           return (
             <Card
@@ -152,10 +157,7 @@ export const ClientOtherServicesPanel = ({
                 <div className="flex-1">
                   <div className="flex items-start justify-between mb-3">
                     <h3 className="font-semibold text-base leading-tight">{service.name}</h3>
-                    <Badge
-                      variant="secondary"
-                      className="text-xs ml-2 flex-shrink-0"
-                    >
+                    <Badge variant="secondary" className="text-xs ml-2 flex-shrink-0">
                       {service.billing_type === "monthly" ? "Mensal" : "Único"}
                     </Badge>
                   </div>
@@ -178,7 +180,17 @@ export const ClientOtherServicesPanel = ({
                       )}
                     </div>
 
-                    {reqStatus === "pending" ? (
+                    {purchaseStatus === "active" ? (
+                      <Badge className="gap-1 bg-green-600">
+                        <Check className="h-3 w-3" />
+                        Ativo
+                      </Badge>
+                    ) : purchaseStatus === "blocked" ? (
+                      <Badge variant="destructive" className="gap-1">
+                        <Clock className="h-3 w-3" />
+                        Bloqueado
+                      </Badge>
+                    ) : reqStatus === "pending" ? (
                       <Badge variant="outline" className="gap-1">
                         <Clock className="h-3 w-3" />
                         Solicitado
@@ -191,17 +203,10 @@ export const ClientOtherServicesPanel = ({
                     ) : (
                       <Button
                         size="sm"
-                        onClick={() => handleRequest(service)}
-                        disabled={requesting === service.id}
+                        onClick={() => setSelectedService(service)}
                       >
-                        {requesting === service.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <>
-                            <ShoppingCart className="h-4 w-4 mr-1" />
-                            Solicitar
-                          </>
-                        )}
+                        <ShoppingCart className="h-4 w-4 mr-1" />
+                        Comprar
                       </Button>
                     )}
                   </div>
@@ -211,6 +216,20 @@ export const ClientOtherServicesPanel = ({
           );
         })}
       </div>
+
+      {selectedService && (
+        <ServicePurchaseDialog
+          open={!!selectedService}
+          onOpenChange={(open) => !open && setSelectedService(null)}
+          service={selectedService}
+          projectId={projectId}
+          currentUserId={currentUserId}
+          onPurchaseComplete={() => {
+            setSelectedService(null);
+            fetchData();
+          }}
+        />
+      )}
     </div>
   );
 };

@@ -301,6 +301,9 @@ Deno.serve(async (req) => {
       console.log(`[Asaas Webhook] No match found for payment ${paymentId}`);
     }
 
+    // Handle service purchase permission management
+    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus);
+
     return new Response(JSON.stringify({ received: true, matched }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
@@ -490,5 +493,72 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
         });
       }
     }
+}
+
+async function handleServicePurchasePermissions(supabase: any, subscriptionId: string | null, paymentId: string, newStatus: string) {
+  try {
+    // Check if this payment/subscription is linked to a service purchase
+    const searchId = subscriptionId || paymentId;
+    if (!searchId) return;
+
+    const { data: purchases } = await supabase
+      .from("service_purchases")
+      .select("id, project_id, menu_key, billing_type, status")
+      .eq("asaas_subscription_id", searchId);
+
+    if (!purchases?.length) return;
+
+    for (const purchase of purchases) {
+      const isRecurring = purchase.billing_type === "monthly";
+
+      if (newStatus === "paid") {
+        // Reactivate if blocked
+        if (purchase.status === "blocked") {
+          console.log(`[Asaas Webhook] Reactivating service purchase ${purchase.id} (${purchase.menu_key})`);
+          await supabase
+            .from("service_purchases")
+            .update({ status: "active", blocked_at: null })
+            .eq("id", purchase.id);
+
+          // Re-enable permission
+          const keysToEnable = purchase.menu_key === "gestao_clientes"
+            ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
+            : [purchase.menu_key];
+
+          for (const key of keysToEnable) {
+            await supabase
+              .from("project_menu_permissions")
+              .update({ is_enabled: true })
+              .eq("project_id", purchase.project_id)
+              .eq("menu_key", key);
+          }
+        }
+      } else if (newStatus === "overdue" && isRecurring) {
+        // Block recurring service on overdue
+        if (purchase.status === "active") {
+          console.log(`[Asaas Webhook] Blocking service purchase ${purchase.id} (${purchase.menu_key}) due to overdue payment`);
+          await supabase
+            .from("service_purchases")
+            .update({ status: "blocked", blocked_at: new Date().toISOString() })
+            .eq("id", purchase.id);
+
+          // Disable permission
+          const keysToDisable = purchase.menu_key === "gestao_clientes"
+            ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
+            : [purchase.menu_key];
+
+          for (const key of keysToDisable) {
+            await supabase
+              .from("project_menu_permissions")
+              .update({ is_enabled: false })
+              .eq("project_id", purchase.project_id)
+              .eq("menu_key", key);
+          }
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Asaas Webhook] Error handling service purchase permissions:", err);
   }
+}
 }

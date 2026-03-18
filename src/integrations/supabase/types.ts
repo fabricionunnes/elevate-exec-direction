@@ -24358,6 +24358,86 @@ export type Database = {
         }
         Relationships: []
       }
+      service_purchases: {
+        Row: {
+          amount_cents: number
+          asaas_subscription_id: string | null
+          billing_type: string
+          blocked_at: string | null
+          created_at: string
+          id: string
+          menu_key: string
+          project_id: string
+          purchased_at: string
+          purchased_by: string
+          recurring_charge_id: string | null
+          service_catalog_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          asaas_subscription_id?: string | null
+          billing_type?: string
+          blocked_at?: string | null
+          created_at?: string
+          id?: string
+          menu_key: string
+          project_id: string
+          purchased_at?: string
+          purchased_by: string
+          recurring_charge_id?: string | null
+          service_catalog_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          asaas_subscription_id?: string | null
+          billing_type?: string
+          blocked_at?: string | null
+          created_at?: string
+          id?: string
+          menu_key?: string
+          project_id?: string
+          purchased_at?: string
+          purchased_by?: string
+          recurring_charge_id?: string | null
+          service_catalog_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "service_purchases_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_purchases_purchased_by_fkey"
+            columns: ["purchased_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_purchases_recurring_charge_id_fkey"
+            columns: ["recurring_charge_id"]
+            isOneToOne: false
+            referencedRelation: "company_recurring_charges"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "service_purchases_service_catalog_id_fkey"
+            columns: ["service_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "service_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       service_requests: {
         Row: {
           admin_notes: string | null
