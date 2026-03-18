@@ -96,11 +96,7 @@ Deno.serve(async (req) => {
     }
     console.log("[asaas-service-purchase] Company:", company.name);
 
-    // 2. Resolve the correct Asaas account for this project
-    const isSocialProject =
-      project.product_id?.toLowerCase() === "social" ||
-      project.product_name?.toLowerCase().includes("social");
-
+    // 2. Resolve the correct Asaas account - ALWAYS use default (UNV) for service purchases
     const { data: asaasAccounts, error: accountsError } = await supabase
       .from("asaas_accounts")
       .select("id, name, api_key_secret_name, is_default")
@@ -112,9 +108,8 @@ Deno.serve(async (req) => {
       throw new Error("Erro ao buscar conta de cobrança");
     }
 
-    const selectedAccount = isSocialProject
-      ? asaasAccounts?.find((account) => account.name?.toLowerCase().includes("social")) ?? asaasAccounts?.[0]
-      : asaasAccounts?.find((account) => account.is_default) ?? asaasAccounts?.[0];
+    // Service purchases always go to the default account (UNV), never to UNV Social
+    const selectedAccount = asaasAccounts?.find((account) => account.is_default) ?? asaasAccounts?.[0];
 
     let ASAAS_API_KEY = selectedAccount?.api_key_secret_name
       ? Deno.env.get(selectedAccount.api_key_secret_name)
