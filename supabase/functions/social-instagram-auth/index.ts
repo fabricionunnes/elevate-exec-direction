@@ -329,6 +329,9 @@ Deno.serve(async (req) => {
           last_sync_at: new Date().toISOString(),
         }, { onConflict: "project_id,platform" });
 
+      // Reset failed cards for this project after successful reconnection
+      await resetFailedCards(supabase, projectId);
+
       return new Response(JSON.stringify({ 
         success: true,
         account: { username, profile_picture_url: profilePictureUrl }
