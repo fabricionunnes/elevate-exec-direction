@@ -272,17 +272,17 @@ export function GlobalAccessControlPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden w-[95vw] sm:w-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Controle de Acesso e Atividades - Todas as Empresas
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Activity className="h-5 w-5 text-primary shrink-0" />
+            <span className="truncate">Controle de Acesso e Atividades</span>
           </DialogTitle>
         </DialogHeader>
 
         <div className="space-y-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="flex items-center justify-center gap-2 mb-1">
@@ -397,19 +397,21 @@ export function GlobalAccessControlPanel({
                                 <p className="font-medium text-sm">
                                   {log.user_name || log.user_email || "Usuário"}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Building2 className="h-3 w-3" />
-                                  {log.company_id ? companies.get(log.company_id) || "-" : "-"}
-                                  <span className="mx-1">•</span>
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(log.login_at), "dd/MM/yyyy 'às' HH:mm", {
-                                    locale: ptBR,
-                                  })}
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-muted-foreground">
+                                  <Building2 className="h-3 w-3 shrink-0" />
+                                  <span className="truncate max-w-[120px] sm:max-w-none">{log.company_id ? companies.get(log.company_id) || "-" : "-"}</span>
+                                  <span className="hidden sm:inline mx-1">•</span>
+                                  <div className="flex items-center gap-1 w-full sm:w-auto">
+                                    <Calendar className="h-3 w-3 shrink-0" />
+                                    {format(new Date(log.login_at), "dd/MM/yyyy 'às' HH:mm", {
+                                      locale: ptBR,
+                                    })}
+                                  </div>
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right">
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              <div className="text-right hidden sm:block">
                                 <div className="flex items-center gap-1 text-sm">
                                   <Clock className="h-3 w-3 text-muted-foreground" />
                                   <span>{formatDuration(log.session_duration_minutes)}</span>
