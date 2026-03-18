@@ -223,7 +223,7 @@ Deno.serve(async (req) => {
     // 5. Create first invoice
     if (recurringCharge?.id) {
       await supabase.from("company_invoices").insert({
-        company_id: project.company_id,
+        company_id: companyId,
         recurring_charge_id: recurringCharge.id,
         description: service_name,
         amount_cents,
