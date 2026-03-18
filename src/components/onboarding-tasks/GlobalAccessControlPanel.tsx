@@ -282,7 +282,7 @@ export function GlobalAccessControlPanel({
 
         <div className="space-y-4">
           {/* Stats Cards */}
-          <div className="grid grid-cols-2 md:grid-cols-5 gap-3">
+          <div className="grid grid-cols-1 sm:grid-cols-3 md:grid-cols-5 gap-3">
             <Card>
               <CardContent className="p-4 text-center">
                 <div className="flex items-center justify-center gap-2 mb-1">
