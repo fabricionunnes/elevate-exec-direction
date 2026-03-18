@@ -293,3 +293,6 @@ verify_jwt = false
 
 [functions.social-instagram-delete]
 verify_jwt = false
+
+[functions.receive-external-lead]
+verify_jwt = false
