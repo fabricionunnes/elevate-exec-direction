@@ -83,14 +83,13 @@ const TaskManagerPage = () => {
       const adminRoles = ["admin", "master"];
       setIsAdmin(adminRoles.includes(staffData.role));
 
-      if (adminRoles.includes(staffData.role)) {
-        const { data: allStaff } = await supabase
-          .from("onboarding_staff")
-          .select("id, name, role")
-          .eq("is_active", true)
-          .order("name");
-        setStaff(allStaff || []);
-      }
+      // Load staff list for all roles (needed for responsible dropdown in edit dialog)
+      const { data: allStaff } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role")
+        .eq("is_active", true)
+        .order("name");
+      setStaff(allStaff || []);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar dados");
