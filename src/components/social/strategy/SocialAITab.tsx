@@ -282,7 +282,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         }, ...prev]);
         toast.success(`${data.images.length} imagens do carrossel geradas!`);
         setImagePrompt("");
-        setReferenceImage(null);
+        setReferenceImages([]);
       } else if (data.image_url) {
         setGeneratedImages(prev => [{
           url: data.image_url,
