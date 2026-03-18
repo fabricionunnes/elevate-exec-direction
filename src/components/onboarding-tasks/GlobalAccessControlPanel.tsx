@@ -397,14 +397,16 @@ export function GlobalAccessControlPanel({
                                 <p className="font-medium text-sm">
                                   {log.user_name || log.user_email || "Usuário"}
                                 </p>
-                                <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                                  <Building2 className="h-3 w-3" />
-                                  {log.company_id ? companies.get(log.company_id) || "-" : "-"}
-                                  <span className="mx-1">•</span>
-                                  <Calendar className="h-3 w-3" />
-                                  {format(new Date(log.login_at), "dd/MM/yyyy 'às' HH:mm", {
-                                    locale: ptBR,
-                                  })}
+                            <div className="flex flex-wrap items-center gap-1 sm:gap-2 text-xs text-muted-foreground">
+                                  <Building2 className="h-3 w-3 shrink-0" />
+                                  <span className="truncate max-w-[120px] sm:max-w-none">{log.company_id ? companies.get(log.company_id) || "-" : "-"}</span>
+                                  <span className="hidden sm:inline mx-1">•</span>
+                                  <div className="flex items-center gap-1 w-full sm:w-auto">
+                                    <Calendar className="h-3 w-3 shrink-0" />
+                                    {format(new Date(log.login_at), "dd/MM/yyyy 'às' HH:mm", {
+                                      locale: ptBR,
+                                    })}
+                                  </div>
                                 </div>
                               </div>
                             </div>
