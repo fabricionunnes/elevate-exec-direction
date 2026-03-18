@@ -169,6 +169,8 @@ const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/Publi
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
 const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
 const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnalysisPublicPage"));
+const MarketingConsultationPublicPage = lazy(() => import("./pages/public/MarketingConsultationPublicPage"));
+const FinancialConsultationPublicPage = lazy(() => import("./pages/public/FinancialConsultationPublicPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
