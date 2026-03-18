@@ -1075,7 +1075,7 @@ export const SocialCardDetailSheet = ({
                   >
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : "Clique ou arraste para enviar imagem ou vídeo"}
+                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : contentType === "carrossel" ? "Clique ou arraste para enviar múltiplas imagens (carrossel)" : "Clique ou arraste para enviar imagem ou vídeo"}
                     </p>
                   </div>
                 )}
