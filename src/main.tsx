@@ -29,6 +29,8 @@ const publicRoutes = [
   "/job-application",
   "/social-briefing",
   "/traffic-analysis",
+  "/marketing-consultation",
+  "/financial-consultation",
   "/career-plan",
   "/pagamento",
   "/checkout",
@@ -117,6 +119,16 @@ if (publicParam) {
     const token = urlSearch.get("token");
     if (token) {
       forceHashRoute(`/traffic-analysis/${encodeURIComponent(token)}`, "");
+    }
+  } else if (publicParam === "marketing-consultation") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/marketing-consultation/${encodeURIComponent(token)}`, "");
+    }
+  } else if (publicParam === "financial-consultation") {
+    const token = urlSearch.get("token");
+    if (token) {
+      forceHashRoute(`/financial-consultation/${encodeURIComponent(token)}`, "");
     }
   } else if (publicParam === "career-plan") {
     // expects project=...

@@ -152,6 +152,7 @@ const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoic
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
+const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
@@ -168,6 +169,8 @@ const PublicCareerPlanFormPage = lazy(() => import("./pages/hr-recruitment/Publi
 const SocialBriefingPublicPage = lazy(() => import("./pages/public/SocialBriefingPublicPage"));
 const PublicRoutineFormPage = lazy(() => import("./pages/routine-contract/PublicRoutineFormPage"));
 const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnalysisPublicPage"));
+const MarketingConsultationPublicPage = lazy(() => import("./pages/public/MarketingConsultationPublicPage"));
+const FinancialConsultationPublicPage = lazy(() => import("./pages/public/FinancialConsultationPublicPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
@@ -347,6 +350,7 @@ const App = () => (
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
+              <Route path="/onboarding-tasks/consultorias" element={<ConsultoriasAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
               <Route path="/onboarding-tasks/survey-send-config" element={<SurveySendConfigPage />} />
@@ -382,6 +386,8 @@ const App = () => (
             <Route path="/banco-talentos" element={<PublicTalentPoolPage />} />
             <Route path="/social-briefing/:token" element={<SocialBriefingPublicPage />} />
             <Route path="/traffic-analysis/:token" element={<TrafficAnalysisPublicPage />} />
+            <Route path="/marketing-consultation/:token" element={<MarketingConsultationPublicPage />} />
+            <Route path="/financial-consultation/:token" element={<FinancialConsultationPublicPage />} />
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />

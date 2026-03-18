@@ -15553,6 +15553,119 @@ export type Database = {
         }
         Relationships: []
       }
+      financial_consultation_forms: {
+        Row: {
+          access_token: string
+          accountant_relationship: string | null
+          average_ticket: string | null
+          biggest_expense: string | null
+          cash_flow_control: string | null
+          cash_flow_tool: string | null
+          cash_reserve_months: string | null
+          cost_reduction_attempts: string | null
+          created_at: string
+          default_rate: string | null
+          expected_financial_results: string | null
+          financial_additional_info: string | null
+          financial_biggest_challenge: string | null
+          financial_goals: string | null
+          fixed_costs: string | null
+          has_budget: string | null
+          id: string
+          monthly_revenue: string | null
+          payment_methods: string | null
+          payroll_cost: string | null
+          previous_consultant: string | null
+          pricing_strategy: string | null
+          profit_margin: string | null
+          project_id: string
+          revenue_sources: string | null
+          seasonal_variation: string | null
+          status: string
+          submitted_at: string | null
+          tax_planning: string | null
+          tax_regime: string | null
+          updated_at: string
+          variable_costs: string | null
+        }
+        Insert: {
+          access_token?: string
+          accountant_relationship?: string | null
+          average_ticket?: string | null
+          biggest_expense?: string | null
+          cash_flow_control?: string | null
+          cash_flow_tool?: string | null
+          cash_reserve_months?: string | null
+          cost_reduction_attempts?: string | null
+          created_at?: string
+          default_rate?: string | null
+          expected_financial_results?: string | null
+          financial_additional_info?: string | null
+          financial_biggest_challenge?: string | null
+          financial_goals?: string | null
+          fixed_costs?: string | null
+          has_budget?: string | null
+          id?: string
+          monthly_revenue?: string | null
+          payment_methods?: string | null
+          payroll_cost?: string | null
+          previous_consultant?: string | null
+          pricing_strategy?: string | null
+          profit_margin?: string | null
+          project_id: string
+          revenue_sources?: string | null
+          seasonal_variation?: string | null
+          status?: string
+          submitted_at?: string | null
+          tax_planning?: string | null
+          tax_regime?: string | null
+          updated_at?: string
+          variable_costs?: string | null
+        }
+        Update: {
+          access_token?: string
+          accountant_relationship?: string | null
+          average_ticket?: string | null
+          biggest_expense?: string | null
+          cash_flow_control?: string | null
+          cash_flow_tool?: string | null
+          cash_reserve_months?: string | null
+          cost_reduction_attempts?: string | null
+          created_at?: string
+          default_rate?: string | null
+          expected_financial_results?: string | null
+          financial_additional_info?: string | null
+          financial_biggest_challenge?: string | null
+          financial_goals?: string | null
+          fixed_costs?: string | null
+          has_budget?: string | null
+          id?: string
+          monthly_revenue?: string | null
+          payment_methods?: string | null
+          payroll_cost?: string | null
+          previous_consultant?: string | null
+          pricing_strategy?: string | null
+          profit_margin?: string | null
+          project_id?: string
+          revenue_sources?: string | null
+          seasonal_variation?: string | null
+          status?: string
+          submitted_at?: string | null
+          tax_planning?: string | null
+          tax_regime?: string | null
+          updated_at?: string
+          variable_costs?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "financial_consultation_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       financial_contracts: {
         Row: {
           billing_cycle: string | null
@@ -19131,6 +19244,119 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      marketing_consultation_forms: {
+        Row: {
+          access_token: string
+          brand_differentiator: string | null
+          brand_positioning: string | null
+          brand_tone_of_voice: string | null
+          brand_visual_identity: string | null
+          content_calendar: string | null
+          content_pillars: string | null
+          content_planning: string | null
+          content_production_team: string | null
+          created_at: string
+          id: string
+          instagram_best_post: string | null
+          instagram_bio_optimized: string | null
+          instagram_competitor_profiles: string | null
+          instagram_content_types: string | null
+          instagram_engagement_rate: string | null
+          instagram_followers: string | null
+          instagram_handle: string | null
+          instagram_hashtag_strategy: string | null
+          instagram_highlights: string | null
+          instagram_posting_frequency: string | null
+          instagram_reels_usage: string | null
+          instagram_stories_usage: string | null
+          instagram_worst_post: string | null
+          marketing_additional_info: string | null
+          marketing_biggest_challenge: string | null
+          marketing_expected_results: string | null
+          marketing_main_goal: string | null
+          project_id: string
+          status: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          brand_differentiator?: string | null
+          brand_positioning?: string | null
+          brand_tone_of_voice?: string | null
+          brand_visual_identity?: string | null
+          content_calendar?: string | null
+          content_pillars?: string | null
+          content_planning?: string | null
+          content_production_team?: string | null
+          created_at?: string
+          id?: string
+          instagram_best_post?: string | null
+          instagram_bio_optimized?: string | null
+          instagram_competitor_profiles?: string | null
+          instagram_content_types?: string | null
+          instagram_engagement_rate?: string | null
+          instagram_followers?: string | null
+          instagram_handle?: string | null
+          instagram_hashtag_strategy?: string | null
+          instagram_highlights?: string | null
+          instagram_posting_frequency?: string | null
+          instagram_reels_usage?: string | null
+          instagram_stories_usage?: string | null
+          instagram_worst_post?: string | null
+          marketing_additional_info?: string | null
+          marketing_biggest_challenge?: string | null
+          marketing_expected_results?: string | null
+          marketing_main_goal?: string | null
+          project_id: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          brand_differentiator?: string | null
+          brand_positioning?: string | null
+          brand_tone_of_voice?: string | null
+          brand_visual_identity?: string | null
+          content_calendar?: string | null
+          content_pillars?: string | null
+          content_planning?: string | null
+          content_production_team?: string | null
+          created_at?: string
+          id?: string
+          instagram_best_post?: string | null
+          instagram_bio_optimized?: string | null
+          instagram_competitor_profiles?: string | null
+          instagram_content_types?: string | null
+          instagram_engagement_rate?: string | null
+          instagram_followers?: string | null
+          instagram_handle?: string | null
+          instagram_hashtag_strategy?: string | null
+          instagram_highlights?: string | null
+          instagram_posting_frequency?: string | null
+          instagram_reels_usage?: string | null
+          instagram_stories_usage?: string | null
+          instagram_worst_post?: string | null
+          marketing_additional_info?: string | null
+          marketing_biggest_challenge?: string | null
+          marketing_expected_results?: string | null
+          marketing_main_goal?: string | null
+          project_id?: string
+          status?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "marketing_consultation_forms_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
