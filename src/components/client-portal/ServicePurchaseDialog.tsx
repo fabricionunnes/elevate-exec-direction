@@ -152,14 +152,14 @@ export function ServicePurchaseDialog({
                 {service.billing_type === "monthly" ? (
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
                     <li>Será gerado um boleto mensal para pagamento</li>
-                    <li>O módulo será liberado imediatamente</li>
+                    <li>O módulo será liberado após a confirmação do primeiro pagamento</li>
                     <li>Se houver atraso, o módulo será bloqueado temporariamente</li>
                     <li>Pagando em dia, o acesso é mantido normalmente</li>
                   </ul>
                 ) : (
                   <ul className="list-disc list-inside text-muted-foreground space-y-1">
                     <li>Será gerado um boleto único para pagamento</li>
-                    <li>O módulo será liberado imediatamente</li>
+                    <li>O módulo será liberado após a confirmação do pagamento</li>
                     <li>Acesso por tempo indeterminado após pagamento</li>
                   </ul>
                 )}
