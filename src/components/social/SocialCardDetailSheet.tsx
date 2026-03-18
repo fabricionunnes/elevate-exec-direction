@@ -1031,6 +1031,22 @@ export const SocialCardDetailSheet = ({
                       </Button>
                     </div>
                   </div>
+                ) : contentType === "carrossel" ? (
+                  <div
+                    className={`border-2 border-dashed rounded-lg p-6 text-center cursor-pointer hover:bg-muted/50 transition-colors ${isDraggingFile ? 'border-primary bg-primary/10' : ''}`}
+                    onClick={() => fileInputRef.current?.click()}
+                    onDragOver={handleDragOver}
+                    onDragLeave={handleDragLeave}
+                    onDrop={handleFileDrop}
+                  >
+                    <LayoutGrid className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
+                    <p className="text-sm font-medium mb-1">
+                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : "Enviar imagens do carrossel"}
+                    </p>
+                    <p className="text-xs text-muted-foreground">
+                      Selecione múltiplas imagens de uma vez (mínimo 2)
+                    </p>
+                  </div>
                 ) : (
                   <div
                     className={`border-2 border-dashed rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors ${isDraggingFile ? 'border-primary bg-primary/10' : ''}`}
@@ -1041,7 +1057,7 @@ export const SocialCardDetailSheet = ({
                   >
                     <Upload className="h-8 w-8 mx-auto mb-2 text-muted-foreground" />
                     <p className="text-sm text-muted-foreground">
-                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : contentType === "carrossel" ? "Clique ou arraste para enviar múltiplas imagens (carrossel)" : "Clique ou arraste para enviar imagem ou vídeo"}
+                      {uploading ? "Enviando..." : isDraggingFile ? "Solte para enviar" : "Clique ou arraste para enviar imagem ou vídeo"}
                     </p>
                   </div>
                 )}
