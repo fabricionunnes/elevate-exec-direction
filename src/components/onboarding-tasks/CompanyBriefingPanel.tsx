@@ -159,6 +159,12 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
   // Traffic analysis state
   const [trafficForm, setTrafficForm] = useState<any>(null);
   const [creatingTrafficForm, setCreatingTrafficForm] = useState(false);
+  // Marketing consultation state
+  const [marketingForm, setMarketingForm] = useState<any>(null);
+  const [creatingMarketingForm, setCreatingMarketingForm] = useState(false);
+  // Financial consultation state
+  const [financialForm, setFinancialForm] = useState<any>(null);
+  const [creatingFinancialForm, setCreatingFinancialForm] = useState(false);
 
   useEffect(() => {
     if (companyId) {
