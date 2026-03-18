@@ -112,9 +112,10 @@ const TaskManagerPage = () => {
       let filterByStaffId: string | null = null;
 
       if (!isAdmin && currentStaff) {
+        // Consultants/CS: only their own tasks, never unassigned
         filterByStaffId = currentStaff.id;
       } else if (isAdmin && staffIdToFilter) {
-        // Admin filtering by a specific staff member: show tasks delegated to them
+        // Admin filtering by a specific staff member
         filterByStaffId = staffIdToFilter;
       }
 
