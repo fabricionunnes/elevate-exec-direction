@@ -556,6 +556,40 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const saveCarouselOrder = async (newImages: string[]) => {
+    if (!card) return;
+    try {
+      // Delete existing carousel attachments
+      await supabase
+        .from("social_card_attachments")
+        .delete()
+        .eq("card_id", card.id)
+        .like("file_name", "ai-carousel-slide-%");
+
+      // Re-insert in new order
+      for (let i = 0; i < newImages.length; i++) {
+        await supabase.from("social_card_attachments").insert({
+          card_id: card.id,
+          file_url: newImages[i],
+          file_name: `ai-carousel-slide-${i + 1}.png`,
+          file_type: "image",
+        });
+      }
+
+      // Update creative_url to first slide
+      await supabase
+        .from("social_content_cards")
+        .update({ creative_url: newImages[0] })
+        .eq("id", card.id);
+      
+      setCreativeUrl(newImages[0]);
+      toast.success("Ordem atualizada!");
+    } catch (error) {
+      console.error("Error saving carousel order:", error);
+      toast.error("Erro ao reordenar");
+    }
+  };
+
   const handleAiReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
@@ -1067,12 +1101,12 @@ export const SocialCardDetailSheet = ({
                   <div className="space-y-2">
                     <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
                       <LayoutGrid className="h-3.5 w-3.5" />
-                      Slides do carrossel ({carouselImages.length})
+                      Slides do carrossel ({carouselImages.length}) — arraste ou use as setas para reordenar
                     </Label>
                     <div className="grid grid-cols-3 gap-2">
                       {carouselImages.map((url, idx) => (
                         <div
-                          key={idx}
+                          key={url}
                           className={cn(
                             "relative rounded-lg overflow-hidden border-2 cursor-pointer transition-all group hover:opacity-90",
                             creativeUrl === url ? "border-primary ring-2 ring-primary/30" : "border-border"
@@ -1090,48 +1124,78 @@ export const SocialCardDetailSheet = ({
                           <span className="absolute top-1 left-1 bg-background/80 text-foreground text-[10px] font-medium px-1.5 py-0.5 rounded">
                             {idx + 1}/{carouselImages.length}
                           </span>
+                          {/* Reorder + delete buttons */}
                           {!card.is_locked && (
-                            <button
-                              className="absolute top-1 right-1 bg-destructive/90 text-destructive-foreground rounded-full p-0.5 opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive"
-                              title="Excluir slide"
-                              onClick={async (e) => {
-                                e.stopPropagation();
-                                const slideIndex = idx + 1;
-                                const fileName = `ai-carousel-slide-${slideIndex}.png`;
-                                
-                                // Delete from attachments
-                                await supabase
-                                  .from("social_card_attachments")
-                                  .delete()
-                                  .eq("card_id", card.id)
-                                  .eq("file_url", url);
-
-                                // Update local state
-                                const newImages = carouselImages.filter((_, i) => i !== idx);
-                                setCarouselImages(newImages);
-
-                                // If deleted the currently displayed image, switch to first remaining
-                                if (creativeUrl === url && newImages.length > 0) {
-                                  setCreativeUrl(newImages[0]);
-                                  // Update the card's creative_url to the new first slide
+                            <div className="absolute bottom-1 left-1 right-1 flex items-center justify-between opacity-0 group-hover:opacity-100 transition-opacity">
+                              <div className="flex gap-0.5">
+                                {idx > 0 && (
+                                  <button
+                                    className="bg-background/90 text-foreground rounded p-0.5 hover:bg-background text-[10px] font-bold"
+                                    title="Mover para esquerda"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const newImages = [...carouselImages];
+                                      [newImages[idx - 1], newImages[idx]] = [newImages[idx], newImages[idx - 1]];
+                                      setCarouselImages(newImages);
+                                      await saveCarouselOrder(newImages);
+                                    }}
+                                  >
+                                    ◀
+                                  </button>
+                                )}
+                                {idx < carouselImages.length - 1 && (
+                                  <button
+                                    className="bg-background/90 text-foreground rounded p-0.5 hover:bg-background text-[10px] font-bold"
+                                    title="Mover para direita"
+                                    onClick={async (e) => {
+                                      e.stopPropagation();
+                                      const newImages = [...carouselImages];
+                                      [newImages[idx], newImages[idx + 1]] = [newImages[idx + 1], newImages[idx]];
+                                      setCarouselImages(newImages);
+                                      await saveCarouselOrder(newImages);
+                                    }}
+                                  >
+                                    ▶
+                                  </button>
+                                )}
+                              </div>
+                              <button
+                                className="bg-destructive/90 text-destructive-foreground rounded-full p-0.5 hover:bg-destructive"
+                                title="Excluir slide"
+                                onClick={async (e) => {
+                                  e.stopPropagation();
+                                  const slideIndex = idx + 1;
+                                  
                                   await supabase
-                                    .from("social_content_cards")
-                                    .update({ creative_url: newImages[0] })
-                                    .eq("id", card.id);
-                                } else if (newImages.length === 0) {
-                                  setCreativeUrl("");
-                                  setCreativeType(null);
-                                  await supabase
-                                    .from("social_content_cards")
-                                    .update({ creative_url: null, creative_type: null })
-                                    .eq("id", card.id);
-                                }
+                                    .from("social_card_attachments")
+                                    .delete()
+                                    .eq("card_id", card.id)
+                                    .eq("file_url", url);
 
-                                toast.success(`Slide ${slideIndex} excluído`);
-                              }}
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                                  const newImages = carouselImages.filter((_, i) => i !== idx);
+                                  setCarouselImages(newImages);
+
+                                  if (creativeUrl === url && newImages.length > 0) {
+                                    setCreativeUrl(newImages[0]);
+                                    await supabase
+                                      .from("social_content_cards")
+                                      .update({ creative_url: newImages[0] })
+                                      .eq("id", card.id);
+                                  } else if (newImages.length === 0) {
+                                    setCreativeUrl("");
+                                    setCreativeType(null);
+                                    await supabase
+                                      .from("social_content_cards")
+                                      .update({ creative_url: null, creative_type: null })
+                                      .eq("id", card.id);
+                                  }
+
+                                  toast.success(`Slide ${slideIndex} excluído`);
+                                }}
+                              >
+                                <X className="h-3 w-3" />
+                              </button>
+                            </div>
                           )}
                         </div>
                       ))}
