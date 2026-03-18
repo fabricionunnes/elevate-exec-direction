@@ -65,16 +65,16 @@ Deno.serve(async (req) => {
     console.log("[asaas-service-purchase] Fetching project:", project_id);
     const { data: project, error: projectError } = await supabase
       .from("onboarding_projects")
-      .select("company_id, onboarding_company_id")
+      .select("company_id, onboarding_company_id, product_id, product_name")
       .eq("id", project_id)
       .single();
 
-    if (projectError) {
+    if (projectError || !project) {
       console.error("[asaas-service-purchase] Project error:", projectError);
       throw new Error("Erro ao buscar projeto");
     }
 
-    const companyId = project?.company_id || project?.onboarding_company_id;
+    const companyId = project.company_id || project.onboarding_company_id;
     console.log("[asaas-service-purchase] companyId:", companyId);
 
     if (!companyId) {
@@ -86,7 +86,7 @@ Deno.serve(async (req) => {
     // Get company data
     const { data: company, error: companyError } = await supabase
       .from("onboarding_companies")
-      .select("id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode")
+      .select("id, name, email, cnpj, phone, address, address_number, address_complement, address_neighborhood, address_zipcode")
       .eq("id", companyId)
       .single();
 
@@ -96,29 +96,37 @@ Deno.serve(async (req) => {
     }
     console.log("[asaas-service-purchase] Company:", company.name);
 
-    // 2. Get default Asaas account
-    const { data: defaultAccount } = await supabase
+    // 2. Resolve the correct Asaas account for this project
+    const isSocialProject =
+      project.product_id?.toLowerCase() === "social" ||
+      project.product_name?.toLowerCase().includes("social");
+
+    const { data: asaasAccounts, error: accountsError } = await supabase
       .from("asaas_accounts")
-      .select("id, api_key_secret_name")
-      .eq("is_default", true)
+      .select("id, name, api_key_secret_name, is_default")
       .eq("is_active", true)
-      .single();
+      .order("is_default", { ascending: false });
 
-    let ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
-    let asaasAccountId: string | null = null;
-
-    if (defaultAccount?.api_key_secret_name) {
-      const key = Deno.env.get(defaultAccount.api_key_secret_name);
-      if (key) {
-        ASAAS_API_KEY = key;
-        asaasAccountId = defaultAccount.id;
-      }
+    if (accountsError) {
+      console.error("[asaas-service-purchase] Asaas accounts error:", accountsError);
+      throw new Error("Erro ao buscar conta de cobrança");
     }
+
+    const selectedAccount = isSocialProject
+      ? asaasAccounts?.find((account) => account.name?.toLowerCase().includes("social")) ?? asaasAccounts?.[0]
+      : asaasAccounts?.find((account) => account.is_default) ?? asaasAccounts?.[0];
+
+    let ASAAS_API_KEY = selectedAccount?.api_key_secret_name
+      ? Deno.env.get(selectedAccount.api_key_secret_name)
+      : Deno.env.get("ASAAS_API_KEY");
+    const asaasAccountId = selectedAccount?.id ?? null;
+
+    console.log("[asaas-service-purchase] Selected Asaas account:", selectedAccount?.name ?? "default-env");
 
     if (!ASAAS_API_KEY) throw new Error("ASAAS_API_KEY not configured");
 
     // 3. Find or create Asaas customer
-    let cleanDoc = (company.document || "").replace(/\D/g, "");
+    let cleanDoc = (company.cnpj || "").replace(/\D/g, "");
     if (cleanDoc.length > 0 && cleanDoc.length <= 11) cleanDoc = cleanDoc.padStart(11, "0");
     else if (cleanDoc.length > 11 && cleanDoc.length <= 14) cleanDoc = cleanDoc.padStart(14, "0");
 
