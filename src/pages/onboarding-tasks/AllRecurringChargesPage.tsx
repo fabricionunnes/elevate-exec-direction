@@ -1885,20 +1885,24 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="overdue">Vencido</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={selectedPayableCategory} onValueChange={setSelectedPayableCategory}>
-                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as Categorias</SelectItem>
-                        {staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={selectedPayableCostCenter} onValueChange={setSelectedPayableCostCenter}>
-                      <SelectTrigger><SelectValue placeholder="Centro de Custo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os Centros de Custo</SelectItem>
-                        {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={selectedPayableCategory}
+                      onValueChange={setSelectedPayableCategory}
+                      placeholder="Categoria"
+                      options={[
+                        { value: "all", label: "Todas as Categorias" },
+                        ...staffCategories.filter((c: any) => c.type === "despesa").map((c: any) => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
+                    <SearchableSelect
+                      value={selectedPayableCostCenter}
+                      onValueChange={setSelectedPayableCostCenter}
+                      placeholder="Centro de Custo"
+                      options={[
+                        { value: "all", label: "Todos os Centros de Custo" },
+                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
+                      ]}
+                    />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
                     <Select value={payablePeriod} onValueChange={(v) => { setPayablePeriod(v); applyPeriodPreset(v, setPayableDateFrom, setPayableDateTo); }}>
