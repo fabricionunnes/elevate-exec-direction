@@ -590,6 +590,7 @@ export const SocialCardDetailSheet = ({
     }
   };
 
+  const handleAiReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
     if (!files || files.length === 0) return;
     const remaining = 5 - aiReferenceImages.length;
