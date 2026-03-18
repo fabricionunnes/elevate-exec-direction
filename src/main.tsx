@@ -29,6 +29,8 @@ const publicRoutes = [
   "/job-application",
   "/social-briefing",
   "/traffic-analysis",
+  "/marketing-consultation",
+  "/financial-consultation",
   "/career-plan",
   "/pagamento",
   "/checkout",
