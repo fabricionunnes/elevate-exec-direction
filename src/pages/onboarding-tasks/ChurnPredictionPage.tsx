@@ -413,17 +413,17 @@ export default function ChurnPredictionPage() {
                   className="cursor-pointer"
                   onClick={() => setExpandedId(isExpanded ? null : prediction.id)}
                 >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-4">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center ${config.bgLight}`}>
-                        <span className={`text-lg font-bold ${config.textColor}`}>
+                  <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+                    <div className="flex items-center gap-3 sm:gap-4 min-w-0">
+                      <div className={`w-10 h-10 sm:w-12 sm:h-12 rounded-full flex items-center justify-center shrink-0 ${config.bgLight}`}>
+                        <span className={`text-sm sm:text-lg font-bold ${config.textColor}`}>
                           {prediction.churn_probability.toFixed(0)}%
                         </span>
                       </div>
-                      <div>
-                        <CardTitle className="flex items-center gap-2">
-                          {prediction.company_name}
-                          <Badge className={`${config.bgLight} ${config.textColor} border-0`}>
+                      <div className="min-w-0">
+                        <CardTitle className="flex flex-wrap items-center gap-2 text-sm sm:text-base">
+                          <span className="truncate">{prediction.company_name}</span>
+                          <Badge className={`${config.bgLight} ${config.textColor} border-0 shrink-0`}>
                             {config.label}
                           </Badge>
                           <RescuePlaybookBadge 
@@ -435,25 +435,25 @@ export default function ChurnPredictionPage() {
                             }}
                           />
                         </CardTitle>
-                        <p className="text-sm text-muted-foreground">
+                        <p className="text-xs sm:text-sm text-muted-foreground truncate">
                           {prediction.product_name} • {prediction.consultant_name}
                         </p>
                       </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                      <div className="text-right">
-                        <div className="flex items-center gap-1 text-sm text-muted-foreground">
-                          <Clock className="h-3 w-3" />
+                    <div className="flex items-center justify-between sm:justify-end gap-3 sm:gap-4 pl-13 sm:pl-0">
+                      <div className="text-left sm:text-right">
+                        <div className="flex items-center gap-1 text-xs sm:text-sm text-muted-foreground">
+                          <Clock className="h-3 w-3 shrink-0" />
                           Risco em {getRiskWindowLabel(prediction.estimated_risk_window)}
                         </div>
                         <div className="text-xs text-muted-foreground mt-1">
-                          Atualizado: {format(new Date(prediction.prediction_date), "dd/MM/yyyy", { locale: ptBR })}
+                          {format(new Date(prediction.prediction_date), "dd/MM/yyyy", { locale: ptBR })}
                         </div>
                       </div>
                       {isExpanded ? (
-                        <ChevronUp className="h-5 w-5 text-muted-foreground" />
+                        <ChevronUp className="h-5 w-5 text-muted-foreground shrink-0" />
                       ) : (
-                        <ChevronDown className="h-5 w-5 text-muted-foreground" />
+                        <ChevronDown className="h-5 w-5 text-muted-foreground shrink-0" />
                       )}
                     </div>
                   </div>
