@@ -1163,6 +1163,7 @@ export const SocialCardDetailSheet = ({
                   className="hidden"
                   onChange={handleFileUpload}
                   disabled={card.is_locked || uploading}
+                  multiple={contentType === "carrossel"}
                 />
               </div>
 
