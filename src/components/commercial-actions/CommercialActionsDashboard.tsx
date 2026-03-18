@@ -231,26 +231,48 @@ export const CommercialActionsDashboard = () => {
                 <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
                 <p>Nenhuma ação encontrada</p>
               </div>
-            ) : filtered.map(action => (
-              <div key={action.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 flex-wrap">
-                    <span className="font-medium text-sm">{action.title}</span>
-                    {getStatusBadge(action.status)}
-                    <Badge variant="outline" className="text-xs">{action.category}</Badge>
+            ) : (
+              <>
+                {paginatedActions.map(action => (
+                  <div key={action.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-muted/50 transition-colors">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 flex-wrap">
+                        <span className="font-medium text-sm">{action.title}</span>
+                        {getStatusBadge(action.status)}
+                        <Badge variant="outline" className="text-xs">{action.category}</Badge>
+                      </div>
+                      <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                        {action.project?.onboarding_company?.name && (
+                          <span className="font-medium">{action.project.onboarding_company.name}</span>
+                        )}
+                        {action.responsible_staff && <span>{action.responsible_staff.name}</span>}
+                        {action.deadline && <span>Prazo: {format(parseDateLocal(action.deadline), "dd/MM/yyyy")}</span>}
+                        {action.goal && <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {action.goal}</span>}
+                        {action.result && <span className="flex items-center gap-1 text-green-600"><TrendingUp className="h-3 w-3" /> {action.result}</span>}
+                      </div>
+                    </div>
                   </div>
-                  <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                    {action.project?.onboarding_company?.name && (
-                      <span className="font-medium">{action.project.onboarding_company.name}</span>
-                    )}
-                    {action.responsible_staff && <span>{action.responsible_staff.name}</span>}
-                    {action.deadline && <span>Prazo: {format(parseDateLocal(action.deadline), "dd/MM/yyyy")}</span>}
-                    {action.goal && <span className="flex items-center gap-1"><Target className="h-3 w-3" /> {action.goal}</span>}
-                    {action.result && <span className="flex items-center gap-1 text-green-600"><TrendingUp className="h-3 w-3" /> {action.result}</span>}
+                ))}
+                {totalPages > 1 && (
+                  <div className="flex items-center justify-between pt-4">
+                    <span className="text-sm text-muted-foreground">
+                      {(currentPage - 1) * ITEMS_PER_PAGE + 1}-{Math.min(currentPage * ITEMS_PER_PAGE, filtered.length)} de {filtered.length}
+                    </span>
+                    <div className="flex items-center gap-2">
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p - 1)} disabled={currentPage === 1}>
+                        Anterior
+                      </Button>
+                      <span className="text-sm text-muted-foreground">
+                        {currentPage} / {totalPages}
+                      </span>
+                      <Button variant="outline" size="sm" onClick={() => setCurrentPage(p => p + 1)} disabled={currentPage === totalPages}>
+                        Próxima
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </div>
-            ))}
+                )}
+              </>
+            )}
           </div>
         </TabsContent>
 
