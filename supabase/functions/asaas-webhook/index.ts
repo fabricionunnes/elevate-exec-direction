@@ -301,6 +301,9 @@ Deno.serve(async (req) => {
       console.log(`[Asaas Webhook] No match found for payment ${paymentId}`);
     }
 
+    // Handle service purchase permission management
+    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus);
+
     return new Response(JSON.stringify({ received: true, matched }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
