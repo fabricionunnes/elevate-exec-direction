@@ -84,6 +84,12 @@ export const CommercialActionsDashboard = () => {
     });
   }, [actions, search, statusFilter, consultantFilter, companyFilter, dateRange]);
 
+  // Reset page when filters change
+  useEffect(() => { setCurrentPage(1); }, [search, statusFilter, consultantFilter, companyFilter, dateRange]);
+
+  const totalPages = Math.ceil(filtered.length / ITEMS_PER_PAGE);
+  const paginatedActions = filtered.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+
   const metrics = useMemo(() => {
     const total = filtered.length;
     const planned = filtered.filter(a => a.status === "planned").length;
