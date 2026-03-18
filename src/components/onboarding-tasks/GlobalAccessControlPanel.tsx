@@ -272,11 +272,11 @@ export function GlobalAccessControlPanel({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden">
+      <DialogContent className="max-w-6xl max-h-[90vh] overflow-hidden w-[95vw] sm:w-auto">
         <DialogHeader>
-          <DialogTitle className="flex items-center gap-2">
-            <Activity className="h-5 w-5 text-primary" />
-            Controle de Acesso e Atividades - Todas as Empresas
+          <DialogTitle className="flex items-center gap-2 text-base sm:text-lg">
+            <Activity className="h-5 w-5 text-primary shrink-0" />
+            <span className="truncate">Controle de Acesso e Atividades</span>
           </DialogTitle>
         </DialogHeader>
 
