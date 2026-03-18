@@ -524,20 +524,20 @@ const OnboardingCompanyDetailPage = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks/companies")}>
-              <ArrowLeft className="h-5 w-5" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" onClick={() => navigate("/onboarding-tasks/companies")}>
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <NexusHeader title={isNew ? "Nova Empresa" : (form.name || "Empresa")} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {canDeleteCompany && !isNew && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={deleting}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleting ? "Excluindo..." : "Excluir"}
+                  <Button variant="destructive" size="sm" disabled={deleting}>
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{deleting ? "Excluindo..." : "Excluir"}</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -557,9 +557,10 @@ const OnboardingCompanyDetailPage = () => {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button onClick={handleSubmit} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Salvando..." : "Salvar"}
+            <Button size="sm" onClick={handleSubmit} disabled={saving}>
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{saving ? "Salvando..." : "Salvar"}</span>
+              <span className="sm:hidden">{saving ? "..." : "Salvar"}</span>
             </Button>
           </div>
         </div>
