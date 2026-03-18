@@ -261,7 +261,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
           includeLogoPref: includeLogo,
           carouselCount: isCarousel ? imagesCount : undefined,
           carouselConnected: isCarousel ? carouselConnected : undefined,
-          referenceImageUrl: referenceImage || undefined
+          referenceImageUrls: referenceImages.length > 0 ? referenceImages : undefined,
+          referenceImageUrl: referenceImages[0] || undefined
         }
       });
 
