@@ -1557,7 +1557,7 @@ export const SocialCardDetailSheet = ({
                 <div className="flex gap-2">
                   <Button
                     onClick={handleSave}
-                    disabled={saving || card.is_locked}
+                    disabled={saving}
                     className="flex-1"
                   >
                     {saving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
