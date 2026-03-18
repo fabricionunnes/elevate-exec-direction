@@ -177,6 +177,8 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     if (projectId) {
       fetchCACForms();
       fetchTrafficForm();
+      fetchMarketingForm();
+      fetchFinancialForm();
     }
   }, [companyId, projectId]);
 
