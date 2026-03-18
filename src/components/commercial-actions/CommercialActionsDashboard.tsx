@@ -22,6 +22,8 @@ export const CommercialActionsDashboard = () => {
   const [consultants, setConsultants] = useState<{ id: string; name: string }[]>([]);
   const [companies, setCompanies] = useState<{ id: string; name: string }[]>([]);
   const [activeTab, setActiveTab] = useState("list");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [dateRange, setDateRange] = useState(() => ({
     start: startOfMonth(new Date()),
     end: endOfMonth(new Date()),
