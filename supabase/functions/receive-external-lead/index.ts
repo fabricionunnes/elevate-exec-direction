@@ -117,9 +117,9 @@ Deno.serve(async (req) => {
         urgency: urgency,
         pipeline_id: pipeline.id,
         stage_id: stage.id,
-        owner_id: owner?.id || null,
+        owner_staff_id: owner?.id || null,
         origin_id: origin?.id || null,
-        state: 'new',
+        entered_pipeline_at: new Date().toISOString(),
       })
       .select('id')
       .single();
