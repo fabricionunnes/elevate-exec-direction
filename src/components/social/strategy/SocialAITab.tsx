@@ -82,8 +82,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   const [carouselCount, setCarouselCount] = useState("3");
   const [carouselConnected, setCarouselConnected] = useState(false);
   
-  // Reference image upload
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  // Reference images upload (multiple)
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [uploadingReference, setUploadingReference] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
