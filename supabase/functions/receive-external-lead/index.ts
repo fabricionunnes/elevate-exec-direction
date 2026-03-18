@@ -45,17 +45,17 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get first active pipeline and its first stage
+    // Get "Funil SE" pipeline specifically
     const { data: pipeline } = await supabase
       .from('crm_pipelines')
       .select('id')
       .eq('is_active', true)
-      .order('created_at', { ascending: true })
+      .ilike('name', '%Funil SE%')
       .limit(1)
       .maybeSingle();
 
     if (!pipeline) {
-      return new Response(JSON.stringify({ error: 'Nenhum pipeline ativo encontrado' }), {
+      return new Response(JSON.stringify({ error: 'Pipeline "Funil SE" não encontrado' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -79,7 +79,7 @@ Deno.serve(async (req) => {
     // Get first active admin/master staff as owner
     const { data: owner } = await supabase
       .from('onboarding_staff')
-      .select('id')
+      .select('id, phone')
       .eq('is_active', true)
       .in('role', ['master', 'admin'])
       .order('created_at', { ascending: true })
@@ -133,6 +133,86 @@ Deno.serve(async (req) => {
     }
 
     console.log('[receive-external-lead] Lead created:', lead.id);
+
+    // === Send WhatsApp notifications ===
+    const APP_URL = 'https://elevate-exec-direction.lovable.app';
+    const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
+
+    const message = `🚀 *Novo Lead Externo!*\n\n` +
+      `👤 *Nome:* ${nome}\n` +
+      `📞 *Telefone:* ${telefone}\n` +
+      `📧 *Email:* ${email}\n` +
+      (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
+      (faturamento ? `💰 *Faturamento:* ${faturamento}\n` : '') +
+      (qtd_vendedores ? `👥 *Vendedores:* ${qtd_vendedores}\n` : '') +
+      (desafio ? `🎯 *Desafio:* ${desafio}\n` : '') +
+      (tag ? `🏷️ *Tag:* ${tag}\n` : '') +
+      `\n🔗 *Ver no CRM:* ${leadLink}`;
+
+    // Get WhatsApp instance
+    const { data: whatsappConfig } = await supabase
+      .from('whatsapp_default_config')
+      .select('setting_value')
+      .eq('setting_key', 'default_instance')
+      .maybeSingle();
+
+    const instanceName = whatsappConfig?.setting_value;
+
+    if (instanceName) {
+      const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+      const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+
+      if (evolutionUrl && evolutionKey) {
+        // Collect numbers to notify
+        const numbersToNotify: string[] = [];
+
+        // 1. Owner staff phone
+        if (owner?.phone) {
+          const cleanPhone = owner.phone.replace(/\D/g, '');
+          if (cleanPhone) numbersToNotify.push(cleanPhone);
+        }
+
+        // 2. Numbers from notification table
+        const { data: notifNumbers } = await supabase
+          .from('crm_lead_notification_numbers')
+          .select('phone')
+          .eq('is_active', true);
+
+        if (notifNumbers) {
+          for (const n of notifNumbers) {
+            const cleanPhone = n.phone.replace(/\D/g, '');
+            if (cleanPhone && !numbersToNotify.includes(cleanPhone)) {
+              numbersToNotify.push(cleanPhone);
+            }
+          }
+        }
+
+        // Send to each number
+        for (const phone of numbersToNotify) {
+          try {
+            const sendUrl = `${evolutionUrl}/message/sendText/${instanceName}`;
+            await fetch(sendUrl, {
+              method: 'POST',
+              headers: {
+                'Content-Type': 'application/json',
+                'apikey': evolutionKey,
+              },
+              body: JSON.stringify({
+                number: phone,
+                text: message,
+              }),
+            });
+            console.log(`[receive-external-lead] WhatsApp sent to ${phone}`);
+          } catch (whatsappError) {
+            console.error(`[receive-external-lead] WhatsApp error for ${phone}:`, whatsappError);
+          }
+        }
+      } else {
+        console.warn('[receive-external-lead] Evolution API not configured, skipping WhatsApp');
+      }
+    } else {
+      console.warn('[receive-external-lead] No WhatsApp instance configured');
+    }
 
     return new Response(JSON.stringify({ success: true, lead_id: lead.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
