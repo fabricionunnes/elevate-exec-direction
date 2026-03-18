@@ -11882,6 +11882,30 @@ export type Database = {
           },
         ]
       }
+      crm_lead_notification_numbers: {
+        Row: {
+          created_at: string | null
+          id: string
+          is_active: boolean | null
+          name: string | null
+          phone: string
+        }
+        Insert: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          phone: string
+        }
+        Update: {
+          created_at?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string | null
+          phone?: string
+        }
+        Relationships: []
+      }
       crm_lead_tags: {
         Row: {
           created_at: string
