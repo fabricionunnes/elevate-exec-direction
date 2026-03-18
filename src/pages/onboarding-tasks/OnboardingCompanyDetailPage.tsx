@@ -1182,7 +1182,7 @@ const OnboardingCompanyDetailPage = () => {
                       placeholder="Quais são os maiores desafios que a empresa enfrenta?"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="goals_short_term">Metas de Curto Prazo (3-6 meses)</Label>
                       <Textarea
