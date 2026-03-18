@@ -1430,20 +1430,24 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="all">Todo o período</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={selectedCategory} onValueChange={setSelectedCategory}>
-                      <SelectTrigger><SelectValue placeholder="Categoria" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as Categorias</SelectItem>
-                        {staffCategories.filter((c: any) => c.type === "receita").map((c: any) => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <Select value={selectedCostCenter} onValueChange={setSelectedCostCenter}>
-                      <SelectTrigger><SelectValue placeholder="Centro de Custo" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os Centros de Custo</SelectItem>
-                        {staffCostCenters.map((cc: any) => <SelectItem key={cc.id} value={cc.id}>{cc.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={selectedCategory}
+                      onValueChange={setSelectedCategory}
+                      placeholder="Categoria"
+                      options={[
+                        { value: "all", label: "Todas as Categorias" },
+                        ...staffCategories.filter((c: any) => c.type === "receita").map((c: any) => ({ value: c.id, label: c.name })),
+                      ]}
+                    />
+                    <SearchableSelect
+                      value={selectedCostCenter}
+                      onValueChange={setSelectedCostCenter}
+                      placeholder="Centro de Custo"
+                      options={[
+                        { value: "all", label: "Todos os Centros de Custo" },
+                        ...staffCostCenters.map((cc: any) => ({ value: cc.id, label: cc.name })),
+                      ]}
+                    />
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("justify-start text-left font-normal", !dateFrom && "text-muted-foreground")}>
