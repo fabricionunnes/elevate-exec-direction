@@ -2299,6 +2299,15 @@ const OnboardingTasksPage = () => {
                   <Heart className="h-4 w-4" />
                   Hotseat
                 </Button>
+                <Button 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={() => navigate("/onboarding-tasks/consultorias")}
+                  className="gap-2 border-primary/30 text-primary hover:bg-primary/5"
+                >
+                  <Briefcase className="h-4 w-4" />
+                  Consultorias
+                </Button>
               </>
             )}
             {/* Contratos button - Admin, CS and Closer */}
