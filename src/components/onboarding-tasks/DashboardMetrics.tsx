@@ -1195,7 +1195,7 @@ const DashboardMetrics = ({
             <Card className={cn("cursor-pointer", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
             <Card 
               className={cn(
-                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md", 
                 showNotRenewedCompanies && "ring-2 ring-red-400"
               )} 
               onClick={() => setShowNotRenewedCompanies(!showNotRenewedCompanies)}
