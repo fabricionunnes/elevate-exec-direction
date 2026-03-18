@@ -274,6 +274,46 @@ Deno.serve(async (req) => {
       purchased_by,
     });
 
+    // 8. Create financial receivable (staff financial module)
+    const amountReais = amount_cents / 100;
+    await supabase.from("financial_receivables").insert({
+      company_id: project.company_id,
+      description: `Compra self-service: ${service_name}`,
+      amount: amountReais,
+      due_date: tomorrow,
+      status: "open",
+      payment_method: "boleto",
+      payment_link: invoiceUrl || null,
+      is_recurring: isRecurring,
+      notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}`,
+    });
+
+    // 9. Notify master and admin staff
+    const { data: staffToNotify } = await supabase
+      .from("onboarding_staff")
+      .select("id")
+      .in("role", ["master", "admin"])
+      .eq("is_active", true);
+
+    if (staffToNotify?.length) {
+      const companyName = company.name || "Cliente";
+      const notifTitle = `🛒 Nova compra: ${service_name}`;
+      const notifMessage = `${companyName} contratou "${service_name}" (${formatPrice(amountReais)}) pelo catálogo de serviços. ${isRecurring ? "Recorrência mensal." : "Pagamento único."}`;
+
+      const notifications = staffToNotify.map((s: any) => ({
+        staff_id: s.id,
+        project_id,
+        type: "service_purchase",
+        title: notifTitle,
+        message: notifMessage,
+        reference_id: service_catalog_id,
+        reference_type: "service_catalog",
+      }));
+
+      await supabase.from("onboarding_notifications").insert(notifications);
+      console.log(`Notified ${staffToNotify.length} staff members about purchase`);
+    }
+
     console.log("Service purchase completed:", { menu_key, billing_type, subscriptionId });
 
     return new Response(JSON.stringify({
@@ -293,3 +333,7 @@ Deno.serve(async (req) => {
     });
   }
 });
+
+function formatPrice(value: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
