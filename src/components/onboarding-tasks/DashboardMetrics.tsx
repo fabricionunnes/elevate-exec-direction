@@ -1207,7 +1207,7 @@ const DashboardMetrics = ({
             </Card>
             <Card 
               className={cn(
-                "cursor-pointer hidden sm:block transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md", 
                 showCompletedCompanies && "ring-2 ring-blue-400"
               )} 
               onClick={() => setShowCompletedCompanies(!showCompletedCompanies)}
