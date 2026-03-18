@@ -9,7 +9,7 @@ const corsHeaders = {
 const ASAAS_BASE = "https://api.asaas.com/v3";
 
 async function asaasRequest(path: string, method: string, apiKey: string, body?: unknown) {
-  console.log(`Asaas ${method} ${path}`);
+  console.log(`[Asaas] ${method} ${path}`);
   const res = await fetch(`${ASAAS_BASE}${path}`, {
     method,
     headers: { "Content-Type": "application/json", "access_token": apiKey },
@@ -17,7 +17,9 @@ async function asaasRequest(path: string, method: string, apiKey: string, body?:
   });
   const text = await res.text();
   let data: any;
-  try { data = text ? JSON.parse(text) : {}; } catch {
+  try {
+    data = text ? JSON.parse(text) : {};
+  } catch (_e) {
     if (!res.ok) throw new Error(`HTTP ${res.status}`);
     return {};
   }
@@ -25,14 +27,23 @@ async function asaasRequest(path: string, method: string, apiKey: string, body?:
   return data;
 }
 
+function formatPrice(value: number): string {
+  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
+
+  console.log("[asaas-service-purchase] Request received");
 
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
+
+    const reqBody = await req.json();
+    console.log("[asaas-service-purchase] Body keys:", Object.keys(reqBody));
 
     const {
       project_id,
@@ -41,8 +52,8 @@ Deno.serve(async (req) => {
       billing_type,
       amount_cents,
       service_name,
-      purchased_by, // onboarding_user id
-    } = await req.json();
+      purchased_by,
+    } = reqBody;
 
     if (!project_id || !service_catalog_id || !menu_key || !amount_cents || !purchased_by) {
       return new Response(JSON.stringify({ error: "Campos obrigatórios faltando" }), {
@@ -50,14 +61,21 @@ Deno.serve(async (req) => {
       });
     }
 
-    // 1. Get company data from project
-    const { data: project } = await supabase
+    // 1. Get project
+    console.log("[asaas-service-purchase] Fetching project:", project_id);
+    const { data: project, error: projectError } = await supabase
       .from("onboarding_projects")
-      .select("company_id, onboarding_company_id, onboarding_companies!onboarding_projects_onboarding_company_id_fkey(id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode)")
+      .select("company_id, onboarding_company_id")
       .eq("id", project_id)
       .single();
 
+    if (projectError) {
+      console.error("[asaas-service-purchase] Project error:", projectError);
+      throw new Error("Erro ao buscar projeto");
+    }
+
     const companyId = project?.company_id || project?.onboarding_company_id;
+    console.log("[asaas-service-purchase] companyId:", companyId);
 
     if (!companyId) {
       return new Response(JSON.stringify({ error: "Projeto sem empresa vinculada" }), {
@@ -65,7 +83,18 @@ Deno.serve(async (req) => {
       });
     }
 
-    const company = project.onboarding_companies as any;
+    // Get company data
+    const { data: company, error: companyError } = await supabase
+      .from("onboarding_companies")
+      .select("id, name, email, document, phone, address, address_number, address_complement, address_neighborhood, address_zipcode")
+      .eq("id", companyId)
+      .single();
+
+    if (companyError || !company) {
+      console.error("[asaas-service-purchase] Company error:", companyError);
+      throw new Error("Erro ao buscar empresa");
+    }
+    console.log("[asaas-service-purchase] Company:", company.name);
 
     // 2. Get default Asaas account
     const { data: defaultAccount } = await supabase
@@ -101,7 +130,7 @@ Deno.serve(async (req) => {
     };
     if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
     if (phoneToUse) { customerPayload.mobilePhone = phoneToUse; customerPayload.phone = phoneToUse; }
-    if (company.address_zipcode) customerPayload.postalCode = company.address_zipcode.replace(/\D/g, "");
+    if (company.address_zipcode) customerPayload.postalCode = (company.address_zipcode as string).replace(/\D/g, "");
     if (company.address) customerPayload.address = company.address;
     if (company.address_number) customerPayload.addressNumber = company.address_number;
     if (company.address_complement) customerPayload.complement = company.address_complement;
@@ -112,7 +141,7 @@ Deno.serve(async (req) => {
       const existing = await asaasRequest(`/customers?cpfCnpj=${cleanDoc}`, "GET", ASAAS_API_KEY);
       if (existing.data?.length > 0) {
         customerId = existing.data[0].id;
-        try { await asaasRequest(`/customers/${customerId}`, "PUT", ASAAS_API_KEY, customerPayload); } catch {}
+        try { await asaasRequest(`/customers/${customerId}`, "PUT", ASAAS_API_KEY, customerPayload); } catch (_e) { /* ignore */ }
       }
     }
     if (!customerId) {
@@ -120,7 +149,7 @@ Deno.serve(async (req) => {
       customerId = newCust.id;
     }
 
-    console.log("Asaas customer:", customerId);
+    console.log("[asaas-service-purchase] Asaas customer:", customerId);
 
     const amountValue = amount_cents / 100;
     const tomorrow = new Date(Date.now() + 24 * 60 * 60 * 1000).toISOString().split("T")[0];
@@ -147,7 +176,7 @@ Deno.serve(async (req) => {
       };
       const subscription = await asaasRequest("/subscriptions", "POST", ASAAS_API_KEY, subPayload);
       subscriptionId = subscription.id;
-      console.log("Subscription created:", subscriptionId);
+      console.log("[asaas-service-purchase] Subscription created:", subscriptionId);
 
       // Get first payment invoice URL
       await new Promise(r => setTimeout(r, 2000));
@@ -157,15 +186,14 @@ Deno.serve(async (req) => {
           const first = payments.data[0];
           invoiceUrl = first.invoiceUrl || first.bankSlipUrl || "";
           if (!invoiceUrl && first.id) invoiceUrl = `https://www.asaas.com/i/${first.id}`;
-          // Also try to get PIX
           if (first.id) {
             try {
               const pix = await asaasRequest(`/payments/${first.id}/pixQrCode`, "GET", ASAAS_API_KEY);
               if (pix.payload) { pixQrCode = pix.payload; pixQrCodeUrl = pix.encodedImage ? `data:image/png;base64,${pix.encodedImage}` : null; }
-            } catch {}
+            } catch (_e) { /* ignore */ }
           }
         }
-      } catch (e) { console.error("Error getting sub payments:", e); }
+      } catch (e) { console.error("[asaas-service-purchase] Error getting sub payments:", e); }
     } else {
       // One-time: create single BOLETO payment
       const payPayload = {
@@ -180,30 +208,28 @@ Deno.serve(async (req) => {
         discount: { value: 5, type: "PERCENTAGE", dueDateLimitDays: 1 },
       };
       const payment = await asaasRequest("/payments", "POST", ASAAS_API_KEY, payPayload);
-      console.log("One-time payment created:", payment.id);
+      console.log("[asaas-service-purchase] One-time payment created:", payment.id);
       invoiceUrl = payment.invoiceUrl || payment.bankSlipUrl || "";
       if (!invoiceUrl && payment.id) invoiceUrl = `https://www.asaas.com/i/${payment.id}`;
 
-      // Try to get PIX
       if (payment.id) {
         try {
           const pix = await asaasRequest(`/payments/${payment.id}/pixQrCode`, "GET", ASAAS_API_KEY);
           if (pix.payload) { pixQrCode = pix.payload; pixQrCodeUrl = pix.encodedImage ? `data:image/png;base64,${pix.encodedImage}` : null; }
-        } catch {}
+        } catch (_e) { /* ignore */ }
       }
 
-      // Store the payment ID as subscription ID for webhook matching
       subscriptionId = payment.id;
     }
 
     // 4. Create recurring charge record
-    const { data: recurringCharge } = await supabase
+    const { data: recurringCharge, error: rcError } = await supabase
       .from("company_recurring_charges")
       .insert({
         company_id: companyId,
         description: service_name,
         amount_cents,
-        recurrence: isRecurring ? "monthly" : "monthly",
+        recurrence: "monthly",
         installments: isRecurring ? 12 : 1,
         payment_method: "boleto",
         next_charge_date: tomorrow,
@@ -220,9 +246,11 @@ Deno.serve(async (req) => {
       .select("id")
       .single();
 
+    if (rcError) console.error("[asaas-service-purchase] Recurring charge error:", rcError);
+
     // 5. Create first invoice
     if (recurringCharge?.id) {
-      await supabase.from("company_invoices").insert({
+      const { error: invError } = await supabase.from("company_invoices").insert({
         company_id: companyId,
         recurring_charge_id: recurringCharge.id,
         description: service_name,
@@ -233,10 +261,10 @@ Deno.serve(async (req) => {
         total_installments: isRecurring ? 12 : 1,
         payment_link_url: invoiceUrl,
       });
+      if (invError) console.error("[asaas-service-purchase] Invoice error:", invError);
     }
 
-    // 6. Do NOT enable permission yet - it will be enabled by webhook after first payment confirmation
-    // Just ensure the permission record exists (disabled) so webhook can enable it
+    // 6. Create permission records (disabled - will be enabled by webhook after payment)
     const keysToEnable = menu_key === "gestao_clientes"
       ? ["gestao_clientes", "gestao_vendas", "gestao_financeiro", "gestao_estoque", "gestao_agendamentos"]
       : [menu_key];
@@ -259,7 +287,7 @@ Deno.serve(async (req) => {
     }
 
     // 7. Save purchase record
-    await supabase.from("service_purchases").insert({
+    const { error: purchaseError } = await supabase.from("service_purchases").insert({
       project_id,
       service_catalog_id,
       menu_key,
@@ -270,10 +298,11 @@ Deno.serve(async (req) => {
       asaas_subscription_id: subscriptionId,
       purchased_by,
     });
+    if (purchaseError) console.error("[asaas-service-purchase] Purchase record error:", purchaseError);
 
-    // 8. Create financial receivable (staff financial module)
+    // 8. Create financial receivable
     const amountReais = amount_cents / 100;
-    await supabase.from("financial_receivables").insert({
+    const { error: frError } = await supabase.from("financial_receivables").insert({
       company_id: companyId,
       description: `Compra self-service: ${service_name}`,
       amount: amountReais,
@@ -284,6 +313,7 @@ Deno.serve(async (req) => {
       is_recurring: isRecurring,
       notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}`,
     });
+    if (frError) console.error("[asaas-service-purchase] Financial receivable error:", frError);
 
     // 9. Notify master and admin staff
     const { data: staffToNotify } = await supabase
@@ -308,10 +338,10 @@ Deno.serve(async (req) => {
       }));
 
       await supabase.from("onboarding_notifications").insert(notifications);
-      console.log(`Notified ${staffToNotify.length} staff members about purchase`);
+      console.log(`[asaas-service-purchase] Notified ${staffToNotify.length} staff members`);
     }
 
-    console.log("Service purchase completed:", { menu_key, billing_type, subscriptionId });
+    console.log("[asaas-service-purchase] Completed:", { menu_key, billing_type, subscriptionId });
 
     return new Response(JSON.stringify({
       success: true,
@@ -323,14 +353,10 @@ Deno.serve(async (req) => {
     }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
-  } catch (error) {
-    console.error("Service purchase error:", error);
+  } catch (error: any) {
+    console.error("[asaas-service-purchase] Error:", error);
     return new Response(JSON.stringify({ error: error.message || "Erro interno" }), {
       status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
   }
 });
-
-function formatPrice(value: number): string {
-  return new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
-}
