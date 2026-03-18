@@ -435,51 +435,113 @@ export const SocialCardDetailSheet = ({
   };
 
   const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !card) return;
+    const files = e.target.files;
+    if (!files || files.length === 0 || !card) return;
+
+    const isCarousel = contentType === "carrossel" && files.length > 1;
 
     setUploading(true);
     try {
-      const fileExt = file.name.split(".").pop();
-      const fileName = `${card.id}/${Date.now()}.${fileExt}`;
+      if (isCarousel) {
+        // Multi-file upload for carousel
+        const uploadedUrls: string[] = [];
+        
+        for (let i = 0; i < files.length; i++) {
+          const file = files[i];
+          const fileExt = file.name.split(".").pop();
+          const fileName = `${card.id}/${Date.now()}-slide-${i + 1}.${fileExt}`;
 
-      const { error: uploadError } = await supabase.storage
-        .from("social-content")
-        .upload(fileName, file, { upsert: true });
+          const { error: uploadError } = await supabase.storage
+            .from("social-content")
+            .upload(fileName, file, { upsert: true });
 
-      if (uploadError) throw uploadError;
+          if (uploadError) throw uploadError;
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("social-content")
-        .getPublicUrl(fileName);
+          const { data: { publicUrl } } = supabase.storage
+            .from("social-content")
+            .getPublicUrl(fileName);
 
-      const isVideo = file.type.startsWith("video/");
-      
-      // Update local state FIRST so UI updates immediately
-      setCreativeUrl(publicUrl);
-      setCreativeType(isVideo ? "video" : "image");
+          uploadedUrls.push(publicUrl);
+        }
 
-      // Auto-save to database
-      const { error: updateError } = await supabase
-        .from("social_content_cards")
-        .update({
-          creative_url: publicUrl,
-          creative_type: isVideo ? "video" : "image",
-        })
-        .eq("id", card.id);
+        // Clear previous carousel attachments
+        await supabase
+          .from("social_card_attachments")
+          .delete()
+          .eq("card_id", card.id)
+          .like("file_name", "ai-carousel-slide-%");
 
-      if (updateError) throw updateError;
+        // Save each slide as attachment
+        for (let i = 0; i < uploadedUrls.length; i++) {
+          await supabase
+            .from("social_card_attachments")
+            .insert({
+              card_id: card.id,
+              file_url: uploadedUrls[i],
+              file_name: `ai-carousel-slide-${i + 1}.png`,
+              file_type: "image",
+            });
+        }
 
-      // Manual upload replaces any previous AI carousel set
-      setCarouselImages([]);
-      await supabase
-        .from("social_card_attachments")
-        .delete()
-        .eq("card_id", card.id)
-        .like("file_name", "ai-carousel-slide-%");
+        // Set first image as creative_url
+        const { error: updateError } = await supabase
+          .from("social_content_cards")
+          .update({
+            creative_url: uploadedUrls[0],
+            creative_type: "image",
+            content_type: "carrossel",
+          })
+          .eq("id", card.id);
 
-      toast.success("Arquivo enviado!");
-      // Don't call onUpdate() here - it would reload and close/refresh the sheet
+        if (updateError) throw updateError;
+
+        setCreativeUrl(uploadedUrls[0]);
+        setCreativeType("image");
+        setCarouselImages(uploadedUrls);
+        setContentType("carrossel");
+
+        toast.success(`${uploadedUrls.length} slides enviados!`);
+      } else {
+        // Single file upload (original behavior)
+        const file = files[0];
+        const fileExt = file.name.split(".").pop();
+        const fileName = `${card.id}/${Date.now()}.${fileExt}`;
+
+        const { error: uploadError } = await supabase.storage
+          .from("social-content")
+          .upload(fileName, file, { upsert: true });
+
+        if (uploadError) throw uploadError;
+
+        const { data: { publicUrl } } = supabase.storage
+          .from("social-content")
+          .getPublicUrl(fileName);
+
+        const isVideo = file.type.startsWith("video/");
+        
+        setCreativeUrl(publicUrl);
+        setCreativeType(isVideo ? "video" : "image");
+
+        const { error: updateError } = await supabase
+          .from("social_content_cards")
+          .update({
+            creative_url: publicUrl,
+            creative_type: isVideo ? "video" : "image",
+          })
+          .eq("id", card.id);
+
+        if (updateError) throw updateError;
+
+        // Manual upload replaces any previous AI carousel set
+        setCarouselImages([]);
+        await supabase
+          .from("social_card_attachments")
+          .delete()
+          .eq("card_id", card.id)
+          .like("file_name", "ai-carousel-slide-%");
+
+        toast.success("Arquivo enviado!");
+      }
     } catch (error) {
       console.error("Error uploading file:", error);
       toast.error("Erro ao enviar arquivo");
