@@ -364,69 +364,75 @@ const TaskManagerPage = () => {
   return (
     <div className="min-h-screen bg-background">
       <div className="border-b bg-card">
-        <div className="max-w-[1600px] mx-auto px-4 py-3 flex items-center justify-between gap-4">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
-              <ArrowLeft className="h-5 w-5" />
-            </Button>
-            <div>
-              <h1 className="text-lg font-bold">Gerenciador de Tarefas</h1>
-              <p className="text-xs text-muted-foreground">
-                {statusCounts.overdue > 0 && (
-                  <span className="text-red-500 font-medium">{statusCounts.overdue} em atraso · </span>
-                )}
-                {statusCounts.pending} pendentes · {statusCounts.in_progress} em progresso · {statusCounts.completed} concluídas
-              </p>
+        <div className="max-w-[1600px] mx-auto px-3 sm:px-4 py-2 sm:py-3 space-y-2">
+          {/* Row 1: Back button + title + refresh */}
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+              <Button variant="ghost" size="icon" className="h-8 w-8 shrink-0" onClick={() => navigate("/onboarding-tasks")}>
+                <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
+              </Button>
+              <div className="min-w-0">
+                <h1 className="text-sm sm:text-lg font-bold truncate">Gerenciador de Tarefas</h1>
+                <p className="text-[10px] sm:text-xs text-muted-foreground truncate">
+                  {statusCounts.overdue > 0 && (
+                    <span className="text-red-500 font-medium">{statusCounts.overdue} atraso · </span>
+                  )}
+                  {statusCounts.pending} pend. · {statusCounts.in_progress} progr. · {statusCounts.completed} concl.
+                </p>
+              </div>
+            </div>
+            <div className="flex items-center gap-1.5 sm:gap-2 shrink-0">
+              <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "calendar")}>
+                <TabsList className="h-8">
+                  <TabsTrigger value="kanban" className="gap-1 px-2 sm:px-3 text-xs sm:text-sm">
+                    <LayoutGrid className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Kanban</span>
+                  </TabsTrigger>
+                  <TabsTrigger value="calendar" className="gap-1 px-2 sm:px-3 text-xs sm:text-sm">
+                    <CalendarDays className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Calendário</span>
+                  </TabsTrigger>
+                </TabsList>
+              </Tabs>
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={loadTasks} disabled={loading}>
+                <RefreshCw className={`h-3.5 w-3.5 sm:h-4 sm:w-4 ${loading ? "animate-spin" : ""}`} />
+              </Button>
             </div>
           </div>
 
-          <div className="flex items-center gap-3">
-            {isAdmin && (
-              <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Filtrar por consultor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="mine">Minhas tarefas</SelectItem>
-                  <SelectItem value="all">Todos os consultores</SelectItem>
-                  {staff.map(s => (
-                    <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
+          {/* Row 2: Filters - scrollable on mobile */}
+          {(isAdmin || companies.length > 1) && (
+            <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
+              {isAdmin && (
+                <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
+                  <SelectTrigger className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]">
+                    <SelectValue placeholder="Filtrar consultor" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="mine">Minhas tarefas</SelectItem>
+                    <SelectItem value="all">Todos</SelectItem>
+                    {staff.map(s => (
+                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
 
-            {companies.length > 1 && (
-              <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                <SelectTrigger className="w-[220px]">
-                  <SelectValue placeholder="Filtrar por empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as empresas</SelectItem>
-                  {companies.map(c => (
-                    <SelectItem key={c} value={c}>{c}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            )}
-
-            <Tabs value={view} onValueChange={(v) => setView(v as "kanban" | "calendar")}>
-              <TabsList>
-                <TabsTrigger value="kanban" className="gap-1.5">
-                  <LayoutGrid className="h-4 w-4" />
-                  Kanban
-                </TabsTrigger>
-                <TabsTrigger value="calendar" className="gap-1.5">
-                  <CalendarDays className="h-4 w-4" />
-                  Calendário
-                </TabsTrigger>
-              </TabsList>
-            </Tabs>
-
-            <Button variant="outline" size="icon" onClick={loadTasks} disabled={loading}>
-              <RefreshCw className={`h-4 w-4 ${loading ? "animate-spin" : ""}`} />
-            </Button>
-          </div>
+              {companies.length > 1 && (
+                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
+                  <SelectTrigger className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]">
+                    <SelectValue placeholder="Filtrar empresa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todas as empresas</SelectItem>
+                    {companies.map(c => (
+                      <SelectItem key={c} value={c}>{c}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              )}
+            </div>
+          )}
         </div>
       </div>
 
