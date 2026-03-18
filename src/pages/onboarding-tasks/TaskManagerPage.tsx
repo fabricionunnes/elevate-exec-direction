@@ -106,8 +106,7 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
-      // Determine which projects this staff member is responsible for
-      let allowedProjectIds: string[] | null = null;
+      // Determine staff filter for tasks
 
       // For non-admin (consultants/CS): only show tasks delegated to them (responsible_staff_id)
       let filterByStaffId: string | null = null;
