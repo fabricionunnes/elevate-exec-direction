@@ -194,7 +194,7 @@ export function ServicePurchaseDialog({
                 Compra Realizada!
               </DialogTitle>
               <DialogDescription>
-                O módulo "{service.name}" já está liberado para uso.
+                O módulo "{service.name}" será liberado após a confirmação do pagamento.
               </DialogDescription>
             </DialogHeader>
 
