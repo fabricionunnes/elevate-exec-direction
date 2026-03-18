@@ -1945,13 +1945,22 @@ const OnboardingTasksPage = () => {
             
             {/* Mobile Actions - Compact */}
             <div className="flex items-center gap-1 sm:hidden">
+              {/* Quick action buttons visible on mobile */}
+              {currentUserRole && currentStaffId && (
+                <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => setShowMyTasks(true)} title="Minhas Tarefas">
+                  <CheckCircle2 className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="outline" size="icon" className="h-8 w-8" onClick={() => navigate("/onboarding-tasks/task-manager")} title="Gerenciador">
+                <LayoutGrid className="h-4 w-4" />
+              </Button>
               <DropdownMenu>
                 <DropdownMenuTrigger asChild>
                   <Button variant="outline" size="icon" className="h-8 w-8">
                     <Plus className="h-4 w-4" />
                   </Button>
                 </DropdownMenuTrigger>
-                <DropdownMenuContent align="end" className="w-52 max-h-[70vh] overflow-y-auto">
+                <DropdownMenuContent align="end" className="w-56 max-h-[70vh] overflow-y-auto">
                   {canCreateCompany && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies/new")}>
                       <Building2 className="h-4 w-4 mr-2" />
@@ -1965,16 +1974,38 @@ const OnboardingTasksPage = () => {
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuSeparator />
-                  {canCreateCompany && (
-                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
-                      <Users className="h-4 w-4 mr-2" />
-                      Equipe
+                  {/* Reuniões */}
+                  {(canAccessCalendar || isConsultant || isCS) && currentStaffId && (
+                    <DropdownMenuItem onClick={() => setShowMeetings(true)}>
+                      <Video className="h-4 w-4 mr-2" />
+                      Reuniões
                     </DropdownMenuItem>
                   )}
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/office")}>
                     <Video className="h-4 w-4 mr-2" />
                     Escritório UNV
                   </DropdownMenuItem>
+                  {/* Contratos */}
+                  {(isAdmin || isCS || currentUserRole === "closer") && (
+                    <DropdownMenuItem onClick={() => navigate("/contratos?history=true")}>
+                      <FileText className="h-4 w-4 mr-2" />
+                      Contratos
+                    </DropdownMenuItem>
+                  )}
+                  {/* Hotseat */}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/hotseat")}>
+                      <Heart className="h-4 w-4 mr-2" />
+                      Hotseat
+                    </DropdownMenuItem>
+                  )}
+                  {/* Onboarding */}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding")}>
+                      <BookOpen className="h-4 w-4 mr-2" />
+                      Onboarding
+                    </DropdownMenuItem>
+                  )}
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/nota-fiscal")}>
                     <FileText className="h-4 w-4 mr-2" />
                     Nota Fiscal
@@ -1982,6 +2013,17 @@ const OnboardingTasksPage = () => {
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp")}>
                     <MessageSquare className="h-4 w-4 mr-2" />
                     UNV Disparador
+                  </DropdownMenuItem>
+                  {/* Vagas RH */}
+                  {canAccessHR && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/vagas")}>
+                      <Briefcase className="h-4 w-4 mr-2" />
+                      Vagas (RH)
+                    </DropdownMenuItem>
+                  )}
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/slide-generator")}>
+                    <Presentation className="h-4 w-4 mr-2" />
+                    Gerador de Slides
                   </DropdownMenuItem>
                   {isAdmin && (
                     <>
@@ -2006,7 +2048,7 @@ const OnboardingTasksPage = () => {
                         <RefreshCw className="h-4 w-4 mr-2" />
                         Renovações
                       </DropdownMenuItem>
-                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations")}>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cancellations-retention")}>
                         <AlertTriangle className="h-4 w-4 mr-2" />
                         Cancelamentos & Retenção
                       </DropdownMenuItem>
@@ -2032,7 +2074,6 @@ const OnboardingTasksPage = () => {
                         Gamificação Geral
                       </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/commercial-actions")}>
-
                         <Target className="h-4 w-4 mr-2" />
                         Ações Comerciais
                       </DropdownMenuItem>
@@ -2043,6 +2084,10 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/cohort-retention")}>
                         <Users2 className="h-4 w-4 mr-2" />
                         Análise de Cohort
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/executive")}>
+                        <Activity className="h-4 w-4 mr-2" />
+                        Dashboard Executivo
                       </DropdownMenuItem>
                       {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                         <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
@@ -2063,7 +2108,13 @@ const OnboardingTasksPage = () => {
                       </DropdownMenuItem>
                     </>
                   )}
-                  {/* Resultados for CS and consultants in mobile menu */}
+                  {canCreateCompany && (
+                    <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/staff")}>
+                      <Users className="h-4 w-4 mr-2" />
+                      Equipe
+                    </DropdownMenuItem>
+                  )}
+                  {/* Resultados for CS and consultants */}
                   {canAccessCRM && (
                     <DropdownMenuItem onClick={() => navigate("/crm")}>
                       <Target className="h-4 w-4 mr-2" />
@@ -2076,7 +2127,20 @@ const OnboardingTasksPage = () => {
                       Resultados
                     </DropdownMenuItem>
                   )}
-                  {/* UNV Circle - permission-gated */}
+                  {/* UNV Academy */}
+                  {canAccessAnalytics && (
+                    <>
+                      <DropdownMenuItem onClick={() => navigate("/pdi")}>
+                        <Target className="h-4 w-4 mr-2" />
+                        PDI
+                      </DropdownMenuItem>
+                      <DropdownMenuItem onClick={() => navigate("/academy")}>
+                        <GraduationCap className="h-4 w-4 mr-2" />
+                        UNV Academy
+                      </DropdownMenuItem>
+                    </>
+                  )}
+                  {/* UNV Circle */}
                   {canAccessCircle && (
                     <DropdownMenuItem onClick={() => navigate("/circle")}>
                       <Sparkles className="h-4 w-4 mr-2" />
@@ -2087,6 +2151,13 @@ const OnboardingTasksPage = () => {
                   <DropdownMenuItem onClick={() => setShowStaffSettings(true)}>
                     <User className="h-4 w-4 mr-2" />
                     Meu Perfil
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={async () => {
+                    await supabase.auth.signOut();
+                    navigate("/onboarding-tasks/login");
+                  }}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Sair
                   </DropdownMenuItem>
                 </DropdownMenuContent>
               </DropdownMenu>
