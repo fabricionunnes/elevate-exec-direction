@@ -237,13 +237,13 @@ Deno.serve(async (req) => {
         company_id: companyId,
         description: service_name,
         amount_cents,
-        recurrence: "monthly",
+        recurrence: isRecurring ? "monthly" : "unique",
         installments: isRecurring ? 12 : 1,
         payment_method: "boleto",
         next_charge_date: tomorrow,
         customer_name: company.name,
         customer_email: company.email,
-        customer_document: company.document,
+        customer_document: company.cnpj,
         customer_phone: company.phone,
         pagarme_plan_id: subscriptionId,
         pagarme_link_url: invoiceUrl,
@@ -256,20 +256,29 @@ Deno.serve(async (req) => {
 
     if (rcError) console.error("[asaas-service-purchase] Recurring charge error:", rcError);
 
-    // 5. Create first invoice
+    // 5. Create first invoice shown in financial menus
+    let createdInvoiceId: string | null = null;
     if (recurringCharge?.id) {
-      const { error: invError } = await supabase.from("company_invoices").insert({
+      const { data: invoiceData, error: invError } = await supabase.from("company_invoices").insert({
         company_id: companyId,
         recurring_charge_id: recurringCharge.id,
         description: service_name,
         amount_cents,
         due_date: tomorrow,
         status: "pending",
+        payment_method: "boleto",
         installment_number: 1,
         total_installments: isRecurring ? 12 : 1,
-        payment_link_url: invoiceUrl,
-      });
-      if (invError) console.error("[asaas-service-purchase] Invoice error:", invError);
+        payment_link_url: invoiceUrl || null,
+        notes: `Compra self-service: ${service_name} (${billing_type})`,
+      } as any)
+      .select("id")
+      .single();
+      if (invError) {
+        console.error("[asaas-service-purchase] Invoice error:", invError);
+      } else {
+        createdInvoiceId = invoiceData?.id ?? null;
+      }
     }
 
     // 6. Create permission records (disabled - will be enabled by webhook after payment)
@@ -283,7 +292,7 @@ Deno.serve(async (req) => {
         .select("id")
         .eq("project_id", project_id)
         .eq("menu_key", key)
-        .single();
+        .maybeSingle();
 
       if (!existing) {
         await supabase.from("project_menu_permissions").insert({
@@ -295,20 +304,22 @@ Deno.serve(async (req) => {
     }
 
     // 7. Save purchase record
-    const { error: purchaseError } = await supabase.from("service_purchases").insert({
+    const { error: purchaseError } = await supabase.from("service_purchases").upsert({
       project_id,
       service_catalog_id,
       menu_key,
       billing_type: billing_type || "monthly",
       amount_cents,
-      status: "active",
+      status: "pending_payment",
       recurring_charge_id: recurringCharge?.id || null,
       asaas_subscription_id: subscriptionId,
       purchased_by,
-    });
+    }, {
+      onConflict: "project_id,menu_key"
+    } as any);
     if (purchaseError) console.error("[asaas-service-purchase] Purchase record error:", purchaseError);
 
-    // 8. Create financial receivable
+    // 8. Mirror receivable for legacy financial flow
     const amountReais = amount_cents / 100;
     const { error: frError } = await supabase.from("financial_receivables").insert({
       company_id: companyId,
@@ -319,8 +330,8 @@ Deno.serve(async (req) => {
       payment_method: "boleto",
       payment_link: invoiceUrl || null,
       is_recurring: isRecurring,
-      notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}`,
-    });
+      notes: `Contratação via catálogo de serviços pelo cliente. Menu: ${menu_key}. Fatura: ${createdInvoiceId ?? "n/a"}`,
+    } as any);
     if (frError) console.error("[asaas-service-purchase] Financial receivable error:", frError);
 
     // 9. Notify master and admin staff
