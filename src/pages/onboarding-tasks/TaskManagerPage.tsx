@@ -115,34 +115,8 @@ const TaskManagerPage = () => {
       if (!isAdmin && currentStaff) {
         filterByStaffId = currentStaff.id;
       } else if (isAdmin && staffIdToFilter) {
-        // Admin filtering by a specific consultant: show only tasks from projects where
-        // that consultant is the consultant_id or cs_id on the project or company
-        const { data: assignedProjects } = await supabase
-          .from("onboarding_projects")
-          .select("id")
-          .or(`consultant_id.eq.${staffIdToFilter},cs_id.eq.${staffIdToFilter}`);
-
-        const { data: companyProjects } = await supabase
-          .from("onboarding_companies")
-          .select("id")
-          .or(`consultant_id.eq.${staffIdToFilter},cs_id.eq.${staffIdToFilter}`);
-
-        const projectIds = new Set(assignedProjects?.map(p => p.id) || []);
-
-        if (companyProjects?.length) {
-          const { data: projectsFromCompanies } = await supabase
-            .from("onboarding_projects")
-            .select("id")
-            .in("onboarding_company_id", companyProjects.map(c => c.id));
-          projectsFromCompanies?.forEach(p => projectIds.add(p.id));
-        }
-
-        allowedProjectIds = Array.from(projectIds);
-        if (allowedProjectIds.length === 0) {
-          setTasks([]);
-          setLoading(false);
-          return;
-        }
+        // Admin filtering by a specific staff member: show tasks delegated to them
+        filterByStaffId = staffIdToFilter;
       }
 
       const buildQuery = (statuses: ("pending" | "in_progress" | "completed")[], limit: number) => {
