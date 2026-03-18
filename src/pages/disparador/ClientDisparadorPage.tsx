@@ -90,7 +90,7 @@ const ClientDisparadorPage = () => {
 
       if (!userAccess || !["client", "gerente"].includes(userAccess.role)) {
         toast.error("Acesso não autorizado");
-        navigate("/");
+        navigate("/onboarding-tasks/login");
         return;
       }
 

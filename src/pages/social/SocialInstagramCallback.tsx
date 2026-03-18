@@ -149,7 +149,7 @@ export default function SocialInstagramCallback() {
     } else if (projectId) {
       navigate(`/social/${projectId}/settings`);
     } else {
-      navigate("/");
+      navigate("/onboarding-tasks/login");
     }
   };
 
