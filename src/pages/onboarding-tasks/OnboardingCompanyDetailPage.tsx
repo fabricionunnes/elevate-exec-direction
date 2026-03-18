@@ -567,46 +567,54 @@ const OnboardingCompanyDetailPage = () => {
 
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-4 sm:mb-6 flex-wrap h-auto gap-1 overflow-x-auto w-full justify-start">
-              <TabsTrigger value="info" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                Informações
-              </TabsTrigger>
-              {!isNew && (
-                <TabsTrigger value="projects" className="gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Projetos ({projects.length})
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1">
+              <TabsList className="mb-4 sm:mb-6 h-auto gap-1 inline-flex w-max sm:w-full sm:flex-wrap justify-start">
+                <TabsTrigger value="info" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Informações</span>
+                  <span className="sm:hidden">Info</span>
                 </TabsTrigger>
-              )}
-              <TabsTrigger value="team" className="gap-2">
-                <Users className="h-4 w-4" />
-                Equipe
-              </TabsTrigger>
-              <TabsTrigger value="contacts" className="gap-2">
-                <UserCircle className="h-4 w-4" />
-                Contatos
-              </TabsTrigger>
-              <TabsTrigger value="contract" className="gap-2">
-                <FileText className="h-4 w-4" />
-                Contrato
-              </TabsTrigger>
-              <TabsTrigger value="briefing" className="gap-2">
-                <Target className="h-4 w-4" />
-                Briefing & Metas
-              </TabsTrigger>
-              {!isNew && (
-                <TabsTrigger value="points" className="gap-2">
-                  <Trophy className="h-4 w-4" />
-                  Pontuação
+                {!isNew && (
+                  <TabsTrigger value="projects" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Projetos ({projects.length})</span>
+                    <span className="sm:hidden">Proj. ({projects.length})</span>
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="team" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Equipe
                 </TabsTrigger>
-              )}
-              {!isNew && canViewCompanyFinancial && (
-                <TabsTrigger value="financial" className="gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Financeiro
+                <TabsTrigger value="contacts" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <UserCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Contatos</span>
+                  <span className="sm:hidden">Cont.</span>
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger value="contract" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Contrato
+                </TabsTrigger>
+                <TabsTrigger value="briefing" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Briefing & Metas</span>
+                  <span className="sm:hidden">Brief.</span>
+                </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="points" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Pontuação</span>
+                    <span className="sm:hidden">Pts</span>
+                  </TabsTrigger>
+                )}
+                {!isNew && canViewCompanyFinancial && (
+                  <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Financeiro</span>
+                    <span className="sm:hidden">Fin.</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Info Tab */}
             <TabsContent value="info">
