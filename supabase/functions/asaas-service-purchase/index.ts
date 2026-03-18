@@ -200,7 +200,7 @@ Deno.serve(async (req) => {
     const { data: recurringCharge } = await supabase
       .from("company_recurring_charges")
       .insert({
-        company_id: project.company_id,
+        company_id: companyId,
         description: service_name,
         amount_cents,
         recurrence: isRecurring ? "monthly" : "monthly",
