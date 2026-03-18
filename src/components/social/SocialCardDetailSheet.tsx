@@ -1452,6 +1452,33 @@ export const SocialCardDetailSheet = ({
                     <><Sparkles className="h-3.5 w-3.5" /> {aiGenerateMode === "carousel" ? `Gerar Carrossel (${aiCarouselCount} slides)` : "Gerar Imagem"}</>
                   )}
                 </Button>
+                {aiGenerateMode === "carousel" && (
+                  <div className="flex items-center gap-2">
+                    <div className="flex-1 h-px bg-border" />
+                    <span className="text-xs text-muted-foreground">ou</span>
+                    <div className="flex-1 h-px bg-border" />
+                  </div>
+                )}
+                {aiGenerateMode === "carousel" && (
+                  <Button
+                    size="sm"
+                    variant="outline"
+                    onClick={() => {
+                      if (fileInputRef.current) {
+                        fileInputRef.current.accept = "image/*";
+                        fileInputRef.current.click();
+                        setTimeout(() => {
+                          if (fileInputRef.current) fileInputRef.current.accept = "image/*,video/*";
+                        }, 1000);
+                      }
+                    }}
+                    disabled={card.is_locked || uploading}
+                    className="gap-1.5 w-full"
+                  >
+                    {uploading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Upload className="h-3.5 w-3.5" />}
+                    Enviar imagens manualmente
+                  </Button>
+                )}
                   </>
                 )}
 
