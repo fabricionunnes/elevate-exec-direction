@@ -216,6 +216,74 @@ export const CompanyBriefingPanel = ({ companyId, projectId, userRole, isStaffAd
     }
   };
 
+  const fetchMarketingForm = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("marketing_consultation_forms")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!error) setMarketingForm(data);
+    } catch (err) {
+      console.error("Error fetching marketing form:", err);
+    }
+  };
+
+  const createMarketingForm = async () => {
+    if (!projectId) return;
+    setCreatingMarketingForm(true);
+    try {
+      const { data, error } = await supabase
+        .from("marketing_consultation_forms")
+        .insert({ project_id: projectId })
+        .select("*")
+        .single();
+      if (error) throw error;
+      setMarketingForm(data);
+      toast.success("Formulário de marketing criado!");
+    } catch (err) {
+      console.error("Error creating marketing form:", err);
+      toast.error("Erro ao criar formulário");
+    } finally {
+      setCreatingMarketingForm(false);
+    }
+  };
+
+  const fetchFinancialForm = async () => {
+    if (!projectId) return;
+    try {
+      const { data, error } = await supabase
+        .from("financial_consultation_forms")
+        .select("*")
+        .eq("project_id", projectId)
+        .maybeSingle();
+      if (!error) setFinancialForm(data);
+    } catch (err) {
+      console.error("Error fetching financial form:", err);
+    }
+  };
+
+  const createFinancialForm = async () => {
+    if (!projectId) return;
+    setCreatingFinancialForm(true);
+    try {
+      const { data, error } = await supabase
+        .from("financial_consultation_forms")
+        .insert({ project_id: projectId })
+        .select("*")
+        .single();
+      if (error) throw error;
+      setFinancialForm(data);
+      toast.success("Formulário financeiro criado!");
+    } catch (err) {
+      console.error("Error creating financial form:", err);
+      toast.error("Erro ao criar formulário");
+    } finally {
+      setCreatingFinancialForm(false);
+    }
+  };
+
   const fetchSalesHistory = async () => {
     try {
       const { data, error } = await supabase
