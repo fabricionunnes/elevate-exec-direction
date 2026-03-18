@@ -2063,7 +2063,7 @@ export const KPIDashboardTab = ({
                   {calculatedMetrics.overallConversion.toFixed(1)}%
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Conversão Geral ({calculatedMetrics.conversionStages[0]?.name} → Vendas)
+                  Conversão Geral ({calculatedMetrics.conversionBaseName} → Vendas)
                 </p>
               </div>
             )}
