@@ -131,8 +131,8 @@ const TaskManagerPage = () => {
           .order("due_date", { ascending: true, nullsFirst: false })
           .limit(limit);
 
-        if (allowedProjectIds) {
-          q = q.in("project_id", allowedProjectIds);
+        if (filterByStaffId) {
+          q = q.eq("responsible_staff_id", filterByStaffId);
         }
         return q;
       };
