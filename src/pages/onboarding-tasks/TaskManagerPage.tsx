@@ -106,18 +106,9 @@ const TaskManagerPage = () => {
           ? null
           : selectedStaffId;
 
-      // Determine staff filter for tasks
-
-      // For non-admin (consultants/CS): only show tasks delegated to them (responsible_staff_id)
-      let filterByStaffId: string | null = null;
-
-      if (!isAdmin && currentStaff) {
-        // Consultants/CS: only their own tasks, never unassigned
-        filterByStaffId = currentStaff.id;
-      } else if (isAdmin && staffIdToFilter) {
-        // Admin filtering by a specific staff member
-        filterByStaffId = staffIdToFilter;
-      }
+      const projectStaffIdFilter = !isAdmin
+        ? currentStaff?.id ?? null
+        : staffIdToFilter;
 
       const buildQuery = (statuses: ("pending" | "in_progress" | "completed")[], limit: number) => {
         let q = supabase
@@ -125,16 +116,27 @@ const TaskManagerPage = () => {
           .select(`
             id, title, description, status, priority, due_date, start_date,
             project_id, responsible_staff_id, assignee_id, tags, recurrence,
-            onboarding_projects!inner(product_name, status, onboarding_companies(name, status))
+            onboarding_projects!inner(
+              product_name,
+              status,
+              consultant_id,
+              cs_id,
+              onboarding_companies(name, status)
+            )
           `)
           .in("status", statuses)
           .in("onboarding_projects.status", ["active", "notice"])
           .order("due_date", { ascending: true, nullsFirst: false })
           .limit(limit);
 
-        if (filterByStaffId) {
-          q = q.eq("responsible_staff_id", filterByStaffId);
+        if (projectStaffIdFilter) {
+          q = q
+            .eq("responsible_staff_id", projectStaffIdFilter)
+            .or(`consultant_id.eq.${projectStaffIdFilter},cs_id.eq.${projectStaffIdFilter}`, {
+              foreignTable: "onboarding_projects"
+            });
         }
+
         return q;
       };
 
