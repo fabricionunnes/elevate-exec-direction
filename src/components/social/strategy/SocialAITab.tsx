@@ -148,42 +148,53 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   };
 
   const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Por favor, selecione uma imagem");
+    const remainingSlots = 5 - referenceImages.length;
+    if (remainingSlots <= 0) {
+      toast.error("Máximo de 5 imagens de referência");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Imagem muito grande (máx 5MB)");
-      return;
-    }
-
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
     setUploadingReference(true);
     try {
-      // Sanitize filename: remove accents, special chars, and spaces
-      const sanitizedName = file.name
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "") // Remove accents
-        .replace(/[^a-zA-Z0-9.-]/g, "_"); // Replace special chars with underscore
-      const fileName = `${projectId}/reference/${Date.now()}-${sanitizedName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("social-briefing")
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: false
-        });
+      const newUrls: string[] = [];
+      for (const file of filesToProcess) {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Por favor, selecione apenas imagens");
+          continue;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("Imagem muito grande (máx 5MB)");
+          continue;
+        }
 
-      if (uploadError) throw uploadError;
+        const sanitizedName = file.name
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9.-]/g, "_");
+        const fileName = `${projectId}/reference/${Date.now()}-${sanitizedName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("social-briefing")
+          .upload(fileName, file, {
+            contentType: file.type,
+            upsert: false
+          });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("social-briefing")
-        .getPublicUrl(fileName);
+        if (uploadError) throw uploadError;
 
-      setReferenceImage(publicUrl);
-      toast.success("Imagem de referência carregada!");
+        const { data: { publicUrl } } = supabase.storage
+          .from("social-briefing")
+          .getPublicUrl(fileName);
+
+        newUrls.push(publicUrl);
+      }
+      if (newUrls.length > 0) {
+        setReferenceImages(prev => [...prev, ...newUrls]);
+        toast.success(`${newUrls.length} imagem(ns) de referência carregada(s)!`);
+      }
     } catch (error) {
       console.error("Error uploading reference:", error);
       toast.error("Erro ao carregar imagem");
@@ -195,8 +206,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
     }
   };
 
-  const removeReferenceImage = () => {
-    setReferenceImage(null);
+  const removeReferenceImage = (index: number) => {
+    setReferenceImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleGenerateSuggestions = async () => {
