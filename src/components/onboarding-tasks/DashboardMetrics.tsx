@@ -1564,7 +1564,7 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">S/ Meta</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer hidden lg:block", isCardActive("goals", "hasEntries") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasEntries")}>
+            <Card className={cn("cursor-pointer", isCardActive("goals", "hasEntries") && "ring-2 ring-primary")} onClick={() => handleCardClick("goals", "hasEntries")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold">{goalsMetrics.totalWithEntries}</p>
                 <p className="text-[8px] sm:text-[9px] text-primary/70">{companyMetrics.activeCompanies > 0 ? Math.round((goalsMetrics.totalWithEntries / companyMetrics.activeCompanies) * 100) : 0}%</p>
