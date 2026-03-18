@@ -82,8 +82,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   const [carouselCount, setCarouselCount] = useState("3");
   const [carouselConnected, setCarouselConnected] = useState(false);
   
-  // Reference image upload
-  const [referenceImage, setReferenceImage] = useState<string | null>(null);
+  // Reference images upload (multiple)
+  const [referenceImages, setReferenceImages] = useState<string[]>([]);
   const [uploadingReference, setUploadingReference] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
   
@@ -148,42 +148,53 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
   };
 
   const handleReferenceUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+    const files = e.target.files;
+    if (!files || files.length === 0) return;
 
-    if (!file.type.startsWith("image/")) {
-      toast.error("Por favor, selecione uma imagem");
+    const remainingSlots = 5 - referenceImages.length;
+    if (remainingSlots <= 0) {
+      toast.error("Máximo de 5 imagens de referência");
       return;
     }
 
-    if (file.size > 5 * 1024 * 1024) {
-      toast.error("Imagem muito grande (máx 5MB)");
-      return;
-    }
-
+    const filesToProcess = Array.from(files).slice(0, remainingSlots);
     setUploadingReference(true);
     try {
-      // Sanitize filename: remove accents, special chars, and spaces
-      const sanitizedName = file.name
-        .normalize("NFD")
-        .replace(/[\u0300-\u036f]/g, "") // Remove accents
-        .replace(/[^a-zA-Z0-9.-]/g, "_"); // Replace special chars with underscore
-      const fileName = `${projectId}/reference/${Date.now()}-${sanitizedName}`;
-      const { error: uploadError } = await supabase.storage
-        .from("social-briefing")
-        .upload(fileName, file, {
-          contentType: file.type,
-          upsert: false
-        });
+      const newUrls: string[] = [];
+      for (const file of filesToProcess) {
+        if (!file.type.startsWith("image/")) {
+          toast.error("Por favor, selecione apenas imagens");
+          continue;
+        }
+        if (file.size > 5 * 1024 * 1024) {
+          toast.error("Imagem muito grande (máx 5MB)");
+          continue;
+        }
 
-      if (uploadError) throw uploadError;
+        const sanitizedName = file.name
+          .normalize("NFD")
+          .replace(/[\u0300-\u036f]/g, "")
+          .replace(/[^a-zA-Z0-9.-]/g, "_");
+        const fileName = `${projectId}/reference/${Date.now()}-${sanitizedName}`;
+        const { error: uploadError } = await supabase.storage
+          .from("social-briefing")
+          .upload(fileName, file, {
+            contentType: file.type,
+            upsert: false
+          });
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("social-briefing")
-        .getPublicUrl(fileName);
+        if (uploadError) throw uploadError;
 
-      setReferenceImage(publicUrl);
-      toast.success("Imagem de referência carregada!");
+        const { data: { publicUrl } } = supabase.storage
+          .from("social-briefing")
+          .getPublicUrl(fileName);
+
+        newUrls.push(publicUrl);
+      }
+      if (newUrls.length > 0) {
+        setReferenceImages(prev => [...prev, ...newUrls]);
+        toast.success(`${newUrls.length} imagem(ns) de referência carregada(s)!`);
+      }
     } catch (error) {
       console.error("Error uploading reference:", error);
       toast.error("Erro ao carregar imagem");
@@ -195,8 +206,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
     }
   };
 
-  const removeReferenceImage = () => {
-    setReferenceImage(null);
+  const removeReferenceImage = (index: number) => {
+    setReferenceImages(prev => prev.filter((_, i) => i !== index));
   };
 
   const handleGenerateSuggestions = async () => {
@@ -250,7 +261,8 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
           includeLogoPref: includeLogo,
           carouselCount: isCarousel ? imagesCount : undefined,
           carouselConnected: isCarousel ? carouselConnected : undefined,
-          referenceImageUrl: referenceImage || undefined
+          referenceImageUrls: referenceImages.length > 0 ? referenceImages : undefined,
+          referenceImageUrl: referenceImages[0] || undefined
         }
       });
 
@@ -270,7 +282,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         }, ...prev]);
         toast.success(`${data.images.length} imagens do carrossel geradas!`);
         setImagePrompt("");
-        setReferenceImage(null);
+        setReferenceImages([]);
       } else if (data.image_url) {
         setGeneratedImages(prev => [{
           url: data.image_url,
@@ -279,7 +291,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         }, ...prev]);
         toast.success("Imagem gerada com sucesso!");
         setImagePrompt("");
-        setReferenceImage(null);
+        setReferenceImages([]);
       }
     } catch (error) {
       console.error("Error generating image:", error);
@@ -581,45 +593,47 @@ CTA: ${suggestion.cta}`;
                     />
                   </div>
 
-                  {/* Reference Image Upload */}
+                  {/* Reference Images Upload */}
                   <div className="space-y-2">
                     <Label className="flex items-center gap-2">
                       <Upload className="h-4 w-4" />
-                      Imagem de Referência (opcional)
+                      Imagens de Referência (opcional)
                     </Label>
                     <p className="text-xs text-muted-foreground">
-                      Envie uma foto de produto, pessoa ou elemento que deve aparecer na imagem gerada.
+                      Envie fotos de produto, pessoa ou elementos que devem aparecer na imagem gerada. Até 5 imagens.
                     </p>
                     
                     <input
                       ref={fileInputRef}
                       type="file"
                       accept="image/*"
+                      multiple
                       className="hidden"
                       onChange={handleReferenceUpload}
                     />
                     
-                    {referenceImage ? (
-                      <div className="flex items-center gap-3 p-2 bg-muted rounded-lg">
-                        <img 
-                          src={referenceImage} 
-                          alt="Referência" 
-                          className="h-16 w-16 object-cover rounded"
-                        />
-                        <div className="flex-1 min-w-0">
-                          <p className="text-sm font-medium truncate">Imagem carregada</p>
-                          <p className="text-xs text-muted-foreground">Esta imagem será incorporada na geração</p>
-                        </div>
-                        <Button
-                          type="button"
-                          variant="ghost"
-                          size="icon"
-                          onClick={removeReferenceImage}
-                        >
-                          <X className="h-4 w-4" />
-                        </Button>
+                    {referenceImages.length > 0 && (
+                      <div className="grid grid-cols-5 gap-2">
+                        {referenceImages.map((imgUrl, index) => (
+                          <div key={index} className="relative aspect-square rounded-lg overflow-hidden bg-muted">
+                            <img 
+                              src={imgUrl} 
+                              alt={`Referência ${index + 1}`} 
+                              className="w-full h-full object-cover"
+                            />
+                            <button
+                              type="button"
+                              onClick={() => removeReferenceImage(index)}
+                              className="absolute top-1 right-1 p-0.5 rounded-full bg-black/50 text-white hover:bg-black/70 transition-colors"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
                       </div>
-                    ) : (
+                    )}
+
+                    {referenceImages.length < 5 && (
                       <Button
                         type="button"
                         variant="outline"
@@ -630,9 +644,9 @@ CTA: ${suggestion.cta}`;
                         {uploadingReference ? (
                           <Loader2 className="h-4 w-4 animate-spin" />
                         ) : (
-                          <Upload className="h-4 w-4" />
+                          <ImagePlus className="h-4 w-4" />
                         )}
-                        {uploadingReference ? "Enviando..." : "Enviar imagem de referência"}
+                        {uploadingReference ? "Enviando..." : `Adicionar imagens (${referenceImages.length}/5)`}
                       </Button>
                     )}
                   </div>

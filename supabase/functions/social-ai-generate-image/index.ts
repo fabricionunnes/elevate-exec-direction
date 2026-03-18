@@ -106,13 +106,21 @@ Deno.serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    const { projectId, prompt, format, includeLogoPref, carouselCount, carouselConnected, referenceImageUrl, overlayText, slideTexts } = await req.json();
+    const { projectId, prompt, format, includeLogoPref, carouselCount, carouselConnected, referenceImageUrl, referenceImageUrls, overlayText, slideTexts } = await req.json();
 
     if (!projectId || !prompt) {
       return new Response(
         JSON.stringify({ error: "projectId and prompt are required" }),
         { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
       );
+    }
+
+    // Resolve all reference image URLs (support both single and multiple)
+    const allReferenceUrls: string[] = [];
+    if (referenceImageUrls && Array.isArray(referenceImageUrls) && referenceImageUrls.length > 0) {
+      allReferenceUrls.push(...referenceImageUrls);
+    } else if (referenceImageUrl) {
+      allReferenceUrls.push(referenceImageUrl);
     }
 
     // Load briefing data for brand context
@@ -143,10 +151,13 @@ Deno.serve(async (req) => {
     }
 
     // Build enhanced prompt with brand context
-    // NOTE: We do NOT pass the logo to the AI - logos are applied via programmatic overlay
-    // This ensures the EXACT logo is used, not an AI-interpreted version
     const shouldApplyLogoOverlay = includeLogoPref && logoUrl;
-    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, false, referenceImageUrl);
+    let enhancedPrompt = buildEnhancedPrompt(prompt, briefing, profile, format, false, allReferenceUrls[0] || null);
+
+    // Add multi-image context to the prompt
+    if (allReferenceUrls.length > 1) {
+      enhancedPrompt += `\n\nIMPORTANT: ${allReferenceUrls.length} reference images have been provided. Incorporate elements from ALL of these images into the generated creative. Use them as visual references for products, people, scenes, or style elements that should appear in the final image.`;
+    }
 
     // Add overlay text instruction for single images
     if (overlayText && overlayText.trim()) {
@@ -155,18 +166,17 @@ Deno.serve(async (req) => {
 
     console.log("Generating image with prompt:", enhancedPrompt);
     console.log("Logo will be applied via overlay:", shouldApplyLogoOverlay ? logoUrl : "none");
-    console.log("Reference image URL:", referenceImageUrl || "none");
+    console.log("Reference images:", allReferenceUrls.length > 0 ? allReferenceUrls : "none");
     console.log("Carousel count:", carouselCount || 1);
     console.log("Carousel connected:", carouselConnected || false);
 
-    // Build the message content - only include reference image, NOT the logo
-    // Logo is applied programmatically AFTER generation for pixel-perfect accuracy
+    // Build the message content - include all reference images, NOT the logo
     const messageImages: { type: string; image_url: { url: string } }[] = [];
     
-    if (referenceImageUrl) {
+    for (const refUrl of allReferenceUrls) {
       messageImages.push({
         type: "image_url",
-        image_url: { url: referenceImageUrl }
+        image_url: { url: refUrl }
       });
     }
 
@@ -230,11 +240,11 @@ ABSOLUTELY FORBIDDEN:
 - NO logos, brand marks, watermarks, or company name text (logo added separately)
 `;
 
-      // Add reference image if provided
-      const panoramicMessageContent: any = referenceImageUrl 
+      // Add reference images if provided
+      const panoramicMessageContent: any = allReferenceUrls.length > 0
         ? [
             { type: "text", text: panoramicPrompt },
-            { type: "image_url", image_url: { url: referenceImageUrl } }
+            ...allReferenceUrls.map(url => ({ type: "image_url", image_url: { url } }))
           ]
         : panoramicPrompt;
 
