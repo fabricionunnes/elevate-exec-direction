@@ -291,7 +291,7 @@ export const SocialAITab = ({ projectId, boardId }: SocialAITabProps) => {
         }, ...prev]);
         toast.success("Imagem gerada com sucesso!");
         setImagePrompt("");
-        setReferenceImage(null);
+        setReferenceImages([]);
       }
     } catch (error) {
       console.error("Error generating image:", error);
