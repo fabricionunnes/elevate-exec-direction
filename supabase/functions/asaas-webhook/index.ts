@@ -302,7 +302,7 @@ Deno.serve(async (req) => {
     }
 
     // Handle service purchase permission management
-    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus);
+    await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus, paymentValueCents, dueDate);
 
     return new Response(JSON.stringify({ received: true, matched }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
