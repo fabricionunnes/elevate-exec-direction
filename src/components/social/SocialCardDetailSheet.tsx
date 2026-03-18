@@ -243,6 +243,7 @@ export const SocialCardDetailSheet = ({
     setObjective(card.objective);
     setCopyText(card.copy_text || "");
     setAiPrompt("");
+    setAiReferenceImages([]);
     if (card.copy_text?.trim()) {
       generatePromptSuggestion(card.copy_text, card.theme || "", card.content_type || "");
     }
