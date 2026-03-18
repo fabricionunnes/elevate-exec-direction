@@ -1192,10 +1192,12 @@ export const KPIDashboardTab = ({
       }
     }
 
-    // Calculate overall conversion (first stage to sales)
-    const firstStage = conversionStages[0];
-    const overallConversion = firstStage && firstStage.value > 0 && totalSales > 0
-      ? (totalSales / firstStage.value) * 100
+    // Calculate overall conversion: use Calls com Pitch as base if available, otherwise first stage
+    const conversionBase = pitchKpi && totalPitch > 0
+      ? { name: 'Calls c/ Pitch', value: totalPitch }
+      : conversionStages[0];
+    const overallConversion = conversionBase && conversionBase.value > 0 && totalSales > 0
+      ? (totalSales / conversionBase.value) * 100
       : 0;
 
     // Legacy rates for backward compatibility
@@ -1218,6 +1220,7 @@ export const KPIDashboardTab = ({
       proposalToSale,
       leadToSale,
       overallConversion,
+      conversionBaseName: conversionBase?.name || conversionStages[0]?.name,
       avgTicket,
       conversionStages,
       conversionRates,
@@ -2060,7 +2063,7 @@ export const KPIDashboardTab = ({
                   {calculatedMetrics.overallConversion.toFixed(1)}%
                 </div>
                 <p className="text-xs text-muted-foreground">
-                  Conversão Geral ({calculatedMetrics.conversionStages[0]?.name} → Vendas)
+                  Conversão Geral ({calculatedMetrics.conversionBaseName} → Vendas)
                 </p>
               </div>
             )}
