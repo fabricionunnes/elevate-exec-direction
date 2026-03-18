@@ -1480,11 +1480,15 @@ export const SocialCardDetailSheet = ({
                     size="sm"
                     variant="outline"
                     onClick={() => {
+                      setContentType("carrossel");
                       if (fileInputRef.current) {
                         fileInputRef.current.accept = "image/*";
+                        fileInputRef.current.multiple = true;
                         fileInputRef.current.click();
                         setTimeout(() => {
-                          if (fileInputRef.current) fileInputRef.current.accept = "image/*,video/*";
+                          if (fileInputRef.current) {
+                            fileInputRef.current.accept = "image/*,video/*";
+                          }
                         }, 1000);
                       }
                     }}
