@@ -350,6 +350,7 @@ const App = () => (
               <Route path="/onboarding-tasks/vagas" element={<GlobalJobOpeningsPage />} />
               <Route path="/onboarding-tasks/banco-talentos" element={<GlobalTalentPoolResumesPage />} />
               <Route path="/onboarding-tasks/hotseat" element={<HotseatAdminPage />} />
+              <Route path="/onboarding-tasks/consultorias" element={<ConsultoriasAdminPage />} />
               <Route path="/onboarding-tasks/client-access" element={<ClientAccessReportPage />} />
               <Route path="/onboarding-tasks/billing-rules" element={<BillingRulesPage />} />
               <Route path="/onboarding-tasks/survey-send-config" element={<SurveySendConfigPage />} />
