@@ -1521,7 +1521,7 @@ const DashboardMetrics = ({
         </TabsContent>
 
         <TabsContent value="metas" className="mt-2 sm:mt-3">
-          <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
+          <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-7 gap-1.5 sm:gap-2">
             <Card className={cn("cursor-pointer", isCardActive("goals", "100plus") && "ring-2 ring-green-500")} onClick={() => handleCardClick("goals", "100plus")}>
               <CardContent className="p-2 sm:p-3 text-center">
                 <p className="text-lg sm:text-xl font-bold text-green-500">{goalsMetrics.meetingGoal}</p>
