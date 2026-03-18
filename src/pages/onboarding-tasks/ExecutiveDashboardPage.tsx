@@ -498,13 +498,15 @@ export default function ExecutiveDashboardPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full max-w-md mb-6 ${isLeadershipUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          {isLeadershipUser && (
-            <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
-          )}
-          <TabsTrigger value="oneOnOne">1:1 Consultor</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className={`grid w-full max-w-md mb-4 sm:mb-6 ${isLeadershipUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
+            {isLeadershipUser && (
+              <TabsTrigger value="leadership" className="text-xs sm:text-sm">Reunião Lid.</TabsTrigger>
+            )}
+            <TabsTrigger value="oneOnOne" className="text-xs sm:text-sm">1:1 Consultor</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard" className="space-y-6">
           {/* Hero KPIs */}
