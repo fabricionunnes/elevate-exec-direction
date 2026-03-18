@@ -1349,6 +1349,56 @@ export const SocialCardDetailSheet = ({
                   className="min-h-[60px] text-sm"
                   rows={3}
                 />
+
+                {/* Reference images for AI */}
+                <div className="space-y-2">
+                  <Label className="text-xs text-muted-foreground flex items-center gap-1.5">
+                    <ImagePlus className="h-3.5 w-3.5" />
+                    Imagens de referência (opcional)
+                  </Label>
+                  <input
+                    ref={aiReferenceInputRef}
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    className="hidden"
+                    onChange={handleAiReferenceUpload}
+                    disabled={card.is_locked || uploadingAiReference}
+                  />
+                  {aiReferenceImages.length > 0 && (
+                    <div className="flex gap-2 flex-wrap">
+                      {aiReferenceImages.map((imgUrl, idx) => (
+                        <div key={idx} className="relative h-14 w-14 rounded-md overflow-hidden bg-muted">
+                          <img src={imgUrl} alt={`Ref ${idx + 1}`} className="w-full h-full object-cover" />
+                          <button
+                            type="button"
+                            onClick={() => setAiReferenceImages(prev => prev.filter((_, i) => i !== idx))}
+                            className="absolute top-0.5 right-0.5 p-0.5 rounded-full bg-black/50 text-white hover:bg-black/70"
+                          >
+                            <X className="h-2.5 w-2.5" />
+                          </button>
+                        </div>
+                      ))}
+                    </div>
+                  )}
+                  {aiReferenceImages.length < 5 && (
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="sm"
+                      className="w-full gap-1.5 text-xs"
+                      onClick={() => aiReferenceInputRef.current?.click()}
+                      disabled={card.is_locked || uploadingAiReference || generatingAiImage}
+                    >
+                      {uploadingAiReference ? (
+                        <><Loader2 className="h-3.5 w-3.5 animate-spin" /> Enviando...</>
+                      ) : (
+                        <><ImagePlus className="h-3.5 w-3.5" /> Adicionar fotos ({aiReferenceImages.length}/5)</>
+                      )}
+                    </Button>
+                  )}
+                </div>
+
                 <div className="flex items-center gap-3">
                   <label className="flex items-center gap-1.5 text-sm cursor-pointer">
                     <input
