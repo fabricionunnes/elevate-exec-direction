@@ -1158,7 +1158,7 @@ export const SocialCardDetailSheet = ({
                   </button>
                   <button
                     type="button"
-                    onClick={() => setAiGenerateMode("carousel")}
+                    onClick={() => { setAiGenerateMode("carousel"); setContentType("carrossel"); }}
                     className={cn(
                       "flex-1 text-xs py-1.5 px-3 rounded-md transition-colors flex items-center justify-center gap-1.5",
                       aiGenerateMode === "carousel" 
