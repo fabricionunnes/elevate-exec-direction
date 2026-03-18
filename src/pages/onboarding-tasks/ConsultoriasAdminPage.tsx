@@ -41,11 +41,6 @@ import { ptBR } from "date-fns/locale";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
 } from "@/components/ui/select";
 import {
   Dialog,
