@@ -447,35 +447,37 @@ export default function ExecutiveDashboardPage() {
   const isLeadershipUser = (userEmail ?? "").trim().toLowerCase() === "fabricio@universidadevendas.com.br";
 
   return (
-    <div className="container mx-auto py-6 px-4 space-y-6">
+    <div className="container mx-auto py-4 sm:py-6 px-3 sm:px-4 space-y-4 sm:space-y-6">
       {/* Header */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
-            <ArrowLeft className="h-5 w-5" />
+      <div className="flex flex-col gap-3 sm:gap-4">
+        <div className="flex items-center gap-2 sm:gap-4">
+          <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" onClick={() => navigate("/onboarding-tasks")}>
+            <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
           </Button>
-          <div>
-            <h1 className="text-2xl font-bold">Dashboard Executivo</h1>
-            <p className="text-muted-foreground">
+          <div className="min-w-0">
+            <h1 className="text-lg sm:text-2xl font-bold truncate">Dashboard Executivo</h1>
+            <p className="text-xs sm:text-sm text-muted-foreground">
               Visão consolidada da saúde do portfólio
             </p>
           </div>
         </div>
-        <div className="flex items-center gap-3">
+        <div className="flex items-center gap-2 sm:gap-3 flex-wrap">
             {isLeadershipUser && (
               <Button 
                 variant="outline"
+                size="sm"
                 onClick={() => navigate("/onboarding-tasks/ceo")}
                 className="gap-2"
               >
                 <Activity className="h-4 w-4" />
-                Painel do CEO
+                <span className="hidden sm:inline">Painel do CEO</span>
+                <span className="sm:hidden">CEO</span>
               </Button>
             )}
           <ExecutiveReportGenerator />
           <Select value={period} onValueChange={setPeriod}>
-            <SelectTrigger className="w-[150px]">
-              <Calendar className="h-4 w-4 mr-2" />
+            <SelectTrigger className="w-[130px] sm:w-[150px] h-8 sm:h-10 text-xs sm:text-sm">
+              <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 mr-1 sm:mr-2" />
               <SelectValue />
             </SelectTrigger>
             <SelectContent>
@@ -484,7 +486,7 @@ export default function ExecutiveDashboardPage() {
               <SelectItem value="90">Últimos 90 dias</SelectItem>
             </SelectContent>
           </Select>
-          <Button variant="outline" onClick={handleRefresh} disabled={refreshing}>
+          <Button variant="outline" size="sm" onClick={handleRefresh} disabled={refreshing}>
             {refreshing ? (
               <Loader2 className="h-4 w-4 animate-spin" />
             ) : (
@@ -496,13 +498,15 @@ export default function ExecutiveDashboardPage() {
 
       {/* Tabs */}
       <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
-        <TabsList className={`grid w-full max-w-md mb-6 ${isLeadershipUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
-          <TabsTrigger value="dashboard">Dashboard</TabsTrigger>
-          {isLeadershipUser && (
-            <TabsTrigger value="leadership">Reunião Liderança</TabsTrigger>
-          )}
-          <TabsTrigger value="oneOnOne">1:1 Consultor</TabsTrigger>
-        </TabsList>
+        <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0">
+          <TabsList className={`grid w-full max-w-md mb-4 sm:mb-6 ${isLeadershipUser ? 'grid-cols-3' : 'grid-cols-2'}`}>
+            <TabsTrigger value="dashboard" className="text-xs sm:text-sm">Dashboard</TabsTrigger>
+            {isLeadershipUser && (
+              <TabsTrigger value="leadership" className="text-xs sm:text-sm">Reunião Lid.</TabsTrigger>
+            )}
+            <TabsTrigger value="oneOnOne" className="text-xs sm:text-sm">1:1 Consultor</TabsTrigger>
+          </TabsList>
+        </div>
 
         <TabsContent value="dashboard" className="space-y-6">
           {/* Hero KPIs */}

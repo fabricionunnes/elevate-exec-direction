@@ -522,22 +522,22 @@ const OnboardingCompanyDetailPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
+      <div className="container mx-auto px-3 sm:px-4 py-4 sm:py-8">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks/companies")}>
-              <ArrowLeft className="h-5 w-5" />
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4 sm:mb-6">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Button variant="ghost" size="icon" className="h-8 w-8 sm:h-10 sm:w-10 shrink-0" onClick={() => navigate("/onboarding-tasks/companies")}>
+              <ArrowLeft className="h-4 w-4 sm:h-5 sm:w-5" />
             </Button>
             <NexusHeader title={isNew ? "Nova Empresa" : (form.name || "Empresa")} />
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 shrink-0">
             {canDeleteCompany && !isNew && (
               <AlertDialog>
                 <AlertDialogTrigger asChild>
-                  <Button variant="destructive" disabled={deleting}>
-                    <Trash2 className="h-4 w-4 mr-2" />
-                    {deleting ? "Excluindo..." : "Excluir"}
+                  <Button variant="destructive" size="sm" disabled={deleting}>
+                    <Trash2 className="h-4 w-4 sm:mr-2" />
+                    <span className="hidden sm:inline">{deleting ? "Excluindo..." : "Excluir"}</span>
                   </Button>
                 </AlertDialogTrigger>
                 <AlertDialogContent>
@@ -557,55 +557,64 @@ const OnboardingCompanyDetailPage = () => {
                 </AlertDialogContent>
               </AlertDialog>
             )}
-            <Button onClick={handleSubmit} disabled={saving}>
-              <Save className="h-4 w-4 mr-2" />
-              {saving ? "Salvando..." : "Salvar"}
+            <Button size="sm" onClick={handleSubmit} disabled={saving}>
+              <Save className="h-4 w-4 sm:mr-2" />
+              <span className="hidden sm:inline">{saving ? "Salvando..." : "Salvar"}</span>
+              <span className="sm:hidden">{saving ? "..." : "Salvar"}</span>
             </Button>
           </div>
         </div>
 
         <form onSubmit={handleSubmit}>
           <Tabs value={activeTab} onValueChange={setActiveTab}>
-            <TabsList className="mb-6 flex-wrap h-auto gap-1">
-              <TabsTrigger value="info" className="gap-2">
-                <Building2 className="h-4 w-4" />
-                Informações
-              </TabsTrigger>
-              {!isNew && (
-                <TabsTrigger value="projects" className="gap-2">
-                  <FolderOpen className="h-4 w-4" />
-                  Projetos ({projects.length})
+            <div className="overflow-x-auto -mx-3 px-3 sm:mx-0 sm:px-0 pb-1">
+              <TabsList className="mb-4 sm:mb-6 h-auto gap-1 inline-flex w-max sm:w-full sm:flex-wrap justify-start">
+                <TabsTrigger value="info" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Informações</span>
+                  <span className="sm:hidden">Info</span>
                 </TabsTrigger>
-              )}
-              <TabsTrigger value="team" className="gap-2">
-                <Users className="h-4 w-4" />
-                Equipe
-              </TabsTrigger>
-              <TabsTrigger value="contacts" className="gap-2">
-                <UserCircle className="h-4 w-4" />
-                Contatos
-              </TabsTrigger>
-              <TabsTrigger value="contract" className="gap-2">
-                <FileText className="h-4 w-4" />
-                Contrato
-              </TabsTrigger>
-              <TabsTrigger value="briefing" className="gap-2">
-                <Target className="h-4 w-4" />
-                Briefing & Metas
-              </TabsTrigger>
-              {!isNew && (
-                <TabsTrigger value="points" className="gap-2">
-                  <Trophy className="h-4 w-4" />
-                  Pontuação
+                {!isNew && (
+                  <TabsTrigger value="projects" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <FolderOpen className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Projetos ({projects.length})</span>
+                    <span className="sm:hidden">Proj. ({projects.length})</span>
+                  </TabsTrigger>
+                )}
+                <TabsTrigger value="team" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Equipe
                 </TabsTrigger>
-              )}
-              {!isNew && canViewCompanyFinancial && (
-                <TabsTrigger value="financial" className="gap-2">
-                  <DollarSign className="h-4 w-4" />
-                  Financeiro
+                <TabsTrigger value="contacts" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <UserCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Contatos</span>
+                  <span className="sm:hidden">Cont.</span>
                 </TabsTrigger>
-              )}
-            </TabsList>
+                <TabsTrigger value="contract" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Contrato
+                </TabsTrigger>
+                <TabsTrigger value="briefing" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                  <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  <span className="hidden sm:inline">Briefing & Metas</span>
+                  <span className="sm:hidden">Brief.</span>
+                </TabsTrigger>
+                {!isNew && (
+                  <TabsTrigger value="points" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <Trophy className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Pontuação</span>
+                    <span className="sm:hidden">Pts</span>
+                  </TabsTrigger>
+                )}
+                {!isNew && canViewCompanyFinancial && (
+                  <TabsTrigger value="financial" className="gap-1.5 text-xs sm:text-sm px-2.5 sm:px-3 py-1.5">
+                    <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    <span className="hidden sm:inline">Financeiro</span>
+                    <span className="sm:hidden">Fin.</span>
+                  </TabsTrigger>
+                )}
+              </TabsList>
+            </div>
 
             {/* Info Tab */}
             <TabsContent value="info">
@@ -615,7 +624,7 @@ const OnboardingCompanyDetailPage = () => {
                   <CardDescription>Informações básicas da empresa</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="name">Nome da Empresa *</Label>
                       <Input
@@ -728,7 +737,7 @@ const OnboardingCompanyDetailPage = () => {
                       )}
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label>Segmento</Label>
                       <SegmentSelect value={form.segment} onValueChange={(value) => {
@@ -767,7 +776,7 @@ const OnboardingCompanyDetailPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="phone">Telefone</Label>
                       <Input
@@ -819,7 +828,7 @@ const OnboardingCompanyDetailPage = () => {
                       <UserCircle className="h-4 w-4" />
                       Responsável pela Empresa
                     </h3>
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <div className="space-y-2">
                         <Label htmlFor="owner_name">Nome Completo</Label>
                         <Input
@@ -1010,7 +1019,7 @@ const OnboardingCompanyDetailPage = () => {
                   <CardDescription>Vincule CS e Consultor à empresa</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="cs">CS Responsável</Label>
                       <Select 
@@ -1089,7 +1098,7 @@ const OnboardingCompanyDetailPage = () => {
                   <CardDescription>Informações contratuais</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contract_start_date">Início do Contrato</Label>
                       <Input
@@ -1109,7 +1118,7 @@ const OnboardingCompanyDetailPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="contract_value">Valor do Contrato (R$)</Label>
                       <Input
@@ -1173,7 +1182,7 @@ const OnboardingCompanyDetailPage = () => {
                       placeholder="Quais são os maiores desafios que a empresa enfrenta?"
                     />
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="goals_short_term">Metas de Curto Prazo (3-6 meses)</Label>
                       <Textarea
@@ -1193,7 +1202,7 @@ const OnboardingCompanyDetailPage = () => {
                       />
                     </div>
                   </div>
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <div className="space-y-2">
                       <Label htmlFor="target_audience">Público-Alvo</Label>
                       <Textarea
