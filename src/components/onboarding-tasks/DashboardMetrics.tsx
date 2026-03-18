@@ -1103,7 +1103,7 @@ const DashboardMetrics = ({
         </Card>
 
         <Card 
-          className="hidden sm:block cursor-pointer transition-all hover:shadow-md group relative"
+          className="hidden lg:block cursor-pointer transition-all hover:shadow-md group relative"
           onClick={(e) => {
             // If clicking the recalculate button, don't propagate
             if ((e.target as HTMLElement).closest('button')) return;
