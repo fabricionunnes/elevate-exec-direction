@@ -119,7 +119,7 @@ Deno.serve(async (req) => {
         stage_id: stage.id,
         owner_id: owner?.id || null,
         origin_id: origin?.id || null,
-        status: 'new',
+        state: 'new',
       })
       .select('id')
       .single();
