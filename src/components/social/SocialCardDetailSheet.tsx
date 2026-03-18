@@ -1501,7 +1501,6 @@ export const SocialCardDetailSheet = ({
                     <PopoverTrigger asChild>
                       <Button
                         variant="outline"
-                        disabled={card.is_locked}
                         className={cn(
                           "w-full justify-start text-left font-normal",
                           !suggestedDate && "text-muted-foreground"
