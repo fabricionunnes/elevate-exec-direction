@@ -410,8 +410,8 @@ export function GlobalAccessControlPanel({
                                 </div>
                               </div>
                             </div>
-                            <div className="flex items-center gap-3">
-                              <div className="text-right">
+                            <div className="flex items-center gap-2 sm:gap-3 shrink-0">
+                              <div className="text-right hidden sm:block">
                                 <div className="flex items-center gap-1 text-sm">
                                   <Clock className="h-3 w-3 text-muted-foreground" />
                                   <span>{formatDuration(log.session_duration_minutes)}</span>
