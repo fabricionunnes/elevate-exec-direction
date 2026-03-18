@@ -1387,7 +1387,7 @@ const DashboardMetrics = ({
                 </div>
               </CardContent>
             </Card>
-            <Card className="hidden sm:block">
+            <Card>
               <CardHeader className="pb-1 sm:pb-2 pt-2 sm:pt-3 px-3 sm:px-4"><CardTitle className="text-[10px] sm:text-xs font-medium flex items-center gap-1 sm:gap-1.5"><Percent className="h-3 w-3 sm:h-3.5 sm:w-3.5 text-red-500" />Churn Mensal</CardTitle></CardHeader>
               <CardContent className="px-3 sm:px-4 pb-2 sm:pb-3">
                 <div className="h-[60px] sm:h-[80px]">
