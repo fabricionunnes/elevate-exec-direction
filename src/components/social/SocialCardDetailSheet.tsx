@@ -1532,7 +1532,6 @@ export const SocialCardDetailSheet = ({
                     type="time"
                     value={suggestedTime}
                     onChange={(e) => setSuggestedTime(e.target.value)}
-                    disabled={card.is_locked}
                   />
                 </div>
               </div>
