@@ -58,15 +58,17 @@ Deno.serve(async (req) => {
       }
 
       case "emit": {
-        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode } = params;
+        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode, nbsCode } = params;
 
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
+        const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.trim() : "";
 
-        // Payload mínimo: serviço, valor, tomador e classificações fiscais do serviço
+        // Payload mínimo com classificações fiscais corretas do serviço
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
+          ...(normalizedNbsCode ? { nbsCode: normalizedNbsCode } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {
@@ -100,6 +102,7 @@ Deno.serve(async (req) => {
             tomador_document: tomadorDocument,
             tomador_email: tomadorEmail,
             city_service_code: cityServiceCode || "170601",
+            error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
             pdf_url: result.pdfUrl || null,
             xml_url: result.xmlUrl || null,
             rps_number: result.rpsNumber?.toString() || null,
@@ -145,6 +148,7 @@ Deno.serve(async (req) => {
         // Update local record
         const updateData: any = {
           status: mapNfeioStatus(result.status),
+          error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
           number: result.number?.toString() || null,
           pdf_url: result.pdfUrl || null,
           xml_url: result.xmlUrl || null,
