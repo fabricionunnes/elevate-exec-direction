@@ -54,6 +54,7 @@ export const TaskManagerEditDialog = ({
   isAdmin,
   currentStaffId,
 }: TaskManagerEditDialogProps) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
