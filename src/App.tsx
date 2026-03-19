@@ -298,6 +298,7 @@ const App = () => (
             <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
             <Route path="/apply" element={<ClientDiagnosticPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/depoimentos" element={<DepoimentosPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/pricing" element={<PricingPage />} />
