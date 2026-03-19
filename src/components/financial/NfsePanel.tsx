@@ -266,7 +266,6 @@ export function NfsePanel() {
       setEmitting(false);
     }
   };
-...
   const handleRefreshStatus = async (record: NfseRecord) => {
     const nfeioId = sanitizeStringValue(record.nfeio_id);
     const recordId = sanitizeUuidLikeValue(record.id);
