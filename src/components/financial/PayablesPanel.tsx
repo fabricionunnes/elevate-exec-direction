@@ -191,7 +191,7 @@ export function PayablesPanel() {
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
 
-      // Update overdue status
+      // Update overdue status for pending items past due date
       const today = format(new Date(), "yyyy-MM-dd");
       const overdueIds = payablesData
         ?.filter(p => p.status === "pending" && p.due_date < today)
@@ -516,7 +516,8 @@ export function PayablesPanel() {
     const matchesSearch = 
       p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter || 
+      (statusFilter === "overdue" && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
     
     // Period filter
     const { start, end } = getDateRangeFromPeriod(periodFilter);
@@ -529,9 +530,15 @@ export function PayablesPanel() {
     return matchesSearch && matchesStatus && matchesPeriod;
   });
 
+  const today = format(new Date(), "yyyy-MM-dd");
   const totals = {
     pending: filteredPayables.filter(p => p.status === "pending").reduce((sum, p) => sum + Number(p.amount), 0),
-    overdue: filteredPayables.filter(p => p.status === "overdue").reduce((sum, p) => sum + Number(p.amount), 0),
+    overdue: filteredPayables
+      .filter(p => p.status === "overdue")
+      .reduce((sum, p) => sum + Number(p.amount), 0)
+      + filteredPayables
+        .filter(p => p.status === "partial" && p.due_date < today)
+        .reduce((sum, p) => sum + (Number(p.amount) - Number(p.paid_amount || 0)), 0),
     paid: filteredPayables.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0)
   };
 
