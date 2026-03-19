@@ -118,6 +118,10 @@ Deno.serve(async (req) => {
           nfsePayload
         );
 
+        if (!companyId || companyId === "undefined") {
+          throw new Error("company_id é obrigatório para registrar a NFS-e");
+        }
+
         const { data: record, error: dbError } = await supabase
           .from("nfse_records")
           .insert({
