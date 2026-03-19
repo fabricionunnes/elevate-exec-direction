@@ -1,4 +1,4 @@
-import { useRef, useState, useMemo, Suspense } from "react";
+import { useRef, useState, useMemo, useEffect, Suspense } from "react";
 import { Canvas, useFrame, ThreeEvent } from "@react-three/fiber";
 import { 
   OrbitControls, 
@@ -645,8 +645,28 @@ const OfficeScene = ({
 
 /* ─── Main Exported Component ─── */
 export const Office3DScene = (props: Office3DSceneProps) => {
+  const containerRef = useRef<HTMLDivElement>(null);
+  const [height, setHeight] = useState(500);
+
+  useEffect(() => {
+    const updateHeight = () => {
+      if (containerRef.current?.parentElement) {
+        const parentH = containerRef.current.parentElement.clientHeight;
+        setHeight(parentH > 100 ? parentH : 500);
+      }
+    };
+    updateHeight();
+    window.addEventListener("resize", updateHeight);
+    // Re-check after a small delay for layout settling
+    const t = setTimeout(updateHeight, 100);
+    return () => {
+      window.removeEventListener("resize", updateHeight);
+      clearTimeout(t);
+    };
+  }, []);
+
   return (
-    <div className="w-full flex-1 relative" style={{ minHeight: "500px", height: "100%" }}>
+    <div ref={containerRef} style={{ width: "100%", height: `${height}px`, position: "relative" }}>
       <Canvas
         shadows
         camera={{ position: [0, 6, 8], fov: 50 }}
