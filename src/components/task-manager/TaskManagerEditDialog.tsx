@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -21,7 +22,7 @@ import {
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { toast } from "sonner";
-import { CalendarIcon, Loader2, Building2, FolderOpen } from "lucide-react";
+import { CalendarIcon, Loader2, Building2, FolderOpen, ExternalLink } from "lucide-react";
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -53,6 +54,7 @@ export const TaskManagerEditDialog = ({
   isAdmin,
   currentStaffId,
 }: TaskManagerEditDialogProps) => {
+  const navigate = useNavigate();
   const [loading, setLoading] = useState(false);
   const [title, setTitle] = useState("");
   const [description, setDescription] = useState("");
@@ -131,15 +133,29 @@ export const TaskManagerEditDialog = ({
         </DialogHeader>
 
         {/* Context info */}
-        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-3.5 w-3.5 shrink-0" />
-            <span>{task.company_name}</span>
+        <div className="flex items-center justify-between gap-2 bg-muted/30 rounded-lg p-3">
+          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground min-w-0">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{task.company_name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{task.project_name}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-            <span>{task.project_name}</span>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5 text-xs"
+            onClick={() => {
+              onClose();
+              navigate(`/onboarding-tasks/project/${task.project_id}`);
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Ir ao Projeto
+          </Button>
         </div>
 
         <div className="space-y-4 pt-2">
