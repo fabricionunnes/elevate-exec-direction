@@ -31,6 +31,7 @@ export const STAFF_MENU_KEYS = {
   admin_menu: "admin_menu",
   commercial_actions: "commercial_actions",
   nf_manage: "nf_manage",
+  automations: "automations",
 } as const;
 
 // Financial sub-permission keys
