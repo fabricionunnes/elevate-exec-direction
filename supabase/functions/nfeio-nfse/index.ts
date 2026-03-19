@@ -102,6 +102,7 @@ Deno.serve(async (req) => {
             tomador_document: tomadorDocument,
             tomador_email: tomadorEmail,
             city_service_code: cityServiceCode || "170601",
+            error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
             pdf_url: result.pdfUrl || null,
             xml_url: result.xmlUrl || null,
             rps_number: result.rpsNumber?.toString() || null,
