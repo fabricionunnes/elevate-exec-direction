@@ -387,6 +387,8 @@ const TaskManagerPage = () => {
         </div>
       </div>
 
+      <TaskManagerMiniDashboard tasks={filteredTasks} staff={staff} />
+
       <div className="max-w-[1600px] mx-auto p-4">
         {loading && tasks.length === 0 ? (
           <div className="flex items-center justify-center h-64">
