@@ -516,7 +516,8 @@ export function PayablesPanel() {
     const matchesSearch = 
       p.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter || 
+      (statusFilter === "overdue" && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
     
     // Period filter
     const { start, end } = getDateRangeFromPeriod(periodFilter);
