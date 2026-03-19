@@ -547,7 +547,7 @@ export function NfsePanel() {
                         max="100"
                         value={form.issRate}
                         onChange={(e) => setForm({ ...form, issRate: e.target.value })}
-                        placeholder="Preencha apenas se necessário"
+                        placeholder="Deixe em branco para não enviar"
                       />
                     </div>
                   </div>
