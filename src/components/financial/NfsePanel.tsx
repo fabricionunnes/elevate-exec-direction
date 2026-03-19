@@ -43,6 +43,9 @@ interface NfeioCompany {
   id: string;
   name: string;
   federalTaxNumber: string;
+  taxRegime?: string;
+  municipalTaxDetermination?: string;
+  issRate?: number;
 }
 
 interface CompanyInvoice {
