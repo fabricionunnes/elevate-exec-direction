@@ -114,8 +114,12 @@ async function processNPS(supabase: any, _isManual: boolean, isTest: boolean = f
     if (isTest && testCompanyId && company.id !== testCompanyId) continue;
 
     // Skip companies with less than 30 days since contract start (new companies)
-    if (!isTest && company.contract_start_date) {
-      const daysSinceStart = daysBetween(new Date(company.contract_start_date), now);
+    // Use contract_start_date if available, otherwise fall back to created_at
+    if (!isTest) {
+      const startDate = company.contract_start_date
+        ? new Date(company.contract_start_date)
+        : new Date(company.created_at || now);
+      const daysSinceStart = daysBetween(startDate, now);
       if (daysSinceStart < 30) {
         console.log(`Company ${company.name} (${company.id}) skipped: only ${daysSinceStart} days since contract start`);
         continue;
