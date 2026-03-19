@@ -695,29 +695,31 @@ const VirtualOfficePage = () => {
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Floor Map or Sidebar */}
         {officeViewMode !== "list" ? (
-          <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50">
+          <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50 min-h-0">
             {officeViewMode === "3d" ? (
               <Suspense fallback={
                 <div className="flex-1 flex items-center justify-center">
                   <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
                 </div>
               }>
-                <Office3DScene
-                  rooms={rooms}
-                  presences={presences}
-                  staffMembers={staffMembers}
-                  selectedRoom={selectedRoom}
-                  onRoomSelect={setSelectedRoom}
-                  unreadCounts={unreadCounts}
-                  isAdmin={isAdmin}
-                  onStaffClick={(staff) => {
-                    const staffPresence = presences.find(p => p.staff_id === staff.id);
-                    if (staffPresence?.room_id) {
-                      const room = rooms.find(r => r.id === staffPresence.room_id);
-                      if (room) setSelectedRoom(room);
-                    }
-                  }}
-                />
+                <div className="flex-1 min-h-0">
+                  <Office3DScene
+                    rooms={rooms}
+                    presences={presences}
+                    staffMembers={staffMembers}
+                    selectedRoom={selectedRoom}
+                    onRoomSelect={setSelectedRoom}
+                    unreadCounts={unreadCounts}
+                    isAdmin={isAdmin}
+                    onStaffClick={(staff) => {
+                      const staffPresence = presences.find(p => p.staff_id === staff.id);
+                      if (staffPresence?.room_id) {
+                        const room = rooms.find(r => r.id === staffPresence.room_id);
+                        if (room) setSelectedRoom(room);
+                      }
+                    }}
+                  />
+                </div>
               </Suspense>
             ) : (
               <OfficeFloorMap
