@@ -111,7 +111,7 @@ const statusConfig: Record<PresenceStatus, { label: string; color: string; icon:
   offline: { label: "Offline", color: "bg-gray-400", icon: Circle },
 };
 
-type OfficeViewMode = "map" | "list";
+type OfficeViewMode = "3d" | "map" | "list";
 
 const VirtualOfficePage = () => {
   const navigate = useNavigate();
