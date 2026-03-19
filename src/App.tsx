@@ -153,6 +153,7 @@ const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoic
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
+const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 
 // Assessments
