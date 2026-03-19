@@ -654,9 +654,7 @@ export const Office3DScene = (props: Office3DSceneProps) => {
       >
         <color attach="background" args={["#f8fafc"]} />
         <fog attach="fog" args={["#f8fafc", 15, 30]} />
-        <Suspense fallback={null}>
-          <OfficeScene {...props} />
-        </Suspense>
+        <OfficeScene {...props} />
       </Canvas>
       
       <div className="absolute bottom-3 left-3 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm pointer-events-none">
