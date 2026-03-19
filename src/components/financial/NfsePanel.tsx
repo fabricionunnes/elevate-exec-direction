@@ -234,6 +234,7 @@ export function NfsePanel() {
       tomadorDocument: "",
       tomadorEmail: "",
       cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
+      issRate: 2,
     });
     setCompanyInvoices([]);
     setSelectedInvoiceId("");
