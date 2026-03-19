@@ -48,6 +48,7 @@ import {
   Pencil,
   RotateCw,
   Heart,
+  Instagram,
 } from "lucide-react";
 import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
@@ -74,6 +75,7 @@ interface CompanyReport {
   contract_value: number | null;
   payment_method: string | null;
   status: string;
+  instagram_handle: string | null;
   // Calculated fields
   total_paid: number;
   contract_months: number;
@@ -233,6 +235,39 @@ export default function OnboardingCompaniesReportPage() {
       return;
     }
 
+    // Fetch instagram handles from social_briefing_forms via projects
+    const instagramMap = new Map<string, string>();
+    const { data: briefingsData } = await supabase
+      .from("social_briefing_forms")
+      .select("project_id, instagram_handle")
+      .not("instagram_handle", "is", null);
+
+    if (briefingsData) {
+      // Map project_id -> instagram_handle, then we'll map company_id via projects
+      const projectInstagramMap = new Map<string, string>();
+      briefingsData.forEach((b: any) => {
+        if (b.instagram_handle) projectInstagramMap.set(b.project_id, b.instagram_handle);
+      });
+
+      // Get project -> company mapping
+      const projectIds = Array.from(projectInstagramMap.keys());
+      if (projectIds.length > 0) {
+        const { data: projectsData } = await supabase
+          .from("onboarding_projects")
+          .select("id, company_id")
+          .in("id", projectIds);
+
+        if (projectsData) {
+          projectsData.forEach((p: any) => {
+            const handle = projectInstagramMap.get(p.id);
+            if (handle && p.company_id) {
+              instagramMap.set(p.company_id, handle);
+            }
+          });
+        }
+      }
+    }
+
     // Process companies and calculate metrics
     const processedCompanies: CompanyReport[] = mergedCompanies.map((company: any) => {
       const startDate = company.contract_start_date ? parseISO(company.contract_start_date) : null;
@@ -325,6 +360,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_value: company.contract_value,
         payment_method: company.payment_method,
         status: company.status || "active",
+        instagram_handle: instagramMap.get(company.id) || null,
         total_paid: totalPaid,
         contract_months: contractMonths,
         avg_ticket: avgTicket,
@@ -890,6 +926,12 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="name" />
                     </div>
                   </TableHead>
+                  <TableHead className="text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell">
+                    <div className="flex items-center gap-1">
+                      <Instagram className="h-3 w-3" />
+                      Instagram
+                    </div>
+                  </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell"
                     onClick={() => handleSort("consultant_name")}
@@ -984,7 +1026,7 @@ export default function OnboardingCompaniesReportPage() {
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isCS ? 9 : 11} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
+                    <TableCell colSpan={isCS ? 10 : 12} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
@@ -1023,6 +1065,22 @@ export default function OnboardingCompaniesReportPage() {
                             </span>
                           </div>
                         </div>
+                      </TableCell>
+                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">
+                        {company.instagram_handle ? (
+                          <a
+                            href={`https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-pink-500 hover:text-pink-400 hover:underline flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Instagram className="h-3 w-3" />
+                            {company.instagram_handle.startsWith("@") ? company.instagram_handle : `@${company.instagram_handle}`}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
                       </TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.consultant_name || "—"}</TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{formatDate(company.contract_start_date)}</TableCell>
