@@ -539,15 +539,15 @@ export function NfsePanel() {
                       />
                     </div>
                     <div>
-                      <Label>Alíquota ISS (%)</Label>
+                      <Label>Alíquota ISS (%) — opcional</Label>
                       <Input
                         type="number"
                         step="0.01"
                         min="0"
                         max="100"
                         value={form.issRate}
-                        onChange={(e) => setForm({ ...form, issRate: parseFloat(e.target.value) || 0 })}
-                        placeholder="2.00"
+                        onChange={(e) => setForm({ ...form, issRate: e.target.value })}
+                        placeholder="Preencha apenas se necessário"
                       />
                     </div>
                   </div>
