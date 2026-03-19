@@ -91,7 +91,7 @@ export function NfsePanel() {
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
   const DEFAULT_FEDERAL_SERVICE_CODE = "170601";
-  const DEFAULT_NBS_CODE = "12051900";
+  const DEFAULT_NBS_CODE = "";
 
   const [form, setForm] = useState({
     companyId: "",
@@ -557,11 +557,11 @@ export function NfsePanel() {
                       />
                     </div>
                     <div>
-                      <Label>NBS</Label>
+                      <Label>NBS (opcional)</Label>
                       <Input
                         value={form.nbsCode}
-                        onChange={(e) => setForm({ ...form, nbsCode: e.target.value })}
-                        placeholder="12051900"
+                        onChange={(e) => setForm({ ...form, nbsCode: e.target.value.replace(/\D/g, "") })}
+                        placeholder="Preencha só se tiver o código válido"
                       />
                     </div>
                   </div>

@@ -62,13 +62,14 @@ Deno.serve(async (req) => {
 
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
-        const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.trim() : "";
+        const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
+        const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
 
         // Payload mínimo com classificações fiscais corretas do serviço
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
-          ...(normalizedNbsCode ? { nbsCode: normalizedNbsCode } : {}),
+          ...(validNbsCode ? { nbsCode: validNbsCode } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {
@@ -76,6 +77,10 @@ Deno.serve(async (req) => {
             federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
             email: tomadorEmail || undefined,
           },
+        };
+
+        if (normalizedNbsCode && !validNbsCode) {
+          console.warn("Ignoring invalid NBS code for NFS-e payload", normalizedNbsCode);
         };
 
         console.info("NFS-e emit payload (minimal)", JSON.stringify(nfsePayload));
