@@ -529,13 +529,27 @@ export function NfsePanel() {
                     </div>
                   </div>
 
-                  <div>
-                    <Label>Código do Serviço Municipal</Label>
-                    <Input
-                      value={form.cityServiceCode}
-                      onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
-                      placeholder="170601"
-                    />
+                  <div className="grid grid-cols-2 gap-4">
+                    <div>
+                      <Label>Código do Serviço Municipal</Label>
+                      <Input
+                        value={form.cityServiceCode}
+                        onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
+                        placeholder="170601"
+                      />
+                    </div>
+                    <div>
+                      <Label>Alíquota ISS (%)</Label>
+                      <Input
+                        type="number"
+                        step="0.01"
+                        min="0"
+                        max="100"
+                        value={form.issRate}
+                        onChange={(e) => setForm({ ...form, issRate: parseFloat(e.target.value) || 0 })}
+                        placeholder="2.00"
+                      />
+                    </div>
                   </div>
 
                   <Button onClick={handleEmit} disabled={emitting} className="w-full">
