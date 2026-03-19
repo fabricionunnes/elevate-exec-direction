@@ -241,6 +241,7 @@ export function NfsePanel() {
       tomadorEmail: "",
       cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
       federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
+      nbsCode: DEFAULT_NBS_CODE,
     });
     setCompanyInvoices([]);
     setSelectedInvoiceId("");
