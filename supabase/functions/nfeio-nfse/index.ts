@@ -75,9 +75,14 @@ Deno.serve(async (req) => {
           },
         };
 
-        if (!Number.isNaN(parsedIssRate)) {
-          nfsePayload.issRate = parsedIssRate;
-        }
+        console.info("NFS-e emit payload", JSON.stringify({
+          companyId,
+          nfeioCompanyId,
+          cityServiceCode: nfsePayload.cityServiceCode,
+          servicesAmount: nfsePayload.servicesAmount,
+          hasIssRate: Object.prototype.hasOwnProperty.call(nfsePayload, "issRate"),
+          issRate: nfsePayload.issRate ?? null,
+        }));
 
         const result = await nfeioRequest(
           `/companies/${nfeioCompanyId}/serviceinvoices`,
