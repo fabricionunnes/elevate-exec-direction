@@ -172,6 +172,24 @@ export function NfsePanel() {
     }
   };
 
+  const sanitizeUuidLikeValue = (value: unknown) => {
+    if (typeof value !== "string") return value;
+    const normalized = value.trim();
+    if (!normalized || normalized === "undefined" || normalized === "null") {
+      return null;
+    }
+    return normalized;
+  };
+
+  const normalizeNfseRequestBody = (body: Record<string, unknown>) => ({
+    ...body,
+    companyId: sanitizeUuidLikeValue(body.companyId),
+    invoiceId: sanitizeUuidLikeValue(body.invoiceId),
+    recordId: sanitizeUuidLikeValue(body.recordId),
+    nfeioCompanyId: sanitizeUuidLikeValue(body.nfeioCompanyId),
+    nfeioId: sanitizeUuidLikeValue(body.nfeioId),
+  });
+
   const invokeNfseFunction = async (body: Record<string, unknown>) => {
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
@@ -180,6 +198,7 @@ export function NfsePanel() {
 
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const normalizedBody = normalizeNfseRequestBody(body);
 
     const response = await fetch(`https://${projectId}.supabase.co/functions/v1/nfeio-nfse`, {
       method: "POST",
@@ -188,7 +207,7 @@ export function NfsePanel() {
         Authorization: `Bearer ${session.access_token}`,
         apikey: anonKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(normalizedBody),
     });
 
     const result = await response.json().catch(() => ({}));
@@ -226,16 +245,23 @@ export function NfsePanel() {
   };
 
   const handleEmit = async () => {
-    if (!form.companyId || !form.nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
+    const companyId = typeof form.companyId === "string" ? form.companyId.trim() : "";
+    const nfeioCompanyId = typeof form.nfeioCompanyId === "string" ? form.nfeioCompanyId.trim() : "";
+    const invoiceId = selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId.trim() : null;
+
+    if (!companyId || !nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
       toast.error("Preencha todos os campos obrigatórios (incluindo empresa)");
       return;
     }
+
     setEmitting(true);
     try {
       await invokeNfseFunction({
         action: "emit",
         ...form,
-        invoiceId: selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId : null,
+        companyId,
+        nfeioCompanyId,
+        invoiceId,
       });
       toast.success("NFS-e enviada com sucesso! Aguarde o processamento.");
       setEmitDialogOpen(false);

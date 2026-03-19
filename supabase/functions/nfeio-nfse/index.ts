@@ -33,6 +33,15 @@ async function nfeioRequest(path: string, method = "GET", body?: any) {
   return res.json();
 }
 
+function normalizeUuidParam(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || normalized === "undefined" || normalized === "null") {
+    return null;
+  }
+  return normalized;
+}
+
 async function requireAuthenticatedUser(req: Request, supabase: ReturnType<typeof createClient>) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
@@ -81,11 +90,23 @@ Deno.serve(async (req) => {
       case "emit": {
         const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode, nbsCode } = params;
 
+        const normalizedCompanyId = normalizeUuidParam(companyId);
+        const normalizedInvoiceId = normalizeUuidParam(invoiceId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+
+        if (!normalizedCompanyId) {
+          throw new Error("company_id é obrigatório para registrar a NFS-e");
+        }
+
+        if (!normalizedNfeioCompanyId) {
+          throw new Error("nfeioCompanyId é obrigatório para emitir a NFS-e");
+        }
+
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
         const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
         const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
-        const issuerCompany = await nfeioRequest(`/companies/${nfeioCompanyId}`);
+        const issuerCompany = await nfeioRequest(`/companies/${normalizedNfeioCompanyId}`);
         const shouldZeroIssRate = issuerCompany?.taxRegime === "SimplesNacional" && issuerCompany?.municipalTaxDetermination === "SimplesNacional";
 
         const nfsePayload: any = {
@@ -113,20 +134,16 @@ Deno.serve(async (req) => {
         console.info("NFS-e emit payload (minimal)", JSON.stringify(nfsePayload));
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices`,
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices`,
           "POST",
           nfsePayload
         );
 
-        if (!companyId || companyId === "undefined") {
-          throw new Error("company_id é obrigatório para registrar a NFS-e");
-        }
-
         const { data: record, error: dbError } = await supabase
           .from("nfse_records")
           .insert({
-            company_id: companyId,
-            invoice_id: invoiceId || null,
+            company_id: normalizedCompanyId,
+            invoice_id: normalizedInvoiceId,
             nfeio_id: result.id,
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
@@ -179,12 +196,18 @@ Deno.serve(async (req) => {
 
       case "status": {
         const { nfeioCompanyId, nfeioId, recordId } = params;
+        const normalizedRecordId = normalizeUuidParam(recordId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+
+        if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+          throw new Error("Parâmetros obrigatórios ausentes para consultar o status da NFS-e");
+        }
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}`
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`
         );
 
-        // Update local record
         const updateData: any = {
           status: mapNfeioStatus(result.status),
           error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
@@ -198,11 +221,11 @@ Deno.serve(async (req) => {
           updateData.cancelled_at = new Date().toISOString();
         }
 
-        if (recordId) {
+        if (normalizedRecordId) {
           await supabase
             .from("nfse_records")
             .update(updateData)
-            .eq("id", recordId);
+            .eq("id", normalizedRecordId);
         }
 
         return new Response(JSON.stringify({ success: true, nfse: result }), {
@@ -212,20 +235,27 @@ Deno.serve(async (req) => {
 
       case "cancel": {
         const { nfeioCompanyId, nfeioId, recordId } = params;
+        const normalizedRecordId = normalizeUuidParam(recordId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+
+        if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+          throw new Error("Parâmetros obrigatórios ausentes para cancelar a NFS-e");
+        }
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}`,
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`,
           "DELETE"
         );
 
-        if (recordId) {
+        if (normalizedRecordId) {
           await supabase
             .from("nfse_records")
             .update({
               status: "cancelled",
               cancelled_at: new Date().toISOString(),
             })
-            .eq("id", recordId);
+            .eq("id", normalizedRecordId);
         }
 
         return new Response(JSON.stringify({ success: true }), {
