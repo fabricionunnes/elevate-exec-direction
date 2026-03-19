@@ -646,7 +646,7 @@ const OfficeScene = ({
 /* ─── Main Exported Component ─── */
 export const Office3DScene = (props: Office3DSceneProps) => {
   return (
-    <div className="w-full h-full relative" style={{ minHeight: "500px" }}>
+    <div className="w-full flex-1 relative" style={{ minHeight: "500px", height: "100%" }}>
       <Canvas
         shadows
         camera={{ position: [0, 6, 8], fov: 50 }}
