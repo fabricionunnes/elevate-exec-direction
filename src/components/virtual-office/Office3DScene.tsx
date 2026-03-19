@@ -645,28 +645,8 @@ const OfficeScene = ({
 
 /* ─── Main Exported Component ─── */
 export const Office3DScene = (props: Office3DSceneProps) => {
-  const containerRef = useRef<HTMLDivElement>(null);
-  const [height, setHeight] = useState(500);
-
-  useEffect(() => {
-    const updateHeight = () => {
-      if (containerRef.current?.parentElement) {
-        const parentH = containerRef.current.parentElement.clientHeight;
-        setHeight(parentH > 100 ? parentH : 500);
-      }
-    };
-    updateHeight();
-    window.addEventListener("resize", updateHeight);
-    // Re-check after a small delay for layout settling
-    const t = setTimeout(updateHeight, 100);
-    return () => {
-      window.removeEventListener("resize", updateHeight);
-      clearTimeout(t);
-    };
-  }, []);
-
   return (
-    <div ref={containerRef} style={{ width: "100%", height: `${height}px`, position: "relative" }}>
+    <div className="w-full h-[600px] relative">
       <Canvas
         shadows
         camera={{ position: [0, 6, 8], fov: 50 }}
@@ -680,7 +660,6 @@ export const Office3DScene = (props: Office3DSceneProps) => {
         </Suspense>
       </Canvas>
       
-      {/* Controls hint overlay */}
       <div className="absolute bottom-3 left-3 bg-black/50 text-white text-[10px] px-2 py-1 rounded-md backdrop-blur-sm pointer-events-none">
         🖱️ Arrastar para girar • Scroll para zoom • Clique nas salas ou pessoas
       </div>
