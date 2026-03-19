@@ -75,6 +75,7 @@ interface CompanyReport {
   contract_value: number | null;
   payment_method: string | null;
   status: string;
+  instagram_handle: string | null;
   // Calculated fields
   total_paid: number;
   contract_months: number;
