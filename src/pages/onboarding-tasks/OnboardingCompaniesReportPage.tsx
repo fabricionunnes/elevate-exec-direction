@@ -1034,16 +1034,20 @@ export default function OnboardingCompaniesReportPage() {
                       </TableCell>
                       <TableCell className="py-2 md:py-3 hidden sm:table-cell text-center w-[40px]">
                         {company.instagram_handle ? (
-                          <a
-                            href={company.instagram_handle.startsWith("http") ? company.instagram_handle : `https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
-                            target="_blank"
-                            rel="noopener noreferrer"
+                          <button
+                            type="button"
                             className="text-pink-500 hover:text-pink-400 inline-flex"
-                            onClick={(e) => e.stopPropagation()}
                             title={company.instagram_handle}
+                            onClick={(e) => {
+                              e.stopPropagation();
+                              e.preventDefault();
+                              const handle = company.instagram_handle!;
+                              const url = handle.startsWith("http") ? handle : `https://instagram.com/${handle.replace(/^@/, "")}`;
+                              window.open(url, "_blank", "noopener,noreferrer");
+                            }}
                           >
                             <Instagram className="h-4 w-4" />
-                          </a>
+                          </button>
                         ) : (
                           <span className="text-muted-foreground text-xs">—</span>
                         )}
