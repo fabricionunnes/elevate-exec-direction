@@ -90,11 +90,23 @@ Deno.serve(async (req) => {
       case "emit": {
         const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode, nbsCode } = params;
 
+        const normalizedCompanyId = normalizeUuidParam(companyId);
+        const normalizedInvoiceId = normalizeUuidParam(invoiceId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+
+        if (!normalizedCompanyId) {
+          throw new Error("company_id é obrigatório para registrar a NFS-e");
+        }
+
+        if (!normalizedNfeioCompanyId) {
+          throw new Error("nfeioCompanyId é obrigatório para emitir a NFS-e");
+        }
+
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
         const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
         const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
-        const issuerCompany = await nfeioRequest(`/companies/${nfeioCompanyId}`);
+        const issuerCompany = await nfeioRequest(`/companies/${normalizedNfeioCompanyId}`);
         const shouldZeroIssRate = issuerCompany?.taxRegime === "SimplesNacional" && issuerCompany?.municipalTaxDetermination === "SimplesNacional";
 
         const nfsePayload: any = {
@@ -122,20 +134,16 @@ Deno.serve(async (req) => {
         console.info("NFS-e emit payload (minimal)", JSON.stringify(nfsePayload));
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices`,
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices`,
           "POST",
           nfsePayload
         );
 
-        if (!companyId || companyId === "undefined") {
-          throw new Error("company_id é obrigatório para registrar a NFS-e");
-        }
-
         const { data: record, error: dbError } = await supabase
           .from("nfse_records")
           .insert({
-            company_id: companyId,
-            invoice_id: invoiceId || null,
+            company_id: normalizedCompanyId,
+            invoice_id: normalizedInvoiceId,
             nfeio_id: result.id,
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
