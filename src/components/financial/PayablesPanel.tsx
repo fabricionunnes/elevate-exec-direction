@@ -529,9 +529,15 @@ export function PayablesPanel() {
     return matchesSearch && matchesStatus && matchesPeriod;
   });
 
+  const today = format(new Date(), "yyyy-MM-dd");
   const totals = {
     pending: filteredPayables.filter(p => p.status === "pending").reduce((sum, p) => sum + Number(p.amount), 0),
-    overdue: filteredPayables.filter(p => p.status === "overdue").reduce((sum, p) => sum + Number(p.amount), 0),
+    overdue: filteredPayables
+      .filter(p => p.status === "overdue")
+      .reduce((sum, p) => sum + Number(p.amount), 0)
+      + filteredPayables
+        .filter(p => p.status === "partial" && p.due_date < today)
+        .reduce((sum, p) => sum + (Number(p.amount) - Number(p.paid_amount || 0)), 0),
     paid: filteredPayables.filter(p => p.status === "paid").reduce((sum, p) => sum + Number(p.paid_amount || p.amount), 0)
   };
 
