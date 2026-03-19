@@ -58,15 +58,17 @@ Deno.serve(async (req) => {
       }
 
       case "emit": {
-        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode } = params;
+        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode, nbsCode } = params;
 
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
+        const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.trim() : "";
 
-        // Payload mínimo: serviço, valor, tomador e classificações fiscais do serviço
+        // Payload mínimo com classificações fiscais corretas do serviço
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
+          ...(normalizedNbsCode ? { nbsCode: normalizedNbsCode } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {

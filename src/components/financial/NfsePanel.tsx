@@ -539,7 +539,7 @@ export function NfsePanel() {
                     </div>
                   </div>
 
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Código do Serviço Municipal</Label>
                       <Input
@@ -549,10 +549,18 @@ export function NfsePanel() {
                       />
                     </div>
                     <div>
-                      <Label>NBS</Label>
+                      <Label>Lei Complementar 116</Label>
                       <Input
                         value={form.federalServiceCode}
                         onChange={(e) => setForm({ ...form, federalServiceCode: e.target.value })}
+                        placeholder="170601"
+                      />
+                    </div>
+                    <div>
+                      <Label>NBS</Label>
+                      <Input
+                        value={form.nbsCode}
+                        onChange={(e) => setForm({ ...form, nbsCode: e.target.value })}
                         placeholder="12051900"
                       />
                     </div>
