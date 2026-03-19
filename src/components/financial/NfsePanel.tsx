@@ -394,11 +394,14 @@ export function NfsePanel() {
                         <SelectValue placeholder={loadingCompanies ? "Carregando..." : "Selecione"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} ({c.federalTaxNumber})
-                          </SelectItem>
-                        ))}
+                        {companies.map((c) => {
+                          const isSimples = c.taxRegime === "SimplesNacional" || c.municipalTaxDetermination === "SimplesNacional";
+                          return (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} ({c.federalTaxNumber}){isSimples ? " • Simples Nacional" : ""}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
