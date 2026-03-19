@@ -172,6 +172,24 @@ export function NfsePanel() {
     }
   };
 
+  const sanitizeUuidLikeValue = (value: unknown) => {
+    if (typeof value !== "string") return value;
+    const normalized = value.trim();
+    if (!normalized || normalized === "undefined" || normalized === "null") {
+      return null;
+    }
+    return normalized;
+  };
+
+  const normalizeNfseRequestBody = (body: Record<string, unknown>) => ({
+    ...body,
+    companyId: sanitizeUuidLikeValue(body.companyId),
+    invoiceId: sanitizeUuidLikeValue(body.invoiceId),
+    recordId: sanitizeUuidLikeValue(body.recordId),
+    nfeioCompanyId: sanitizeUuidLikeValue(body.nfeioCompanyId),
+    nfeioId: sanitizeUuidLikeValue(body.nfeioId),
+  });
+
   const invokeNfseFunction = async (body: Record<string, unknown>) => {
     const session = (await supabase.auth.getSession()).data.session;
     if (!session?.access_token) {
@@ -180,6 +198,7 @@ export function NfsePanel() {
 
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+    const normalizedBody = normalizeNfseRequestBody(body);
 
     const response = await fetch(`https://${projectId}.supabase.co/functions/v1/nfeio-nfse`, {
       method: "POST",
@@ -188,7 +207,7 @@ export function NfsePanel() {
         Authorization: `Bearer ${session.access_token}`,
         apikey: anonKey,
       },
-      body: JSON.stringify(body),
+      body: JSON.stringify(normalizedBody),
     });
 
     const result = await response.json().catch(() => ({}));

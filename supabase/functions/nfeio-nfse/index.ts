@@ -33,6 +33,15 @@ async function nfeioRequest(path: string, method = "GET", body?: any) {
   return res.json();
 }
 
+function normalizeUuidParam(value: unknown): string | null {
+  if (typeof value !== "string") return null;
+  const normalized = value.trim();
+  if (!normalized || normalized === "undefined" || normalized === "null") {
+    return null;
+  }
+  return normalized;
+}
+
 async function requireAuthenticatedUser(req: Request, supabase: ReturnType<typeof createClient>) {
   const authHeader = req.headers.get("authorization");
   const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
