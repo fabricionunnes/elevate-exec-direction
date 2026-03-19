@@ -135,7 +135,7 @@ const VirtualOfficePage = () => {
   const [activeTab, setActiveTab] = useState("office");
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [roomAccessList, setRoomAccessList] = useState<RoomAccess[]>([]);
-  const [officeViewMode, setOfficeViewMode] = useState<OfficeViewMode>("map");
+  const [officeViewMode, setOfficeViewMode] = useState<OfficeViewMode>("3d");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
