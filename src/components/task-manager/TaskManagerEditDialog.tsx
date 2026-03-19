@@ -133,15 +133,29 @@ export const TaskManagerEditDialog = ({
         </DialogHeader>
 
         {/* Context info */}
-        <div className="flex flex-col gap-1.5 text-sm text-muted-foreground bg-muted/30 rounded-lg p-3">
-          <div className="flex items-center gap-2">
-            <Building2 className="h-3.5 w-3.5 shrink-0" />
-            <span>{task.company_name}</span>
+        <div className="flex items-center justify-between gap-2 bg-muted/30 rounded-lg p-3">
+          <div className="flex flex-col gap-1.5 text-sm text-muted-foreground min-w-0">
+            <div className="flex items-center gap-2">
+              <Building2 className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{task.company_name}</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <FolderOpen className="h-3.5 w-3.5 shrink-0" />
+              <span className="truncate">{task.project_name}</span>
+            </div>
           </div>
-          <div className="flex items-center gap-2">
-            <FolderOpen className="h-3.5 w-3.5 shrink-0" />
-            <span>{task.project_name}</span>
-          </div>
+          <Button
+            variant="outline"
+            size="sm"
+            className="shrink-0 gap-1.5 text-xs"
+            onClick={() => {
+              onClose();
+              navigate(`/onboarding-tasks/project/${task.project_id}`);
+            }}
+          >
+            <ExternalLink className="h-3.5 w-3.5" />
+            Ir ao Projeto
+          </Button>
         </div>
 
         <div className="space-y-4 pt-2">
