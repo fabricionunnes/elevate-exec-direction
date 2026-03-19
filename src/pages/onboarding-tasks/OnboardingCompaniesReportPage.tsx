@@ -237,39 +237,6 @@ export default function OnboardingCompaniesReportPage() {
       return;
     }
 
-    // Fetch instagram from social_briefing_forms via projects (using instagram_access field)
-    const instagramMap = new Map<string, string>();
-    const { data: briefingsData } = await supabase
-      .from("social_briefing_forms")
-      .select("project_id, instagram_access")
-      .not("instagram_access", "is", null);
-
-    if (briefingsData) {
-      const projectInstagramMap = new Map<string, string>();
-      briefingsData.forEach((b: any) => {
-        if (b.instagram_access && b.instagram_access.trim() !== "") {
-          projectInstagramMap.set(b.project_id, b.instagram_access.trim());
-        }
-      });
-
-      const projectIds = Array.from(projectInstagramMap.keys());
-      if (projectIds.length > 0) {
-        const { data: projectsData } = await supabase
-          .from("onboarding_projects")
-          .select("id, onboarding_company_id")
-          .in("id", projectIds);
-
-        if (projectsData) {
-          projectsData.forEach((p: any) => {
-            const handle = projectInstagramMap.get(p.id);
-            if (handle && p.onboarding_company_id) {
-              instagramMap.set(p.onboarding_company_id, handle);
-            }
-          });
-        }
-      }
-    }
-
     // Process companies and calculate metrics
     const processedCompanies: CompanyReport[] = mergedCompanies.map((company: any) => {
       const startDate = company.contract_start_date ? parseISO(company.contract_start_date) : null;
