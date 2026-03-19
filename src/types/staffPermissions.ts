@@ -31,6 +31,7 @@ export const STAFF_MENU_KEYS = {
   admin_menu: "admin_menu",
   commercial_actions: "commercial_actions",
   nf_manage: "nf_manage",
+  automations: "automations",
 } as const;
 
 // Financial sub-permission keys
@@ -195,6 +196,12 @@ export const STAFF_MENU_STRUCTURE = [
     key: STAFF_MENU_KEYS.nf_manage, 
     label: "Gerenciar Nota Fiscal", 
     description: "Configurar salários, visualizar NFs e PIX de todos",
+    group: "Administração" 
+  },
+  { 
+    key: STAFF_MENU_KEYS.automations, 
+    label: "Central de Automações", 
+    description: "Criar e gerenciar regras de automação entre módulos",
     group: "Administração" 
   },
 ] as const;

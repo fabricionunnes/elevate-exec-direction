@@ -153,6 +153,7 @@ const StaffInvoicePage = lazy(() => import("./pages/onboarding-tasks/StaffInvoic
 const GlobalGamificationPage = lazy(() => import("./pages/onboarding-tasks/GlobalGamificationPage"));
 const SlideGeneratorPage = lazy(() => import("./pages/onboarding-tasks/SlideGeneratorPage"));
 const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerPage"));
+const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
 
 // Assessments
@@ -361,6 +362,7 @@ const App = () => (
               <Route path="/onboarding-tasks/gamificacao-geral" element={<GlobalGamificationPage />} />
               <Route path="/onboarding-tasks/slide-generator" element={<SlideGeneratorPage />} />
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
+              <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
