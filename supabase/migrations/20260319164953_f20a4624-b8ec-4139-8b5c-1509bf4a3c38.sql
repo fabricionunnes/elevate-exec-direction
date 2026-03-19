@@ -1,0 +1,1 @@
+ALTER TABLE public.marketing_consultation_forms ADD COLUMN IF NOT EXISTS marketing_how_can_we_help text;

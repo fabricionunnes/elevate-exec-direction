@@ -19277,6 +19277,7 @@ export type Database = {
           marketing_additional_info: string | null
           marketing_biggest_challenge: string | null
           marketing_expected_results: string | null
+          marketing_how_can_we_help: string | null
           marketing_main_goal: string | null
           project_id: string
           status: string
@@ -19311,6 +19312,7 @@ export type Database = {
           marketing_additional_info?: string | null
           marketing_biggest_challenge?: string | null
           marketing_expected_results?: string | null
+          marketing_how_can_we_help?: string | null
           marketing_main_goal?: string | null
           project_id: string
           status?: string
@@ -19345,6 +19347,7 @@ export type Database = {
           marketing_additional_info?: string | null
           marketing_biggest_challenge?: string | null
           marketing_expected_results?: string | null
+          marketing_how_can_we_help?: string | null
           marketing_main_goal?: string | null
           project_id?: string
           status?: string
