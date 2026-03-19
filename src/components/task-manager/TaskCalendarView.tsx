@@ -64,7 +64,11 @@ export const TaskCalendarView = ({ tasks, onStatusChange }: Props) => {
   const days: Date[] = [];
   let day = calStart;
   while (day <= calEnd) {
-    days.push(day);
+    const dow = day.getDay();
+    // Only include weekdays (Mon-Fri)
+    if (dow !== 0 && dow !== 6) {
+      days.push(day);
+    }
     day = addDays(day, 1);
   }
 
@@ -88,8 +92,8 @@ export const TaskCalendarView = ({ tasks, onStatusChange }: Props) => {
         </Button>
       </div>
 
-      <div className="grid grid-cols-7 gap-px bg-border rounded-lg overflow-hidden">
-        {["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"].map(d => (
+      <div className="grid grid-cols-5 gap-px bg-border rounded-lg overflow-hidden">
+        {["Seg", "Ter", "Qua", "Qui", "Sex"].map(d => (
           <div key={d} className="bg-muted px-2 py-2 text-center text-xs font-medium text-muted-foreground">
             {d}
           </div>
