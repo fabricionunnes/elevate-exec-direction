@@ -559,9 +559,10 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos</SelectItem>
-            <SelectItem value="open">Em aberto</SelectItem>
-            <SelectItem value="overdue">Vencidos</SelectItem>
-            <SelectItem value="paid">Pagos</SelectItem>
+            <SelectItem value="open">Pendente</SelectItem>
+            <SelectItem value="partial">Pago Parcial</SelectItem>
+            <SelectItem value="overdue">Vencido</SelectItem>
+            <SelectItem value="paid">Pago</SelectItem>
             <SelectItem value="cancelled">Cancelados</SelectItem>
           </SelectContent>
         </Select>
