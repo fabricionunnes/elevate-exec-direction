@@ -2631,6 +2631,13 @@ const OnboardingTasksPage = () => {
                         </DropdownMenuSubContent>
                       </DropdownMenuSub>
 
+                      {/* Central de Automações */}
+                      <DropdownMenuSeparator />
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/automations")}>
+                        <Zap className="h-4 w-4 mr-2" />
+                        Central de Automações
+                      </DropdownMenuItem>
+
                       {/* UNV Academy & Tools */}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate("/pdi")}>
