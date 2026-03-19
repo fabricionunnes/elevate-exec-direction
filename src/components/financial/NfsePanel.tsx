@@ -172,8 +172,10 @@ export function NfsePanel() {
     }
   };
 
-  const sanitizeUuidLikeValue = (value: unknown) => {
-    if (typeof value !== "string") return value;
+  const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
+
+  const sanitizeStringValue = (value: unknown) => {
+    if (typeof value !== "string") return null;
     const normalized = value.trim();
     if (!normalized || normalized === "undefined" || normalized === "null") {
       return null;
@@ -181,14 +183,23 @@ export function NfsePanel() {
     return normalized;
   };
 
+  const sanitizeUuidLikeValue = (value: unknown) => {
+    const normalized = sanitizeStringValue(value);
+    if (!normalized) return null;
+    return UUID_PATTERN.test(normalized) ? normalized : null;
+  };
+
   const normalizeNfseRequestBody = (body: Record<string, unknown>) => ({
     ...body,
     companyId: sanitizeUuidLikeValue(body.companyId),
     invoiceId: sanitizeUuidLikeValue(body.invoiceId),
     recordId: sanitizeUuidLikeValue(body.recordId),
-    nfeioCompanyId: sanitizeUuidLikeValue(body.nfeioCompanyId),
-    nfeioId: sanitizeUuidLikeValue(body.nfeioId),
+    nfeioCompanyId: sanitizeStringValue(body.nfeioCompanyId),
+    nfeioId: sanitizeStringValue(body.nfeioId),
   });
+
+  const getDefaultNfeioCompanyId = () =>
+    sanitizeStringValue(form.nfeioCompanyId) ?? sanitizeStringValue(companies[0]?.id);
 
   const invokeNfseFunction = async (body: Record<string, unknown>) => {
     const session = (await supabase.auth.getSession()).data.session;
@@ -198,7 +209,9 @@ export function NfsePanel() {
 
     const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
     const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
-    const normalizedBody = normalizeNfseRequestBody(body);
+    if (!projectId || !anonKey) {
+      throw new Error("Configuração do backend de NFS-e ausente.");
+    }
 
     const response = await fetch(`https://${projectId}.supabase.co/functions/v1/nfeio-nfse`, {
       method: "POST",
@@ -207,7 +220,7 @@ export function NfsePanel() {
         Authorization: `Bearer ${session.access_token}`,
         apikey: anonKey,
       },
-      body: JSON.stringify(normalizedBody),
+      body: JSON.stringify(normalizeNfseRequestBody(body)),
     });
 
     const result = await response.json().catch(() => ({}));
@@ -244,13 +257,37 @@ export function NfsePanel() {
     }
   };
 
+  const resetForm = () => {
+    setForm({
+      companyId: "",
+      nfeioCompanyId: "",
+      serviceDescription: "",
+      amountCents: 0,
+      tomadorName: "",
+      tomadorDocument: "",
+      tomadorEmail: "",
+      cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
+      federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
+      nbsCode: DEFAULT_NBS_CODE,
+    });
+    setCompanyInvoices([]);
+    setSelectedInvoiceId("");
+  };
+
   const handleEmit = async () => {
-    const companyId = typeof form.companyId === "string" ? form.companyId.trim() : "";
-    const nfeioCompanyId = typeof form.nfeioCompanyId === "string" ? form.nfeioCompanyId.trim() : "";
-    const invoiceId = selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId.trim() : null;
+    const companyId = sanitizeUuidLikeValue(form.companyId);
+    const nfeioCompanyId = sanitizeStringValue(form.nfeioCompanyId);
+    const invoiceId = selectedInvoiceId && selectedInvoiceId !== "none"
+      ? sanitizeUuidLikeValue(selectedInvoiceId)
+      : null;
 
     if (!companyId || !nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
-      toast.error("Preencha todos os campos obrigatórios (incluindo empresa)");
+      toast.error("Preencha todos os campos obrigatórios com valores válidos.");
+      return;
+    }
+
+    if (selectedInvoiceId && selectedInvoiceId !== "none" && !invoiceId) {
+      toast.error("A fatura selecionada é inválida. Selecione novamente.");
       return;
     }
 
@@ -273,29 +310,18 @@ export function NfsePanel() {
       setEmitting(false);
     }
   };
-
-  const resetForm = () => {
-    setForm({
-      companyId: "",
-      nfeioCompanyId: "",
-      serviceDescription: "",
-      amountCents: 0,
-      tomadorName: "",
-      tomadorDocument: "",
-      tomadorEmail: "",
-      cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
-      federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
-      nbsCode: DEFAULT_NBS_CODE,
-    });
-    setCompanyInvoices([]);
-    setSelectedInvoiceId("");
-  };
-
   const handleRefreshStatus = async (record: NfseRecord) => {
-    if (!record.nfeio_id) return;
+    const nfeioId = sanitizeStringValue(record.nfeio_id);
+    const recordId = sanitizeUuidLikeValue(record.id);
+    const nfeioCompanyId = getDefaultNfeioCompanyId();
+
+    if (!nfeioId || !recordId || !nfeioCompanyId) {
+      toast.error("Não foi possível atualizar: dados da NFS-e inválidos.");
+      return;
+    }
+
     try {
-      const nfeioCompanyId = companies[0]?.id;
-      await invokeNfseFunction({ action: "status", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id });
+      await invokeNfseFunction({ action: "status", nfeioCompanyId, nfeioId, recordId });
       toast.success("Status atualizado");
       await loadRecords();
     } catch (err: any) {
@@ -304,11 +330,19 @@ export function NfsePanel() {
   };
 
   const handleCancel = async (record: NfseRecord) => {
-    if (!record.nfeio_id) return;
+    const nfeioId = sanitizeStringValue(record.nfeio_id);
+    const recordId = sanitizeUuidLikeValue(record.id);
+    const nfeioCompanyId = getDefaultNfeioCompanyId();
+
+    if (!nfeioId || !recordId || !nfeioCompanyId) {
+      toast.error("Não foi possível cancelar: dados da NFS-e inválidos.");
+      return;
+    }
+
     if (!confirm("Deseja realmente cancelar esta NFS-e?")) return;
+
     try {
-      const nfeioCompanyId = companies[0]?.id;
-      await invokeNfseFunction({ action: "cancel", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id });
+      await invokeNfseFunction({ action: "cancel", nfeioCompanyId, nfeioId, recordId });
       toast.success("NFS-e cancelada");
       await loadRecords();
     } catch (err: any) {
@@ -330,16 +364,24 @@ export function NfsePanel() {
     }
   };
 
-
   const handleDownloadPdf = async (record: NfseRecord) => {
-    if (!record.nfeio_id) return;
+    const nfeioId = sanitizeStringValue(record.nfeio_id);
+    const nfeioCompanyId = getDefaultNfeioCompanyId();
+
+    if (!nfeioId || !nfeioCompanyId) {
+      toast.error("Não foi possível baixar o PDF: dados da NFS-e inválidos.");
+      return;
+    }
 
     try {
       toast.info("Baixando PDF...");
-      const nfeioCompanyId = companies[0]?.id;
       const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
       const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
       const session = (await supabase.auth.getSession()).data.session;
+
+      if (!projectId || !anonKey || !session?.access_token) {
+        throw new Error("Sessão inválida para baixar o PDF.");
+      }
 
       const res = await fetch(
         `https://${projectId}.supabase.co/functions/v1/nfeio-nfse`,
@@ -347,10 +389,14 @@ export function NfsePanel() {
           method: "POST",
           headers: {
             "Content-Type": "application/json",
-            Authorization: `Bearer ${session?.access_token}`,
+            Authorization: `Bearer ${session.access_token}`,
             apikey: anonKey,
           },
-          body: JSON.stringify({ action: "download-pdf", nfeioCompanyId, nfeioId: record.nfeio_id }),
+          body: JSON.stringify(normalizeNfseRequestBody({
+            action: "download-pdf",
+            nfeioCompanyId,
+            nfeioId,
+          })),
         }
       );
 
@@ -370,7 +416,7 @@ export function NfsePanel() {
 
       const blob = new Blob([arrayBuffer], { type: "application/pdf" });
       const url = URL.createObjectURL(blob);
-      const fileName = `nfse-${record.number || record.nfeio_id}.pdf`;
+      const fileName = `nfse-${record.number || nfeioId}.pdf`;
 
       const a = document.createElement("a");
       a.href = url;

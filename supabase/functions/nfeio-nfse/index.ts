@@ -7,6 +7,7 @@ const corsHeaders = {
 };
 
 const NFEIO_BASE = "https://api.nfe.io/v1";
+const UUID_PATTERN = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-5][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
 async function nfeioRequest(path: string, method = "GET", body?: any) {
   const apiKey = Deno.env.get("NFEIO_API_KEY");
@@ -23,7 +24,7 @@ async function nfeioRequest(path: string, method = "GET", body?: any) {
   if (body) opts.body = JSON.stringify(body);
 
   const res = await fetch(`${NFEIO_BASE}${path}`, opts);
-  
+
   if (!res.ok) {
     const errorText = await res.text();
     console.error(`NFE.io API error: ${res.status} - ${errorText}`);
@@ -33,12 +34,33 @@ async function nfeioRequest(path: string, method = "GET", body?: any) {
   return res.json();
 }
 
-function normalizeUuidParam(value: unknown): string | null {
+function normalizeStringParam(value: unknown): string | null {
   if (typeof value !== "string") return null;
   const normalized = value.trim();
   if (!normalized || normalized === "undefined" || normalized === "null") {
     return null;
   }
+  return normalized;
+}
+
+function normalizeUuidParam(
+  value: unknown,
+  options: { required?: boolean; fieldName?: string } = {},
+): string | null {
+  const { required = false, fieldName = "id" } = options;
+  const normalized = normalizeStringParam(value);
+
+  if (!normalized) {
+    if (required) {
+      throw new Error(`${fieldName} é obrigatório`);
+    }
+    return null;
+  }
+
+  if (!UUID_PATTERN.test(normalized)) {
+    throw new Error(`${fieldName} inválido`);
+  }
+
   return normalized;
 }
 
@@ -72,7 +94,7 @@ Deno.serve(async (req) => {
   try {
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
-      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
+      Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
     );
 
     await requireAuthenticatedUser(req, supabase);
@@ -88,21 +110,34 @@ Deno.serve(async (req) => {
       }
 
       case "emit": {
-        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode, nbsCode } = params;
+        const {
+          companyId,
+          nfeioCompanyId,
+          invoiceId,
+          serviceDescription,
+          amountCents,
+          tomadorName,
+          tomadorDocument,
+          tomadorEmail,
+          cityServiceCode,
+          federalServiceCode,
+          nbsCode,
+        } = params;
 
-        const normalizedCompanyId = normalizeUuidParam(companyId);
-        const normalizedInvoiceId = normalizeUuidParam(invoiceId);
-        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
-
-        if (!normalizedCompanyId) {
-          throw new Error("company_id é obrigatório para registrar a NFS-e");
-        }
+        const normalizedCompanyId = normalizeUuidParam(companyId, {
+          required: true,
+          fieldName: "company_id",
+        });
+        const normalizedInvoiceId = normalizeUuidParam(invoiceId, {
+          fieldName: "invoice_id",
+        });
+        const normalizedNfeioCompanyId = normalizeStringParam(nfeioCompanyId) ?? "";
 
         if (!normalizedNfeioCompanyId) {
           throw new Error("nfeioCompanyId é obrigatório para emitir a NFS-e");
         }
 
-        const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
+        const amountInReais = typeof amountCents === "number" ? amountCents : parseFloat(String(amountCents)) || 0;
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
         const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
         const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
@@ -136,7 +171,7 @@ Deno.serve(async (req) => {
         const result = await nfeioRequest(
           `/companies/${normalizedNfeioCompanyId}/serviceinvoices`,
           "POST",
-          nfsePayload
+          nfsePayload,
         );
 
         const { data: record, error: dbError } = await supabase
@@ -174,15 +209,17 @@ Deno.serve(async (req) => {
       }
 
       case "list": {
-        const { companyId } = params;
+        const normalizedCompanyId = normalizeUuidParam(params.companyId, {
+          fieldName: "company_id",
+        });
 
         let query = supabase
           .from("nfse_records")
           .select("*")
           .order("created_at", { ascending: false });
 
-        if (companyId) {
-          query = query.eq("company_id", companyId);
+        if (normalizedCompanyId) {
+          query = query.eq("company_id", normalizedCompanyId);
         }
 
         const { data, error } = await query;
@@ -195,17 +232,18 @@ Deno.serve(async (req) => {
       }
 
       case "status": {
-        const { nfeioCompanyId, nfeioId, recordId } = params;
-        const normalizedRecordId = normalizeUuidParam(recordId);
-        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
-        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+        const normalizedRecordId = normalizeUuidParam(params.recordId, {
+          fieldName: "record_id",
+        });
+        const normalizedNfeioCompanyId = normalizeStringParam(params.nfeioCompanyId) ?? "";
+        const normalizedNfeioId = normalizeStringParam(params.nfeioId) ?? "";
 
         if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
           throw new Error("Parâmetros obrigatórios ausentes para consultar o status da NFS-e");
         }
 
         const result = await nfeioRequest(
-          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`,
         );
 
         const updateData: any = {
@@ -234,18 +272,19 @@ Deno.serve(async (req) => {
       }
 
       case "cancel": {
-        const { nfeioCompanyId, nfeioId, recordId } = params;
-        const normalizedRecordId = normalizeUuidParam(recordId);
-        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
-        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+        const normalizedRecordId = normalizeUuidParam(params.recordId, {
+          fieldName: "record_id",
+        });
+        const normalizedNfeioCompanyId = normalizeStringParam(params.nfeioCompanyId) ?? "";
+        const normalizedNfeioId = normalizeStringParam(params.nfeioId) ?? "";
 
         if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
           throw new Error("Parâmetros obrigatórios ausentes para cancelar a NFS-e");
         }
 
-        const result = await nfeioRequest(
+        await nfeioRequest(
           `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`,
-          "DELETE"
+          "DELETE",
         );
 
         if (normalizedRecordId) {
@@ -264,18 +303,23 @@ Deno.serve(async (req) => {
       }
 
       case "download-pdf": {
-        const { nfeioCompanyId, nfeioId } = params;
+        const normalizedNfeioCompanyId = normalizeStringParam(params.nfeioCompanyId) ?? "";
+        const normalizedNfeioId = normalizeStringParam(params.nfeioId) ?? "";
         const apiKey = Deno.env.get("NFEIO_API_KEY");
         if (!apiKey) throw new Error("NFEIO_API_KEY not configured");
 
+        if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+          throw new Error("Parâmetros obrigatórios ausentes para baixar o PDF da NFS-e");
+        }
+
         const pdfRes = await fetch(
-          `${NFEIO_BASE}/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}/pdf`,
+          `${NFEIO_BASE}/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}/pdf`,
           {
             headers: {
               Authorization: apiKey,
               Accept: "application/pdf",
             },
-          }
+          },
         );
 
         if (!pdfRes.ok) {
@@ -288,7 +332,7 @@ Deno.serve(async (req) => {
           headers: {
             ...corsHeaders,
             "Content-Type": "application/pdf",
-            "Content-Disposition": `attachment; filename="nfse-${nfeioId}.pdf"`,
+            "Content-Disposition": `attachment; filename="nfse-${normalizedNfeioId}.pdf"`,
           },
         });
       }
@@ -300,13 +344,17 @@ Deno.serve(async (req) => {
         });
     }
   } catch (error: any) {
+    if (error instanceof Response) {
+      return error;
+    }
+
     console.error("nfeio-nfse error:", error);
     return new Response(
       JSON.stringify({ error: error.message }),
       {
         status: 500,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
-      }
+      },
     );
   }
 });
