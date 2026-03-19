@@ -2,7 +2,7 @@ import { useState, useEffect, useMemo, useCallback } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft, LayoutGrid, CalendarDays, Loader2, RefreshCw } from "lucide-react";
 import { toast } from "sonner";
@@ -356,32 +356,30 @@ const TaskManagerPage = () => {
           {(isAdmin || companies.length > 1) && (
             <div className="flex items-center gap-2 overflow-x-auto pb-1 -mx-3 px-3 sm:mx-0 sm:px-0 sm:overflow-visible scrollbar-hide">
               {isAdmin && (
-                <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-                  <SelectTrigger className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]">
-                    <SelectValue placeholder="Filtrar consultor" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="mine">Minhas tarefas</SelectItem>
-                    <SelectItem value="all">Todos</SelectItem>
-                    {staff.map(s => (
-                      <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedStaffId}
+                  onValueChange={setSelectedStaffId}
+                  options={[
+                    { value: "mine", label: "Minhas tarefas" },
+                    { value: "all", label: "Todos" },
+                    ...staff.map(s => ({ value: s.id, label: s.name })),
+                  ]}
+                  placeholder="Filtrar consultor"
+                  className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]"
+                />
               )}
 
               {companies.length > 1 && (
-                <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                  <SelectTrigger className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]">
-                    <SelectValue placeholder="Filtrar empresa" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todas as empresas</SelectItem>
-                    {companies.map(c => (
-                      <SelectItem key={c} value={c}>{c}</SelectItem>
-                    ))}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedCompany}
+                  onValueChange={setSelectedCompany}
+                  options={[
+                    { value: "all", label: "Todas as empresas" },
+                    ...companies.map(c => ({ value: c, label: c })),
+                  ]}
+                  placeholder="Filtrar empresa"
+                  className="h-8 text-xs sm:text-sm min-w-[150px] sm:w-[220px]"
+                />
               )}
             </div>
           )}
