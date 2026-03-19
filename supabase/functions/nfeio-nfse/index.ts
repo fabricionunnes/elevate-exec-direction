@@ -147,6 +147,7 @@ Deno.serve(async (req) => {
         // Update local record
         const updateData: any = {
           status: mapNfeioStatus(result.status),
+          error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
           number: result.number?.toString() || null,
           pdf_url: result.pdfUrl || null,
           xml_url: result.xmlUrl || null,
