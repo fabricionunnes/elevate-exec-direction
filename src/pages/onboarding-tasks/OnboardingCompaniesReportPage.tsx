@@ -1026,7 +1026,7 @@ export default function OnboardingCompaniesReportPage() {
               <TableBody>
                 {filteredCompanies.length === 0 ? (
                   <TableRow>
-                    <TableCell colSpan={isCS ? 9 : 11} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
+                    <TableCell colSpan={isCS ? 10 : 12} className="text-center py-8 text-muted-foreground text-xs sm:text-sm">
                       Nenhuma empresa encontrada
                     </TableCell>
                   </TableRow>
