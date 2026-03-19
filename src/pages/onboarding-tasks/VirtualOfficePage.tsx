@@ -678,14 +678,33 @@ const VirtualOfficePage = () => {
       ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Floor Map or Sidebar */}
-        {officeViewMode === "3d" ? (
+        {officeViewMode !== "list" ? (
           <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50">
-            <Suspense fallback={
-              <div className="flex-1 flex items-center justify-center">
-                <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
-              </div>
-            }>
-              <Office3DScene
+            {officeViewMode === "3d" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              }>
+                <Office3DScene
+                  rooms={rooms}
+                  presences={presences}
+                  staffMembers={staffMembers}
+                  selectedRoom={selectedRoom}
+                  onRoomSelect={setSelectedRoom}
+                  unreadCounts={unreadCounts}
+                  isAdmin={isAdmin}
+                  onStaffClick={(staff) => {
+                    const staffPresence = presences.find(p => p.staff_id === staff.id);
+                    if (staffPresence?.room_id) {
+                      const room = rooms.find(r => r.id === staffPresence.room_id);
+                      if (room) setSelectedRoom(room);
+                    }
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <OfficeFloorMap
                 rooms={rooms}
                 presences={presences}
                 staffMembers={staffMembers}
@@ -693,94 +712,16 @@ const VirtualOfficePage = () => {
                 onRoomSelect={setSelectedRoom}
                 unreadCounts={unreadCounts}
                 isAdmin={isAdmin}
-                onStaffClick={(staff) => {
-                  const staffPresence = presences.find(p => p.staff_id === staff.id);
-                  if (staffPresence?.room_id) {
-                    const room = rooms.find(r => r.id === staffPresence.room_id);
-                    if (room) setSelectedRoom(room);
-                  }
+                onEditRoom={(room) => {
+                  setEditingRoom(room);
+                  setShowEditRoom(true);
                 }}
               />
-            </Suspense>
+            )}
             {/* View Toggle */}
             <div className="p-2 border-t flex items-center justify-between bg-card">
               <span className="text-[10px] text-muted-foreground">Visualização</span>
-              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
-                <Button
-                  variant={officeViewMode === "3d" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("3d")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  🎮 3D
-                </Button>
-                <Button
-                  variant={officeViewMode === "map" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("map")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <Map className="h-3 w-3" />
-                  Mapa
-                </Button>
-                <Button
-                  variant={officeViewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("list")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <LayoutGrid className="h-3 w-3" />
-                  Lista
-                </Button>
-              </div>
-            </div>
-          </div>
-        ) : officeViewMode === "map" ? (
-          <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50">
-            <OfficeFloorMap
-              rooms={rooms}
-              presences={presences}
-              staffMembers={staffMembers}
-              selectedRoom={selectedRoom}
-              onRoomSelect={setSelectedRoom}
-              unreadCounts={unreadCounts}
-              isAdmin={isAdmin}
-              onEditRoom={(room) => {
-                setEditingRoom(room);
-                setShowEditRoom(true);
-              }}
-            />
-            {/* View Toggle */}
-            <div className="p-2 border-t flex items-center justify-between bg-card">
-              <span className="text-[10px] text-muted-foreground">Visualização</span>
-              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
-                <Button
-                  variant={officeViewMode === "3d" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("3d")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  🎮 3D
-                </Button>
-                <Button
-                  variant={officeViewMode === "map" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("map")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <Map className="h-3 w-3" />
-                  Mapa
-                </Button>
-                <Button
-                  variant={officeViewMode === "list" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("list")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <LayoutGrid className="h-3 w-3" />
-                  Lista
-                </Button>
-              </div>
+              <ViewModeToggle current={officeViewMode} onChange={setOfficeViewMode} />
             </div>
           </div>
         ) : (
