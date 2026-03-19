@@ -64,7 +64,11 @@ export const TaskCalendarView = ({ tasks, onStatusChange }: Props) => {
   const days: Date[] = [];
   let day = calStart;
   while (day <= calEnd) {
-    days.push(day);
+    const dow = day.getDay();
+    // Only include weekdays (Mon-Fri)
+    if (dow !== 0 && dow !== 6) {
+      days.push(day);
+    }
     day = addDays(day, 1);
   }
 
