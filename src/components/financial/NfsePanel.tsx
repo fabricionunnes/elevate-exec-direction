@@ -230,6 +230,50 @@ export function NfsePanel() {
 
     return result;
   };
+
+  const loadNfeioCompanies = async () => {
+    setLoadingCompanies(true);
+    try {
+      const data = await invokeNfseFunction({ action: "list-companies" });
+      const list = data?.companies || data?.data || [];
+      setCompanies(Array.isArray(list) ? list : []);
+    } catch (err: any) {
+      console.error("Error loading NFE.io companies:", err);
+    } finally {
+      setLoadingCompanies(false);
+    }
+  };
+
+  const loadRecords = async () => {
+    setLoading(true);
+    try {
+      const data = await invokeNfseFunction({ action: "list" });
+      setRecords(Array.isArray(data?.records) ? data.records : []);
+    } catch (err: any) {
+      console.error("Error loading NFS-e records:", err);
+      setRecords([]);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const resetForm = () => {
+    setForm({
+      companyId: "",
+      nfeioCompanyId: "",
+      serviceDescription: "",
+      amountCents: 0,
+      tomadorName: "",
+      tomadorDocument: "",
+      tomadorEmail: "",
+      cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
+      federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
+      nbsCode: DEFAULT_NBS_CODE,
+    });
+    setCompanyInvoices([]);
+    setSelectedInvoiceId("");
+  };
+
   const handleEmit = async () => {
     const companyId = sanitizeUuidLikeValue(form.companyId);
     const nfeioCompanyId = sanitizeStringValue(form.nfeioCompanyId);
