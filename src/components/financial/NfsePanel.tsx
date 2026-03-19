@@ -532,7 +532,7 @@ export function NfsePanel() {
                     <Input
                       value={form.cityServiceCode}
                       onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
-                      placeholder="1.05"
+                      placeholder="170601"
                     />
                   </div>
 
