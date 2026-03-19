@@ -43,6 +43,9 @@ interface NfeioCompany {
   id: string;
   name: string;
   federalTaxNumber: string;
+  taxRegime?: string;
+  municipalTaxDetermination?: string;
+  issRate?: number;
 }
 
 interface CompanyInvoice {
@@ -391,11 +394,14 @@ export function NfsePanel() {
                         <SelectValue placeholder={loadingCompanies ? "Carregando..." : "Selecione"} />
                       </SelectTrigger>
                       <SelectContent>
-                        {companies.map((c) => (
-                          <SelectItem key={c.id} value={c.id}>
-                            {c.name} ({c.federalTaxNumber})
-                          </SelectItem>
-                        ))}
+                        {companies.map((c) => {
+                          const isSimples = c.taxRegime === "SimplesNacional" || c.municipalTaxDetermination === "SimplesNacional";
+                          return (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} ({c.federalTaxNumber}){isSimples ? " • Simples Nacional" : ""}
+                            </SelectItem>
+                          );
+                        })}
                       </SelectContent>
                     </Select>
                   </div>
@@ -538,18 +544,33 @@ export function NfsePanel() {
                         placeholder="170601"
                       />
                     </div>
-                    <div>
-                      <Label>Alíquota ISS (%) — opcional</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        min="0"
-                        max="100"
-                        value={form.issRate}
-                        onChange={(e) => setForm({ ...form, issRate: e.target.value })}
-                        placeholder="Deixe em branco para não enviar"
-                      />
-                    </div>
+                    {(() => {
+                      const selectedNfeioCompany = companies.find((c) => c.id === form.nfeioCompanyId);
+                      const isSimples = selectedNfeioCompany?.taxRegime === "SimplesNacional" || selectedNfeioCompany?.municipalTaxDetermination === "SimplesNacional";
+
+                      if (isSimples) {
+                        return (
+                          <div className="rounded-md border border-border bg-muted/40 px-3 py-2 text-sm text-muted-foreground">
+                            Empresa no <strong>Simples Nacional</strong>: a alíquota não será enviada automaticamente para evitar a rejeição E0625.
+                          </div>
+                        );
+                      }
+
+                      return (
+                        <div>
+                          <Label>Alíquota ISS (%) — opcional</Label>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            min="0"
+                            max="100"
+                            value={form.issRate}
+                            onChange={(e) => setForm({ ...form, issRate: e.target.value })}
+                            placeholder="Deixe em branco para não enviar"
+                          />
+                        </div>
+                      );
+                    })()}
                   </div>
 
                   <Button onClick={handleEmit} disabled={emitting} className="w-full">
