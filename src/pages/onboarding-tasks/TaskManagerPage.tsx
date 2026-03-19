@@ -10,6 +10,7 @@ import { TaskKanbanBoard } from "@/components/task-manager/TaskKanbanBoard";
 import { TaskCalendarView } from "@/components/task-manager/TaskCalendarView";
 import { TaskManagerEditDialog } from "@/components/task-manager/TaskManagerEditDialog";
 import { BulkActionsBar } from "@/components/task-manager/BulkActionsBar";
+import { TaskManagerMiniDashboard } from "@/components/task-manager/TaskManagerMiniDashboard";
 import type { Database } from "@/integrations/supabase/types";
 
 type TaskStatus = Database["public"]["Enums"]["onboarding_task_status"];
@@ -385,6 +386,8 @@ const TaskManagerPage = () => {
           )}
         </div>
       </div>
+
+      <TaskManagerMiniDashboard tasks={filteredTasks} staff={staff} />
 
       <div className="max-w-[1600px] mx-auto p-4">
         {loading && tasks.length === 0 ? (
