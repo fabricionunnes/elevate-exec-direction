@@ -60,6 +60,9 @@ Deno.serve(async (req) => {
       case "emit": {
         const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, issRate } = params;
 
+        const companyDetails = await nfeioRequest(`/companies/${nfeioCompanyId}`);
+        const isSimplesNacional = companyDetails?.taxRegime === "SimplesNacional" || companyDetails?.municipalTaxDetermination === "SimplesNacional" || companyDetails?.federalTaxDetermination === "SimplesNacional";
+
         // Build NFS-e payload for NFE.io
         // amountCents is actually in reais (frontend already converts)
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
@@ -75,11 +78,18 @@ Deno.serve(async (req) => {
           },
         };
 
+        if (isSimplesNacional) {
+          nfsePayload.issRate = 0;
+        } else if (!Number.isNaN(parsedIssRate)) {
+          nfsePayload.issRate = parsedIssRate;
+        }
+
         console.info("NFS-e emit payload", JSON.stringify({
           companyId,
           nfeioCompanyId,
           cityServiceCode: nfsePayload.cityServiceCode,
           servicesAmount: nfsePayload.servicesAmount,
+          isSimplesNacional,
           hasIssRate: Object.prototype.hasOwnProperty.call(nfsePayload, "issRate"),
           issRate: nfsePayload.issRate ?? null,
         }));
