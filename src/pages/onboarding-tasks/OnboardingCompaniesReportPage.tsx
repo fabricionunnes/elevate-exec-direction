@@ -883,11 +883,11 @@ export default function OnboardingCompaniesReportPage() {
           </div>
 
           <div className="h-[calc(100vh-520px)] md:h-[calc(100vh-480px)] min-h-[320px] md:min-h-[420px] overflow-auto overscroll-contain touch-pan-x touch-pan-y">
-            <Table className="min-w-[900px] lg:min-w-[1100px]">
+            <Table className="w-full table-fixed">
               <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <TableRow className="border-b">
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap"
+                    className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap w-[22%]"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center">
@@ -895,11 +895,8 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="name" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell">
-                    <div className="flex items-center gap-1">
-                      <Instagram className="h-3 w-3" />
-                      Instagram
-                    </div>
+                  <TableHead className="text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell w-[40px] text-center">
+                    <Instagram className="h-3.5 w-3.5 mx-auto" />
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell"
@@ -1035,20 +1032,20 @@ export default function OnboardingCompaniesReportPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">
+                      <TableCell className="py-2 md:py-3 hidden sm:table-cell text-center w-[40px]">
                         {company.instagram_handle ? (
                           <a
-                            href={`https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
+                            href={company.instagram_handle.startsWith("http") ? company.instagram_handle : `https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-pink-500 hover:text-pink-400 hover:underline flex items-center gap-1"
+                            className="text-pink-500 hover:text-pink-400 inline-flex"
                             onClick={(e) => e.stopPropagation()}
+                            title={company.instagram_handle}
                           >
-                            <Instagram className="h-3 w-3" />
-                            {company.instagram_handle.startsWith("@") ? company.instagram_handle : `@${company.instagram_handle}`}
+                            <Instagram className="h-4 w-4" />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.consultant_name || "—"}</TableCell>
