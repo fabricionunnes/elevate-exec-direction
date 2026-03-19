@@ -100,7 +100,7 @@ export default function OnboardingCompaniesReportPage() {
   // Filters
   const [searchTerm, setSearchTerm] = useState("");
   const [filterConsultant, setFilterConsultant] = useState<string>("all");
-  const [filterStatus, setFilterStatus] = useState<string>("all");
+  const [filterStatus, setFilterStatus] = useState<string>("active");
   const [filterPaymentMethod, setFilterPaymentMethod] = useState<string>("all");
   const [filterEndDateFrom, setFilterEndDateFrom] = useState<string>("");
   const [filterEndDateTo, setFilterEndDateTo] = useState<string>("");
