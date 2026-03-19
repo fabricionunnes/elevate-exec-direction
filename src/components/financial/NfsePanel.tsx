@@ -90,6 +90,7 @@ export function NfsePanel() {
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
+  const DEFAULT_FEDERAL_SERVICE_CODE = "12051900";
 
   const [form, setForm] = useState({
     companyId: "",
@@ -100,6 +101,7 @@ export function NfsePanel() {
     tomadorDocument: "",
     tomadorEmail: "",
     cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
+    federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
   });
 
   useEffect(() => {
@@ -236,6 +238,7 @@ export function NfsePanel() {
       tomadorDocument: "",
       tomadorEmail: "",
       cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
+      federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
     });
     setCompanyInvoices([]);
     setSelectedInvoiceId("");
@@ -540,6 +543,14 @@ export function NfsePanel() {
                         value={form.cityServiceCode}
                         onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
                         placeholder="170601"
+                      />
+                    </div>
+                    <div>
+                      <Label>NBS</Label>
+                      <Input
+                        value={form.federalServiceCode}
+                        onChange={(e) => setForm({ ...form, federalServiceCode: e.target.value })}
+                        placeholder="12051900"
                       />
                     </div>
                   </div>
