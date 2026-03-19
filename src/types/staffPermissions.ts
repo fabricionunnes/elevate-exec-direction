@@ -198,6 +198,12 @@ export const STAFF_MENU_STRUCTURE = [
     description: "Configurar salários, visualizar NFs e PIX de todos",
     group: "Administração" 
   },
+  { 
+    key: STAFF_MENU_KEYS.automations, 
+    label: "Central de Automações", 
+    description: "Criar e gerenciar regras de automação entre módulos",
+    group: "Administração" 
+  },
 ] as const;
 
 // Role labels in Portuguese
