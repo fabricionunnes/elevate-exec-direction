@@ -226,8 +226,8 @@ export function NfsePanel() {
   };
 
   const handleEmit = async () => {
-    if (!form.nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
-      toast.error("Preencha todos os campos obrigatórios");
+    if (!form.companyId || !form.nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
+      toast.error("Preencha todos os campos obrigatórios (incluindo empresa)");
       return;
     }
     setEmitting(true);
