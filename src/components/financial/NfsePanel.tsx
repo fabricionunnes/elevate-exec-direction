@@ -230,7 +230,6 @@ export function NfsePanel() {
 
     return result;
   };
-...
   const handleEmit = async () => {
     const companyId = sanitizeUuidLikeValue(form.companyId);
     const nfeioCompanyId = sanitizeStringValue(form.nfeioCompanyId);
