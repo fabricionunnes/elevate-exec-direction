@@ -64,7 +64,7 @@ Deno.serve(async (req) => {
         // amountCents is actually in reais (frontend already converts)
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
         const nfsePayload: any = {
-          cityServiceCode: cityServiceCode || "1.05",
+          cityServiceCode: cityServiceCode || "170601",
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {
@@ -95,7 +95,7 @@ Deno.serve(async (req) => {
             tomador_name: tomadorName,
             tomador_document: tomadorDocument,
             tomador_email: tomadorEmail,
-            city_service_code: cityServiceCode || "1.05",
+            city_service_code: cityServiceCode || "170601",
             pdf_url: result.pdfUrl || null,
             xml_url: result.xmlUrl || null,
             rps_number: result.rpsNumber?.toString() || null,

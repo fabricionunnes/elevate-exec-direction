@@ -86,7 +86,7 @@ export function NfsePanel() {
   const isAdmin = isMaster || currentStaff?.role === "admin";
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
 
-  const DEFAULT_CITY_SERVICE_CODE = "17.06 | 1706 | Propaganda e publicidade, inclusive promoção de vendas, planejamento de campanhas ou sistemas de publicidade, elaboração de desenhos, textos e demais materiais publicitários.";
+  const DEFAULT_CITY_SERVICE_CODE = "170601";
 
   const [form, setForm] = useState({
     companyId: "",
@@ -532,7 +532,7 @@ export function NfsePanel() {
                     <Input
                       value={form.cityServiceCode}
                       onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
-                      placeholder="1.05"
+                      placeholder="170601"
                     />
                   </div>
 
