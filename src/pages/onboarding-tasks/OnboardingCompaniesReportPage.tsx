@@ -883,7 +883,7 @@ export default function OnboardingCompaniesReportPage() {
           </div>
 
           <div className="h-[calc(100vh-520px)] md:h-[calc(100vh-480px)] min-h-[320px] md:min-h-[420px] overflow-auto overscroll-contain touch-pan-x touch-pan-y">
-            <Table className="min-w-[900px] lg:min-w-[1100px]">
+            <Table className="w-full table-fixed">
               <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <TableRow className="border-b">
                   <TableHead 
