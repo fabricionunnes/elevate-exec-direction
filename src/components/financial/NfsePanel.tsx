@@ -91,7 +91,7 @@ export function NfsePanel() {
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
   const DEFAULT_FEDERAL_SERVICE_CODE = "170601";
-  const DEFAULT_NBS_CODE = "12051900";
+  const DEFAULT_NBS_CODE = "";
 
   const [form, setForm] = useState({
     companyId: "",
@@ -105,131 +105,7 @@ export function NfsePanel() {
     federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
     nbsCode: DEFAULT_NBS_CODE,
   });
-
-  useEffect(() => {
-    loadRecords();
-    loadOnboardingCompanies();
-    loadNfeioCompanies();
-  }, []);
-
-  const loadOnboardingCompanies = async () => {
-    const { data } = await supabase
-      .from("onboarding_companies")
-      .select("id, name, cnpj, email")
-      .eq("status", "active")
-      .order("name");
-    if (data) setOnboardingCompanies(data);
-  };
-
-  const loadCompanyInvoices = async (companyId: string) => {
-    setLoadingInvoices(true);
-    setCompanyInvoices([]);
-    setSelectedInvoiceId("");
-    try {
-      const { data, error } = await supabase
-        .from("company_invoices")
-        .select("id, description, amount_cents, due_date, status, paid_at")
-        .eq("company_id", companyId)
-        .order("due_date", { ascending: true });
-      if (error) throw error;
-      setCompanyInvoices(data || []);
-    } catch (err) {
-      console.error("Error loading invoices:", err);
-    } finally {
-      setLoadingInvoices(false);
-    }
-  };
-
-  const handleCompanySelect = (companyId: string) => {
-    const company = onboardingCompanies.find((c: any) => c.id === companyId);
-    if (company) {
-      setForm((prev) => ({
-        ...prev,
-        companyId,
-        tomadorName: company.name || prev.tomadorName,
-        tomadorDocument: company.cnpj || prev.tomadorDocument,
-        tomadorEmail: company.email || prev.tomadorEmail,
-      }));
-      loadCompanyInvoices(companyId);
-    } else {
-      setForm((prev) => ({ ...prev, companyId }));
-      setCompanyInvoices([]);
-    }
-  };
-
-  const handleInvoiceSelect = (invoiceId: string) => {
-    setSelectedInvoiceId(invoiceId);
-    if (invoiceId === "none") {
-      return;
-    }
-    const invoice = companyInvoices.find((i) => i.id === invoiceId);
-    if (invoice) {
-      setForm((prev) => ({
-        ...prev,
-        serviceDescription: prev.serviceDescription || invoice.description,
-        amountCents: invoice.amount_cents / 100,
-      }));
-    }
-  };
-
-  const loadNfeioCompanies = async () => {
-    setLoadingCompanies(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: { action: "list-companies" },
-      });
-      if (error) throw error;
-      const list = data?.companies || data?.data || [];
-      setCompanies(Array.isArray(list) ? list : []);
-    } catch (err: any) {
-      console.error("Error loading NFE.io companies:", err);
-    } finally {
-      setLoadingCompanies(false);
-    }
-  };
-
-  const loadRecords = async () => {
-    setLoading(true);
-    try {
-      const { data, error } = await supabase
-        .from("nfse_records" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setRecords((data as any[]) || []);
-    } catch (err: any) {
-      console.error("Error loading NFS-e records:", err);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleEmit = async () => {
-    if (!form.nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
-      toast.error("Preencha todos os campos obrigatórios");
-      return;
-    }
-    setEmitting(true);
-    try {
-      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: {
-          action: "emit",
-          ...form,
-          invoiceId: selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId : null,
-        },
-      });
-      if (error) throw error;
-      toast.success("NFS-e emitida com sucesso! Aguarde o processamento.");
-      setEmitDialogOpen(false);
-      resetForm();
-      loadRecords();
-    } catch (err: any) {
-      toast.error("Erro ao emitir NFS-e: " + err.message);
-    } finally {
-      setEmitting(false);
-    }
-  };
-
+...
   const resetForm = () => {
     setForm({
       companyId: "",
