@@ -245,16 +245,23 @@ export function NfsePanel() {
   };
 
   const handleEmit = async () => {
-    if (!form.companyId || !form.nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
+    const companyId = typeof form.companyId === "string" ? form.companyId.trim() : "";
+    const nfeioCompanyId = typeof form.nfeioCompanyId === "string" ? form.nfeioCompanyId.trim() : "";
+    const invoiceId = selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId.trim() : null;
+
+    if (!companyId || !nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
       toast.error("Preencha todos os campos obrigatórios (incluindo empresa)");
       return;
     }
+
     setEmitting(true);
     try {
       await invokeNfseFunction({
         action: "emit",
         ...form,
-        invoiceId: selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId : null,
+        companyId,
+        nfeioCompanyId,
+        invoiceId,
       });
       toast.success("NFS-e enviada com sucesso! Aguarde o processamento.");
       setEmitDialogOpen(false);

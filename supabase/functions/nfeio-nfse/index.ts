@@ -196,12 +196,18 @@ Deno.serve(async (req) => {
 
       case "status": {
         const { nfeioCompanyId, nfeioId, recordId } = params;
+        const normalizedRecordId = normalizeUuidParam(recordId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+
+        if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+          throw new Error("Parâmetros obrigatórios ausentes para consultar o status da NFS-e");
+        }
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}`
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`
         );
 
-        // Update local record
         const updateData: any = {
           status: mapNfeioStatus(result.status),
           error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
@@ -215,11 +221,11 @@ Deno.serve(async (req) => {
           updateData.cancelled_at = new Date().toISOString();
         }
 
-        if (recordId) {
+        if (normalizedRecordId) {
           await supabase
             .from("nfse_records")
             .update(updateData)
-            .eq("id", recordId);
+            .eq("id", normalizedRecordId);
         }
 
         return new Response(JSON.stringify({ success: true, nfse: result }), {
@@ -229,20 +235,27 @@ Deno.serve(async (req) => {
 
       case "cancel": {
         const { nfeioCompanyId, nfeioId, recordId } = params;
+        const normalizedRecordId = normalizeUuidParam(recordId);
+        const normalizedNfeioCompanyId = typeof nfeioCompanyId === "string" ? nfeioCompanyId.trim() : "";
+        const normalizedNfeioId = typeof nfeioId === "string" ? nfeioId.trim() : "";
+
+        if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+          throw new Error("Parâmetros obrigatórios ausentes para cancelar a NFS-e");
+        }
 
         const result = await nfeioRequest(
-          `/companies/${nfeioCompanyId}/serviceinvoices/${nfeioId}`,
+          `/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}`,
           "DELETE"
         );
 
-        if (recordId) {
+        if (normalizedRecordId) {
           await supabase
             .from("nfse_records")
             .update({
               status: "cancelled",
               cancelled_at: new Date().toISOString(),
             })
-            .eq("id", recordId);
+            .eq("id", normalizedRecordId);
         }
 
         return new Response(JSON.stringify({ success: true }), {
