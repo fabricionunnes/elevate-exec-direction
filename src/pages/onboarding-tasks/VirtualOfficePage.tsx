@@ -48,6 +48,8 @@ import { ptBR } from "date-fns/locale";
 import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager";
 import { OfficeFloorMap } from "@/components/virtual-office/OfficeFloorMap";
+import { lazy, Suspense } from "react";
+const Office3DScene = lazy(() => import("@/components/virtual-office/Office3DScene").then(m => ({ default: m.Office3DScene })));
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { SupportRoomPanel } from "@/components/virtual-office/SupportRoomPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
@@ -109,7 +111,23 @@ const statusConfig: Record<PresenceStatus, { label: string; color: string; icon:
   offline: { label: "Offline", color: "bg-gray-400", icon: Circle },
 };
 
-type OfficeViewMode = "map" | "list";
+type OfficeViewMode = "3d" | "map" | "list";
+
+const ViewModeToggle = ({ current, onChange }: { current: OfficeViewMode; onChange: (v: OfficeViewMode) => void }) => (
+  <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
+    {([["3d", "🎮 3D"], ["map", "🗺️ Mapa"], ["list", "📋 Lista"]] as const).map(([mode, label]) => (
+      <Button
+        key={mode}
+        variant={current === mode ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onChange(mode as OfficeViewMode)}
+        className="h-6 px-2 gap-1 text-[10px]"
+      >
+        {label}
+      </Button>
+    ))}
+  </div>
+);
 
 const VirtualOfficePage = () => {
   const navigate = useNavigate();
@@ -133,7 +151,7 @@ const VirtualOfficePage = () => {
   const [activeTab, setActiveTab] = useState("office");
   const [unreadCounts, setUnreadCounts] = useState<Record<string, number>>({});
   const [roomAccessList, setRoomAccessList] = useState<RoomAccess[]>([]);
-  const [officeViewMode, setOfficeViewMode] = useState<OfficeViewMode>("map");
+  const [officeViewMode, setOfficeViewMode] = useState<OfficeViewMode>("3d");
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
@@ -676,44 +694,50 @@ const VirtualOfficePage = () => {
       ) : (
       <div className="flex-1 flex overflow-hidden">
         {/* Left Panel - Floor Map or Sidebar */}
-        {officeViewMode === "map" ? (
+        {officeViewMode !== "list" ? (
           <div className="w-full md:w-3/5 lg:w-2/3 xl:w-[70%] border-r flex flex-col bg-card/50">
-            <OfficeFloorMap
-              rooms={rooms}
-              presences={presences}
-              staffMembers={staffMembers}
-              selectedRoom={selectedRoom}
-              onRoomSelect={setSelectedRoom}
-              unreadCounts={unreadCounts}
-              isAdmin={isAdmin}
-              onEditRoom={(room) => {
-                setEditingRoom(room);
-                setShowEditRoom(true);
-              }}
-            />
+            {officeViewMode === "3d" ? (
+              <Suspense fallback={
+                <div className="flex-1 flex items-center justify-center">
+                  <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" />
+                </div>
+              }>
+                <Office3DScene
+                  rooms={rooms}
+                  presences={presences}
+                  staffMembers={staffMembers}
+                  selectedRoom={selectedRoom}
+                  onRoomSelect={setSelectedRoom}
+                  unreadCounts={unreadCounts}
+                  isAdmin={isAdmin}
+                  onStaffClick={(staff) => {
+                    const staffPresence = presences.find(p => p.staff_id === staff.id);
+                    if (staffPresence?.room_id) {
+                      const room = rooms.find(r => r.id === staffPresence.room_id);
+                      if (room) setSelectedRoom(room);
+                    }
+                  }}
+                />
+              </Suspense>
+            ) : (
+              <OfficeFloorMap
+                rooms={rooms}
+                presences={presences}
+                staffMembers={staffMembers}
+                selectedRoom={selectedRoom}
+                onRoomSelect={setSelectedRoom}
+                unreadCounts={unreadCounts}
+                isAdmin={isAdmin}
+                onEditRoom={(room) => {
+                  setEditingRoom(room);
+                  setShowEditRoom(true);
+                }}
+              />
+            )}
             {/* View Toggle */}
             <div className="p-2 border-t flex items-center justify-between bg-card">
               <span className="text-[10px] text-muted-foreground">Visualização</span>
-              <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
-                <Button
-                  variant={officeViewMode === "map" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("map")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <Map className="h-3 w-3" />
-                  Mapa
-                </Button>
-                <Button
-                  variant={officeViewMode !== "map" ? "default" : "ghost"}
-                  size="sm"
-                  onClick={() => setOfficeViewMode("list")}
-                  className="h-6 px-2 gap-1 text-[10px]"
-                >
-                  <LayoutGrid className="h-3 w-3" />
-                  Lista
-                </Button>
-              </div>
+              <ViewModeToggle current={officeViewMode} onChange={setOfficeViewMode} />
             </div>
           </div>
         ) : (
