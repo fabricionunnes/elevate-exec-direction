@@ -1633,6 +1633,142 @@ export type Database = {
           },
         ]
       }
+      automation_executions: {
+        Row: {
+          action_result: Json | null
+          error_message: string | null
+          executed_at: string
+          id: string
+          rule_id: string
+          status: string
+          trigger_data: Json | null
+        }
+        Insert: {
+          action_result?: Json | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          rule_id: string
+          status?: string
+          trigger_data?: Json | null
+        }
+        Update: {
+          action_result?: Json | null
+          error_message?: string | null
+          executed_at?: string
+          id?: string
+          rule_id?: string
+          status?: string
+          trigger_data?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_executions_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "automation_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_rules: {
+        Row: {
+          action_config: Json
+          action_type: string
+          conditions: Json
+          created_at: string
+          created_by: string | null
+          description: string | null
+          id: string
+          is_active: boolean
+          name: string
+          trigger_config: Json
+          trigger_type: string
+          updated_at: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          trigger_config?: Json
+          trigger_type: string
+          updated_at?: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          conditions?: Json
+          created_at?: string
+          created_by?: string | null
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          trigger_config?: Json
+          trigger_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "automation_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      automation_templates: {
+        Row: {
+          action_config: Json
+          action_type: string
+          category: string
+          conditions: Json
+          created_at: string
+          description: string | null
+          icon: string | null
+          id: string
+          is_active: boolean
+          name: string
+          trigger_config: Json
+          trigger_type: string
+        }
+        Insert: {
+          action_config?: Json
+          action_type: string
+          category?: string
+          conditions?: Json
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          trigger_config?: Json
+          trigger_type: string
+        }
+        Update: {
+          action_config?: Json
+          action_type?: string
+          category?: string
+          conditions?: Json
+          created_at?: string
+          description?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          trigger_config?: Json
+          trigger_type?: string
+        }
+        Relationships: []
+      }
       billing_notification_logs: {
         Row: {
           company_id: string
