@@ -121,6 +121,7 @@ const MARKETING_FIELDS = [
   { key: "marketing_main_goal", label: "Objetivo principal" },
   { key: "marketing_biggest_challenge", label: "Maior desafio" },
   { key: "marketing_expected_results", label: "Resultados esperados" },
+  { key: "marketing_how_can_we_help", label: "Como podemos ajudar" },
   { key: "marketing_additional_info", label: "Informações adicionais" },
 ];
 

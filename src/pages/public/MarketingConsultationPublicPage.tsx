@@ -77,6 +77,7 @@ const SECTIONS: FormSection[] = [
       { key: "marketing_main_goal", label: "Qual o principal objetivo de marketing digital da empresa?", type: "textarea", placeholder: "Ex: Aumentar seguidores, gerar leads, vender mais pelo Instagram...", required: true },
       { key: "marketing_biggest_challenge", label: "Qual seu maior desafio com marketing digital atualmente?", type: "textarea", placeholder: "Ex: Não tenho engajamento, não sei o que postar, não converto seguidores em clientes...", required: true },
       { key: "marketing_expected_results", label: "Quais resultados espera alcançar nos próximos 3-6 meses?", type: "textarea", placeholder: "Ex: Dobrar seguidores, ter 10 leads/semana pelo Instagram...", required: true },
+      { key: "marketing_how_can_we_help", label: "De forma específica, como podemos te ajudar?", type: "textarea", placeholder: "Descreva exatamente o que você precisa de ajuda e como podemos contribuir", required: true },
       { key: "marketing_additional_info", label: "Alguma informação adicional relevante para a análise?", type: "textarea", placeholder: "Fique à vontade para compartilhar qualquer detalhe importante", required: false },
     ],
   },
