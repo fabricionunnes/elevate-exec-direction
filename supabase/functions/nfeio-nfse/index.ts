@@ -58,14 +58,15 @@ Deno.serve(async (req) => {
       }
 
       case "emit": {
-        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode } = params;
+        const { companyId, nfeioCompanyId, invoiceId, serviceDescription, amountCents, tomadorName, tomadorDocument, tomadorEmail, cityServiceCode, federalServiceCode } = params;
 
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
+        const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
 
-        // Payload mínimo: apenas serviço, valor e dados do tomador
-        // O NFE.io calcula impostos automaticamente pelo cadastro da empresa
+        // Payload mínimo: serviço, valor, tomador e classificações fiscais do serviço
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
+          ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {
