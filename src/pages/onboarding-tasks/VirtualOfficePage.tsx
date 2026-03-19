@@ -113,6 +113,22 @@ const statusConfig: Record<PresenceStatus, { label: string; color: string; icon:
 
 type OfficeViewMode = "3d" | "map" | "list";
 
+const ViewModeToggle = ({ current, onChange }: { current: OfficeViewMode; onChange: (v: OfficeViewMode) => void }) => (
+  <div className="flex items-center border rounded-md p-0.5 bg-muted/50">
+    {([["3d", "🎮 3D"], ["map", "🗺️ Mapa"], ["list", "📋 Lista"]] as const).map(([mode, label]) => (
+      <Button
+        key={mode}
+        variant={current === mode ? "default" : "ghost"}
+        size="sm"
+        onClick={() => onChange(mode as OfficeViewMode)}
+        className="h-6 px-2 gap-1 text-[10px]"
+      >
+        {label}
+      </Button>
+    ))}
+  </div>
+);
+
 const VirtualOfficePage = () => {
   const navigate = useNavigate();
   const location = useLocation();
