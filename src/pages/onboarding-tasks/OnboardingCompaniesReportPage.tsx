@@ -887,7 +887,7 @@ export default function OnboardingCompaniesReportPage() {
               <TableHeader className="sticky top-0 z-10 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/80">
                 <TableRow className="border-b">
                   <TableHead 
-                    className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap"
+                    className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap w-[22%]"
                     onClick={() => handleSort("name")}
                   >
                     <div className="flex items-center">
@@ -895,11 +895,8 @@ export default function OnboardingCompaniesReportPage() {
                       <SortIcon field="name" />
                     </div>
                   </TableHead>
-                  <TableHead className="text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell">
-                    <div className="flex items-center gap-1">
-                      <Instagram className="h-3 w-3" />
-                      Instagram
-                    </div>
+                  <TableHead className="text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell w-[40px] text-center">
+                    <Instagram className="h-3.5 w-3.5 mx-auto" />
                   </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell"
