@@ -182,7 +182,6 @@ const Character3D = ({
         color="#1e293b"
         anchorX="center"
         anchorY="bottom"
-        font="/fonts/inter-medium.woff"
         outlineWidth={0.015}
         outlineColor="white"
       >
