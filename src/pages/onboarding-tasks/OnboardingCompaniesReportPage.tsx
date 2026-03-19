@@ -329,7 +329,7 @@ export default function OnboardingCompaniesReportPage() {
         contract_value: company.contract_value,
         payment_method: company.payment_method,
         status: company.status || "active",
-        instagram_handle: instagramMap.get(company.id) || null,
+        instagram_handle: company.instagram || null,
         total_paid: totalPaid,
         contract_months: contractMonths,
         avg_ticket: avgTicket,
