@@ -1032,20 +1032,20 @@ export default function OnboardingCompaniesReportPage() {
                           </div>
                         </div>
                       </TableCell>
-                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">
+                      <TableCell className="py-2 md:py-3 hidden sm:table-cell text-center w-[40px]">
                         {company.instagram_handle ? (
                           <a
-                            href={`https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
+                            href={company.instagram_handle.startsWith("http") ? company.instagram_handle : `https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
                             target="_blank"
                             rel="noopener noreferrer"
-                            className="text-pink-500 hover:text-pink-400 hover:underline flex items-center gap-1"
+                            className="text-pink-500 hover:text-pink-400 inline-flex"
                             onClick={(e) => e.stopPropagation()}
+                            title={company.instagram_handle}
                           >
-                            <Instagram className="h-3 w-3" />
-                            {company.instagram_handle.startsWith("@") ? company.instagram_handle : `@${company.instagram_handle}`}
+                            <Instagram className="h-4 w-4" />
                           </a>
                         ) : (
-                          <span className="text-muted-foreground">—</span>
+                          <span className="text-muted-foreground text-xs">—</span>
                         )}
                       </TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.consultant_name || "—"}</TableCell>
