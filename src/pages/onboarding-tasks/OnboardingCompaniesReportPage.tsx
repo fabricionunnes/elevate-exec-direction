@@ -204,6 +204,7 @@ export default function OnboardingCompaniesReportPage() {
       .select(`
         id,
         name,
+        instagram,
         consultant_id,
         contract_start_date,
         contract_end_date,
