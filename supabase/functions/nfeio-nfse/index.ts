@@ -33,6 +33,28 @@ async function nfeioRequest(path: string, method = "GET", body?: any) {
   return res.json();
 }
 
+async function requireAuthenticatedUser(req: Request, supabase: ReturnType<typeof createClient>) {
+  const authHeader = req.headers.get("authorization");
+  const token = authHeader?.replace(/^Bearer\s+/i, "").trim();
+
+  if (!token) {
+    throw new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  const { data, error } = await supabase.auth.getUser(token);
+  if (error || !data.user) {
+    throw new Response(JSON.stringify({ error: "Unauthorized" }), {
+      status: 401,
+      headers: { ...corsHeaders, "Content-Type": "application/json" },
+    });
+  }
+
+  return data.user;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -44,8 +66,7 @@ Deno.serve(async (req) => {
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    // Auth is handled via verify_jwt = false in config.toml
-    // The function is only accessible by authenticated frontend calls
+    await requireAuthenticatedUser(req, supabase);
 
     const { action, ...params } = await req.json();
 
@@ -64,12 +85,14 @@ Deno.serve(async (req) => {
         const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
         const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
         const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
+        const issuerCompany = await nfeioRequest(`/companies/${nfeioCompanyId}`);
+        const shouldZeroIssRate = issuerCompany?.taxRegime === "SimplesNacional" && issuerCompany?.municipalTaxDetermination === "SimplesNacional";
 
-        // Payload mínimo com classificações fiscais corretas do serviço
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
           ...(validNbsCode ? { nbsCode: validNbsCode } : {}),
+          ...(shouldZeroIssRate ? { issRate: 0 } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
           borrower: {
@@ -81,7 +104,11 @@ Deno.serve(async (req) => {
 
         if (normalizedNbsCode && !validNbsCode) {
           console.warn("Ignoring invalid NBS code for NFS-e payload", normalizedNbsCode);
-        };
+        }
+
+        if (shouldZeroIssRate) {
+          console.info("Applying Simples Nacional ISS handling with issRate=0");
+        }
 
         console.info("NFS-e emit payload (minimal)", JSON.stringify(nfsePayload));
 
@@ -91,14 +118,12 @@ Deno.serve(async (req) => {
           nfsePayload
         );
 
-        // Save to local DB
         const { data: record, error: dbError } = await supabase
           .from("nfse_records")
           .insert({
             company_id: companyId,
             invoice_id: invoiceId || null,
             nfeio_id: result.id,
-            // Store as cents in DB
             number: result.number?.toString() || null,
             status: mapNfeioStatus(result.status),
             amount_cents: Math.round(amountInReais * 100),
@@ -130,11 +155,16 @@ Deno.serve(async (req) => {
       case "list": {
         const { companyId } = params;
 
-        const { data, error } = await supabase
+        let query = supabase
           .from("nfse_records")
           .select("*")
-          .eq("company_id", companyId)
           .order("created_at", { ascending: false });
+
+        if (companyId) {
+          query = query.eq("company_id", companyId);
+        }
+
+        const { data, error } = await query;
 
         if (error) throw error;
 

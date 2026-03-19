@@ -172,13 +172,37 @@ export function NfsePanel() {
     }
   };
 
+  const invokeNfseFunction = async (body: Record<string, unknown>) => {
+    const session = (await supabase.auth.getSession()).data.session;
+    if (!session?.access_token) {
+      throw new Error("Sua sessão expirou. Faça login novamente.");
+    }
+
+    const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+    const anonKey = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY;
+
+    const response = await fetch(`https://${projectId}.supabase.co/functions/v1/nfeio-nfse`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${session.access_token}`,
+        apikey: anonKey,
+      },
+      body: JSON.stringify(body),
+    });
+
+    const result = await response.json().catch(() => ({}));
+    if (!response.ok) {
+      throw new Error(result?.error || "Erro ao comunicar com o backend de NFS-e.");
+    }
+
+    return result;
+  };
+
   const loadNfeioCompanies = async () => {
     setLoadingCompanies(true);
     try {
-      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: { action: "list-companies" },
-      });
-      if (error) throw error;
+      const data = await invokeNfseFunction({ action: "list-companies" });
       const list = data?.companies || data?.data || [];
       setCompanies(Array.isArray(list) ? list : []);
     } catch (err: any) {
@@ -191,14 +215,11 @@ export function NfsePanel() {
   const loadRecords = async () => {
     setLoading(true);
     try {
-      const { data, error } = await supabase
-        .from("nfse_records" as any)
-        .select("*")
-        .order("created_at", { ascending: false });
-      if (error) throw error;
-      setRecords((data as any[]) || []);
+      const data = await invokeNfseFunction({ action: "list" });
+      setRecords(Array.isArray(data?.records) ? data.records : []);
     } catch (err: any) {
       console.error("Error loading NFS-e records:", err);
+      setRecords([]);
     } finally {
       setLoading(false);
     }
@@ -211,18 +232,15 @@ export function NfsePanel() {
     }
     setEmitting(true);
     try {
-      const { data, error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: {
-          action: "emit",
-          ...form,
-          invoiceId: selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId : null,
-        },
+      await invokeNfseFunction({
+        action: "emit",
+        ...form,
+        invoiceId: selectedInvoiceId && selectedInvoiceId !== "none" ? selectedInvoiceId : null,
       });
-      if (error) throw error;
-      toast.success("NFS-e emitida com sucesso! Aguarde o processamento.");
+      toast.success("NFS-e enviada com sucesso! Aguarde o processamento.");
       setEmitDialogOpen(false);
       resetForm();
-      loadRecords();
+      await loadRecords();
     } catch (err: any) {
       toast.error("Erro ao emitir NFS-e: " + err.message);
     } finally {
@@ -251,12 +269,9 @@ export function NfsePanel() {
     if (!record.nfeio_id) return;
     try {
       const nfeioCompanyId = companies[0]?.id;
-      const { error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: { action: "status", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id },
-      });
-      if (error) throw error;
+      await invokeNfseFunction({ action: "status", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id });
       toast.success("Status atualizado");
-      loadRecords();
+      await loadRecords();
     } catch (err: any) {
       toast.error("Erro ao atualizar status: " + err.message);
     }
@@ -267,12 +282,9 @@ export function NfsePanel() {
     if (!confirm("Deseja realmente cancelar esta NFS-e?")) return;
     try {
       const nfeioCompanyId = companies[0]?.id;
-      const { error } = await supabase.functions.invoke("nfeio-nfse", {
-        body: { action: "cancel", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id },
-      });
-      if (error) throw error;
+      await invokeNfseFunction({ action: "cancel", nfeioCompanyId, nfeioId: record.nfeio_id, recordId: record.id });
       toast.success("NFS-e cancelada");
-      loadRecords();
+      await loadRecords();
     } catch (err: any) {
       toast.error("Erro ao cancelar: " + err.message);
     }
