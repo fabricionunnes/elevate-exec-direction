@@ -48,6 +48,7 @@ import {
   Pencil,
   RotateCw,
   Heart,
+  Instagram,
 } from "lucide-react";
 import RenewalsPanel from "@/components/onboarding-tasks/RenewalsPanel";
 import { getRiskLevelInfo } from "@/hooks/useHealthScore";
