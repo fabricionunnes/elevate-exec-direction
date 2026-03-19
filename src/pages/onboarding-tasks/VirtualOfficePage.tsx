@@ -48,6 +48,8 @@ import { ptBR } from "date-fns/locale";
 import GoogleCalendarTab from "@/components/virtual-office/GoogleCalendarTab";
 import { RoomAccessManager } from "@/components/virtual-office/RoomAccessManager";
 import { OfficeFloorMap } from "@/components/virtual-office/OfficeFloorMap";
+import { lazy, Suspense } from "react";
+const Office3DScene = lazy(() => import("@/components/virtual-office/Office3DScene").then(m => ({ default: m.Office3DScene })));
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { SupportRoomPanel } from "@/components/virtual-office/SupportRoomPanel";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
