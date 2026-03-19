@@ -63,18 +63,21 @@ Deno.serve(async (req) => {
         // Build NFS-e payload for NFE.io
         // amountCents is actually in reais (frontend already converts)
         const amountInReais = typeof amountCents === 'number' ? amountCents : parseFloat(String(amountCents)) || 0;
-        const resolvedIssRate = typeof issRate === 'number' ? issRate : parseFloat(String(issRate)) || 2;
+        const parsedIssRate = typeof issRate === 'number' ? issRate : parseFloat(String(issRate));
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           description: serviceDescription,
           servicesAmount: amountInReais,
-          issRate: resolvedIssRate,
           borrower: {
             name: tomadorName,
             federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
             email: tomadorEmail || undefined,
           },
         };
+
+        if (!Number.isNaN(parsedIssRate)) {
+          nfsePayload.issRate = parsedIssRate;
+        }
 
         const result = await nfeioRequest(
           `/companies/${nfeioCompanyId}/serviceinvoices`,
