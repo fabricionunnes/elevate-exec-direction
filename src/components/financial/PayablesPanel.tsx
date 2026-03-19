@@ -191,7 +191,7 @@ export function PayablesPanel() {
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
 
-      // Update overdue status
+      // Update overdue status for pending items past due date
       const today = format(new Date(), "yyyy-MM-dd");
       const overdueIds = payablesData
         ?.filter(p => p.status === "pending" && p.due_date < today)
