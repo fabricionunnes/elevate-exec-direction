@@ -931,6 +931,7 @@ export default function OnboardingCompaniesReportPage() {
                       <Instagram className="h-3 w-3" />
                       Instagram
                     </div>
+                  </TableHead>
                   <TableHead 
                     className="cursor-pointer hover:bg-muted/50 text-[10px] sm:text-xs lg:text-sm whitespace-nowrap hidden sm:table-cell"
                     onClick={() => handleSort("consultant_name")}
