@@ -783,7 +783,6 @@ const VirtualOfficePage = () => {
               </div>
             </div>
           </div>
-          </div>
         ) : (
           <aside className="w-64 border-r bg-card hidden md:flex flex-col">
             <div className="p-3 border-b flex items-center justify-between">
