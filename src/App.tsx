@@ -47,6 +47,7 @@ const ForClosersPage = lazy(() => import("./pages/ForClosersPage"));
 const ClientDiagnosticPage = lazy(() => import("./pages/ClientDiagnosticPage"));
 const ApplyPage = lazy(() => import("./pages/ApplyPage"));
 const FAQPage = lazy(() => import("./pages/FAQPage"));
+const DepoimentosPage = lazy(() => import("./pages/DepoimentosPage"));
 const TermsPage = lazy(() => import("./pages/TermsPage"));
 const ComparePage = lazy(() => import("./pages/ComparePage"));
 const PricingPage = lazy(() => import("./pages/PricingPage"));
@@ -297,6 +298,7 @@ const App = () => (
             <Route path="/diagnostico" element={<ClientDiagnosticPage />} />
             <Route path="/apply" element={<ClientDiagnosticPage />} />
             <Route path="/faq" element={<FAQPage />} />
+            <Route path="/depoimentos" element={<DepoimentosPage />} />
             <Route path="/terms" element={<TermsPage />} />
             <Route path="/compare" element={<ComparePage />} />
             <Route path="/pricing" element={<PricingPage />} />
