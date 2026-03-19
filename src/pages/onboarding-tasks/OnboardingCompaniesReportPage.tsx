@@ -1066,6 +1066,22 @@ export default function OnboardingCompaniesReportPage() {
                           </div>
                         </div>
                       </TableCell>
+                      <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">
+                        {company.instagram_handle ? (
+                          <a
+                            href={`https://instagram.com/${company.instagram_handle.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="text-pink-500 hover:text-pink-400 hover:underline flex items-center gap-1"
+                            onClick={(e) => e.stopPropagation()}
+                          >
+                            <Instagram className="h-3 w-3" />
+                            {company.instagram_handle.startsWith("@") ? company.instagram_handle : `@${company.instagram_handle}`}
+                          </a>
+                        ) : (
+                          <span className="text-muted-foreground">—</span>
+                        )}
+                      </TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3 hidden sm:table-cell">{company.consultant_name || "—"}</TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{formatDate(company.contract_start_date)}</TableCell>
                       <TableCell className="text-[10px] sm:text-xs lg:text-sm py-2 md:py-3">{company.payment_method === "monthly" ? "—" : formatDate(company.contract_end_date)}</TableCell>
