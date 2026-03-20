@@ -52,7 +52,7 @@ export const CRMOfficePage = () => {
         provider: "google",
         options: {
           scopes: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
-          redirectTo: window.location.origin + "/#/crm/office",
+          redirectTo: `${window.location.origin}/#/crm/office`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
