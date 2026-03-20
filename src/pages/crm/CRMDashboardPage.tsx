@@ -549,6 +549,11 @@ export const CRMDashboardPage = () => {
         ))}
       </div>
 
+      {/* Commission Card */}
+      {(staffRole === "closer" || staffRole === "sdr" || staffRole === "master") && (
+        <CRMCommissionCard staffId={staffId} staffRole={staffRole} isMaster={staffRole === "master"} />
+      )}
+
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Funnel Chart */}
