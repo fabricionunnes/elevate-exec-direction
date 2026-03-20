@@ -207,7 +207,8 @@ export function StageChecklistDialog({
           is_active: true,
           item_type: newItemType,
           whatsapp_template: newItemType === 'whatsapp' ? newWhatsAppTemplate : null,
-        });
+          whatsapp_attachments: newItemType === 'whatsapp' ? newAttachments : [],
+        } as any);
 
       if (error) throw error;
       
