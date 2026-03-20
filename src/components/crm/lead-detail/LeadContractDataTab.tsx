@@ -133,11 +133,37 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
           state: lead.state || "",
           zipcode: lead.zipcode || "",
         });
+        setFormToken((lead as any).contract_form_token || null);
       }
     } catch (error) {
       console.error("Error loading contract data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateFormLink = async () => {
+    setGeneratingLink(true);
+    try {
+      let token = formToken;
+      if (!token) {
+        // Generate a random token
+        token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        const { error } = await supabase
+          .from("crm_leads")
+          .update({ contract_form_token: token } as any)
+          .eq("id", leadId);
+        if (error) throw error;
+        setFormToken(token);
+      }
+      const url = `${getPublicBaseUrl()}/#/dados-contratuais/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado para a área de transferência!");
+    } catch (error) {
+      console.error("Error generating link:", error);
+      toast.error("Erro ao gerar link");
+    } finally {
+      setGeneratingLink(false);
     }
   };
 
