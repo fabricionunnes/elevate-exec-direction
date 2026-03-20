@@ -731,7 +731,7 @@ export const CRMSettingsPage = () => {
       </div>
 
       <Tabs defaultValue="pipelines" className="w-full">
-        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full justify-start overflow-x-auto">
           <TabsTrigger value="pipelines" className="gap-2">
             <Kanban className="h-4 w-4" />
             Pipelines
