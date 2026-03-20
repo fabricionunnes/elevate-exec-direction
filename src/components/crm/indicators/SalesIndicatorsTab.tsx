@@ -95,6 +95,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [rawMeetingEvents, setRawMeetingEvents] = useState<any[]>([]);
   const [rawCalls, setRawCalls] = useState<any[]>([]);
   const [rawForecastData, setRawForecastData] = useState<any[]>([]);
+  const [rawNegotiationData, setRawNegotiationData] = useState<any[]>([]);
   const [rawCloserStaff, setRawCloserStaff] = useState<{ id: string; name: string }[]>([]);
   const [staffGoalsMap, setStaffGoalsMap] = useState<Map<string, { meta: number; super: number; hiper: number }>>(new Map());
   const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
