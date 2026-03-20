@@ -781,8 +781,8 @@ export default function CRMHeadComercialPage() {
           </div>
 
           {/* SDRs */}
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2 mt-6">
-            <PhoneCall className="h-4 w-4" /> SDRs
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mt-6">
+            <PhoneCall className="h-4 w-4 text-violet-400" /> SDRs
           </h3>
           <div className="grid gap-3">
             {sdrsPerf.map((p) => (
