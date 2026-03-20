@@ -727,16 +727,16 @@ export const CRMLeadDetailPage = () => {
   return (
     <div className="h-full flex flex-col">
       {/* Breadcrumb Header */}
-      <div className="px-6 py-3 border-b border-border flex items-center gap-2 text-sm">
-        <Link to="/crm/pipeline" className="text-muted-foreground hover:text-foreground">
+      <div className="px-4 sm:px-6 py-2.5 border-b border-border flex items-center gap-1.5 text-sm min-w-0 overflow-hidden">
+        <Link to="/crm/pipeline" className="text-muted-foreground hover:text-foreground truncate shrink-0 max-w-[180px]">
           {originGroupName}
         </Link>
-        <span className="text-muted-foreground">{">"}</span>
-        <Link to="/crm/pipeline" className="text-muted-foreground hover:text-foreground">
+        <span className="text-muted-foreground shrink-0">›</span>
+        <Link to="/crm/pipeline" className="text-muted-foreground hover:text-foreground truncate shrink-0 max-w-[180px]">
           {originName}
         </Link>
-        <span className="text-muted-foreground">{">"}</span>
-        <span className="font-medium">{lead.name}</span>
+        <span className="text-muted-foreground shrink-0">›</span>
+        <span className="font-medium truncate">{lead.name}</span>
       </div>
 
       {/* Lead Header */}
