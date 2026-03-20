@@ -350,7 +350,6 @@ export const CRMLayout = () => {
         <div className="flex flex-1 min-h-0 overflow-hidden">
           {/* Origins Sidebar - Hidden on Mobile, use Sheet instead */}
           {!isMobile && (location.pathname.includes("/crm/pipeline") || 
-            location.pathname === "/crm" ||
             location.pathname.includes("/crm/leads")) && (
             <CRMOriginsSidebar
               collapsed={sidebarCollapsed}
