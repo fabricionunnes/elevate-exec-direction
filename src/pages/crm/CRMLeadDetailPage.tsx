@@ -774,9 +774,17 @@ export const CRMLeadDetailPage = () => {
                 </a>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="WhatsApp">
-              <MessageSquare className="h-4 w-4" />
-            </Button>
+            {lead.phone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="WhatsApp"
+                onClick={() => setWhatsappDialogOpen(true)}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
+            )}
             {lead.email && (
               <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Email">
                 <a href={`mailto:${lead.email}`}>
