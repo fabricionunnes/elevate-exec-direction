@@ -548,9 +548,9 @@ export default function CRMHeadComercialPage() {
             {format(now, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })} — D{elapsedBizDays} de {totalBizDays} dias úteis
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select value={filterCloser} onValueChange={setFilterCloser}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
@@ -560,7 +560,7 @@ export default function CRMHeadComercialPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={loadData}>Atualizar</Button>
+          <Button variant="outline" size="sm" onClick={loadData} className="w-full sm:w-auto">Atualizar</Button>
         </div>
       </div>
 
