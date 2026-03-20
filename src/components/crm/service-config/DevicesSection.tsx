@@ -387,6 +387,23 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(instance.status)}</TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleSetDefault(instance)}
+                      title={defaultInstanceName === instance.instance_name ? "Dispositivo padrão" : "Definir como padrão"}
+                    >
+                      <Star
+                        className={`h-4 w-4 transition-colors ${
+                          defaultInstanceName === instance.instance_name
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground hover:text-amber-400"
+                        }`}
+                      />
+                    </Button>
+                  </TableCell>
                   <TableCell>{getSectorName(instance.sector_id)}</TableCell>
                   <TableCell>
                     <div className="flex -space-x-2">
