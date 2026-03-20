@@ -109,7 +109,7 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
     try {
       const { data: lead, error } = await supabase
         .from("crm_leads")
-        .select("company, trade_name, document, email, phone, legal_representative_name, cpf, rg, marital_status, address, address_number, address_complement, address_neighborhood, city, state, zipcode")
+        .select("company, trade_name, document, email, phone, legal_representative_name, cpf, rg, marital_status, address, address_number, address_complement, address_neighborhood, city, state, zipcode, contract_form_token")
         .eq("id", leadId)
         .single();
 
