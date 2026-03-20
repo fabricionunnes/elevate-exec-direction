@@ -45,13 +45,23 @@ interface CommissionData {
   metricLabel: string;
 }
 
+export interface CommissionSummary {
+  total: number;
+  commission: number;
+  fixedSalary: number;
+  achievedPercent: number;
+  tierLabel: string;
+  staffName: string;
+}
+
 interface Props {
   staffId: string | null;
   staffRole: string | null;
   isMaster: boolean;
+  onSummaryReady?: (summary: CommissionSummary | null) => void;
 }
 
-export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
+export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady }: Props) => {
   const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>("first");
