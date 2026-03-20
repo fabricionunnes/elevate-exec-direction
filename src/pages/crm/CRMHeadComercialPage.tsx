@@ -401,6 +401,27 @@ export default function CRMHeadComercialPage() {
     finally { setSavingActivityNote(null); }
   };
 
+  // ── Save head_status on a lead ──
+  const handleSaveHeadStatus = async (leadId: string, status: string | null) => {
+    try {
+      const { error } = await supabase.from("crm_leads").update({ head_status: status } as any).eq("id", leadId);
+      if (error) throw error;
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, head_status: status } : l)));
+      toast.success("Status atualizado");
+    } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
+  };
+
+  // ── Save head_closing_date on a lead ──
+  const handleSaveClosingDate = async (leadId: string, date: string | null) => {
+    try {
+      const { error } = await supabase.from("crm_leads").update({ head_closing_date: date } as any).eq("id", leadId);
+      if (error) throw error;
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, head_closing_date: date } : l)));
+      toast.success("Data de fechamento salva");
+    } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
+  };
+  };
+
   // ── Build staff performance table ──
   const staffPerformance = useMemo((): StaffPerformance[] => {
     return allStaff
