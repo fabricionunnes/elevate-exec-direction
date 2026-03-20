@@ -1021,6 +1021,7 @@ export const CRMLeadDetailPage = () => {
           <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
             {[
               { value: "activities", label: "Atividades" },
+              { value: "meetings", label: "Reuniões" },
               { value: "contact", label: "Contato" },
               { value: "company", label: "Empresa" },
               { value: "deal", label: "Negócio" },
