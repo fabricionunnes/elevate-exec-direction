@@ -1758,6 +1758,9 @@ const OnboardingProjectPage = () => {
               userRole={currentUserRole}
               isStaffAdmin={isStaffAdmin}
             />
+            <div className="mt-6">
+              <AdsBriefingSection projectId={projectId!} />
+            </div>
           </TabsContent>
 
           <TabsContent value="ai-coach">
