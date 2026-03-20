@@ -641,18 +641,18 @@ export default function CRMHeadComercialPage() {
 
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="overview" className="gap-1">
-            <Users className="h-4 w-4" /> Performance
+        <TabsList className="w-full grid grid-cols-4 h-auto">
+          <TabsTrigger value="overview" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> <span className="hidden sm:inline">Performance</span><span className="sm:hidden">Perf.</span>
           </TabsTrigger>
-          <TabsTrigger value="forecast" className="gap-1">
-            <Flame className="h-4 w-4" /> Forecast
+          <TabsTrigger value="forecast" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Forecast
           </TabsTrigger>
-          <TabsTrigger value="pipeline" className="gap-1">
-            <BarChart3 className="h-4 w-4" /> Pipeline
+          <TabsTrigger value="pipeline" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Pipeline
           </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1">
-            <Calendar className="h-4 w-4" /> Agenda
+          <TabsTrigger value="agenda" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Agenda
           </TabsTrigger>
         </TabsList>
 
