@@ -16,6 +16,20 @@ export const CRMOfficePage = () => {
 
   const checkConnection = async () => {
     try {
+      const { data: { session } } = await supabase.auth.getSession();
+
+      if (session?.provider_token) {
+        const { error: saveError } = await supabase.functions.invoke("google-calendar?action=save-token", {
+          body: {
+            access_token: session.provider_token,
+            refresh_token: session.provider_refresh_token,
+            expires_in: 3600,
+          },
+        });
+
+        if (saveError) throw saveError;
+      }
+
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection");
       if (error) throw error;
       setIsConnected(data?.connected ?? false);
@@ -38,7 +52,7 @@ export const CRMOfficePage = () => {
         provider: "google",
         options: {
           scopes: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
-          redirectTo: window.location.origin + "/#/crm/office",
+          redirectTo: `${window.location.origin}/#/crm/office`,
           queryParams: {
             access_type: "offline",
             prompt: "consent",
