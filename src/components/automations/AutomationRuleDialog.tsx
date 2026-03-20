@@ -321,7 +321,7 @@ export function AutomationRuleDialog({
               </div>
               <p className="text-[10px] text-muted-foreground">Clique para inserir na mensagem</p>
             </div>
-          )
+          )}
 
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
