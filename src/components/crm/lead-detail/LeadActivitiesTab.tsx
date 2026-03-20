@@ -322,7 +322,8 @@ export const LeadActivitiesTab = ({
       .replace(/\{\{nome_cliente\}\}/g, leadName || '')
       .replace(/\{\{empresa\}\}/g, leadCompany || '')
       .replace(/\{\{email\}\}/g, leadEmail || '')
-      .replace(/\{\{telefone\}\}/g, leadPhone || '');
+      .replace(/\{\{telefone\}\}/g, leadPhone || '')
+      .replace(/\{\{responsavel\}\}/g, ownerName || '');
   };
 
   return (
