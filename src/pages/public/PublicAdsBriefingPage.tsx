@@ -25,6 +25,7 @@ const PublicAdsBriefingPage = () => {
     monthly_ad_budget: 0,
     payment_method: "",
     additional_notes: "",
+    traffic_manager_name: "",
   });
 
   useEffect(() => {
