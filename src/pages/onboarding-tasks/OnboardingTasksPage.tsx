@@ -546,6 +546,30 @@ const OnboardingTasksPage = () => {
             setStaffMenuPermissions(permKeys);
             setHasCRMPermission(permKeys.includes("crm"));
             setHasFinancialPermission(permKeys.includes("financial"));
+
+            // Redirect staff without dashboard access to their appropriate module
+            const hasDashboardAccess = normalizedRole === "admin" || 
+              permKeys.includes("dashboard") || 
+              permKeys.includes("companies") || 
+              permKeys.includes("tasks");
+            
+            if (!hasDashboardAccess && permKeys.length > 0) {
+              // Only CRM permission → redirect to CRM
+              if (permKeys.includes("crm") && !permKeys.some(k => k.startsWith("fin_") || k === "financial")) {
+                navigate("/crm");
+                return;
+              }
+              // Only financial permissions → redirect to financial
+              if ((permKeys.includes("financial") || permKeys.some(k => k.startsWith("fin_"))) && !permKeys.includes("crm")) {
+                navigate("/onboarding-tasks/financeiro/recorrencias");
+                return;
+              }
+              // Has CRM among other non-dashboard permissions → prefer CRM
+              if (permKeys.includes("crm")) {
+                navigate("/crm");
+                return;
+              }
+            }
           }
         }
       }
