@@ -501,7 +501,7 @@ export function PayablesPanel() {
       (statusFilter === "overdue" && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
     
     // Period filter
-    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
     let matchesPeriod = true;
     if (start && end) {
       const dueDate = parseISO(p.due_date);
