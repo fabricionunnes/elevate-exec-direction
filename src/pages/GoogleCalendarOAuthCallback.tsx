@@ -6,6 +6,21 @@ import { supabase } from "@/integrations/supabase/client";
 
 const fallbackPath = "/crm/office";
 
+const getCallbackParams = () => {
+  if (window.location.search) {
+    return new URLSearchParams(window.location.search);
+  }
+
+  const hash = window.location.hash || "";
+  const queryIndex = hash.indexOf("?");
+
+  if (queryIndex === -1) {
+    return new URLSearchParams();
+  }
+
+  return new URLSearchParams(hash.slice(queryIndex));
+};
+
 const decodeState = (state: string | null) => {
   if (!state) return null;
 
@@ -21,7 +36,7 @@ const GoogleCalendarOAuthCallback = () => {
 
   useEffect(() => {
     const finishOAuth = async () => {
-      const params = new URLSearchParams(window.location.search);
+      const params = getCallbackParams();
       const code = params.get("code");
       const error = params.get("error");
       const decodedState = decodeState(params.get("state"));
