@@ -70,12 +70,20 @@ interface Activity {
   automation_config?: any;
 }
 
+interface ChecklistAttachment {
+  url: string;
+  name: string;
+  type: string;
+  mimeType: string;
+}
+
 interface ChecklistItem {
   id: string;
   title: string;
   description: string | null;
   item_type: string;
   whatsapp_template: string | null;
+  whatsapp_attachments: ChecklistAttachment[];
   completed: boolean;
 }
 
