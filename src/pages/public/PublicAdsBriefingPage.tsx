@@ -155,6 +155,25 @@ const PublicAdsBriefingPage = () => {
           </p>
         </div>
 
+        {/* Responsável */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              Responsável pelo Tráfego Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Nome do Responsável</Label>
+              <Input
+                placeholder="Nome completo"
+                value={formData.traffic_manager_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, traffic_manager_name: e.target.value }))}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
         {/* Redes Sociais */}
         <Card>
           <CardHeader>
