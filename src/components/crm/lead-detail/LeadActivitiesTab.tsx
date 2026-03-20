@@ -373,7 +373,7 @@ export const LeadActivitiesTab = ({
       {/* Content - Two columns layout */}
       <div className="flex flex-1 min-h-0">
         {/* Left side - Checklist */}
-        <div className="w-[350px] min-w-[300px] shrink-0 border-r border-border">
+        <div className="w-[320px] lg:w-[380px] min-w-[280px] shrink-0 border-r border-border">
           <ScrollArea className="h-full">
             {checklistLoading ? (
               <div className="flex items-center justify-center py-8">
