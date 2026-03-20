@@ -974,7 +974,7 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
             {/* Closer extras */}
             {isCloser && (
               <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/30">
-                <MetricBlock label="Forecast" value={formatCompact(p.forecastWeighted)} />
+                <MetricBlock label="Forecast" value={formatCompact(p.forecastValue)} />
                 <MetricBlock label="Reuniões Ontem" value={String(p.yesterdayMeetings)} />
                 <MetricBlock label="Reuniões Hoje" value={String(p.todayMeetings)} />
               </div>
