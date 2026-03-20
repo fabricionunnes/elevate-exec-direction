@@ -31,6 +31,11 @@ interface CalendarEvent {
   };
 }
 
+const GOOGLE_CALENDAR_SCOPES = [
+  "https://www.googleapis.com/auth/calendar",
+  "https://www.googleapis.com/auth/drive.readonly",
+].join(" ");
+
 // Helper function to transcribe recording using AssemblyAI
 async function transcribeRecordingWithAI(
   recordingUrl: string, 
@@ -240,6 +245,113 @@ Deno.serve(async (req) => {
     const action = url.searchParams.get("action");
 
     console.log(`Google Calendar action: ${action} for user: ${user.id}`);
+
+    if (action === "auth-url") {
+      const { redirectUri, returnPath } = await req.json();
+      const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+
+      if (!googleClientId) {
+        return new Response(
+          JSON.stringify({ error: "Google OAuth not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!redirectUri) {
+        return new Response(
+          JSON.stringify({ error: "redirectUri is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const state = btoa(JSON.stringify({
+        flow: "google_calendar",
+        returnPath: returnPath || "/crm/office",
+      }));
+
+      const authUrl = new URL("https://accounts.google.com/o/oauth2/v2/auth");
+      authUrl.searchParams.set("client_id", googleClientId);
+      authUrl.searchParams.set("redirect_uri", redirectUri);
+      authUrl.searchParams.set("response_type", "code");
+      authUrl.searchParams.set("scope", GOOGLE_CALENDAR_SCOPES);
+      authUrl.searchParams.set("access_type", "offline");
+      authUrl.searchParams.set("prompt", "consent");
+      authUrl.searchParams.set("include_granted_scopes", "true");
+      authUrl.searchParams.set("state", state);
+
+      return new Response(
+        JSON.stringify({ authUrl: authUrl.toString() }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
+    if (action === "exchange-code") {
+      const { code, redirectUri } = await req.json();
+      const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+      const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+
+      if (!googleClientId || !googleClientSecret) {
+        return new Response(
+          JSON.stringify({ error: "Google OAuth not configured" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      if (!code || !redirectUri) {
+        return new Response(
+          JSON.stringify({ error: "code and redirectUri are required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const tokenResponse = await fetch("https://oauth2.googleapis.com/token", {
+        method: "POST",
+        headers: { "Content-Type": "application/x-www-form-urlencoded" },
+        body: new URLSearchParams({
+          client_id: googleClientId,
+          client_secret: googleClientSecret,
+          code,
+          grant_type: "authorization_code",
+          redirect_uri: redirectUri,
+        }),
+      });
+
+      const tokenResult = await tokenResponse.json();
+
+      if (!tokenResponse.ok || tokenResult.error) {
+        console.error("Google Calendar code exchange failed:", tokenResult);
+        return new Response(
+          JSON.stringify({ error: tokenResult.error_description || tokenResult.error || "Failed to exchange code" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      const expiresAt = new Date(Date.now() + (tokenResult.expires_in || 3600) * 1000);
+
+      const { error: upsertError } = await supabase
+        .from("user_google_tokens")
+        .upsert({
+          user_id: user.id,
+          access_token: tokenResult.access_token,
+          refresh_token: tokenResult.refresh_token,
+          token_expires_at: expiresAt.toISOString(),
+        }, {
+          onConflict: "user_id",
+        });
+
+      if (upsertError) {
+        console.error("Google Calendar token upsert error:", upsertError);
+        return new Response(
+          JSON.stringify({ error: "Failed to save token" }),
+          { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      return new Response(
+        JSON.stringify({ success: true }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     // Check for target_user_id query param (for CS/Admin viewing other calendars)
     const targetUserId = url.searchParams.get("target_user_id");

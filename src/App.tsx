@@ -9,7 +9,6 @@ import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
-import { useGoogleCalendarTokenSync } from "@/hooks/useGoogleCalendarTokenSync";
 
 // Only HomePage is eager – everything else is lazy
 import HomePage from "./pages/HomePage";
@@ -64,6 +63,7 @@ const InstagramOAuthCallback = lazy(() => import("./pages/InstagramOAuthCallback
 const SocialInstagramCallback = lazy(() => import("./pages/social/SocialInstagramCallback"));
 const PublicInstagramReportPage = lazy(() => import("./pages/PublicInstagramReportPage"));
 const MetaAdsCallbackPage = lazy(() => import("./pages/MetaAdsCallbackPage"));
+const GoogleCalendarOAuthCallback = lazy(() => import("./pages/GoogleCalendarOAuthCallback"));
 const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
 const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
 const NPSSurveyPage = lazy(() => import("./pages/NPSSurveyPage"));
@@ -262,8 +262,6 @@ const queryClient = new QueryClient({
 });
 
 const AppShell = () => {
-  useGoogleCalendarTokenSync();
-
   return (
     <ErrorBoundary>
       <QueryClientProvider client={queryClient}>
@@ -317,6 +315,7 @@ const AppShell = () => {
             <Route path="/social/instagram-callback" element={<SocialInstagramCallback />} />
             <Route path="/instagram-report/:shareToken" element={<PublicInstagramReportPage />} />
             <Route path="/meta-ads-callback" element={<MetaAdsCallbackPage />} />
+            <Route path="/google-calendar-callback" element={<GoogleCalendarOAuthCallback />} />
             
             {/* Onboarding CS */}
             <Route path="/onboarding" element={<OnboardingPage />} />

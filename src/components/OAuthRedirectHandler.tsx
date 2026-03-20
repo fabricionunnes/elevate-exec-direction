@@ -51,6 +51,13 @@ export function OAuthRedirectHandler() {
             return;
           }
 
+          if (decodedState.flow === "google_calendar") {
+            const callbackUrl = `/google-calendar-callback${queryString}`;
+            window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
+            navigate(callbackUrl, { replace: true });
+            return;
+          }
+
           if (decodedState.redirectUri || decodedState.staffId) {
             const callbackUrl = `/auth/instagram/callback${queryString}`;
             window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
@@ -72,6 +79,13 @@ export function OAuthRedirectHandler() {
 
             if (decodedState.flow === "meta_ads") {
               const callbackUrl = `/meta-ads-callback${queryString}`;
+              window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
+              navigate(callbackUrl, { replace: true });
+              return;
+            }
+
+            if (decodedState.flow === "google_calendar") {
+              const callbackUrl = `/google-calendar-callback${queryString}`;
               window.history.replaceState({}, document.title, window.location.origin + "/#" + callbackUrl);
               navigate(callbackUrl, { replace: true });
               return;

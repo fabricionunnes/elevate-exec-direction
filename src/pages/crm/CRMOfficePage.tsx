@@ -7,6 +7,7 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Calendar, CheckCircle2, XCircle, Loader2, ExternalLink, RefreshCw, Unplug } from "lucide-react";
 import { toast } from "sonner";
+import { startGoogleCalendarConnection } from "@/lib/googleCalendarOAuth";
 
 export const CRMOfficePage = () => {
   const { staffName, staffRole } = useCRMContext();
@@ -17,20 +18,6 @@ export const CRMOfficePage = () => {
 
   const checkConnection = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-
-      if (session?.provider_token) {
-        const { error: saveError } = await supabase.functions.invoke("google-calendar?action=save-token", {
-          body: {
-            access_token: session.provider_token,
-            refresh_token: session.provider_refresh_token,
-            expires_in: 3600,
-          },
-        });
-
-        if (saveError) throw saveError;
-      }
-
       const { data, error } = await supabase.functions.invoke("google-calendar?action=check-connection");
       if (error) throw error;
       setIsConnected(data?.connected ?? false);
@@ -49,16 +36,7 @@ export const CRMOfficePage = () => {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-        extraParams: {
-          scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
-          access_type: "offline",
-          prompt: "consent",
-        },
-      });
-
-      if (error) throw error;
+      await startGoogleCalendarConnection(window.location.hash.replace(/^#/, "") || "/crm/office");
     } catch (err: any) {
       console.error("Error connecting Google Calendar:", err);
       toast.error("Erro ao conectar Google Agenda");

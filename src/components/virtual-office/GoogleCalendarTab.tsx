@@ -82,6 +82,7 @@ import {
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { startGoogleCalendarConnection } from "@/lib/googleCalendarOAuth";
 
 interface CalendarEvent {
   id: string;
@@ -195,16 +196,7 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
 
   const handleGoogleLogin = async () => {
     try {
-      const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: window.location.origin,
-        extraParams: {
-          scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
-          access_type: "offline",
-          prompt: "consent",
-        },
-      });
-
-      if (error) throw error;
+      await startGoogleCalendarConnection(window.location.hash.replace(/^#/, "") || "/onboarding-tasks/office");
     } catch (error) {
       console.error("Google login error:", error);
       toast.error("Erro ao conectar com Google");
