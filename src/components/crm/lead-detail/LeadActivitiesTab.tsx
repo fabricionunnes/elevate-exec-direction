@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,11 @@ import {
   Send,
   Loader2,
   Pencil,
+  Paperclip,
+  Image,
+  Film,
+  File as FileIcon,
+  X,
 } from "lucide-react";
 import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -70,12 +75,20 @@ interface Activity {
   automation_config?: any;
 }
 
+interface ChecklistAttachment {
+  url: string;
+  name: string;
+  type: string;
+  mimeType: string;
+}
+
 interface ChecklistItem {
   id: string;
   title: string;
   description: string | null;
   item_type: string;
   whatsapp_template: string | null;
+  whatsapp_attachments: ChecklistAttachment[];
   completed: boolean;
 }
 
@@ -123,7 +136,53 @@ export const LeadActivitiesTab = ({
   const [userInstanceId, setUserInstanceId] = useState<string | null>(null);
   const [userStaffId, setUserStaffId] = useState<string | null>(null);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [extraAttachments, setExtraAttachments] = useState<ChecklistAttachment[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const sendFileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleSendFileUpload = async (files: FileList) => {
+    setUploadingAttachment(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop();
+        const path = `send/${leadId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('checklist-attachments')
+          .upload(path, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('checklist-attachments')
+          .getPublicUrl(path);
+
+        const type = file.type.startsWith('image/') ? 'image' 
+          : file.type.startsWith('video/') ? 'video' 
+          : file.type.startsWith('audio/') ? 'audio' 
+          : 'document';
+
+        setExtraAttachments(prev => [...prev, {
+          url: urlData.publicUrl,
+          name: file.name,
+          type,
+          mimeType: file.type,
+        }]);
+      }
+    } catch (error: any) {
+      toast.error("Erro ao fazer upload: " + (error.message || ""));
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const getAttachmentIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <Image className="h-3 w-3" />;
+      case 'video': return <Film className="h-3 w-3" />;
+      default: return <FileIcon className="h-3 w-3" />;
+    }
+  };
   // Fetch user's WhatsApp instance with send permission
   useEffect(() => {
     const fetchUserInstance = async () => {
@@ -212,7 +271,7 @@ export const LeadActivitiesTab = ({
       try {
         const { data, error } = await supabase
           .from("crm_stage_checklists")
-          .select("id, title, description, item_type, whatsapp_template")
+          .select("id, title, description, item_type, whatsapp_template, whatsapp_attachments")
           .eq("stage_id", currentStageId)
           .eq("is_active", true)
           .order("sort_order");
@@ -223,12 +282,13 @@ export const LeadActivitiesTab = ({
         const storageKey = `checklist_${leadId}_${currentStageId}`;
         const completedIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
         
-        setChecklistItems((data || []).map(item => ({
+        setChecklistItems((data || []).map((item: any) => ({
           id: item.id,
           title: item.title,
           description: item.description,
           item_type: item.item_type || 'instruction',
           whatsapp_template: item.whatsapp_template,
+          whatsapp_attachments: Array.isArray(item.whatsapp_attachments) ? item.whatsapp_attachments : [],
           completed: completedIds.includes(item.id),
         })));
       } catch (error) {
@@ -570,6 +630,68 @@ export const LeadActivitiesTab = ({
                       </p>
                     </div>
                   )}
+
+                  {/* Show configured attachments */}
+                  {selectedChecklistItem.item_type === 'whatsapp' && selectedChecklistItem.whatsapp_attachments?.length > 0 && (
+                    <div className="space-y-2 mt-3">
+                      <p className="text-xs font-medium text-muted-foreground">Anexos configurados:</p>
+                      <div className="flex flex-wrap gap-2">
+                        {selectedChecklistItem.whatsapp_attachments.map((att, i) => (
+                          <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
+                            {getAttachmentIcon(att.type)}
+                            <span className="max-w-[100px] truncate">{att.name}</span>
+                          </div>
+                        ))}
+                      </div>
+                    </div>
+                  )}
+
+                  {/* Extra attachments added at send time */}
+                  {selectedChecklistItem.item_type === 'whatsapp' && (
+                    <div className="space-y-2 mt-3">
+                      {extraAttachments.length > 0 && (
+                        <div className="flex flex-wrap gap-2">
+                          {extraAttachments.map((att, i) => (
+                            <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
+                              {getAttachmentIcon(att.type)}
+                              <span className="max-w-[100px] truncate">{att.name}</span>
+                              <Button
+                                type="button"
+                                variant="ghost"
+                                size="icon"
+                                className="h-4 w-4 p-0"
+                                onClick={() => setExtraAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                              >
+                                <X className="h-3 w-3" />
+                              </Button>
+                            </div>
+                          ))}
+                        </div>
+                      )}
+                      <input
+                        ref={sendFileInputRef}
+                        type="file"
+                        multiple
+                        accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                        className="hidden"
+                        onChange={(e) => {
+                          if (e.target.files) handleSendFileUpload(e.target.files);
+                          e.target.value = '';
+                        }}
+                      />
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        className="text-xs"
+                        disabled={uploadingAttachment}
+                        onClick={() => sendFileInputRef.current?.click()}
+                      >
+                        {uploadingAttachment ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Paperclip className="h-3.5 w-3.5 mr-1" />}
+                        Anexar arquivo
+                      </Button>
+                    </div>
+                  )}
                   
                   {selectedChecklistItem.item_type === 'call' && (
                     <div className="bg-green-50 dark:bg-green-950/30 rounded-lg p-4">
@@ -602,6 +724,8 @@ export const LeadActivitiesTab = ({
                         setSendingMessage(true);
                         try {
                           const message = processWhatsAppTemplate(selectedChecklistItem.whatsapp_template);
+                          
+                          // Send text message first
                           await sendLoggedWhatsAppText({
                             instanceId: userInstanceId,
                             phoneRaw: leadPhone,
@@ -611,9 +735,33 @@ export const LeadActivitiesTab = ({
                             staffId: userStaffId || undefined,
                           });
 
+                          // Send all attachments (configured + extra)
+                          const allAttachments = [
+                            ...(selectedChecklistItem.whatsapp_attachments || []),
+                            ...extraAttachments,
+                          ];
+
+                          const phone = leadPhone.replace(/\D/g, '');
+                          const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
+
+                          for (const att of allAttachments) {
+                            await supabase.functions.invoke("evolution-api", {
+                              body: {
+                                action: "sendMedia",
+                                instanceId: userInstanceId,
+                                phone: formattedPhone,
+                                mediaType: att.type,
+                                mediaUrl: att.url,
+                                caption: "",
+                                fileName: att.name,
+                              },
+                            });
+                          }
+
                           toast.success("Mensagem enviada com sucesso!");
                           toggleChecklist(selectedChecklistItem.id);
                           setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                          setExtraAttachments([]);
                         } catch (error: any) {
                           console.error("Error sending WhatsApp:", error);
                           toast.error(error.message || "Erro ao enviar mensagem");

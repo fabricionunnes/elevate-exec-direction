@@ -20,10 +20,21 @@ import {
   Pencil,
   X,
   Check,
-  Calendar
+  Calendar,
+  Paperclip,
+  Image,
+  Film,
+  File
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+
+interface Attachment {
+  url: string;
+  name: string;
+  type: string; // image, video, document
+  mimeType: string;
+}
 
 interface ChecklistItem {
   id: string;
@@ -34,6 +45,7 @@ interface ChecklistItem {
   is_active: boolean;
   item_type: string;
   whatsapp_template: string | null;
+  whatsapp_attachments: Attachment[];
 }
 
 interface StageChecklistDialogProps {
@@ -76,8 +88,11 @@ export function StageChecklistDialog({
   const [newItemDescription, setNewItemDescription] = useState("");
   const [newItemType, setNewItemType] = useState("instruction");
   const [newWhatsAppTemplate, setNewWhatsAppTemplate] = useState("");
+  const [newAttachments, setNewAttachments] = useState<Attachment[]>([]);
+  const [uploadingNew, setUploadingNew] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const whatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit item form
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -85,13 +100,67 @@ export function StageChecklistDialog({
   const [editDescription, setEditDescription] = useState("");
   const [editItemType, setEditItemType] = useState("instruction");
   const [editWhatsAppTemplate, setEditWhatsAppTemplate] = useState("");
+  const [editAttachments, setEditAttachments] = useState<Attachment[]>([]);
+  const [uploadingEdit, setUploadingEdit] = useState(false);
   const editWhatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && stageId) {
       loadItems();
     }
   }, [open, stageId]);
+
+  const getMediaType = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    return 'document';
+  };
+
+  const handleFileUpload = async (
+    files: FileList,
+    setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>,
+    setUploading: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop();
+        const path = `${stageId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('checklist-attachments')
+          .upload(path, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('checklist-attachments')
+          .getPublicUrl(path);
+
+        setAttachments(prev => [...prev, {
+          url: urlData.publicUrl,
+          name: file.name,
+          type: getMediaType(file.type),
+          mimeType: file.type,
+        }]);
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error("Erro ao fazer upload: " + (error.message || ""));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getAttachmentIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <Image className="h-3 w-3" />;
+      case 'video': return <Film className="h-3 w-3" />;
+      default: return <File className="h-3 w-3" />;
+    }
+  };
 
   const loadItems = async () => {
     setLoading(true);
@@ -104,7 +173,10 @@ export function StageChecklistDialog({
         .order("sort_order");
 
       if (error) throw error;
-      setItems(data || []);
+      setItems((data || []).map((item: any) => ({
+        ...item,
+        whatsapp_attachments: Array.isArray(item.whatsapp_attachments) ? item.whatsapp_attachments : [],
+      })));
     } catch (error) {
       console.error("Error loading checklist items:", error);
       toast.error("Erro ao carregar checklist");
@@ -135,7 +207,8 @@ export function StageChecklistDialog({
           is_active: true,
           item_type: newItemType,
           whatsapp_template: newItemType === 'whatsapp' ? newWhatsAppTemplate : null,
-        });
+          whatsapp_attachments: newItemType === 'whatsapp' ? newAttachments : [],
+        } as any);
 
       if (error) throw error;
       
@@ -224,6 +297,7 @@ export function StageChecklistDialog({
     setNewItemDescription("");
     setNewItemType("instruction");
     setNewWhatsAppTemplate("");
+    setNewAttachments([]);
     setShowNewForm(false);
   };
 
@@ -233,6 +307,7 @@ export function StageChecklistDialog({
     setEditDescription(item.description || "");
     setEditItemType(item.item_type);
     setEditWhatsAppTemplate(item.whatsapp_template || "");
+    setEditAttachments(item.whatsapp_attachments || []);
   };
 
   const cancelEditing = () => {
@@ -241,6 +316,7 @@ export function StageChecklistDialog({
     setEditDescription("");
     setEditItemType("instruction");
     setEditWhatsAppTemplate("");
+    setEditAttachments([]);
   };
 
   const handleUpdateItem = async () => {
@@ -258,7 +334,8 @@ export function StageChecklistDialog({
           description: editDescription || null,
           item_type: editItemType,
           whatsapp_template: editItemType === 'whatsapp' ? editWhatsAppTemplate : null,
-        })
+          whatsapp_attachments: editItemType === 'whatsapp' ? editAttachments : [],
+        } as any)
         .eq("id", editingItemId);
 
       if (error) throw error;
@@ -405,6 +482,54 @@ export function StageChecklistDialog({
                               rows={3}
                               className="resize-none"
                             />
+                            {/* Attachments for edit */}
+                            <div className="space-y-2 mt-2">
+                              <Label className="flex items-center gap-1">
+                                <Paperclip className="h-3.5 w-3.5" />
+                                Anexos
+                              </Label>
+                              {editAttachments.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {editAttachments.map((att, i) => (
+                                    <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
+                                      {getAttachmentIcon(att.type)}
+                                      <span className="max-w-[120px] truncate">{att.name}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4 p-0"
+                                        onClick={() => setEditAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <input
+                                ref={editFileInputRef}
+                                type="file"
+                                multiple
+                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files) handleFileUpload(e.target.files, setEditAttachments, setUploadingEdit);
+                                  e.target.value = '';
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                disabled={uploadingEdit}
+                                onClick={() => editFileInputRef.current?.click()}
+                              >
+                                {uploadingEdit ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Paperclip className="h-3.5 w-3.5 mr-1" />}
+                                Adicionar Arquivo
+                              </Button>
+                            </div>
                           </div>
                         )}
 
@@ -473,6 +598,12 @@ export function StageChecklistDialog({
                           {item.item_type === 'whatsapp' && item.whatsapp_template && (
                             <p className="text-xs text-emerald-600 mt-1 bg-emerald-50 dark:bg-emerald-950/30 p-2 rounded">
                               📝 {item.whatsapp_template}
+                            </p>
+                          )}
+                          {item.item_type === 'whatsapp' && item.whatsapp_attachments?.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Paperclip className="h-3 w-3" />
+                              {item.whatsapp_attachments.length} anexo(s)
                             </p>
                           )}
                         </div>
@@ -576,6 +707,54 @@ export function StageChecklistDialog({
                       <p className="text-xs text-muted-foreground">
                         Use as variáveis acima para personalizar a mensagem automaticamente.
                       </p>
+                      {/* Attachments for new */}
+                      <div className="space-y-2 mt-2">
+                        <Label className="flex items-center gap-1">
+                          <Paperclip className="h-3.5 w-3.5" />
+                          Anexos
+                        </Label>
+                        {newAttachments.length > 0 && (
+                          <div className="flex flex-wrap gap-2">
+                            {newAttachments.map((att, i) => (
+                              <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
+                                {getAttachmentIcon(att.type)}
+                                <span className="max-w-[120px] truncate">{att.name}</span>
+                                <Button
+                                  type="button"
+                                  variant="ghost"
+                                  size="icon"
+                                  className="h-4 w-4 p-0"
+                                  onClick={() => setNewAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                >
+                                  <X className="h-3 w-3" />
+                                </Button>
+                              </div>
+                            ))}
+                          </div>
+                        )}
+                        <input
+                          ref={newFileInputRef}
+                          type="file"
+                          multiple
+                          accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                          className="hidden"
+                          onChange={(e) => {
+                            if (e.target.files) handleFileUpload(e.target.files, setNewAttachments, setUploadingNew);
+                            e.target.value = '';
+                          }}
+                        />
+                        <Button
+                          type="button"
+                          variant="outline"
+                          size="sm"
+                          className="text-xs"
+                          disabled={uploadingNew}
+                          onClick={() => newFileInputRef.current?.click()}
+                        >
+                          {uploadingNew ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Paperclip className="h-3.5 w-3.5 mr-1" />}
+                          Adicionar Arquivo
+                        </Button>
+                      </div>
                     </div>
                   )}
                   
