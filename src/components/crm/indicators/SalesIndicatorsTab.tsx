@@ -306,6 +306,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
       : rawForecastData;
 
+    const negotiationData = isCloserFilter
+      ? rawNegotiationData.filter(f => f.owner_staff_id === selectedCloser)
+      : rawNegotiationData;
+
     // Goals: use closer-specific or total
     let metaReceita: number, superMeta: number, hiperMeta: number;
     if (isCloserFilter) {
