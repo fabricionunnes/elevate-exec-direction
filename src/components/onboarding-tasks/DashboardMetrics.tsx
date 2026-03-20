@@ -158,6 +158,7 @@ const DashboardMetrics = ({
   const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number; is_main_goal?: boolean }[]>([]);
   const [internalContractRenewals, setInternalContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [internalHealthScores, setInternalHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
+  const [monthlyTargets, setMonthlyTargets] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculatingHealth, setRecalculatingHealth] = useState(false);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
