@@ -2,6 +2,9 @@ import { useEffect, useState, useCallback } from "react";
 import { useParams, useNavigate, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
+import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
+import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
+import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -150,6 +153,8 @@ export const CRMLeadDetailPage = () => {
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
@@ -769,9 +774,17 @@ export const CRMLeadDetailPage = () => {
                 </a>
               </Button>
             )}
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="WhatsApp">
-              <MessageSquare className="h-4 w-4" />
-            </Button>
+            {lead.phone && (
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-8 w-8"
+                title="WhatsApp"
+                onClick={() => setWhatsappDialogOpen(true)}
+              >
+                <MessageSquare className="h-4 w-4" />
+              </Button>
+            )}
             {lead.email && (
               <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Email">
                 <a href={`mailto:${lead.email}`}>
@@ -1190,6 +1203,36 @@ export const CRMLeadDetailPage = () => {
         leadId={lead.id}
         onSuccess={loadLead}
       />
+
+      {/* WhatsApp Dialog */}
+      {whatsappDialogOpen && lead.phone && (
+        <WhatsAppMessageDialog
+          phone={lead.phone}
+          recipientName={lead.name}
+          onClose={() => setWhatsappDialogOpen(false)}
+          sending={sendingWhatsapp}
+          onSend={async (message) => {
+            setSendingWhatsapp(true);
+            try {
+              const instanceId = await getDefaultWhatsAppInstance();
+              await sendLoggedWhatsAppText({
+                instanceId,
+                phoneRaw: lead.phone!,
+                message,
+                leadId: lead.id,
+                leadName: lead.name,
+                staffId: staffId || undefined,
+              });
+              toast.success("Mensagem enviada com sucesso!");
+              setWhatsappDialogOpen(false);
+            } catch (error: any) {
+              toast.error(error.message || "Erro ao enviar mensagem");
+            } finally {
+              setSendingWhatsapp(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
