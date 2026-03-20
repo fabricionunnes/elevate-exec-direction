@@ -305,6 +305,24 @@ export function AutomationRuleDialog({
             </div>
           )}
 
+          {/* Available variables hint */}
+          {trigger && trigger.variables && trigger.variables.length > 0 && (
+            <div className="rounded-lg bg-muted/50 p-3 space-y-1">
+              <p className="text-xs font-medium text-muted-foreground">Variáveis disponíveis:</p>
+              <div className="flex flex-wrap gap-1">
+                {trigger.variables.map((v) => (
+                  <Badge key={v} variant="secondary" className="text-[10px] font-mono cursor-pointer" onClick={() => {
+                    const currentMsg = actionConfig.message || "";
+                    setActionConfig(prev => ({ ...prev, message: currentMsg + `{${v}}` }));
+                  }}>
+                    {`{${v}}`}
+                  </Badge>
+                ))}
+              </div>
+              <p className="text-[10px] text-muted-foreground">Clique para inserir na mensagem</p>
+            </div>
+          )
+
           <Button onClick={handleSave} disabled={saving} className="w-full">
             {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
             {editingRule ? "Salvar alterações" : "Criar automação"}
