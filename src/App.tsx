@@ -428,6 +428,7 @@ const AppShell = () => {
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
               <Route path="office" element={<CRMOfficePage />} />
+              <Route path="head" element={<CRMHeadComercialPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}
