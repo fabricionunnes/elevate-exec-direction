@@ -740,76 +740,78 @@ export const CRMLeadDetailPage = () => {
       </div>
 
       {/* Lead Header */}
-      <div className="px-6 py-4 border-b border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Avatar className="h-12 w-12">
-              <AvatarFallback className="text-lg">
+      <div className="px-4 sm:px-6 py-4 border-b border-border">
+        <div className="flex flex-wrap items-center gap-3">
+          {/* Avatar + Name */}
+          <div className="flex items-center gap-3 min-w-0">
+            <Avatar className="h-11 w-11 shrink-0">
+              <AvatarFallback className="text-base font-semibold">
                 {lead.name.slice(0, 2).toUpperCase()}
               </AvatarFallback>
             </Avatar>
 
-            <div>
-              <div className="flex items-center gap-2">
-                {lead.company && (
-                  <span className="text-xs text-muted-foreground uppercase">
-                    {lead.company}
-                  </span>
-                )}
-              </div>
-              <h1 className="text-xl font-bold">{lead.name}</h1>
-            </div>
-
-            {/* Quick Actions */}
-            <div className="flex items-center gap-1 ml-4">
-              {lead.phone && (
-                <Button variant="ghost" size="icon" asChild>
-                  <a href={`tel:${lead.phone}`}>
-                    <Phone className="h-4 w-4" />
-                  </a>
-                </Button>
+            <div className="min-w-0">
+              {lead.company && (
+                <span className="text-[11px] text-muted-foreground uppercase tracking-wide block truncate">
+                  {lead.company}
+                </span>
               )}
-              <Button variant="ghost" size="icon">
-                <MessageSquare className="h-4 w-4" />
-              </Button>
-              {lead.email && (
-                <Button variant="ghost" size="icon" asChild>
-                  <a href={`mailto:${lead.email}`}>
-                    <Mail className="h-4 w-4" />
-                  </a>
-                </Button>
-              )}
-              <Button variant="ghost" size="icon">
-                <Calendar className="h-4 w-4" />
-              </Button>
-              <Button 
-                variant="ghost" 
-                size="icon"
-                onClick={() => setAddNoteDialogOpen(true)}
-                title="Adicionar nota ao histórico"
-              >
-                <StickyNote className="h-4 w-4" />
-              </Button>
-              <SendContractButton
-                leadId={lead.id}
-                variant="full"
-                onSuccess={loadLead}
-              />
+              <h1 className="text-lg font-bold leading-tight truncate">{lead.name}</h1>
             </div>
           </div>
 
-          {/* Right Actions */}
-          <div className="flex items-center gap-2">
-            <Button variant="ghost" size="icon">
-              <Smile className="h-5 w-5" />
+          {/* Quick Actions - centered */}
+          <div className="flex items-center gap-0.5 flex-shrink-0">
+            {lead.phone && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Ligar">
+                <a href={`tel:${lead.phone}`}>
+                  <Phone className="h-4 w-4" />
+                </a>
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="WhatsApp">
+              <MessageSquare className="h-4 w-4" />
+            </Button>
+            {lead.email && (
+              <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Email">
+                <a href={`mailto:${lead.email}`}>
+                  <Mail className="h-4 w-4" />
+                </a>
+              </Button>
+            )}
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Agendar">
+              <Calendar className="h-4 w-4" />
             </Button>
             <Button 
               variant="ghost" 
               size="icon"
-              onClick={() => navigate(`/contratos?lead_id=${lead.id}`)}
-              title="Ver contratos enviados"
+              className="h-8 w-8"
+              onClick={() => setAddNoteDialogOpen(true)}
+              title="Adicionar nota"
             >
-              <FileText className="h-5 w-5" />
+              <StickyNote className="h-4 w-4" />
+            </Button>
+          </div>
+
+          {/* Contract + Right Actions */}
+          <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+            <SendContractButton
+              leadId={lead.id}
+              variant="full"
+              onSuccess={loadLead}
+            />
+
+            <Button variant="ghost" size="icon" className="h-8 w-8" title="Emoji">
+              <Smile className="h-4 w-4" />
+            </Button>
+            <Button 
+              variant="ghost" 
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => navigate(`/contratos?lead_id=${lead.id}`)}
+              title="Contratos"
+            >
+              <FileText className="h-4 w-4" />
             </Button>
             <OwnerSelector
               leadId={lead.id}
@@ -819,8 +821,8 @@ export const CRMLeadDetailPage = () => {
             />
             <DropdownMenu>
               <DropdownMenuTrigger asChild>
-                <Button variant="ghost" size="icon">
-                  <MoreHorizontal className="h-5 w-5" />
+                <Button variant="ghost" size="icon" className="h-8 w-8">
+                  <MoreHorizontal className="h-4 w-4" />
                 </Button>
               </DropdownMenuTrigger>
               <DropdownMenuContent align="end" className="bg-popover">
@@ -868,12 +870,14 @@ export const CRMLeadDetailPage = () => {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <Button variant="ghost" size="icon" className="ml-2">
-              <ChevronLeft className="h-5 w-5" />
-            </Button>
-            <Button variant="ghost" size="icon">
-              <ChevronRight className="h-5 w-5" />
-            </Button>
+            <div className="flex items-center border-l border-border ml-1 pl-1">
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
+              <Button variant="ghost" size="icon" className="h-8 w-8">
+                <ChevronRight className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </div>
 
