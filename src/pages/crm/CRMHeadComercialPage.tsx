@@ -612,96 +612,110 @@ export default function CRMHeadComercialPage() {
         </div>
       </div>
 
-      {/* ── Hero KPIs ── */}
-      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
-        <KPICard
-          icon={<DollarSign className="h-5 w-5" />}
-          iconBg="from-emerald-500/20 to-green-500/20"
-          iconColor="text-emerald-600"
-          label="Realizado"
-          value={formatCurrency(totals.realizado)}
-          sub={`${globalPercent.toFixed(0)}% da meta`}
-          trend={globalPercent >= 100 ? "up" : globalPercent >= 70 ? "neutral" : "down"}
-        />
-        <KPICard
-          icon={<Target className="h-5 w-5" />}
-          iconBg="from-blue-500/20 to-indigo-500/20"
-          iconColor="text-blue-600"
-          label="Meta Total"
-          value={formatCurrency(totals.metaVendas)}
-          sub={`Falta ${formatCompact(Math.max(0, totals.metaVendas - totals.realizado))}`}
-        />
-        <KPICard
-          icon={<TrendingUp className="h-5 w-5" />}
-          iconBg="from-violet-500/20 to-purple-500/20"
-          iconColor="text-violet-600"
-          label="Projeção"
-          value={formatCurrency(totals.projecao)}
-          sub={totals.metaVendas > 0 ? `${((totals.projecao / totals.metaVendas) * 100).toFixed(0)}% da meta` : "—"}
-          trend={totals.projecao >= totals.metaVendas ? "up" : "down"}
-        />
-        <KPICard
-          icon={<Flame className="h-5 w-5" />}
-          iconBg="from-orange-500/20 to-red-500/20"
-          iconColor="text-orange-600"
-          label="Forecast"
-          value={formatCurrency(totals.forecast)}
-          sub={`${forecastLeads.length} leads | Pipeline: ${formatCompact(totals.pipeline)}`}
-        />
-        <KPICard
-          icon={<CalendarCheck className="h-5 w-5" />}
-          iconBg="from-sky-500/20 to-cyan-500/20"
-          iconColor="text-sky-600"
-          label="Reuniões Hoje"
-          value={String(totals.todayMeetings)}
-          sub={`Ontem: ${totals.yesterdayMeetings}`}
-        />
+      {/* ── Hero KPIs with Donut ── */}
+      <div className="grid grid-cols-1 lg:grid-cols-[1fr_auto] gap-4">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
+          {[
+            { icon: <DollarSign className="h-5 w-5" />, gradient: "from-emerald-500 to-teal-400", glow: "shadow-emerald-500/20", color: "text-emerald-400", label: "Realizado", value: formatCurrency(totals.realizado), sub: `${globalPercent.toFixed(0)}% da meta`, trend: globalPercent >= 100 ? "up" as const : "down" as const },
+            { icon: <Target className="h-5 w-5" />, gradient: "from-blue-500 to-indigo-400", glow: "shadow-blue-500/20", color: "text-blue-400", label: "Meta Total", value: formatCurrency(totals.metaVendas), sub: `Falta ${formatCompact(Math.max(0, totals.metaVendas - totals.realizado))}` },
+            { icon: <TrendingUp className="h-5 w-5" />, gradient: "from-violet-500 to-purple-400", glow: "shadow-violet-500/20", color: "text-violet-400", label: "Projeção", value: formatCurrency(totals.projecao), sub: totals.metaVendas > 0 ? `${((totals.projecao / totals.metaVendas) * 100).toFixed(0)}% da meta` : "—", trend: totals.projecao >= totals.metaVendas ? "up" as const : "down" as const },
+            { icon: <Flame className="h-5 w-5" />, gradient: "from-orange-500 to-rose-400", glow: "shadow-orange-500/20", color: "text-orange-400", label: "Forecast", value: formatCurrency(totals.forecast), sub: `${forecastLeads.length} leads` },
+            { icon: <CalendarCheck className="h-5 w-5" />, gradient: "from-sky-500 to-cyan-400", glow: "shadow-sky-500/20", color: "text-sky-400", label: "Reuniões Hoje", value: String(totals.todayMeetings), sub: `Ontem: ${totals.yesterdayMeetings}` },
+          ].map((kpi, idx) => (
+            <GlowCard key={idx} glowColor={kpi.glow}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${kpi.gradient} opacity-[0.06]`} />
+              <div className="relative p-3 sm:p-4">
+                <div className="flex items-center gap-2 mb-2">
+                  <div className={`p-1.5 rounded-lg bg-gradient-to-br ${kpi.gradient} text-white shadow-md`}>
+                    {kpi.icon}
+                  </div>
+                  <span className="text-[10px] sm:text-[11px] text-muted-foreground font-semibold uppercase tracking-wider">{kpi.label}</span>
+                </div>
+                <p className={cn("text-base sm:text-lg font-black tracking-tight", kpi.color)}>{kpi.value}</p>
+                {kpi.sub && (
+                  <p className="text-[10px] sm:text-[11px] text-muted-foreground mt-1 flex items-center gap-1">
+                    {kpi.trend === "up" && <ArrowUpRight className="h-3 w-3 text-emerald-400" />}
+                    {kpi.trend === "down" && <ArrowDownRight className="h-3 w-3 text-rose-400" />}
+                    {kpi.sub}
+                  </p>
+                )}
+              </div>
+            </GlowCard>
+          ))}
+        </div>
+
+        {/* Mini Donut */}
+        <GlowCard glowColor="shadow-primary/15" className="hidden lg:flex items-center justify-center">
+          <div className="relative p-4 flex flex-col items-center">
+            <ResponsiveContainer width={120} height={120}>
+              <PieChart>
+                <Pie data={donutData} cx="50%" cy="50%" innerRadius={38} outerRadius={52} startAngle={90} endAngle={-270} dataKey="value" strokeWidth={0}>
+                  <Cell fill="#22c55e" />
+                  <Cell fill="hsl(var(--muted))" />
+                </Pie>
+              </PieChart>
+            </ResponsiveContainer>
+            <div className="absolute inset-0 flex flex-col items-center justify-center">
+              <span className={cn("text-xl font-black", globalPercent >= 100 ? "text-emerald-400" : globalPercent >= 70 ? "text-amber-400" : "text-rose-400")}>
+                {globalPercent.toFixed(0)}%
+              </span>
+              <span className="text-[9px] text-muted-foreground uppercase font-semibold tracking-wider">da meta</span>
+            </div>
+          </div>
+        </GlowCard>
       </div>
 
       {/* Global Progress Bar */}
-      <Card className="overflow-hidden">
-        <CardContent className="p-4">
+      <GlowCard glowColor="shadow-primary/10">
+        <div className="relative p-4">
           <div className="flex items-center justify-between mb-2">
-            <span className="text-sm font-medium">Atingimento Global</span>
-            <span className="text-sm font-bold">{globalPercent.toFixed(1)}%</span>
+            <span className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-1.5">
+              <BarChart3 className="h-3.5 w-3.5" /> Atingimento Global
+            </span>
+            <span className={cn("text-sm font-black", globalPercent >= 100 ? "text-emerald-400" : globalPercent >= 70 ? "text-amber-400" : "text-rose-400")}>
+              {globalPercent.toFixed(1)}%
+            </span>
           </div>
-          <div className="relative h-3 rounded-full bg-muted overflow-hidden">
+          <div className="relative h-3 rounded-full bg-muted/50 overflow-hidden">
             <div
-              className="h-full rounded-full transition-all duration-700 ease-out"
+              className="h-full rounded-full transition-all duration-1000 ease-out"
               style={{
                 width: `${Math.min(globalPercent, 100)}%`,
                 background: globalPercent >= 100
-                  ? "linear-gradient(90deg, #22c55e, #10b981)"
+                  ? "linear-gradient(90deg, #22c55e, #10b981, #059669)"
                   : globalPercent >= 70
-                  ? "linear-gradient(90deg, #f59e0b, #eab308)"
-                  : "linear-gradient(90deg, #ef4444, #f97316)",
+                  ? "linear-gradient(90deg, #f59e0b, #eab308, #f59e0b)"
+                  : "linear-gradient(90deg, #ef4444, #f97316, #ef4444)",
+                boxShadow: globalPercent >= 100
+                  ? "0 0 12px rgba(34,197,94,0.4)"
+                  : globalPercent >= 70
+                  ? "0 0 12px rgba(245,158,11,0.4)"
+                  : "0 0 12px rgba(239,68,68,0.4)",
               }}
             />
-            {/* Super meta marker */}
-            <div className="absolute top-0 h-full w-px bg-amber-500/60" style={{ left: "100%" }} />
           </div>
-          <div className="flex justify-between text-[10px] text-muted-foreground mt-1">
-            <span>D{elapsedBizDays}/{totalBizDays}</span>
+          <div className="flex justify-between text-[10px] text-muted-foreground mt-1.5">
+            <span className="flex items-center gap-1"><Clock className="h-3 w-3" /> D{elapsedBizDays}/{totalBizDays}</span>
             <span>{remainingBizDays} dias úteis restantes</span>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlowCard>
 
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-4 h-auto">
-          <TabsTrigger value="overview" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
-            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> <span className="hidden sm:inline">Performance</span><span className="sm:hidden">Perf.</span>
-          </TabsTrigger>
-          <TabsTrigger value="forecast" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
-            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Forecast
-          </TabsTrigger>
-          <TabsTrigger value="pipeline" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
-            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Pipeline
-          </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
-            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Agenda
-          </TabsTrigger>
+        <TabsList className="w-full grid grid-cols-4 h-auto bg-card/80 backdrop-blur-sm border border-white/10 rounded-xl p-1">
+          {[
+            { value: "overview", icon: <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />, label: "Performance", shortLabel: "Perf." },
+            { value: "forecast", icon: <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />, label: "Forecast", shortLabel: "Forecast" },
+            { value: "pipeline", icon: <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />, label: "Pipeline", shortLabel: "Pipeline" },
+            { value: "agenda", icon: <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" />, label: "Agenda", shortLabel: "Agenda" },
+          ].map((tab) => (
+            <TabsTrigger key={tab.value} value={tab.value} className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2 rounded-lg data-[state=active]:bg-primary/10 data-[state=active]:shadow-md">
+              {tab.icon}
+              <span className="hidden sm:inline">{tab.label}</span>
+              <span className="sm:hidden">{tab.shortLabel}</span>
+            </TabsTrigger>
+          ))}
         </TabsList>
 
         {/* ═══ TAB: Performance ═══ */}
