@@ -395,6 +395,55 @@ export default function CRMHeadComercialPage() {
       setSdrCreatedYesterday((sdrYesterdayRes.data || []) as any[]);
       setSdrCreatedToday((sdrTodayRes.data || []) as any[]);
       setSdrCreatedMonth((sdrMonthRes.data || []) as any[]);
+
+      // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
+      const { data: forecastStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%forecast%");
+
+      if (forecastStages && forecastStages.length > 0) {
+        const stageIds = forecastStages.map(s => s.id);
+        const { data: fLeads } = await supabase
+          .from("crm_leads")
+          .select(`
+            id, name, company, opportunity_value, probability, stage_id,
+            closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
+            head_status, head_closing_date,
+            stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
+          `)
+          .in("stage_id", stageIds)
+          .is("closed_at", null);
+        setDynamicForecastLeads((fLeads || []) as any[]);
+      } else {
+        setDynamicForecastLeads([]);
+      }
+
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const stageIds = realizadaStages.map(s => s.id);
+        const { data: nLeads } = await supabase
+          .from("crm_leads")
+          .select(`
+            id, name, company, opportunity_value, probability, stage_id,
+            closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
+            head_status, head_closing_date,
+            stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
+          `)
+          .in("stage_id", stageIds)
+          .is("closed_at", null);
+        setDynamicNegotiationLeads((nLeads || []) as any[]);
+      } else {
+        setDynamicNegotiationLeads([]);
+      }
     } catch (err) {
       console.error("Error loading head data:", err);
     } finally {
