@@ -150,16 +150,24 @@ export const CRMPipelinePage = () => {
 
   const loadSummaryCards = useCallback(async () => {
     try {
-      // Load forecast data from ALL pipelines
-      const { data: forecasts } = await supabase
-        .from("crm_forecasts")
-        .select("id, forecast_value, closer_staff_id")
-        .eq("status", "open");
-      
-      setForecastData(forecasts || []);
+      // Find all "Forecast" stages across ALL pipelines
+      const { data: forecastStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%forecast%");
 
-      // Load "realizada" stage leads from ALL pipelines
-      // Find all stages that contain "realizada" in name (case-insensitive)
+      if (forecastStages && forecastStages.length > 0) {
+        const stageIds = forecastStages.map(s => s.id);
+        const { data: forecastLeads } = await supabase
+          .from("crm_leads")
+          .select("id, opportunity_value, owner_staff_id")
+          .in("stage_id", stageIds);
+        setForecastData(forecastLeads || []);
+      } else {
+        setForecastData([]);
+      }
+
+      // Find all "Realizada" stages across ALL pipelines
       const { data: realizadaStages } = await supabase
         .from("crm_stages")
         .select("id")
@@ -171,7 +179,6 @@ export const CRMPipelinePage = () => {
           .from("crm_leads")
           .select("id, opportunity_value, owner_staff_id")
           .in("stage_id", stageIds);
-        
         setNegotiationData(negotiationLeads || []);
       } else {
         setNegotiationData([]);
@@ -185,9 +192,9 @@ export const CRMPipelinePage = () => {
   const filteredForecastTotal = useMemo(() => {
     const ownerFilter = filters.owners;
     const data = ownerFilter.length > 0
-      ? forecastData.filter(f => ownerFilter.includes(f.closer_staff_id))
+      ? forecastData.filter(f => ownerFilter.includes(f.owner_staff_id))
       : forecastData;
-    return data.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+    return data.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
   }, [forecastData, filters.owners]);
 
   const filteredNegotiationTotal = useMemo(() => {
