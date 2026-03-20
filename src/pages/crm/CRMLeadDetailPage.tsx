@@ -747,28 +747,39 @@ export const CRMLeadDetailPage = () => {
       </div>
 
       {/* Lead Header */}
-      <div className="px-4 sm:px-6 py-4 border-b border-border">
-        <div className="flex flex-wrap items-center gap-3">
-          {/* Avatar + Name */}
-          <div className="flex items-center gap-3 min-w-0">
-            <Avatar className="h-11 w-11 shrink-0">
-              <AvatarFallback className="text-base font-semibold">
-                {lead.name.slice(0, 2).toUpperCase()}
-              </AvatarFallback>
-            </Avatar>
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
+        {/* Row 1: Avatar + Name + Menu */}
+        <div className="flex items-center gap-3">
+          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 shrink-0">
+            <AvatarFallback className="text-sm sm:text-base font-semibold">
+              {lead.name.slice(0, 2).toUpperCase()}
+            </AvatarFallback>
+          </Avatar>
 
-            <div className="min-w-0">
-              {lead.company && (
-                <span className="text-[11px] text-muted-foreground uppercase tracking-wide block truncate">
-                  {lead.company}
-                </span>
-              )}
-              <h1 className="text-lg font-bold leading-tight truncate">{lead.name}</h1>
-            </div>
+          <div className="min-w-0 flex-1">
+            {lead.company && (
+              <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide block truncate">
+                {lead.company}
+              </span>
+            )}
+            <h1 className="text-base sm:text-lg font-bold leading-tight truncate">{lead.name}</h1>
           </div>
 
-          {/* Quick Actions - centered */}
-          <div className="flex items-center gap-0.5 flex-shrink-0">
+          {/* Desktop-only: nav arrows */}
+          <div className="hidden sm:flex items-center border-l border-border ml-1 pl-1">
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ChevronLeft className="h-4 w-4" />
+            </Button>
+            <Button variant="ghost" size="icon" className="h-8 w-8">
+              <ChevronRight className="h-4 w-4" />
+            </Button>
+          </div>
+        </div>
+
+        {/* Row 2: Quick Actions (scrollable on mobile) */}
+        <div className="flex items-center gap-1 mt-2 overflow-x-auto pb-1 -mx-1 px-1">
+          {/* Quick action icons */}
+          <div className="flex items-center gap-0.5 shrink-0">
             {lead.phone && (
               <Button variant="ghost" size="icon" className="h-8 w-8" asChild title="Ligar">
                 <a href={`tel:${lead.phone}`}>
@@ -808,15 +819,15 @@ export const CRMLeadDetailPage = () => {
             </Button>
           </div>
 
-          {/* Contract + Right Actions */}
-          <div className="flex items-center gap-1.5 ml-auto flex-shrink-0">
+          {/* Contract + extras */}
+          <div className="flex items-center gap-1 shrink-0 ml-auto">
             <SendContractButton
               leadId={lead.id}
               variant="full"
               onSuccess={loadLead}
             />
 
-            <Button variant="ghost" size="icon" className="h-8 w-8" title="Emoji">
+            <Button variant="ghost" size="icon" className="h-8 w-8 hidden sm:inline-flex" title="Emoji">
               <Smile className="h-4 w-4" />
             </Button>
             <Button 
@@ -885,14 +896,6 @@ export const CRMLeadDetailPage = () => {
                 )}
               </DropdownMenuContent>
             </DropdownMenu>
-            <div className="flex items-center border-l border-border ml-1 pl-1">
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <ChevronLeft className="h-4 w-4" />
-              </Button>
-              <Button variant="ghost" size="icon" className="h-8 w-8">
-                <ChevronRight className="h-4 w-4" />
-              </Button>
-            </div>
           </div>
         </div>
 

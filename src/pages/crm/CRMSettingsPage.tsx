@@ -719,7 +719,7 @@ export const CRMSettingsPage = () => {
   }
 
   return (
-    <div className="p-6 space-y-6">
+    <div className="p-3 sm:p-6 space-y-4 sm:space-y-6">
       <div>
         <h1 className="text-2xl font-bold flex items-center gap-2">
           <Settings className="h-6 w-6" />
@@ -731,38 +731,42 @@ export const CRMSettingsPage = () => {
       </div>
 
       <Tabs defaultValue="pipelines" className="w-full">
-        <TabsList className="flex flex-wrap h-auto gap-1 p-1">
-          <TabsTrigger value="pipelines" className="gap-2">
-            <Kanban className="h-4 w-4" />
-            Pipelines
+        <TabsList className="flex flex-wrap h-auto gap-1 p-1 w-full justify-start overflow-x-auto">
+          <TabsTrigger value="pipelines" className="gap-1.5 text-xs sm:text-sm">
+            <Kanban className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Pipelines</span>
+            <span className="sm:hidden">Pipes</span>
           </TabsTrigger>
-          <TabsTrigger value="origins" className="gap-2">
-            <Target className="h-4 w-4" />
+          <TabsTrigger value="origins" className="gap-1.5 text-xs sm:text-sm">
+            <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Origens
           </TabsTrigger>
-          <TabsTrigger value="reasons" className="gap-2">
-            <XCircle className="h-4 w-4" />
-            Motivos de Perda
+          <TabsTrigger value="reasons" className="gap-1.5 text-xs sm:text-sm">
+            <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Motivos de Perda</span>
+            <span className="sm:hidden">Perdas</span>
           </TabsTrigger>
-          <TabsTrigger value="tags" className="gap-2">
-            <Tag className="h-4 w-4" />
+          <TabsTrigger value="tags" className="gap-1.5 text-xs sm:text-sm">
+            <Tag className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Tags
           </TabsTrigger>
-          <TabsTrigger value="access" className="gap-2">
-            <Users className="h-4 w-4" />
+          <TabsTrigger value="access" className="gap-1.5 text-xs sm:text-sm">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Acessos
           </TabsTrigger>
-          <TabsTrigger value="goals" className="gap-2">
-            <TrendingUp className="h-4 w-4" />
+          <TabsTrigger value="goals" className="gap-1.5 text-xs sm:text-sm">
+            <TrendingUp className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             Metas
           </TabsTrigger>
-          <TabsTrigger value="notifications" className="gap-2">
-            <Bell className="h-4 w-4" />
-            Notificações
+          <TabsTrigger value="notifications" className="gap-1.5 text-xs sm:text-sm">
+            <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Notificações</span>
+            <span className="sm:hidden">Notif.</span>
           </TabsTrigger>
-          <TabsTrigger value="integrations" className="gap-2">
-            <Link2 className="h-4 w-4" />
-            Integrações
+          <TabsTrigger value="integrations" className="gap-1.5 text-xs sm:text-sm">
+            <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Integrações</span>
+            <span className="sm:hidden">Integ.</span>
           </TabsTrigger>
         </TabsList>
 

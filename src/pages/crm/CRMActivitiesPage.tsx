@@ -426,125 +426,179 @@ export const CRMActivitiesPage = () => {
         <span className="font-medium text-foreground">{activities.length}</span> negócios
       </div>
 
-      {/* Table */}
+      {/* Table - Desktop / Card list - Mobile */}
       <div className="flex-1 overflow-auto">
-        <Table>
-          <TableHeader>
-            <TableRow>
-              <TableHead className="w-[50px]">Concluído</TableHead>
-              <TableHead>Atividade</TableHead>
-              <TableHead>Status</TableHead>
-              <TableHead>Data e hora</TableHead>
-              <TableHead>Contato</TableHead>
-              <TableHead>Origem</TableHead>
-              <TableHead>Etapa</TableHead>
-              <TableHead>Dono do negócio</TableHead>
-              <TableHead>Tags</TableHead>
-            </TableRow>
-          </TableHeader>
-          <TableBody>
-            {filteredActivities.map((activity) => (
-              <TableRow
-                key={activity.id}
-                className={cn(
-                  activity.status === "completed" && "bg-muted/30"
-                )}
-              >
-                <TableCell>
-                  <Checkbox
-                    checked={activity.status === "completed"}
-                    onCheckedChange={() => handleComplete(activity.id)}
-                    disabled={activity.status === "completed"}
-                  />
-                </TableCell>
-                <TableCell>
-                  <div className="flex items-center gap-2">
-                    <span className="text-muted-foreground">
-                      {getActivityIcon(activity.type)}
-                    </span>
-                    <span className="font-medium">{activity.title}</span>
-                  </div>
-                </TableCell>
-                <TableCell>{getStatusBadge(activity)}</TableCell>
-                <TableCell>
-                  {activity.scheduled_at && (
-                    <span className="text-sm">
-                      {format(new Date(activity.scheduled_at), "EEE, d 'de' MMM 'às' HH:mm", {
-                        locale: ptBR,
-                      })}
-                    </span>
+        {/* Desktop Table */}
+        <div className="hidden md:block">
+          <Table>
+            <TableHeader>
+              <TableRow>
+                <TableHead className="w-[50px]">Concluído</TableHead>
+                <TableHead>Atividade</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Data e hora</TableHead>
+                <TableHead>Contato</TableHead>
+                <TableHead>Origem</TableHead>
+                <TableHead>Etapa</TableHead>
+                <TableHead>Dono do negócio</TableHead>
+                <TableHead>Tags</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {filteredActivities.map((activity) => (
+                <TableRow
+                  key={activity.id}
+                  className={cn(
+                    activity.status === "completed" && "bg-muted/30"
                   )}
-                </TableCell>
-                <TableCell>
-                  {activity.lead && (
-                    <Link
-                      to={`/crm/leads/${activity.lead_id}`}
-                      className="flex items-center gap-2 hover:underline"
-                    >
+                >
+                  <TableCell>
+                    <Checkbox
+                      checked={activity.status === "completed"}
+                      onCheckedChange={() => handleComplete(activity.id)}
+                      disabled={activity.status === "completed"}
+                    />
+                  </TableCell>
+                  <TableCell>
+                    <div className="flex items-center gap-2">
+                      <span className="text-muted-foreground">
+                        {getActivityIcon(activity.type)}
+                      </span>
+                      <span className="font-medium">{activity.title}</span>
+                    </div>
+                  </TableCell>
+                  <TableCell>{getStatusBadge(activity)}</TableCell>
+                  <TableCell>
+                    {activity.scheduled_at && (
+                      <span className="text-sm">
+                        {format(new Date(activity.scheduled_at), "EEE, d 'de' MMM 'às' HH:mm", {
+                          locale: ptBR,
+                        })}
+                      </span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activity.lead && (
+                      <Link
+                        to={`/crm/leads/${activity.lead_id}`}
+                        className="flex items-center gap-2 hover:underline"
+                      >
+                        <Avatar className="h-6 w-6">
+                          <AvatarFallback className="text-[10px]">
+                            {activity.lead.name.slice(0, 2).toUpperCase()}
+                          </AvatarFallback>
+                        </Avatar>
+                        <span className="text-sm">{activity.lead.name}</span>
+                      </Link>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activity.lead?.origin?.name && (
+                      <Badge variant="outline" className="text-xs">
+                        {activity.lead.origin.name}
+                      </Badge>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activity.lead?.stage?.name && (
+                      <span className="text-sm">{activity.lead.stage.name}</span>
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activity.responsible && (
                       <Avatar className="h-6 w-6">
                         <AvatarFallback className="text-[10px]">
-                          {activity.lead.name.slice(0, 2).toUpperCase()}
+                          {activity.responsible.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
                       </Avatar>
-                      <span className="text-sm">{activity.lead.name}</span>
-                    </Link>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {activity.lead?.origin?.name && (
-                    <Badge variant="outline" className="text-xs">
-                      {activity.lead.origin.name}
-                    </Badge>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {activity.lead?.stage?.name && (
-                    <span className="text-sm">{activity.lead.stage.name}</span>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {activity.responsible && (
-                    <Avatar className="h-6 w-6">
-                      <AvatarFallback className="text-[10px]">
-                        {activity.responsible.name.slice(0, 2).toUpperCase()}
-                      </AvatarFallback>
-                    </Avatar>
-                  )}
-                </TableCell>
-                <TableCell>
-                  {activity.lead?.tags && activity.lead.tags.length > 0 && (
-                    <div className="flex gap-1">
-                      {activity.lead.tags.slice(0, 2).map((t) => (
-                        <Badge
-                          key={t.tag.id}
-                          variant="outline"
-                          className="text-[10px] px-1"
-                          style={{ borderColor: t.tag.color, color: t.tag.color }}
-                        >
-                          {t.tag.name}
-                        </Badge>
-                      ))}
-                      {activity.lead.tags.length > 2 && (
-                        <Badge variant="secondary" className="text-[10px] px-1">
-                          +{activity.lead.tags.length - 2}
-                        </Badge>
-                      )}
-                    </div>
-                  )}
-                </TableCell>
-              </TableRow>
-            ))}
+                    )}
+                  </TableCell>
+                  <TableCell>
+                    {activity.lead?.tags && activity.lead.tags.length > 0 && (
+                      <div className="flex gap-1">
+                        {activity.lead.tags.slice(0, 2).map((t) => (
+                          <Badge
+                            key={t.tag.id}
+                            variant="outline"
+                            className="text-[10px] px-1"
+                            style={{ borderColor: t.tag.color, color: t.tag.color }}
+                          >
+                            {t.tag.name}
+                          </Badge>
+                        ))}
+                        {activity.lead.tags.length > 2 && (
+                          <Badge variant="secondary" className="text-[10px] px-1">
+                            +{activity.lead.tags.length - 2}
+                          </Badge>
+                        )}
+                      </div>
+                    )}
+                  </TableCell>
+                </TableRow>
+              ))}
 
-            {filteredActivities.length === 0 && (
-              <TableRow>
-                <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
-                  <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
-                  <p>Nenhuma atividade encontrada</p>
-                </TableCell>
-              </TableRow>
-            )}
-          </TableBody>
-        </Table>
+              {filteredActivities.length === 0 && (
+                <TableRow>
+                  <TableCell colSpan={10} className="text-center py-12 text-muted-foreground">
+                    <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+                    <p>Nenhuma atividade encontrada</p>
+                  </TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+
+        {/* Mobile Card List */}
+        <div className="md:hidden divide-y divide-border">
+          {filteredActivities.map((activity) => (
+            <div
+              key={activity.id}
+              className={cn(
+                "px-3 py-3 flex items-start gap-3",
+                activity.status === "completed" && "bg-muted/30"
+              )}
+            >
+              <Checkbox
+                checked={activity.status === "completed"}
+                onCheckedChange={() => handleComplete(activity.id)}
+                disabled={activity.status === "completed"}
+                className="mt-1"
+              />
+              <div className="flex-1 min-w-0 space-y-1">
+                <div className="flex items-center gap-2">
+                  <span className="text-muted-foreground shrink-0">
+                    {getActivityIcon(activity.type)}
+                  </span>
+                  <span className="font-medium text-sm truncate">{activity.title}</span>
+                </div>
+                {activity.scheduled_at && (
+                  <p className="text-xs text-muted-foreground">
+                    {format(new Date(activity.scheduled_at), "EEE, d 'de' MMM 'às' HH:mm", { locale: ptBR })}
+                  </p>
+                )}
+                {activity.lead && (
+                  <Link
+                    to={`/crm/leads/${activity.lead_id}`}
+                    className="text-xs text-primary hover:underline"
+                  >
+                    {activity.lead.name}
+                  </Link>
+                )}
+              </div>
+              <div className="shrink-0">
+                {getStatusBadge(activity)}
+              </div>
+            </div>
+          ))}
+
+          {filteredActivities.length === 0 && (
+            <div className="text-center py-12 text-muted-foreground">
+              <CalendarIcon className="h-12 w-12 mx-auto mb-4 opacity-50" />
+              <p>Nenhuma atividade encontrada</p>
+            </div>
+          )}
+        </div>
       </div>
     </div>
   );
