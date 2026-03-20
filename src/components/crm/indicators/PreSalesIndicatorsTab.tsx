@@ -512,7 +512,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     return pipeline && s.pipeline === pipeline.name;
   }) : salesBySDR;
 
-  const visibleMetrics = {
+  const visibleMetrics = (() => {
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
     const reunioes = filteredSdrs.reduce((sum, sdr) => sum + sdr.meetings, 0);
     const noShow = filteredSdrs.reduce((sum, sdr) => sum + sdr.noShow, 0);
