@@ -515,7 +515,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
 
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
