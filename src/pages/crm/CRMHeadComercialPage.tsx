@@ -565,7 +565,7 @@ export default function CRMHeadComercialPage() {
       </div>
 
       {/* ── Hero KPIs ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <KPICard
           icon={<DollarSign className="h-5 w-5" />}
           iconBg="from-emerald-500/20 to-green-500/20"
