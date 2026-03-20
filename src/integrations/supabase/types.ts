@@ -12204,10 +12204,14 @@ export type Database = {
       crm_leads: {
         Row: {
           address: string | null
+          address_complement: string | null
+          address_neighborhood: string | null
+          address_number: string | null
           city: string | null
           closed_at: string | null
           closer_staff_id: string | null
           company: string | null
+          cpf: string | null
           created_at: string
           created_by: string | null
           document: string | null
@@ -12222,8 +12226,10 @@ export type Database = {
           id: string
           installments: string | null
           last_activity_at: string | null
+          legal_representative_name: string | null
           loss_reason_id: string | null
           main_pain: string | null
+          marital_status: string | null
           name: string
           next_activity_at: string | null
           notes: string | null
@@ -12237,6 +12243,7 @@ export type Database = {
           plan_id: string | null
           probability: number | null
           product_id: string | null
+          rg: string | null
           role: string | null
           scheduled_at: string | null
           scheduled_by_staff_id: string | null
@@ -12252,10 +12259,14 @@ export type Database = {
         }
         Insert: {
           address?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
           company?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           document?: string | null
@@ -12270,8 +12281,10 @@ export type Database = {
           id?: string
           installments?: string | null
           last_activity_at?: string | null
+          legal_representative_name?: string | null
           loss_reason_id?: string | null
           main_pain?: string | null
+          marital_status?: string | null
           name: string
           next_activity_at?: string | null
           notes?: string | null
@@ -12285,6 +12298,7 @@ export type Database = {
           plan_id?: string | null
           probability?: number | null
           product_id?: string | null
+          rg?: string | null
           role?: string | null
           scheduled_at?: string | null
           scheduled_by_staff_id?: string | null
@@ -12300,10 +12314,14 @@ export type Database = {
         }
         Update: {
           address?: string | null
+          address_complement?: string | null
+          address_neighborhood?: string | null
+          address_number?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
           company?: string | null
+          cpf?: string | null
           created_at?: string
           created_by?: string | null
           document?: string | null
@@ -12318,8 +12336,10 @@ export type Database = {
           id?: string
           installments?: string | null
           last_activity_at?: string | null
+          legal_representative_name?: string | null
           loss_reason_id?: string | null
           main_pain?: string | null
+          marital_status?: string | null
           name?: string
           next_activity_at?: string | null
           notes?: string | null
@@ -12333,6 +12353,7 @@ export type Database = {
           plan_id?: string | null
           probability?: number | null
           product_id?: string | null
+          rg?: string | null
           role?: string | null
           scheduled_at?: string | null
           scheduled_by_staff_id?: string | null

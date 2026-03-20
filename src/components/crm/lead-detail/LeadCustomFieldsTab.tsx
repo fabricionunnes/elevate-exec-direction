@@ -511,13 +511,19 @@ export const LeadCustomFieldsTab = ({
       product_id: "product_id",
       plan_id: "plan_id",
       document: "document",
-      // New closing fields
       trade_name: "trade_name",
       zipcode: "zipcode",
       installments: "installments",
       due_day: "due_day",
       payment_method: "payment_method",
       address: "address",
+      legal_representative_name: "legal_representative_name",
+      cpf: "cpf",
+      rg: "rg",
+      marital_status: "marital_status",
+      address_number: "address_number",
+      address_complement: "address_complement",
+      address_neighborhood: "address_neighborhood",
     };
 
     const key = mapping[fieldName];
@@ -557,13 +563,19 @@ export const LeadCustomFieldsTab = ({
         product_id: "product_id",
         plan_id: "plan_id",
         document: "document",
-        // New closing fields
         trade_name: "trade_name",
         zipcode: "zipcode",
         installments: "installments",
         due_day: "due_day",
         payment_method: "payment_method",
         address: "address",
+        legal_representative_name: "legal_representative_name",
+        cpf: "cpf",
+        rg: "rg",
+        marital_status: "marital_status",
+        address_number: "address_number",
+        address_complement: "address_complement",
+        address_neighborhood: "address_neighborhood",
       };
 
       const dbField = fieldMapping[field.field_name];

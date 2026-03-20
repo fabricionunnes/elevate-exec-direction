@@ -17,6 +17,13 @@ interface LeadData {
   address?: string | null;
   zipcode?: string | null;
   trade_name?: string | null;
+  legal_representative_name?: string | null;
+  cpf?: string | null;
+  rg?: string | null;
+  marital_status?: string | null;
+  address_number?: string | null;
+  address_complement?: string | null;
+  address_neighborhood?: string | null;
 }
 
 interface CreateProjectResult {
@@ -37,7 +44,7 @@ async function fetchLeadWithCustomFields(leadId: string): Promise<{
   // Buscar dados do lead
   const { data: leadData, error: leadError } = await supabase
     .from("crm_leads")
-    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name")
+    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name, legal_representative_name, cpf, rg, marital_status, address_number, address_complement, address_neighborhood")
     .eq("id", leadId)
     .single();
 
@@ -143,9 +150,16 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
           address: lead.address,
+          address_number: lead.address_number,
+          address_complement: lead.address_complement,
+          address_neighborhood: lead.address_neighborhood,
           address_city: lead.city,
           address_state: lead.state,
           address_zipcode: lead.zipcode,
+          owner_name: lead.legal_representative_name,
+          owner_cpf: lead.cpf,
+          owner_rg: lead.rg,
+          owner_marital_status: lead.marital_status,
         })
         .eq("id", companyId);
     } else {
@@ -163,9 +177,16 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
           address: lead.address,
+          address_number: lead.address_number,
+          address_complement: lead.address_complement,
+          address_neighborhood: lead.address_neighborhood,
           address_city: lead.city,
           address_state: lead.state,
           address_zipcode: lead.zipcode,
+          owner_name: lead.legal_representative_name,
+          owner_cpf: lead.cpf,
+          owner_rg: lead.rg,
+          owner_marital_status: lead.marital_status,
         })
         .select("id")
         .single();
