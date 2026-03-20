@@ -234,7 +234,18 @@ export function CandidateDialog({
           companyName = company?.name || "";
         }
 
-        supabase.functions.invoke("automation-engine", {
+        // Fetch consultant info for the project
+        let consultorResponsavel = "";
+        if (project?.onboarding_company_id) {
+          const { data: projData } = await supabase
+            .from("onboarding_projects")
+            .select("consultant_id, onboarding_staff!onboarding_projects_consultant_id_fkey(name)")
+            .eq("id", projectId)
+            .maybeSingle();
+          consultorResponsavel = (projData as any)?.onboarding_staff?.name || "";
+        }
+
+        await supabase.functions.invoke("automation-engine", {
           body: {
             trigger_type: "resume_received",
             trigger_data: {
@@ -246,6 +257,7 @@ export function CandidateDialog({
               company_name: companyName,
               project_id: projectId,
               source: isStaff ? "hr" : "client",
+              consultor_responsavel: consultorResponsavel,
             },
           },
         });
