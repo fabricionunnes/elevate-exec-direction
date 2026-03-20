@@ -103,6 +103,11 @@ export const CRMActivitiesPage = () => {
         `)
         .order("scheduled_at", { ascending: true });
 
+      // Closers/SDRs only see activities assigned to them
+      if (!isAdmin && staffId) {
+        query = query.eq("responsible_staff_id", staffId);
+      }
+
       if (filterStatus !== "all") {
         query = query.eq("status", filterStatus);
       }
