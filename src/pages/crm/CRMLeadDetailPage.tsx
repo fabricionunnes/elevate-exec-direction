@@ -5,6 +5,7 @@ import { syncLeadToClint } from "@/hooks/useClintSync";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
