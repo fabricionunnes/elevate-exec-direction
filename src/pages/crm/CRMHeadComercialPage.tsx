@@ -181,6 +181,14 @@ const NEGOTIATION_STAGES = [
   "reunião realizada", "agendada", "agendou reunião",
 ];
 
+const HEAD_STATUS_OPTIONS = [
+  { value: "em_andamento", label: "Em andamento", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  { value: "segunda_reuniao", label: "Segunda reunião", color: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
+  { value: "aguardando_pagar", label: "Aguardando pagar", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  { value: "contratou", label: "Contratou", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+  { value: "encerrou", label: "Encerrou", color: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
+];
+
 const activityTypeIcon: Record<string, React.ReactNode> = {
   call: <PhoneCall className="h-4 w-4" />,
   meeting: <Video className="h-4 w-4" />,
