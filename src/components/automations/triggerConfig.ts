@@ -171,7 +171,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
         ],
       },
     ],
-    variables: ["candidate_name", "candidate_email", "candidate_phone", "job_title", "company_name", "source"],
+    variables: ["candidate_name", "candidate_email", "candidate_phone", "job_title", "company_name", "source", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "candidate_stage_changed",
