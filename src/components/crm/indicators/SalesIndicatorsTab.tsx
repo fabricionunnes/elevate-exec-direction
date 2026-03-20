@@ -205,16 +205,22 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .lte("sale_date", format(filterEnd, "yyyy-MM-dd"));
       setRawSalesData(salesData || []);
 
-      // Load forecasts
-      const { data: forecastData } = await supabase
-        .from("crm_forecasts")
-        .select(`
-          *,
-          closer:onboarding_staff!crm_forecasts_closer_staff_id_fkey(id, name),
-          lead:crm_leads(id, name, company)
-        `)
-        .eq("status", "open");
-      setRawForecastData(forecastData || []);
+      // Load forecasts from leads in "Forecast" stages across all pipelines
+      const { data: forecastStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%forecast%");
+
+      if (forecastStages && forecastStages.length > 0) {
+        const forecastStageIds = forecastStages.map(s => s.id);
+        const { data: forecastLeads } = await supabase
+          .from("crm_leads")
+          .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+          .in("stage_id", forecastStageIds);
+        setRawForecastData(forecastLeads || []);
+      } else {
+        setRawForecastData([]);
+      }
 
       // Load goals
       const { data: goalTypeData } = await supabase
@@ -279,7 +285,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       : rawCalls;
 
     const forecastData = isCloserFilter
-      ? rawForecastData.filter(f => f.closer_staff_id === selectedCloser)
+      ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
       : rawForecastData;
 
     // Goals: use closer-specific or total
@@ -322,7 +328,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const projectedPercent = metaReceita > 0 ? (projectedRevenue / metaReceita) * 100 : 0;
 
     // Forecast
-    const forecastTotal = forecastData.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+    const forecastTotal = forecastData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
 
     const metrics = {
       metaReceita,
@@ -406,16 +412,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     }));
 
     // Forecast records (filtered)
-    const forecastRecords: ForecastRecord[] = forecastData.map(f => ({
-      id: f.id,
-      day: f.expected_close_date ? getDate(new Date(f.expected_close_date)) : 0,
-      closer: f.closer?.name || "-",
-      closerId: f.closer_staff_id || "",
-      client: f.lead?.name || "-",
-      status: f.status || "open",
-      product: f.product_name || "-",
-      value: f.forecast_value || 0,
-    }));
+    const forecastRecords: ForecastRecord[] = forecastData.map(f => {
+      const closerInfo = rawCloserStaff.find(s => s.id === f.owner_staff_id);
+      return {
+        id: f.id,
+        day: 0,
+        closer: closerInfo?.name || "-",
+        closerId: f.owner_staff_id || "",
+        client: f.name || f.company || "-",
+        status: "open",
+        product: "-",
+        value: f.opportunity_value || 0,
+      };
+    });
 
     // Daily revenue accumulation (always per closer for chart)
     const dailyRevenueData: { day: number; [key: string]: number }[] = [];
