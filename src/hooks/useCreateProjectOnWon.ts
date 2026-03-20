@@ -150,9 +150,16 @@ export async function createProjectFromWonLead(leadId: string): Promise<CreatePr
           status: "active",
           contract_start_date: new Date().toISOString().split("T")[0],
           address: lead.address,
+          address_number: lead.address_number,
+          address_complement: lead.address_complement,
+          address_neighborhood: lead.address_neighborhood,
           address_city: lead.city,
           address_state: lead.state,
           address_zipcode: lead.zipcode,
+          owner_name: lead.legal_representative_name,
+          owner_cpf: lead.cpf,
+          owner_rg: lead.rg,
+          owner_marital_status: lead.marital_status,
         })
         .eq("id", companyId);
     } else {
