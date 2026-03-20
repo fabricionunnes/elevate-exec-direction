@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import {
   Dialog,
@@ -19,7 +19,7 @@ import {
 } from "@/components/ui/select";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, ArrowRight } from "lucide-react";
+import { Loader2, ArrowRight, Search } from "lucide-react";
 import {
   TRIGGER_DEFINITIONS,
   ACTION_DEFINITIONS,
@@ -27,6 +27,18 @@ import {
   getTriggerDefinition,
   getActionDefinition,
 } from "./triggerConfig";
+
+interface WhatsAppInstance {
+  id: string;
+  instance_name: string;
+  display_name: string | null;
+  status: string | null;
+}
+
+interface WhatsAppGroup {
+  id: string;
+  subject: string;
+}
 
 interface AutomationRuleDialogProps {
   open: boolean;
@@ -49,13 +61,19 @@ export function AutomationRuleDialog({
   const [conditions, setConditions] = useState<Record<string, any>>({});
   const [actionConfig, setActionConfig] = useState<Record<string, any>>({});
 
+  // WhatsApp dynamic data
+  const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
+  const [loadingInstances, setLoadingInstances] = useState(false);
+  const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
+  const [loadingGroups, setLoadingGroups] = useState(false);
+  const [groupSearch, setGroupSearch] = useState("");
+
   useEffect(() => {
     if (editingRule) {
       setName(editingRule.name);
       setDescription(editingRule.description || "");
       setTriggerType(editingRule.trigger_type);
       setActionType(editingRule.action_type);
-      // Parse conditions array to object
       const condObj: Record<string, any> = {};
       (editingRule.conditions || []).forEach((c: any) => {
         condObj[c.field] = c.value;
@@ -70,7 +88,74 @@ export function AutomationRuleDialog({
       setConditions({});
       setActionConfig({});
     }
+    setGroups([]);
+    setGroupSearch("");
   }, [editingRule, open]);
+
+  // Load instances when action is send_whatsapp
+  useEffect(() => {
+    if (actionType === "send_whatsapp" && open) {
+      loadInstances();
+    }
+  }, [actionType, open]);
+
+  // Load groups when instance changes and target is group
+  useEffect(() => {
+    if (actionConfig.instance_id && actionConfig.target_type === "group") {
+      loadGroups(actionConfig.instance_id);
+    } else {
+      setGroups([]);
+    }
+  }, [actionConfig.instance_id, actionConfig.target_type]);
+
+  const loadInstances = async () => {
+    setLoadingInstances(true);
+    try {
+      const { data } = await supabase
+        .from("whatsapp_instances")
+        .select("id, instance_name, display_name, status")
+        .order("display_name");
+      setInstances(data || []);
+    } catch (e) {
+      console.error("Error loading instances:", e);
+    } finally {
+      setLoadingInstances(false);
+    }
+  };
+
+  const loadGroups = async (instanceId: string) => {
+    setLoadingGroups(true);
+    setGroups([]);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) return;
+
+      const response = await supabase.functions.invoke("evolution-api", {
+        body: { action: "fetchGroups", instanceId },
+      });
+
+      if (response.error) {
+        console.error("Error fetching groups:", response.error);
+        toast.error("Erro ao buscar grupos da instância");
+        return;
+      }
+
+      const rawGroups = response.data;
+      // Evolution API returns different formats, normalize
+      let parsed: WhatsAppGroup[] = [];
+      if (Array.isArray(rawGroups)) {
+        parsed = rawGroups.map((g: any) => ({
+          id: g.id || g.jid || g.groupJid || "",
+          subject: g.subject || g.name || g.groupName || g.id || "",
+        })).filter((g: WhatsAppGroup) => g.id);
+      }
+      setGroups(parsed);
+    } catch (e) {
+      console.error("Error loading groups:", e);
+    } finally {
+      setLoadingGroups(false);
+    }
+  };
 
   const trigger = getTriggerDefinition(triggerType);
   const action = getActionDefinition(actionType);
@@ -83,7 +168,6 @@ export function AutomationRuleDialog({
 
     setSaving(true);
 
-    // Convert conditions object to array format
     const conditionsArray = Object.entries(conditions)
       .filter(([_, v]) => v !== "" && v !== undefined)
       .map(([field, value]) => {
@@ -95,6 +179,15 @@ export function AutomationRuleDialog({
         };
       });
 
+    // Build final action config - resolve instance_name from instance_id
+    const finalActionConfig = { ...actionConfig };
+    if (actionType === "send_whatsapp" && actionConfig.instance_id) {
+      const inst = instances.find(i => i.id === actionConfig.instance_id);
+      if (inst) {
+        finalActionConfig.instance_name = inst.instance_name;
+      }
+    }
+
     const payload = {
       name,
       description: description || null,
@@ -102,7 +195,7 @@ export function AutomationRuleDialog({
       trigger_config: {},
       conditions: conditionsArray,
       action_type: actionType,
-      action_config: actionConfig,
+      action_config: finalActionConfig,
     };
 
     let error;
@@ -112,7 +205,6 @@ export function AutomationRuleDialog({
         .update(payload)
         .eq("id", editingRule.id));
     } else {
-      // Get staff id for created_by
       const { data: { user } } = await supabase.auth.getUser();
       const { data: staff } = await supabase
         .from("onboarding_staff")
@@ -136,6 +228,183 @@ export function AutomationRuleDialog({
       onOpenChange(false);
       onSaved();
     }
+  };
+
+  const selectedInstance = instances.find(i => i.id === actionConfig.instance_id);
+  const filteredGroups = groupSearch
+    ? groups.filter(g => g.subject.toLowerCase().includes(groupSearch.toLowerCase()))
+    : groups;
+
+  // Render WhatsApp-specific config instead of generic fields
+  const renderWhatsAppConfig = () => {
+    const targetType = actionConfig.target_type || "";
+
+    return (
+      <div className="space-y-3">
+        <Label className="text-sm font-medium">Configuração da ação</Label>
+
+        {/* Target type */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Enviar para</Label>
+          <Select
+            value={targetType}
+            onValueChange={(v) => setActionConfig(prev => ({ ...prev, target_type: v, target_phone: "", group_jid: "" }))}
+          >
+            <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+            <SelectContent>
+              <SelectItem value="phone">Número de telefone</SelectItem>
+              <SelectItem value="group">Grupo do WhatsApp</SelectItem>
+              <SelectItem value="cs_responsible">CS Responsável</SelectItem>
+              <SelectItem value="consultant_responsible">Consultor Responsável</SelectItem>
+              <SelectItem value="client_phone">Telefone do cliente</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Instance selector (always shown for phone/group) */}
+        {(targetType === "phone" || targetType === "group") && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Instância WhatsApp</Label>
+            {loadingInstances ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Carregando instâncias...
+              </div>
+            ) : (
+              <Select
+                value={actionConfig.instance_id || ""}
+                onValueChange={(v) => setActionConfig(prev => ({ ...prev, instance_id: v, group_jid: "" }))}
+              >
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione a instância..." />
+                </SelectTrigger>
+                <SelectContent>
+                  {instances.map((inst) => (
+                    <SelectItem key={inst.id} value={inst.id}>
+                      <div className="flex items-center gap-2">
+                        <span className={`w-2 h-2 rounded-full ${inst.status === "connected" ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+                        {inst.display_name || inst.instance_name}
+                      </div>
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            )}
+          </div>
+        )}
+
+        {/* Phone number input */}
+        {targetType === "phone" && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Número de telefone</Label>
+            <Input
+              value={actionConfig.target_phone || ""}
+              onChange={(e) => setActionConfig(prev => ({ ...prev, target_phone: e.target.value }))}
+              placeholder="Ex: 5531999999999"
+            />
+          </div>
+        )}
+
+        {/* Group selector */}
+        {targetType === "group" && actionConfig.instance_id && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Grupo</Label>
+            {loadingGroups ? (
+              <div className="flex items-center gap-2 text-xs text-muted-foreground py-2">
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+                Buscando grupos da instância...
+              </div>
+            ) : groups.length === 0 ? (
+              <div className="text-xs text-muted-foreground py-2">
+                Nenhum grupo encontrado nesta instância
+              </div>
+            ) : (
+              <div className="space-y-2">
+                {/* Search filter */}
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    value={groupSearch}
+                    onChange={(e) => setGroupSearch(e.target.value)}
+                    placeholder="Buscar grupo..."
+                    className="pl-8 h-8 text-xs"
+                  />
+                </div>
+                <Select
+                  value={actionConfig.group_jid || ""}
+                  onValueChange={(v) => {
+                    const g = groups.find(gr => gr.id === v);
+                    setActionConfig(prev => ({
+                      ...prev,
+                      group_jid: v,
+                      target_phone: v,
+                      group_name: g?.subject || "",
+                    }));
+                  }}
+                >
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o grupo..." />
+                  </SelectTrigger>
+                  <SelectContent className="max-h-[200px]">
+                    {filteredGroups.map((g) => (
+                      <SelectItem key={g.id} value={g.id}>
+                        {g.subject}
+                      </SelectItem>
+                    ))}
+                    {filteredGroups.length === 0 && (
+                      <div className="text-xs text-muted-foreground text-center py-2">
+                        Nenhum grupo encontrado
+                      </div>
+                    )}
+                  </SelectContent>
+                </Select>
+                {actionConfig.group_jid && (
+                  <p className="text-[10px] text-muted-foreground font-mono break-all">
+                    JID: {actionConfig.group_jid}
+                  </p>
+                )}
+              </div>
+            )}
+          </div>
+        )}
+
+        {/* Instance selector for cs/consultant/client_phone */}
+        {(targetType === "cs_responsible" || targetType === "consultant_responsible" || targetType === "client_phone") && (
+          <div className="space-y-1">
+            <Label className="text-xs text-muted-foreground">Instância WhatsApp</Label>
+            <Select
+              value={actionConfig.instance_id || ""}
+              onValueChange={(v) => setActionConfig(prev => ({ ...prev, instance_id: v }))}
+            >
+              <SelectTrigger>
+                <SelectValue placeholder="Selecione a instância..." />
+              </SelectTrigger>
+              <SelectContent>
+                {instances.map((inst) => (
+                  <SelectItem key={inst.id} value={inst.id}>
+                    <div className="flex items-center gap-2">
+                      <span className={`w-2 h-2 rounded-full ${inst.status === "connected" ? "bg-emerald-500" : "bg-muted-foreground/40"}`} />
+                      {inst.display_name || inst.instance_name}
+                    </div>
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+        )}
+
+        {/* Message */}
+        <div className="space-y-1">
+          <Label className="text-xs text-muted-foreground">Mensagem</Label>
+          <Textarea
+            value={actionConfig.message || ""}
+            onChange={(e) => setActionConfig(prev => ({ ...prev, message: e.target.value }))}
+            placeholder="Use variáveis como {job_title}, {candidate_name}..."
+            rows={3}
+          />
+        </div>
+      </div>
+    );
   };
 
   return (
@@ -209,17 +478,31 @@ export function AutomationRuleDialog({
                   <Label className="text-xs text-muted-foreground">
                     {field.label}
                   </Label>
-                  <Input
-                    type={field.type === "number" ? "number" : "text"}
-                    value={conditions[field.key] ?? ""}
-                    onChange={(e) =>
-                      setConditions((prev) => ({
-                        ...prev,
-                        [field.key]: e.target.value,
-                      }))
-                    }
-                    placeholder={field.label}
-                  />
+                  {field.type === "select" ? (
+                    <Select
+                      value={conditions[field.key] || ""}
+                      onValueChange={(v) => setConditions(prev => ({ ...prev, [field.key]: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
+                      <SelectContent>
+                        {field.options?.map((opt) => (
+                          <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : (
+                    <Input
+                      type={field.type === "number" ? "number" : "text"}
+                      value={conditions[field.key] ?? ""}
+                      onChange={(e) =>
+                        setConditions((prev) => ({
+                          ...prev,
+                          [field.key]: e.target.value,
+                        }))
+                      }
+                      placeholder={field.label}
+                    />
+                  )}
                 </div>
               ))}
             </div>
@@ -249,60 +532,64 @@ export function AutomationRuleDialog({
             </Select>
           </div>
 
-          {/* Action Config */}
-          {action && action.configFields.length > 0 && (
-            <div className="space-y-2">
-              <Label>Configuração da ação</Label>
-              {action.configFields.map((field) => (
-                <div key={field.key} className="space-y-1">
-                  <Label className="text-xs text-muted-foreground">
-                    {field.label}
-                  </Label>
-                  {field.type === "select" ? (
-                    <Select
-                      value={actionConfig[field.key] || ""}
-                      onValueChange={(v) =>
-                        setActionConfig((prev) => ({ ...prev, [field.key]: v }))
-                      }
-                    >
-                      <SelectTrigger>
-                        <SelectValue placeholder="Selecione..." />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {field.options?.map((opt) => (
-                          <SelectItem key={opt.value} value={opt.value}>
-                            {opt.label}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  ) : field.type === "textarea" ? (
-                    <Textarea
-                      value={actionConfig[field.key] || ""}
-                      onChange={(e) =>
-                        setActionConfig((prev) => ({
-                          ...prev,
-                          [field.key]: e.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder}
-                      rows={2}
-                    />
-                  ) : (
-                    <Input
-                      value={actionConfig[field.key] || ""}
-                      onChange={(e) =>
-                        setActionConfig((prev) => ({
-                          ...prev,
-                          [field.key]: e.target.value,
-                        }))
-                      }
-                      placeholder={field.placeholder}
-                    />
-                  )}
-                </div>
-              ))}
-            </div>
+          {/* Action Config - WhatsApp gets custom UI */}
+          {actionType === "send_whatsapp" ? (
+            renderWhatsAppConfig()
+          ) : (
+            action && action.configFields.length > 0 && (
+              <div className="space-y-2">
+                <Label>Configuração da ação</Label>
+                {action.configFields.map((field) => (
+                  <div key={field.key} className="space-y-1">
+                    <Label className="text-xs text-muted-foreground">
+                      {field.label}
+                    </Label>
+                    {field.type === "select" ? (
+                      <Select
+                        value={actionConfig[field.key] || ""}
+                        onValueChange={(v) =>
+                          setActionConfig((prev) => ({ ...prev, [field.key]: v }))
+                        }
+                      >
+                        <SelectTrigger>
+                          <SelectValue placeholder="Selecione..." />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {field.options?.map((opt) => (
+                            <SelectItem key={opt.value} value={opt.value}>
+                              {opt.label}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    ) : field.type === "textarea" ? (
+                      <Textarea
+                        value={actionConfig[field.key] || ""}
+                        onChange={(e) =>
+                          setActionConfig((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value,
+                          }))
+                        }
+                        placeholder={field.placeholder}
+                        rows={2}
+                      />
+                    ) : (
+                      <Input
+                        value={actionConfig[field.key] || ""}
+                        onChange={(e) =>
+                          setActionConfig((prev) => ({
+                            ...prev,
+                            [field.key]: e.target.value,
+                          }))
+                        }
+                        placeholder={field.placeholder}
+                      />
+                    )}
+                  </div>
+                ))}
+              </div>
+            )
           )}
 
           {/* Available variables hint */}
