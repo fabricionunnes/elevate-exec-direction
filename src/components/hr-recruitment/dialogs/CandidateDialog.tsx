@@ -206,6 +206,53 @@ export function CandidateDialog({
         // Non-critical error, don't show to user
       }
 
+      // Fire automation trigger for resume/candidate received
+      try {
+        let jobTitle = "";
+        if (formData.job_opening_id) {
+          const { data: jobData } = await supabase
+            .from("job_openings")
+            .select("title")
+            .eq("id", formData.job_opening_id)
+            .maybeSingle();
+          jobTitle = jobData?.title || "";
+        }
+
+        const { data: project } = await supabase
+          .from("onboarding_projects")
+          .select("product_name, onboarding_company_id")
+          .eq("id", projectId)
+          .maybeSingle();
+        
+        let companyName = "";
+        if (project?.onboarding_company_id) {
+          const { data: company } = await supabase
+            .from("onboarding_companies")
+            .select("name")
+            .eq("id", project.onboarding_company_id)
+            .maybeSingle();
+          companyName = company?.name || "";
+        }
+
+        supabase.functions.invoke("automation-engine", {
+          body: {
+            trigger_type: "resume_received",
+            trigger_data: {
+              candidate_id: candidate.id,
+              candidate_name: formData.full_name,
+              candidate_email: formData.email,
+              candidate_phone: formData.phone || "",
+              job_title: jobTitle,
+              company_name: companyName,
+              project_id: projectId,
+              source: isStaff ? "hr" : "client",
+            },
+          },
+        });
+      } catch (autoErr) {
+        console.error("Automation trigger error (non-blocking):", autoErr);
+      }
+
       toast.success("Candidato cadastrado com sucesso!");
       onSuccess();
     } catch (error: any) {
