@@ -964,6 +964,8 @@ export default function CRMHeadComercialPage() {
                         setEditingNotes={setEditingNotes}
                         savingNote={savingNote}
                         onSaveNote={handleSaveNote}
+                        onSaveStatus={handleSaveHeadStatus}
+                        onSaveClosingDate={handleSaveClosingDate}
                       />
                     ))}
                 </div>
