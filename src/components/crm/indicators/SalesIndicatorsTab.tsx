@@ -328,7 +328,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const projectedPercent = metaReceita > 0 ? (projectedRevenue / metaReceita) * 100 : 0;
 
     // Forecast
-    const forecastTotal = forecastData.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+    const forecastTotal = forecastData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
 
     const metrics = {
       metaReceita,
