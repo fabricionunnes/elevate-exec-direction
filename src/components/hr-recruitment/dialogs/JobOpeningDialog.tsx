@@ -217,7 +217,7 @@ export function JobOpeningDialog({
             companyName = company?.name || "";
           }
 
-          supabase.functions.invoke("automation-engine", {
+          await supabase.functions.invoke("automation-engine", {
             body: {
               trigger_type: "job_opening_created",
               trigger_data: {
