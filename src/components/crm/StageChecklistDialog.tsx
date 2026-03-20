@@ -297,6 +297,7 @@ export function StageChecklistDialog({
     setNewItemDescription("");
     setNewItemType("instruction");
     setNewWhatsAppTemplate("");
+    setNewAttachments([]);
     setShowNewForm(false);
   };
 
@@ -306,6 +307,7 @@ export function StageChecklistDialog({
     setEditDescription(item.description || "");
     setEditItemType(item.item_type);
     setEditWhatsAppTemplate(item.whatsapp_template || "");
+    setEditAttachments(item.whatsapp_attachments || []);
   };
 
   const cancelEditing = () => {
@@ -314,6 +316,7 @@ export function StageChecklistDialog({
     setEditDescription("");
     setEditItemType("instruction");
     setEditWhatsAppTemplate("");
+    setEditAttachments([]);
   };
 
   const handleUpdateItem = async () => {
@@ -331,7 +334,8 @@ export function StageChecklistDialog({
           description: editDescription || null,
           item_type: editItemType,
           whatsapp_template: editItemType === 'whatsapp' ? editWhatsAppTemplate : null,
-        })
+          whatsapp_attachments: editItemType === 'whatsapp' ? editAttachments : [],
+        } as any)
         .eq("id", editingItemId);
 
       if (error) throw error;
