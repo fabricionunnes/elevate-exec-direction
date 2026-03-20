@@ -466,7 +466,7 @@ export function ReceivablesPanel() {
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     
     // Period filter
-    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
     let matchesPeriod = true;
     if (start && end) {
       const dueDate = parseISO(r.due_date);

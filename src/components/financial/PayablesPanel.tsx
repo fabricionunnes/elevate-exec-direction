@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay } from "date-fns";
+import { PeriodNavigator, getDateRangeForPeriod } from "./PeriodNavigator";
 import {
   Plus,
   Search,
