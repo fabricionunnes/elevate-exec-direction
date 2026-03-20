@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+import { PeriodNavigator, getDateRangeForPeriod, type PeriodType } from "./PeriodNavigator";
 import { ptBR } from "date-fns/locale";
 import {
   Loader2, TrendingUp, TrendingDown, Search, FileSpreadsheet,
