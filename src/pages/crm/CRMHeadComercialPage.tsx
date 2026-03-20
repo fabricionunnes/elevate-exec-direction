@@ -534,13 +534,20 @@ export default function CRMHeadComercialPage() {
   const forecastLeads = useMemo(() => {
     return filteredLeads.filter((l) => {
       const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup");
+      return sn.includes("forecast");
     });
   }, [filteredLeads]);
 
-  const forecastByCloser = useMemo(() => {
+  const negotiationLeads = useMemo(() => {
+    return filteredLeads.filter((l) => {
+      const sn = (l.stage as any)?.name?.toLowerCase() || "";
+      return sn.includes("reunião realizada") || sn.includes("realizada");
+    });
+  }, [filteredLeads]);
+
+  const groupByCloser = (list: LeadWithStage[]) => {
     const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
-    forecastLeads.forEach((l) => {
+    list.forEach((l) => {
       const sid = l.closer_staff_id || l.owner_staff_id || "sem-dono";
       const closerName = (l.closer as any)?.name || (l.owner as any)?.name || "Sem responsável";
       if (!groups[sid]) groups[sid] = { name: closerName, leads: [], total: 0 };
@@ -548,6 +555,10 @@ export default function CRMHeadComercialPage() {
       groups[sid].total += l.opportunity_value || 0;
     });
     return Object.entries(groups).sort(([, a], [, b]) => b.total - a.total);
+  };
+
+  const forecastByCloser = useMemo(() => groupByCloser(forecastLeads), [forecastLeads]);
+  const negotiationByCloser = useMemo(() => groupByCloser(negotiationLeads), [negotiationLeads]);
   }, [forecastLeads]);
 
   const leadsByStage = useMemo(() => {
