@@ -144,15 +144,36 @@ export const LeadActivitiesTab = ({
         setUserStaffId(staff.id);
 
         if (staff.role === "master") {
-          // Master gets any connected instance
-          const { data: instances } = await supabase
-            .from("whatsapp_instances")
-            .select("id")
-            .eq("status", "connected")
-            .limit(1);
-          
-          if (instances && instances.length > 0) {
-            setUserInstanceId(instances[0].id);
+          // Master uses the default instance from config
+          const { data: defaultConfig } = await supabase
+            .from("whatsapp_default_config")
+            .select("setting_value")
+            .eq("setting_key", "default_instance")
+            .maybeSingle();
+
+          const defaultInstanceName = defaultConfig?.setting_value;
+
+          if (defaultInstanceName) {
+            const { data: inst } = await supabase
+              .from("whatsapp_instances")
+              .select("id")
+              .eq("instance_name", defaultInstanceName)
+              .maybeSingle();
+            if (inst) {
+              setUserInstanceId(inst.id);
+            }
+          }
+
+          // Fallback: any connected instance
+          if (!defaultInstanceName) {
+            const { data: instances } = await supabase
+              .from("whatsapp_instances")
+              .select("id")
+              .eq("status", "connected")
+              .limit(1);
+            if (instances && instances.length > 0) {
+              setUserInstanceId(instances[0].id);
+            }
           }
         } else {
           // Others get instance with can_send permission
