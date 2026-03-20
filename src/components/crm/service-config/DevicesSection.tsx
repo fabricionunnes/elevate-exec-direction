@@ -45,6 +45,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportFromStevoModal } from "./ImportFromStevoModal";
