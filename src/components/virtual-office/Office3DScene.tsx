@@ -266,7 +266,7 @@ const CameraFollower = ({
       maxDistance={20}
       maxPolarAngle={Math.PI / 2.15}
       minPolarAngle={Math.PI / 4}
-      enableKeys={false}
+      keys={false}
     />
   );
 };
