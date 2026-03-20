@@ -228,9 +228,9 @@ export function MeetingActionsDialog({
   };
 
   // Load history when dialog opens
-  useState(() => {
+  useEffect(() => {
     if (open) loadHistory();
-  });
+  }, [open]);
 
   const actionLabels: Record<string, { label: string; color: string; icon: typeof Calendar }> = {
     scheduled: { label: "Agendada", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", icon: Calendar },
