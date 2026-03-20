@@ -86,6 +86,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   const [staffDevices, setStaffDevices] = useState<Record<string, StaffDevice[]>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("devices");
+  const [defaultInstanceName, setDefaultInstanceName] = useState<string | null>(null);
   
   // Modal states
   const [showNewDevice, setShowNewDevice] = useState(false);
