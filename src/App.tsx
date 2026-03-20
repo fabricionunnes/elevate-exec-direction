@@ -530,15 +530,16 @@ const AppShell = () => {
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
             <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
             
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </Suspense>
-          </HashRouter>
-        </TooltipProvider>
-      </TenantProvider>
-      </ThemeCustomizationProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </Suspense>
+            </HashRouter>
+          </TooltipProvider>
+        </TenantProvider>
+        </ThemeCustomizationProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
-export default App;
+export default AppShell;
