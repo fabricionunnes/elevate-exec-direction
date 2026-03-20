@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { AdsBriefingSection } from "./AdsBriefingSection";
 
 interface SocialBriefingTabProps {
   projectId: string;
