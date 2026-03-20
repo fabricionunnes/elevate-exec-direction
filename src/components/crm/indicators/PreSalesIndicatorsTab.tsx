@@ -512,7 +512,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     return pipeline && s.pipeline === pipeline.name;
   }) : salesBySDR;
 
-  const visibleMetrics = useMemo(() => {
+  const visibleMetrics = {
     const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
     const reunioes = filteredSdrs.reduce((sum, sdr) => sum + sdr.meetings, 0);
     const noShow = filteredSdrs.reduce((sum, sdr) => sum + sdr.noShow, 0);
@@ -536,7 +536,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       metaAgendamentosPercent: metrics.metaAgendamentos > 0 ? (agendamentos / metrics.metaAgendamentos) * 100 : 0,
       metaReunioesPercent: metrics.metaReunioes > 0 ? (reunioes / metrics.metaReunioes) * 100 : 0,
     };
-  }, [filteredSdrs, metrics]);
+  })();
 
   // 3D Card wrapper
   const GlowCard = ({ children, className = "", glowColor = "shadow-primary/10" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
