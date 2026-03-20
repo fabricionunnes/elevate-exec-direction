@@ -88,8 +88,11 @@ export function StageChecklistDialog({
   const [newItemDescription, setNewItemDescription] = useState("");
   const [newItemType, setNewItemType] = useState("instruction");
   const [newWhatsAppTemplate, setNewWhatsAppTemplate] = useState("");
+  const [newAttachments, setNewAttachments] = useState<Attachment[]>([]);
+  const [uploadingNew, setUploadingNew] = useState(false);
   const [showNewForm, setShowNewForm] = useState(false);
   const whatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
+  const newFileInputRef = useRef<HTMLInputElement>(null);
 
   // Edit item form
   const [editingItemId, setEditingItemId] = useState<string | null>(null);
@@ -97,13 +100,67 @@ export function StageChecklistDialog({
   const [editDescription, setEditDescription] = useState("");
   const [editItemType, setEditItemType] = useState("instruction");
   const [editWhatsAppTemplate, setEditWhatsAppTemplate] = useState("");
+  const [editAttachments, setEditAttachments] = useState<Attachment[]>([]);
+  const [uploadingEdit, setUploadingEdit] = useState(false);
   const editWhatsappTemplateRef = useRef<HTMLTextAreaElement>(null);
+  const editFileInputRef = useRef<HTMLInputElement>(null);
 
   useEffect(() => {
     if (open && stageId) {
       loadItems();
     }
   }, [open, stageId]);
+
+  const getMediaType = (mimeType: string): string => {
+    if (mimeType.startsWith('image/')) return 'image';
+    if (mimeType.startsWith('video/')) return 'video';
+    if (mimeType.startsWith('audio/')) return 'audio';
+    return 'document';
+  };
+
+  const handleFileUpload = async (
+    files: FileList,
+    setAttachments: React.Dispatch<React.SetStateAction<Attachment[]>>,
+    setUploading: React.Dispatch<React.SetStateAction<boolean>>
+  ) => {
+    setUploading(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop();
+        const path = `${stageId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('checklist-attachments')
+          .upload(path, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('checklist-attachments')
+          .getPublicUrl(path);
+
+        setAttachments(prev => [...prev, {
+          url: urlData.publicUrl,
+          name: file.name,
+          type: getMediaType(file.type),
+          mimeType: file.type,
+        }]);
+      }
+    } catch (error: any) {
+      console.error("Upload error:", error);
+      toast.error("Erro ao fazer upload: " + (error.message || ""));
+    } finally {
+      setUploading(false);
+    }
+  };
+
+  const getAttachmentIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <Image className="h-3 w-3" />;
+      case 'video': return <Film className="h-3 w-3" />;
+      default: return <File className="h-3 w-3" />;
+    }
+  };
 
   const loadItems = async () => {
     setLoading(true);
