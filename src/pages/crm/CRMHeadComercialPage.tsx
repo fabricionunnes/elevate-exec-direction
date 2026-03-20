@@ -115,6 +115,8 @@ interface LeadWithStage {
   phone: string | null;
   notes: string | null;
   scheduled_at: string | null;
+  head_status: string | null;
+  head_closing_date: string | null;
   stage: { name: string; sort_order: number; is_final: boolean | null; final_type: string | null } | null;
   closer: { name: string } | null;
   owner: { name: string } | null;
