@@ -24,7 +24,8 @@ import {
   FileWarning,
   DollarSign,
   Calendar,
-  HeartPulse
+  HeartPulse,
+  SmilePlus
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -174,6 +175,12 @@ const DashboardMetrics = ({
   const [showOverdueCompanies, setShowOverdueCompanies] = useState(false);
   const npsPerPage = 10;
 
+  // CSAT state
+  const [csatResponses, setCsatResponses] = useState<{ id: string; score: number; feedback: string | null; respondent_name: string | null; responded_at: string | null; project_id: string | null; meeting_id: string | null }[]>([]);
+  const [csatDetailType, setCsatDetailType] = useState<"all" | "satisfied" | "neutral" | "unsatisfied" | null>(null);
+  const [csatDetailPage, setCsatDetailPage] = useState(1);
+  const csatPerPage = 10;
+
   // Use external data if provided, otherwise use internal state
   const allTasks = externalTasks || internalTasks;
   const npsResponses = externalNpsResponses || internalNpsResponses;
@@ -194,6 +201,10 @@ const DashboardMetrics = ({
     } else {
       setLoading(false);
       fetchOverdueCompanies();
+      // Fetch CSAT separately since it has no external prop
+      supabase.from("csat_responses").select("id, score, feedback, respondent_name, responded_at, project_id, meeting_id").order("responded_at", { ascending: false }).then(({ data }) => {
+        if (data) setCsatResponses(data);
+      });
     }
   }, [needsInternalFetch]);
 
@@ -229,7 +240,7 @@ const DashboardMetrics = ({
       }
 
       // Only fetch data that wasn't provided externally - run all needed fetches in parallel
-      const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult] = await Promise.all([
+      const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult, csatResult] = await Promise.all([
         !externalNpsResponses 
           ? supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false })
           : Promise.resolve({ data: null, error: null }),
@@ -245,6 +256,7 @@ const DashboardMetrics = ({
         !externalHealthScores
           ? supabase.from("client_health_scores").select("project_id, total_score, risk_level")
           : Promise.resolve({ data: null, error: null }),
+        supabase.from("csat_responses").select("id, score, feedback, respondent_name, responded_at, project_id, meeting_id").order("responded_at", { ascending: false }),
       ]);
 
       if (!externalNpsResponses && npsResult.data) {
@@ -266,6 +278,9 @@ const DashboardMetrics = ({
       if (!externalHealthScores && healthResult.data) {
         if (healthResult.error) throw healthResult.error;
         setInternalHealthScores(healthResult.data);
+      }
+      if (csatResult.data) {
+        setCsatResponses(csatResult.data);
       }
 
       // Fetch overdue invoices
@@ -1175,13 +1190,20 @@ const DashboardMetrics = ({
         } else {
           setNpsDetailType(null);
         }
+        if (value === "csat") {
+          setCsatDetailType("all");
+          setCsatDetailPage(1);
+        } else {
+          setCsatDetailType(null);
+        }
       }}>
-        <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
+        <TabsList className="w-full grid grid-cols-6 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
           <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tar</span></TabsTrigger>
           <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
           <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
+          <TabsTrigger value="csat" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><SmilePlus className="h-3 w-3" />CSAT</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
@@ -1746,6 +1768,132 @@ const DashboardMetrics = ({
                   </div>
                 )}
               </div>
+            );
+          })()}
+        </TabsContent>
+
+        <TabsContent value="csat" className="mt-2 sm:mt-3 space-y-3">
+          {(() => {
+            const filteredProjectIds = new Set(projects.map(p => p.id));
+            const filteredCsat = csatResponses.filter(r => r.project_id && filteredProjectIds.has(r.project_id));
+            const avgScore = filteredCsat.length > 0 ? (filteredCsat.reduce((s, r) => s + r.score, 0) / filteredCsat.length).toFixed(1) : null;
+            const satisfied = filteredCsat.filter(r => r.score >= 4).length;
+            const neutral = filteredCsat.filter(r => r.score === 3).length;
+            const unsatisfied = filteredCsat.filter(r => r.score <= 2).length;
+            const satisfactionRate = filteredCsat.length > 0 ? Math.round((satisfied / filteredCsat.length) * 100) : 0;
+
+            const getFilteredCsatResponses = (type: string) => {
+              switch (type) {
+                case "satisfied": return filteredCsat.filter(r => r.score >= 4);
+                case "neutral": return filteredCsat.filter(r => r.score === 3);
+                case "unsatisfied": return filteredCsat.filter(r => r.score <= 2);
+                default: return filteredCsat;
+              }
+            };
+
+            const handleCsatCardClick = (type: "all" | "satisfied" | "neutral" | "unsatisfied") => {
+              setCsatDetailType(prev => prev === type ? "all" : type);
+              setCsatDetailPage(1);
+            };
+
+            const displayResponses = csatDetailType ? getFilteredCsatResponses(csatDetailType) : [];
+            const totalPages = Math.ceil(displayResponses.length / csatPerPage);
+            const paginatedResponses = displayResponses.slice((csatDetailPage - 1) * csatPerPage, csatDetailPage * csatPerPage);
+
+            const getScoreColor = (score: number) => score >= 4 ? "text-emerald-500" : score === 3 ? "text-amber-500" : "text-red-500";
+            const getScoreBg = (score: number) => score >= 4 ? "bg-emerald-500" : score === 3 ? "bg-amber-500" : "bg-red-500";
+            const getScoreBorder = (score: number) => score >= 4 ? "#10b981" : score === 3 ? "#f59e0b" : "#ef4444";
+
+            const getTitle = () => {
+              switch (csatDetailType) {
+                case "satisfied": return "Satisfeitos (4-5)";
+                case "unsatisfied": return "Insatisfeitos (1-2)";
+                case "neutral": return "Neutros (3)";
+                default: return "Todas as Respostas";
+              }
+            };
+
+            return (
+              <>
+                <div className="grid grid-cols-2 sm:grid-cols-5 gap-1.5 sm:gap-2">
+                  <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", avgScore === null ? "text-muted-foreground" : Number(avgScore) >= 4 ? "text-emerald-500" : Number(avgScore) >= 3 ? "text-amber-500" : "text-red-500")}>{avgScore ?? "—"}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Média</p></CardContent></Card>
+                  <Card><CardContent className="p-2 sm:p-3 text-center"><p className={cn("text-lg sm:text-xl font-bold", satisfactionRate >= 80 ? "text-emerald-500" : satisfactionRate >= 50 ? "text-amber-500" : "text-red-500")}>{satisfactionRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Satisfação</p></CardContent></Card>
+                  <Card className={cn("cursor-pointer hover:shadow-md transition-all", csatDetailType === "satisfied" && "ring-2 ring-emerald-500")} onClick={() => handleCsatCardClick("satisfied")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{satisfied}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Satisfeitos</p></CardContent></Card>
+                  <Card className={cn("cursor-pointer hover:shadow-md transition-all", csatDetailType === "neutral" && "ring-2 ring-amber-500")} onClick={() => handleCsatCardClick("neutral")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{neutral}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Neutros</p></CardContent></Card>
+                  <Card className={cn("cursor-pointer hover:shadow-md transition-all", csatDetailType === "unsatisfied" && "ring-2 ring-red-500")} onClick={() => handleCsatCardClick("unsatisfied")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{unsatisfied}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Insatisfeitos</p></CardContent></Card>
+                </div>
+
+                {csatDetailType && (
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between">
+                      <h4 className="text-sm font-medium flex items-center gap-2">
+                        <SmilePlus className={cn("h-4 w-4", csatDetailType === "satisfied" ? "text-emerald-500" : csatDetailType === "unsatisfied" ? "text-red-500" : csatDetailType === "neutral" ? "text-amber-500" : "text-primary")} />
+                        {getTitle()}
+                        <span className="text-muted-foreground">({displayResponses.length})</span>
+                      </h4>
+                      {csatDetailType !== "all" && (
+                        <button onClick={() => { setCsatDetailType("all"); setCsatDetailPage(1); }} className="text-xs text-muted-foreground hover:text-foreground">Limpar filtro</button>
+                      )}
+                    </div>
+                    <div className="grid gap-2">
+                      {paginatedResponses.map((response) => (
+                        <Card key={response.id} className="border-l-4" style={{ borderLeftColor: getScoreBorder(response.score) }}>
+                          <CardContent className="p-3">
+                            <div className="flex items-start justify-between gap-3">
+                              <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 flex-wrap">
+                                  <Building2 className="h-3.5 w-3.5 text-muted-foreground shrink-0" />
+                                  <span className="font-medium text-sm truncate">{response.project_id ? getCompanyName(response.project_id) : "—"}</span>
+                                </div>
+                                <div className="flex items-center gap-2 mt-0.5">
+                                  {response.respondent_name && (
+                                    <span className="text-[10px] text-muted-foreground">{response.respondent_name}</span>
+                                  )}
+                                  {response.responded_at && (
+                                    <span className="text-[10px] text-muted-foreground">
+                                      {response.respondent_name ? "•" : ""} {new Date(response.responded_at).toLocaleDateString("pt-BR")}
+                                    </span>
+                                  )}
+                                </div>
+                                {response.feedback && (
+                                  <p className="mt-2 text-xs text-foreground/80">"{response.feedback}"</p>
+                                )}
+                              </div>
+                              <div className={cn("shrink-0 text-white font-bold text-sm rounded-full w-8 h-8 flex items-center justify-center", getScoreBg(response.score))}>
+                                {response.score}
+                              </div>
+                            </div>
+                          </CardContent>
+                        </Card>
+                      ))}
+                      {displayResponses.length === 0 && (
+                        <p className="text-center text-sm text-muted-foreground py-8">Nenhuma resposta CSAT encontrada</p>
+                      )}
+                    </div>
+                    {totalPages > 1 && (
+                      <div className="flex items-center justify-center gap-2 pt-2">
+                        <button 
+                          onClick={() => setCsatDetailPage(p => Math.max(1, p - 1))} 
+                          disabled={csatDetailPage === 1}
+                          className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                        >
+                          Anterior
+                        </button>
+                        <span className="text-xs text-muted-foreground">
+                          Página {csatDetailPage} de {totalPages}
+                        </span>
+                        <button 
+                          onClick={() => setCsatDetailPage(p => Math.min(totalPages, p + 1))} 
+                          disabled={csatDetailPage === totalPages}
+                          className="px-3 py-1 text-xs rounded border disabled:opacity-50 disabled:cursor-not-allowed hover:bg-muted"
+                        >
+                          Próxima
+                        </button>
+                      </div>
+                    )}
+                  </div>
+                )}
+              </>
             );
           })()}
         </TabsContent>
