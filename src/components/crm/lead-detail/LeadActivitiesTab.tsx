@@ -136,7 +136,53 @@ export const LeadActivitiesTab = ({
   const [userInstanceId, setUserInstanceId] = useState<string | null>(null);
   const [userStaffId, setUserStaffId] = useState<string | null>(null);
   const [editingActivity, setEditingActivity] = useState<Activity | null>(null);
+  const [extraAttachments, setExtraAttachments] = useState<ChecklistAttachment[]>([]);
+  const [uploadingAttachment, setUploadingAttachment] = useState(false);
+  const sendFileInputRef = useRef<HTMLInputElement>(null);
 
+  const handleSendFileUpload = async (files: FileList) => {
+    setUploadingAttachment(true);
+    try {
+      for (const file of Array.from(files)) {
+        const ext = file.name.split('.').pop();
+        const path = `send/${leadId}/${Date.now()}_${Math.random().toString(36).slice(2)}.${ext}`;
+        
+        const { error: uploadError } = await supabase.storage
+          .from('checklist-attachments')
+          .upload(path, file);
+
+        if (uploadError) throw uploadError;
+
+        const { data: urlData } = supabase.storage
+          .from('checklist-attachments')
+          .getPublicUrl(path);
+
+        const type = file.type.startsWith('image/') ? 'image' 
+          : file.type.startsWith('video/') ? 'video' 
+          : file.type.startsWith('audio/') ? 'audio' 
+          : 'document';
+
+        setExtraAttachments(prev => [...prev, {
+          url: urlData.publicUrl,
+          name: file.name,
+          type,
+          mimeType: file.type,
+        }]);
+      }
+    } catch (error: any) {
+      toast.error("Erro ao fazer upload: " + (error.message || ""));
+    } finally {
+      setUploadingAttachment(false);
+    }
+  };
+
+  const getAttachmentIcon = (type: string) => {
+    switch (type) {
+      case 'image': return <Image className="h-3 w-3" />;
+      case 'video': return <Film className="h-3 w-3" />;
+      default: return <FileIcon className="h-3 w-3" />;
+    }
+  };
   // Fetch user's WhatsApp instance with send permission
   useEffect(() => {
     const fetchUserInstance = async () => {
