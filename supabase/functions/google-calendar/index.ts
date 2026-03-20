@@ -1736,6 +1736,8 @@ Deno.serve(async (req) => {
       const freebusyData = await freebusyResponse.json();
       const busyPeriods = freebusyData.calendars?.primary?.busy || [];
 
+      console.log(`FreeBusy returned ${busyPeriods.length} busy periods for ${date}:`, JSON.stringify(busyPeriods));
+
       // Generate available time slots (business hours: 08:00 - 18:00)
       const businessStart = 8; // 08:00
       const businessEnd = 18; // 18:00
@@ -1743,16 +1745,30 @@ Deno.serve(async (req) => {
 
       const availableSlots: string[] = [];
       const now = new Date();
-      const selectedDate = new Date(`${date}T00:00:00-03:00`);
-      const isToday = selectedDate.toDateString() === now.toDateString();
+
+      // Calculate "now" in São Paulo timezone for today comparison
+      const saoPauloOffset = -3 * 60; // -03:00 in minutes
+      const nowInSaoPaulo = new Date(now.getTime() + (saoPauloOffset + now.getTimezoneOffset()) * 60 * 1000);
+      
+      const selectedDateStr = date; // "YYYY-MM-DD"
+      const todayStr = `${nowInSaoPaulo.getFullYear()}-${String(nowInSaoPaulo.getMonth() + 1).padStart(2, '0')}-${String(nowInSaoPaulo.getDate()).padStart(2, '0')}`;
+      const isToday = selectedDateStr === todayStr;
+
+      console.log(`isToday=${isToday}, selectedDate=${selectedDateStr}, todayInSP=${todayStr}, nowUTC=${now.toISOString()}`);
 
       for (let hour = businessStart; hour < businessEnd; hour++) {
         for (let minute = 0; minute < 60; minute += 30) {
-          const slotStart = new Date(`${date}T${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}:00-03:00`);
+          const slotTimeStr = `${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`;
+          const slotStart = new Date(`${date}T${slotTimeStr}:00-03:00`);
           const slotEnd = new Date(slotStart.getTime() + slotDuration * 60 * 1000);
 
-          // Skip if slot ends after business hours
-          if (slotEnd.getHours() > businessEnd || (slotEnd.getHours() === businessEnd && slotEnd.getMinutes() > 0)) {
+          // Calculate end time in São Paulo local hours
+          const slotEndInSP = new Date(slotEnd.getTime() + (saoPauloOffset + slotEnd.getTimezoneOffset()) * 60 * 1000);
+          const endHourSP = slotEndInSP.getHours();
+          const endMinuteSP = slotEndInSP.getMinutes();
+
+          // Skip if slot ends after business hours (using São Paulo time)
+          if (endHourSP > businessEnd || (endHourSP === businessEnd && endMinuteSP > 0)) {
             continue;
           }
 
@@ -1770,7 +1786,7 @@ Deno.serve(async (req) => {
           });
 
           if (!isOverlapping) {
-            availableSlots.push(`${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}`);
+            availableSlots.push(slotTimeStr);
           }
         }
       }
