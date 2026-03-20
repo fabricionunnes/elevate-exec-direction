@@ -71,9 +71,16 @@ interface ForecastRecord {
 
 type DateFilterType = "today" | "week" | "month" | "quarter" | "custom";
 
-export const SalesIndicatorsTab = () => {
+interface SalesIndicatorsTabProps {
+  staffId?: string | null;
+  staffRole?: string | null;
+}
+
+export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabProps = {}) => {
+  const isCloserUser = staffRole === "closer";
+  const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const [loading, setLoading] = useState(true);
-  const [selectedCloser, setSelectedCloser] = useState<string>("all");
+  const [selectedCloser, setSelectedCloser] = useState<string>(isCloserUser && staffId ? staffId : "all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
