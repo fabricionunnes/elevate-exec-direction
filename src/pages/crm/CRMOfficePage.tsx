@@ -50,7 +50,7 @@ export const CRMOfficePage = () => {
     setConnecting(true);
     try {
       const { error } = await lovable.auth.signInWithOAuth("google", {
-        redirect_uri: `${window.location.origin}/crm/office`,
+        redirect_uri: window.location.origin,
         extraParams: {
           access_type: "offline",
           prompt: "consent",
