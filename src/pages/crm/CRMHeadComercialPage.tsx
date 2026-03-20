@@ -685,6 +685,51 @@ export default function CRMHeadComercialPage() {
           </div>
         </TabsContent>
 
+        {/* ═══ TAB: Forecast ═══ */}
+        <TabsContent value="forecast" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm bg-emerald-500/10 text-emerald-700 border-emerald-200">
+                {forecastLeads.length} leads em forecast
+              </Badge>
+              <span className="text-sm font-bold">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
+          </div>
+
+          {forecastByCloser.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum lead em forecast</CardContent></Card>
+          ) : (
+            forecastByCloser.map(([closerId, group]) => (
+              <div key={closerId} className="space-y-2">
+                <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-700">
+                      {group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{group.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold">{formatCurrency(group.total)}</p>
+                </div>
+                {group.leads
+                  .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                  .map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      editingNotes={editingNotes}
+                      setEditingNotes={setEditingNotes}
+                      savingNote={savingNote}
+                      onSaveNote={handleSaveNote}
+                    />
+                  ))}
+              </div>
+            ))
+          )}
+        </TabsContent>
+
         {/* ═══ TAB: Pipeline ═══ */}
         <TabsContent value="pipeline" className="space-y-4 mt-4">
           <div className="flex items-center gap-3 mb-2">
