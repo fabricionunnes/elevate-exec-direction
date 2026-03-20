@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
+import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
