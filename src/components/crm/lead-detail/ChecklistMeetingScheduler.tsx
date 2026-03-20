@@ -386,8 +386,47 @@ export function ChecklistMeetingScheduler({
       const newStartDateTime = `${dateStr}T${selectedSlot}:00`;
       const newEndDateTime = `${dateStr}T${endTime}:00`;
 
-      // Update Google Calendar
-      if (existingMeeting.google_calendar_event_id) {
+      const oldCalendarUserId = existingMeeting.google_calendar_user_id;
+      const newCalendarUserId = selectedStaffUserId;
+      const closerChanged = oldCalendarUserId && newCalendarUserId && oldCalendarUserId !== newCalendarUserId;
+
+      let newEventId = existingMeeting.google_calendar_event_id;
+      let newMeetLink = existingMeeting.meeting_link;
+
+      if (closerChanged) {
+        // Delete from old closer's calendar
+        if (existingMeeting.google_calendar_event_id) {
+          try {
+            await supabase.functions.invoke("google-calendar?action=delete-event", {
+              body: {
+                eventId: existingMeeting.google_calendar_event_id,
+                target_user_id: oldCalendarUserId,
+              },
+            });
+          } catch (err) {
+            console.error("Error deleting old calendar event:", err);
+          }
+        }
+        // Create on new closer's calendar
+        try {
+          const { data: createData } = await supabase.functions.invoke("google-calendar?action=create-event", {
+            body: {
+              title: existingMeeting.title,
+              startDateTime: newStartDateTime,
+              endDateTime: newEndDateTime,
+              target_user_id: newCalendarUserId,
+              attendees: leadEmail ? [leadEmail] : [],
+              createMeetLink: true,
+            },
+          });
+          if (createData?.eventId) newEventId = createData.eventId;
+          if (createData?.meetLink) newMeetLink = createData.meetLink;
+        } catch (err) {
+          console.error("Error creating new calendar event:", err);
+          toast.error("Erro ao criar evento na agenda do novo closer");
+        }
+      } else if (existingMeeting.google_calendar_event_id) {
+        // Same closer, just update the event
         try {
           await supabase.functions.invoke("google-calendar?action=update-event", {
             body: {
@@ -395,7 +434,7 @@ export function ChecklistMeetingScheduler({
               title: existingMeeting.title,
               startDateTime: newStartDateTime,
               endDateTime: newEndDateTime,
-              target_user_id: existingMeeting.google_calendar_user_id,
+              target_user_id: oldCalendarUserId,
             },
           });
         } catch (calErr) {
@@ -404,10 +443,41 @@ export function ChecklistMeetingScheduler({
         }
       }
 
+      // Find the new closer's staff_id
+      const newStaff = connectedStaff.find(s => s.user_id === newCalendarUserId);
+      const newResponsibleStaffId = newStaff?.id || existingMeeting.responsible_staff_id;
+
+      const updatePayload: Record<string, any> = {
+        scheduled_at: newStartDateTime,
+        status: "pending",
+      };
+      if (closerChanged) {
+        updatePayload.google_calendar_event_id = newEventId;
+        updatePayload.google_calendar_user_id = newCalendarUserId;
+        updatePayload.responsible_staff_id = newResponsibleStaffId;
+        if (newMeetLink) updatePayload.meeting_link = newMeetLink;
+      }
+
       await supabase
         .from("crm_activities")
-        .update({ scheduled_at: newStartDateTime, status: "pending" })
+        .update(updatePayload)
         .eq("id", existingMeeting.id);
+
+      // Update lead owner if closer changed
+      if (closerChanged && newResponsibleStaffId) {
+        await supabase
+          .from("crm_leads")
+          .update({
+            owner_staff_id: newResponsibleStaffId,
+            closer_staff_id: newResponsibleStaffId,
+            updated_at: new Date().toISOString(),
+          })
+          .eq("id", existingMeeting.lead_id);
+      }
+
+      const notesText = closerChanged
+        ? `Reunião reagendada e closer alterado para ${newStaff?.name || "outro"}`
+        : "Reunião reagendada via checklist";
 
       await supabase.from("crm_activity_history").insert({
         activity_id: existingMeeting.id,
@@ -416,7 +486,7 @@ export function ChecklistMeetingScheduler({
         performed_by_staff_id: staffId,
         old_scheduled_at: existingMeeting.scheduled_at,
         new_scheduled_at: newStartDateTime,
-        notes: "Reunião reagendada via checklist",
+        notes: notesText,
       } as any);
 
       toast.success("Reunião reagendada com sucesso!");
