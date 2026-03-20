@@ -1082,10 +1082,15 @@ const OnboardingTasksPage = () => {
         return;
       }
       
-      // Calculate monthly target (considering periodicity)
+      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        if (kpi.periodicity === "daily") {
+        const mt = monthlyTargetsForProjection.find(
+          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === monthYear
+        );
+        if (mt) {
+          totalMonthlyTarget += mt.target_value;
+        } else if (kpi.periodicity === "daily") {
           totalMonthlyTarget += kpi.target_value * daysInMonth;
         } else if (kpi.periodicity === "weekly") {
           totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
