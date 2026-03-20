@@ -45,6 +45,7 @@ import {
   Download,
   Eye,
   EyeOff,
+  Star,
 } from "lucide-react";
 import { toast } from "sonner";
 import { ImportFromStevoModal } from "./ImportFromStevoModal";
@@ -85,6 +86,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   const [staffDevices, setStaffDevices] = useState<Record<string, StaffDevice[]>>({});
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState("devices");
+  const [defaultInstanceName, setDefaultInstanceName] = useState<string | null>(null);
   
   // Modal states
   const [showNewDevice, setShowNewDevice] = useState(false);
@@ -109,13 +111,15 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [instancesRes, sectorsRes] = await Promise.all([
+      const [instancesRes, sectorsRes, defaultRes] = await Promise.all([
         supabase.from("whatsapp_instances").select("*").order("created_at", { ascending: false }),
         supabase.from("crm_service_sectors").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("whatsapp_default_config").select("setting_value").eq("setting_key", "default_instance").maybeSingle(),
       ]);
 
       setInstances(instancesRes.data || []);
       setSectors(sectorsRes.data || []);
+      setDefaultInstanceName(defaultRes.data?.setting_value || null);
 
       // Load staff for each device
       if (instancesRes.data && instancesRes.data.length > 0) {
@@ -254,6 +258,22 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
       toast.error(error.message || "Erro ao excluir dispositivo");
     }
   };
+  const handleSetDefault = async (instance: WhatsAppInstance) => {
+    try {
+      const { error } = await supabase
+        .from("whatsapp_default_config")
+        .upsert(
+          { setting_key: "default_instance", setting_value: instance.instance_name },
+          { onConflict: "setting_key" }
+        );
+
+      if (error) throw error;
+      setDefaultInstanceName(instance.instance_name);
+      toast.success(`"${instance.display_name || instance.instance_name}" definido como padrão`);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao definir dispositivo padrão");
+    }
+  };
 
   const openEditDevice = (instance: WhatsAppInstance) => {
     setSelectedInstance(instance);
@@ -342,6 +362,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
               <TableRow>
                 <TableHead>NOME DISPOSITIVO</TableHead>
                 <TableHead>STATUS</TableHead>
+                <TableHead className="text-center">PADRÃO</TableHead>
                 <TableHead>SETORES</TableHead>
                 <TableHead>USUÁRIOS NESSE DISPOSITIVO</TableHead>
                 <TableHead></TableHead>
@@ -366,6 +387,23 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
                     </div>
                   </TableCell>
                   <TableCell>{getStatusBadge(instance.status)}</TableCell>
+                  <TableCell className="text-center">
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-8 w-8"
+                      onClick={() => handleSetDefault(instance)}
+                      title={defaultInstanceName === instance.instance_name ? "Dispositivo padrão" : "Definir como padrão"}
+                    >
+                      <Star
+                        className={`h-4 w-4 transition-colors ${
+                          defaultInstanceName === instance.instance_name
+                            ? "fill-amber-400 text-amber-400"
+                            : "text-muted-foreground hover:text-amber-400"
+                        }`}
+                      />
+                    </Button>
+                  </TableCell>
                   <TableCell>{getSectorName(instance.sector_id)}</TableCell>
                   <TableCell>
                     <div className="flex -space-x-2">
@@ -419,7 +457,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
               ))}
               {instances.length === 0 && (
                 <TableRow>
-                  <TableCell colSpan={5} className="text-center py-8 text-muted-foreground">
+                  <TableCell colSpan={6} className="text-center py-8 text-muted-foreground">
                     Nenhum dispositivo configurado. Clique em "Novo dispositivo" para começar.
                   </TableCell>
                 </TableRow>
