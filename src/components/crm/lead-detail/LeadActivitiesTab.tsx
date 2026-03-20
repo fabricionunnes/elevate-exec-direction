@@ -372,6 +372,7 @@ export const LeadActivitiesTab = ({
       case 'call': return <Phone className="h-4 w-4 text-green-600 shrink-0" />;
       case 'whatsapp': return <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" />;
       case 'meeting': return <Calendar className="h-4 w-4 text-purple-600 shrink-0" />;
+      case 'reunion': return <Video className="h-4 w-4 text-blue-600 shrink-0" />;
       default: return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
     }
   };
