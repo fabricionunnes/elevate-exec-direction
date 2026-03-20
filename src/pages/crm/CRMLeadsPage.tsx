@@ -330,10 +330,11 @@ export const CRMLeadsPage = () => {
         </Card>
       )}
 
-      {/* Leads Table */}
+      {/* Leads Table - Desktop */}
       <Card>
         <CardContent className="p-0">
-          <div className="overflow-x-auto">
+          {/* Desktop Table */}
+          <div className="hidden md:block overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -448,10 +449,62 @@ export const CRMLeadsPage = () => {
             </Table>
           </div>
 
+          {/* Mobile Card List */}
+          <div className="md:hidden divide-y divide-border">
+            {paginatedLeads.map(lead => (
+              <Link
+                key={lead.id}
+                to={`/crm/leads/${lead.id}`}
+                className="flex items-center gap-3 px-3 py-3 hover:bg-muted/50 transition-colors"
+              >
+                <div className="flex-1 min-w-0">
+                  <div className="flex items-center gap-2">
+                    <span className="font-medium text-sm truncate">{lead.name}</span>
+                    {lead.urgency === "high" && (
+                      <Badge variant="destructive" className="text-[10px] shrink-0">URGENTE</Badge>
+                    )}
+                  </div>
+                  {lead.company && (
+                    <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
+                  )}
+                  <div className="flex items-center gap-2 mt-1">
+                    {lead.stage && (
+                      <Badge
+                        style={{ backgroundColor: lead.stage.color }}
+                        className="text-white text-[10px]"
+                      >
+                        {lead.stage.name}
+                      </Badge>
+                    )}
+                    {lead.opportunity_value ? (
+                      <span className="text-xs font-medium">{formatCurrency(lead.opportunity_value)}</span>
+                    ) : null}
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 shrink-0">
+                  {lead.phone && (
+                    <Button variant="ghost" size="icon" className="h-8 w-8" asChild onClick={(e) => e.stopPropagation()}>
+                      <a href={`tel:${lead.phone}`}>
+                        <Phone className="h-3.5 w-3.5" />
+                      </a>
+                    </Button>
+                  )}
+                  <ExternalLink className="h-4 w-4 text-muted-foreground" />
+                </div>
+              </Link>
+            ))}
+
+            {paginatedLeads.length === 0 && (
+              <div className="text-center py-8 text-muted-foreground text-sm">
+                Nenhum lead encontrado
+              </div>
+            )}
+          </div>
+
           {/* Pagination */}
-          <div className="flex items-center justify-between p-4 border-t">
+          <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between p-3 sm:p-4 border-t gap-2">
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">Exibir</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">Exibir</span>
               <Select value={String(pageSize)} onValueChange={(v) => setPageSize(Number(v))}>
                 <SelectTrigger className="h-8 w-[70px] text-sm">
                   <SelectValue />
@@ -462,11 +515,11 @@ export const CRMLeadsPage = () => {
                   <SelectItem value="100">100</SelectItem>
                 </SelectContent>
               </Select>
-              <span className="text-sm text-muted-foreground">por página</span>
+              <span className="text-xs sm:text-sm text-muted-foreground">por página</span>
             </div>
 
             <div className="flex items-center gap-2">
-              <span className="text-sm text-muted-foreground">
+              <span className="text-xs sm:text-sm text-muted-foreground">
                 {Math.min((currentPage - 1) * pageSize + 1, filteredLeads.length)}-{Math.min(currentPage * pageSize, filteredLeads.length)} de {filteredLeads.length}
               </span>
               <Button
