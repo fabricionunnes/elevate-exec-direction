@@ -258,8 +258,24 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
       toast.error(error.message || "Erro ao excluir dispositivo");
     }
   };
+  const handleSetDefault = async (instance: WhatsAppInstance) => {
+    try {
+      const { error } = await supabase
+        .from("whatsapp_default_config")
+        .upsert(
+          { setting_key: "default_instance", setting_value: instance.instance_name },
+          { onConflict: "setting_key" }
+        );
 
-  const openEditDevice = (instance: WhatsAppInstance) => {
+      if (error) throw error;
+      setDefaultInstanceName(instance.instance_name);
+      toast.success(`"${instance.display_name || instance.instance_name}" definido como padrão`);
+    } catch (error: any) {
+      toast.error(error.message || "Erro ao definir dispositivo padrão");
+    }
+  };
+
+
     setSelectedInstance(instance);
     setNewName(instance.display_name || instance.instance_name);
     setNewPhone(instance.phone_number || "");
