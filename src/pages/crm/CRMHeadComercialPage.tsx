@@ -1233,16 +1233,19 @@ function MetricBlock({ label, value, alert, good }: { label: string; value: stri
 }
 
 // ─── Lead Card ───
-function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote }: {
+function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote, onSaveStatus, onSaveClosingDate }: {
   lead: LeadWithStage;
   editingNotes: Record<string, string>;
   setEditingNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   savingNote: string | null;
   onSaveNote: (id: string) => Promise<void>;
+  onSaveStatus: (id: string, status: string | null) => Promise<void>;
+  onSaveClosingDate: (id: string, date: string | null) => Promise<void>;
 }) {
   const daysSince = lead.last_activity_at ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000) : null;
   const isEditing = editingNotes[lead.id] !== undefined;
   const closerName = (lead.closer as any)?.name || (lead.owner as any)?.name || "—";
+  const currentStatus = HEAD_STATUS_OPTIONS.find((s) => s.value === lead.head_status);
 
   return (
     <div className="border border-white/10 rounded-xl p-3 bg-card/60 backdrop-blur-sm hover:bg-card/80 hover:shadow-md transition-all duration-200">
@@ -1266,6 +1269,38 @@ function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote 
           {lead.probability != null && <p className="text-[11px] text-muted-foreground">{lead.probability}%</p>}
         </div>
       </div>
+
+      {/* Status + Closing Date Row */}
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <Select value={lead.head_status || "none"} onValueChange={(val) => onSaveStatus(lead.id, val === "none" ? null : val)}>
+          <SelectTrigger className={cn("h-7 text-[11px] w-auto min-w-[140px] border-white/10 bg-muted/20", currentStatus?.color)}>
+            <SelectValue placeholder="Status..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem status</SelectItem>
+            {HEAD_STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-1.5">
+          <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
+          <Input
+            type="date"
+            value={lead.head_closing_date || ""}
+            onChange={(e) => onSaveClosingDate(lead.id, e.target.value || null)}
+            className="h-7 text-[11px] w-[130px] border-white/10 bg-muted/20"
+            placeholder="Data fechar"
+          />
+        </div>
+        {lead.head_closing_date && (
+          <span className="text-[10px] text-muted-foreground">
+            {format(new Date(lead.head_closing_date + "T12:00:00"), "dd/MM/yyyy")}
+          </span>
+        )}
+      </div>
+
+      {/* Notes */}
       <div className="mt-2">
         {isEditing ? (
           <div className="space-y-2">
