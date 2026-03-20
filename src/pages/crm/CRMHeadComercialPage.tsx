@@ -227,6 +227,9 @@ export default function CRMHeadComercialPage() {
   const [yesterdayActivities, setYesterdayActivities] = useState<Activity[]>([]);
   const [todayActivities, setTodayActivities] = useState<Activity[]>([]);
   const [activityStats, setActivityStats] = useState<any[]>([]);
+  const [sdrCreatedYesterday, setSdrCreatedYesterday] = useState<any[]>([]);
+  const [sdrCreatedToday, setSdrCreatedToday] = useState<any[]>([]);
+  const [sdrCreatedMonth, setSdrCreatedMonth] = useState<any[]>([]);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
   const [activityNotes, setActivityNotes] = useState<Record<string, string>>({});
@@ -255,7 +258,8 @@ export default function CRMHeadComercialPage() {
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
 
-      const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes] =
+      const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes,
+             sdrYesterdayRes, sdrTodayRes, sdrMonthRes] =
         await Promise.all([
           supabase
             .from("crm_leads")
@@ -313,6 +317,30 @@ export default function CRMHeadComercialPage() {
             .select("responsible_staff_id, type, status, scheduled_at")
             .gte("scheduled_at", monthStart.toISOString())
             .lte("scheduled_at", monthEnd.toISOString()),
+
+          // SDR agendamentos: meetings CREATED yesterday (regardless of scheduled_at)
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", startOfDay(yesterday).toISOString())
+            .lt("created_at", endOfDay(yesterday).toISOString()),
+
+          // SDR agendamentos: meetings CREATED today
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", startOfDay(now).toISOString())
+            .lt("created_at", endOfDay(now).toISOString()),
+
+          // SDR agendamentos: meetings CREATED this month
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", monthStart.toISOString())
+            .lte("created_at", monthEnd.toISOString()),
         ]);
 
       if (leadsRes.data) {
@@ -362,6 +390,9 @@ export default function CRMHeadComercialPage() {
       setYesterdayActivities((yesterdayRes.data || []) as any[]);
       setTodayActivities((todayRes.data || []) as any[]);
       setActivityStats((statsRes.data || []) as any[]);
+      setSdrCreatedYesterday((sdrYesterdayRes.data || []) as any[]);
+      setSdrCreatedToday((sdrTodayRes.data || []) as any[]);
+      setSdrCreatedMonth((sdrMonthRes.data || []) as any[]);
     } catch (err) {
       console.error("Error loading head data:", err);
     } finally {
@@ -463,19 +494,35 @@ export default function CRMHeadComercialPage() {
           }
         });
 
-        // Activity stats
+        // Activity stats - for SDRs use created_at based counts (how many meetings they CREATED)
+        // For closers use scheduled_at based counts (meetings happening today/yesterday)
+        const isSdr = staff.role === "sdr";
+        
         const myYesterday = yesterdayActivities.filter((a) => a.responsible_staff_id === staff.id);
         const myToday = todayActivities.filter((a) => a.responsible_staff_id === staff.id);
-        const yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
-        const todayMeetings = myToday.filter((a) => a.type === "meeting" || a.type === "call").length;
-
-        // Monthly meetings from stats
-        const monthMeetings = activityStats.filter(
-          (a: any) => a.responsible_staff_id === staff.id && (a.type === "meeting" || a.type === "call")
-        ).length;
-        const monthAgendamentos = activityStats.filter(
-          (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
-        ).length;
+        
+        let yesterdayMeetings: number;
+        let todayMeetings: number;
+        let monthMeetings: number;
+        let monthAgendamentos: number;
+        
+        if (isSdr) {
+          // SDR: count meetings CREATED on that day (agendamentos feitos)
+          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          todayMeetings = sdrCreatedToday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          monthMeetings = sdrCreatedMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          monthAgendamentos = monthMeetings;
+        } else {
+          // Closer: count meetings SCHEDULED for that day
+          yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
+          todayMeetings = myToday.filter((a) => a.type === "meeting" || a.type === "call").length;
+          monthMeetings = activityStats.filter(
+            (a: any) => a.responsible_staff_id === staff.id && (a.type === "meeting" || a.type === "call")
+          ).length;
+          monthAgendamentos = activityStats.filter(
+            (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
+          ).length;
+        }
 
         const falta = Math.max(0, metaVendas - realizado);
         const percentAtingido = metaVendas > 0 ? (realizado / metaVendas) * 100 : 0;
@@ -495,7 +542,7 @@ export default function CRMHeadComercialPage() {
         };
       })
       .sort((a, b) => b.percentAtingido - a.percentAtingido);
-  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, elapsedBizDays, totalBizDays, remainingBizDays]);
+  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, elapsedBizDays, totalBizDays, remainingBizDays]);
 
   const closersPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "closer"), [staffPerformance]);
   const sdrsPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "sdr"), [staffPerformance]);
