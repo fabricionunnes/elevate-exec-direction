@@ -153,7 +153,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
         label: "Origem (opcional)",
         type: "select",
         options: [
-          { value: "", label: "Qualquer origem" },
+          { value: "any", label: "Qualquer origem" },
           { value: "manual", label: "Manual" },
           { value: "portal", label: "Portal do cliente" },
           { value: "careers_page", label: "Página de carreiras" },
