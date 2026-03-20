@@ -210,6 +210,20 @@ const DashboardMetrics = ({
     }
   }, [needsInternalFetch]);
 
+  // Fetch monthly targets whenever dateRange changes
+  useEffect(() => {
+    const periodMonth = dateRange.start.getMonth() + 1;
+    const periodYear = dateRange.start.getFullYear();
+    const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
+    supabase
+      .from("kpi_monthly_targets")
+      .select("kpi_id, company_id, target_value, month_year")
+      .eq("month_year", monthYear)
+      .then(({ data }) => {
+        if (data) setMonthlyTargets(data);
+      });
+  }, [dateRange]);
+
   // Refetch overdue companies when companies list or role changes
   useEffect(() => {
     if (companies.length > 0) {
