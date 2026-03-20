@@ -4,6 +4,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/com
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
+import { Textarea } from "@/components/ui/textarea";
 import {
   Select,
   SelectContent,
@@ -25,7 +26,7 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2 } from "lucide-react";
+import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2, Gift, Trophy, Star } from "lucide-react";
 import { toast } from "sonner";
 
 interface GoalType {
@@ -55,6 +56,12 @@ interface GoalValue {
   ote_base: number;
   ote_variable: number;
   ote_accelerator: number | null;
+  super_meta_bonus_text: string | null;
+  super_meta_bonus_value: number | null;
+  super_meta_bonus_image_url: string | null;
+  hiper_meta_bonus_text: string | null;
+  hiper_meta_bonus_value: number | null;
+  hiper_meta_bonus_image_url: string | null;
 }
 
 interface CommissionTier {
@@ -126,7 +133,6 @@ export const CRMGoalValuesManager = () => {
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
 
-  // The OTE goal type for each category
   const [closerOteGoalType, setCloserOteGoalType] = useState<GoalType | null>(null);
   const [sdrOteGoalType, setSdrOteGoalType] = useState<GoalType | null>(null);
 
@@ -138,17 +144,17 @@ export const CRMGoalValuesManager = () => {
   const [tiersSaving, setTiersSaving] = useState(false);
   const [tiersCountMap, setTiersCountMap] = useState<Map<string, number>>(new Map());
 
+  // Bonus dialog
+  const [bonusDialogOpen, setBonusDialogOpen] = useState(false);
+  const [bonusStaff, setBonusStaff] = useState<StaffMember | null>(null);
+
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
 
-  // Get the goal type for a staff member based on role
   const getGoalTypeForStaff = (staff: StaffMember): GoalType | null => {
     if (CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
     if (SDR_ROLES.includes(staff.role)) return sdrOteGoalType;
-    return closerOteGoalType; // fallback
+    return closerOteGoalType;
   };
-
-  // Build a unique key for goalValues map: staff_id
-  const getGoalValueKey = (staffId: string) => staffId;
 
   useEffect(() => {
     loadInitialData();
@@ -172,7 +178,6 @@ export const CRMGoalValuesManager = () => {
       if (typesError) throw typesError;
       setGoalTypes(typesData || []);
 
-      // Find OTE goal types per category
       const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote);
       const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote);
       setCloserOteGoalType(closerOte || null);
@@ -209,7 +214,6 @@ export const CRMGoalValuesManager = () => {
 
   const loadGoalValues = async () => {
     try {
-      // Get goal type IDs to query
       const goalTypeIds: string[] = [];
       if (closerOteGoalType) goalTypeIds.push(closerOteGoalType.id);
       if (sdrOteGoalType) goalTypeIds.push(sdrOteGoalType.id);
@@ -226,12 +230,19 @@ export const CRMGoalValuesManager = () => {
 
       const valuesMap = new Map<string, GoalValue>();
       const goalValueIds: string[] = [];
-      (data || []).forEach((v: GoalValue) => {
-        valuesMap.set(v.staff_id, v);
+      (data || []).forEach((v: any) => {
+        valuesMap.set(v.staff_id, {
+          ...v,
+          super_meta_bonus_text: v.super_meta_bonus_text || null,
+          super_meta_bonus_value: v.super_meta_bonus_value ?? null,
+          super_meta_bonus_image_url: v.super_meta_bonus_image_url || null,
+          hiper_meta_bonus_text: v.hiper_meta_bonus_text || null,
+          hiper_meta_bonus_value: v.hiper_meta_bonus_value ?? null,
+          hiper_meta_bonus_image_url: v.hiper_meta_bonus_image_url || null,
+        });
         if (v.id) goalValueIds.push(v.id);
       });
 
-      // Fill defaults for staff without values
       staffMembers.forEach((staff) => {
         if (!valuesMap.has(staff.id)) {
           const goalType = getGoalTypeForStaff(staff);
@@ -245,6 +256,12 @@ export const CRMGoalValuesManager = () => {
               ote_base: 0,
               ote_variable: 0,
               ote_accelerator: null,
+              super_meta_bonus_text: null,
+              super_meta_bonus_value: null,
+              super_meta_bonus_image_url: null,
+              hiper_meta_bonus_text: null,
+              hiper_meta_bonus_value: null,
+              hiper_meta_bonus_image_url: null,
             });
           }
         }
@@ -252,7 +269,6 @@ export const CRMGoalValuesManager = () => {
 
       setGoalValues(valuesMap);
 
-      // Load tiers count
       if (goalValueIds.length > 0) {
         const { data: tiersData } = await supabase
           .from("crm_goal_commission_tiers")
@@ -272,7 +288,7 @@ export const CRMGoalValuesManager = () => {
     }
   };
 
-  const updateValue = (staffId: string, field: keyof GoalValue, value: number | null) => {
+  const updateValue = (staffId: string, field: keyof GoalValue, value: any) => {
     setGoalValues((prev) => {
       const newMap = new Map(prev);
       const current = newMap.get(staffId);
@@ -299,6 +315,12 @@ export const CRMGoalValuesManager = () => {
           ote_base: v.ote_base,
           ote_variable: v.ote_variable,
           ote_accelerator: v.ote_accelerator,
+          super_meta_bonus_text: v.super_meta_bonus_text,
+          super_meta_bonus_value: v.super_meta_bonus_value,
+          super_meta_bonus_image_url: v.super_meta_bonus_image_url,
+          hiper_meta_bonus_text: v.hiper_meta_bonus_text,
+          hiper_meta_bonus_value: v.hiper_meta_bonus_value,
+          hiper_meta_bonus_image_url: v.hiper_meta_bonus_image_url,
         }));
 
       if (valuesToUpsert.length > 0) {
@@ -446,6 +468,12 @@ export const CRMGoalValuesManager = () => {
     }
   };
 
+  // ---- Bonus Dialog ----
+  const openBonusDialog = (staff: StaffMember) => {
+    setBonusStaff(staff);
+    setBonusDialogOpen(true);
+  };
+
   const getMetricLabel = (staff: StaffMember): string => {
     const goalType = getGoalTypeForStaff(staff);
     return goalType?.name || "—";
@@ -459,7 +487,6 @@ export const CRMGoalValuesManager = () => {
     return null;
   };
 
-  // Group staff: closers first, then SDRs
   const closers = staffMembers.filter(s => CLOSER_ROLES.includes(s.role));
   const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
 
@@ -482,11 +509,18 @@ export const CRMGoalValuesManager = () => {
     );
   }
 
+  const hasBonusConfigured = (staffId: string) => {
+    const v = goalValues.get(staffId);
+    if (!v) return false;
+    return !!(v.super_meta_bonus_text || v.hiper_meta_bonus_text || (v.super_meta_bonus_value && v.super_meta_bonus_value > 0) || (v.hiper_meta_bonus_value && v.hiper_meta_bonus_value > 0));
+  };
+
   const renderStaffRow = (staff: StaffMember) => {
     const value = goalValues.get(staff.id);
     const prefix = getInputPrefix(staff);
     const goalType = getGoalTypeForStaff(staff);
     const tiersCount = value?.id ? (tiersCountMap.get(value.id) || 0) : 0;
+    const hasBonus = hasBonusConfigured(staff.id);
 
     if (!goalType) return null;
 
@@ -516,6 +550,38 @@ export const CRMGoalValuesManager = () => {
         </TableCell>
         <TableCell>
           <div className="flex items-center justify-end gap-1">
+            {prefix && (
+              <span className="text-muted-foreground text-sm">{prefix}</span>
+            )}
+            <Input
+              type="number"
+              value={value?.super_meta_value || ""}
+              placeholder="—"
+              onChange={(e) =>
+                updateValue(staff.id, "super_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+              }
+              className="w-24 text-right"
+            />
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end gap-1">
+            {prefix && (
+              <span className="text-muted-foreground text-sm">{prefix}</span>
+            )}
+            <Input
+              type="number"
+              value={value?.hiper_meta_value || ""}
+              placeholder="—"
+              onChange={(e) =>
+                updateValue(staff.id, "hiper_meta_value", e.target.value ? parseFloat(e.target.value) : null)
+              }
+              className="w-24 text-right"
+            />
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end gap-1">
             <span className="text-muted-foreground text-sm">R$</span>
             <Input
               type="number"
@@ -529,12 +595,12 @@ export const CRMGoalValuesManager = () => {
           </div>
         </TableCell>
         <TableCell>
-          <div className="flex items-center justify-center">
+          <div className="flex items-center justify-center gap-1">
             <Button
               variant="outline"
               size="sm"
               onClick={() => openTiersDialog(staff)}
-              className="gap-1.5"
+              className="gap-1"
             >
               <Settings2 className="h-3.5 w-3.5" />
               Faixas
@@ -544,9 +610,150 @@ export const CRMGoalValuesManager = () => {
                 </Badge>
               )}
             </Button>
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openBonusDialog(staff)}
+              className={`gap-1 ${hasBonus ? "border-amber-300 text-amber-700 dark:border-amber-700 dark:text-amber-400" : ""}`}
+            >
+              <Gift className="h-3.5 w-3.5" />
+              Bônus
+              {hasBonus && (
+                <div className="h-2 w-2 rounded-full bg-amber-500" />
+              )}
+            </Button>
           </div>
         </TableCell>
       </TableRow>
+    );
+  };
+
+  const renderBonusDialog = () => {
+    if (!bonusStaff) return null;
+    const value = goalValues.get(bonusStaff.id);
+    if (!value) return null;
+
+    return (
+      <Dialog open={bonusDialogOpen} onOpenChange={setBonusDialogOpen}>
+        <DialogContent className="max-w-lg">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Gift className="h-5 w-5 text-amber-500" />
+              Bônus Super/Hiper Meta — {bonusStaff.name}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-6">
+            {/* Super Meta Bonus */}
+            <div className="space-y-3 p-4 rounded-lg border border-blue-200 dark:border-blue-800 bg-blue-50/50 dark:bg-blue-950/20">
+              <div className="flex items-center gap-2">
+                <Star className="h-4 w-4 text-blue-500" />
+                <h4 className="font-semibold text-sm">Bônus Super Meta</h4>
+                {value.super_meta_value ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    Meta: {value.super_meta_value}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    Sem super meta definida
+                  </Badge>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Descrição do bônus</label>
+                <Textarea
+                  value={value.super_meta_bonus_text || ""}
+                  onChange={(e) => updateValue(bonusStaff.id, "super_meta_bonus_text", e.target.value || null)}
+                  placeholder="Ex: Day off, jantar no restaurante X, viagem..."
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Valor em R$ (opcional)</label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground text-sm">R$</span>
+                    <Input
+                      type="number"
+                      value={value.super_meta_bonus_value || ""}
+                      onChange={(e) => updateValue(bonusStaff.id, "super_meta_bonus_value", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="0"
+                      className="text-right"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">URL da imagem (opcional)</label>
+                  <Input
+                    value={value.super_meta_bonus_image_url || ""}
+                    onChange={(e) => updateValue(bonusStaff.id, "super_meta_bonus_image_url", e.target.value || null)}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            {/* Hiper Meta Bonus */}
+            <div className="space-y-3 p-4 rounded-lg border border-purple-200 dark:border-purple-800 bg-purple-50/50 dark:bg-purple-950/20">
+              <div className="flex items-center gap-2">
+                <Trophy className="h-4 w-4 text-purple-500" />
+                <h4 className="font-semibold text-sm">Bônus Hiper Meta</h4>
+                {value.hiper_meta_value ? (
+                  <Badge variant="outline" className="text-[10px]">
+                    Meta: {value.hiper_meta_value}
+                  </Badge>
+                ) : (
+                  <Badge variant="outline" className="text-[10px] text-muted-foreground">
+                    Sem hiper meta definida
+                  </Badge>
+                )}
+              </div>
+
+              <div>
+                <label className="text-xs text-muted-foreground mb-1 block">Descrição do bônus</label>
+                <Textarea
+                  value={value.hiper_meta_bonus_text || ""}
+                  onChange={(e) => updateValue(bonusStaff.id, "hiper_meta_bonus_text", e.target.value || null)}
+                  placeholder="Ex: Bônus extra + viagem, prêmio especial..."
+                  className="resize-none"
+                  rows={2}
+                />
+              </div>
+
+              <div className="grid grid-cols-2 gap-3">
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">Valor em R$ (opcional)</label>
+                  <div className="flex items-center gap-1">
+                    <span className="text-muted-foreground text-sm">R$</span>
+                    <Input
+                      type="number"
+                      value={value.hiper_meta_bonus_value || ""}
+                      onChange={(e) => updateValue(bonusStaff.id, "hiper_meta_bonus_value", e.target.value ? parseFloat(e.target.value) : null)}
+                      placeholder="0"
+                      className="text-right"
+                    />
+                  </div>
+                </div>
+                <div>
+                  <label className="text-xs text-muted-foreground mb-1 block">URL da imagem (opcional)</label>
+                  <Input
+                    value={value.hiper_meta_bonus_image_url || ""}
+                    onChange={(e) => updateValue(bonusStaff.id, "hiper_meta_bonus_image_url", e.target.value || null)}
+                    placeholder="https://..."
+                  />
+                </div>
+              </div>
+            </div>
+
+            <p className="text-xs text-muted-foreground">
+              Os bônus serão salvos junto com as metas ao clicar em "Salvar Metas".
+            </p>
+          </div>
+        </DialogContent>
+      </Dialog>
     );
   };
 
@@ -561,7 +768,7 @@ export const CRMGoalValuesManager = () => {
                 Metas e Comissões
               </CardTitle>
               <CardDescription>
-                Configure metas, salário fixo e faixas de comissão para Closers e SDRs
+                Configure metas, super/hiper meta, salário fixo, faixas de comissão e bônus
               </CardDescription>
             </div>
             <Button onClick={handleSave} disabled={saving}>
@@ -627,18 +834,20 @@ export const CRMGoalValuesManager = () => {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead className="w-[180px]">Colaborador</TableHead>
+                  <TableHead className="w-[160px]">Colaborador</TableHead>
                   <TableHead>Cargo</TableHead>
                   <TableHead>Métrica</TableHead>
                   <TableHead className="text-right">Meta</TableHead>
+                  <TableHead className="text-right">Super Meta</TableHead>
+                  <TableHead className="text-right">Hiper Meta</TableHead>
                   <TableHead className="text-right">Fixo (R$)</TableHead>
-                  <TableHead className="text-center">Comissão</TableHead>
+                  <TableHead className="text-center">Ações</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {closers.length > 0 && (
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableCell colSpan={6} className="py-2">
+                    <TableCell colSpan={8} className="py-2">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         Closers
                       </span>
@@ -649,7 +858,7 @@ export const CRMGoalValuesManager = () => {
 
                 {sdrs.length > 0 && (
                   <TableRow className="bg-muted/30 hover:bg-muted/30">
-                    <TableCell colSpan={6} className="py-2">
+                    <TableCell colSpan={8} className="py-2">
                       <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
                         SDRs
                       </span>
@@ -687,7 +896,7 @@ export const CRMGoalValuesManager = () => {
           ) : (
             <div className="space-y-4">
               <p className="text-sm text-muted-foreground">
-                Configure as faixas de atingimento e o valor de comissão para cada faixa. Você pode adicionar, remover ou alterar a qualquer momento.
+                Configure as faixas de atingimento e o valor de comissão para cada faixa.
               </p>
 
               <div className="space-y-3">
@@ -745,7 +954,6 @@ export const CRMGoalValuesManager = () => {
                 Adicionar Faixa
               </Button>
 
-              {/* Preview */}
               {editingTiers.length > 0 && (
                 <div className="p-3 rounded-lg bg-muted/50 border border-border space-y-1.5">
                   <p className="text-xs font-medium text-muted-foreground mb-2">Resumo:</p>
@@ -784,6 +992,9 @@ export const CRMGoalValuesManager = () => {
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Bonus Dialog */}
+      {renderBonusDialog()}
     </>
   );
 };

@@ -2,8 +2,7 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Progress } from "@/components/ui/progress";
-import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar } from "lucide-react";
+import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar, Star, Trophy, Gift } from "lucide-react";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 
 interface TierInfo {
@@ -14,6 +13,18 @@ interface TierInfo {
   dailyNeeded: number;
   isCurrentTier: boolean;
   isAchieved: boolean;
+}
+
+interface BonusInfo {
+  type: "super" | "hiper";
+  targetValue: number;
+  bonusText: string | null;
+  bonusValue: number | null;
+  bonusImageUrl: string | null;
+  missingValue: number;
+  dailyNeeded: number;
+  isAchieved: boolean;
+  achievedPercent: number;
 }
 
 interface CommissionData {
@@ -28,6 +39,7 @@ interface CommissionData {
   achievedPercent: number;
   tierLabel: string;
   tiers: TierInfo[];
+  bonuses: BonusInfo[];
   missingToFirstTier: number;
   isCommissioning: boolean;
   metricLabel: string;
@@ -82,7 +94,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
         const { data: goalValues } = await supabase
           .from("crm_goal_values")
-          .select("id, staff_id, goal_type_id, meta_value, ote_base")
+          .select("id, staff_id, goal_type_id, meta_value, ote_base, super_meta_value, hiper_meta_value, super_meta_bonus_text, super_meta_bonus_value, super_meta_bonus_image_url, hiper_meta_bonus_text, hiper_meta_bonus_value, hiper_meta_bonus_image_url")
           .in("goal_type_id", goalTypeIds)
           .eq("month", currentMonth)
           .eq("year", currentYear)
@@ -162,7 +174,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             }
           }
 
-          // Build tier info with missing values and daily targets
+          // Build tier info
           const tierInfos: TierInfo[] = staffTiers.map(tier => {
             const tierMinValue = (tier.min_percent / 100) * metaValue;
             const missingValue = Math.max(0, tierMinValue - achieved);
@@ -181,7 +193,43 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             };
           });
 
-          // Calculate missing to first tier
+          // Build bonus info
+          const bonuses: BonusInfo[] = [];
+          const superMetaValue = Number(goalValue.super_meta_value) || 0;
+          const hiperMetaValue = Number(goalValue.hiper_meta_value) || 0;
+
+          if (superMetaValue > 0) {
+            const missing = Math.max(0, superMetaValue - achieved);
+            const pct = superMetaValue > 0 ? (achieved / superMetaValue) * 100 : 0;
+            bonuses.push({
+              type: "super",
+              targetValue: superMetaValue,
+              bonusText: (goalValue as any).super_meta_bonus_text || null,
+              bonusValue: Number((goalValue as any).super_meta_bonus_value) || null,
+              bonusImageUrl: (goalValue as any).super_meta_bonus_image_url || null,
+              missingValue: missing,
+              dailyNeeded: remainingDays > 0 ? missing / remainingDays : missing,
+              isAchieved: achieved >= superMetaValue,
+              achievedPercent: Math.round(pct),
+            });
+          }
+
+          if (hiperMetaValue > 0) {
+            const missing = Math.max(0, hiperMetaValue - achieved);
+            const pct = hiperMetaValue > 0 ? (achieved / hiperMetaValue) * 100 : 0;
+            bonuses.push({
+              type: "hiper",
+              targetValue: hiperMetaValue,
+              bonusText: (goalValue as any).hiper_meta_bonus_text || null,
+              bonusValue: Number((goalValue as any).hiper_meta_bonus_value) || null,
+              bonusImageUrl: (goalValue as any).hiper_meta_bonus_image_url || null,
+              missingValue: missing,
+              dailyNeeded: remainingDays > 0 ? missing / remainingDays : missing,
+              isAchieved: achieved >= hiperMetaValue,
+              achievedPercent: Math.round(pct),
+            });
+          }
+
           const firstTier = staffTiers[0];
           const missingToFirstTier = firstTier
             ? Math.max(0, ((firstTier.min_percent / 100) * metaValue) - achieved)
@@ -201,6 +249,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             achievedPercent: Math.round(achievedPercent),
             tierLabel,
             tiers: tierInfos,
+            bonuses,
             missingToFirstTier,
             isCommissioning,
             metricLabel: staff.role === "closer" ? "em faturamento" : "reuniões",
@@ -226,66 +275,153 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
   const remainingDays = getRemainingBusinessDaysInMonth(new Date());
 
-  const renderTierRow = (tier: TierInfo, role: string) => {
-    const progressPercent = tier.missingValue <= 0 ? 100 : Math.max(0, 100 - (tier.missingValue / ((tier.minPercent / 100) * 1) * 100));
+  const renderTierRow = (tier: TierInfo, role: string) => (
+    <div
+      key={`${tier.minPercent}-${tier.maxPercent}`}
+      className={`rounded-lg border p-3 transition-all duration-200 ${
+        tier.isCurrentTier
+          ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20"
+          : tier.isAchieved
+          ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20"
+          : "border-border/50 bg-muted/30"
+      }`}
+    >
+      <div className="flex items-center justify-between mb-1.5">
+        <div className="flex items-center gap-1.5">
+          {tier.isAchieved ? (
+            <div className="h-2 w-2 rounded-full bg-emerald-500" />
+          ) : tier.isCurrentTier ? (
+            <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+          ) : (
+            <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+          )}
+          <span className="text-xs font-medium">
+            Faixa {tier.minPercent}% – {tier.maxPercent}%
+          </span>
+        </div>
+        <Badge
+          variant="secondary"
+          className={`text-[10px] font-bold ${
+            tier.isAchieved
+              ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+              : "bg-muted text-muted-foreground"
+          }`}
+        >
+          {formatCurrency(tier.commissionValue)}
+        </Badge>
+      </div>
+
+      {tier.isAchieved && tier.missingValue <= 0 ? (
+        <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+          ✅ Faixa alcançada
+        </p>
+      ) : (
+        <div className="space-y-1">
+          <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+            <span className="flex items-center gap-1">
+              <Target className="h-3 w-3" />
+              Falta: <span className="font-semibold text-foreground">{formatMetric(tier.missingValue, role)}</span> {role === "sdr" ? "reuniões" : ""}
+            </span>
+            {remainingDays > 0 && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                <span className="font-semibold text-foreground">{formatMetric(tier.dailyNeeded, role)}</span>/dia útil
+              </span>
+            )}
+          </div>
+        </div>
+      )}
+    </div>
+  );
+
+  const renderBonusCard = (bonus: BonusInfo, role: string) => {
+    const isSuper = bonus.type === "super";
+    const icon = isSuper ? <Star className="h-4 w-4" /> : <Trophy className="h-4 w-4" />;
+    const label = isSuper ? "Super Meta" : "Hiper Meta";
+    const borderColor = isSuper
+      ? "border-blue-300 dark:border-blue-700"
+      : "border-purple-300 dark:border-purple-700";
+    const bgColor = isSuper
+      ? "bg-blue-50/50 dark:bg-blue-950/20"
+      : "bg-purple-50/50 dark:bg-purple-950/20";
+    const textColor = isSuper
+      ? "text-blue-700 dark:text-blue-400"
+      : "text-purple-700 dark:text-purple-400";
+    const accentColor = isSuper
+      ? "text-blue-600 dark:text-blue-400"
+      : "text-purple-600 dark:text-purple-400";
 
     return (
-      <div
-        key={`${tier.minPercent}-${tier.maxPercent}`}
-        className={`rounded-lg border p-3 transition-all duration-200 ${
-          tier.isCurrentTier
-            ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20"
-            : tier.isAchieved
-            ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20"
-            : "border-border/50 bg-muted/30"
-        }`}
-      >
-        <div className="flex items-center justify-between mb-1.5">
-          <div className="flex items-center gap-1.5">
-            {tier.isAchieved ? (
-              <div className="h-2 w-2 rounded-full bg-emerald-500" />
-            ) : tier.isCurrentTier ? (
-              <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
-            ) : (
-              <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
-            )}
-            <span className="text-xs font-medium">
-              Faixa {tier.minPercent}% – {tier.maxPercent}%
-            </span>
+      <div key={bonus.type} className={`rounded-lg border ${borderColor} ${bgColor} p-3`}>
+        <div className="flex items-center justify-between mb-2">
+          <div className={`flex items-center gap-1.5 ${textColor}`}>
+            {icon}
+            <span className="text-xs font-semibold">{label}</span>
           </div>
           <Badge
             variant="secondary"
             className={`text-[10px] font-bold ${
-              tier.isAchieved
+              bonus.isAchieved
                 ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
                 : "bg-muted text-muted-foreground"
             }`}
           >
-            {formatCurrency(tier.commissionValue)}
+            {bonus.achievedPercent}%
           </Badge>
         </div>
 
-        {tier.isAchieved && tier.missingValue <= 0 ? (
-          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
-            ✅ Faixa alcançada
+        {/* Bonus reward */}
+        {(bonus.bonusText || bonus.bonusValue) && (
+          <div className="flex items-start gap-2 mb-2 p-2 rounded-md bg-white/60 dark:bg-black/20 border border-border/30">
+            {bonus.bonusImageUrl && (
+              <img
+                src={bonus.bonusImageUrl}
+                alt="Bônus"
+                className="h-10 w-10 rounded-md object-cover shrink-0"
+              />
+            )}
+            <div className="flex-1 min-w-0">
+              <div className="flex items-center gap-1">
+                <Gift className="h-3 w-3 text-amber-500 shrink-0" />
+                <span className="text-[10px] font-semibold text-amber-700 dark:text-amber-400">Prêmio:</span>
+              </div>
+              {bonus.bonusText && (
+                <p className="text-[11px] text-foreground mt-0.5">{bonus.bonusText}</p>
+              )}
+              {bonus.bonusValue && bonus.bonusValue > 0 && (
+                <p className="text-xs font-bold text-emerald-600 dark:text-emerald-400 mt-0.5">
+                  + {formatCurrency(bonus.bonusValue)}
+                </p>
+              )}
+            </div>
+          </div>
+        )}
+
+        {bonus.isAchieved ? (
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium">
+            🏆 Meta alcançada!
           </p>
         ) : (
           <div className="space-y-1">
             <div className="flex items-center justify-between text-[11px] text-muted-foreground">
               <span className="flex items-center gap-1">
                 <Target className="h-3 w-3" />
-                Falta: <span className="font-semibold text-foreground">{formatMetric(tier.missingValue, role)}</span> {role === "sdr" ? "reuniões" : ""}
+                Falta: <span className={`font-semibold ${accentColor}`}>{formatMetric(bonus.missingValue, role)}</span>
               </span>
               {remainingDays > 0 && (
                 <span className="flex items-center gap-1">
                   <Calendar className="h-3 w-3" />
-                  <span className="font-semibold text-foreground">{formatMetric(tier.dailyNeeded, role)}</span>/dia útil
+                  <span className={`font-semibold ${accentColor}`}>{formatMetric(bonus.dailyNeeded, role)}</span>/dia útil
                 </span>
               )}
             </div>
-            <p className="text-[10px] text-muted-foreground/70">
-              Ganho total: {formatCurrency(tier.commissionValue)} de comissão
-            </p>
+            {/* Progress bar */}
+            <div className="h-1.5 w-full rounded-full bg-muted overflow-hidden">
+              <div
+                className={`h-full rounded-full transition-all ${isSuper ? "bg-blue-500" : "bg-purple-500"}`}
+                style={{ width: `${Math.min(100, bonus.achievedPercent)}%` }}
+              />
+            </div>
           </div>
         )}
       </div>
@@ -362,7 +498,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           </p>
           {remainingDays > 0 && (
             <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
-              ≈ {formatMetric(data.missingToFirstTier / remainingDays, data.role)}/{data.role === "sdr" ? "reunião" : ""} por dia útil ({remainingDays} dias restantes)
+              ≈ {formatMetric(data.missingToFirstTier / remainingDays, data.role)} por dia útil ({remainingDays} dias restantes)
             </p>
           )}
         </div>
@@ -378,6 +514,19 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           </div>
           <div className="space-y-2">
             {data.tiers.map(tier => renderTierRow(tier, data.role))}
+          </div>
+        </div>
+      )}
+
+      {/* Super/Hiper Meta Bonuses */}
+      {data.bonuses.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <Gift className="h-3.5 w-3.5 text-amber-500" />
+            <span className="text-xs font-semibold text-foreground">Metas Bônus</span>
+          </div>
+          <div className="space-y-2">
+            {data.bonuses.map(bonus => renderBonusCard(bonus, data.role))}
           </div>
         </div>
       )}
