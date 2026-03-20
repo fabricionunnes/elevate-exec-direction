@@ -209,7 +209,8 @@ export function ChecklistMeetingScheduler({
           scheduled_at: startDateTime,
           responsible_staff_id: staffData?.id,
           status: "pending",
-        });
+          meeting_link: data.event?.meetingLink || null,
+        } as any);
 
         if (data.event?.meetingLink) {
           setCreatedMeetLink(data.event.meetingLink);

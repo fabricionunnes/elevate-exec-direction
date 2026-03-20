@@ -376,6 +376,35 @@ export const LeadActivitiesTab = ({
     }
   };
 
+  // Fetch next scheduled meeting for template variables
+  const [nextMeetingLink, setNextMeetingLink] = useState<string>('');
+  const [nextMeetingDateTime, setNextMeetingDateTime] = useState<string>('');
+
+  useEffect(() => {
+    const fetchNextMeeting = async () => {
+      const { data } = await supabase
+        .from("crm_activities")
+        .select("scheduled_at, meeting_link")
+        .eq("lead_id", leadId)
+        .eq("type", "meeting")
+        .eq("status", "pending")
+        .gte("scheduled_at", new Date().toISOString())
+        .order("scheduled_at", { ascending: true })
+        .limit(1)
+        .single();
+
+      if (data) {
+        setNextMeetingLink((data as any).meeting_link || '');
+        if (data.scheduled_at) {
+          setNextMeetingDateTime(
+            format(new Date(data.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+          );
+        }
+      }
+    };
+    fetchNextMeeting();
+  }, [leadId]);
+
   const processWhatsAppTemplate = (template: string | null) => {
     if (!template) return '';
     return template
@@ -383,7 +412,9 @@ export const LeadActivitiesTab = ({
       .replace(/\{\{empresa\}\}/g, leadCompany || '')
       .replace(/\{\{email\}\}/g, leadEmail || '')
       .replace(/\{\{telefone\}\}/g, leadPhone || '')
-      .replace(/\{\{responsavel\}\}/g, ownerName || '');
+      .replace(/\{\{responsavel\}\}/g, ownerName || '')
+      .replace(/\{\{link_agendamento\}\}/g, nextMeetingLink || '')
+      .replace(/\{\{data_hora_agendamento\}\}/g, nextMeetingDateTime || '');
   };
 
   return (

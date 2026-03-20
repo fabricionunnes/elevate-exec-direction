@@ -214,7 +214,8 @@ export const ScheduleLeadMeetingDialog = ({
           scheduled_at: startDateTime,
           responsible_staff_id: staffData?.id,
           status: "pending",
-        });
+          meeting_link: data.event?.meetingLink || null,
+        } as any);
 
         // If this was triggered from an automation activity, mark it as completed
         if (activityIdToComplete) {
