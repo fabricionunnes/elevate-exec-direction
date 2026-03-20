@@ -182,7 +182,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "new_stage", label: "Nova etapa", type: "text" },
     ],
-    variables: ["candidate_name", "candidate_email", "old_stage", "new_stage", "job_title", "company_name"],
+    variables: ["candidate_name", "candidate_email", "old_stage", "new_stage", "job_title", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
 ];
 
