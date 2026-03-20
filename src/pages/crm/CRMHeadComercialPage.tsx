@@ -76,7 +76,7 @@ const activityTypeLabel: Record<string, string> = {
 };
 
 export default function CRMHeadComercialPage() {
-  const { staffRole } = useCRM();
+  const { staffRole } = useCRMContext();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadWithStage[]>([]);
   const [yesterdayActivities, setYesterdayActivities] = useState<Activity[]>([]);
