@@ -43,6 +43,7 @@ import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButto
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { ChecklistMeetingScheduler } from "./ChecklistMeetingScheduler";
+import { ReunionPanel } from "./ReunionPanel";
 
 
 interface Stage {
