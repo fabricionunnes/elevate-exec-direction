@@ -425,17 +425,17 @@ export const CRMReportsPage = () => {
 
         {/* Weekly Evolution */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Evolução Semanal</CardTitle>
+          <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+            <CardTitle className="text-base sm:text-lg">Evolução Semanal</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="h-[200px] sm:h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={weeklyData}>
-                  <XAxis dataKey="date" />
-                  <YAxis />
+                  <XAxis dataKey="date" tick={{ fontSize: 10 }} />
+                  <YAxis tick={{ fontSize: 10 }} />
                   <Tooltip />
-                  <Legend />
+                  <Legend wrapperStyle={{ fontSize: 11 }} />
                   <Line 
                     type="monotone" 
                     dataKey="new" 
