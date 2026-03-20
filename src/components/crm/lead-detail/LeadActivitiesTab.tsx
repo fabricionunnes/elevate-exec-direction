@@ -43,6 +43,7 @@ import { WhatsAppQuickSendButton } from "@/components/crm/WhatsAppQuickSendButto
 import { ScheduleMeetingQuickButton } from "@/components/crm/ScheduleMeetingQuickButton";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { ChecklistMeetingScheduler } from "./ChecklistMeetingScheduler";
+import { ReunionPanel } from "./ReunionPanel";
 
 
 interface Stage {
@@ -372,6 +373,7 @@ export const LeadActivitiesTab = ({
       case 'call': return <Phone className="h-4 w-4 text-green-600 shrink-0" />;
       case 'whatsapp': return <MessageSquare className="h-4 w-4 text-emerald-600 shrink-0" />;
       case 'meeting': return <Calendar className="h-4 w-4 text-purple-600 shrink-0" />;
+      case 'reunion': return <Video className="h-4 w-4 text-blue-600 shrink-0" />;
       default: return <FileText className="h-4 w-4 text-muted-foreground shrink-0" />;
     }
   };
@@ -641,6 +643,16 @@ export const LeadActivitiesTab = ({
                 checklistItemId={selectedChecklistItem.id}
                 checklistItemTitle={selectedChecklistItem.title}
                 onScheduled={() => {
+                  toggleChecklist(selectedChecklistItem.id);
+                  setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                }}
+              />
+            ) : selectedChecklistItem.item_type === 'reunion' ? (
+              <ReunionPanel
+                leadId={leadId}
+                nextMeetingLink={nextMeetingLink}
+                nextMeetingDateTime={nextMeetingDateTime}
+                onNoShowToggle={() => {
                   toggleChecklist(selectedChecklistItem.id);
                   setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
                 }}

@@ -60,6 +60,7 @@ const ITEM_TYPES = [
   { value: 'call', label: 'Ligação', icon: Phone },
   { value: 'whatsapp', label: 'WhatsApp', icon: MessageCircle },
   { value: 'meeting', label: 'Agendamento', icon: Calendar },
+  { value: 'reunion', label: 'Reunião', icon: Calendar },
 ];
 
 const AVAILABLE_VARIABLES = [
