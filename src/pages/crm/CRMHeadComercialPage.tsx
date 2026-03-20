@@ -538,9 +538,9 @@ export default function CRMHeadComercialPage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20">
-              <Trophy className="h-6 w-6 text-amber-600" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 shrink-0">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
             </div>
             Briefing Diário
           </h1>
@@ -548,9 +548,9 @@ export default function CRMHeadComercialPage() {
             {format(now, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })} — D{elapsedBizDays} de {totalBizDays} dias úteis
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select value={filterCloser} onValueChange={setFilterCloser}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px]">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
@@ -560,12 +560,12 @@ export default function CRMHeadComercialPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={loadData}>Atualizar</Button>
+          <Button variant="outline" size="sm" onClick={loadData} className="w-full sm:w-auto">Atualizar</Button>
         </div>
       </div>
 
       {/* ── Hero KPIs ── */}
-      <div className="grid grid-cols-2 lg:grid-cols-5 gap-3">
+      <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-2 sm:gap-3">
         <KPICard
           icon={<DollarSign className="h-5 w-5" />}
           iconBg="from-emerald-500/20 to-green-500/20"
@@ -641,18 +641,18 @@ export default function CRMHeadComercialPage() {
 
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-4">
-          <TabsTrigger value="overview" className="gap-1">
-            <Users className="h-4 w-4" /> Performance
+        <TabsList className="w-full grid grid-cols-4 h-auto">
+          <TabsTrigger value="overview" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Users className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> <span className="hidden sm:inline">Performance</span><span className="sm:hidden">Perf.</span>
           </TabsTrigger>
-          <TabsTrigger value="forecast" className="gap-1">
-            <Flame className="h-4 w-4" /> Forecast
+          <TabsTrigger value="forecast" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Flame className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Forecast
           </TabsTrigger>
-          <TabsTrigger value="pipeline" className="gap-1">
-            <BarChart3 className="h-4 w-4" /> Pipeline
+          <TabsTrigger value="pipeline" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <BarChart3 className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Pipeline
           </TabsTrigger>
-          <TabsTrigger value="agenda" className="gap-1">
-            <Calendar className="h-4 w-4" /> Agenda
+          <TabsTrigger value="agenda" className="gap-1 text-xs sm:text-sm px-1 sm:px-3 py-2">
+            <Calendar className="h-3.5 w-3.5 sm:h-4 sm:w-4 shrink-0" /> Agenda
           </TabsTrigger>
         </TabsList>
 
@@ -953,7 +953,7 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
             </div>
 
             {/* Metrics Grid */}
-            <div className={`grid ${isCloser ? "grid-cols-4" : "grid-cols-3"} gap-3 mt-3 pt-3 border-t border-border/50`}>
+            <div className={`grid ${isCloser ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"} gap-3 mt-3 pt-3 border-t border-border/50`}>
               {isCloser && (
                 <>
                   <MetricBlock label="Falta" value={formatCompact(p.falta)} alert={p.falta > 0} />
