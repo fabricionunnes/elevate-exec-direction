@@ -591,17 +591,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           </div>
         )}
         
-        <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-          <SelectTrigger className="w-[180px] rounded-full">
-            <SelectValue placeholder="Closer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Closers</SelectItem>
-            {closers.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isCloserUser && (
+          <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+            <SelectTrigger className="w-[180px] rounded-full">
+              <SelectValue placeholder="Closer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Closers</SelectItem>
+              {closers.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
           <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Produto" />

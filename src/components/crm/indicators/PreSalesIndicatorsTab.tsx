@@ -501,17 +501,19 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           </PopoverContent>
         </Popover>
         
-        <Select value={selectedSDR} onValueChange={setSelectedSDR}>
-          <SelectTrigger className="w-[180px] rounded-full">
-            <SelectValue placeholder="SDR / SS" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os SDRs</SelectItem>
-            {sdrs.map(s => (
-              <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isSDRUser && (
+          <Select value={selectedSDR} onValueChange={setSelectedSDR}>
+            <SelectTrigger className="w-[180px] rounded-full">
+              <SelectValue placeholder="SDR / SS" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os SDRs</SelectItem>
+              {sdrs.map(s => (
+                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
           <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Funil" />
