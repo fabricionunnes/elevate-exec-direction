@@ -166,6 +166,7 @@ export const CRMLayout = () => {
   const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const isMaster = staffRole === "master";
   const initials = staffName?.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase() || "U";
+  const navTabs = getNavTabs(staffRole);
 
   const isTabActive = (href: string) => {
     if (href === "/crm/reports") {
