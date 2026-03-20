@@ -26,6 +26,8 @@ Deno.serve(async (req) => {
       );
     }
 
+    console.log(`[automation-engine] Processing trigger: ${trigger_type}`, JSON.stringify(trigger_data));
+
     // Fetch active rules matching this trigger
     const { data: rules, error: rulesError } = await supabase
       .from("automation_rules")
@@ -65,6 +67,7 @@ Deno.serve(async (req) => {
 
         executedCount++;
       } catch (actionError: any) {
+        console.error(`[automation-engine] Action error for rule ${rule.id}:`, actionError);
         // Log error
         await supabase.from("automation_executions").insert({
           rule_id: rule.id,
@@ -95,11 +98,13 @@ function evaluateConditions(conditions: any[], data: any): boolean {
     const { field, operator, value } = condition;
     const actual = data?.[field];
 
+    // Skip empty condition values (optional filters)
+    if (value === undefined || value === null || value === "") return true;
     if (actual === undefined || actual === null) return false;
 
     switch (operator) {
       case "eq":
-        return actual == value;
+        return String(actual).toLowerCase() === String(value).toLowerCase();
       case "neq":
         return actual != value;
       case "gt":
@@ -134,7 +139,7 @@ async function executeAction(supabase: any, rule: any, triggerData: any) {
     case "create_crm_activity":
       return await executeCreateCrmActivity(supabase, config, triggerData);
     case "send_whatsapp":
-      return { action: "send_whatsapp", status: "queued", message: config.message };
+      return await executeSendWhatsApp(supabase, config, triggerData);
     default:
       return { action: action_type, status: "not_implemented" };
   }
@@ -240,4 +245,88 @@ async function executeCreateCrmActivity(supabase: any, config: any, data: any) {
 
   if (error) throw new Error(`Create activity error: ${error.message}`);
   return { action: "create_crm_activity", status: "created" };
+}
+
+async function executeSendWhatsApp(supabase: any, config: any, data: any) {
+  const message = config.message;
+  if (!message) {
+    return { action: "send_whatsapp", status: "no_message" };
+  }
+
+  // Determine recipient
+  let targetNumber = "";
+  const targetType = config.target_type || config.target || "phone";
+
+  if (targetType === "phone" || targetType === "group") {
+    targetNumber = config.target_phone || "";
+  } else if (targetType === "cs_responsible" && data.cs_phone) {
+    targetNumber = data.cs_phone;
+  } else if (targetType === "consultant_responsible" && data.consultant_phone) {
+    targetNumber = data.consultant_phone;
+  } else if (targetType === "client_phone" && data.client_phone) {
+    targetNumber = data.client_phone;
+  }
+
+  if (!targetNumber) {
+    return { action: "send_whatsapp", status: "no_target_number" };
+  }
+
+  // Find the WhatsApp instance
+  const instanceName = config.instance_name || "";
+  if (!instanceName) {
+    return { action: "send_whatsapp", status: "no_instance_name" };
+  }
+
+  // Lookup instance from DB
+  const { data: instances } = await supabase
+    .from("whatsapp_instances")
+    .select("id, instance_name, api_url, api_key")
+    .ilike("instance_name", `%${instanceName}%`)
+    .eq("status", "connected")
+    .limit(1);
+
+  if (!instances || instances.length === 0) {
+    console.error(`[automation-engine] WhatsApp instance not found: ${instanceName}`);
+    return { action: "send_whatsapp", status: "instance_not_found", instance: instanceName };
+  }
+
+  const instance = instances[0];
+
+  // Determine if it's a group (JID ends with @g.us)
+  const isGroup = targetNumber.includes("@g.us");
+  const formattedNumber = isGroup
+    ? targetNumber
+    : targetNumber.replace(/\D/g, "");
+
+  console.log(`[automation-engine] Sending WhatsApp via ${instance.instance_name} to ${formattedNumber}`);
+
+  try {
+    const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
+    const response = await fetch(sendUrl, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        apikey: instance.api_key,
+      },
+      body: JSON.stringify({
+        number: formattedNumber,
+        text: message,
+      }),
+    });
+
+    if (!response.ok) {
+      const errText = await response.text();
+      console.error(`[automation-engine] WhatsApp send error [${response.status}]:`, errText);
+      // Treat 504 as accepted (server timeout but message likely sent)
+      if (response.status === 504) {
+        return { action: "send_whatsapp", status: "accepted_timeout", target: formattedNumber };
+      }
+      throw new Error(`WhatsApp send failed [${response.status}]: ${errText}`);
+    }
+
+    const result = await response.json();
+    return { action: "send_whatsapp", status: "sent", target: formattedNumber, result };
+  } catch (err: any) {
+    throw new Error(`WhatsApp send error: ${err.message}`);
+  }
 }

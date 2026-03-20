@@ -193,10 +193,49 @@ export function JobOpeningDialog({
         if (error) throw error;
         toast.success("Vaga atualizada com sucesso");
       } else {
-        const { error } = await supabase.from("job_openings").insert(payload);
+        const { data: newJob, error } = await supabase.from("job_openings").insert(payload).select().single();
 
         if (error) throw error;
         toast.success("Vaga criada com sucesso");
+
+        // Fire automation trigger for new job opening
+        try {
+          // Get company/project name for context
+          const { data: project } = await supabase
+            .from("onboarding_projects")
+            .select("product_name, onboarding_company_id")
+            .eq("id", projectId)
+            .maybeSingle();
+          
+          let companyName = "";
+          if (project?.onboarding_company_id) {
+            const { data: company } = await supabase
+              .from("onboarding_companies")
+              .select("name")
+              .eq("id", project.onboarding_company_id)
+              .maybeSingle();
+            companyName = company?.name || "";
+          }
+
+          supabase.functions.invoke("automation-engine", {
+            body: {
+              trigger_type: "job_opening_created",
+              trigger_data: {
+                job_id: newJob.id,
+                job_title: formData.title,
+                job_area: formData.area || "",
+                job_type: formData.job_type || "",
+                seniority: formData.seniority || "",
+                company_name: companyName,
+                project_name: project?.product_name || "",
+                project_id: projectId,
+                area: formData.area || "",
+              },
+            },
+          });
+        } catch (autoErr) {
+          console.error("Automation trigger error (non-blocking):", autoErr);
+        }
       }
 
       onSuccess();

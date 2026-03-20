@@ -7,6 +7,7 @@ export interface TriggerDefinition {
   moduleLabel: string;
   moduleColor: string;
   conditionFields: ConditionField[];
+  variables?: string[];
 }
 
 export interface ConditionField {
@@ -124,6 +125,55 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
       { key: "days_inactive", label: "Dias sem atividade (≥)", type: "number" },
     ],
   },
+  // ── RH Triggers ──
+  {
+    type: "job_opening_created",
+    label: "Nova vaga criada",
+    module: "rh",
+    moduleLabel: "RH",
+    moduleColor: "bg-purple-100 text-purple-800",
+    conditionFields: [
+      {
+        key: "area",
+        label: "Área específica (opcional)",
+        type: "text",
+      },
+    ],
+    variables: ["job_title", "job_area", "job_type", "company_name", "project_name", "seniority"],
+  },
+  {
+    type: "resume_received",
+    label: "Currículo recebido",
+    module: "rh",
+    moduleLabel: "RH",
+    moduleColor: "bg-purple-100 text-purple-800",
+    conditionFields: [
+      {
+        key: "source",
+        label: "Origem (opcional)",
+        type: "select",
+        options: [
+          { value: "", label: "Qualquer origem" },
+          { value: "manual", label: "Manual" },
+          { value: "portal", label: "Portal do cliente" },
+          { value: "careers_page", label: "Página de carreiras" },
+          { value: "talent_pool", label: "Banco de talentos" },
+        ],
+      },
+    ],
+    variables: ["candidate_name", "candidate_email", "candidate_phone", "job_title", "company_name", "source"],
+  },
+  {
+    type: "candidate_stage_changed",
+    label: "Candidato mudou de etapa",
+    module: "rh",
+    moduleLabel: "RH",
+    moduleColor: "bg-purple-100 text-purple-800",
+    conditionFields: [
+      { key: "new_stage", label: "Nova etapa", type: "text" },
+    ],
+    variables: ["candidate_name", "candidate_email", "old_stage", "new_stage", "job_title", "company_name"],
+  },
 ];
 
 export const ACTION_DEFINITIONS: ActionDefinition[] = [
@@ -153,16 +203,20 @@ export const ACTION_DEFINITIONS: ActionDefinition[] = [
     icon: "MessageSquare",
     configFields: [
       {
-        key: "target",
-        label: "Destinatário",
+        key: "target_type",
+        label: "Enviar para",
         type: "select",
         options: [
+          { value: "phone", label: "Número de telefone" },
+          { value: "group", label: "Grupo do WhatsApp (JID)" },
           { value: "cs_responsible", label: "CS Responsável" },
           { value: "consultant_responsible", label: "Consultor Responsável" },
           { value: "client_phone", label: "Telefone do cliente" },
         ],
       },
-      { key: "message", label: "Mensagem", type: "textarea", placeholder: "Mensagem do WhatsApp..." },
+      { key: "target_phone", label: "Número / JID do grupo", type: "text", placeholder: "Ex: 5531999999999 ou 120363...@g.us" },
+      { key: "instance_name", label: "Nome da instância WhatsApp", type: "text", placeholder: "Ex: Comercial UNV" },
+      { key: "message", label: "Mensagem", type: "textarea", placeholder: "Use variáveis como {job_title}, {candidate_name}..." },
     ],
   },
   {
@@ -214,4 +268,5 @@ export const TRIGGER_MODULES = [
   { key: "crm", label: "CRM", color: "bg-blue-100 text-blue-800" },
   { key: "onboarding", label: "Onboarding", color: "bg-green-100 text-green-800" },
   { key: "financial", label: "Financeiro", color: "bg-amber-100 text-amber-800" },
+  { key: "rh", label: "RH", color: "bg-purple-100 text-purple-800" },
 ];
