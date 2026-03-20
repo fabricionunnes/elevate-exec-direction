@@ -390,6 +390,9 @@ export default function CRMHeadComercialPage() {
       setYesterdayActivities((yesterdayRes.data || []) as any[]);
       setTodayActivities((todayRes.data || []) as any[]);
       setActivityStats((statsRes.data || []) as any[]);
+      setSdrCreatedYesterday((sdrYesterdayRes.data || []) as any[]);
+      setSdrCreatedToday((sdrTodayRes.data || []) as any[]);
+      setSdrCreatedMonth((sdrMonthRes.data || []) as any[]);
     } catch (err) {
       console.error("Error loading head data:", err);
     } finally {
