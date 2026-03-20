@@ -100,6 +100,8 @@ function evaluateConditions(conditions: any[], data: any): boolean {
 
     // Skip empty condition values (optional filters)
     if (value === undefined || value === null || value === "") return true;
+    // Treat "any" / "todos" / "all" as wildcard — always matches
+    if (typeof value === "string" && ["any", "todos", "all", "*"].includes(value.toLowerCase())) return true;
     if (actual === undefined || actual === null) return false;
 
     switch (operator) {
