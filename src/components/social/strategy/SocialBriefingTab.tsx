@@ -547,6 +547,11 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
               </CardContent>
             </Card>
           )}
+
+          <Separator className="my-8" />
+
+          {/* Ads Briefing Section */}
+          <AdsBriefingSection projectId={projectId} />
         </div>
       </ScrollArea>
     </div>
