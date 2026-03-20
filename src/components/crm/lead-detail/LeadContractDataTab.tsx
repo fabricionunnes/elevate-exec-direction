@@ -93,6 +93,8 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formToken, setFormToken] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
