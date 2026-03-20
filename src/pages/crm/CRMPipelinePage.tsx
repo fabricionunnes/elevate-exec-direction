@@ -614,6 +614,36 @@ export const CRMPipelinePage = () => {
         />
       </div>
 
+      {/* Summary Cards */}
+      <div className="shrink-0 px-3 sm:px-4 pb-2">
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="p-3 flex items-center gap-3 border-border/50">
+            <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Forecast</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-400 tabular-nums">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredForecastTotal)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{forecastData.length} negócio{forecastData.length !== 1 ? "s" : ""} aberto{forecastData.length !== 1 ? "s" : ""}</p>
+            </div>
+          </Card>
+          <Card className="p-3 flex items-center gap-3 border-border/50">
+            <div className="h-9 w-9 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
+              <Handshake className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Em Negociação</p>
+              <p className="text-base font-bold text-amber-700 dark:text-amber-400 tabular-nums">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredNegotiationTotal)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{negotiationData.length} negócio{negotiationData.length !== 1 ? "s" : ""}</p>
+            </div>
+          </Card>
+        </div>
+      </div>
+
       {/* Kanban Board */}
       <div className="flex-1 min-h-0 overflow-hidden">
         <div
