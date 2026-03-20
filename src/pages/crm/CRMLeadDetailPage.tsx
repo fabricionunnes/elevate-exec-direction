@@ -153,6 +153,8 @@ export const CRMLeadDetailPage = () => {
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
+  const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
