@@ -5,6 +5,7 @@ import { syncLeadToClint } from "@/hooks/useClintSync";
 import { WhatsAppMessageDialog } from "@/components/onboarding-tasks/WhatsAppMessageDialog";
 import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
+import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
@@ -939,6 +940,48 @@ export const CRMLeadDetailPage = () => {
                 {allTags.filter(tag => !lead.tags?.some(t => t.tag.id === tag.id)).length === 0 && (
                   <p className="text-xs text-muted-foreground text-center py-2">Todas etiquetas já aplicadas</p>
                 )}
+              </div>
+              <div className="border-t mt-2 pt-2">
+                <form
+                  onSubmit={async (e) => {
+                    e.preventDefault();
+                    const form = e.target as HTMLFormElement;
+                    const nameInput = form.elements.namedItem("newTagName") as HTMLInputElement;
+                    const colorInput = form.elements.namedItem("newTagColor") as HTMLInputElement;
+                    const name = nameInput.value.trim();
+                    const color = colorInput.value;
+                    if (!name) return;
+                    try {
+                      const { data, error } = await supabase
+                        .from("crm_tags")
+                        .insert({ name, color })
+                        .select("id, name, color")
+                        .single();
+                      if (error) throw error;
+                      setAllTags(prev => [...prev, data].sort((a, b) => a.name.localeCompare(b.name)));
+                      await handleAddTag(data.id);
+                      nameInput.value = "";
+                    } catch (err: any) {
+                      toast.error("Erro ao criar etiqueta");
+                    }
+                  }}
+                  className="flex items-center gap-1.5"
+                >
+                  <input
+                    type="color"
+                    name="newTagColor"
+                    defaultValue="#6366f1"
+                    className="w-6 h-6 rounded cursor-pointer border-0 p-0"
+                  />
+                  <Input
+                    name="newTagName"
+                    placeholder="Nova etiqueta..."
+                    className="h-7 text-xs flex-1"
+                  />
+                  <Button type="submit" size="sm" variant="ghost" className="h-7 px-2">
+                    <Plus className="h-3 w-3" />
+                  </Button>
+                </form>
               </div>
             </PopoverContent>
           </Popover>
