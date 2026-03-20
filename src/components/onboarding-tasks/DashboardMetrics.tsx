@@ -963,7 +963,7 @@ const DashboardMetrics = ({
     const goalRate = totalWithEntries > 0 ? Math.round((meetingGoal / totalWithEntries) * 100) : 0;
 
     return { totalWithGoals, totalWithEntries, meetingGoal, above70, between50And70, below50, noGoalCount, noEntriesCount, goalRate };
-  }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies]);
+  }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies, monthlyTargets]);
 
   const handleCardClick = (filterType: string, filterValue: string) => {
     if (activeMetricFilter?.type === filterType && activeMetricFilter?.value === filterValue) {
