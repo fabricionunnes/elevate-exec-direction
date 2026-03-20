@@ -30,6 +30,7 @@ import {
 } from "lucide-react";
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
+import { CRMNotificationsBell } from "@/components/crm/CRMNotificationsBell";
 import { useIsMobile } from "@/hooks/use-mobile";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
@@ -284,10 +285,7 @@ export const CRMLayout = () => {
 
           {/* Right Actions */}
           <div className="flex items-center gap-1 sm:gap-2 ml-auto">
-            <Button variant="ghost" size="icon" className="relative h-8 w-8 sm:h-9 sm:w-9">
-              <Bell className="h-4 w-4 sm:h-5 sm:w-5" />
-              <span className="absolute top-0 right-0 sm:top-1 sm:right-1 w-2 h-2 bg-red-500 rounded-full" />
-            </Button>
+            <CRMNotificationsBell staffId={staffId} />
 
 
             {/* Profile Dropdown */}
