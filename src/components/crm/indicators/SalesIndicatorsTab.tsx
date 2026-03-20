@@ -285,7 +285,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       : rawCalls;
 
     const forecastData = isCloserFilter
-      ? rawForecastData.filter(f => f.closer_staff_id === selectedCloser)
+      ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
       : rawForecastData;
 
     // Goals: use closer-specific or total
