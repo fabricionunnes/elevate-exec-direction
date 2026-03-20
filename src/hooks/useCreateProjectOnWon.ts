@@ -17,6 +17,13 @@ interface LeadData {
   address?: string | null;
   zipcode?: string | null;
   trade_name?: string | null;
+  legal_representative_name?: string | null;
+  cpf?: string | null;
+  rg?: string | null;
+  marital_status?: string | null;
+  address_number?: string | null;
+  address_complement?: string | null;
+  address_neighborhood?: string | null;
 }
 
 interface CreateProjectResult {
