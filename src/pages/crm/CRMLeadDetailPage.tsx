@@ -65,6 +65,7 @@ import {
   LeadHistoryTab,
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
+import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
