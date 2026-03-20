@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar, Star, Trophy, Gift } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar, Star, Trophy, Gift, Filter } from "lucide-react";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 
 interface TierInfo {
@@ -53,6 +54,7 @@ interface Props {
 export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
   const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>("all");
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
@@ -532,9 +534,35 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
     </div>
   );
 
+  const filteredData = isMaster && selectedStaffFilter !== "all"
+    ? commissionData.filter(d => d.staffId === selectedStaffFilter)
+    : commissionData;
+
   return (
-    <div className={`grid gap-3 ${isMaster && commissionData.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-      {commissionData.map(renderStaffCard)}
+    <div className="space-y-3">
+      {/* Staff filter for master */}
+      {isMaster && commissionData.length > 1 && (
+        <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={selectedStaffFilter} onValueChange={setSelectedStaffFilter}>
+            <SelectTrigger className="w-[220px] h-9 text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os colaboradores</SelectItem>
+              {commissionData.map(d => (
+                <SelectItem key={d.staffId} value={d.staffId}>
+                  {d.staffName} ({d.role === "closer" ? "Closer" : "SDR"})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="grid gap-3 grid-cols-1">
+        {filteredData.map(renderStaffCard)}
+      </div>
     </div>
   );
 };
