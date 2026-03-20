@@ -258,7 +258,8 @@ export default function CRMHeadComercialPage() {
       const monthStart = startOfMonth(now);
       const monthEnd = endOfMonth(now);
 
-      const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes] =
+      const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes,
+             sdrYesterdayRes, sdrTodayRes, sdrMonthRes] =
         await Promise.all([
           supabase
             .from("crm_leads")
@@ -316,6 +317,30 @@ export default function CRMHeadComercialPage() {
             .select("responsible_staff_id, type, status, scheduled_at")
             .gte("scheduled_at", monthStart.toISOString())
             .lte("scheduled_at", monthEnd.toISOString()),
+
+          // SDR agendamentos: meetings CREATED yesterday (regardless of scheduled_at)
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", startOfDay(yesterday).toISOString())
+            .lt("created_at", endOfDay(yesterday).toISOString()),
+
+          // SDR agendamentos: meetings CREATED today
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", startOfDay(now).toISOString())
+            .lt("created_at", endOfDay(now).toISOString()),
+
+          // SDR agendamentos: meetings CREATED this month
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, type")
+            .eq("type", "meeting")
+            .gte("created_at", monthStart.toISOString())
+            .lte("created_at", monthEnd.toISOString()),
         ]);
 
       if (leadsRes.data) {
