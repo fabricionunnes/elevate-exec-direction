@@ -135,6 +135,11 @@ export const CRMDashboardPage = () => {
           leadsQuery = leadsQuery.eq("owner_staff_id", selectedOwner);
         }
 
+        // Closers/SDRs only see their own leads
+        if (!isAdmin && staffId) {
+          leadsQuery = leadsQuery.eq("owner_staff_id", staffId);
+        }
+
         const { data: leadsData } = await leadsQuery;
 
         const parseNumeric = (val: any): number => {
