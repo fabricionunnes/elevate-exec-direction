@@ -24,7 +24,8 @@ import {
   FileWarning,
   DollarSign,
   Calendar,
-  HeartPulse
+  HeartPulse,
+  SmilePlus
 } from "lucide-react";
 import { format, isBefore, startOfDay, isWithinInterval, eachDayOfInterval, parseISO, eachMonthOfInterval, startOfMonth, endOfMonth, startOfYear, endOfYear, differenceInMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
