@@ -149,7 +149,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
         type: "text",
       },
     ],
-    variables: ["job_title", "job_area", "job_type", "company_name", "project_name", "seniority"],
+    variables: ["job_title", "job_area", "job_type", "company_name", "project_name", "seniority", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "resume_received",
