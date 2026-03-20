@@ -141,14 +141,29 @@ export function AutomationRuleDialog({
       }
 
       const rawGroups = response.data;
+      console.log("[AutomationRuleDialog] Raw groups response:", JSON.stringify(rawGroups)?.substring(0, 500));
+      
       // Evolution API returns different formats, normalize
       let parsed: WhatsAppGroup[] = [];
+      
+      // Handle various response shapes
+      let groupArray: any[] = [];
       if (Array.isArray(rawGroups)) {
-        parsed = rawGroups.map((g: any) => ({
-          id: g.id || g.jid || g.groupJid || "",
-          subject: g.subject || g.name || g.groupName || g.id || "",
-        })).filter((g: WhatsAppGroup) => g.id);
+        groupArray = rawGroups;
+      } else if (rawGroups && typeof rawGroups === 'object') {
+        // Could be nested in a property like { data: [...] } or { groups: [...] }
+        const possibleArrays = Object.values(rawGroups).filter(v => Array.isArray(v));
+        if (possibleArrays.length > 0) {
+          groupArray = possibleArrays[0] as any[];
+        }
       }
+      
+      parsed = groupArray.map((g: any) => ({
+        id: g.id || g.jid || g.groupJid || "",
+        subject: g.subject || g.name || g.groupName || g.id || "",
+      })).filter((g: WhatsAppGroup) => g.id);
+      
+      console.log("[AutomationRuleDialog] Parsed groups:", parsed.length);
       setGroups(parsed);
     } catch (e) {
       console.error("Error loading groups:", e);
