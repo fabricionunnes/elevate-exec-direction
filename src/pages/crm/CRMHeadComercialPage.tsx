@@ -485,6 +485,25 @@ export default function CRMHeadComercialPage() {
     return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
   }, [leads, filterCloser]);
 
+  const forecastLeads = useMemo(() => {
+    return filteredLeads.filter((l) => {
+      const sn = (l.stage as any)?.name?.toLowerCase() || "";
+      return sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup");
+    });
+  }, [filteredLeads]);
+
+  const forecastByCloser = useMemo(() => {
+    const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
+    forecastLeads.forEach((l) => {
+      const sid = l.closer_staff_id || l.owner_staff_id || "sem-dono";
+      const closerName = (l.closer as any)?.name || (l.owner as any)?.name || "Sem responsável";
+      if (!groups[sid]) groups[sid] = { name: closerName, leads: [], total: 0 };
+      groups[sid].leads.push(l);
+      groups[sid].total += l.opportunity_value || 0;
+    });
+    return Object.entries(groups).sort(([, a], [, b]) => b.total - a.total);
+  }, [forecastLeads]);
+
   const leadsByStage = useMemo(() => {
     const groups: Record<string, LeadWithStage[]> = {};
     filteredLeads.forEach((lead) => {
