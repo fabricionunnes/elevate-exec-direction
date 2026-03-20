@@ -423,6 +423,7 @@ const App = () => (
               <Route path="transcriptions" element={<CRMTranscriptionsPage />} />
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
+              <Route path="office" element={<CRMOfficePage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}
