@@ -408,7 +408,7 @@ export default function CRMHeadComercialPage() {
           const sn = (l.stage as any)?.name?.toLowerCase() || "";
           if (!NEGOTIATION_STAGES.some((ns) => sn.includes(ns))) return;
           const val = l.opportunity_value || 0;
-          const prob = l.probability != null ? l.probability / 100 : 0.5;
+          const prob = l.probability != null && l.probability > 0 ? l.probability / 100 : 0.5;
           pipelineValue += val;
           pipelineCount++;
           if (sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup")) {
