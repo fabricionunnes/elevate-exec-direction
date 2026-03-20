@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { getTotalBusinessDaysInMonth, getBusinessDayNumber } from "@/lib/businessDays";
 import { useNavigate } from "react-router-dom";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -157,6 +158,7 @@ const DashboardMetrics = ({
   const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number; is_main_goal?: boolean }[]>([]);
   const [internalContractRenewals, setInternalContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [internalHealthScores, setInternalHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
+  const [monthlyTargets, setMonthlyTargets] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string }[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculatingHealth, setRecalculatingHealth] = useState(false);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
@@ -207,6 +209,20 @@ const DashboardMetrics = ({
       });
     }
   }, [needsInternalFetch]);
+
+  // Fetch monthly targets whenever dateRange changes
+  useEffect(() => {
+    const periodMonth = dateRange.start.getMonth() + 1;
+    const periodYear = dateRange.start.getFullYear();
+    const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
+    supabase
+      .from("kpi_monthly_targets")
+      .select("kpi_id, company_id, target_value, month_year")
+      .eq("month_year", monthYear)
+      .then(({ data }) => {
+        if (data) setMonthlyTargets(data);
+      });
+  }, [dateRange]);
 
   // Refetch overdue companies when companies list or role changes
   useEffect(() => {
@@ -838,8 +854,13 @@ const DashboardMetrics = ({
     const today = new Date();
     const isCurrentMonth = today.getMonth() + 1 === periodMonth && today.getFullYear() === periodYear;
     const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
-    const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
-    const timeElapsedPercent = currentDay / daysInMonth;
+
+    // Use business days for projection (D-1 logic)
+    const totalBizDays = getTotalBusinessDaysInMonth(periodYear, periodMonth - 1);
+    const elapsedBizDays = isCurrentMonth
+      ? getBusinessDayNumber(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+      : totalBizDays;
+    const timeElapsedPercent = totalBizDays > 0 ? elapsedBizDays / totalBizDays : 0;
 
     // Use all active companies (filteredCompanies already excludes inactive/closed)
     const filteredCompanyIds = new Set(filteredCompanies.map(c => c.id));
@@ -847,6 +868,7 @@ const DashboardMetrics = ({
     // Filter entries for the period
     const monthStart = `${periodYear}-${String(periodMonth).padStart(2, '0')}-01`;
     const monthEnd = `${periodYear}-${String(periodMonth).padStart(2, '0')}-${daysInMonth}`;
+    const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
     
     // Calculate metrics per company
     const companyMetricsMap = new Map<string, { target: number; realized: number; projectionPercent: number; hasEntries: boolean }>();
@@ -868,10 +890,17 @@ const DashboardMetrics = ({
       
       if (companyKpisList.length === 0) return;
 
-      // Calculate monthly target
+      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        if (kpi.periodicity === "daily") {
+        // Check if there's a monthly target override for this KPI
+        const monthlyTarget = monthlyTargets.find(
+          mt => mt.kpi_id === kpi.id && mt.company_id === companyId && mt.month_year === monthYear
+        );
+        
+        if (monthlyTarget) {
+          totalMonthlyTarget += monthlyTarget.target_value;
+        } else if (kpi.periodicity === "daily") {
           totalMonthlyTarget += kpi.target_value * daysInMonth;
         } else if (kpi.periodicity === "weekly") {
           totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
@@ -881,7 +910,6 @@ const DashboardMetrics = ({
       });
 
       // Get entries for this company in the period (only for the selected KPIs)
-      // Note: kpiEntries already comes filtered by dateRange from parent, so we only need to filter by company and KPI
       const companyEntries = kpiEntries.filter(e => 
         e.company_id === companyId &&
         companyKpisList.some(k => k.id === e.kpi_id)
@@ -890,7 +918,7 @@ const DashboardMetrics = ({
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
       const hasEntries = companyEntries.length > 0;
       
-      // Calculate projection
+      // Calculate projection using business days
       const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
         ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100) 
         : 0;
@@ -935,7 +963,7 @@ const DashboardMetrics = ({
     const goalRate = totalWithEntries > 0 ? Math.round((meetingGoal / totalWithEntries) * 100) : 0;
 
     return { totalWithGoals, totalWithEntries, meetingGoal, above70, between50And70, below50, noGoalCount, noEntriesCount, goalRate };
-  }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies]);
+  }, [projects, companyKpis, kpiEntries, dateRange, filteredCompanies, monthlyTargets]);
 
   const handleCardClick = (filterType: string, filterValue: string) => {
     if (activeMetricFilter?.type === filterType && activeMetricFilter?.value === filterValue) {
