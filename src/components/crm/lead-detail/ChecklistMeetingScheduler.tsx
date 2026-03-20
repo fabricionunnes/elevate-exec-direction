@@ -923,15 +923,6 @@ export function ChecklistMeetingScheduler({
         </div>
       )}
 
-      {/* No-show toggle (only for new scheduling) */}
-      {!isRescheduling && (
-        <div className="p-4 border-b border-border">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-muted-foreground">Marcar no-show</span>
-            <Switch checked={markAsNoShow} onCheckedChange={setMarkAsNoShow} />
-          </div>
-        </div>
-      )}
 
       <ScrollArea className="flex-1">
         <div className="p-4 space-y-4">
