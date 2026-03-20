@@ -33,13 +33,158 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
   DropdownMenuItem,
   DropdownMenuSeparator,
-...
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
+import { MeetingNotesDialog } from "@/components/onboarding-tasks/MeetingNotesDialog";
+import { cn } from "@/lib/utils";
+import {
+  Calendar,
+  CalendarDays,
+  Check,
+  ChevronLeft,
+  ChevronRight,
+  Clock,
+  Copy,
+  ExternalLink,
+  FileText,
+  LayoutGrid,
+  List,
+  LogOut,
+  MoreVertical,
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+  Video,
+} from "lucide-react";
+import {
+  addMonths,
+  addWeeks,
+  differenceInMinutes,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  isToday,
+  isTomorrow,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
+  subWeeks,
+} from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { toast } from "sonner";
+
+interface CalendarEvent {
+  id: string;
+  title: string;
+  description?: string;
+  start: string;
+  end: string;
+  meetingLink?: string;
+  calendarLink: string;
+  isOrganizer?: boolean;
+  isAttendee?: boolean;
+}
+
+interface ConnectedStaffMember {
+  id: string;
+  user_id: string;
+  name: string;
+}
+
+type ViewMode = "month" | "week" | "list";
+
+interface EventFormState {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  attendees: string;
+}
+
+const defaultEventForm: EventFormState = {
+  title: "",
+  description: "",
+  date: "",
+  startTime: "09:00",
+  endTime: "10:00",
+  attendees: "",
+};
+
+const GoogleCalendarTab = () => {
+  const [connected, setConnected] = useState(false);
+  const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [refreshing, setRefreshing] = useState(false);
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
+  const [currentDate, setCurrentDate] = useState(new Date());
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [selectedDayForDetail, setSelectedDayForDetail] = useState(new Date());
+  const [showCreateDialog, setShowCreateDialog] = useState(false);
+  const [selectedDate, setSelectedDate] = useState<Date | null>(null);
+  const [newEvent, setNewEvent] = useState<EventFormState>(defaultEventForm);
+  const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
+  const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
+  const [showMeetingNotesDialog, setShowMeetingNotesDialog] = useState(false);
+  const [eventForNotes, setEventForNotes] = useState<CalendarEvent | null>(null);
+  const [connectedStaff, setConnectedStaff] = useState<ConnectedStaffMember[]>([]);
+  const [currentStaff, setCurrentStaff] = useState<ConnectedStaffMember | null>(null);
+  const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
+
+  const isCSOrAdmin = true;
+
+  const checkConnection = async () => {
+    try {
+      const [{ data: connectionData, error: connectionError }, { data: staffData, error: staffError }, { data: authUserData }] = await Promise.all([
+        supabase.functions.invoke("google-calendar?action=check-connection", { body: {} }),
+        supabase.functions.invoke("google-calendar?action=list-connected-staff", { body: {} }),
+        supabase.auth.getUser(),
+      ]);
+
+      if (connectionError) throw connectionError;
+      if (staffError) throw staffError;
+
+      const staff = (staffData?.staff || staffData || []) as ConnectedStaffMember[];
+      const currentUserId = authUserData.user?.id ?? null;
+      const ownStaff = staff.find((member) => member.user_id === currentUserId) ?? null;
+
+      setConnected(connectionData?.connected ?? false);
+      setConnectedStaff(staff);
+      setCurrentStaff(ownStaff);
+    } catch (error) {
+      console.error("Error checking connection:", error);
+      setConnected(false);
+      setConnectedStaff([]);
+      setCurrentStaff(null);
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    void checkConnection();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && connected) {
+      void fetchEvents();
+    }
+  }, [loading, connected, selectedStaffUserId]);
+
   const handleGoogleLogin = async () => {
     try {
       const { error } = await lovable.auth.signInWithOAuth("google", {
