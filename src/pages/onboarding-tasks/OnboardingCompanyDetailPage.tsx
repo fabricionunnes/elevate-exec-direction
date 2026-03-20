@@ -54,6 +54,7 @@ import { CompanyFinancialPanel } from "@/components/company-financial/CompanyFin
 import { AddressFields } from "@/components/ui/address-fields";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 import { FINANCIAL_PERMISSION_KEYS } from "@/types/staffPermissions";
+import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
 
 interface Staff {
   id: string;
