@@ -68,6 +68,8 @@ const AVAILABLE_VARIABLES = [
   { key: '{{email}}', label: 'E-mail' },
   { key: '{{telefone}}', label: 'Telefone' },
   { key: '{{responsavel}}', label: 'Responsável' },
+  { key: '{{link_agendamento}}', label: 'Link do Agendamento' },
+  { key: '{{data_hora_agendamento}}', label: 'Data/Hora Agendamento' },
 ];
 
 export function StageChecklistDialog({ 
