@@ -240,6 +240,7 @@ export const CRMPipelinePage = () => {
   useEffect(() => {
     loadPipelines();
     loadFilterOptions();
+    loadSummaryCards();
   }, []);
 
   useEffect(() => {
