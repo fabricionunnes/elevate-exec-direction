@@ -352,6 +352,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     // Forecast
     const forecastTotal = forecastData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
 
+    // Em Negociação
+    const negotiationTotal = negotiationData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
+
     const metrics = {
       metaReceita,
       receita: totalRevenue,
