@@ -49,7 +49,7 @@ interface StageData {
 }
 
 export const CRMDashboardPage = () => {
-  const { staffRole, isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const { staffRole, isAdmin, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
   const [period, setPeriod] = useState("month");
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [selectedOwner, setSelectedOwner] = useState<string>("all");
@@ -135,6 +135,11 @@ export const CRMDashboardPage = () => {
           leadsQuery = leadsQuery.eq("owner_staff_id", selectedOwner);
         }
 
+        // Closers/SDRs only see their own leads
+        if (!isAdmin && staffId) {
+          leadsQuery = leadsQuery.eq("owner_staff_id", staffId);
+        }
+
         const { data: leadsData } = await leadsQuery;
 
         const parseNumeric = (val: any): number => {
@@ -143,11 +148,18 @@ export const CRMDashboardPage = () => {
           return 0;
         };
 
-        const { data: activitiesData } = await supabase
+        let activitiesQuery = supabase
           .from("crm_activities")
           .select("*, lead:crm_leads!inner(id, pipeline_id, owner_staff_id)")
           .gte("created_at", start.toISOString())
           .lte("created_at", end.toISOString());
+
+        // Closers/SDRs only see their own activities
+        if (!isAdmin && staffId) {
+          activitiesQuery = activitiesQuery.eq("responsible_staff_id", staffId);
+        }
+
+        const { data: activitiesData } = await activitiesQuery;
 
         let filteredActivities = activitiesData || [];
         if (selectedPipeline !== "all") {
