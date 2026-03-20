@@ -414,13 +414,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     // Forecast records (filtered)
     const forecastRecords: ForecastRecord[] = forecastData.map(f => ({
       id: f.id,
-      day: f.expected_close_date ? getDate(new Date(f.expected_close_date)) : 0,
-      closer: f.closer?.name || "-",
-      closerId: f.closer_staff_id || "",
-      client: f.lead?.name || "-",
-      status: f.status || "open",
-      product: f.product_name || "-",
-      value: f.forecast_value || 0,
+      day: 0,
+      closer: "-",
+      closerId: f.owner_staff_id || "",
+      client: f.name || f.company || "-",
+      status: "open",
+      product: "-",
+      value: f.opportunity_value || 0,
     }));
 
     // Daily revenue accumulation (always per closer for chart)
