@@ -154,6 +154,7 @@ export const CRMLeadDetailPage = () => {
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
@@ -913,7 +914,7 @@ export const CRMLeadDetailPage = () => {
               </button>
             </Badge>
           ))}
-          <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+          <Popover open={tagPopoverOpen} onOpenChange={(open) => { setTagPopoverOpen(open); if (!open) setTagSearch(""); }}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground">
                 <Plus className="h-3 w-3" />
@@ -921,9 +922,16 @@ export const CRMLeadDetailPage = () => {
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="start">
               <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">Adicionar etiqueta</p>
+              <Input
+                placeholder="Buscar etiqueta..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                className="h-7 text-xs mb-2"
+              />
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {allTags
                   .filter(tag => !lead.tags?.some(t => t.tag.id === tag.id))
+                  .filter(tag => tag.name.toLowerCase().includes(tagSearch.toLowerCase()))
                   .map(tag => (
                     <button
                       key={tag.id}
