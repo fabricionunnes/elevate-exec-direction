@@ -641,9 +641,12 @@ export default function CRMHeadComercialPage() {
 
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-full grid grid-cols-4">
           <TabsTrigger value="overview" className="gap-1">
             <Users className="h-4 w-4" /> Performance
+          </TabsTrigger>
+          <TabsTrigger value="forecast" className="gap-1">
+            <Flame className="h-4 w-4" /> Forecast
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="gap-1">
             <BarChart3 className="h-4 w-4" /> Pipeline
