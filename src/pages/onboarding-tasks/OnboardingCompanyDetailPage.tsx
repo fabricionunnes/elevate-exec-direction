@@ -1225,6 +1225,13 @@ const OnboardingCompanyDetailPage = () => {
                   </div>
                 </CardContent>
               </Card>
+
+              {/* Ads Briefing - per project */}
+              {projects.length > 0 && (
+                <div className="mt-6">
+                  <AdsBriefingSection projectId={projects[0].id} />
+                </div>
+              )}
             </TabsContent>
 
             {/* Points Tab */}
