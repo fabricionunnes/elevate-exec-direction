@@ -598,7 +598,7 @@ export default function CRMHeadComercialPage() {
           iconColor="text-orange-600"
           label="Forecast"
           value={formatCurrency(totals.forecast)}
-          sub={`Pipeline: ${formatCompact(totals.pipeline)}`}
+          sub={`${forecastLeads.length} leads | Pipeline: ${formatCompact(totals.pipeline)}`}
         />
         <KPICard
           icon={<CalendarCheck className="h-5 w-5" />}
