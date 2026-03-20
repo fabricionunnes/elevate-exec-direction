@@ -420,7 +420,6 @@ export default function CRMHeadComercialPage() {
       toast.success("Data de fechamento salva");
     } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
   };
-  };
 
   // ── Build staff performance table ──
   const staffPerformance = useMemo((): StaffPerformance[] => {
