@@ -268,6 +268,17 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady
         }
 
         setCommissionData(results);
+        if (onSummaryReady && results.length > 0) {
+          const first = results[0];
+          onSummaryReady({
+            total: first.total,
+            commission: first.commission,
+            fixedSalary: first.fixedSalary,
+            achievedPercent: first.achievedPercent,
+            tierLabel: first.tierLabel,
+            staffName: first.staffName,
+          });
+        }
       } catch (error) {
         console.error("Error loading commission data:", error);
       } finally {
