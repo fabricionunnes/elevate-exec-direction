@@ -1139,7 +1139,7 @@ const OnboardingTasksPage = () => {
       hasEntries: hasEntriesIds,
       realizedPercent: realizedPercentByCompany
     };
-  }, [dateRange, companies, companyKpis, kpiEntries]);
+  }, [dateRange, companies, companyKpis, kpiEntries, monthlyTargetsForProjection]);
 
   // Badge projection should match the company KPI dashboard's "Projeção do Mês",
   // which is always based on the current month (not the MonthYearPicker range).
