@@ -25,7 +25,6 @@ import {
   DialogHeader,
   DialogTitle,
 } from "@/components/ui/dialog";
-import { Label } from "@/components/ui/label";
 import { Loader2, Save, Calendar, TrendingUp, Target, Users, Plus, Trash2, Settings2 } from "lucide-react";
 import { toast } from "sonner";
 
@@ -67,7 +66,8 @@ interface CommissionTier {
   sort_order: number;
 }
 
-const CRM_ROLES = ["closer", "sdr", "social_setter", "bdr", "head_comercial"];
+const CLOSER_ROLES = ["closer", "head_comercial"];
+const SDR_ROLES = ["sdr", "social_setter", "bdr"];
 
 const MONTHS = [
   { value: 1, label: "Janeiro" },
@@ -125,7 +125,10 @@ export const CRMGoalValuesManager = () => {
   const [goalValues, setGoalValues] = useState<Map<string, GoalValue>>(new Map());
   const [selectedMonth, setSelectedMonth] = useState(new Date().getMonth() + 1);
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
-  const [selectedGoalType, setSelectedGoalType] = useState<string>("");
+
+  // The OTE goal type for each category
+  const [closerOteGoalType, setCloserOteGoalType] = useState<GoalType | null>(null);
+  const [sdrOteGoalType, setSdrOteGoalType] = useState<GoalType | null>(null);
 
   // Commission tiers dialog
   const [tiersDialogOpen, setTiersDialogOpen] = useState(false);
@@ -133,20 +136,29 @@ export const CRMGoalValuesManager = () => {
   const [editingTiers, setEditingTiers] = useState<CommissionTier[]>([]);
   const [tiersLoading, setTiersLoading] = useState(false);
   const [tiersSaving, setTiersSaving] = useState(false);
-  // Cache tiers count per goal_value_id for badge display
   const [tiersCountMap, setTiersCountMap] = useState<Map<string, number>>(new Map());
 
   const years = Array.from({ length: 5 }, (_, i) => new Date().getFullYear() - 2 + i);
+
+  // Get the goal type for a staff member based on role
+  const getGoalTypeForStaff = (staff: StaffMember): GoalType | null => {
+    if (CLOSER_ROLES.includes(staff.role)) return closerOteGoalType;
+    if (SDR_ROLES.includes(staff.role)) return sdrOteGoalType;
+    return closerOteGoalType; // fallback
+  };
+
+  // Build a unique key for goalValues map: staff_id
+  const getGoalValueKey = (staffId: string) => staffId;
 
   useEffect(() => {
     loadInitialData();
   }, []);
 
   useEffect(() => {
-    if (selectedGoalType) {
+    if (closerOteGoalType || sdrOteGoalType) {
       loadGoalValues();
     }
-  }, [selectedMonth, selectedYear, selectedGoalType]);
+  }, [selectedMonth, selectedYear, closerOteGoalType, sdrOteGoalType, staffMembers]);
 
   const loadInitialData = async () => {
     setLoading(true);
@@ -159,6 +171,12 @@ export const CRMGoalValuesManager = () => {
 
       if (typesError) throw typesError;
       setGoalTypes(typesData || []);
+
+      // Find OTE goal types per category
+      const closerOte = (typesData || []).find(t => t.category === "closer" && t.has_ote);
+      const sdrOte = (typesData || []).find(t => t.category === "sdr" && t.has_ote);
+      setCloserOteGoalType(closerOte || null);
+      setSdrOteGoalType(sdrOte || null);
 
       const { data: staffWithAccess } = await supabase
         .from("staff_menu_permissions")
@@ -176,13 +194,11 @@ export const CRMGoalValuesManager = () => {
       if (staffError) throw staffError;
 
       const filteredStaff = (staffData || []).filter(
-        (s) => s.role === "master" || staffIdsWithCRMAccess.has(s.id)
+        (s) =>
+          (s.role === "master" || staffIdsWithCRMAccess.has(s.id)) &&
+          [...CLOSER_ROLES, ...SDR_ROLES].includes(s.role)
       );
       setStaffMembers(filteredStaff);
-
-      if (typesData && typesData.length > 0) {
-        setSelectedGoalType(typesData[0].id);
-      }
     } catch (error) {
       console.error("Error loading data:", error);
       toast.error("Erro ao carregar dados");
@@ -193,10 +209,16 @@ export const CRMGoalValuesManager = () => {
 
   const loadGoalValues = async () => {
     try {
+      // Get goal type IDs to query
+      const goalTypeIds: string[] = [];
+      if (closerOteGoalType) goalTypeIds.push(closerOteGoalType.id);
+      if (sdrOteGoalType) goalTypeIds.push(sdrOteGoalType.id);
+      if (goalTypeIds.length === 0) return;
+
       const { data, error } = await supabase
         .from("crm_goal_values")
         .select("*")
-        .eq("goal_type_id", selectedGoalType)
+        .in("goal_type_id", goalTypeIds)
         .eq("month", selectedMonth)
         .eq("year", selectedYear);
 
@@ -209,24 +231,28 @@ export const CRMGoalValuesManager = () => {
         if (v.id) goalValueIds.push(v.id);
       });
 
+      // Fill defaults for staff without values
       staffMembers.forEach((staff) => {
         if (!valuesMap.has(staff.id)) {
-          valuesMap.set(staff.id, {
-            staff_id: staff.id,
-            goal_type_id: selectedGoalType,
-            meta_value: 0,
-            super_meta_value: null,
-            hiper_meta_value: null,
-            ote_base: 0,
-            ote_variable: 0,
-            ote_accelerator: null,
-          });
+          const goalType = getGoalTypeForStaff(staff);
+          if (goalType) {
+            valuesMap.set(staff.id, {
+              staff_id: staff.id,
+              goal_type_id: goalType.id,
+              meta_value: 0,
+              super_meta_value: null,
+              hiper_meta_value: null,
+              ote_base: 0,
+              ote_variable: 0,
+              ote_accelerator: null,
+            });
+          }
         }
       });
 
       setGoalValues(valuesMap);
 
-      // Load tiers count for all goal values
+      // Load tiers count
       if (goalValueIds.length > 0) {
         const { data: tiersData } = await supabase
           .from("crm_goal_commission_tiers")
@@ -261,10 +287,10 @@ export const CRMGoalValuesManager = () => {
     setSaving(true);
     try {
       const valuesToUpsert = Array.from(goalValues.values())
-        .filter(v => v.meta_value > 0 || v.super_meta_value || v.hiper_meta_value || v.ote_base > 0)
+        .filter(v => v.meta_value > 0 || v.ote_base > 0)
         .map((v) => ({
           staff_id: v.staff_id,
-          goal_type_id: selectedGoalType,
+          goal_type_id: v.goal_type_id,
           month: selectedMonth,
           year: selectedYear,
           meta_value: v.meta_value,
@@ -305,7 +331,6 @@ export const CRMGoalValuesManager = () => {
     const goalValue = goalValues.get(staff.id);
 
     if (!goalValue?.id) {
-      // No saved goal value yet — show default tiers
       setEditingTiers(DEFAULT_TIERS.map(t => ({ ...t })));
       setTiersLoading(false);
       return;
@@ -362,16 +387,15 @@ export const CRMGoalValuesManager = () => {
     setTiersSaving(true);
 
     try {
-      // First ensure goal value exists
       let goalValue = goalValues.get(tiersStaff.id);
+      const goalType = getGoalTypeForStaff(tiersStaff);
 
-      if (!goalValue?.id) {
-        // Create the goal value record first
+      if (!goalValue?.id && goalType) {
         const { data: created, error: createErr } = await supabase
           .from("crm_goal_values")
           .upsert({
             staff_id: tiersStaff.id,
-            goal_type_id: selectedGoalType,
+            goal_type_id: goalType.id,
             month: selectedMonth,
             year: selectedYear,
             meta_value: goalValue?.meta_value || 0,
@@ -390,13 +414,11 @@ export const CRMGoalValuesManager = () => {
 
       const goalValueId = goalValue!.id!;
 
-      // Delete existing tiers
       await supabase
         .from("crm_goal_commission_tiers")
         .delete()
         .eq("goal_value_id", goalValueId);
 
-      // Insert new tiers
       if (editingTiers.length > 0) {
         const tiersToInsert = editingTiers.map((t, i) => ({
           goal_value_id: goalValueId,
@@ -424,24 +446,22 @@ export const CRMGoalValuesManager = () => {
     }
   };
 
-  const selectedGoalTypeData = goalTypes.find(g => g.id === selectedGoalType);
+  const getMetricLabel = (staff: StaffMember): string => {
+    const goalType = getGoalTypeForStaff(staff);
+    return goalType?.name || "—";
+  };
 
-  const getInputPrefix = (unitType: string) => {
-    if (unitType === "currency") return "R$";
-    if (unitType === "percentage") return "%";
+  const getInputPrefix = (staff: StaffMember) => {
+    const goalType = getGoalTypeForStaff(staff);
+    if (!goalType) return null;
+    if (goalType.unit_type === "currency") return "R$";
+    if (goalType.unit_type === "percentage") return "%";
     return null;
   };
 
-  const filteredStaff = staffMembers.filter(staff => {
-    if (!selectedGoalTypeData?.category) return true;
-    if (selectedGoalTypeData.category === "closer") {
-      return ["closer", "head_comercial"].includes(staff.role);
-    }
-    if (selectedGoalTypeData.category === "sdr") {
-      return ["sdr", "social_setter", "bdr"].includes(staff.role);
-    }
-    return true;
-  });
+  // Group staff: closers first, then SDRs
+  const closers = staffMembers.filter(s => CLOSER_ROLES.includes(s.role));
+  const sdrs = staffMembers.filter(s => SDR_ROLES.includes(s.role));
 
   if (loading) {
     return (
@@ -451,6 +471,85 @@ export const CRMGoalValuesManager = () => {
     );
   }
 
+  if (!closerOteGoalType && !sdrOteGoalType) {
+    return (
+      <Card>
+        <CardContent className="py-12 text-center text-muted-foreground">
+          <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
+          <p>Nenhum tipo de meta com comissão configurado. Ative o OTE em algum tipo de meta.</p>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  const renderStaffRow = (staff: StaffMember) => {
+    const value = goalValues.get(staff.id);
+    const prefix = getInputPrefix(staff);
+    const goalType = getGoalTypeForStaff(staff);
+    const tiersCount = value?.id ? (tiersCountMap.get(value.id) || 0) : 0;
+
+    if (!goalType) return null;
+
+    return (
+      <TableRow key={staff.id}>
+        <TableCell className="font-medium">{staff.name}</TableCell>
+        <TableCell>{getRoleBadge(staff.role)}</TableCell>
+        <TableCell>
+          <Badge variant="outline" className="text-xs font-normal">
+            {goalType.name}
+          </Badge>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end gap-1">
+            {prefix && (
+              <span className="text-muted-foreground text-sm">{prefix}</span>
+            )}
+            <Input
+              type="number"
+              value={value?.meta_value || 0}
+              onChange={(e) =>
+                updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
+              }
+              className="w-24 text-right"
+            />
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-end gap-1">
+            <span className="text-muted-foreground text-sm">R$</span>
+            <Input
+              type="number"
+              value={value?.ote_base || 0}
+              onChange={(e) =>
+                updateValue(staff.id, "ote_base", parseFloat(e.target.value) || 0)
+              }
+              className="w-24 text-right"
+              placeholder="Fixo"
+            />
+          </div>
+        </TableCell>
+        <TableCell>
+          <div className="flex items-center justify-center">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => openTiersDialog(staff)}
+              className="gap-1.5"
+            >
+              <Settings2 className="h-3.5 w-3.5" />
+              Faixas
+              {tiersCount > 0 && (
+                <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">
+                  {tiersCount}
+                </Badge>
+              )}
+            </Button>
+          </div>
+        </TableCell>
+      </TableRow>
+    );
+  };
+
   return (
     <>
       <Card>
@@ -459,13 +558,13 @@ export const CRMGoalValuesManager = () => {
             <div>
               <CardTitle className="flex items-center gap-2">
                 <TrendingUp className="h-5 w-5" />
-                Definir Metas Mensais
+                Metas e Comissões
               </CardTitle>
               <CardDescription>
-                Atribua valores de metas e faixas de comissão para cada colaborador
+                Configure metas, salário fixo e faixas de comissão para Closers e SDRs
               </CardDescription>
             </div>
-            <Button onClick={handleSave} disabled={saving || !selectedGoalType}>
+            <Button onClick={handleSave} disabled={saving}>
               {saving ? (
                 <Loader2 className="h-4 w-4 mr-2 animate-spin" />
               ) : (
@@ -476,23 +575,8 @@ export const CRMGoalValuesManager = () => {
           </div>
         </CardHeader>
         <CardContent className="space-y-4">
-          {/* Filters */}
+          {/* Period selector */}
           <div className="flex items-center gap-4 flex-wrap">
-            <div className="flex items-center gap-2">
-              <Target className="h-4 w-4 text-muted-foreground" />
-              <Select value={selectedGoalType} onValueChange={setSelectedGoalType}>
-                <SelectTrigger className="w-[200px]">
-                  <SelectValue placeholder="Tipo de meta" />
-                </SelectTrigger>
-                <SelectContent>
-                  {goalTypes.map((type) => (
-                    <SelectItem key={type.id} value={type.id}>
-                      {type.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-            </div>
             <div className="flex items-center gap-2">
               <Calendar className="h-4 w-4 text-muted-foreground" />
               <Select
@@ -526,145 +610,61 @@ export const CRMGoalValuesManager = () => {
                 </SelectContent>
               </Select>
             </div>
+
+            <div className="flex items-center gap-2 text-xs text-muted-foreground ml-auto">
+              {closerOteGoalType && (
+                <span>Closer: <strong>{closerOteGoalType.name}</strong></span>
+              )}
+              {closerOteGoalType && sdrOteGoalType && <span>•</span>}
+              {sdrOteGoalType && (
+                <span>SDR: <strong>{sdrOteGoalType.name}</strong></span>
+              )}
+            </div>
           </div>
 
-          {/* Goal Values Table */}
-          {selectedGoalType && selectedGoalTypeData && (
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[180px]">Colaborador</TableHead>
-                    <TableHead>Cargo</TableHead>
-                    <TableHead className="text-right">Meta</TableHead>
-                    {selectedGoalTypeData.has_super_meta && (
-                      <TableHead className="text-right">Super Meta</TableHead>
-                    )}
-                    {selectedGoalTypeData.has_hiper_meta && (
-                      <TableHead className="text-right">Hiper Meta</TableHead>
-                    )}
-                    {selectedGoalTypeData.has_ote && (
-                      <>
-                        <TableHead className="text-right">Fixo (R$)</TableHead>
-                        <TableHead className="text-center">Comissão</TableHead>
-                      </>
-                    )}
+          {/* Unified Table */}
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow>
+                  <TableHead className="w-[180px]">Colaborador</TableHead>
+                  <TableHead>Cargo</TableHead>
+                  <TableHead>Métrica</TableHead>
+                  <TableHead className="text-right">Meta</TableHead>
+                  <TableHead className="text-right">Fixo (R$)</TableHead>
+                  <TableHead className="text-center">Comissão</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {closers.length > 0 && (
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableCell colSpan={6} className="py-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        Closers
+                      </span>
+                    </TableCell>
                   </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {filteredStaff.map((staff) => {
-                    const value = goalValues.get(staff.id);
-                    const prefix = getInputPrefix(selectedGoalTypeData.unit_type);
-                    const tiersCount = value?.id ? (tiersCountMap.get(value.id) || 0) : 0;
+                )}
+                {closers.map(renderStaffRow)}
 
-                    return (
-                      <TableRow key={staff.id}>
-                        <TableCell className="font-medium">{staff.name}</TableCell>
-                        <TableCell>{getRoleBadge(staff.role)}</TableCell>
-                        <TableCell>
-                          <div className="flex items-center justify-end gap-1">
-                            {prefix && (
-                              <span className="text-muted-foreground text-sm">{prefix}</span>
-                            )}
-                            <Input
-                              type="number"
-                              value={value?.meta_value || 0}
-                              onChange={(e) =>
-                                updateValue(staff.id, "meta_value", parseFloat(e.target.value) || 0)
-                              }
-                              className="w-24 text-right"
-                            />
-                          </div>
-                        </TableCell>
-                        {selectedGoalTypeData.has_super_meta && (
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
-                              {prefix && (
-                                <span className="text-muted-foreground text-sm">{prefix}</span>
-                              )}
-                              <Input
-                                type="number"
-                                value={value?.super_meta_value || 0}
-                                onChange={(e) =>
-                                  updateValue(staff.id, "super_meta_value", parseFloat(e.target.value) || 0)
-                                }
-                                className="w-24 text-right"
-                              />
-                            </div>
-                          </TableCell>
-                        )}
-                        {selectedGoalTypeData.has_hiper_meta && (
-                          <TableCell>
-                            <div className="flex items-center justify-end gap-1">
-                              {prefix && (
-                                <span className="text-muted-foreground text-sm">{prefix}</span>
-                              )}
-                              <Input
-                                type="number"
-                                value={value?.hiper_meta_value || 0}
-                                onChange={(e) =>
-                                  updateValue(staff.id, "hiper_meta_value", parseFloat(e.target.value) || 0)
-                                }
-                                className="w-24 text-right"
-                              />
-                            </div>
-                          </TableCell>
-                        )}
-                        {selectedGoalTypeData.has_ote && (
-                          <>
-                            <TableCell>
-                              <div className="flex items-center justify-end gap-1">
-                                <span className="text-muted-foreground text-sm">R$</span>
-                                <Input
-                                  type="number"
-                                  value={value?.ote_base || 0}
-                                  onChange={(e) =>
-                                    updateValue(staff.id, "ote_base", parseFloat(e.target.value) || 0)
-                                  }
-                                  className="w-24 text-right"
-                                  placeholder="Fixo"
-                                />
-                              </div>
-                            </TableCell>
-                            <TableCell>
-                              <div className="flex items-center justify-center">
-                                <Button
-                                  variant="outline"
-                                  size="sm"
-                                  onClick={() => openTiersDialog(staff)}
-                                  className="gap-1.5"
-                                >
-                                  <Settings2 className="h-3.5 w-3.5" />
-                                  Faixas
-                                  {tiersCount > 0 && (
-                                    <Badge variant="secondary" className="ml-1 text-xs h-5 px-1.5">
-                                      {tiersCount}
-                                    </Badge>
-                                  )}
-                                </Button>
-                              </div>
-                            </TableCell>
-                          </>
-                        )}
-                      </TableRow>
-                    );
-                  })}
-                </TableBody>
-              </Table>
-            </div>
-          )}
+                {sdrs.length > 0 && (
+                  <TableRow className="bg-muted/30 hover:bg-muted/30">
+                    <TableCell colSpan={6} className="py-2">
+                      <span className="text-xs font-semibold text-muted-foreground uppercase tracking-wide">
+                        SDRs
+                      </span>
+                    </TableCell>
+                  </TableRow>
+                )}
+                {sdrs.map(renderStaffRow)}
+              </TableBody>
+            </Table>
+          </div>
 
-          {filteredStaff.length === 0 && (
+          {staffMembers.length === 0 && (
             <div className="text-center py-8 text-muted-foreground">
               <Users className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum colaborador encontrado para esta categoria de meta</p>
-            </div>
-          )}
-
-          {goalTypes.length === 0 && (
-            <div className="text-center py-8 text-muted-foreground">
-              <Target className="h-12 w-12 mx-auto mb-4 opacity-50" />
-              <p>Nenhum tipo de meta cadastrado. Crie tipos de meta primeiro.</p>
+              <p>Nenhum colaborador comercial encontrado</p>
             </div>
           )}
         </CardContent>
