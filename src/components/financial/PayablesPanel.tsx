@@ -39,7 +39,8 @@ import {
 } from "@/components/ui/table";
 import { Checkbox } from "@/components/ui/checkbox";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
+import { format, parseISO, startOfDay, endOfDay } from "date-fns";
+import { PeriodNavigator, getDateRangeForPeriod } from "./PeriodNavigator";
 import {
   Plus,
   Search,
@@ -113,7 +114,8 @@ export function PayablesPanel() {
   const [suppliers, setSuppliers] = useState<Supplier[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
   const [selectedPayable, setSelectedPayable] = useState<Payable | null>(null);
@@ -490,27 +492,7 @@ export function PayablesPanel() {
     }
   };
 
-  const getDateRangeFromPeriod = (period: string): { start: Date | null; end: Date | null } => {
-    const now = new Date();
-    switch (period) {
-      case "today":
-        return { start: startOfDay(now), end: endOfDay(now) };
-      case "this_week":
-        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
-      case "this_month":
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "this_year":
-        return { start: startOfYear(now), end: endOfYear(now) };
-      case "last_30_days":
-        return { start: subDays(now, 30), end: now };
-      case "last_12_months":
-        return { start: subMonths(now, 12), end: now };
-      case "all":
-        return { start: null, end: null };
-      default:
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-    }
-  };
+  // Using PeriodNavigator's getDateRangeForPeriod instead of local function
 
   const filteredPayables = payables.filter((p) => {
     const matchesSearch = 
@@ -520,7 +502,7 @@ export function PayablesPanel() {
       (statusFilter === "overdue" && p.status === "partial" && p.due_date < format(new Date(), "yyyy-MM-dd"));
     
     // Period filter
-    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
     let matchesPeriod = true;
     if (start && end) {
       const dueDate = parseISO(p.due_date);
@@ -835,21 +817,12 @@ export function PayablesPanel() {
                 className="pl-10"
               />
             </div>
-            <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(0); }}>
-              <SelectTrigger className="w-[200px]">
-                <CalendarDays className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="this_week">Esta semana</SelectItem>
-                <SelectItem value="this_month">Este mês</SelectItem>
-                <SelectItem value="this_year">Este ano</SelectItem>
-                <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
-                <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                <SelectItem value="all">Todo o período</SelectItem>
-              </SelectContent>
-            </Select>
+            <PeriodNavigator
+              period={periodFilter}
+              offset={periodOffset}
+              onPeriodChange={(v) => { setPeriodFilter(v); setCurrentPage(0); }}
+              onOffsetChange={(o) => { setPeriodOffset(o); setCurrentPage(0); }}
+            />
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />

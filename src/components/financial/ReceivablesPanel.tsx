@@ -28,7 +28,8 @@ import {
 } from "@/components/ui/table";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
-import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths } from "date-fns";
+import { format, parseISO, isAfter, isBefore, startOfDay, endOfDay } from "date-fns";
+import { PeriodNavigator, getDateRangeForPeriod } from "./PeriodNavigator";
 import { ptBR } from "date-fns/locale";
 import {
   Plus,
@@ -100,7 +101,8 @@ export function ReceivablesPanel() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
@@ -448,27 +450,7 @@ export function ReceivablesPanel() {
 
   const minDate = "2025-01";
   
-  const getDateRangeFromPeriod = (period: string): { start: Date | null; end: Date | null } => {
-    const now = new Date();
-    switch (period) {
-      case "today":
-        return { start: startOfDay(now), end: endOfDay(now) };
-      case "this_week":
-        return { start: startOfWeek(now, { weekStartsOn: 1 }), end: endOfWeek(now, { weekStartsOn: 1 }) };
-      case "this_month":
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-      case "this_year":
-        return { start: startOfYear(now), end: endOfYear(now) };
-      case "last_30_days":
-        return { start: subDays(now, 30), end: now };
-      case "last_12_months":
-        return { start: subMonths(now, 12), end: now };
-      case "all":
-        return { start: null, end: null };
-      default:
-        return { start: startOfMonth(now), end: endOfMonth(now) };
-    }
-  };
+  // Using PeriodNavigator's getDateRangeForPeriod instead of local function
 
   const filteredReceivables = receivables.filter((r) => {
     // Only show recurring receivables (from clients without end date and monthly payment)
@@ -484,7 +466,7 @@ export function ReceivablesPanel() {
     const matchesStatus = statusFilter === "all" || r.status === statusFilter;
     
     // Period filter
-    const { start, end } = getDateRangeFromPeriod(periodFilter);
+    const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
     let matchesPeriod = true;
     if (start && end) {
       const dueDate = parseISO(r.due_date);
@@ -755,21 +737,12 @@ export function ReceivablesPanel() {
                 className="pl-10"
               />
             </div>
-            <Select value={periodFilter} onValueChange={setPeriodFilter}>
-              <SelectTrigger className="w-[200px]">
-                <CalendarDays className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="this_week">Esta semana</SelectItem>
-                <SelectItem value="this_month">Este mês</SelectItem>
-                <SelectItem value="this_year">Este ano</SelectItem>
-                <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
-                <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                <SelectItem value="all">Todo o período</SelectItem>
-              </SelectContent>
-            </Select>
+            <PeriodNavigator
+              period={periodFilter}
+              offset={periodOffset}
+              onPeriodChange={setPeriodFilter}
+              onOffsetChange={setPeriodOffset}
+            />
             <Select value={statusFilter} onValueChange={setStatusFilter}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />

@@ -11,6 +11,7 @@ import {
 } from "@/components/ui/table";
 import { supabase } from "@/integrations/supabase/client";
 import { format, parseISO, startOfMonth, endOfMonth, startOfYear, endOfYear, subDays, subMonths, startOfWeek, endOfWeek, startOfDay, endOfDay } from "date-fns";
+import { PeriodNavigator, getDateRangeForPeriod, type PeriodType } from "./PeriodNavigator";
 import { ptBR } from "date-fns/locale";
 import {
   Loader2, TrendingUp, TrendingDown, Search, FileSpreadsheet,
@@ -46,7 +47,8 @@ export function GeneralStatementPanel() {
   const [costCenterFilter, setCostCenterFilter] = useState("all");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState<PeriodType | "custom">("this_month");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [dateFrom, setDateFrom] = useState(() => format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(endOfMonth(new Date()), "yyyy-MM-dd"));
 
@@ -62,42 +64,19 @@ export function GeneralStatementPanel() {
   }, []);
 
   useEffect(() => {
-    // Auto-set dates when period changes
-    const now = new Date();
-    switch (periodFilter) {
-      case "today":
-        setDateFrom(format(startOfDay(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfDay(now), "yyyy-MM-dd"));
-        break;
-      case "this_week":
-        setDateFrom(format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
-        setDateTo(format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
-        break;
-      case "this_month":
-        setDateFrom(format(startOfMonth(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfMonth(now), "yyyy-MM-dd"));
-        break;
-      case "this_year":
-        setDateFrom(format(startOfYear(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfYear(now), "yyyy-MM-dd"));
-        break;
-      case "last_30_days":
-        setDateFrom(format(subDays(now, 30), "yyyy-MM-dd"));
-        setDateTo(format(now, "yyyy-MM-dd"));
-        break;
-      case "last_12_months":
-        setDateFrom(format(subMonths(now, 12), "yyyy-MM-dd"));
-        setDateTo(format(now, "yyyy-MM-dd"));
-        break;
-      case "custom":
-        // keep current custom dates
-        break;
-      case "all":
-        setDateFrom("2020-01-01");
-        setDateTo("2030-12-31");
-        break;
+    // Auto-set dates when period or offset changes
+    if (periodFilter === "custom") return; // keep current custom dates
+    if (periodFilter === "all") {
+      setDateFrom("2020-01-01");
+      setDateTo("2030-12-31");
+      return;
     }
-  }, [periodFilter]);
+    const { start, end } = getDateRangeForPeriod(periodFilter as PeriodType, periodOffset);
+    if (start && end) {
+      setDateFrom(format(start, "yyyy-MM-dd"));
+      setDateTo(format(end, "yyyy-MM-dd"));
+    }
+  }, [periodFilter, periodOffset]);
 
   useEffect(() => {
     loadData();
@@ -265,23 +244,32 @@ export function GeneralStatementPanel() {
       <Card>
         <CardContent className="pt-4 pb-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 min-w-[160px]">
+            <div className="min-w-[160px]">
               <label className="text-xs text-muted-foreground mb-1 block">Período</label>
-              <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setPage(0); }}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="this_week">Esta semana</SelectItem>
-                  <SelectItem value="this_month">Este mês</SelectItem>
-                  <SelectItem value="this_year">Este ano</SelectItem>
-                  <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
-                  <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                  <SelectItem value="all">Todo o período</SelectItem>
-                  <SelectItem value="custom">Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
+              {periodFilter === "custom" ? (
+                <Select value="custom" onValueChange={(v) => { setPeriodFilter(v as PeriodType | "custom"); setPeriodOffset(0); setPage(0); }}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Hoje</SelectItem>
+                    <SelectItem value="this_week">Esta semana</SelectItem>
+                    <SelectItem value="this_month">Este mês</SelectItem>
+                    <SelectItem value="this_year">Este ano</SelectItem>
+                    <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
+                    <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                    <SelectItem value="all">Todo o período</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <PeriodNavigator
+                  period={periodFilter as PeriodType}
+                  offset={periodOffset}
+                  onPeriodChange={(v) => { setPeriodFilter(v); setPage(0); }}
+                  onOffsetChange={(o) => { setPeriodOffset(o); setPage(0); }}
+                />
+              )}
             </div>
 
             {periodFilter === "custom" && (
