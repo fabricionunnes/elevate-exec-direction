@@ -34,7 +34,7 @@ export const CRMIndicatorsPage = () => {
                 <ChevronDown className={`h-5 w-5 text-muted-foreground transition-transform duration-200 ${commissionOpen ? "rotate-180" : ""}`} />
               </div>
             </CollapsibleTrigger>
-            <CollapsibleContent className="mt-2 animate-in slide-in-from-top-2 duration-200">
+            <CollapsibleContent className="mt-2">
               <CRMCommissionCard staffId={staffId} staffRole={staffRole} isMaster={isMaster} />
             </CollapsibleContent>
           </Collapsible>
