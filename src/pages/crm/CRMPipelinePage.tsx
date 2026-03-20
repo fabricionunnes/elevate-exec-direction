@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
+import { Card } from "@/components/ui/card";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import {
@@ -19,6 +20,8 @@ import {
   MoreHorizontal,
   Upload,
   CheckSquare,
+  TrendingUp,
+  Handshake,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
@@ -103,6 +106,12 @@ export const CRMPipelinePage = () => {
   const [ownerOptions, setOwnerOptions] = useState<{ id: string; name: string }[]>([]);
   const [originOptions, setOriginOptions] = useState<{ id: string; name: string }[]>([]);
   
+  // Summary cards state
+  const [forecastTotal, setForecastTotal] = useState(0);
+  const [forecastData, setForecastData] = useState<any[]>([]);
+  const [negotiationTotal, setNegotiationTotal] = useState(0);
+  const [negotiationData, setNegotiationData] = useState<any[]>([]);
+
   // Stage move dialog state
   const [stageMoveDialog, setStageMoveDialog] = useState<{
     open: boolean;
@@ -138,6 +147,56 @@ export const CRMPipelinePage = () => {
     setOwnerOptions(ownersRes.data || []);
     setOriginOptions(originsRes.data || []);
   };
+
+  const loadSummaryCards = useCallback(async () => {
+    try {
+      // Load forecast data from ALL pipelines
+      const { data: forecasts } = await supabase
+        .from("crm_forecasts")
+        .select("id, forecast_value, closer_staff_id")
+        .eq("status", "open");
+      
+      setForecastData(forecasts || []);
+
+      // Load "realizada" stage leads from ALL pipelines
+      // Find all stages that contain "realizada" in name (case-insensitive)
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const stageIds = realizadaStages.map(s => s.id);
+        const { data: negotiationLeads } = await supabase
+          .from("crm_leads")
+          .select("id, opportunity_value, owner_staff_id")
+          .in("stage_id", stageIds);
+        
+        setNegotiationData(negotiationLeads || []);
+      } else {
+        setNegotiationData([]);
+      }
+    } catch (error) {
+      console.error("Error loading summary cards:", error);
+    }
+  }, []);
+
+  // Compute filtered totals based on owner filter
+  const filteredForecastTotal = useMemo(() => {
+    const ownerFilter = filters.owners;
+    const data = ownerFilter.length > 0
+      ? forecastData.filter(f => ownerFilter.includes(f.closer_staff_id))
+      : forecastData;
+    return data.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+  }, [forecastData, filters.owners]);
+
+  const filteredNegotiationTotal = useMemo(() => {
+    const ownerFilter = filters.owners;
+    const data = ownerFilter.length > 0
+      ? negotiationData.filter(l => ownerFilter.includes(l.owner_staff_id))
+      : negotiationData;
+    return data.reduce((sum, l) => sum + (l.opportunity_value || 0), 0);
+  }, [negotiationData, filters.owners]);
 
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
@@ -181,6 +240,7 @@ export const CRMPipelinePage = () => {
   useEffect(() => {
     loadPipelines();
     loadFilterOptions();
+    loadSummaryCards();
   }, []);
 
   useEffect(() => {
@@ -552,6 +612,36 @@ export const CRMPipelinePage = () => {
           totalCount={filteredLeads.length}
           entityName={selectedOriginName || "Negócio"}
         />
+      </div>
+
+      {/* Summary Cards */}
+      <div className="shrink-0 px-3 sm:px-4 pb-2">
+        <div className="grid grid-cols-2 gap-3">
+          <Card className="p-3 flex items-center gap-3 border-border/50">
+            <div className="h-9 w-9 rounded-lg bg-blue-50 dark:bg-blue-950/30 flex items-center justify-center shrink-0">
+              <TrendingUp className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Forecast</p>
+              <p className="text-base font-bold text-blue-700 dark:text-blue-400 tabular-nums">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredForecastTotal)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{forecastData.length} negócio{forecastData.length !== 1 ? "s" : ""} aberto{forecastData.length !== 1 ? "s" : ""}</p>
+            </div>
+          </Card>
+          <Card className="p-3 flex items-center gap-3 border-border/50">
+            <div className="h-9 w-9 rounded-lg bg-amber-50 dark:bg-amber-950/30 flex items-center justify-center shrink-0">
+              <Handshake className="h-4 w-4 text-amber-600 dark:text-amber-400" />
+            </div>
+            <div className="min-w-0">
+              <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium">Em Negociação</p>
+              <p className="text-base font-bold text-amber-700 dark:text-amber-400 tabular-nums">
+                {new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL", minimumFractionDigits: 0 }).format(filteredNegotiationTotal)}
+              </p>
+              <p className="text-[10px] text-muted-foreground">{negotiationData.length} negócio{negotiationData.length !== 1 ? "s" : ""}</p>
+            </div>
+          </Card>
+        </div>
       </div>
 
       {/* Kanban Board */}
