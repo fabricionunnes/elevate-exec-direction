@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,17 +49,14 @@ export const CRMOfficePage = () => {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          scopes: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/calendar.events",
-          redirectTo: `${window.location.origin}/#/crm/office`,
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: `${window.location.origin}/crm/office`,
+        extraParams: {
+          access_type: "offline",
+          prompt: "consent",
         },
       });
+
       if (error) throw error;
     } catch (err: any) {
       console.error("Error connecting Google Calendar:", err);
