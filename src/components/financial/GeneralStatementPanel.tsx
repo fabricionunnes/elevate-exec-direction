@@ -47,7 +47,8 @@ export function GeneralStatementPanel() {
   const [costCenterFilter, setCostCenterFilter] = useState("all");
   const [bankFilter, setBankFilter] = useState("all");
   const [typeFilter, setTypeFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState<PeriodType | "custom">("this_month");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [dateFrom, setDateFrom] = useState(() => format(startOfMonth(new Date()), "yyyy-MM-dd"));
   const [dateTo, setDateTo] = useState(() => format(endOfMonth(new Date()), "yyyy-MM-dd"));
 
