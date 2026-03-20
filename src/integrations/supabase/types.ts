@@ -13299,6 +13299,7 @@ export type Database = {
           stage_id: string
           title: string
           updated_at: string
+          whatsapp_attachments: Json | null
           whatsapp_template: string | null
         }
         Insert: {
@@ -13311,6 +13312,7 @@ export type Database = {
           stage_id: string
           title: string
           updated_at?: string
+          whatsapp_attachments?: Json | null
           whatsapp_template?: string | null
         }
         Update: {
@@ -13323,6 +13325,7 @@ export type Database = {
           stage_id?: string
           title?: string
           updated_at?: string
+          whatsapp_attachments?: Json | null
           whatsapp_template?: string | null
         }
         Relationships: [
