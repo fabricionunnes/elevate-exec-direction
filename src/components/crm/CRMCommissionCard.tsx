@@ -45,13 +45,23 @@ interface CommissionData {
   metricLabel: string;
 }
 
+export interface CommissionSummary {
+  total: number;
+  commission: number;
+  fixedSalary: number;
+  achievedPercent: number;
+  tierLabel: string;
+  staffName: string;
+}
+
 interface Props {
   staffId: string | null;
   staffRole: string | null;
   isMaster: boolean;
+  onSummaryReady?: (summary: CommissionSummary | null) => void;
 }
 
-export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
+export const CRMCommissionCard = ({ staffId, staffRole, isMaster, onSummaryReady }: Props) => {
   const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>("first");
@@ -258,6 +268,17 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
         }
 
         setCommissionData(results);
+        if (onSummaryReady && results.length > 0) {
+          const first = results[0];
+          onSummaryReady({
+            total: first.total,
+            commission: first.commission,
+            fixedSalary: first.fixedSalary,
+            achievedPercent: first.achievedPercent,
+            tierLabel: first.tierLabel,
+            staffName: first.staffName,
+          });
+        }
       } catch (error) {
         console.error("Error loading commission data:", error);
       } finally {
