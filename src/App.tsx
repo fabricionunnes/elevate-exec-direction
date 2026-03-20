@@ -175,6 +175,7 @@ const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnaly
 const MarketingConsultationPublicPage = lazy(() => import("./pages/public/MarketingConsultationPublicPage"));
 const FinancialConsultationPublicPage = lazy(() => import("./pages/public/FinancialConsultationPublicPage"));
 const PublicContractDataPage = lazy(() => import("./pages/public/PublicContractDataPage"));
+const PublicAdsBriefingPage = lazy(() => import("./pages/public/PublicAdsBriefingPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
@@ -402,6 +403,7 @@ const AppShell = () => {
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />
             <Route path="/dados-contratuais/:token" element={<PublicContractDataPage />} />
+            <Route path="/ads-briefing/:token" element={<PublicAdsBriefingPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}

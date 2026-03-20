@@ -15,6 +15,7 @@ import {
 } from "lucide-react";
 import { toast } from "sonner";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
+import { AdsBriefingSection } from "./AdsBriefingSection";
 
 interface SocialBriefingTabProps {
   projectId: string;
@@ -546,6 +547,11 @@ export const SocialBriefingTab = ({ projectId }: SocialBriefingTabProps) => {
               </CardContent>
             </Card>
           )}
+
+          <Separator className="my-8" />
+
+          {/* Ads Briefing Section */}
+          <AdsBriefingSection projectId={projectId} />
         </div>
       </ScrollArea>
     </div>

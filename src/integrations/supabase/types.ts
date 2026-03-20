@@ -25130,6 +25130,62 @@ export type Database = {
         }
         Relationships: []
       }
+      social_ads_briefing: {
+        Row: {
+          access_token: string
+          additional_notes: string | null
+          created_at: string
+          facebook_url: string | null
+          id: string
+          instagram_url: string | null
+          meta_ads_login: string | null
+          meta_ads_password: string | null
+          monthly_ad_budget: number | null
+          payment_method: string | null
+          project_id: string
+          submitted_at: string | null
+          updated_at: string
+        }
+        Insert: {
+          access_token?: string
+          additional_notes?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          meta_ads_login?: string | null
+          meta_ads_password?: string | null
+          monthly_ad_budget?: number | null
+          payment_method?: string | null
+          project_id: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Update: {
+          access_token?: string
+          additional_notes?: string | null
+          created_at?: string
+          facebook_url?: string | null
+          id?: string
+          instagram_url?: string | null
+          meta_ads_login?: string | null
+          meta_ads_password?: string | null
+          monthly_ad_budget?: number | null
+          payment_method?: string | null
+          project_id?: string
+          submitted_at?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "social_ads_briefing_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: true
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       social_approval_contacts: {
         Row: {
           created_at: string
