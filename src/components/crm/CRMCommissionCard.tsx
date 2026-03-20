@@ -534,9 +534,35 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
     </div>
   );
 
+  const filteredData = isMaster && selectedStaffFilter !== "all"
+    ? commissionData.filter(d => d.staffId === selectedStaffFilter)
+    : commissionData;
+
   return (
-    <div className={`grid gap-3 ${isMaster && commissionData.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-      {commissionData.map(renderStaffCard)}
+    <div className="space-y-3">
+      {/* Staff filter for master */}
+      {isMaster && commissionData.length > 1 && (
+        <div className="flex items-center gap-2">
+          <Filter className="h-3.5 w-3.5 text-muted-foreground" />
+          <Select value={selectedStaffFilter} onValueChange={setSelectedStaffFilter}>
+            <SelectTrigger className="w-[220px] h-9 text-sm">
+              <SelectValue placeholder="Todos" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os colaboradores</SelectItem>
+              {commissionData.map(d => (
+                <SelectItem key={d.staffId} value={d.staffId}>
+                  {d.staffName} ({d.role === "closer" ? "Closer" : "SDR"})
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        </div>
+      )}
+
+      <div className="grid gap-3 grid-cols-1">
+        {filteredData.map(renderStaffCard)}
+      </div>
     </div>
   );
 };
