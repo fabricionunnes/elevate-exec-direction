@@ -462,30 +462,63 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
         <span className="text-[10px] text-muted-foreground">({data.tierLabel})</span>
       </div>
 
-      {/* Salary summary */}
-      <div className="grid grid-cols-3 gap-3 mt-3">
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Wallet className="h-3.5 w-3.5 text-blue-500" />
-            <span className="text-[10px] text-muted-foreground">Fixo</span>
+      {/* Earnings Summary */}
+      {(() => {
+        const superBonus = data.bonuses.find(b => b.type === "super");
+        const hiperBonus = data.bonuses.find(b => b.type === "hiper");
+        const superBonusValue = superBonus?.isAchieved && superBonus?.bonusValue ? superBonus.bonusValue : 0;
+        const hiperBonusValue = hiperBonus?.isAchieved && hiperBonus?.bonusValue ? hiperBonus.bonusValue : 0;
+        const grandTotal = data.fixedSalary + data.commission + superBonusValue + hiperBonusValue;
+
+        return (
+          <div className="mt-3 rounded-xl border border-emerald-200 dark:border-emerald-800 bg-emerald-50/60 dark:bg-emerald-950/20 p-4">
+            <div className="flex items-center gap-1.5 mb-3">
+              <DollarSign className="h-4 w-4 text-emerald-600 dark:text-emerald-400" />
+              <span className="text-xs font-semibold text-emerald-700 dark:text-emerald-400">Resumo da Remuneração</span>
+            </div>
+            <div className="space-y-1.5">
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Wallet className="h-3 w-3 text-blue-500" /> Fixo
+                </span>
+                <span className="font-semibold">{formatCurrency(data.fixedSalary)}</span>
+              </div>
+              <div className="flex items-center justify-between text-xs">
+                <span className="text-muted-foreground flex items-center gap-1.5">
+                  <Award className="h-3 w-3 text-amber-500" /> Comissão ({data.tierLabel})
+                </span>
+                <span className="font-semibold text-amber-600 dark:text-amber-400">{formatCurrency(data.commission)}</span>
+              </div>
+              {superBonus && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Star className="h-3 w-3 text-blue-500" /> Bônus Super Meta
+                  </span>
+                  <span className={`font-semibold ${superBonus.isAchieved ? "text-blue-600 dark:text-blue-400" : "text-muted-foreground/50"}`}>
+                    {superBonus.bonusValue ? (superBonus.isAchieved ? formatCurrency(superBonus.bonusValue) : `(${formatCurrency(superBonus.bonusValue)})`) : "—"}
+                  </span>
+                </div>
+              )}
+              {hiperBonus && (
+                <div className="flex items-center justify-between text-xs">
+                  <span className="text-muted-foreground flex items-center gap-1.5">
+                    <Trophy className="h-3 w-3 text-purple-500" /> Bônus Hiper Meta
+                  </span>
+                  <span className={`font-semibold ${hiperBonus.isAchieved ? "text-purple-600 dark:text-purple-400" : "text-muted-foreground/50"}`}>
+                    {hiperBonus.bonusValue ? (hiperBonus.isAchieved ? formatCurrency(hiperBonus.bonusValue) : `(${formatCurrency(hiperBonus.bonusValue)})`) : "—"}
+                  </span>
+                </div>
+              )}
+              <div className="border-t border-emerald-200 dark:border-emerald-700 pt-2 mt-2">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-bold text-emerald-700 dark:text-emerald-400">Total Atual</span>
+                  <span className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(grandTotal)}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <p className="text-sm font-bold">{formatCurrency(data.fixedSalary)}</p>
-        </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <Award className="h-3.5 w-3.5 text-amber-500" />
-            <span className="text-[10px] text-muted-foreground">Comissão</span>
-          </div>
-          <p className="text-sm font-bold text-amber-600 dark:text-amber-400">{formatCurrency(data.commission)}</p>
-        </div>
-        <div className="text-center">
-          <div className="flex items-center justify-center gap-1 mb-1">
-            <DollarSign className="h-3.5 w-3.5 text-emerald-500" />
-            <span className="text-[10px] text-muted-foreground">Total</span>
-          </div>
-          <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.total)}</p>
-        </div>
-      </div>
+        );
+      })()}
 
       {/* Missing to commission alert */}
       {!data.isCommissioning && data.missingToFirstTier > 0 && (
