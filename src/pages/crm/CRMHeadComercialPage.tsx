@@ -953,7 +953,7 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
             </div>
 
             {/* Metrics Grid */}
-            <div className={`grid ${isCloser ? "grid-cols-4" : "grid-cols-3"} gap-3 mt-3 pt-3 border-t border-border/50`}>
+            <div className={`grid ${isCloser ? "grid-cols-2 sm:grid-cols-4" : "grid-cols-3"} gap-3 mt-3 pt-3 border-t border-border/50`}>
               {isCloser && (
                 <>
                   <MetricBlock label="Falta" value={formatCompact(p.falta)} alert={p.falta > 0} />
