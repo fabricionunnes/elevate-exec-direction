@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -26,6 +26,11 @@ import {
   Send,
   Loader2,
   Pencil,
+  Paperclip,
+  Image,
+  Film,
+  File as FileIcon,
+  X,
 } from "lucide-react";
 import { format, startOfDay, addDays, isSameDay, isAfter, isBefore } from "date-fns";
 import { ptBR } from "date-fns/locale";
