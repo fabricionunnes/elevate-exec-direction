@@ -54,6 +54,7 @@ interface Props {
 export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
   const [commissionData, setCommissionData] = useState<CommissionData[]>([]);
   const [loading, setLoading] = useState(true);
+  const [selectedStaffFilter, setSelectedStaffFilter] = useState<string>("all");
 
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
