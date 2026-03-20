@@ -9,6 +9,7 @@ import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { useGoogleCalendarTokenSync } from "@/hooks/useGoogleCalendarTokenSync";
 
 // Only HomePage is eager – everything else is lazy
 import HomePage from "./pages/HomePage";
@@ -260,19 +261,22 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <ThemeCustomizationProvider>
-      <TenantProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <HashRouter>
-            <ScrollToTop />
-            <OAuthRedirectHandler />
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
+const AppShell = () => {
+  useGoogleCalendarTokenSync();
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeCustomizationProvider>
+        <TenantProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <HashRouter>
+              <ScrollToTop />
+              <OAuthRedirectHandler />
+              <Suspense fallback={<PageLoader />}>
+              <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
@@ -526,15 +530,16 @@ const App = () => (
             <Route path="/whitelabel-admin" element={<WhitelabelAdminPage />} />
             <Route path="/whitelabel-gestao" element={<WhitelabelUNVAdminPage />} />
             
-            <Route path="*" element={<NotFound />} />
-          </Routes>
-          </Suspense>
-          </HashRouter>
-        </TooltipProvider>
-      </TenantProvider>
-      </ThemeCustomizationProvider>
-    </QueryClientProvider>
-  </ErrorBoundary>
-);
+              <Route path="*" element={<NotFound />} />
+            </Routes>
+            </Suspense>
+            </HashRouter>
+          </TooltipProvider>
+        </TenantProvider>
+        </ThemeCustomizationProvider>
+      </QueryClientProvider>
+    </ErrorBoundary>
+  );
+};
 
-export default App;
+export default AppShell;
