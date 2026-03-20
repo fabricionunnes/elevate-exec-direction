@@ -223,6 +223,23 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         setRawForecastData([]);
       }
 
+      // Load "Em Negociação" from leads in "Realizada" stages across all pipelines
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const realizadaStageIds = realizadaStages.map(s => s.id);
+        const { data: negotiationLeads } = await supabase
+          .from("crm_leads")
+          .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+          .in("stage_id", realizadaStageIds);
+        setRawNegotiationData(negotiationLeads || []);
+      } else {
+        setRawNegotiationData([]);
+      }
+
       // Load goals
       const { data: goalTypeData } = await supabase
         .from("crm_goal_types")
