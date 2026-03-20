@@ -540,10 +540,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       <div className="p-4 md:p-6 space-y-6">
         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
           {Array(8).fill(0).map((_, i) => (
-            <Skeleton key={i} className="h-28 rounded-xl" />
+            <Skeleton key={i} className="h-28 rounded-2xl" />
           ))}
         </div>
-        <Skeleton className="h-80 rounded-xl" />
+        <Skeleton className="h-80 rounded-2xl" />
       </div>
     );
   }
@@ -553,7 +553,30 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const hiperPercent = metrics.hiperMeta > 0 ? (metrics.receita / metrics.hiperMeta) * 100 : 0;
 
   const getProgressColor = (pct: number) =>
-    pct >= 100 ? "bg-emerald-500" : pct >= 70 ? "bg-amber-500" : "bg-rose-500";
+    pct >= 100 ? "from-emerald-400 to-emerald-600" : pct >= 70 ? "from-amber-400 to-amber-600" : "from-rose-400 to-rose-600";
+
+  // 3D Card wrapper
+  const GlowCard = ({ children, className = "", gradient = "from-slate-800/50 to-slate-900/50", glowColor = "shadow-primary/10" }: { children: React.ReactNode; className?: string; gradient?: string; glowColor?: string }) => (
+    <div className={cn(
+      "relative rounded-2xl border border-white/10 backdrop-blur-sm overflow-hidden",
+      "transition-all duration-300 hover:scale-[1.02] hover:-translate-y-1",
+      "shadow-lg hover:shadow-xl",
+      glowColor,
+      className
+    )}
+    style={{ background: "linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--card)/0.8) 100%)" }}
+    >
+      {children}
+    </div>
+  );
+
+  const kpiCards = [
+    { label: "Receita", value: formatCurrency(metrics.receita), icon: DollarSign, gradient: "from-emerald-500 to-teal-400", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
+    { label: "Meta", value: formatCurrency(metrics.metaReceita), icon: Target, gradient: "from-blue-500 to-indigo-400", glow: "shadow-blue-500/25", textColor: "text-blue-400" },
+    { label: "Faltam", value: formatCurrency(metrics.faltaReceita), icon: TrendingUp, gradient: "from-rose-500 to-pink-400", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
+    { label: "Forecast", value: formatCurrency(metrics.forecast), icon: Target, gradient: "from-cyan-500 to-sky-400", glow: "shadow-cyan-500/25", textColor: "text-cyan-400" },
+    { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), icon: Users, gradient: "from-amber-500 to-orange-400", glow: "shadow-amber-500/25", textColor: "text-amber-400" },
+  ];
 
   return (
     <>
@@ -562,7 +585,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Filtros ── */}
       <div className="flex flex-wrap items-center gap-3">
         <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilterType)}>
-          <SelectTrigger className="w-[130px] h-9 rounded-lg text-xs">
+          <SelectTrigger className="w-[130px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -578,7 +601,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           <div className="flex items-center gap-2">
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-lg", !customDateFrom && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-white/10", !customDateFrom && "text-muted-foreground")}>
                   <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                   {customDateFrom ? format(customDateFrom, "dd/MM/yy") : "De"}
                 </Button>
@@ -588,7 +611,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
             <span className="text-xs text-muted-foreground">até</span>
             <Popover>
               <PopoverTrigger asChild>
-                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-lg", !customDateTo && "text-muted-foreground")}>
+                <Button variant="outline" size="sm" className={cn("h-9 w-[120px] justify-start text-left text-xs rounded-xl border-white/10", !customDateTo && "text-muted-foreground")}>
                   <CalendarIcon className="mr-1.5 h-3.5 w-3.5" />
                   {customDateTo ? format(customDateTo, "dd/MM/yy") : "Até"}
                 </Button>
@@ -600,7 +623,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         
         {!isCloserUser && (
           <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-            <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs">
+            <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
               <SelectValue placeholder="Closer" />
             </SelectTrigger>
             <SelectContent>
@@ -611,7 +634,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         )}
 
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-          <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs">
+          <SelectTrigger className="w-[160px] h-9 rounded-xl text-xs border-white/10 bg-card/80 backdrop-blur-sm">
             <SelectValue placeholder="Produto" />
           </SelectTrigger>
           <SelectContent>
@@ -621,12 +644,12 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
-          <Badge variant="secondary" className="text-xs">
+          <Badge className="text-xs bg-gradient-to-r from-primary/20 to-primary/10 text-primary border-primary/20">
             {dateFilter === "custom" && customDateFrom && customDateTo
               ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
               : format(getDateRange().start, "MMMM yyyy", { locale: ptBR })}
           </Badge>
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-lg">
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-xl border-white/10 bg-card/80">
             <Upload className="h-3.5 w-3.5 mr-1.5" />
             Importar
           </Button>
@@ -635,163 +658,173 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
       {/* ── Ranking dos Closers (Top 3) ── */}
       {closers.length > 0 && (
-        <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
           {closers.slice(0, 3).map((closer, index) => {
             const medals = ["🥇", "🥈", "🥉"];
-            const accents = [
-              "border-amber-500/30 bg-amber-500/5",
-              "border-slate-400/30 bg-slate-400/5",
-              "border-orange-600/30 bg-orange-600/5",
+            const gradients = [
+              "from-amber-500/20 via-yellow-500/10 to-amber-600/20",
+              "from-slate-400/20 via-gray-300/10 to-slate-500/20",
+              "from-orange-500/20 via-amber-500/10 to-orange-600/20",
             ];
+            const glows = ["shadow-amber-500/20", "shadow-slate-400/20", "shadow-orange-500/20"];
+            const borderColors = ["border-amber-500/30", "border-slate-400/30", "border-orange-500/30"];
             return (
-              <div key={closer.id} className={cn("rounded-xl border p-4 transition-all duration-200 hover:shadow-md", accents[index])}>
-                <div className="flex items-center gap-3">
-                  <span className="text-2xl">{medals[index]}</span>
-                  <div className="flex-1 min-w-0">
-                    <p className="font-semibold text-sm truncate">{closer.name}</p>
-                    <p className="text-lg font-bold text-emerald-500">{formatCurrency(closer.revenue)}</p>
-                  </div>
-                  <div className="text-right space-y-0.5">
-                    <p className="text-[11px] text-muted-foreground">TM: {formatCurrency(closer.ticketMedio)}</p>
-                    <p className="text-[11px] text-muted-foreground">Conv: {closer.conversion.toFixed(1)}%</p>
+              <GlowCard key={closer.id} glowColor={glows[index]} className={borderColors[index]}>
+                <div className={`absolute inset-0 bg-gradient-to-br ${gradients[index]} opacity-60`} />
+                <div className="relative p-4">
+                  <div className="flex items-center gap-3">
+                    <span className="text-3xl drop-shadow-lg">{medals[index]}</span>
+                    <div className="flex-1 min-w-0">
+                      <p className="font-bold text-sm truncate">{closer.name}</p>
+                      <p className="text-xl font-black text-emerald-400 drop-shadow-[0_0_8px_rgba(52,211,153,0.3)]">{formatCurrency(closer.revenue)}</p>
+                    </div>
+                    <div className="text-right space-y-0.5">
+                      <p className="text-[11px] text-muted-foreground">TM: <span className="text-foreground font-semibold">{formatCurrency(closer.ticketMedio)}</span></p>
+                      <p className="text-[11px] text-muted-foreground">Conv: <span className="text-foreground font-semibold">{closer.conversion.toFixed(1)}%</span></p>
+                    </div>
                   </div>
                 </div>
-              </div>
+              </GlowCard>
             );
           })}
         </div>
       )}
 
       {/* ── KPIs Principais ── */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <DollarSign className="h-3.5 w-3.5" /> Resultados
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-teal-400 shadow-lg shadow-emerald-500/30" />
+          Resultados
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-3">
-          {[
-            { label: "Receita", value: formatCurrency(metrics.receita), accent: "text-emerald-500", border: "border-emerald-500/20" },
-            { label: "Meta", value: formatCurrency(metrics.metaReceita), accent: "text-foreground", border: "border-border" },
-            { label: "Faltam", value: formatCurrency(metrics.faltaReceita), accent: "text-rose-500", border: "border-rose-500/20" },
-            { label: "Forecast", value: formatCurrency(metrics.forecast), accent: "text-sky-500", border: "border-sky-500/20" },
-            { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), accent: "text-amber-500", border: "border-amber-500/20" },
-          ].map((item, idx) => (
-            <Card key={idx} className={cn("border", item.border)}>
-              <CardContent className="p-4">
-                <p className="text-[11px] text-muted-foreground mb-1">{item.label}</p>
-                <p className={cn("text-xl font-bold", item.accent)}>{item.value}</p>
-              </CardContent>
-            </Card>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 gap-4">
+          {kpiCards.map((item, idx) => (
+            <GlowCard key={idx} glowColor={item.glow}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
+              <div className="relative p-4">
+                <div className={`p-2 rounded-xl bg-gradient-to-br ${item.gradient} w-fit mb-3 shadow-lg`}>
+                  <item.icon className="h-4 w-4 text-white" />
+                </div>
+                <p className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{item.label}</p>
+                <p className={cn("text-xl font-black tracking-tight", item.textColor)}>{item.value}</p>
+              </div>
+            </GlowCard>
           ))}
         </div>
       </div>
 
-      {/* ── Indicadores de Performance ── */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Percent className="h-3.5 w-3.5" /> Performance
+      {/* ── Performance ── */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-violet-400 to-purple-400 shadow-lg shadow-violet-500/30" />
+          Performance
         </h3>
-        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
           {[
-            { label: "% Meta", value: `${metaPercent.toFixed(1)}%`, accent: metaPercent >= 100 ? "text-emerald-500" : metaPercent >= 70 ? "text-amber-500" : "text-rose-500" },
-            { label: "Conversão", value: `${metrics.conversao.toFixed(1)}%`, accent: "text-sky-500" },
-            { label: "Qtd Vendas", value: String(metrics.vendas), accent: "text-foreground" },
-            { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), accent: "text-foreground" },
-            { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), accent: "text-sky-500" },
-            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, accent: "text-sky-500" },
+            { label: "% Meta", value: `${metaPercent.toFixed(1)}%`, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: metaPercent >= 100 ? "text-emerald-400" : metaPercent >= 70 ? "text-amber-400" : "text-rose-400" },
+            { label: "Conversão", value: `${metrics.conversao.toFixed(1)}%`, gradient: "from-cyan-500 to-blue-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
+            { label: "Qtd Vendas", value: String(metrics.vendas), gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
+            { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
+            { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
+            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "from-indigo-500 to-blue-500", glow: "shadow-indigo-500/20", textColor: "text-indigo-400" },
           ].map((item, idx) => (
-            <Card key={idx}>
-              <CardContent className="p-4">
-                <p className="text-[11px] text-muted-foreground mb-1">{item.label}</p>
-                <p className={cn("text-lg font-bold", item.accent)}>{item.value}</p>
-              </CardContent>
-            </Card>
+            <GlowCard key={idx} glowColor={item.glow}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
+              <div className="relative p-4">
+                <p className="text-[10px] text-muted-foreground font-medium uppercase tracking-wider mb-1">{item.label}</p>
+                <p className={cn("text-lg font-black", item.textColor)}>{item.value}</p>
+              </div>
+            </GlowCard>
           ))}
         </div>
       </div>
 
       {/* ── Metas (Meta / Super / Hiper) ── */}
-      <Card>
-        <CardContent className="p-5 space-y-4">
-          <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Target className="h-3.5 w-3.5" /> Atingimento de Metas
+      <GlowCard glowColor="shadow-primary/10">
+        <div className="relative p-5 space-y-5">
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <div className="h-3 w-3 rounded-full bg-gradient-to-r from-amber-400 to-orange-400 shadow-lg shadow-amber-500/30" />
+            Atingimento de Metas
           </h3>
           {[
-            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, color: "bg-emerald-500" },
-            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, color: "bg-amber-500" },
-            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, color: "bg-sky-500" },
+            { label: "Meta", pct: metaPercent, value: metrics.metaReceita, remaining: metrics.faltaReceita, gradient: "from-emerald-400 to-emerald-600", glow: "shadow-emerald-500/40" },
+            { label: "Super Meta", pct: superPercent, value: metrics.superMeta, remaining: metrics.faltaSuper, gradient: "from-amber-400 to-amber-600", glow: "shadow-amber-500/40" },
+            { label: "Hiper Meta", pct: hiperPercent, value: metrics.hiperMeta, remaining: metrics.faltaHiper, gradient: "from-sky-400 to-sky-600", glow: "shadow-sky-500/40" },
           ].map((goal, idx) => (
             <div key={idx}>
-              <div className="flex items-center justify-between text-sm mb-1.5">
-                <span className="font-medium">{goal.label} <span className="text-muted-foreground text-xs">({formatCurrency(goal.value)})</span></span>
+              <div className="flex items-center justify-between text-sm mb-2">
+                <span className="font-semibold">{goal.label} <span className="text-muted-foreground text-xs">({formatCurrency(goal.value)})</span></span>
                 <div className="flex items-center gap-3 text-xs">
                   <span className="text-muted-foreground">Falta: {formatCurrency(goal.remaining)}</span>
-                  <span className="font-bold">{goal.pct.toFixed(0)}%</span>
+                  <span className="font-black text-foreground">{goal.pct.toFixed(0)}%</span>
                 </div>
               </div>
-              <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-                <div className={cn("h-full rounded-full transition-all duration-700", goal.color)} style={{ width: `${Math.min(100, goal.pct)}%` }} />
+              <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+                <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-1000", goal.gradient, goal.glow)} style={{ width: `${Math.min(100, goal.pct)}%`, boxShadow: `0 0 12px rgba(0,0,0,0.2)` }} />
               </div>
             </div>
           ))}
-        </CardContent>
-      </Card>
+        </div>
+      </GlowCard>
 
       {/* ── Meta Diária ── */}
-      <Card className="border-primary/20 bg-primary/[0.02]">
-        <CardContent className="p-5">
+      <GlowCard glowColor="shadow-primary/15" className="border-primary/20">
+        <div className="absolute inset-0 bg-gradient-to-br from-primary/10 via-transparent to-primary/5 opacity-50" />
+        <div className="relative p-5">
           <div className="flex flex-col lg:flex-row lg:items-center gap-4">
             <div className="flex items-center gap-3">
-              <div className="p-2.5 rounded-xl bg-primary text-primary-foreground">
-                <CalendarDays className="h-5 w-5" />
+              <div className="p-3 rounded-2xl bg-gradient-to-br from-primary to-primary/80 shadow-lg shadow-primary/30">
+                <CalendarDays className="h-5 w-5 text-primary-foreground" />
               </div>
               <div>
-                <h3 className="text-sm font-bold">Meta Diária</h3>
+                <h3 className="text-sm font-black">Meta Diária</h3>
                 <p className="text-xs text-muted-foreground">{dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? "s" : ""} úte{dailyGoal.businessDaysLeft !== 1 ? "is" : "il"} restante{dailyGoal.businessDaysLeft !== 1 ? "s" : ""}</p>
               </div>
             </div>
             <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 flex-1">
               {[
-                { label: "Meta do Mês", value: formatCurrency(dailyGoal.monthlyTarget), cls: "" },
-                { label: "Realizado", value: formatCurrency(dailyGoal.achieved), cls: "text-emerald-500" },
-                { label: "Falta", value: formatCurrency(dailyGoal.remaining), cls: "text-rose-500" },
-                { label: "Vender/Dia", value: formatCurrency(dailyGoal.dailyTarget), cls: "text-amber-500 text-lg" },
+                { label: "Meta do Mês", value: formatCurrency(dailyGoal.monthlyTarget), gradient: "from-blue-500/10 to-indigo-500/10", textColor: "text-blue-400" },
+                { label: "Realizado", value: formatCurrency(dailyGoal.achieved), gradient: "from-emerald-500/10 to-teal-500/10", textColor: "text-emerald-400" },
+                { label: "Falta", value: formatCurrency(dailyGoal.remaining), gradient: "from-rose-500/10 to-pink-500/10", textColor: "text-rose-400" },
+                { label: "Vender/Dia", value: formatCurrency(dailyGoal.dailyTarget), gradient: "from-amber-500/10 to-orange-500/10", textColor: "text-amber-400" },
               ].map((item, idx) => (
-                <div key={idx} className="text-center rounded-lg bg-muted/50 p-2.5">
-                  <p className="text-[10px] text-muted-foreground mb-0.5">{item.label}</p>
-                  <p className={cn("font-bold text-sm", item.cls)}>{item.value}</p>
+                <div key={idx} className={cn("text-center rounded-xl p-3 bg-gradient-to-br border border-white/5", item.gradient)}>
+                  <p className="text-[10px] text-muted-foreground mb-0.5 uppercase tracking-wider">{item.label}</p>
+                  <p className={cn("font-black text-sm", item.textColor)}>{item.value}</p>
                 </div>
               ))}
             </div>
           </div>
           <div className="mt-4">
-            <div className="flex justify-between text-[11px] text-muted-foreground mb-1">
+            <div className="flex justify-between text-[11px] text-muted-foreground mb-1.5">
               <span>Progresso mensal</span>
-              <span className="font-bold text-foreground">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
+              <span className="font-black text-foreground">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
             </div>
-            <div className="h-2.5 bg-muted rounded-full overflow-hidden">
-              <div className={cn("h-full rounded-full transition-all duration-1000", getProgressColor(dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0))} style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }} />
+            <div className="h-3 bg-muted/50 rounded-full overflow-hidden">
+              <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-1000", getProgressColor(dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0))} style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }} />
             </div>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlowCard>
 
-      {/* ── Calls ── */}
-      <div className="space-y-2">
-        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-          <Phone className="h-3.5 w-3.5" /> Reuniões
+      {/* ── Reuniões ── */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-sky-400 to-blue-400 shadow-lg shadow-sky-500/30" />
+          Reuniões
         </h3>
-        <div className="grid grid-cols-3 gap-3">
+        <div className="grid grid-cols-3 gap-4">
           {[
-            { label: "Agendadas", value: callsMetrics.agendadas, accent: "text-sky-500" },
-            { label: "Realizadas", value: callsMetrics.realizadas, accent: "text-emerald-500" },
-            { label: "No Show", value: `${callsMetrics.noShowPercent.toFixed(0)}%`, accent: "text-rose-500" },
+            { label: "Agendadas", value: callsMetrics.agendadas, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
+            { label: "Realizadas", value: callsMetrics.realizadas, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
+            { label: "No Show", value: `${callsMetrics.noShowPercent.toFixed(0)}%`, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
           ].map((item, idx) => (
-            <Card key={idx}>
-              <CardContent className="p-4 text-center">
-                <p className="text-[11px] text-muted-foreground mb-1">{item.label}</p>
-                <p className={cn("text-2xl font-bold", item.accent)}>{item.value}</p>
-              </CardContent>
-            </Card>
+            <GlowCard key={idx} glowColor={item.glow}>
+              <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
+              <div className="relative p-5 text-center">
+                <p className="text-[11px] text-muted-foreground mb-2 uppercase tracking-wider">{item.label}</p>
+                <p className={cn("text-3xl font-black", item.textColor)}>{item.value}</p>
+              </div>
+            </GlowCard>
           ))}
         </div>
       </div>
@@ -802,258 +835,268 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       {/* ── Gráficos ── */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Receita por Produto */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <DollarSign className="h-4 w-4 text-emerald-500" />
+        <GlowCard glowColor="shadow-emerald-500/10">
+          <div className="p-5">
+            <h3 className="text-sm font-bold flex items-center gap-2 mb-4">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
+                <DollarSign className="h-3.5 w-3.5 text-white" />
+              </div>
               Receita por Produto
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
+            </h3>
             {productDistribution.length === 0 ? (
               <p className="text-sm text-muted-foreground text-center py-8">Sem dados</p>
             ) : (
-              <div className="h-[180px]">
+              <div className="h-[200px]">
                 <ResponsiveContainer width="100%" height="100%">
                   <PieChart>
-                    <Pie data={productDistribution} cx="50%" cy="50%" innerRadius={40} outerRadius={65} dataKey="value" paddingAngle={2}>
+                    <Pie data={productDistribution} cx="50%" cy="50%" innerRadius={45} outerRadius={70} dataKey="value" paddingAngle={3} strokeWidth={0}>
                       {productDistribution.map((entry, index) => <Cell key={index} fill={entry.color} />)}
                     </Pie>
-                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
+                    <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
                     <Legend formatter={(value) => <span className="text-xs">{value}</span>} />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
             )}
-          </CardContent>
-        </Card>
+          </div>
+        </GlowCard>
 
         {/* Projeções Meta */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-amber-500" />
+        <GlowCard glowColor="shadow-amber-500/10">
+          <div className="p-5 space-y-5">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
+                <Target className="h-3.5 w-3.5 text-white" />
+              </div>
               Projeções vs Meta
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4 space-y-4">
+            </h3>
             {[
-              { label: "Meta", pct: metaPercent, color: "bg-emerald-500" },
-              { label: "Super Meta", pct: superPercent, color: "bg-amber-500" },
-              { label: "Hiper Meta", pct: hiperPercent, color: "bg-sky-500" },
+              { label: "Meta", pct: metaPercent, gradient: "from-emerald-400 to-emerald-600" },
+              { label: "Super Meta", pct: superPercent, gradient: "from-amber-400 to-amber-600" },
+              { label: "Hiper Meta", pct: hiperPercent, gradient: "from-sky-400 to-sky-600" },
             ].map((item, idx) => (
               <div key={idx}>
-                <div className="flex justify-between text-xs mb-1"><span>{item.label}</span><span className="font-bold">{item.pct.toFixed(0)}%</span></div>
-                <div className="h-2 bg-muted rounded-full overflow-hidden">
-                  <div className={cn("h-full rounded-full transition-all", item.color)} style={{ width: `${Math.min(100, item.pct)}%` }} />
+                <div className="flex justify-between text-xs mb-1.5"><span className="font-medium">{item.label}</span><span className="font-black">{item.pct.toFixed(0)}%</span></div>
+                <div className="h-2.5 bg-muted/50 rounded-full overflow-hidden">
+                  <div className={cn("h-full rounded-full bg-gradient-to-r transition-all duration-700", item.gradient)} style={{ width: `${Math.min(100, item.pct)}%` }} />
                 </div>
               </div>
             ))}
-          </CardContent>
-        </Card>
+          </div>
+        </GlowCard>
       </div>
 
       {/* ── Evolução de Receita ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <TrendingUp className="h-4 w-4 text-emerald-500" />
+      <GlowCard glowColor="shadow-emerald-500/10">
+        <div className="p-5">
+          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
+              <TrendingUp className="h-3.5 w-3.5 text-white" />
+            </div>
             Evolução de Receita
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="pb-4">
+          </h3>
           <div className="flex items-center justify-center gap-5 mb-3 text-[11px] text-muted-foreground flex-wrap">
             <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-rose-500 inline-block" />Meta</span>
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-emerald-600 inline-block" />Receita</span>
-            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-amber-500 inline-block border-dashed" style={{ borderTop: "1.5px dashed" }} />Super</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-emerald-500 inline-block" />Receita</span>
+            <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-amber-500 inline-block" style={{ borderTop: "1.5px dashed" }} />Super</span>
             <span className="flex items-center gap-1.5"><span className="w-4 h-0.5 rounded bg-sky-500 inline-block" style={{ borderTop: "1.5px dashed" }} />Hiper</span>
           </div>
-          <div className="h-[260px]">
+          <div className="h-[280px]">
             <ResponsiveContainer width="100%" height="100%">
-              <LineChart data={revenueEvolution} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
-                <XAxis dataKey="day" tick={{ fontSize: 10 }} tickFormatter={(v) => String(v).padStart(2, "0")} interval={0} />
-                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} domain={[0, "auto"]} />
-                <Tooltip formatter={(value: number | null, name: string) => value === null ? ["-", name] : [formatCurrency(value), name]} labelFormatter={(day) => `Dia ${day}`} contentStyle={{ fontSize: 12, borderRadius: "8px" }} />
-                <Line type="linear" dataKey="meta" name="Meta" stroke="hsl(var(--destructive))" strokeWidth={1.5} dot={false} />
-                <Line type="linear" dataKey="receita" name="Receita" stroke="#16A34A" strokeWidth={2.5} dot={false} connectNulls={false} />
+              <AreaChart data={revenueEvolution} margin={{ top: 5, right: 20, left: 10, bottom: 5 }}>
+                <defs>
+                  <linearGradient id="gradRevenue" x1="0" y1="0" x2="0" y2="1">
+                    <stop offset="0%" stopColor="#10B981" stopOpacity={0.3} />
+                    <stop offset="100%" stopColor="#10B981" stopOpacity={0.02} />
+                  </linearGradient>
+                </defs>
+                <XAxis dataKey="day" tick={{ fontSize: 10 }} tickFormatter={(v) => String(v).padStart(2, "0")} interval={0} axisLine={false} tickLine={false} />
+                <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)} domain={[0, "auto"]} axisLine={false} tickLine={false} />
+                <Tooltip formatter={(value: number | null, name: string) => value === null ? ["-", name] : [formatCurrency(value), name]} labelFormatter={(day) => `Dia ${day}`} contentStyle={{ fontSize: 12, borderRadius: "12px", border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
+                <Area type="monotone" dataKey="receita" name="Receita" stroke="#10B981" strokeWidth={2.5} fill="url(#gradRevenue)" dot={false} connectNulls={false} />
+                <Line type="linear" dataKey="meta" name="Meta" stroke="#EF4444" strokeWidth={1.5} dot={false} />
                 <Line type="linear" dataKey="super" name="Super Meta" stroke="#F59E0B" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
                 <Line type="linear" dataKey="hiper" name="Hiper Meta" stroke="#3B82F6" strokeWidth={1.5} strokeDasharray="6 3" dot={false} />
-              </LineChart>
+              </AreaChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </GlowCard>
 
       {/* ── Acumulado por Closer ── */}
       {dailyRevenueData.length > 0 && closers.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <TrendingUp className="h-4 w-4 text-sky-500" />
+        <GlowCard glowColor="shadow-sky-500/10">
+          <div className="p-5">
+            <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-sky-500 to-blue-500 shadow-lg shadow-sky-500/25">
+                <TrendingUp className="h-3.5 w-3.5 text-white" />
+              </div>
               Acumulado Diário por Closer
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="pb-4">
-            <div className="h-[220px]">
+            </h3>
+            <div className="h-[240px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyRevenueData}>
-                  <XAxis dataKey="day" tick={{ fontSize: 10 }} />
-                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
+                  <XAxis dataKey="day" tick={{ fontSize: 10 }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} axisLine={false} tickLine={false} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", fontSize: 12, border: "none", boxShadow: "0 10px 40px rgba(0,0,0,0.15)" }} />
                   <Legend />
                   {closers.map((closer, i) => (
-                    <Line key={closer.id} type="monotone" dataKey={closer.name} stroke={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]} strokeWidth={2} dot={false} />
+                    <Line key={closer.id} type="monotone" dataKey={closer.name} stroke={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]} strokeWidth={2.5} dot={false} />
                   ))}
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </GlowCard>
       )}
 
       {/* ── Tabela: Desempenho dos Closers ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <Trophy className="h-4 w-4 text-amber-500" />
+      <GlowCard glowColor="shadow-amber-500/10">
+        <div className="p-5 pb-0">
+          <h3 className="text-sm font-bold flex items-center gap-2 mb-3">
+            <div className="p-1.5 rounded-lg bg-gradient-to-br from-amber-500 to-orange-500 shadow-lg shadow-amber-500/25">
+              <Trophy className="h-3.5 w-3.5 text-white" />
+            </div>
             Desempenho dos Closers
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
-          <div className="overflow-x-auto">
-            <Table>
-              <TableHeader>
-                <TableRow className="text-xs">
-                  <TableHead>Closer</TableHead>
-                  <TableHead className="text-center">Agend.</TableHead>
-                  <TableHead className="text-center">Realiz.</TableHead>
-                  <TableHead className="text-center">Vendas</TableHead>
-                  <TableHead className="text-right">Receita</TableHead>
-                  <TableHead className="text-center">% Meta</TableHead>
-                  <TableHead className="text-center">Conv.</TableHead>
-                  <TableHead className="text-right">Ticket</TableHead>
+          </h3>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="text-xs border-white/5">
+                <TableHead>Closer</TableHead>
+                <TableHead className="text-center">Agend.</TableHead>
+                <TableHead className="text-center">Realiz.</TableHead>
+                <TableHead className="text-center">Vendas</TableHead>
+                <TableHead className="text-right">Receita</TableHead>
+                <TableHead className="text-center">% Meta</TableHead>
+                <TableHead className="text-center">Conv.</TableHead>
+                <TableHead className="text-right">Ticket</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {closers.map(closer => (
+                <TableRow key={closer.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                  <TableCell className="font-semibold">{closer.name}</TableCell>
+                  <TableCell className="text-center">{closer.callsScheduled}</TableCell>
+                  <TableCell className="text-center">{closer.callsCompleted}</TableCell>
+                  <TableCell className="text-center font-semibold">{closer.salesQty}</TableCell>
+                  <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(closer.revenue)}</TableCell>
+                  <TableCell className="text-center">
+                    <Badge className={cn("text-[11px] font-bold border-0", closer.metaPercent >= 100 ? "bg-emerald-500/20 text-emerald-400" : closer.metaPercent >= 70 ? "bg-amber-500/20 text-amber-400" : "bg-rose-500/20 text-rose-400")}>
+                      {closer.metaPercent.toFixed(1)}%
+                    </Badge>
+                  </TableCell>
+                  <TableCell className="text-center">{closer.conversion.toFixed(1)}%</TableCell>
+                  <TableCell className="text-right">{formatCurrency(closer.ticketMedio)}</TableCell>
                 </TableRow>
-              </TableHeader>
-              <TableBody>
-                {closers.map(closer => (
-                  <TableRow key={closer.id} className="text-sm">
-                    <TableCell className="font-medium">{closer.name}</TableCell>
-                    <TableCell className="text-center">{closer.callsScheduled}</TableCell>
-                    <TableCell className="text-center">{closer.callsCompleted}</TableCell>
-                    <TableCell className="text-center">{closer.salesQty}</TableCell>
-                    <TableCell className="text-right font-semibold text-emerald-500">{formatCurrency(closer.revenue)}</TableCell>
-                    <TableCell className="text-center">
-                      <Badge variant="outline" className={cn("text-[11px] font-bold", closer.metaPercent >= 100 ? "border-emerald-500/40 text-emerald-500" : closer.metaPercent >= 70 ? "border-amber-500/40 text-amber-500" : "border-rose-500/40 text-rose-500")}>
-                        {closer.metaPercent.toFixed(1)}%
-                      </Badge>
-                    </TableCell>
-                    <TableCell className="text-center">{closer.conversion.toFixed(1)}%</TableCell>
-                    <TableCell className="text-right">{formatCurrency(closer.ticketMedio)}</TableCell>
-                  </TableRow>
-                ))}
-                {closers.length > 0 && (
-                  <TableRow className="font-bold text-sm bg-muted/30">
-                    <TableCell>Total</TableCell>
-                    <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
-                    <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsCompleted, 0)}</TableCell>
-                    <TableCell className="text-center">{closers.reduce((s, c) => s + c.salesQty, 0)}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(closers.reduce((s, c) => s + c.revenue, 0))}</TableCell>
-                    <TableCell className="text-center">{metaPercent.toFixed(1)}%</TableCell>
-                    <TableCell className="text-center">{metrics.conversao.toFixed(1)}%</TableCell>
-                    <TableCell className="text-right">{formatCurrency(metrics.ticketMedio)}</TableCell>
-                  </TableRow>
-                )}
-              </TableBody>
-            </Table>
-          </div>
-        </CardContent>
-      </Card>
+              ))}
+              {closers.length > 0 && (
+                <TableRow className="font-bold text-sm bg-white/[0.02] border-white/5">
+                  <TableCell>Total</TableCell>
+                  <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
+                  <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsCompleted, 0)}</TableCell>
+                  <TableCell className="text-center">{closers.reduce((s, c) => s + c.salesQty, 0)}</TableCell>
+                  <TableCell className="text-right text-emerald-400">{formatCurrency(closers.reduce((s, c) => s + c.revenue, 0))}</TableCell>
+                  <TableCell className="text-center">{metaPercent.toFixed(1)}%</TableCell>
+                  <TableCell className="text-center">{metrics.conversao.toFixed(1)}%</TableCell>
+                  <TableCell className="text-right">{formatCurrency(metrics.ticketMedio)}</TableCell>
+                </TableRow>
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </GlowCard>
 
       {/* ── Forecast ── */}
       {forecasts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-semibold flex items-center gap-2">
-              <Target className="h-4 w-4 text-sky-500" />
-              Forecast
-              <Badge variant="secondary" className="ml-auto text-xs">{formatCurrency(metrics.forecast)}</Badge>
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
-            <div className="overflow-x-auto">
-              <Table>
-                <TableHeader>
-                  <TableRow className="text-xs">
-                    <TableHead>Closer</TableHead>
-                    <TableHead>Cliente</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Produto</TableHead>
-                    <TableHead className="text-right">Valor</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {forecasts.map(f => (
-                    <TableRow key={f.id} className="text-sm">
-                      <TableCell>{f.closer}</TableCell>
-                      <TableCell>{f.client}</TableCell>
-                      <TableCell><Badge variant="outline" className="text-[11px]">{f.status}</Badge></TableCell>
-                      <TableCell>{f.product}</TableCell>
-                      <TableCell className="text-right font-semibold text-emerald-500">{formatCurrency(f.value)}</TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+        <GlowCard glowColor="shadow-cyan-500/10">
+          <div className="p-5 pb-0">
+            <div className="flex items-center justify-between mb-3">
+              <h3 className="text-sm font-bold flex items-center gap-2">
+                <div className="p-1.5 rounded-lg bg-gradient-to-br from-cyan-500 to-sky-500 shadow-lg shadow-cyan-500/25">
+                  <Target className="h-3.5 w-3.5 text-white" />
+                </div>
+                Forecast
+              </h3>
+              <Badge className="bg-gradient-to-r from-cyan-500/20 to-sky-500/20 text-cyan-400 border-0 text-xs font-bold">{formatCurrency(metrics.forecast)}</Badge>
             </div>
-          </CardContent>
-        </Card>
-      )}
-
-      {/* ── Vendas do Período ── */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-semibold flex items-center gap-2">
-            <DollarSign className="h-4 w-4 text-emerald-500" />
-            Vendas no Período
-            <Badge variant="secondary" className="ml-auto text-xs">{sales.length} vendas</Badge>
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </div>
           <div className="overflow-x-auto">
             <Table>
               <TableHeader>
-                <TableRow className="text-xs">
-                  <TableHead>Dia</TableHead>
-                  <TableHead>Funil</TableHead>
+                <TableRow className="text-xs border-white/5">
                   <TableHead>Closer</TableHead>
-                  <TableHead>SDR</TableHead>
-                  <TableHead>Empresa</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead>Produto</TableHead>
-                  <TableHead className="text-right">Receita</TableHead>
+                  <TableHead className="text-right">Valor</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {sales.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma venda registrada</TableCell>
+                {forecasts.map(f => (
+                  <TableRow key={f.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                    <TableCell>{f.closer}</TableCell>
+                    <TableCell>{f.client}</TableCell>
+                    <TableCell><Badge className="text-[11px] bg-sky-500/20 text-sky-400 border-0">{f.status}</Badge></TableCell>
+                    <TableCell>{f.product}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(f.value)}</TableCell>
                   </TableRow>
-                ) : (
-                  sales.map(sale => (
-                    <TableRow key={sale.id} className="text-sm">
-                      <TableCell>{sale.saleDate}</TableCell>
-                      <TableCell>{sale.pipeline}</TableCell>
-                      <TableCell>{sale.closer}</TableCell>
-                      <TableCell>{sale.sdr}</TableCell>
-                      <TableCell>{sale.company}</TableCell>
-                      <TableCell>{sale.product}</TableCell>
-                      <TableCell className="text-right font-semibold text-emerald-500">{formatCurrency(sale.revenue)}</TableCell>
-                    </TableRow>
-                  ))
-                )}
+                ))}
               </TableBody>
             </Table>
           </div>
-        </CardContent>
-      </Card>
+        </GlowCard>
+      )}
+
+      {/* ── Vendas do Período ── */}
+      <GlowCard glowColor="shadow-emerald-500/10">
+        <div className="p-5 pb-0">
+          <div className="flex items-center justify-between mb-3">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg bg-gradient-to-br from-emerald-500 to-teal-500 shadow-lg shadow-emerald-500/25">
+                <DollarSign className="h-3.5 w-3.5 text-white" />
+              </div>
+              Vendas no Período
+            </h3>
+            <Badge className="bg-gradient-to-r from-emerald-500/20 to-teal-500/20 text-emerald-400 border-0 text-xs font-bold">{sales.length} vendas</Badge>
+          </div>
+        </div>
+        <div className="overflow-x-auto">
+          <Table>
+            <TableHeader>
+              <TableRow className="text-xs border-white/5">
+                <TableHead>Dia</TableHead>
+                <TableHead>Funil</TableHead>
+                <TableHead>Closer</TableHead>
+                <TableHead>SDR</TableHead>
+                <TableHead>Empresa</TableHead>
+                <TableHead>Produto</TableHead>
+                <TableHead className="text-right">Receita</TableHead>
+              </TableRow>
+            </TableHeader>
+            <TableBody>
+              {sales.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma venda registrada</TableCell>
+                </TableRow>
+              ) : (
+                sales.map(sale => (
+                  <TableRow key={sale.id} className="text-sm border-white/5 hover:bg-white/[0.02]">
+                    <TableCell>{sale.saleDate}</TableCell>
+                    <TableCell>{sale.pipeline}</TableCell>
+                    <TableCell>{sale.closer}</TableCell>
+                    <TableCell>{sale.sdr}</TableCell>
+                    <TableCell>{sale.company}</TableCell>
+                    <TableCell>{sale.product}</TableCell>
+                    <TableCell className="text-right font-bold text-emerald-400">{formatCurrency(sale.revenue)}</TableCell>
+                  </TableRow>
+                ))
+              )}
+            </TableBody>
+          </Table>
+        </div>
+      </GlowCard>
     </div>
 
     <ImportSalesDialog
