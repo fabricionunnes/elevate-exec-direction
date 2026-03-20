@@ -494,22 +494,22 @@ export const CRMReportsPage = () => {
         {/* Productivity by User */}
         {isAdmin && (
           <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Produtividade por Usuário</CardTitle>
+            <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+              <CardTitle className="text-base sm:text-lg">Produtividade por Usuário</CardTitle>
             </CardHeader>
-            <CardContent>
-              <div className="h-[300px]">
+            <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+              <div className="h-[200px] sm:h-[300px]">
                 {productivityData.length === 0 ? (
-                  <div className="flex items-center justify-center h-full text-muted-foreground">
+                  <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                     Sem dados de produtividade
                   </div>
                 ) : (
                   <ResponsiveContainer width="100%" height="100%">
                     <BarChart data={productivityData}>
-                      <XAxis dataKey="name" tick={{ fontSize: 11 }} />
-                      <YAxis />
+                      <XAxis dataKey="name" tick={{ fontSize: 10 }} />
+                      <YAxis tick={{ fontSize: 10 }} />
                       <Tooltip />
-                      <Legend />
+                      <Legend wrapperStyle={{ fontSize: 11 }} />
                       <Bar dataKey="leads" name="Leads" fill="#3B82F6" />
                       <Bar dataKey="won" name="Ganhos" fill="#10B981" />
                     </BarChart>
