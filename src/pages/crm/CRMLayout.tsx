@@ -31,7 +31,6 @@ import {
 import logoUnv from "@/assets/logo-unv-nexus.png";
 import { CRMOriginsSidebar } from "@/components/crm/CRMOriginsSidebar";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { useGoogleCalendarTokenSync } from "@/hooks/useGoogleCalendarTokenSync";
 
 const CRM_ROLES = ["master", "admin", "head_comercial", "closer", "sdr", "social_setter", "bdr"];
 
@@ -80,8 +79,6 @@ export const CRMLayout = () => {
   const navigate = useNavigate();
   const location = useLocation();
   const isMobile = useIsMobile();
-
-  useGoogleCalendarTokenSync();
 
   useEffect(() => {
     const checkAccess = async () => {
