@@ -600,6 +600,12 @@ export function StageChecklistDialog({
                               📝 {item.whatsapp_template}
                             </p>
                           )}
+                          {item.item_type === 'whatsapp' && item.whatsapp_attachments?.length > 0 && (
+                            <p className="text-xs text-muted-foreground mt-1 flex items-center gap-1">
+                              <Paperclip className="h-3 w-3" />
+                              {item.whatsapp_attachments.length} anexo(s)
+                            </p>
+                          )}
                         </div>
 
                         {isAdmin && (
