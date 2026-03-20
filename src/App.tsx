@@ -9,6 +9,7 @@ import { OAuthRedirectHandler } from "./components/OAuthRedirectHandler";
 import ErrorBoundary from "./components/ErrorBoundary";
 import { ThemeCustomizationProvider } from "@/contexts/ThemeCustomizationContext";
 import { TenantProvider } from "@/contexts/TenantContext";
+import { useGoogleCalendarTokenSync } from "@/hooks/useGoogleCalendarTokenSync";
 
 // Only HomePage is eager – everything else is lazy
 import HomePage from "./pages/HomePage";
