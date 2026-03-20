@@ -101,7 +101,8 @@ export function ReceivablesPanel() {
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
   const [statusFilter, setStatusFilter] = useState("all");
-  const [periodFilter, setPeriodFilter] = useState("this_month");
+  const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
+  const [periodOffset, setPeriodOffset] = useState(0);
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [isPayDialogOpen, setIsPayDialogOpen] = useState(false);
