@@ -206,7 +206,7 @@ export const ScheduleLeadMeetingDialog = ({
           .eq("user_id", userData.user?.id)
           .single();
 
-        await supabase.from("crm_activities").insert({
+        const activityInsert: any = {
           lead_id: leadId,
           type: "meeting",
           title: formData.title,
@@ -215,7 +215,32 @@ export const ScheduleLeadMeetingDialog = ({
           responsible_staff_id: staffData?.id,
           status: "pending",
           meeting_link: data.event?.meetingLink || null,
-        } as any);
+          google_calendar_event_id: data.event?.id || null,
+          google_calendar_user_id: selectedStaffUserId || null,
+        };
+
+        await supabase.from("crm_activities").insert(activityInsert);
+
+        // Log the scheduling action in history
+        const { data: insertedActivity } = await supabase
+          .from("crm_activities")
+          .select("id")
+          .eq("lead_id", leadId)
+          .eq("google_calendar_event_id", data.event?.id)
+          .order("created_at", { ascending: false })
+          .limit(1)
+          .single();
+
+        if (insertedActivity) {
+          await supabase.from("crm_activity_history").insert({
+            activity_id: insertedActivity.id,
+            lead_id: leadId,
+            action: "scheduled",
+            performed_by_staff_id: staffData?.id,
+            new_scheduled_at: startDateTime,
+            notes: `Agendado por ${staffData?.id ? "staff" : "sistema"} - ${formData.title}`,
+          } as any);
+        }
 
         // If this was triggered from an automation activity, mark it as completed
         if (activityIdToComplete) {
