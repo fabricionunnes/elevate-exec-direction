@@ -1210,6 +1210,13 @@ export const CRMLeadDetailPage = () => {
           phone={lead.phone}
           recipientName={lead.name}
           onClose={() => setWhatsappDialogOpen(false)}
+          leadContext={{
+            name: lead.name,
+            company: lead.company || undefined,
+            email: lead.email || undefined,
+            phone: lead.phone || undefined,
+            ownerName: lead.owner?.name || undefined,
+          }}
           sending={sendingWhatsapp}
           onSend={async (message) => {
             setSendingWhatsapp(true);

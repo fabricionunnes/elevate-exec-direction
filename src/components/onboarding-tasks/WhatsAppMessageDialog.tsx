@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useRef } from "react";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
@@ -12,6 +12,26 @@ import {
   DialogFooter,
 } from "@/components/ui/dialog";
 
+const AVAILABLE_VARIABLES = [
+  { key: '{{nome_cliente}}', label: 'Nome' },
+  { key: '{{empresa}}', label: 'Empresa' },
+  { key: '{{email}}', label: 'E-mail' },
+  { key: '{{telefone}}', label: 'Telefone' },
+  { key: '{{responsavel}}', label: 'Responsável' },
+  { key: '{{link_agendamento}}', label: 'Link Agendamento' },
+  { key: '{{data_hora_agendamento}}', label: 'Data/Hora Agend.' },
+];
+
+interface LeadContext {
+  name?: string;
+  company?: string;
+  email?: string;
+  phone?: string;
+  ownerName?: string;
+  meetingLink?: string;
+  meetingDateTime?: string;
+}
+
 interface WhatsAppMessageDialogProps {
   phone: string;
   recipientName?: string;
@@ -19,26 +39,39 @@ interface WhatsAppMessageDialogProps {
   onClose: () => void;
   onSend: (message: string) => Promise<void>;
   sending: boolean;
+  leadContext?: LeadContext;
 }
 
 const MESSAGE_TEMPLATES = [
   {
     label: "Lembrete de Reunião",
-    message: "Olá! 👋 Passando para lembrar da nossa reunião agendada. Confirma sua presença?",
+    message: "Olá, {{nome_cliente}}! 👋 Passando para lembrar da nossa reunião agendada. Confirma sua presença?",
   },
   {
     label: "Follow-up",
-    message: "Olá! Como estão as coisas por aí? Gostaria de saber se posso ajudar em algo. 🚀",
+    message: "Olá, {{nome_cliente}}! Como estão as coisas por aí? Gostaria de saber se posso ajudar em algo. 🚀",
   },
   {
     label: "Boas Vindas",
-    message: "Olá! Seja muito bem-vindo(a) à Universidade das Vendas! Estamos prontos para ajudá-lo(a) a alcançar seus objetivos. 🎯",
+    message: "Olá, {{nome_cliente}}! Seja muito bem-vindo(a)! Estamos prontos para ajudá-lo(a) a alcançar seus objetivos. 🎯",
   },
   {
     label: "Atualização",
-    message: "Olá! Passando para compartilhar uma atualização importante sobre seu projeto. Podemos conversar?",
+    message: "Olá, {{nome_cliente}}! Passando para compartilhar uma atualização importante sobre seu projeto. Podemos conversar?",
   },
 ];
+
+function resolveVariables(text: string, ctx?: LeadContext): string {
+  if (!text || !ctx) return text;
+  return text
+    .replace(/\{\{nome_cliente\}\}/g, ctx.name || '')
+    .replace(/\{\{empresa\}\}/g, ctx.company || '')
+    .replace(/\{\{email\}\}/g, ctx.email || '')
+    .replace(/\{\{telefone\}\}/g, ctx.phone || '')
+    .replace(/\{\{responsavel\}\}/g, ctx.ownerName || '')
+    .replace(/\{\{link_agendamento\}\}/g, ctx.meetingLink || '')
+    .replace(/\{\{data_hora_agendamento\}\}/g, ctx.meetingDateTime || '');
+}
 
 export const WhatsAppMessageDialog = ({
   phone,
@@ -47,25 +80,46 @@ export const WhatsAppMessageDialog = ({
   onClose,
   onSend,
   sending,
+  leadContext,
 }: WhatsAppMessageDialogProps) => {
   const [message, setMessage] = useState(defaultMessage);
+  const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const handleSend = async () => {
     if (!message.trim()) return;
-    await onSend(message.trim());
+    const resolved = resolveVariables(message.trim(), leadContext);
+    await onSend(resolved);
   };
 
   const applyTemplate = (template: string) => {
-    if (recipientName) {
-      setMessage(template.replace("Olá!", `Olá, ${recipientName}!`));
-    } else {
-      setMessage(template);
-    }
+    setMessage(template);
   };
+
+  const insertVariable = (variable: string) => {
+    const textarea = textareaRef.current;
+    if (!textarea) {
+      setMessage((prev) => prev + variable);
+      return;
+    }
+    const start = textarea.selectionStart;
+    const end = textarea.selectionEnd;
+    const newText = message.substring(0, start) + variable + message.substring(end);
+    setMessage(newText);
+    // Restore cursor position after React re-render
+    requestAnimationFrame(() => {
+      textarea.focus();
+      const newPos = start + variable.length;
+      textarea.setSelectionRange(newPos, newPos);
+    });
+  };
+
+  // Preview of what message will look like after variable resolution
+  const previewMessage = resolveVariables(message, leadContext);
+  const hasVariables = /\{\{.+?\}\}/.test(message);
 
   return (
     <Dialog open onOpenChange={onClose}>
-      <DialogContent className="sm:max-w-lg">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle className="flex items-center gap-2">
             <MessageSquare className="h-5 w-5 text-green-500" />
@@ -101,12 +155,31 @@ export const WhatsAppMessageDialog = ({
             </div>
           </div>
 
+          {/* Variables */}
+          <div className="space-y-2">
+            <Label className="text-sm text-muted-foreground">Variáveis Dinâmicas:</Label>
+            <div className="flex flex-wrap gap-1.5">
+              {AVAILABLE_VARIABLES.map((v) => (
+                <Button
+                  key={v.key}
+                  variant="secondary"
+                  size="sm"
+                  onClick={() => insertVariable(v.key)}
+                  className="text-xs h-7 px-2"
+                >
+                  {v.label}
+                </Button>
+              ))}
+            </div>
+          </div>
+
           {/* Message Input */}
           <div className="space-y-2">
             <Label htmlFor="message">Mensagem</Label>
             <Textarea
+              ref={textareaRef}
               id="message"
-              placeholder="Digite sua mensagem..."
+              placeholder="Digite sua mensagem... Use {{nome_cliente}} para variáveis"
               value={message}
               onChange={(e) => setMessage(e.target.value)}
               rows={5}
@@ -116,6 +189,16 @@ export const WhatsAppMessageDialog = ({
               {message.length} caracteres
             </p>
           </div>
+
+          {/* Preview */}
+          {hasVariables && previewMessage && (
+            <div className="space-y-1">
+              <Label className="text-sm text-muted-foreground">Pré-visualização:</Label>
+              <div className="bg-muted/30 rounded-lg p-3 text-sm whitespace-pre-wrap border border-border">
+                {previewMessage}
+              </div>
+            </div>
+          )}
         </div>
 
         <DialogFooter>
