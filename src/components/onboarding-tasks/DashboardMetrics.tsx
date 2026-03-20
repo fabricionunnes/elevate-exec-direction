@@ -201,6 +201,10 @@ const DashboardMetrics = ({
     } else {
       setLoading(false);
       fetchOverdueCompanies();
+      // Fetch CSAT separately since it has no external prop
+      supabase.from("csat_responses").select("id, score, feedback, respondent_name, responded_at, project_id, meeting_id").order("responded_at", { ascending: false }).then(({ data }) => {
+        if (data) setCsatResponses(data);
+      });
     }
   }, [needsInternalFetch]);
 
