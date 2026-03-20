@@ -55,6 +55,7 @@ const AVAILABLE_VARIABLES = [
   { key: '{{empresa}}', label: 'Empresa' },
   { key: '{{email}}', label: 'E-mail' },
   { key: '{{telefone}}', label: 'Telefone' },
+  { key: '{{responsavel}}', label: 'Responsável' },
 ];
 
 export function StageChecklistDialog({ 

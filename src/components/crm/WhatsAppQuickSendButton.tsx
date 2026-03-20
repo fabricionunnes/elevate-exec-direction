@@ -38,7 +38,8 @@ function replaceTemplateVariables(
   template: string, 
   lead: Lead, 
   stageName?: string,
-  pipelineName?: string
+  pipelineName?: string,
+  ownerName?: string
 ): string {
   return template
     .replace(/{nome}/g, lead.name || '')
@@ -46,7 +47,8 @@ function replaceTemplateVariables(
     .replace(/{email}/g, lead.email || '')
     .replace(/{telefone}/g, lead.phone || '')
     .replace(/{etapa}/g, stageName || '')
-    .replace(/{funil}/g, pipelineName || '');
+    .replace(/{funil}/g, pipelineName || '')
+    .replace(/\{\{responsavel\}\}/g, ownerName || '');
 }
 
 export function WhatsAppQuickSendButton({
