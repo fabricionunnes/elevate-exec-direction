@@ -52,10 +52,24 @@ import {
   Users,
   CalendarCheck,
   PhoneCall,
+  Sparkles,
 } from "lucide-react";
+import {
+  ResponsiveContainer,
+  PieChart,
+  Pie,
+  Cell,
+  BarChart,
+  Bar,
+  XAxis,
+  YAxis,
+  Tooltip,
+  CartesianGrid,
+} from "recharts";
 import { format, startOfDay, endOfDay, subDays, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { toast } from "sonner";
+import { cn } from "@/lib/utils";
 import {
   getRemainingBusinessDaysInMonth,
   getTotalBusinessDaysInMonth,
