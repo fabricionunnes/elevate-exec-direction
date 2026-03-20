@@ -220,7 +220,7 @@ export const LeadActivitiesTab = ({
       try {
         const { data, error } = await supabase
           .from("crm_stage_checklists")
-          .select("id, title, description, item_type, whatsapp_template")
+          .select("id, title, description, item_type, whatsapp_template, whatsapp_attachments")
           .eq("stage_id", currentStageId)
           .eq("is_active", true)
           .order("sort_order");
@@ -231,12 +231,13 @@ export const LeadActivitiesTab = ({
         const storageKey = `checklist_${leadId}_${currentStageId}`;
         const completedIds = JSON.parse(localStorage.getItem(storageKey) || "[]");
         
-        setChecklistItems((data || []).map(item => ({
+        setChecklistItems((data || []).map((item: any) => ({
           id: item.id,
           title: item.title,
           description: item.description,
           item_type: item.item_type || 'instruction',
           whatsapp_template: item.whatsapp_template,
+          whatsapp_attachments: Array.isArray(item.whatsapp_attachments) ? item.whatsapp_attachments : [],
           completed: completedIds.includes(item.id),
         })));
       } catch (error) {
