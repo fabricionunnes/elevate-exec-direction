@@ -1,7 +1,8 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar, Star, Trophy, Gift } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar, Star, Trophy, Gift, Filter } from "lucide-react";
 import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 
 interface TierInfo {
