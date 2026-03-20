@@ -154,6 +154,7 @@ export const CRMLeadDetailPage = () => {
   const [addNoteDialogOpen, setAddNoteDialogOpen] = useState(false);
   const [allTags, setAllTags] = useState<{ id: string; name: string; color: string }[]>([]);
   const [tagPopoverOpen, setTagPopoverOpen] = useState(false);
+  const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
 
