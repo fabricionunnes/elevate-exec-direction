@@ -458,14 +458,15 @@ export default function CRMHeadComercialPage() {
   const totals = useMemo(() => {
     const t = {
       metaVendas: 0, realizado: 0, projecao: 0, pipeline: 0,
-      forecast: 0, todayMeetings: 0, yesterdayMeetings: 0,
+      forecast: 0, forecastWeighted: 0, todayMeetings: 0, yesterdayMeetings: 0,
     };
     closersPerf.forEach((p) => {
       t.metaVendas += p.metaVendas;
       t.realizado += p.realizado;
       t.projecao += p.projecao;
       t.pipeline += p.pipelineValue;
-      t.forecast += p.forecastWeighted;
+      t.forecast += p.forecastValue;
+      t.forecastWeighted += p.forecastWeighted;
       t.todayMeetings += p.todayMeetings;
       t.yesterdayMeetings += p.yesterdayMeetings;
     });
