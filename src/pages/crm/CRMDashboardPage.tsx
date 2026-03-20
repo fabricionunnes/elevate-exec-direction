@@ -363,7 +363,7 @@ export const CRMDashboardPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent">
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-sm">
             Dashboard Comercial
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -411,149 +411,140 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
-      {/* Daily Goal - Hero Card */}
-      <div className="relative overflow-hidden rounded-2xl bg-gradient-to-r from-blue-600 via-indigo-600 to-purple-700 p-6 text-white shadow-xl">
-        <div className="absolute -right-10 -top-10 h-40 w-40 rounded-full bg-white/10 blur-2xl" />
-        <div className="absolute -left-10 -bottom-10 h-32 w-32 rounded-full bg-white/5 blur-xl" />
-        <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-          <div className="flex items-center gap-4">
-            <div className="p-3 bg-white/20 backdrop-blur-sm rounded-xl">
-              <Flame className="h-8 w-8 text-yellow-300" />
+      {/* Daily Goal - Hero Card - Ultra 3D */}
+      <div className="relative overflow-hidden rounded-3xl p-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/20">
+        <div className="relative rounded-[22px] bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 p-6 overflow-hidden">
+          {/* Glow orbs */}
+          <div className="absolute top-0 right-0 h-60 w-60 rounded-full bg-blue-500/30 blur-[80px]" />
+          <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-purple-500/25 blur-[60px]" />
+          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 rounded-full bg-pink-500/15 blur-[50px]" />
+          
+          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+            <div className="flex items-center gap-4">
+              <div className="p-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-xl shadow-orange-500/40">
+                <Flame className="h-8 w-8 text-white drop-shadow-lg" />
+              </div>
+              <div>
+                <h3 className="text-xl font-bold text-white">Meta Diária</h3>
+                <p className="text-sm text-blue-200/80">
+                  {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
+                </p>
+              </div>
             </div>
-            <div>
-              <h3 className="text-xl font-bold">Meta Diária</h3>
-              <p className="text-sm text-blue-100">
-                {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
-              </p>
+            
+            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+              <div className="bg-white/[0.08] backdrop-blur-md rounded-2xl p-3.5 text-center border border-white/10 shadow-inner">
+                <p className="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider font-medium">Meta do Mês</p>
+                <p className="text-lg font-bold text-white">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
+              </div>
+              <div className="bg-emerald-500/[0.12] backdrop-blur-md rounded-2xl p-3.5 text-center border border-emerald-400/20 shadow-inner">
+                <p className="text-[10px] text-emerald-300/70 mb-1 uppercase tracking-wider font-medium">Realizado</p>
+                <p className="text-lg font-bold text-emerald-300">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
+              </div>
+              <div className="bg-amber-500/[0.12] backdrop-blur-md rounded-2xl p-3.5 text-center border border-amber-400/20 shadow-inner">
+                <p className="text-[10px] text-amber-300/70 mb-1 uppercase tracking-wider font-medium">Falta</p>
+                <p className="text-lg font-bold text-amber-300">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
+              </div>
+              <div className="bg-gradient-to-br from-yellow-500/25 to-orange-500/20 backdrop-blur-md rounded-2xl p-3.5 text-center border border-yellow-400/30 shadow-lg shadow-yellow-500/10">
+                <p className="text-[10px] text-yellow-200/80 mb-1 uppercase tracking-wider font-bold">Vender/Dia</p>
+                <p className="text-xl font-extrabold text-yellow-300 drop-shadow-lg">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
+              </div>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-5">
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-              <p className="text-[11px] text-blue-200 mb-1">Meta do Mês</p>
-              <p className="text-lg font-bold">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
+          {/* Progress bar */}
+          <div className="relative z-10 mt-6">
+            <div className="flex justify-between text-xs text-blue-200/60 mb-2">
+              <span>Progresso</span>
+              <span className="font-bold text-white text-sm">{progressPercent}%</span>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-              <p className="text-[11px] text-blue-200 mb-1">Realizado</p>
-              <p className="text-lg font-bold text-emerald-300">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
+            <div className="h-4 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
+              <div 
+                className="h-full bg-gradient-to-r from-blue-400 via-emerald-400 to-yellow-300 rounded-full transition-all duration-1000 ease-out relative"
+                style={{ width: `${progressPercent}%` }}
+              >
+                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+                <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white/40 to-transparent rounded-full animate-pulse" />
+              </div>
             </div>
-            <div className="bg-white/10 backdrop-blur-sm rounded-xl p-3 text-center">
-              <p className="text-[11px] text-blue-200 mb-1">Falta</p>
-              <p className="text-lg font-bold text-amber-300">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
-            </div>
-            <div className="bg-yellow-400/20 backdrop-blur-sm rounded-xl p-3 text-center border border-yellow-400/30">
-              <p className="text-[11px] text-yellow-200 mb-1 font-medium">Vender/Dia</p>
-              <p className="text-xl font-extrabold text-yellow-300">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
-            </div>
-          </div>
-        </div>
-        
-        {/* Progress bar */}
-        <div className="relative z-10 mt-5">
-          <div className="flex justify-between text-xs text-blue-200 mb-1.5">
-            <span>Progresso</span>
-            <span className="font-semibold text-white">{progressPercent}%</span>
-          </div>
-          <div className="h-3 bg-white/20 rounded-full overflow-hidden backdrop-blur-sm">
-            <div 
-              className="h-full bg-gradient-to-r from-emerald-400 via-green-400 to-yellow-300 rounded-full transition-all duration-700 ease-out shadow-lg shadow-emerald-500/30"
-              style={{ width: `${progressPercent}%` }}
-            />
           </div>
         </div>
       </div>
 
-      {/* Main Metrics - Row 1 */}
+      {/* Main Metrics - Row 1 - 3D Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { icon: Users, label: "Leads Novos", value: metrics.newLeads, gradient: "from-blue-500 to-cyan-400", bgLight: "bg-blue-500/10", iconColor: "text-blue-500" },
-          { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, gradient: "from-violet-500 to-purple-400", bgLight: "bg-violet-500/10", iconColor: "text-violet-500" },
-          { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, gradient: "from-indigo-500 to-blue-400", bgLight: "bg-indigo-500/10", iconColor: "text-indigo-500" },
-          { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, gradient: "from-cyan-500 to-teal-400", bgLight: "bg-cyan-500/10", iconColor: "text-cyan-500" },
-          { icon: FileText, label: "Propostas", value: metrics.proposalsSent, gradient: "from-orange-500 to-amber-400", bgLight: "bg-orange-500/10", iconColor: "text-orange-500" },
-          { icon: Trophy, label: "Ganhos", value: metrics.won, gradient: "from-emerald-500 to-green-400", bgLight: "bg-emerald-500/10", iconColor: "text-emerald-500" },
+          { icon: Users, label: "Leads Novos", value: metrics.newLeads, from: "from-blue-500", to: "to-cyan-400", shadow: "shadow-blue-500/25", glow: "bg-blue-400/20" },
+          { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, from: "from-violet-500", to: "to-purple-400", shadow: "shadow-violet-500/25", glow: "bg-violet-400/20" },
+          { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, from: "from-indigo-500", to: "to-blue-400", shadow: "shadow-indigo-500/25", glow: "bg-indigo-400/20" },
+          { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, from: "from-cyan-500", to: "to-teal-400", shadow: "shadow-cyan-500/25", glow: "bg-cyan-400/20" },
+          { icon: FileText, label: "Propostas", value: metrics.proposalsSent, from: "from-orange-500", to: "to-amber-400", shadow: "shadow-orange-500/25", glow: "bg-orange-400/20" },
+          { icon: Trophy, label: "Ganhos", value: metrics.won, from: "from-emerald-500", to: "to-green-400", shadow: "shadow-emerald-500/25", glow: "bg-emerald-400/20" },
         ].map((item, idx) => (
           <div
             key={idx}
-            className="relative overflow-hidden rounded-xl border border-border/50 bg-card p-4 shadow-sm hover:shadow-md transition-shadow"
+            className="group relative overflow-hidden rounded-2xl bg-card border border-border/40 p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
           >
-            <div className={`absolute top-0 left-0 h-1 w-full bg-gradient-to-r ${item.gradient}`} />
-            <div className="flex items-center gap-3">
-              <div className={`p-2 rounded-lg ${item.bgLight}`}>
-                <item.icon className={`h-4 w-4 ${item.iconColor}`} />
+            {/* Top gradient bar - thicker */}
+            <div className={`absolute top-0 left-0 h-1.5 w-full bg-gradient-to-r ${item.from} ${item.to}`} />
+            {/* Background glow */}
+            <div className={`absolute -bottom-6 -right-6 h-20 w-20 rounded-full ${item.glow} blur-xl opacity-60 group-hover:opacity-100 transition-opacity`} />
+            <div className="relative z-10 flex flex-col gap-3">
+              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.from} ${item.to} flex items-center justify-center shadow-lg ${item.shadow}`}>
+                <item.icon className="h-5 w-5 text-white" />
               </div>
               <div>
-                <p className="text-2xl font-extrabold">{item.value}</p>
-                <p className="text-[11px] text-muted-foreground leading-tight">{item.label}</p>
+                <p className="text-3xl font-black tracking-tight">{item.value}</p>
+                <p className="text-[11px] text-muted-foreground leading-tight mt-0.5">{item.label}</p>
               </div>
             </div>
           </div>
         ))}
       </div>
 
-      {/* Financial Metrics Row */}
+      {/* Financial Metrics Row - Glassmorphism */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-        <div className="relative overflow-hidden rounded-xl border border-amber-500/20 bg-gradient-to-br from-amber-50 to-orange-50 dark:from-amber-950/30 dark:to-orange-950/20 p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-amber-500 to-orange-500 rounded-xl text-white shadow-lg shadow-amber-500/20">
-              <TrendingUp className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-2xl font-extrabold">{metrics.conversionRate}%</p>
-              <p className="text-xs text-muted-foreground">Taxa de Conversão</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-xl border border-slate-500/20 bg-gradient-to-br from-slate-50 to-gray-50 dark:from-slate-950/30 dark:to-gray-950/20 p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-slate-600 to-gray-700 rounded-xl text-white shadow-lg shadow-slate-500/20">
-              <DollarSign className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-extrabold">{formatCurrency(metrics.pipelineValue)}</p>
-              <p className="text-xs text-muted-foreground">Valor no Pipeline</p>
-            </div>
-          </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-xl border border-teal-500/20 bg-gradient-to-br from-teal-50 to-cyan-50 dark:from-teal-950/30 dark:to-cyan-950/20 p-4 shadow-sm">
-          <div className="flex items-center gap-3">
-            <div className="p-2.5 bg-gradient-to-br from-teal-500 to-cyan-500 rounded-xl text-white shadow-lg shadow-teal-500/20">
-              <Target className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-extrabold">{formatCurrency(metrics.forecast)}</p>
-              <p className="text-xs text-muted-foreground">Forecast Ponderado</p>
+        {[
+          { icon: TrendingUp, label: "Taxa de Conversão", value: `${metrics.conversionRate}%`, large: true, from: "from-amber-500", to: "to-orange-600", bg: "from-amber-500/10 to-orange-500/5", border: "border-amber-500/30", shadow: "shadow-amber-500/20" },
+          { icon: DollarSign, label: "Valor no Pipeline", value: formatCurrency(metrics.pipelineValue), from: "from-blue-600", to: "to-indigo-600", bg: "from-blue-500/10 to-indigo-500/5", border: "border-blue-500/30", shadow: "shadow-blue-500/20" },
+          { icon: Target, label: "Forecast Ponderado", value: formatCurrency(metrics.forecast), from: "from-teal-500", to: "to-cyan-500", bg: "from-teal-500/10 to-cyan-500/5", border: "border-teal-500/30", shadow: "shadow-teal-500/20" },
+          { icon: DollarSign, label: "Receita no Período", value: formatCurrency(metrics.totalRevenue), from: "from-emerald-500", to: "to-green-500", bg: "from-emerald-500/15 to-green-500/10", border: "border-emerald-500/40", shadow: "shadow-emerald-500/25", highlight: true },
+        ].map((item, idx) => (
+          <div
+            key={idx}
+            className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${item.bg} border ${item.border} p-5 shadow-lg ${item.shadow} hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
+          >
+            {/* Decorative orb */}
+            <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${item.from} ${item.to} opacity-10 blur-xl group-hover:opacity-20 transition-opacity`} />
+            <div className="relative z-10 flex items-start gap-3">
+              <div className={`p-2.5 bg-gradient-to-br ${item.from} ${item.to} rounded-xl text-white shadow-xl ${item.shadow}`}>
+                <item.icon className="h-5 w-5 drop-shadow" />
+              </div>
+              <div className="flex-1 min-w-0">
+                <p className={`font-black tracking-tight truncate ${item.large ? 'text-3xl' : 'text-xl'} ${item.highlight ? 'bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent' : ''}`}>
+                  {item.value}
+                </p>
+                <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
+              </div>
             </div>
           </div>
-        </div>
-
-        <div className="relative overflow-hidden rounded-xl border border-emerald-500/30 bg-gradient-to-br from-emerald-50 to-green-50 dark:from-emerald-950/40 dark:to-green-950/30 p-4 shadow-sm">
-          <div className="absolute -right-4 -bottom-4 h-20 w-20 rounded-full bg-emerald-500/10 blur-xl" />
-          <div className="flex items-center gap-3 relative z-10">
-            <div className="p-2.5 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl text-white shadow-lg shadow-emerald-500/30">
-              <DollarSign className="h-5 w-5" />
-            </div>
-            <div>
-              <p className="text-lg font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(metrics.totalRevenue)}</p>
-              <p className="text-xs text-muted-foreground">Receita no Período</p>
-            </div>
-          </div>
-        </div>
+        ))}
       </div>
 
       {/* Charts */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Funnel Chart */}
-        <Card className="rounded-xl border-border/50 shadow-sm overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Zap className="h-4 w-4 text-indigo-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+          <div className="p-5 pb-2">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg text-white">
+                <Zap className="h-3.5 w-3.5" />
+              </div>
               Funil por Etapa
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="px-5 pb-5">
             <div className="h-[300px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={stageData} layout="vertical">
@@ -564,9 +555,9 @@ export const CRMDashboardPage = () => {
                       name === "count" ? `${value} leads` : formatCurrency(value),
                       name === "count" ? "Quantidade" : "Valor"
                     ]}
-                    contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 4px 20px rgba(0,0,0,0.12)" }}
+                    contentStyle={{ borderRadius: "16px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)", backdropFilter: "blur(8px)" }}
                   />
-                  <Bar dataKey="count" radius={[0, 8, 8, 0]}>
+                  <Bar dataKey="count" radius={[0, 10, 10, 0]}>
                     {stageData.map((entry, index) => (
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
@@ -574,19 +565,22 @@ export const CRMDashboardPage = () => {
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Loss Reasons */}
-        <Card className="rounded-xl border-border/50 shadow-sm overflow-hidden">
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <ArrowDownRight className="h-4 w-4 text-red-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-red-500 via-rose-500 to-pink-500" />
+          <div className="p-5 pb-2">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <div className="p-1.5 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg text-white">
+                <ArrowDownRight className="h-3.5 w-3.5" />
+              </div>
               Motivos de Perda
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-3">
+            </h3>
+          </div>
+          <div className="px-5 pb-5">
+            <div className="space-y-4">
               {lossReasons.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-8">
                   Nenhum lead perdido ainda 🎉
@@ -596,131 +590,128 @@ export const CRMDashboardPage = () => {
                   const maxCount = lossReasons[0]?.count || 1;
                   const pct = Math.round((reason.count / maxCount) * 100);
                   return (
-                    <div key={idx} className="space-y-1">
+                    <div key={idx} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
-                        <span className="font-medium">{reason.name}</span>
-                        <Badge variant="secondary" className="font-semibold">{reason.count}</Badge>
+                        <span className="font-semibold">{reason.name}</span>
+                        <span className="text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">{reason.count}</span>
                       </div>
-                      <div className="h-2 bg-muted rounded-full overflow-hidden">
+                      <div className="h-3 bg-muted/60 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-red-400 to-rose-500 rounded-full transition-all"
+                          className="h-full bg-gradient-to-r from-red-500 via-rose-500 to-pink-400 rounded-full transition-all relative"
                           style={{ width: `${pct}%` }}
-                        />
+                        >
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent rounded-full" />
+                        </div>
                       </div>
                     </div>
                   );
                 })
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
-      {/* Smart Lists */}
+      {/* Smart Lists - Glassmorphism cards */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Overdue Leads */}
-        <Card className="rounded-xl border-red-500/20 shadow-sm overflow-hidden">
-          <div className="h-1 w-full bg-gradient-to-r from-red-500 to-rose-400" />
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <AlertTriangle className="h-4 w-4 text-red-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="h-1.5 w-full bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
+          <div className="p-5 pb-2">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-xl text-white shadow-lg shadow-red-500/30">
+                <AlertTriangle className="h-4 w-4" />
+              </div>
               Leads Atrasados
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+              {overdueLeads.length > 0 && (
+                <span className="ml-auto text-xs font-bold bg-red-500 text-white px-2 py-0.5 rounded-full shadow-lg shadow-red-500/30">{overdueLeads.length}</span>
+              )}
+            </h3>
+          </div>
+          <div className="px-5 pb-5">
             <div className="space-y-1">
               {overdueLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhum lead atrasado 🎉
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhum lead atrasado 🎉</p>
               ) : (
                 overdueLeads.map(lead => (
-                  <Link
-                    key={lead.id}
-                    to={`/crm/leads/${lead.id}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-red-500/5 transition-colors group"
-                  >
+                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-red-500/5 transition-all group">
                     <div>
-                      <p className="font-medium text-sm truncate group-hover:text-red-600 transition-colors">{lead.name}</p>
+                      <p className="font-semibold text-sm truncate group-hover:text-red-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-red-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </Link>
                 ))
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* No Activity */}
-        <Card className="rounded-xl border-amber-500/20 shadow-sm overflow-hidden">
-          <div className="h-1 w-full bg-gradient-to-r from-amber-500 to-yellow-400" />
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Clock className="h-4 w-4 text-amber-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-400" />
+          <div className="p-5 pb-2">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl text-white shadow-lg shadow-amber-500/30">
+                <Clock className="h-4 w-4" />
+              </div>
               Sem Próxima Atividade
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+              {noActivityLeads.length > 0 && (
+                <span className="ml-auto text-xs font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-lg shadow-amber-500/30">{noActivityLeads.length}</span>
+              )}
+            </h3>
+          </div>
+          <div className="px-5 pb-5">
             <div className="space-y-1">
               {noActivityLeads.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Todos os leads têm atividades 🎉
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-4">Todos os leads têm atividades 🎉</p>
               ) : (
                 noActivityLeads.map(lead => (
-                  <Link
-                    key={lead.id}
-                    to={`/crm/leads/${lead.id}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-amber-500/5 transition-colors group"
-                  >
+                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-amber-500/5 transition-all group">
                     <div>
-                      <p className="font-medium text-sm truncate group-hover:text-amber-600 transition-colors">{lead.name}</p>
+                      <p className="font-semibold text-sm truncate group-hover:text-amber-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     </div>
-                    <ArrowUpRight className="h-3.5 w-3.5 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-amber-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </Link>
                 ))
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Top Opportunities */}
-        <Card className="rounded-xl border-emerald-500/20 shadow-sm overflow-hidden">
-          <div className="h-1 w-full bg-gradient-to-r from-emerald-500 to-green-400" />
-          <CardHeader className="pb-2">
-            <CardTitle className="text-base font-bold flex items-center gap-2">
-              <Trophy className="h-4 w-4 text-emerald-500" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
+          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-green-400 to-teal-400" />
+          <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+          <div className="p-5 pb-2 relative z-10">
+            <h3 className="text-base font-bold flex items-center gap-2">
+              <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl text-white shadow-lg shadow-emerald-500/30">
+                <Trophy className="h-4 w-4" />
+              </div>
               Top Oportunidades
-            </CardTitle>
-          </CardHeader>
-          <CardContent>
+            </h3>
+          </div>
+          <div className="px-5 pb-5 relative z-10">
             <div className="space-y-1">
               {topOpportunities.length === 0 ? (
-                <p className="text-sm text-muted-foreground text-center py-4">
-                  Nenhuma oportunidade ainda
-                </p>
+                <p className="text-sm text-muted-foreground text-center py-4">Nenhuma oportunidade ainda</p>
               ) : (
                 topOpportunities.map(lead => (
-                  <Link
-                    key={lead.id}
-                    to={`/crm/leads/${lead.id}`}
-                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-emerald-500/5 transition-colors group"
-                  >
+                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-emerald-500/5 transition-all group">
                     <div className="min-w-0 flex-1 mr-2">
-                      <p className="font-medium text-sm truncate group-hover:text-emerald-600 transition-colors">{lead.name}</p>
+                      <p className="font-semibold text-sm truncate group-hover:text-emerald-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
                     </div>
-                    <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20 font-semibold text-xs shrink-0">
+                    <span className="shrink-0 text-xs font-bold bg-gradient-to-r from-emerald-500 to-green-500 text-white px-2.5 py-1 rounded-full shadow-md shadow-emerald-500/20">
                       {formatCurrency(lead.opportunity_value || 0)}
-                    </Badge>
+                    </span>
                   </Link>
                 ))
               )}
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
     </div>
   );
