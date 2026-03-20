@@ -450,13 +450,13 @@ export const PreSalesIndicatorsTab = () => {
   }
 
   return (
-    <div className="p-4 space-y-6 bg-muted/30">
+    <div className="p-4 space-y-6">
       {/* Header with filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-lg font-bold px-4 py-2">
+          <div className="px-4 py-2 rounded-xl text-lg font-bold text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', boxShadow: '0 4px 16px rgba(139,92,246,0.3)' }}>
             Bônus: 0
-          </Badge>
+          </div>
         </div>
         
         {/* Date Range Filter */}
@@ -466,9 +466,10 @@ export const PreSalesIndicatorsTab = () => {
               variant="outline"
               size="sm"
               className={cn(
-                "h-9 gap-2",
-                dateRange && "bg-primary/10 border-primary/30"
+                "h-9 gap-2 rounded-full",
+                dateRange && "border-fuchsia-500/30"
               )}
+              style={dateRange ? { background: 'rgba(217,70,239,0.08)' } : {}}
             >
               <CalendarIcon className="h-4 w-4" />
               {dateRange?.from ? (
@@ -499,7 +500,7 @@ export const PreSalesIndicatorsTab = () => {
         </Popover>
         
         <Select value={selectedSDR} onValueChange={setSelectedSDR}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="SDR / SS" />
           </SelectTrigger>
           <SelectContent>
@@ -510,7 +511,7 @@ export const PreSalesIndicatorsTab = () => {
           </SelectContent>
         </Select>
         <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Funil" />
           </SelectTrigger>
           <SelectContent>
@@ -521,175 +522,113 @@ export const PreSalesIndicatorsTab = () => {
           </SelectContent>
         </Select>
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="rounded-full">
             <Upload className="h-4 w-4 mr-2" />
             Importar Pré-Vendas
           </Button>
           {dateRange?.from && dateRange?.to && (
-            <Badge variant="secondary">
+            <Badge variant="secondary" className="rounded-full">
               {format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
             </Badge>
           )}
         </div>
       </div>
 
-      {/* Top metrics - Métricas Pré-Vendas */}
+      {/* Top metrics - 3D Hero Cards */}
       <div className="grid grid-cols-3 gap-4">
-        <Card className="bg-blue-500/10 border-blue-500/30">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-blue-600">{metrics.reunioes}</p>
-            <p className="text-xs text-muted-foreground">Reuniões</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-500/10 border-green-500/30">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-green-600">{metrics.showUpPercent.toFixed(0)}%</p>
-            <p className="text-xs text-muted-foreground">Show up</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-red-500/10 border-red-500/30">
-          <CardContent className="p-4 text-center">
-            <p className="text-3xl font-bold text-red-600">{metrics.noShowPercent.toFixed(0)}%</p>
-            <p className="text-xs text-muted-foreground">No show</p>
-          </CardContent>
-        </Card>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 8px 24px rgba(59,130,246,0.15)' }}>
+          <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-blue-500/15 blur-2xl" />
+          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)' }}>
+            <Phone className="h-6 w-6" />
+          </div>
+          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.reunioes}</p>
+          <p className="text-xs text-muted-foreground mt-1">Reuniões</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 8px 24px rgba(16,185,129,0.15)' }}>
+          <div className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-emerald-500/15 blur-2xl" />
+          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>
+            <CheckCircle className="h-6 w-6" />
+          </div>
+          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.showUpPercent.toFixed(0)}%</p>
+          <p className="text-xs text-muted-foreground mt-1">Show up</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.08))', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 8px 24px rgba(239,68,68,0.15)' }}>
+          <div className="absolute -top-10 -left-10 h-28 w-28 rounded-full bg-rose-500/15 blur-2xl" />
+          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 8px 24px rgba(239,68,68,0.4)' }}>
+            <XCircle className="h-6 w-6" />
+          </div>
+          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.noShowPercent.toFixed(0)}%</p>
+          <p className="text-xs text-muted-foreground mt-1">No show</p>
+        </div>
       </div>
 
-      {/* Agendamentos e Reuniões Realizadas metrics row */}
+      {/* Agendamentos e Reuniões - Vivid metric cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Agendamentos</p>
-            <p className="text-2xl font-bold text-blue-500">{metrics.agendamentos}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-500/10 border-green-500/30">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Reuniões Realizadas</p>
-            <p className="text-2xl font-bold text-green-600">{metrics.reunioes}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Qualificações</p>
-            <p className="text-2xl font-bold">{metrics.qualificacoes}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Cancelamentos</p>
-            <p className="text-2xl font-bold text-orange-500">{metrics.cancelamentos}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Reagendamentos</p>
-            <p className="text-2xl font-bold">{metrics.reagendamentos}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">No show</p>
-            <p className="text-2xl font-bold text-red-500">{metrics.noShow}</p>
-          </CardContent>
-        </Card>
-        <Card className="col-span-2 bg-primary/5">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% da Meta</p>
-            <p className="text-2xl font-bold text-primary">{metrics.metaPercent.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Agendamentos", value: metrics.agendamentos, gradient: "linear-gradient(135deg, #3b82f6, #06b6d4)", bg: "rgba(59,130,246,0.06)" },
+          { label: "Reuniões Realizadas", value: metrics.reunioes, gradient: "linear-gradient(135deg, #10b981, #059669)", bg: "rgba(16,185,129,0.08)" },
+          { label: "Qualificações", value: metrics.qualificacoes, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.06)" },
+          { label: "Cancelamentos", value: metrics.cancelamentos, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", bg: "rgba(245,158,11,0.06)" },
+          { label: "Reagendamentos", value: metrics.reagendamentos, gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)", bg: "rgba(6,182,212,0.06)" },
+          { label: "No show", value: metrics.noShow, gradient: "linear-gradient(135deg, #ef4444, #ec4899)", bg: "rgba(239,68,68,0.06)" },
+          { label: "% da Meta", value: `${metrics.metaPercent.toFixed(1)}%`, gradient: "linear-gradient(135deg, #ec4899, #8b5cf6)", bg: "rgba(236,72,153,0.06)", span: true },
+        ].map((item, idx) => (
+          <div key={idx} className={`relative overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1 ${(item as any).span ? 'col-span-2' : ''}`} style={{ background: item.bg, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="absolute top-0 left-0 h-1 w-full rounded-t-2xl" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
+            <p className="text-2xl font-black mt-1" style={{ background: item.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Meta de agendamentos */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Meta Agendamentos</p>
-            <p className="text-lg font-bold">{metrics.metaAgendamentos}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Meta Reuniões</p>
-            <p className="text-lg font-bold">{metrics.metaReunioes}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Meta Agend.</p>
-            <p className="text-lg font-bold">{metrics.metaAgendamentosPercent.toFixed(0)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Meta Reuniões</p>
-            <p className="text-lg font-bold">{metrics.metaReunioesPercent.toFixed(0)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Projeção</p>
-            <p className="text-lg font-bold">{formatNumber(metrics.projecao, 0)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Projetado</p>
-            <p className="text-lg font-bold">{metrics.projecaoPercent.toFixed(0)}%</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Meta Agendamentos", value: metrics.metaAgendamentos, gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)" },
+          { label: "Meta Reuniões", value: metrics.metaReunioes, gradient: "linear-gradient(135deg, #10b981, #06b6d4)" },
+          { label: "% Meta Agend.", value: `${metrics.metaAgendamentosPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)" },
+          { label: "% Meta Reuniões", value: `${metrics.metaReunioesPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #ec4899, #d946ef)" },
+          { label: "Projeção", value: formatNumber(metrics.projecao, 0), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)" },
+          { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #8b5cf6, #ec4899)" },
+        ].map((item, idx) => (
+          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 bg-card border border-border/30 transition-all hover:-translate-y-1">
+            <div className="absolute top-0 left-0 h-1 w-full" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
+            <p className="text-lg font-bold mt-1">{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Abordagem/Ligações */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Abordagens</p>
-            <p className="text-lg font-bold">{formatNumber(approachMetrics.abordagens)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Conexões</p>
-            <p className="text-lg font-bold">{formatNumber(approachMetrics.conexoes)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Conv. Abord.</p>
-            <p className="text-lg font-bold">{approachMetrics.conversaoAbord.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Conv. Agend.</p>
-            <p className="text-lg font-bold">{approachMetrics.conversaoAgend.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Conv. Vendas</p>
-            <p className="text-lg font-bold">{approachMetrics.conversaoVendas.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Diária Reuniões</p>
-            <p className="text-lg font-bold">{approachMetrics.diariaReunioes.toFixed(1)}</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Abordagens", value: formatNumber(approachMetrics.abordagens), gradient: "linear-gradient(135deg, #f43f5e, #ec4899)" },
+          { label: "Conexões", value: formatNumber(approachMetrics.conexoes), gradient: "linear-gradient(135deg, #8b5cf6, #3b82f6)" },
+          { label: "% Conv. Abord.", value: `${approachMetrics.conversaoAbord.toFixed(1)}%`, gradient: "linear-gradient(135deg, #f59e0b, #f43f5e)" },
+          { label: "% Conv. Agend.", value: `${approachMetrics.conversaoAgend.toFixed(1)}%`, gradient: "linear-gradient(135deg, #10b981, #06b6d4)" },
+          { label: "% Conv. Vendas", value: `${approachMetrics.conversaoVendas.toFixed(1)}%`, gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)" },
+          { label: "Diária Reuniões", value: approachMetrics.diariaReunioes.toFixed(1), gradient: "linear-gradient(135deg, #d946ef, #f43f5e)" },
+        ].map((item, idx) => (
+          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 bg-card border border-border/30 transition-all hover:-translate-y-1">
+            <div className="absolute top-0 left-0 h-1 w-full" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
+            <p className="text-lg font-bold mt-1">{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* SDR Performance Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Users className="h-4 w-4" />
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f43f5e)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
+              <Users className="h-3.5 w-3.5" />
+            </div>
             Agendamentos e Calls Realizadas
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h3>
+        </div>
+        <div className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="text-xs">
@@ -716,18 +655,20 @@ export const PreSalesIndicatorsTab = () => {
                   <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
                   <TableCell className="text-center">{sdr.cancelled}</TableCell>
                   <TableCell className="text-center">{sdr.rescheduled}</TableCell>
-                  <TableCell className="text-center text-red-500">{sdr.noShow}</TableCell>
+                  <TableCell className="text-center font-bold" style={{ color: '#ef4444' }}>{sdr.noShow}</TableCell>
                   <TableCell className="text-center">{sdr.qualified}</TableCell>
-                  <TableCell className="text-center text-green-600 font-medium">{sdr.meetings}</TableCell>
+                  <TableCell className="text-center font-bold" style={{ color: '#10b981' }}>{sdr.meetings}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={sdr.noShowPercent <= 10 ? "default" : sdr.noShowPercent <= 20 ? "secondary" : "destructive"}>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{
+                      background: sdr.noShowPercent <= 10 ? 'linear-gradient(135deg, #10b981, #06b6d4)' : sdr.noShowPercent <= 20 ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, #ef4444, #ec4899)'
+                    }}>
                       {sdr.noShowPercent.toFixed(1)}%
-                    </Badge>
+                    </span>
                   </TableCell>
                 </TableRow>
               ))}
               {sdrs.length > 0 && (
-                <TableRow className="bg-muted/50 font-bold text-sm">
+                <TableRow className="font-bold text-sm" style={{ background: 'rgba(139,92,246,0.05)' }}>
                   <TableCell>Total geral</TableCell>
                   <TableCell className="text-center">{formatNumber(sdrs.reduce((s, c) => s + c.approaches, 0))}</TableCell>
                   <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.connections, 0)}</TableCell>
@@ -743,72 +684,91 @@ export const PreSalesIndicatorsTab = () => {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Charts Row */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Reuniões por dia */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Reuniões por Dia</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #06b6d4, #3b82f6)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
+                <TrendingUp className="h-3.5 w-3.5" />
+              </div>
+              Reuniões por Dia
+            </h3>
+          </div>
+          <div className="px-4 pb-4">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyMeetingsData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip />
+                  <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
                   <Legend />
                   {sdrs.map((sdr, i) => (
                     <Bar
                       key={sdr.id}
                       dataKey={sdr.name}
-                      fill={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][i % 5]}
+                      fill={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]}
                       stackId="a"
+                      radius={[4, 4, 0, 0]}
                     />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* No Show Evolution */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">No Show</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)' }}>
+                <AlertTriangle className="h-3.5 w-3.5" />
+              </div>
+              No Show
+            </h3>
+          </div>
+          <div className="px-4 pb-4">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={noShowData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} domain={[0, 50]} />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
                   <Legend />
                   <Line type="monotone" dataKey="noShow" name="No Show %" stroke="#EF4444" strokeWidth={2} dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="avg" name="Média" stroke="#6B7280" strokeDasharray="5 5" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Calls Agendadas vs Realizadas */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Calls Agendadas vs Realizadas</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #8b5cf6)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>
+              <Phone className="h-3.5 w-3.5" />
+            </div>
+            Calls Agendadas vs Realizadas
+          </h3>
+        </div>
+        <div className="px-4 pb-4">
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={callsVsCompletedData}>
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip />
+                <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
                 <Legend />
                 <Line type="monotone" dataKey="agendamentos" name="Agendamentos" stroke="#3B82F6" strokeWidth={2} />
                 <Line type="monotone" dataKey="reunioes" name="Reuniões" stroke="#10B981" strokeWidth={2} />
@@ -817,37 +777,40 @@ export const PreSalesIndicatorsTab = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
-      {/* Vendas Summary */}
+      {/* Vendas Summary - Vibrant cards */}
       <div className="grid grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-[10px] text-muted-foreground uppercase">Faturamento</p>
-            <p className="text-2xl font-bold">{formatCurrency(salesSummary.faturamento)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-500/10 border-green-500/30">
-          <CardContent className="p-4 text-center">
-            <p className="text-[10px] text-muted-foreground uppercase">Receita</p>
-            <p className="text-2xl font-bold text-green-600">{formatCurrency(salesSummary.receita)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4 text-center">
-            <p className="text-[10px] text-muted-foreground uppercase">Quantidade</p>
-            <p className="text-2xl font-bold">{salesSummary.quantidade}</p>
-          </CardContent>
-        </Card>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 8px 24px rgba(59,130,246,0.15)' }}>
+          <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-blue-500/15 blur-2xl" />
+          <p className="text-[10px] text-muted-foreground uppercase">Faturamento</p>
+          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(salesSummary.faturamento)}</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 8px 24px rgba(16,185,129,0.15)' }}>
+          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl" />
+          <p className="text-[10px] text-muted-foreground uppercase">Receita</p>
+          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(salesSummary.receita)}</p>
+        </div>
+        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(217,70,239,0.12), rgba(236,72,153,0.08))', border: '1px solid rgba(217,70,239,0.3)', boxShadow: '0 8px 24px rgba(217,70,239,0.15)' }}>
+          <div className="absolute -top-8 -left-8 h-24 w-24 rounded-full bg-fuchsia-500/15 blur-2xl" />
+          <p className="text-[10px] text-muted-foreground uppercase">Quantidade</p>
+          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #d946ef, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{salesSummary.quantidade}</p>
+        </div>
       </div>
 
       {/* Sales by SDR */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">SDR / SS / BDR</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #8b5cf6)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+              <Users className="h-3.5 w-3.5" />
+            </div>
+            SDR / SS / BDR
+          </h3>
+        </div>
+        <div className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="text-xs">
@@ -875,15 +838,15 @@ export const PreSalesIndicatorsTab = () => {
                     <TableCell>{sale.service}</TableCell>
                     <TableCell>{sale.sdr}</TableCell>
                     <TableCell className="text-right">{formatCurrency(sale.billing)}</TableCell>
-                    <TableCell className="text-right font-medium text-green-600">{formatCurrency(sale.revenue)}</TableCell>
+                    <TableCell className="text-right font-bold" style={{ color: '#10b981' }}>{formatCurrency(sale.revenue)}</TableCell>
                     <TableCell>{sale.closer}</TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       <ImportPreSalesDialog
         open={importDialogOpen}

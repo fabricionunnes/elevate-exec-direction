@@ -363,7 +363,7 @@ export const CRMDashboardPage = () => {
       {/* Header */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
         <div>
-          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-blue-600 via-purple-600 to-pink-600 bg-clip-text text-transparent drop-shadow-sm">
+          <h1 className="text-2xl sm:text-3xl font-extrabold bg-gradient-to-r from-rose-500 via-fuchsia-500 via-violet-500 to-cyan-500 bg-clip-text text-transparent drop-shadow-sm">
             Dashboard Comercial
           </h1>
           <p className="text-sm text-muted-foreground mt-1">
@@ -411,87 +411,91 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
-      {/* Daily Goal - Hero Card - Ultra 3D */}
-      <div className="relative overflow-hidden rounded-3xl p-[2px] bg-gradient-to-r from-blue-500 via-purple-500 to-pink-500 shadow-2xl shadow-purple-500/20">
-        <div className="relative rounded-[22px] bg-gradient-to-br from-slate-900 via-indigo-950 to-purple-950 p-6 overflow-hidden">
-          {/* Glow orbs */}
-          <div className="absolute top-0 right-0 h-60 w-60 rounded-full bg-blue-500/30 blur-[80px]" />
-          <div className="absolute -bottom-10 -left-10 h-48 w-48 rounded-full bg-purple-500/25 blur-[60px]" />
-          <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 h-32 w-32 rounded-full bg-pink-500/15 blur-[50px]" />
+      {/* Daily Goal - Hero Card - Ultra Vibrant */}
+      <div className="relative overflow-hidden rounded-3xl p-[3px] shadow-2xl shadow-fuchsia-500/30" style={{ background: 'linear-gradient(135deg, #f43f5e, #d946ef, #8b5cf6, #3b82f6, #06b6d4, #10b981)' }}>
+        <div className="relative rounded-[21px] overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 30%, #4a1942 60%, #1e293b 100%)' }}>
+          {/* Animated glow orbs */}
+          <div className="absolute top-[-40px] right-[-20px] h-80 w-80 rounded-full bg-fuchsia-500/30 blur-[100px] animate-pulse" />
+          <div className="absolute bottom-[-30px] left-[-30px] h-64 w-64 rounded-full bg-cyan-500/25 blur-[80px]" />
+          <div className="absolute top-1/3 left-1/3 h-40 w-40 rounded-full bg-amber-500/20 blur-[60px]" />
+          <div className="absolute bottom-1/4 right-1/4 h-32 w-32 rounded-full bg-emerald-500/20 blur-[50px]" />
           
-          <div className="relative z-10 flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
-            <div className="flex items-center gap-4">
-              <div className="p-4 bg-gradient-to-br from-yellow-400 to-orange-500 rounded-2xl shadow-xl shadow-orange-500/40">
-                <Flame className="h-8 w-8 text-white drop-shadow-lg" />
+          <div className="relative z-10 p-6">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-5">
+              <div className="flex items-center gap-4">
+                <div className="p-4 rounded-2xl shadow-2xl shadow-orange-500/50" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444, #ec4899)' }}>
+                  <Flame className="h-8 w-8 text-white drop-shadow-lg" />
+                </div>
+                <div>
+                  <h3 className="text-xl font-bold text-white">Meta Diária</h3>
+                  <p className="text-sm text-cyan-200/80">
+                    {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-xl font-bold text-white">Meta Diária</h3>
-                <p className="text-sm text-blue-200/80">
-                  {dailyGoal?.businessDaysLeft ?? 0} dia{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''} úte{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 'is' : 'il'} restante{(dailyGoal?.businessDaysLeft ?? 0) !== 1 ? 's' : ''}
-                </p>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                <div className="rounded-2xl p-3.5 text-center border border-white/10 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.15), rgba(139,92,246,0.1))' }}>
+                  <p className="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider font-medium">Meta do Mês</p>
+                  <p className="text-lg font-bold text-white">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
+                </div>
+                <div className="rounded-2xl p-3.5 text-center border border-emerald-400/20 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.2), rgba(6,182,212,0.1))' }}>
+                  <p className="text-[10px] text-emerald-300/70 mb-1 uppercase tracking-wider font-medium">Realizado</p>
+                  <p className="text-lg font-bold text-emerald-300">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
+                </div>
+                <div className="rounded-2xl p-3.5 text-center border border-rose-400/20 shadow-inner backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(244,63,94,0.15), rgba(217,70,239,0.1))' }}>
+                  <p className="text-[10px] text-rose-300/70 mb-1 uppercase tracking-wider font-medium">Falta</p>
+                  <p className="text-lg font-bold text-rose-300">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
+                </div>
+                <div className="rounded-2xl p-3.5 text-center border border-amber-400/30 shadow-lg backdrop-blur-md" style={{ background: 'linear-gradient(135deg, rgba(245,158,11,0.25), rgba(239,68,68,0.15))' }}>
+                  <p className="text-[10px] text-amber-200/80 mb-1 uppercase tracking-wider font-bold">Vender/Dia</p>
+                  <p className="text-xl font-extrabold text-amber-300 drop-shadow-lg">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-              <div className="bg-white/[0.08] backdrop-blur-md rounded-2xl p-3.5 text-center border border-white/10 shadow-inner">
-                <p className="text-[10px] text-blue-300/70 mb-1 uppercase tracking-wider font-medium">Meta do Mês</p>
-                <p className="text-lg font-bold text-white">{formatCurrency(dailyGoal?.monthlyTarget ?? 0)}</p>
+            {/* Progress bar - rainbow */}
+            <div className="mt-6">
+              <div className="flex justify-between text-xs text-blue-200/60 mb-2">
+                <span>Progresso</span>
+                <span className="font-bold text-white text-sm">{progressPercent}%</span>
               </div>
-              <div className="bg-emerald-500/[0.12] backdrop-blur-md rounded-2xl p-3.5 text-center border border-emerald-400/20 shadow-inner">
-                <p className="text-[10px] text-emerald-300/70 mb-1 uppercase tracking-wider font-medium">Realizado</p>
-                <p className="text-lg font-bold text-emerald-300">{formatCurrency(dailyGoal?.achieved ?? 0)}</p>
-              </div>
-              <div className="bg-amber-500/[0.12] backdrop-blur-md rounded-2xl p-3.5 text-center border border-amber-400/20 shadow-inner">
-                <p className="text-[10px] text-amber-300/70 mb-1 uppercase tracking-wider font-medium">Falta</p>
-                <p className="text-lg font-bold text-amber-300">{formatCurrency(dailyGoal?.remaining ?? 0)}</p>
-              </div>
-              <div className="bg-gradient-to-br from-yellow-500/25 to-orange-500/20 backdrop-blur-md rounded-2xl p-3.5 text-center border border-yellow-400/30 shadow-lg shadow-yellow-500/10">
-                <p className="text-[10px] text-yellow-200/80 mb-1 uppercase tracking-wider font-bold">Vender/Dia</p>
-                <p className="text-xl font-extrabold text-yellow-300 drop-shadow-lg">{formatCurrency(dailyGoal?.dailyTarget ?? 0)}</p>
-              </div>
-            </div>
-          </div>
-          
-          {/* Progress bar */}
-          <div className="relative z-10 mt-6">
-            <div className="flex justify-between text-xs text-blue-200/60 mb-2">
-              <span>Progresso</span>
-              <span className="font-bold text-white text-sm">{progressPercent}%</span>
-            </div>
-            <div className="h-4 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/5">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-400 via-emerald-400 to-yellow-300 rounded-full transition-all duration-1000 ease-out relative"
-                style={{ width: `${progressPercent}%` }}
-              >
-                <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
-                <div className="absolute right-0 top-0 h-full w-8 bg-gradient-to-l from-white/40 to-transparent rounded-full animate-pulse" />
+              <div className="h-5 bg-white/10 rounded-full overflow-hidden backdrop-blur-sm border border-white/10">
+                <div 
+                  className="h-full rounded-full transition-all duration-1000 ease-out relative"
+                  style={{ width: `${progressPercent}%`, background: 'linear-gradient(90deg, #ef4444, #f59e0b, #10b981, #3b82f6, #8b5cf6, #ec4899)' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/40 to-transparent rounded-full" />
+                  <div className="absolute right-0 top-0 h-full w-10 bg-gradient-to-l from-white/50 to-transparent rounded-full animate-pulse" />
+                </div>
               </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Metrics - Row 1 - 3D Cards */}
+      {/* Main Metrics - Vivid 3D Cards */}
       <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-6 gap-3">
         {[
-          { icon: Users, label: "Leads Novos", value: metrics.newLeads, from: "from-blue-500", to: "to-cyan-400", shadow: "shadow-blue-500/25", glow: "bg-blue-400/20" },
-          { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, from: "from-violet-500", to: "to-purple-400", shadow: "shadow-violet-500/25", glow: "bg-violet-400/20" },
-          { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, from: "from-indigo-500", to: "to-blue-400", shadow: "shadow-indigo-500/25", glow: "bg-indigo-400/20" },
-          { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, from: "from-cyan-500", to: "to-teal-400", shadow: "shadow-cyan-500/25", glow: "bg-cyan-400/20" },
-          { icon: FileText, label: "Propostas", value: metrics.proposalsSent, from: "from-orange-500", to: "to-amber-400", shadow: "shadow-orange-500/25", glow: "bg-orange-400/20" },
-          { icon: Trophy, label: "Ganhos", value: metrics.won, from: "from-emerald-500", to: "to-green-400", shadow: "shadow-emerald-500/25", glow: "bg-emerald-400/20" },
+          { icon: Users, label: "Leads Novos", value: metrics.newLeads, gradient: "linear-gradient(135deg, #3b82f6, #06b6d4)", shadow: "0 8px 32px rgba(59,130,246,0.4)", bg: "rgba(59,130,246,0.08)" },
+          { icon: Phone, label: "Trabalhados", value: metrics.workedLeads, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", shadow: "0 8px 32px rgba(139,92,246,0.4)", bg: "rgba(139,92,246,0.08)" },
+          { icon: Calendar, label: "Reuniões Agend.", value: metrics.meetingsScheduled, gradient: "linear-gradient(135deg, #ec4899, #f43f5e)", shadow: "0 8px 32px rgba(236,72,153,0.4)", bg: "rgba(236,72,153,0.08)" },
+          { icon: Calendar, label: "Reuniões Realiz.", value: metrics.meetingsHeld, gradient: "linear-gradient(135deg, #06b6d4, #14b8a6)", shadow: "0 8px 32px rgba(6,182,212,0.4)", bg: "rgba(6,182,212,0.08)" },
+          { icon: FileText, label: "Propostas", value: metrics.proposalsSent, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", shadow: "0 8px 32px rgba(245,158,11,0.4)", bg: "rgba(245,158,11,0.08)" },
+          { icon: Trophy, label: "Ganhos", value: metrics.won, gradient: "linear-gradient(135deg, #10b981, #059669)", shadow: "0 8px 32px rgba(16,185,129,0.4)", bg: "rgba(16,185,129,0.08)" },
         ].map((item, idx) => (
           <div
             key={idx}
-            className="group relative overflow-hidden rounded-2xl bg-card border border-border/40 p-4 shadow-lg hover:shadow-xl transition-all duration-300 hover:-translate-y-1"
+            className="group relative overflow-hidden rounded-2xl border border-white/10 dark:border-white/5 p-4 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02] cursor-default"
+            style={{ background: item.bg, boxShadow: `0 4px 16px rgba(0,0,0,0.06)` }}
           >
-            {/* Top gradient bar - thicker */}
-            <div className={`absolute top-0 left-0 h-1.5 w-full bg-gradient-to-r ${item.from} ${item.to}`} />
-            {/* Background glow */}
-            <div className={`absolute -bottom-6 -right-6 h-20 w-20 rounded-full ${item.glow} blur-xl opacity-60 group-hover:opacity-100 transition-opacity`} />
+            {/* Top gradient bar */}
+            <div className="absolute top-0 left-0 h-1.5 w-full rounded-t-2xl" style={{ background: item.gradient }} />
+            {/* Glow orb */}
+            <div className="absolute -bottom-8 -right-8 h-24 w-24 rounded-full blur-2xl opacity-40 group-hover:opacity-70 transition-opacity" style={{ background: item.gradient }} />
             <div className="relative z-10 flex flex-col gap-3">
-              <div className={`w-10 h-10 rounded-xl bg-gradient-to-br ${item.from} ${item.to} flex items-center justify-center shadow-lg ${item.shadow}`}>
-                <item.icon className="h-5 w-5 text-white" />
+              <div className="w-11 h-11 rounded-xl flex items-center justify-center text-white" style={{ background: item.gradient, boxShadow: item.shadow }}>
+                <item.icon className="h-5 w-5 drop-shadow" />
               </div>
               <div>
                 <p className="text-3xl font-black tracking-tight">{item.value}</p>
@@ -502,26 +506,27 @@ export const CRMDashboardPage = () => {
         ))}
       </div>
 
-      {/* Financial Metrics Row - Glassmorphism */}
+      {/* Financial Metrics Row - Glassmorphism with vivid accents */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
-          { icon: TrendingUp, label: "Taxa de Conversão", value: `${metrics.conversionRate}%`, large: true, from: "from-amber-500", to: "to-orange-600", bg: "from-amber-500/10 to-orange-500/5", border: "border-amber-500/30", shadow: "shadow-amber-500/20" },
-          { icon: DollarSign, label: "Valor no Pipeline", value: formatCurrency(metrics.pipelineValue), from: "from-blue-600", to: "to-indigo-600", bg: "from-blue-500/10 to-indigo-500/5", border: "border-blue-500/30", shadow: "shadow-blue-500/20" },
-          { icon: Target, label: "Forecast Ponderado", value: formatCurrency(metrics.forecast), from: "from-teal-500", to: "to-cyan-500", bg: "from-teal-500/10 to-cyan-500/5", border: "border-teal-500/30", shadow: "shadow-teal-500/20" },
-          { icon: DollarSign, label: "Receita no Período", value: formatCurrency(metrics.totalRevenue), from: "from-emerald-500", to: "to-green-500", bg: "from-emerald-500/15 to-green-500/10", border: "border-emerald-500/40", shadow: "shadow-emerald-500/25", highlight: true },
+          { icon: TrendingUp, label: "Taxa de Conversão", value: `${metrics.conversionRate}%`, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", bg: "linear-gradient(135deg, rgba(245,158,11,0.12), rgba(239,68,68,0.06))", border: "rgba(245,158,11,0.3)", shadow: "0 8px 24px rgba(245,158,11,0.2)" },
+          { icon: DollarSign, label: "Valor no Pipeline", value: formatCurrency(metrics.pipelineValue), gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)", bg: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.06))", border: "rgba(59,130,246,0.3)", shadow: "0 8px 24px rgba(59,130,246,0.2)" },
+          { icon: Target, label: "Forecast Ponderado", value: formatCurrency(metrics.forecast), gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)", bg: "linear-gradient(135deg, rgba(6,182,212,0.12), rgba(139,92,246,0.06))", border: "rgba(6,182,212,0.3)", shadow: "0 8px 24px rgba(6,182,212,0.2)" },
+          { icon: DollarSign, label: "Receita no Período", value: formatCurrency(metrics.totalRevenue), gradient: "linear-gradient(135deg, #10b981, #06b6d4)", bg: "linear-gradient(135deg, rgba(16,185,129,0.15), rgba(6,182,212,0.08))", border: "rgba(16,185,129,0.4)", shadow: "0 8px 24px rgba(16,185,129,0.25)", highlight: true },
         ].map((item, idx) => (
           <div
             key={idx}
-            className={`group relative overflow-hidden rounded-2xl bg-gradient-to-br ${item.bg} border ${item.border} p-5 shadow-lg ${item.shadow} hover:shadow-xl transition-all duration-300 hover:-translate-y-1`}
+            className="group relative overflow-hidden rounded-2xl p-5 transition-all duration-300 hover:-translate-y-2 hover:scale-[1.02]"
+            style={{ background: item.bg, border: `1px solid ${item.border}`, boxShadow: item.shadow }}
           >
             {/* Decorative orb */}
-            <div className={`absolute -top-8 -right-8 h-24 w-24 rounded-full bg-gradient-to-br ${item.from} ${item.to} opacity-10 blur-xl group-hover:opacity-20 transition-opacity`} />
+            <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full opacity-15 blur-2xl group-hover:opacity-30 transition-opacity" style={{ background: item.gradient }} />
             <div className="relative z-10 flex items-start gap-3">
-              <div className={`p-2.5 bg-gradient-to-br ${item.from} ${item.to} rounded-xl text-white shadow-xl ${item.shadow}`}>
+              <div className="p-2.5 rounded-xl text-white shadow-xl" style={{ background: item.gradient }}>
                 <item.icon className="h-5 w-5 drop-shadow" />
               </div>
               <div className="flex-1 min-w-0">
-                <p className={`font-black tracking-tight truncate ${item.large ? 'text-3xl' : 'text-xl'} ${item.highlight ? 'bg-gradient-to-r from-emerald-500 to-green-500 bg-clip-text text-transparent' : ''}`}>
+                <p className={`font-black tracking-tight truncate text-2xl ${(item as any).highlight ? '' : ''}`} style={(item as any).highlight ? { background: 'linear-gradient(90deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' } : {}}>
                   {item.value}
                 </p>
                 <p className="text-xs text-muted-foreground mt-0.5">{item.label}</p>
@@ -535,10 +540,11 @@ export const CRMDashboardPage = () => {
       <div className="grid md:grid-cols-2 gap-4">
         {/* Funnel Chart */}
         <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-indigo-500 via-purple-500 to-pink-500" />
+          <div className="absolute top-0 left-0 h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #8b5cf6, #ec4899, #f43f5e, #f59e0b)' }} />
+          <div className="absolute -top-20 -right-20 h-40 w-40 rounded-full bg-violet-500/10 blur-3xl" />
           <div className="p-5 pb-2">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-1.5 bg-gradient-to-br from-indigo-500 to-purple-500 rounded-lg text-white">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
                 <Zap className="h-3.5 w-3.5" />
               </div>
               Funil por Etapa
@@ -570,10 +576,11 @@ export const CRMDashboardPage = () => {
 
         {/* Loss Reasons */}
         <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="absolute top-0 left-0 h-1 w-full bg-gradient-to-r from-red-500 via-rose-500 to-pink-500" />
+          <div className="absolute top-0 left-0 h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899, #d946ef)' }} />
+          <div className="absolute -bottom-16 -left-16 h-40 w-40 rounded-full bg-rose-500/10 blur-3xl" />
           <div className="p-5 pb-2">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-1.5 bg-gradient-to-br from-red-500 to-rose-500 rounded-lg text-white">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)' }}>
                 <ArrowDownRight className="h-3.5 w-3.5" />
               </div>
               Motivos de Perda
@@ -589,18 +596,25 @@ export const CRMDashboardPage = () => {
                 lossReasons.map((reason, idx) => {
                   const maxCount = lossReasons[0]?.count || 1;
                   const pct = Math.round((reason.count / maxCount) * 100);
+                  const barColors = [
+                    'linear-gradient(90deg, #ef4444, #ec4899)',
+                    'linear-gradient(90deg, #f43f5e, #d946ef)',
+                    'linear-gradient(90deg, #f59e0b, #ef4444)',
+                    'linear-gradient(90deg, #8b5cf6, #ec4899)',
+                    'linear-gradient(90deg, #06b6d4, #3b82f6)',
+                  ];
                   return (
                     <div key={idx} className="space-y-1.5">
                       <div className="flex items-center justify-between text-sm">
                         <span className="font-semibold">{reason.name}</span>
-                        <span className="text-xs font-bold bg-red-500/10 text-red-600 dark:text-red-400 px-2 py-0.5 rounded-full">{reason.count}</span>
+                        <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{ background: barColors[idx % barColors.length] }}>{reason.count}</span>
                       </div>
-                      <div className="h-3 bg-muted/60 rounded-full overflow-hidden">
+                      <div className="h-3.5 bg-muted/60 rounded-full overflow-hidden">
                         <div
-                          className="h-full bg-gradient-to-r from-red-500 via-rose-500 to-pink-400 rounded-full transition-all relative"
-                          style={{ width: `${pct}%` }}
+                          className="h-full rounded-full transition-all relative"
+                          style={{ width: `${pct}%`, background: barColors[idx % barColors.length] }}
                         >
-                          <div className="absolute inset-0 bg-gradient-to-b from-white/25 to-transparent rounded-full" />
+                          <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
                         </div>
                       </div>
                     </div>
@@ -612,34 +626,35 @@ export const CRMDashboardPage = () => {
         </div>
       </div>
 
-      {/* Smart Lists - Glassmorphism cards */}
+      {/* Smart Lists - 3D Glassmorphism cards */}
       <div className="grid md:grid-cols-3 gap-4">
         {/* Overdue Leads */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="h-1.5 w-full bg-gradient-to-r from-red-500 via-rose-500 to-orange-500" />
-          <div className="p-5 pb-2">
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899)' }} />
+          <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-rose-500/10 blur-3xl" />
+          <div className="p-5 pb-2 relative z-10">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-red-500 to-rose-500 rounded-xl text-white shadow-lg shadow-red-500/30">
+              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 8px 24px rgba(239,68,68,0.4)' }}>
                 <AlertTriangle className="h-4 w-4" />
               </div>
               Leads Atrasados
               {overdueLeads.length > 0 && (
-                <span className="ml-auto text-xs font-bold bg-red-500 text-white px-2 py-0.5 rounded-full shadow-lg shadow-red-500/30">{overdueLeads.length}</span>
+                <span className="ml-auto text-xs font-bold text-white px-2 py-0.5 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 4px 16px rgba(239,68,68,0.4)' }}>{overdueLeads.length}</span>
               )}
             </h3>
           </div>
-          <div className="px-5 pb-5">
+          <div className="px-5 pb-5 relative z-10">
             <div className="space-y-1">
               {overdueLeads.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Nenhum lead atrasado 🎉</p>
               ) : (
                 overdueLeads.map(lead => (
-                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-red-500/5 transition-all group">
+                  <Link key={lead.id} to={`/crm/leads/${lead.id}`} className="flex items-center justify-between p-2.5 rounded-xl hover:bg-rose-500/5 transition-all group">
                     <div>
-                      <p className="font-semibold text-sm truncate group-hover:text-red-600 transition-colors">{lead.name}</p>
+                      <p className="font-semibold text-sm truncate group-hover:text-rose-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-muted-foreground">{lead.company}</p>
                     </div>
-                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-red-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
+                    <ArrowUpRight className="h-4 w-4 text-muted-foreground/50 group-hover:text-rose-500 group-hover:translate-x-0.5 group-hover:-translate-y-0.5 transition-all" />
                   </Link>
                 ))
               )}
@@ -648,20 +663,21 @@ export const CRMDashboardPage = () => {
         </div>
 
         {/* No Activity */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="h-1.5 w-full bg-gradient-to-r from-amber-500 via-yellow-400 to-orange-400" />
-          <div className="p-5 pb-2">
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #f97316, #ef4444)' }} />
+          <div className="absolute -bottom-12 -left-12 h-32 w-32 rounded-full bg-amber-500/10 blur-3xl" />
+          <div className="p-5 pb-2 relative z-10">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-amber-500 to-yellow-500 rounded-xl text-white shadow-lg shadow-amber-500/30">
+              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 8px 24px rgba(245,158,11,0.4)' }}>
                 <Clock className="h-4 w-4" />
               </div>
               Sem Próxima Atividade
               {noActivityLeads.length > 0 && (
-                <span className="ml-auto text-xs font-bold bg-amber-500 text-white px-2 py-0.5 rounded-full shadow-lg shadow-amber-500/30">{noActivityLeads.length}</span>
+                <span className="ml-auto text-xs font-bold text-white px-2 py-0.5 rounded-full shadow-lg" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)', boxShadow: '0 4px 16px rgba(245,158,11,0.4)' }}>{noActivityLeads.length}</span>
               )}
             </h3>
           </div>
-          <div className="px-5 pb-5">
+          <div className="px-5 pb-5 relative z-10">
             <div className="space-y-1">
               {noActivityLeads.length === 0 ? (
                 <p className="text-sm text-muted-foreground text-center py-4">Todos os leads têm atividades 🎉</p>
@@ -681,12 +697,12 @@ export const CRMDashboardPage = () => {
         </div>
 
         {/* Top Opportunities */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-shadow">
-          <div className="h-1.5 w-full bg-gradient-to-r from-emerald-500 via-green-400 to-teal-400" />
-          <div className="absolute -bottom-10 -right-10 h-32 w-32 rounded-full bg-emerald-500/10 blur-2xl" />
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg hover:shadow-xl transition-all hover:-translate-y-1">
+          <div className="h-2 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #06b6d4, #3b82f6)' }} />
+          <div className="absolute -bottom-12 -right-12 h-32 w-32 rounded-full bg-emerald-500/10 blur-3xl" />
           <div className="p-5 pb-2 relative z-10">
             <h3 className="text-base font-bold flex items-center gap-2">
-              <div className="p-2 bg-gradient-to-br from-emerald-500 to-green-500 rounded-xl text-white shadow-lg shadow-emerald-500/30">
+              <div className="p-2 rounded-xl text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>
                 <Trophy className="h-4 w-4" />
               </div>
               Top Oportunidades
@@ -703,7 +719,7 @@ export const CRMDashboardPage = () => {
                       <p className="font-semibold text-sm truncate group-hover:text-emerald-600 transition-colors">{lead.name}</p>
                       <p className="text-xs text-muted-foreground truncate">{lead.company}</p>
                     </div>
-                    <span className="shrink-0 text-xs font-bold bg-gradient-to-r from-emerald-500 to-green-500 text-white px-2.5 py-1 rounded-full shadow-md shadow-emerald-500/20">
+                    <span className="shrink-0 text-xs font-bold text-white px-2.5 py-1 rounded-full shadow-md" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)', boxShadow: '0 4px 12px rgba(16,185,129,0.3)' }}>
                       {formatCurrency(lead.opportunity_value || 0)}
                     </span>
                   </Link>
