@@ -401,6 +401,7 @@ const AppShell = () => {
             <Route path="/cultura/:token" element={<CultureFormPage />} />
             <Route path="/career-plan" element={<PublicCareerPlanFormPage />} />
             <Route path="/contrato-rotina/:token" element={<PublicRoutineFormPage />} />
+            <Route path="/dados-contratuais/:token" element={<PublicContractDataPage />} />
             <Route path="/onboarding-tasks/:projectId/reports" element={<AssessmentReportsPage />} />
             
             {/* Customer Points - Public */}
