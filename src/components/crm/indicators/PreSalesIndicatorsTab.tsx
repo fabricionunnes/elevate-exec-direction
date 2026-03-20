@@ -453,11 +453,6 @@ export const PreSalesIndicatorsTab = () => {
     <div className="p-4 space-y-6">
       {/* Header with filters */}
       <div className="flex flex-wrap items-center gap-4">
-        <div className="flex items-center gap-2">
-          <div className="px-4 py-2 rounded-xl text-lg font-bold text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)', boxShadow: '0 4px 16px rgba(139,92,246,0.3)' }}>
-            Bônus: 0
-          </div>
-        </div>
         
         {/* Date Range Filter */}
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
