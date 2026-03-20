@@ -359,7 +359,6 @@ export const CRMLayout = () => {
 
           {/* Mobile Sidebar Sheet */}
           {isMobile && (location.pathname.includes("/crm/pipeline") || 
-            location.pathname === "/crm" ||
             location.pathname.includes("/crm/leads")) && (
             <Sheet open={mobileSidebarOpen} onOpenChange={setMobileSidebarOpen}>
               <SheetTrigger asChild>
