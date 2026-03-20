@@ -8,10 +8,11 @@ import {
 } from "@/components/ui/select";
 import { CalendarDays, ChevronLeft, ChevronRight } from "lucide-react";
 import {
-  addDays, subDays,
-  addWeeks, subWeeks,
-  addMonths, subMonths,
-  addYears, subYears,
+  addDays,
+  addWeeks,
+  addMonths,
+  addYears,
+  subDays, subMonths,
   startOfDay, endOfDay,
   startOfWeek, endOfWeek,
   startOfMonth, endOfMonth,
@@ -19,22 +20,20 @@ import {
   format,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { useState, useMemo } from "react";
 
 export type PeriodType = "today" | "this_week" | "this_month" | "this_year" | "last_30_days" | "last_12_months" | "all";
 
 const NAVIGABLE_PERIODS: PeriodType[] = ["today", "this_week", "this_month", "this_year"];
 
 interface PeriodNavigatorProps {
-  value: PeriodType;
-  onChange: (period: PeriodType) => void;
-  /** Called with computed date range whenever period or offset changes */
-  onDateRangeChange?: (range: { start: Date | null; end: Date | null }) => void;
+  period: PeriodType;
+  offset: number;
+  onPeriodChange: (period: PeriodType) => void;
+  onOffsetChange: (offset: number) => void;
   className?: string;
-  showAllOptions?: boolean;
 }
 
-function getBaseRange(period: PeriodType, offset: number): { start: Date | null; end: Date | null; label: string } {
+export function getDateRangeForPeriod(period: PeriodType, offset: number): { start: Date | null; end: Date | null; label: string } {
   const now = new Date();
 
   switch (period) {
@@ -47,7 +46,7 @@ function getBaseRange(period: PeriodType, offset: number): { start: Date | null;
       const base = addWeeks(now, offset);
       const s = startOfWeek(base, { weekStartsOn: 1 });
       const e = endOfWeek(base, { weekStartsOn: 1 });
-      const label = offset === 0 ? "Esta semana" : `${format(s, "dd/MM")} - ${format(e, "dd/MM")}`;
+      const label = offset === 0 ? "Esta semana" : `${format(s, "dd/MM")} - ${format(e, "dd/MM/yy")}`;
       return { start: s, end: e, label };
     }
     case "this_month": {
@@ -73,39 +72,32 @@ function getBaseRange(period: PeriodType, offset: number): { start: Date | null;
   }
 }
 
-export function PeriodNavigator({ value, onChange, className }: PeriodNavigatorProps) {
-  const [offset, setOffset] = useState(0);
-
-  const isNavigable = NAVIGABLE_PERIODS.includes(value);
-
-  const { label } = useMemo(() => getBaseRange(value, offset), [value, offset]);
+export function PeriodNavigator({ period, offset, onPeriodChange, onOffsetChange, className }: PeriodNavigatorProps) {
+  const isNavigable = NAVIGABLE_PERIODS.includes(period);
+  const { label } = getDateRangeForPeriod(period, offset);
 
   const handlePeriodChange = (newPeriod: PeriodType) => {
-    setOffset(0);
-    onChange(newPeriod);
+    onOffsetChange(0);
+    onPeriodChange(newPeriod);
   };
 
-  const handlePrev = () => setOffset(o => o - 1);
-  const handleNext = () => setOffset(o => o + 1);
-  const handleReset = () => setOffset(0);
-
   return (
-    <div className={`flex items-center gap-1 ${className || ""}`}>
+    <div className={`flex items-center gap-0.5 ${className || ""}`}>
       {isNavigable && (
         <Button
           variant="ghost"
           size="icon"
           className="h-9 w-9 shrink-0"
-          onClick={handlePrev}
+          onClick={() => onOffsetChange(offset - 1)}
         >
           <ChevronLeft className="h-4 w-4" />
         </Button>
       )}
 
-      <Select value={value} onValueChange={(v) => handlePeriodChange(v as PeriodType)}>
+      <Select value={period} onValueChange={(v) => handlePeriodChange(v as PeriodType)}>
         <SelectTrigger className="w-[200px] h-9">
           <CalendarDays className="h-4 w-4 mr-2 shrink-0" />
-          <span className="truncate">{offset === 0 ? <SelectValue placeholder="Período" /> : label}</span>
+          {offset !== 0 ? <span className="truncate text-sm">{label}</span> : <SelectValue placeholder="Período" />}
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="today">Hoje</SelectItem>
@@ -123,7 +115,7 @@ export function PeriodNavigator({ value, onChange, className }: PeriodNavigatorP
           variant="ghost"
           size="icon"
           className="h-9 w-9 shrink-0"
-          onClick={handleNext}
+          onClick={() => onOffsetChange(offset + 1)}
         >
           <ChevronRight className="h-4 w-4" />
         </Button>
@@ -134,17 +126,11 @@ export function PeriodNavigator({ value, onChange, className }: PeriodNavigatorP
           variant="ghost"
           size="sm"
           className="h-9 px-2 text-xs text-muted-foreground"
-          onClick={handleReset}
+          onClick={() => onOffsetChange(0)}
         >
           Atual
         </Button>
       )}
     </div>
   );
-}
-
-/** Utility: get the date range for a period + offset (to be used in filter logic) */
-export function getDateRangeForPeriod(period: PeriodType, offset: number): { start: Date | null; end: Date | null } {
-  const { start, end } = getBaseRange(period, offset);
-  return { start, end };
 }
