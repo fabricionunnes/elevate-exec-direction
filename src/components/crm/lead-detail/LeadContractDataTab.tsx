@@ -233,6 +233,35 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
         <FileSignature className="h-5 w-5 text-primary" />
         <h3 className="font-semibold text-base">Dados Contratuais</h3>
         {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-2" />}
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={generateFormLink}
+            disabled={generatingLink}
+            className="gap-1.5"
+          >
+            {generatingLink ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : formToken ? (
+              <Copy className="h-3.5 w-3.5" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5" />
+            )}
+            {formToken ? "Copiar Link" : "Gerar Link Público"}
+          </Button>
+          {formToken && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => window.open(`${getPublicBaseUrl()}/#/dados-contratuais/${formToken}`, "_blank")}
+              title="Abrir formulário"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dados da Empresa */}
