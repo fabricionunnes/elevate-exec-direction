@@ -644,7 +644,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         </Select>
 
         <div className="ml-auto flex items-center gap-2">
-          <Badge className="text-xs bg-gradient-to-r from-primary/20 to-primary/10 text-primary border-primary/20 capitalize">
+          <Badge variant="outline" className="text-xs text-foreground border-border bg-card capitalize">
             {dateFilter === "custom" && customDateFrom && customDateTo
               ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
               : format(getDateRange().start, "MMMM 'de' yyyy", { locale: ptBR })}
