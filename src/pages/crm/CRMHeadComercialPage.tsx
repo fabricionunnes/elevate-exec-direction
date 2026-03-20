@@ -630,18 +630,16 @@ export default function CRMHeadComercialPage() {
   }, [leads, filterCloser]);
 
   const forecastLeads = useMemo(() => {
-    return filteredLeads.filter((l) => {
-      const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("forecast");
-    });
-  }, [filteredLeads]);
+    const base = dynamicForecastLeads;
+    if (filterCloser === "all") return base;
+    return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
+  }, [dynamicForecastLeads, filterCloser]);
 
   const negotiationLeads = useMemo(() => {
-    return filteredLeads.filter((l) => {
-      const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("reunião realizada") || sn.includes("realizada");
-    });
-  }, [filteredLeads]);
+    const base = dynamicNegotiationLeads;
+    if (filterCloser === "all") return base;
+    return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
+  }, [dynamicNegotiationLeads, filterCloser]);
 
   const groupByCloser = (list: LeadWithStage[]) => {
     const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
