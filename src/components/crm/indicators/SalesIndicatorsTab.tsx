@@ -95,6 +95,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
   const [rawMeetingEvents, setRawMeetingEvents] = useState<any[]>([]);
   const [rawCalls, setRawCalls] = useState<any[]>([]);
   const [rawForecastData, setRawForecastData] = useState<any[]>([]);
+  const [rawNegotiationData, setRawNegotiationData] = useState<any[]>([]);
   const [rawCloserStaff, setRawCloserStaff] = useState<{ id: string; name: string }[]>([]);
   const [staffGoalsMap, setStaffGoalsMap] = useState<Map<string, { meta: number; super: number; hiper: number }>>(new Map());
   const [totalGoals, setTotalGoals] = useState({ meta: 0, super: 0, hiper: 0 });
@@ -222,6 +223,23 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         setRawForecastData([]);
       }
 
+      // Load "Em Negociação" from leads in "Realizada" stages across all pipelines
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const realizadaStageIds = realizadaStages.map(s => s.id);
+        const { data: negotiationLeads } = await supabase
+          .from("crm_leads")
+          .select("id, name, company, opportunity_value, owner_staff_id, stage_id")
+          .in("stage_id", realizadaStageIds);
+        setRawNegotiationData(negotiationLeads || []);
+      } else {
+        setRawNegotiationData([]);
+      }
+
       // Load goals
       const { data: goalTypeData } = await supabase
         .from("crm_goal_types")
@@ -288,6 +306,10 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       ? rawForecastData.filter(f => f.owner_staff_id === selectedCloser)
       : rawForecastData;
 
+    const negotiationData = isCloserFilter
+      ? rawNegotiationData.filter(f => f.owner_staff_id === selectedCloser)
+      : rawNegotiationData;
+
     // Goals: use closer-specific or total
     let metaReceita: number, superMeta: number, hiperMeta: number;
     if (isCloserFilter) {
@@ -330,6 +352,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     // Forecast
     const forecastTotal = forecastData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
 
+    // Em Negociação
+    const negotiationTotal = negotiationData.reduce((sum, f) => sum + (f.opportunity_value || 0), 0);
+
     const metrics = {
       metaReceita,
       receita: totalRevenue,
@@ -343,6 +368,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       faltaSuper: Math.max(0, superMeta - totalRevenue),
       faltaHiper: Math.max(0, hiperMeta - totalRevenue),
       forecast: forecastTotal,
+      emNegociacao: negotiationTotal,
       projecaoReceita: projectedRevenue,
       projecaoPercent: projectedPercent,
     };
@@ -489,7 +515,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       revenueEvolution,
       productDistribution,
     };
-  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
+  }, [selectedCloser, rawSalesData, rawMeetingEvents, rawCalls, rawForecastData, rawNegotiationData, rawCloserStaff, staffGoalsMap, totalGoals, filterStartDate]);
 
   const { metrics, callsMetrics, dailyGoal, closerMetrics: closers, salesRecords: sales, forecastRecords: forecasts, dailyRevenueData, revenueEvolution, productDistribution } = computed;
 
@@ -673,6 +699,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           { label: "Qtd Vendas", value: metrics.vendas, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.06)" },
           { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)", bg: "rgba(6,182,212,0.06)" },
           { label: "Forecast", value: formatCurrency(metrics.forecast), gradient: "linear-gradient(135deg, #d946ef, #ec4899)", bg: "rgba(217,70,239,0.06)" },
+          { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), gradient: "linear-gradient(135deg, #f59e0b, #f97316)", bg: "rgba(245,158,11,0.06)" },
         ].map((item, idx) => (
           <div key={idx} className="relative overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1" style={{ background: item.bg, border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="absolute top-0 left-0 h-1.5 w-full rounded-t-2xl" style={{ background: item.gradient }} />
