@@ -144,6 +144,7 @@ const OnboardingTasksPage = () => {
   // Health scores array for DashboardMetrics (eliminates duplicate query)
   const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   
+  const [monthlyTargetsForProjection, setMonthlyTargetsForProjection] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string }[]>([]);
   // Announcement dialog state
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   
