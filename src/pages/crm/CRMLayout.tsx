@@ -324,13 +324,17 @@ export const CRMLayout = () => {
                   <HelpCircle className="h-4 w-4" />
                   Ajuda
                 </DropdownMenuItem>
-                <DropdownMenuSeparator />
-                <DropdownMenuItem asChild>
-                  <Link to="/onboarding-tasks" className="flex items-center gap-2">
-                    <ChevronLeft className="h-4 w-4" />
-                    Voltar ao Nexus
-                  </Link>
-                </DropdownMenuItem>
+                {isAdmin && (
+                  <>
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem asChild>
+                      <Link to="/onboarding-tasks" className="flex items-center gap-2">
+                        <ChevronLeft className="h-4 w-4" />
+                        Voltar ao Nexus
+                      </Link>
+                    </DropdownMenuItem>
+                  </>
+                )}
                 <DropdownMenuItem 
                   className="flex items-center gap-2 text-red-600"
                   onClick={() => {
