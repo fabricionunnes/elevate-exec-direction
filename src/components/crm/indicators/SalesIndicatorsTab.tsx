@@ -71,9 +71,16 @@ interface ForecastRecord {
 
 type DateFilterType = "today" | "week" | "month" | "quarter" | "custom";
 
-export const SalesIndicatorsTab = () => {
+interface SalesIndicatorsTabProps {
+  staffId?: string | null;
+  staffRole?: string | null;
+}
+
+export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabProps = {}) => {
+  const isCloserUser = staffRole === "closer";
+  const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const [loading, setLoading] = useState(true);
-  const [selectedCloser, setSelectedCloser] = useState<string>("all");
+  const [selectedCloser, setSelectedCloser] = useState<string>(isCloserUser && staffId ? staffId : "all");
   const [selectedProduct, setSelectedProduct] = useState<string>("all");
   const [products, setProducts] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
@@ -584,17 +591,19 @@ export const SalesIndicatorsTab = () => {
           </div>
         )}
         
-        <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-          <SelectTrigger className="w-[180px] rounded-full">
-            <SelectValue placeholder="Closer" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Closers</SelectItem>
-            {closers.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        {!isCloserUser && (
+          <Select value={selectedCloser} onValueChange={setSelectedCloser}>
+            <SelectTrigger className="w-[180px] rounded-full">
+              <SelectValue placeholder="Closer" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os Closers</SelectItem>
+              {closers.map(c => (
+                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
           <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Produto" />
