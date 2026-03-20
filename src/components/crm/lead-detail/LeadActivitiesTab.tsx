@@ -340,7 +340,7 @@ export const LeadActivitiesTab = ({
                         {index + 1}
                       </div>
                       <span className={cn(
-                        "text-xs font-medium whitespace-nowrap max-w-[100px] truncate",
+                        "text-xs font-medium whitespace-nowrap",
                         isActive 
                           ? "text-foreground" 
                           : isPast 
@@ -373,7 +373,7 @@ export const LeadActivitiesTab = ({
       {/* Content - Two columns layout */}
       <div className="flex flex-1 min-h-0">
         {/* Left side - Checklist */}
-        <div className="w-[350px] min-w-[300px] shrink-0 border-r border-border">
+        <div className="w-[320px] lg:w-[380px] min-w-[280px] shrink-0 border-r border-border">
           <ScrollArea className="h-full">
             {checklistLoading ? (
               <div className="flex items-center justify-center py-8">
@@ -420,7 +420,7 @@ export const LeadActivitiesTab = ({
                       </span>
                       
                       <span className={cn(
-                        "text-sm flex-1 truncate",
+                        "text-sm flex-1",
                         item.completed && "line-through text-muted-foreground"
                       )}>
                         {item.title}
