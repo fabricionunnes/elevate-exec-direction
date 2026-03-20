@@ -719,10 +719,57 @@ export default function CRMHeadComercialPage() {
         </TabsList>
 
         {/* ═══ TAB: Performance ═══ */}
-        <TabsContent value="overview" className="space-y-4 mt-4">
+        <TabsContent value="overview" className="space-y-5 mt-4">
+          {/* Performance Chart */}
+          {performanceChartData.length > 0 && (
+            <GlowCard glowColor="shadow-emerald-500/10">
+              <div className="relative p-4 sm:p-5">
+                <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-4">
+                  <BarChart3 className="h-4 w-4 text-emerald-400" /> Realizado vs Meta por Closer
+                </h3>
+                <div className="h-[200px] sm:h-[250px]">
+                  <ResponsiveContainer width="100%" height="100%">
+                    <BarChart data={performanceChartData} barGap={4}>
+                      <CartesianGrid strokeDasharray="3 3" stroke="hsl(var(--border)/0.3)" />
+                      <XAxis dataKey="name" tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 11 }} axisLine={false} tickLine={false} />
+                      <YAxis tick={{ fill: "hsl(var(--muted-foreground))", fontSize: 10 }} axisLine={false} tickLine={false} tickFormatter={(v) => `${(v/1000).toFixed(0)}k`} />
+                      <Tooltip
+                        contentStyle={{
+                          background: "hsl(var(--card))",
+                          border: "1px solid hsl(var(--border)/0.3)",
+                          borderRadius: "12px",
+                          boxShadow: "0 8px 32px rgba(0,0,0,0.3)",
+                          fontSize: "12px",
+                        }}
+                        formatter={(value: number) => [formatCurrency(value)]}
+                      />
+                      <defs>
+                        <linearGradient id="barRealizado" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#22c55e" />
+                          <stop offset="100%" stopColor="#10b981" />
+                        </linearGradient>
+                        <linearGradient id="barMeta" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#3b82f6" stopOpacity={0.4} />
+                          <stop offset="100%" stopColor="#6366f1" stopOpacity={0.2} />
+                        </linearGradient>
+                        <linearGradient id="barForecast" x1="0" y1="0" x2="0" y2="1">
+                          <stop offset="0%" stopColor="#f59e0b" />
+                          <stop offset="100%" stopColor="#f97316" />
+                        </linearGradient>
+                      </defs>
+                      <Bar dataKey="meta" name="Meta" fill="url(#barMeta)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="realizado" name="Realizado" fill="url(#barRealizado)" radius={[6, 6, 0, 0]} />
+                      <Bar dataKey="forecast" name="Forecast" fill="url(#barForecast)" radius={[6, 6, 0, 0]} />
+                    </BarChart>
+                  </ResponsiveContainer>
+                </div>
+              </div>
+            </GlowCard>
+          )}
+
           {/* Closers */}
-          <h3 className="text-sm font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
-            <Target className="h-4 w-4" /> Closers
+          <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+            <Target className="h-4 w-4 text-blue-400" /> Closers
           </h3>
           <div className="grid gap-3">
             {closersPerf.map((p) => (
