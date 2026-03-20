@@ -711,6 +711,7 @@ const VirtualOfficePage = () => {
                     onRoomSelect={setSelectedRoom}
                     unreadCounts={unreadCounts}
                     isAdmin={isAdmin}
+                    currentStaffId={currentStaff?.id}
                     onStaffClick={(staff) => {
                       const staffPresence = presences.find(p => p.staff_id === staff.id);
                       if (staffPresence?.room_id) {
