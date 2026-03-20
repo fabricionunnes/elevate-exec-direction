@@ -534,25 +534,8 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
   );
 
   return (
-    <Card className="border-border/40 shadow-md overflow-hidden">
-      <div className="p-4 pb-2 flex items-center gap-2">
-        <div className="p-2 rounded-xl" style={{ background: "linear-gradient(135deg, #10b981, #059669)" }}>
-          <DollarSign className="h-4 w-4 text-white" />
-        </div>
-        <div>
-          <h3 className="font-bold text-sm">
-            {isMaster ? "Remuneração da Equipe" : "Sua Remuneração"}
-          </h3>
-          <p className="text-[11px] text-muted-foreground">
-            {isMaster ? "Fixo + Comissão de todos os comerciais" : "Fixo + Comissão do mês atual"}
-          </p>
-        </div>
-      </div>
-      <CardContent className="p-4 pt-2">
-        <div className={`grid gap-3 ${isMaster && commissionData.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
-          {commissionData.map(renderStaffCard)}
-        </div>
-      </CardContent>
-    </Card>
+    <div className={`grid gap-3 ${isMaster && commissionData.length > 1 ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"}`}>
+      {commissionData.map(renderStaffCard)}
+    </div>
   );
 };
