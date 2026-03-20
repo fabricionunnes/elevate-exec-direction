@@ -20,10 +20,21 @@ import {
   Pencil,
   X,
   Check,
-  Calendar
+  Calendar,
+  Paperclip,
+  Image,
+  Film,
+  File
 } from "lucide-react";
 import { toast } from "sonner";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
+
+interface Attachment {
+  url: string;
+  name: string;
+  type: string; // image, video, document
+  mimeType: string;
+}
 
 interface ChecklistItem {
   id: string;
@@ -34,6 +45,7 @@ interface ChecklistItem {
   is_active: boolean;
   item_type: string;
   whatsapp_template: string | null;
+  whatsapp_attachments: Attachment[];
 }
 
 interface StageChecklistDialogProps {
