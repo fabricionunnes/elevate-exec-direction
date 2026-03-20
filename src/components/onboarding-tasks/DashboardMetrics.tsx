@@ -1190,13 +1190,20 @@ const DashboardMetrics = ({
         } else {
           setNpsDetailType(null);
         }
+        if (value === "csat") {
+          setCsatDetailType("all");
+          setCsatDetailPage(1);
+        } else {
+          setCsatDetailType(null);
+        }
       }}>
-        <TabsList className="w-full grid grid-cols-5 h-8 sm:h-9">
+        <TabsList className="w-full grid grid-cols-6 h-8 sm:h-9">
           <TabsTrigger value="empresas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Building2 className="h-3 w-3" /><span className="hidden sm:inline">Empresas</span><span className="sm:hidden">Emp</span></TabsTrigger>
           <TabsTrigger value="agenda" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Calendar className="h-3 w-3" /><span className="hidden sm:inline">Agenda</span><span className="sm:hidden">Ag</span></TabsTrigger>
           <TabsTrigger value="tarefas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><ListTodo className="h-3 w-3" /><span className="hidden sm:inline">Tarefas</span><span className="sm:hidden">Tar</span></TabsTrigger>
           <TabsTrigger value="metas" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Target className="h-3 w-3" />Metas</TabsTrigger>
           <TabsTrigger value="nps" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><Star className="h-3 w-3" />NPS</TabsTrigger>
+          <TabsTrigger value="csat" className="text-[10px] sm:text-xs gap-0.5 sm:gap-1 px-0.5 sm:px-2"><SmilePlus className="h-3 w-3" />CSAT</TabsTrigger>
         </TabsList>
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
