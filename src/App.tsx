@@ -175,6 +175,7 @@ const TrafficAnalysisPublicPage = lazy(() => import("./pages/public/TrafficAnaly
 const MarketingConsultationPublicPage = lazy(() => import("./pages/public/MarketingConsultationPublicPage"));
 const FinancialConsultationPublicPage = lazy(() => import("./pages/public/FinancialConsultationPublicPage"));
 const PublicContractDataPage = lazy(() => import("./pages/public/PublicContractDataPage"));
+const PublicAdsBriefingPage = lazy(() => import("./pages/public/PublicAdsBriefingPage"));
 
 // PDI
 const PDILayout = lazy(() => import("./pages/pdi/PDILayout"));
