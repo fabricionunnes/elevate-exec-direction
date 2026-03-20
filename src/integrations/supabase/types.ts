@@ -11817,6 +11817,44 @@ export type Database = {
           },
         ]
       }
+      crm_goal_commission_tiers: {
+        Row: {
+          commission_value: number
+          created_at: string | null
+          goal_value_id: string
+          id: string
+          max_percent: number
+          min_percent: number
+          sort_order: number
+        }
+        Insert: {
+          commission_value?: number
+          created_at?: string | null
+          goal_value_id: string
+          id?: string
+          max_percent?: number
+          min_percent?: number
+          sort_order?: number
+        }
+        Update: {
+          commission_value?: number
+          created_at?: string | null
+          goal_value_id?: string
+          id?: string
+          max_percent?: number
+          min_percent?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_goal_commission_tiers_goal_value_id_fkey"
+            columns: ["goal_value_id"]
+            isOneToOne: false
+            referencedRelation: "crm_goal_values"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_goal_types: {
         Row: {
           category: string | null
