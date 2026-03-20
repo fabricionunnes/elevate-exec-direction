@@ -646,6 +646,16 @@ export const LeadActivitiesTab = ({
                   setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
                 }}
               />
+            ) : selectedChecklistItem.item_type === 'reunion' ? (
+              <ReunionPanel
+                leadId={leadId}
+                nextMeetingLink={nextMeetingLink}
+                nextMeetingDateTime={nextMeetingDateTime}
+                onNoShowToggle={() => {
+                  toggleChecklist(selectedChecklistItem.id);
+                  setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
+                }}
+              />
             ) : (
               <>
                 <div className="flex-1 p-4 overflow-auto">
