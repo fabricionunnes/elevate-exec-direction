@@ -838,67 +838,92 @@ export default function CRMHeadComercialPage() {
         </TabsContent>
 
         {/* ═══ TAB: Forecast ═══ */}
-        <TabsContent value="forecast" className="space-y-4 mt-4">
-          {/* Forecast Pie Chart + Summary */}
-          {forecastChartData.length > 0 && (
-            <GlowCard glowColor="shadow-orange-500/10">
-              <div className="relative p-4 sm:p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-center">
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-3">
-                      <Flame className="h-4 w-4 text-orange-400" /> Forecast por Closer
-                    </h3>
-                    <p className="text-2xl font-black text-orange-400">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{forecastLeads.length} leads em forecast</p>
-                  </div>
-                  <div className="h-[140px] w-[140px] mx-auto sm:mx-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={forecastChartData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" strokeWidth={0}>
-                          {forecastChartData.map((_, idx) => (
-                            <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border)/0.3)", borderRadius: "12px", fontSize: "11px" }} formatter={(v: number) => [formatCurrency(v)]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </GlowCard>
-          )}
+        <TabsContent value="forecast" className="space-y-6 mt-4">
+          {/* ── Forecast Section ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Flame className="h-4 w-4 text-orange-400" /> Forecast
+                <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-400">{forecastLeads.length} leads</Badge>
+              </h3>
+              <span className="text-sm font-black text-orange-400">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
 
-          {forecastByCloser.length === 0 ? (
-            <GlowCard><div className="p-8 text-center text-muted-foreground">Nenhum lead em forecast</div></GlowCard>
-          ) : (
-            forecastByCloser.map(([closerId, group]) => (
-              <GlowCard key={closerId} glowColor="shadow-orange-500/5">
-                <div className="relative">
-                  <div className="flex items-center justify-between bg-gradient-to-r from-orange-500/5 to-transparent px-4 py-3 border-b border-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 p-[2px] shadow-md">
-                        <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
-                          <span className="text-xs font-black text-orange-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+            {forecastByCloser.length === 0 ? (
+              <GlowCard><div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead em forecast</div></GlowCard>
+            ) : (
+              forecastByCloser.map(([closerId, group]) => (
+                <GlowCard key={closerId} glowColor="shadow-orange-500/5">
+                  <div className="relative">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-orange-500/5 to-transparent px-4 py-3 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 p-[2px] shadow-md">
+                          <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
+                            <span className="text-xs font-black text-orange-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold">{group.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
                         </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold">{group.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
-                      </div>
+                      <p className="text-base font-black text-orange-400">{formatCurrency(group.total)}</p>
                     </div>
-                    <p className="text-base font-black text-orange-400">{formatCurrency(group.total)}</p>
+                    <div className="p-3 space-y-2">
+                      {group.leads
+                        .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                        .map((lead) => (
+                          <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} onSaveStatus={handleSaveHeadStatus} onSaveClosingDate={handleSaveClosingDate} />
+                        ))}
+                    </div>
                   </div>
-                  <div className="p-3 space-y-2">
-                    {group.leads
-                      .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
-                      .map((lead) => (
-                        <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} />
-                      ))}
+                </GlowCard>
+              ))
+            )}
+          </div>
+
+          {/* ── Em Negociação Section ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Target className="h-4 w-4 text-violet-400" /> Em Negociação
+                <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-400">{negotiationLeads.length} leads</Badge>
+              </h3>
+              <span className="text-sm font-black text-violet-400">{formatCurrency(negotiationLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
+
+            {negotiationByCloser.length === 0 ? (
+              <GlowCard><div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead em negociação</div></GlowCard>
+            ) : (
+              negotiationByCloser.map(([closerId, group]) => (
+                <GlowCard key={closerId} glowColor="shadow-violet-500/5">
+                  <div className="relative">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/5 to-transparent px-4 py-3 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-400 p-[2px] shadow-md">
+                          <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
+                            <span className="text-xs font-black text-violet-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold">{group.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
+                        </div>
+                      </div>
+                      <p className="text-base font-black text-violet-400">{formatCurrency(group.total)}</p>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {group.leads
+                        .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                        .map((lead) => (
+                          <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} onSaveStatus={handleSaveHeadStatus} onSaveClosingDate={handleSaveClosingDate} />
+                        ))}
+                    </div>
                   </div>
-                </div>
-              </GlowCard>
-            ))
-          )}
+                </GlowCard>
+              ))
+            )}
+          </div>
         </TabsContent>
 
         {/* ═══ TAB: Pipeline ═══ */}
