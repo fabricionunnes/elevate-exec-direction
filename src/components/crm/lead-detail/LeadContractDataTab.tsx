@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { AddressFields, AddressData } from "@/components/ui/address-fields";
 import {
@@ -12,7 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, FileSignature } from "lucide-react";
+import { Loader2, FileSignature, Link2, Copy, ExternalLink } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface LeadContractDataTabProps {
   leadId: string;
@@ -91,6 +93,8 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
   });
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [formToken, setFormToken] = useState<string | null>(null);
+  const [generatingLink, setGeneratingLink] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
@@ -105,7 +109,7 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
     try {
       const { data: lead, error } = await supabase
         .from("crm_leads")
-        .select("company, trade_name, document, email, phone, legal_representative_name, cpf, rg, marital_status, address, address_number, address_complement, address_neighborhood, city, state, zipcode")
+        .select("company, trade_name, document, email, phone, legal_representative_name, cpf, rg, marital_status, address, address_number, address_complement, address_neighborhood, city, state, zipcode, contract_form_token")
         .eq("id", leadId)
         .single();
 
@@ -129,11 +133,37 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
           state: lead.state || "",
           zipcode: lead.zipcode || "",
         });
+        setFormToken((lead as any).contract_form_token || null);
       }
     } catch (error) {
       console.error("Error loading contract data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const generateFormLink = async () => {
+    setGeneratingLink(true);
+    try {
+      let token = formToken;
+      if (!token) {
+        // Generate a random token
+        token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        const { error } = await supabase
+          .from("crm_leads")
+          .update({ contract_form_token: token } as any)
+          .eq("id", leadId);
+        if (error) throw error;
+        setFormToken(token);
+      }
+      const url = `${getPublicBaseUrl()}/#/dados-contratuais/${token}`;
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copiado para a área de transferência!");
+    } catch (error) {
+      console.error("Error generating link:", error);
+      toast.error("Erro ao gerar link");
+    } finally {
+      setGeneratingLink(false);
     }
   };
 
@@ -203,6 +233,35 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
         <FileSignature className="h-5 w-5 text-primary" />
         <h3 className="font-semibold text-base">Dados Contratuais</h3>
         {saving && <Loader2 className="h-3.5 w-3.5 animate-spin text-muted-foreground ml-2" />}
+        <div className="ml-auto flex items-center gap-2">
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={generateFormLink}
+            disabled={generatingLink}
+            className="gap-1.5"
+          >
+            {generatingLink ? (
+              <Loader2 className="h-3.5 w-3.5 animate-spin" />
+            ) : formToken ? (
+              <Copy className="h-3.5 w-3.5" />
+            ) : (
+              <Link2 className="h-3.5 w-3.5" />
+            )}
+            {formToken ? "Copiar Link" : "Gerar Link Público"}
+          </Button>
+          {formToken && (
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              onClick={() => window.open(`${getPublicBaseUrl()}/#/dados-contratuais/${formToken}`, "_blank")}
+              title="Abrir formulário"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
       </div>
 
       {/* Dados da Empresa */}
