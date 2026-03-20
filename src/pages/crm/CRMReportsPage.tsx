@@ -458,13 +458,13 @@ export const CRMReportsPage = () => {
 
         {/* Loss Reasons */}
         <Card>
-          <CardHeader>
-            <CardTitle className="text-lg">Motivos de Perda</CardTitle>
+          <CardHeader className="p-3 sm:p-6 pb-2 sm:pb-2">
+            <CardTitle className="text-base sm:text-lg">Motivos de Perda</CardTitle>
           </CardHeader>
-          <CardContent>
-            <div className="h-[300px]">
+          <CardContent className="p-3 sm:p-6 pt-0 sm:pt-0">
+            <div className="h-[200px] sm:h-[300px]">
               {lossReasonsData.length === 0 ? (
-                <div className="flex items-center justify-center h-full text-muted-foreground">
+                <div className="flex items-center justify-center h-full text-muted-foreground text-sm">
                   Nenhum lead perdido no período
                 </div>
               ) : (
@@ -474,7 +474,7 @@ export const CRMReportsPage = () => {
                       data={lossReasonsData}
                       cx="50%"
                       cy="50%"
-                      outerRadius={100}
+                      outerRadius={80}
                       fill="#8884d8"
                       dataKey="value"
                       label={({ name, percent }) => `${name} (${(percent * 100).toFixed(0)}%)`}
