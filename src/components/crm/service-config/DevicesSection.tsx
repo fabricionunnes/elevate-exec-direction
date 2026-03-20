@@ -111,13 +111,15 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
   const loadData = async () => {
     setLoading(true);
     try {
-      const [instancesRes, sectorsRes] = await Promise.all([
+      const [instancesRes, sectorsRes, defaultRes] = await Promise.all([
         supabase.from("whatsapp_instances").select("*").order("created_at", { ascending: false }),
         supabase.from("crm_service_sectors").select("*").eq("is_active", true).order("sort_order"),
+        supabase.from("whatsapp_default_config").select("setting_value").eq("setting_key", "default_instance").maybeSingle(),
       ]);
 
       setInstances(instancesRes.data || []);
       setSectors(sectorsRes.data || []);
+      setDefaultInstanceName(defaultRes.data?.setting_value || null);
 
       // Load staff for each device
       if (instancesRes.data && instancesRes.data.length > 0) {
