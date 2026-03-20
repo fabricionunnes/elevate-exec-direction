@@ -494,19 +494,35 @@ export default function CRMHeadComercialPage() {
           }
         });
 
-        // Activity stats
+        // Activity stats - for SDRs use created_at based counts (how many meetings they CREATED)
+        // For closers use scheduled_at based counts (meetings happening today/yesterday)
+        const isSdr = staff.role === "sdr";
+        
         const myYesterday = yesterdayActivities.filter((a) => a.responsible_staff_id === staff.id);
         const myToday = todayActivities.filter((a) => a.responsible_staff_id === staff.id);
-        const yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
-        const todayMeetings = myToday.filter((a) => a.type === "meeting" || a.type === "call").length;
-
-        // Monthly meetings from stats
-        const monthMeetings = activityStats.filter(
-          (a: any) => a.responsible_staff_id === staff.id && (a.type === "meeting" || a.type === "call")
-        ).length;
-        const monthAgendamentos = activityStats.filter(
-          (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
-        ).length;
+        
+        let yesterdayMeetings: number;
+        let todayMeetings: number;
+        let monthMeetings: number;
+        let monthAgendamentos: number;
+        
+        if (isSdr) {
+          // SDR: count meetings CREATED on that day (agendamentos feitos)
+          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          todayMeetings = sdrCreatedToday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          monthMeetings = sdrCreatedMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          monthAgendamentos = monthMeetings;
+        } else {
+          // Closer: count meetings SCHEDULED for that day
+          yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
+          todayMeetings = myToday.filter((a) => a.type === "meeting" || a.type === "call").length;
+          monthMeetings = activityStats.filter(
+            (a: any) => a.responsible_staff_id === staff.id && (a.type === "meeting" || a.type === "call")
+          ).length;
+          monthAgendamentos = activityStats.filter(
+            (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
+          ).length;
+        }
 
         const falta = Math.max(0, metaVendas - realizado);
         const percentAtingido = metaVendas > 0 ? (realizado / metaVendas) * 100 : 0;
