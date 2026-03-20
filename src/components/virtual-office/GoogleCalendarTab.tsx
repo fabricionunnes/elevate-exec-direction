@@ -167,12 +167,12 @@ const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCale
       if (staffError) throw staffError;
 
       const staff = (staffData?.staff || staffData || []) as ConnectedStaffMember[];
-      const currentUserId = authUserData.user?.id ?? null;
+      const currentUserId = currentStaffProp?.user_id ?? authUserData.user?.id ?? null;
       const ownStaff = staff.find((member) => member.user_id === currentUserId) ?? null;
 
       setConnected(connectionData?.connected ?? false);
       setConnectedStaff(staff);
-      setCurrentStaff(ownStaff);
+      setCurrentStaff(ownStaff ?? (currentStaffProp ? { id: currentStaffProp.id, user_id: currentStaffProp.user_id, name: "Minha Agenda" } : null));
     } catch (error) {
       console.error("Error checking connection:", error);
       setConnected(false);
