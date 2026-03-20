@@ -173,7 +173,10 @@ export function StageChecklistDialog({
         .order("sort_order");
 
       if (error) throw error;
-      setItems(data || []);
+      setItems((data || []).map((item: any) => ({
+        ...item,
+        whatsapp_attachments: Array.isArray(item.whatsapp_attachments) ? item.whatsapp_attachments : [],
+      })));
     } catch (error) {
       console.error("Error loading checklist items:", error);
       toast.error("Erro ao carregar checklist");
