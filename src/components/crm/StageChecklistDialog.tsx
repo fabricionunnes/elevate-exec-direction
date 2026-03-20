@@ -482,6 +482,54 @@ export function StageChecklistDialog({
                               rows={3}
                               className="resize-none"
                             />
+                            {/* Attachments for edit */}
+                            <div className="space-y-2 mt-2">
+                              <Label className="flex items-center gap-1">
+                                <Paperclip className="h-3.5 w-3.5" />
+                                Anexos
+                              </Label>
+                              {editAttachments.length > 0 && (
+                                <div className="flex flex-wrap gap-2">
+                                  {editAttachments.map((att, i) => (
+                                    <div key={i} className="flex items-center gap-1 bg-muted rounded-md px-2 py-1 text-xs">
+                                      {getAttachmentIcon(att.type)}
+                                      <span className="max-w-[120px] truncate">{att.name}</span>
+                                      <Button
+                                        type="button"
+                                        variant="ghost"
+                                        size="icon"
+                                        className="h-4 w-4 p-0"
+                                        onClick={() => setEditAttachments(prev => prev.filter((_, idx) => idx !== i))}
+                                      >
+                                        <X className="h-3 w-3" />
+                                      </Button>
+                                    </div>
+                                  ))}
+                                </div>
+                              )}
+                              <input
+                                ref={editFileInputRef}
+                                type="file"
+                                multiple
+                                accept="image/*,video/*,audio/*,.pdf,.doc,.docx,.xls,.xlsx"
+                                className="hidden"
+                                onChange={(e) => {
+                                  if (e.target.files) handleFileUpload(e.target.files, setEditAttachments, setUploadingEdit);
+                                  e.target.value = '';
+                                }}
+                              />
+                              <Button
+                                type="button"
+                                variant="outline"
+                                size="sm"
+                                className="text-xs"
+                                disabled={uploadingEdit}
+                                onClick={() => editFileInputRef.current?.click()}
+                              >
+                                {uploadingEdit ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <Paperclip className="h-3.5 w-3.5 mr-1" />}
+                                Adicionar Arquivo
+                              </Button>
+                            </div>
                           </div>
                         )}
 
