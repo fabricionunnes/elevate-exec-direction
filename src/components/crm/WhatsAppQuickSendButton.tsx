@@ -48,7 +48,9 @@ function replaceTemplateVariables(
     .replace(/{telefone}/g, lead.phone || '')
     .replace(/{etapa}/g, stageName || '')
     .replace(/{funil}/g, pipelineName || '')
-    .replace(/\{\{responsavel\}\}/g, ownerName || '');
+    .replace(/\{\{responsavel\}\}/g, ownerName || '')
+    .replace(/\{\{link_agendamento\}\}/g, '')
+    .replace(/\{\{data_hora_agendamento\}\}/g, '');
 }
 
 export function WhatsAppQuickSendButton({
