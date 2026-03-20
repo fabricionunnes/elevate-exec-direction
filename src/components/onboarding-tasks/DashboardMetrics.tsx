@@ -236,7 +236,7 @@ const DashboardMetrics = ({
       }
 
       // Only fetch data that wasn't provided externally - run all needed fetches in parallel
-      const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult] = await Promise.all([
+      const [npsResult, kpisResult, entriesResult, renewalsResult, healthResult, csatResult] = await Promise.all([
         !externalNpsResponses 
           ? supabase.from("onboarding_nps_responses").select("id, project_id, score, feedback, what_can_improve, would_recommend_why, respondent_name, respondent_email, created_at").order("created_at", { ascending: false })
           : Promise.resolve({ data: null, error: null }),
@@ -252,6 +252,7 @@ const DashboardMetrics = ({
         !externalHealthScores
           ? supabase.from("client_health_scores").select("project_id, total_score, risk_level")
           : Promise.resolve({ data: null, error: null }),
+        supabase.from("csat_responses").select("id, score, feedback, respondent_name, responded_at, project_id, meeting_id").order("responded_at", { ascending: false }),
       ]);
 
       if (!externalNpsResponses && npsResult.data) {
@@ -273,6 +274,9 @@ const DashboardMetrics = ({
       if (!externalHealthScores && healthResult.data) {
         if (healthResult.error) throw healthResult.error;
         setInternalHealthScores(healthResult.data);
+      }
+      if (csatResult.data) {
+        setCsatResponses(csatResult.data);
       }
 
       // Fetch overdue invoices
