@@ -244,23 +244,32 @@ export function GeneralStatementPanel() {
       <Card>
         <CardContent className="pt-4 pb-4 space-y-3">
           <div className="flex flex-col sm:flex-row gap-3">
-            <div className="flex-1 min-w-[160px]">
+            <div className="min-w-[160px]">
               <label className="text-xs text-muted-foreground mb-1 block">Período</label>
-              <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setPage(0); }}>
-                <SelectTrigger className="h-9">
-                  <SelectValue />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="today">Hoje</SelectItem>
-                  <SelectItem value="this_week">Esta semana</SelectItem>
-                  <SelectItem value="this_month">Este mês</SelectItem>
-                  <SelectItem value="this_year">Este ano</SelectItem>
-                  <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
-                  <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                  <SelectItem value="all">Todo o período</SelectItem>
-                  <SelectItem value="custom">Personalizado</SelectItem>
-                </SelectContent>
-              </Select>
+              {periodFilter === "custom" ? (
+                <Select value="custom" onValueChange={(v) => { setPeriodFilter(v as PeriodType | "custom"); setPeriodOffset(0); setPage(0); }}>
+                  <SelectTrigger className="h-9">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="today">Hoje</SelectItem>
+                    <SelectItem value="this_week">Esta semana</SelectItem>
+                    <SelectItem value="this_month">Este mês</SelectItem>
+                    <SelectItem value="this_year">Este ano</SelectItem>
+                    <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
+                    <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
+                    <SelectItem value="all">Todo o período</SelectItem>
+                    <SelectItem value="custom">Personalizado</SelectItem>
+                  </SelectContent>
+                </Select>
+              ) : (
+                <PeriodNavigator
+                  period={periodFilter as PeriodType}
+                  offset={periodOffset}
+                  onPeriodChange={(v) => { setPeriodFilter(v); setPage(0); }}
+                  onOffsetChange={(o) => { setPeriodOffset(o); setPage(0); }}
+                />
+              )}
             </div>
 
             {periodFilter === "custom" && (
