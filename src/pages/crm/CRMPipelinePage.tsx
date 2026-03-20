@@ -148,6 +148,56 @@ export const CRMPipelinePage = () => {
     setOriginOptions(originsRes.data || []);
   };
 
+  const loadSummaryCards = useCallback(async () => {
+    try {
+      // Load forecast data from ALL pipelines
+      const { data: forecasts } = await supabase
+        .from("crm_forecasts")
+        .select("id, forecast_value, closer_staff_id")
+        .eq("status", "open");
+      
+      setForecastData(forecasts || []);
+
+      // Load "realizada" stage leads from ALL pipelines
+      // Find all stages that contain "realizada" in name (case-insensitive)
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const stageIds = realizadaStages.map(s => s.id);
+        const { data: negotiationLeads } = await supabase
+          .from("crm_leads")
+          .select("id, opportunity_value, owner_staff_id")
+          .in("stage_id", stageIds);
+        
+        setNegotiationData(negotiationLeads || []);
+      } else {
+        setNegotiationData([]);
+      }
+    } catch (error) {
+      console.error("Error loading summary cards:", error);
+    }
+  }, []);
+
+  // Compute filtered totals based on owner filter
+  const filteredForecastTotal = useMemo(() => {
+    const ownerFilter = filters.owners;
+    const data = ownerFilter.length > 0
+      ? forecastData.filter(f => ownerFilter.includes(f.closer_staff_id))
+      : forecastData;
+    return data.reduce((sum, f) => sum + (f.forecast_value || 0), 0);
+  }, [forecastData, filters.owners]);
+
+  const filteredNegotiationTotal = useMemo(() => {
+    const ownerFilter = filters.owners;
+    const data = ownerFilter.length > 0
+      ? negotiationData.filter(l => ownerFilter.includes(l.owner_staff_id))
+      : negotiationData;
+    return data.reduce((sum, l) => sum + (l.opportunity_value || 0), 0);
+  }, [negotiationData, filters.owners]);
+
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
