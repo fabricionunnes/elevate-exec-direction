@@ -2,7 +2,19 @@ import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { DollarSign, Award, Wallet } from "lucide-react";
+import { Progress } from "@/components/ui/progress";
+import { DollarSign, Award, Wallet, Target, TrendingUp, Calendar } from "lucide-react";
+import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
+
+interface TierInfo {
+  minPercent: number;
+  maxPercent: number;
+  commissionValue: number;
+  missingValue: number;
+  dailyNeeded: number;
+  isCurrentTier: boolean;
+  isAchieved: boolean;
+}
 
 interface CommissionData {
   staffId: string;
@@ -11,8 +23,14 @@ interface CommissionData {
   fixedSalary: number;
   commission: number;
   total: number;
+  achieved: number;
+  metaValue: number;
   achievedPercent: number;
   tierLabel: string;
+  tiers: TierInfo[];
+  missingToFirstTier: number;
+  isCommissioning: boolean;
+  metricLabel: string;
 }
 
 interface Props {
@@ -28,14 +46,17 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
   const formatCurrency = (value: number) =>
     new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+  const formatMetric = (value: number, role: string) =>
+    role === "closer" ? formatCurrency(value) : Math.round(value).toString();
+
   useEffect(() => {
     const loadCommissions = async () => {
       try {
         const now = new Date();
         const currentMonth = now.getMonth() + 1;
         const currentYear = now.getFullYear();
+        const remainingDays = getRemainingBusinessDaysInMonth(now);
 
-        // Get relevant staff
         const staffQuery = supabase
           .from("onboarding_staff")
           .select("id, name, role")
@@ -49,7 +70,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
         const { data: staffList } = await staffQuery;
         if (!staffList?.length) { setLoading(false); return; }
 
-        // Get goal types
         const { data: goalTypes } = await supabase
           .from("crm_goal_types")
           .select("id, name, category")
@@ -60,7 +80,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
         const goalTypeIds = goalTypes.map(g => g.id);
 
-        // Get goal values for current month
         const { data: goalValues } = await supabase
           .from("crm_goal_values")
           .select("id, staff_id, goal_type_id, meta_value, ote_base")
@@ -71,7 +90,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
         if (!goalValues?.length) { setLoading(false); return; }
 
-        // Get commission tiers
         const goalValueIds = goalValues.map(g => g.id);
         const { data: tiers } = await supabase
           .from("crm_goal_commission_tiers")
@@ -79,17 +97,15 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           .in("goal_value_id", goalValueIds)
           .order("min_percent", { ascending: true });
 
-        // Get actual sales for closers
         const monthStart = new Date(currentYear, currentMonth - 1, 1);
         const monthEnd = new Date(currentYear, currentMonth, 0);
-        
+
         const { data: salesData } = await supabase
           .from("crm_sales")
           .select("billing_value, closer_staff_id")
           .gte("sale_date", monthStart.toISOString().split("T")[0])
           .lte("sale_date", monthEnd.toISOString().split("T")[0]);
 
-        // Get meetings held for SDRs
         const { data: meetingsData } = await supabase
           .from("crm_activities")
           .select("responsible_staff_id")
@@ -98,7 +114,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           .gte("completed_at", monthStart.toISOString())
           .lte("completed_at", monthEnd.toISOString());
 
-        // Build commission data
         const results: CommissionData[] = [];
 
         for (const staff of staffList) {
@@ -115,7 +130,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           const metaValue = Number(goalValue.meta_value) || 0;
           const fixedSalary = Number(goalValue.ote_base) || 0;
 
-          // Calculate achieved
           let achieved = 0;
           if (staff.role === "closer") {
             achieved = (salesData || [])
@@ -128,7 +142,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
           const achievedPercent = metaValue > 0 ? (achieved / metaValue) * 100 : 0;
 
-          // Find matching tier
           const staffTiers = (tiers || []).filter(t => t.goal_value_id === goalValue.id);
           let commission = 0;
           let tierLabel = "Sem comissão";
@@ -141,7 +154,6 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             }
           }
 
-          // If above the highest tier max
           if (staffTiers.length > 0 && commission === 0) {
             const lastTier = staffTiers[staffTiers.length - 1];
             if (achievedPercent > lastTier.max_percent) {
@@ -150,6 +162,33 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             }
           }
 
+          // Build tier info with missing values and daily targets
+          const tierInfos: TierInfo[] = staffTiers.map(tier => {
+            const tierMinValue = (tier.min_percent / 100) * metaValue;
+            const missingValue = Math.max(0, tierMinValue - achieved);
+            const dailyNeeded = remainingDays > 0 ? missingValue / remainingDays : missingValue;
+            const isCurrentTier = achievedPercent >= tier.min_percent && achievedPercent <= tier.max_percent;
+            const isAchieved = achievedPercent >= tier.min_percent;
+
+            return {
+              minPercent: tier.min_percent,
+              maxPercent: tier.max_percent,
+              commissionValue: tier.commission_value,
+              missingValue,
+              dailyNeeded,
+              isCurrentTier,
+              isAchieved,
+            };
+          });
+
+          // Calculate missing to first tier
+          const firstTier = staffTiers[0];
+          const missingToFirstTier = firstTier
+            ? Math.max(0, ((firstTier.min_percent / 100) * metaValue) - achieved)
+            : 0;
+
+          const isCommissioning = commission > 0;
+
           results.push({
             staffId: staff.id,
             staffName: staff.name,
@@ -157,8 +196,14 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
             fixedSalary,
             commission,
             total: fixedSalary + commission,
+            achieved,
+            metaValue,
             achievedPercent: Math.round(achievedPercent),
             tierLabel,
+            tiers: tierInfos,
+            missingToFirstTier,
+            isCommissioning,
+            metricLabel: staff.role === "closer" ? "em faturamento" : "reuniões",
           });
         }
 
@@ -179,6 +224,74 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
 
   if (loading || commissionData.length === 0) return null;
 
+  const remainingDays = getRemainingBusinessDaysInMonth(new Date());
+
+  const renderTierRow = (tier: TierInfo, role: string) => {
+    const progressPercent = tier.missingValue <= 0 ? 100 : Math.max(0, 100 - (tier.missingValue / ((tier.minPercent / 100) * 1) * 100));
+
+    return (
+      <div
+        key={`${tier.minPercent}-${tier.maxPercent}`}
+        className={`rounded-lg border p-3 transition-all duration-200 ${
+          tier.isCurrentTier
+            ? "border-amber-300 bg-amber-50/50 dark:border-amber-700 dark:bg-amber-950/20"
+            : tier.isAchieved
+            ? "border-emerald-300 bg-emerald-50/50 dark:border-emerald-700 dark:bg-emerald-950/20"
+            : "border-border/50 bg-muted/30"
+        }`}
+      >
+        <div className="flex items-center justify-between mb-1.5">
+          <div className="flex items-center gap-1.5">
+            {tier.isAchieved ? (
+              <div className="h-2 w-2 rounded-full bg-emerald-500" />
+            ) : tier.isCurrentTier ? (
+              <div className="h-2 w-2 rounded-full bg-amber-500 animate-pulse" />
+            ) : (
+              <div className="h-2 w-2 rounded-full bg-muted-foreground/30" />
+            )}
+            <span className="text-xs font-medium">
+              Faixa {tier.minPercent}% – {tier.maxPercent}%
+            </span>
+          </div>
+          <Badge
+            variant="secondary"
+            className={`text-[10px] font-bold ${
+              tier.isAchieved
+                ? "bg-emerald-100 text-emerald-700 dark:bg-emerald-900/30 dark:text-emerald-400"
+                : "bg-muted text-muted-foreground"
+            }`}
+          >
+            {formatCurrency(tier.commissionValue)}
+          </Badge>
+        </div>
+
+        {tier.isAchieved && tier.missingValue <= 0 ? (
+          <p className="text-[11px] text-emerald-600 dark:text-emerald-400 font-medium flex items-center gap-1">
+            ✅ Faixa alcançada
+          </p>
+        ) : (
+          <div className="space-y-1">
+            <div className="flex items-center justify-between text-[11px] text-muted-foreground">
+              <span className="flex items-center gap-1">
+                <Target className="h-3 w-3" />
+                Falta: <span className="font-semibold text-foreground">{formatMetric(tier.missingValue, role)}</span> {role === "sdr" ? "reuniões" : ""}
+              </span>
+              {remainingDays > 0 && (
+                <span className="flex items-center gap-1">
+                  <Calendar className="h-3 w-3" />
+                  <span className="font-semibold text-foreground">{formatMetric(tier.dailyNeeded, role)}</span>/dia útil
+                </span>
+              )}
+            </div>
+            <p className="text-[10px] text-muted-foreground/70">
+              Ganho total: {formatCurrency(tier.commissionValue)} de comissão
+            </p>
+          </div>
+        )}
+      </div>
+    );
+  };
+
   const renderStaffCard = (data: CommissionData) => (
     <div
       key={data.staffId}
@@ -196,6 +309,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
         </div>
       )}
 
+      {/* Current status */}
       <div className="flex items-center gap-2 mb-1 text-muted-foreground">
         <span className="text-xs">Meta atingida:</span>
         <Badge
@@ -211,6 +325,7 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
         <span className="text-[10px] text-muted-foreground">({data.tierLabel})</span>
       </div>
 
+      {/* Salary summary */}
       <div className="grid grid-cols-3 gap-3 mt-3">
         <div className="text-center">
           <div className="flex items-center justify-center gap-1 mb-1">
@@ -234,6 +349,38 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
           <p className="text-sm font-extrabold text-emerald-600 dark:text-emerald-400">{formatCurrency(data.total)}</p>
         </div>
       </div>
+
+      {/* Missing to commission alert */}
+      {!data.isCommissioning && data.missingToFirstTier > 0 && (
+        <div className="mt-3 rounded-lg bg-orange-50 dark:bg-orange-950/20 border border-orange-200 dark:border-orange-800 p-3">
+          <div className="flex items-center gap-1.5 text-orange-700 dark:text-orange-400">
+            <TrendingUp className="h-3.5 w-3.5" />
+            <span className="text-xs font-semibold">Para começar a comissionar:</span>
+          </div>
+          <p className="text-sm font-bold text-orange-800 dark:text-orange-300 mt-1">
+            Faltam {formatMetric(data.missingToFirstTier, data.role)} {data.metricLabel}
+          </p>
+          {remainingDays > 0 && (
+            <p className="text-[11px] text-orange-600 dark:text-orange-400 mt-0.5">
+              ≈ {formatMetric(data.missingToFirstTier / remainingDays, data.role)}/{data.role === "sdr" ? "reunião" : ""} por dia útil ({remainingDays} dias restantes)
+            </p>
+          )}
+        </div>
+      )}
+
+      {/* Tier breakdown */}
+      {data.tiers.length > 0 && (
+        <div className="mt-4">
+          <div className="flex items-center gap-1.5 mb-2">
+            <TrendingUp className="h-3.5 w-3.5 text-primary" />
+            <span className="text-xs font-semibold text-foreground">Faixas de Comissão</span>
+            <span className="text-[10px] text-muted-foreground ml-auto">{remainingDays} dias úteis restantes</span>
+          </div>
+          <div className="space-y-2">
+            {data.tiers.map(tier => renderTierRow(tier, data.role))}
+          </div>
+        </div>
+      )}
     </div>
   );
 
