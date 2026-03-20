@@ -699,6 +699,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
           { label: "Qtd Vendas", value: metrics.vendas, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.06)" },
           { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)", bg: "rgba(6,182,212,0.06)" },
           { label: "Forecast", value: formatCurrency(metrics.forecast), gradient: "linear-gradient(135deg, #d946ef, #ec4899)", bg: "rgba(217,70,239,0.06)" },
+          { label: "Em Negociação", value: formatCurrency(metrics.emNegociacao), gradient: "linear-gradient(135deg, #f59e0b, #f97316)", bg: "rgba(245,158,11,0.06)" },
         ].map((item, idx) => (
           <div key={idx} className="relative overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1" style={{ background: item.bg, border: '1px solid rgba(255,255,255,0.08)' }}>
             <div className="absolute top-0 left-0 h-1.5 w-full rounded-t-2xl" style={{ background: item.gradient }} />
