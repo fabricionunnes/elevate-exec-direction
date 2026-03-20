@@ -206,6 +206,10 @@ export const ScheduleLeadMeetingDialog = ({
           .eq("user_id", userData.user?.id)
           .single();
 
+        // Find the closer's staff_id (the one whose calendar was used)
+        const selectedCloser = connectedStaff.find((s) => s.user_id === selectedStaffUserId);
+        const closerStaffId = selectedCloser?.id || null;
+
         const activityInsert: any = {
           lead_id: leadId,
           type: "meeting",
@@ -240,6 +244,67 @@ export const ScheduleLeadMeetingDialog = ({
             new_scheduled_at: startDateTime,
             notes: `Agendado por ${staffData?.id ? "staff" : "sistema"} - ${formData.title}`,
           } as any);
+        }
+
+        // Auto-assign the closer as lead owner and move to "Agendada" stage
+        if (closerStaffId) {
+          const { data: leadData } = await supabase
+            .from("crm_leads")
+            .select("pipeline_id, stage_id, owner_staff_id")
+            .eq("id", leadId)
+            .single();
+
+          if (leadData?.pipeline_id) {
+            const { data: agendadaStage } = await supabase
+              .from("crm_stages")
+              .select("id, name")
+              .eq("pipeline_id", leadData.pipeline_id)
+              .or("name.ilike.%agendada%,name.ilike.%agendou%")
+              .order("sort_order")
+              .limit(1)
+              .single();
+
+            const updatePayload: any = {
+              owner_staff_id: closerStaffId,
+              closer_staff_id: closerStaffId,
+              updated_at: new Date().toISOString(),
+            };
+
+            if (agendadaStage) {
+              updatePayload.stage_id = agendadaStage.id;
+            }
+
+            await supabase
+              .from("crm_leads")
+              .update(updatePayload)
+              .eq("id", leadId);
+
+            // Log stage change
+            if (agendadaStage && leadData.stage_id !== agendadaStage.id) {
+              await supabase.from("crm_lead_history").insert({
+                lead_id: leadId,
+                action: "stage_change",
+                field_changed: "stage_id",
+                old_value: leadData.stage_id,
+                new_value: agendadaStage.id,
+                notes: `Movido para "${agendadaStage.name}" automaticamente ao agendar reunião`,
+                staff_id: staffData?.id || null,
+              });
+            }
+
+            // Log owner change
+            if (leadData.owner_staff_id !== closerStaffId) {
+              await supabase.from("crm_lead_history").insert({
+                lead_id: leadId,
+                action: "owner_change",
+                field_changed: "owner_staff_id",
+                old_value: leadData.owner_staff_id,
+                new_value: closerStaffId,
+                notes: `Responsável alterado para ${selectedCloser?.name} automaticamente ao agendar reunião`,
+                staff_id: staffData?.id || null,
+              });
+            }
+          }
         }
 
         // If this was triggered from an automation activity, mark it as completed
