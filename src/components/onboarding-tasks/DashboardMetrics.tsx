@@ -175,6 +175,12 @@ const DashboardMetrics = ({
   const [showOverdueCompanies, setShowOverdueCompanies] = useState(false);
   const npsPerPage = 10;
 
+  // CSAT state
+  const [csatResponses, setCsatResponses] = useState<{ id: string; score: number; feedback: string | null; respondent_name: string | null; responded_at: string | null; project_id: string | null; meeting_id: string | null }[]>([]);
+  const [csatDetailType, setCsatDetailType] = useState<"all" | "satisfied" | "neutral" | "unsatisfied" | null>(null);
+  const [csatDetailPage, setCsatDetailPage] = useState(1);
+  const csatPerPage = 10;
+
   // Use external data if provided, otherwise use internal state
   const allTasks = externalTasks || internalTasks;
   const npsResponses = externalNpsResponses || internalNpsResponses;
