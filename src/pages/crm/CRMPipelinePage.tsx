@@ -20,6 +20,8 @@ import {
   MoreHorizontal,
   Upload,
   CheckSquare,
+  TrendingUp,
+  Handshake,
 } from "lucide-react";
 import { Checkbox } from "@/components/ui/checkbox";
 import { toast } from "sonner";
