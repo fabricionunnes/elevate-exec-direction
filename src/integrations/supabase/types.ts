@@ -12153,6 +12153,8 @@ export type Database = {
           entered_pipeline_at: string | null
           estimated_revenue: string | null
           fit_score: number | null
+          head_closing_date: string | null
+          head_status: string | null
           id: string
           installments: string | null
           last_activity_at: string | null
@@ -12199,6 +12201,8 @@ export type Database = {
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
           fit_score?: number | null
+          head_closing_date?: string | null
+          head_status?: string | null
           id?: string
           installments?: string | null
           last_activity_at?: string | null
@@ -12245,6 +12249,8 @@ export type Database = {
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
           fit_score?: number | null
+          head_closing_date?: string | null
+          head_status?: string | null
           id?: string
           installments?: string | null
           last_activity_at?: string | null

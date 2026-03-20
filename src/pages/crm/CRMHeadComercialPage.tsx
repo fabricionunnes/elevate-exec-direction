@@ -4,6 +4,7 @@ import { useCRMContext } from "@/pages/crm/CRMLayout";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Textarea } from "@/components/ui/textarea";
 import { Progress } from "@/components/ui/progress";
@@ -114,6 +115,8 @@ interface LeadWithStage {
   phone: string | null;
   notes: string | null;
   scheduled_at: string | null;
+  head_status: string | null;
+  head_closing_date: string | null;
   stage: { name: string; sort_order: number; is_final: boolean | null; final_type: string | null } | null;
   closer: { name: string } | null;
   owner: { name: string } | null;
@@ -176,6 +179,14 @@ const formatCompact = (v: number) => {
 const NEGOTIATION_STAGES = [
   "forecast", "realizada", "realizada / em negociação", "fup",
   "reunião realizada", "agendada", "agendou reunião",
+];
+
+const HEAD_STATUS_OPTIONS = [
+  { value: "em_andamento", label: "Em andamento", color: "bg-blue-500/15 text-blue-400 border-blue-500/30" },
+  { value: "segunda_reuniao", label: "Segunda reunião", color: "bg-violet-500/15 text-violet-400 border-violet-500/30" },
+  { value: "aguardando_pagar", label: "Aguardando pagar", color: "bg-amber-500/15 text-amber-400 border-amber-500/30" },
+  { value: "contratou", label: "Contratou", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30" },
+  { value: "encerrou", label: "Encerrou", color: "bg-rose-500/15 text-rose-400 border-rose-500/30" },
 ];
 
 const activityTypeIcon: Record<string, React.ReactNode> = {
@@ -251,6 +262,7 @@ export default function CRMHeadComercialPage() {
             .select(`
               id, name, company, opportunity_value, probability, stage_id,
               closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
+              head_status, head_closing_date,
               stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
               closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
               owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
@@ -389,6 +401,26 @@ export default function CRMHeadComercialPage() {
     finally { setSavingActivityNote(null); }
   };
 
+  // ── Save head_status on a lead ──
+  const handleSaveHeadStatus = async (leadId: string, status: string | null) => {
+    try {
+      const { error } = await supabase.from("crm_leads").update({ head_status: status } as any).eq("id", leadId);
+      if (error) throw error;
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, head_status: status } : l)));
+      toast.success("Status atualizado");
+    } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
+  };
+
+  // ── Save head_closing_date on a lead ──
+  const handleSaveClosingDate = async (leadId: string, date: string | null) => {
+    try {
+      const { error } = await supabase.from("crm_leads").update({ head_closing_date: date } as any).eq("id", leadId);
+      if (error) throw error;
+      setLeads((prev) => prev.map((l) => (l.id === leadId ? { ...l, head_closing_date: date } : l)));
+      toast.success("Data de fechamento salva");
+    } catch (err: any) { toast.error(err.message || "Erro ao salvar"); }
+  };
+
   // ── Build staff performance table ──
   const staffPerformance = useMemo((): StaffPerformance[] => {
     return allStaff
@@ -502,13 +534,20 @@ export default function CRMHeadComercialPage() {
   const forecastLeads = useMemo(() => {
     return filteredLeads.filter((l) => {
       const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup");
+      return sn.includes("forecast");
     });
   }, [filteredLeads]);
 
-  const forecastByCloser = useMemo(() => {
+  const negotiationLeads = useMemo(() => {
+    return filteredLeads.filter((l) => {
+      const sn = (l.stage as any)?.name?.toLowerCase() || "";
+      return sn.includes("reunião realizada") || sn.includes("realizada");
+    });
+  }, [filteredLeads]);
+
+  const groupByCloser = (list: LeadWithStage[]) => {
     const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
-    forecastLeads.forEach((l) => {
+    list.forEach((l) => {
       const sid = l.closer_staff_id || l.owner_staff_id || "sem-dono";
       const closerName = (l.closer as any)?.name || (l.owner as any)?.name || "Sem responsável";
       if (!groups[sid]) groups[sid] = { name: closerName, leads: [], total: 0 };
@@ -516,7 +555,11 @@ export default function CRMHeadComercialPage() {
       groups[sid].total += l.opportunity_value || 0;
     });
     return Object.entries(groups).sort(([, a], [, b]) => b.total - a.total);
-  }, [forecastLeads]);
+  };
+
+  const forecastByCloser = useMemo(() => groupByCloser(forecastLeads), [forecastLeads]);
+  const negotiationByCloser = useMemo(() => groupByCloser(negotiationLeads), [negotiationLeads]);
+  
 
   const leadsByStage = useMemo(() => {
     const groups: Record<string, LeadWithStage[]> = {};
@@ -795,67 +838,92 @@ export default function CRMHeadComercialPage() {
         </TabsContent>
 
         {/* ═══ TAB: Forecast ═══ */}
-        <TabsContent value="forecast" className="space-y-4 mt-4">
-          {/* Forecast Pie Chart + Summary */}
-          {forecastChartData.length > 0 && (
-            <GlowCard glowColor="shadow-orange-500/10">
-              <div className="relative p-4 sm:p-5">
-                <div className="grid grid-cols-1 sm:grid-cols-[1fr_auto] gap-4 items-center">
-                  <div>
-                    <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2 mb-3">
-                      <Flame className="h-4 w-4 text-orange-400" /> Forecast por Closer
-                    </h3>
-                    <p className="text-2xl font-black text-orange-400">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</p>
-                    <p className="text-xs text-muted-foreground mt-1">{forecastLeads.length} leads em forecast</p>
-                  </div>
-                  <div className="h-[140px] w-[140px] mx-auto sm:mx-0">
-                    <ResponsiveContainer width="100%" height="100%">
-                      <PieChart>
-                        <Pie data={forecastChartData} cx="50%" cy="50%" innerRadius={35} outerRadius={55} dataKey="value" strokeWidth={0}>
-                          {forecastChartData.map((_, idx) => (
-                            <Cell key={idx} fill={CHART_COLORS[idx % CHART_COLORS.length]} />
-                          ))}
-                        </Pie>
-                        <Tooltip contentStyle={{ background: "hsl(var(--card))", border: "1px solid hsl(var(--border)/0.3)", borderRadius: "12px", fontSize: "11px" }} formatter={(v: number) => [formatCurrency(v)]} />
-                      </PieChart>
-                    </ResponsiveContainer>
-                  </div>
-                </div>
-              </div>
-            </GlowCard>
-          )}
+        <TabsContent value="forecast" className="space-y-6 mt-4">
+          {/* ── Forecast Section ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Flame className="h-4 w-4 text-orange-400" /> Forecast
+                <Badge variant="outline" className="text-[10px] border-orange-500/30 text-orange-400">{forecastLeads.length} leads</Badge>
+              </h3>
+              <span className="text-sm font-black text-orange-400">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
 
-          {forecastByCloser.length === 0 ? (
-            <GlowCard><div className="p-8 text-center text-muted-foreground">Nenhum lead em forecast</div></GlowCard>
-          ) : (
-            forecastByCloser.map(([closerId, group]) => (
-              <GlowCard key={closerId} glowColor="shadow-orange-500/5">
-                <div className="relative">
-                  <div className="flex items-center justify-between bg-gradient-to-r from-orange-500/5 to-transparent px-4 py-3 border-b border-white/5">
-                    <div className="flex items-center gap-2">
-                      <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 p-[2px] shadow-md">
-                        <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
-                          <span className="text-xs font-black text-orange-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+            {forecastByCloser.length === 0 ? (
+              <GlowCard><div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead em forecast</div></GlowCard>
+            ) : (
+              forecastByCloser.map(([closerId, group]) => (
+                <GlowCard key={closerId} glowColor="shadow-orange-500/5">
+                  <div className="relative">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-orange-500/5 to-transparent px-4 py-3 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-orange-500 to-amber-400 p-[2px] shadow-md">
+                          <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
+                            <span className="text-xs font-black text-orange-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold">{group.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
                         </div>
                       </div>
-                      <div>
-                        <p className="text-sm font-bold">{group.name}</p>
-                        <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
-                      </div>
+                      <p className="text-base font-black text-orange-400">{formatCurrency(group.total)}</p>
                     </div>
-                    <p className="text-base font-black text-orange-400">{formatCurrency(group.total)}</p>
+                    <div className="p-3 space-y-2">
+                      {group.leads
+                        .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                        .map((lead) => (
+                          <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} onSaveStatus={handleSaveHeadStatus} onSaveClosingDate={handleSaveClosingDate} />
+                        ))}
+                    </div>
                   </div>
-                  <div className="p-3 space-y-2">
-                    {group.leads
-                      .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
-                      .map((lead) => (
-                        <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} />
-                      ))}
+                </GlowCard>
+              ))
+            )}
+          </div>
+
+          {/* ── Em Negociação Section ── */}
+          <div className="space-y-4">
+            <div className="flex items-center justify-between">
+              <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+                <Target className="h-4 w-4 text-violet-400" /> Em Negociação
+                <Badge variant="outline" className="text-[10px] border-violet-500/30 text-violet-400">{negotiationLeads.length} leads</Badge>
+              </h3>
+              <span className="text-sm font-black text-violet-400">{formatCurrency(negotiationLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
+
+            {negotiationByCloser.length === 0 ? (
+              <GlowCard><div className="p-6 text-center text-muted-foreground text-sm">Nenhum lead em negociação</div></GlowCard>
+            ) : (
+              negotiationByCloser.map(([closerId, group]) => (
+                <GlowCard key={closerId} glowColor="shadow-violet-500/5">
+                  <div className="relative">
+                    <div className="flex items-center justify-between bg-gradient-to-r from-violet-500/5 to-transparent px-4 py-3 border-b border-white/5">
+                      <div className="flex items-center gap-2">
+                        <div className="h-9 w-9 rounded-xl bg-gradient-to-br from-violet-500 to-purple-400 p-[2px] shadow-md">
+                          <div className="h-full w-full rounded-[10px] bg-card flex items-center justify-center">
+                            <span className="text-xs font-black text-violet-400">{group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}</span>
+                          </div>
+                        </div>
+                        <div>
+                          <p className="text-sm font-bold">{group.name}</p>
+                          <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
+                        </div>
+                      </div>
+                      <p className="text-base font-black text-violet-400">{formatCurrency(group.total)}</p>
+                    </div>
+                    <div className="p-3 space-y-2">
+                      {group.leads
+                        .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                        .map((lead) => (
+                          <LeadCard key={lead.id} lead={lead} editingNotes={editingNotes} setEditingNotes={setEditingNotes} savingNote={savingNote} onSaveNote={handleSaveNote} onSaveStatus={handleSaveHeadStatus} onSaveClosingDate={handleSaveClosingDate} />
+                        ))}
+                    </div>
                   </div>
-                </div>
-              </GlowCard>
-            ))
-          )}
+                </GlowCard>
+              ))
+            )}
+          </div>
         </TabsContent>
 
         {/* ═══ TAB: Pipeline ═══ */}
@@ -896,6 +964,8 @@ export default function CRMHeadComercialPage() {
                         setEditingNotes={setEditingNotes}
                         savingNote={savingNote}
                         onSaveNote={handleSaveNote}
+                        onSaveStatus={handleSaveHeadStatus}
+                        onSaveClosingDate={handleSaveClosingDate}
                       />
                     ))}
                 </div>
@@ -1165,16 +1235,19 @@ function MetricBlock({ label, value, alert, good }: { label: string; value: stri
 }
 
 // ─── Lead Card ───
-function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote }: {
+function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote, onSaveStatus, onSaveClosingDate }: {
   lead: LeadWithStage;
   editingNotes: Record<string, string>;
   setEditingNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
   savingNote: string | null;
   onSaveNote: (id: string) => Promise<void>;
+  onSaveStatus: (id: string, status: string | null) => Promise<void>;
+  onSaveClosingDate: (id: string, date: string | null) => Promise<void>;
 }) {
   const daysSince = lead.last_activity_at ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000) : null;
   const isEditing = editingNotes[lead.id] !== undefined;
   const closerName = (lead.closer as any)?.name || (lead.owner as any)?.name || "—";
+  const currentStatus = HEAD_STATUS_OPTIONS.find((s) => s.value === lead.head_status);
 
   return (
     <div className="border border-white/10 rounded-xl p-3 bg-card/60 backdrop-blur-sm hover:bg-card/80 hover:shadow-md transition-all duration-200">
@@ -1198,6 +1271,38 @@ function LeadCard({ lead, editingNotes, setEditingNotes, savingNote, onSaveNote 
           {lead.probability != null && <p className="text-[11px] text-muted-foreground">{lead.probability}%</p>}
         </div>
       </div>
+
+      {/* Status + Closing Date Row */}
+      <div className="flex items-center gap-2 mt-2 flex-wrap">
+        <Select value={lead.head_status || "none"} onValueChange={(val) => onSaveStatus(lead.id, val === "none" ? null : val)}>
+          <SelectTrigger className={cn("h-7 text-[11px] w-auto min-w-[140px] border-white/10 bg-muted/20", currentStatus?.color)}>
+            <SelectValue placeholder="Status..." />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="none">Sem status</SelectItem>
+            {HEAD_STATUS_OPTIONS.map((opt) => (
+              <SelectItem key={opt.value} value={opt.value}>{opt.label}</SelectItem>
+            ))}
+          </SelectContent>
+        </Select>
+        <div className="flex items-center gap-1.5">
+          <Calendar className="h-3 w-3 text-muted-foreground shrink-0" />
+          <Input
+            type="date"
+            value={lead.head_closing_date || ""}
+            onChange={(e) => onSaveClosingDate(lead.id, e.target.value || null)}
+            className="h-7 text-[11px] w-[130px] border-white/10 bg-muted/20"
+            placeholder="Data fechar"
+          />
+        </div>
+        {lead.head_closing_date && (
+          <span className="text-[10px] text-muted-foreground">
+            {format(new Date(lead.head_closing_date + "T12:00:00"), "dd/MM/yyyy")}
+          </span>
+        )}
+      </div>
+
+      {/* Notes */}
       <div className="mt-2">
         {isEditing ? (
           <div className="space-y-2">
