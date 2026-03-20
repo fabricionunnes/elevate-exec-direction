@@ -1148,7 +1148,13 @@ const OnboardingTasksPage = () => {
     const month = now.getMonth() + 1;
     const year = now.getFullYear();
     const daysInMonth = new Date(year, month, 0).getDate();
-    const timeElapsedPercent = now.getDate() / daysInMonth;
+    const currentMonthYear = `${year}-${String(month).padStart(2, "0")}`;
+    
+    // Use business days for projection (D-1 logic)
+    const totalBizDays = getTotalBusinessDaysInMonth(year, month - 1);
+    const elapsedBizDays = getBusinessDayNumber(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
+    const timeElapsedPercent = totalBizDays > 0 ? elapsedBizDays / totalBizDays : 0;
+    
     const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
     const monthEnd = `${year}-${String(month).padStart(2, "0")}-${daysInMonth}`;
 
@@ -1184,10 +1190,15 @@ const OnboardingTasksPage = () => {
         return;
       }
 
-      // Monthly target with periodicity
+      // Monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
       let totalMonthlyTarget = 0;
       kpisForProjection.forEach(kpi => {
-        if (kpi.periodicity === "daily") {
+        const mt = monthlyTargetsForProjection.find(
+          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === currentMonthYear
+        );
+        if (mt) {
+          totalMonthlyTarget += mt.target_value;
+        } else if (kpi.periodicity === "daily") {
           totalMonthlyTarget += kpi.target_value * daysInMonth;
         } else if (kpi.periodicity === "weekly") {
           totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
@@ -1221,7 +1232,7 @@ const OnboardingTasksPage = () => {
     });
 
     return map;
-  }, [companies, companyKpis, kpiEntries]);
+  }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection]);
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
