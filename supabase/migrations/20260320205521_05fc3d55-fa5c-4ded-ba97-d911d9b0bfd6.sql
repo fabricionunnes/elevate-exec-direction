@@ -1,0 +1,1 @@
+ALTER TABLE public.social_ads_briefing ADD COLUMN traffic_manager_name TEXT;

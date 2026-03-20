@@ -51,6 +51,7 @@ export const AdsBriefingSection = ({ projectId }: AdsBriefingSectionProps) => {
     monthly_ad_budget: 0,
     payment_method: "",
     additional_notes: "",
+    traffic_manager_name: "",
   });
 
   useEffect(() => {
@@ -77,6 +78,7 @@ export const AdsBriefingSection = ({ projectId }: AdsBriefingSectionProps) => {
           monthly_ad_budget: existing.monthly_ad_budget || 0,
           payment_method: existing.payment_method || "",
           additional_notes: existing.additional_notes || "",
+          traffic_manager_name: (existing as any).traffic_manager_name || "",
         });
       }
     } catch (error) {
@@ -186,6 +188,19 @@ export const AdsBriefingSection = ({ projectId }: AdsBriefingSectionProps) => {
       </div>
 
       {/* Data display/edit */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base">Responsável pelo Tráfego Pago</CardTitle>
+        </CardHeader>
+        <CardContent>
+          <Input
+            value={formData.traffic_manager_name}
+            onChange={(e) => setFormData(prev => ({ ...prev, traffic_manager_name: e.target.value }))}
+            placeholder="Nome do responsável"
+          />
+        </CardContent>
+      </Card>
+
       <div className="grid gap-4 md:grid-cols-2">
         <Card>
           <CardHeader className="pb-3">

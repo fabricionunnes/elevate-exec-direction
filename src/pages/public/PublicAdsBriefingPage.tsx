@@ -25,6 +25,7 @@ const PublicAdsBriefingPage = () => {
     monthly_ad_budget: 0,
     payment_method: "",
     additional_notes: "",
+    traffic_manager_name: "",
   });
 
   useEffect(() => {
@@ -61,6 +62,7 @@ const PublicAdsBriefingPage = () => {
         monthly_ad_budget: data.monthly_ad_budget || 0,
         payment_method: data.payment_method || "",
         additional_notes: data.additional_notes || "",
+        traffic_manager_name: (data as any).traffic_manager_name || "",
       });
     } catch (error) {
       console.error("Error loading:", error);
@@ -152,6 +154,25 @@ const PublicAdsBriefingPage = () => {
             Preencha os dados abaixo para que possamos configurar suas campanhas de anúncios.
           </p>
         </div>
+
+        {/* Responsável */}
+        <Card>
+          <CardHeader>
+            <CardTitle className="flex items-center gap-2 text-lg">
+              Responsável pelo Tráfego Pago
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+            <div className="space-y-2">
+              <Label>Nome do Responsável</Label>
+              <Input
+                placeholder="Nome completo"
+                value={formData.traffic_manager_name}
+                onChange={(e) => setFormData(prev => ({ ...prev, traffic_manager_name: e.target.value }))}
+              />
+            </div>
+          </CardContent>
+        </Card>
 
         {/* Redes Sociais */}
         <Card>
