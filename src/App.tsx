@@ -261,19 +261,22 @@ const queryClient = new QueryClient({
   },
 });
 
-const App = () => (
-  <ErrorBoundary>
-    <QueryClientProvider client={queryClient}>
-      <ThemeCustomizationProvider>
-      <TenantProvider>
-        <TooltipProvider>
-          <Toaster />
-          <Sonner />
-          <HashRouter>
-            <ScrollToTop />
-            <OAuthRedirectHandler />
-            <Suspense fallback={<PageLoader />}>
-            <Routes>
+const AppShell = () => {
+  useGoogleCalendarTokenSync();
+
+  return (
+    <ErrorBoundary>
+      <QueryClientProvider client={queryClient}>
+        <ThemeCustomizationProvider>
+        <TenantProvider>
+          <TooltipProvider>
+            <Toaster />
+            <Sonner />
+            <HashRouter>
+              <ScrollToTop />
+              <OAuthRedirectHandler />
+              <Suspense fallback={<PageLoader />}>
+              <Routes>
             <Route path="/" element={<HomePage />} />
             <Route path="/how-it-works" element={<HowItWorksPage />} />
             <Route path="/products" element={<ProductsPage />} />
