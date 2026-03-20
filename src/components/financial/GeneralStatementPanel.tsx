@@ -64,42 +64,19 @@ export function GeneralStatementPanel() {
   }, []);
 
   useEffect(() => {
-    // Auto-set dates when period changes
-    const now = new Date();
-    switch (periodFilter) {
-      case "today":
-        setDateFrom(format(startOfDay(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfDay(now), "yyyy-MM-dd"));
-        break;
-      case "this_week":
-        setDateFrom(format(startOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
-        setDateTo(format(endOfWeek(now, { weekStartsOn: 1 }), "yyyy-MM-dd"));
-        break;
-      case "this_month":
-        setDateFrom(format(startOfMonth(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfMonth(now), "yyyy-MM-dd"));
-        break;
-      case "this_year":
-        setDateFrom(format(startOfYear(now), "yyyy-MM-dd"));
-        setDateTo(format(endOfYear(now), "yyyy-MM-dd"));
-        break;
-      case "last_30_days":
-        setDateFrom(format(subDays(now, 30), "yyyy-MM-dd"));
-        setDateTo(format(now, "yyyy-MM-dd"));
-        break;
-      case "last_12_months":
-        setDateFrom(format(subMonths(now, 12), "yyyy-MM-dd"));
-        setDateTo(format(now, "yyyy-MM-dd"));
-        break;
-      case "custom":
-        // keep current custom dates
-        break;
-      case "all":
-        setDateFrom("2020-01-01");
-        setDateTo("2030-12-31");
-        break;
+    // Auto-set dates when period or offset changes
+    if (periodFilter === "custom") return; // keep current custom dates
+    if (periodFilter === "all") {
+      setDateFrom("2020-01-01");
+      setDateTo("2030-12-31");
+      return;
     }
-  }, [periodFilter]);
+    const { start, end } = getDateRangeForPeriod(periodFilter as PeriodType, periodOffset);
+    if (start && end) {
+      setDateFrom(format(start, "yyyy-MM-dd"));
+      setDateTo(format(end, "yyyy-MM-dd"));
+    }
+  }, [periodFilter, periodOffset]);
 
   useEffect(() => {
     loadData();
