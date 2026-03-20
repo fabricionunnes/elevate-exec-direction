@@ -914,7 +914,7 @@ export const CRMLeadDetailPage = () => {
               </button>
             </Badge>
           ))}
-          <Popover open={tagPopoverOpen} onOpenChange={setTagPopoverOpen}>
+          <Popover open={tagPopoverOpen} onOpenChange={(open) => { setTagPopoverOpen(open); if (!open) setTagSearch(""); }}>
             <PopoverTrigger asChild>
               <Button variant="ghost" size="sm" className="h-6 px-2 text-muted-foreground">
                 <Plus className="h-3 w-3" />
