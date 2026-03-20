@@ -275,7 +275,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
     }
   };
 
-
+  const openEditDevice = (instance: WhatsAppInstance) => {
     setSelectedInstance(instance);
     setNewName(instance.display_name || instance.instance_name);
     setNewPhone(instance.phone_number || "");
