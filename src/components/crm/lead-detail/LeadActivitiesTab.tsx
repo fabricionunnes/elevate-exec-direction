@@ -420,7 +420,7 @@ export const LeadActivitiesTab = ({
                       </span>
                       
                       <span className={cn(
-                        "text-sm flex-1 truncate",
+                        "text-sm flex-1",
                         item.completed && "line-through text-muted-foreground"
                       )}>
                         {item.title}

@@ -948,51 +948,28 @@ export const CRMLeadDetailPage = () => {
       </div>
 
       {/* Tabs */}
-      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col">
-        <TabsList className="h-auto p-0 bg-transparent border-b border-border rounded-none px-6">
-          <TabsTrigger
-            value="activities"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Atividades
-          </TabsTrigger>
-          <TabsTrigger
-            value="contact"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Contato
-          </TabsTrigger>
-          <TabsTrigger
-            value="company"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Empresa
-          </TabsTrigger>
-          <TabsTrigger
-            value="deal"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Negócio
-          </TabsTrigger>
-          <TabsTrigger
-            value="files"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Arquivos
-          </TabsTrigger>
-          <TabsTrigger
-            value="transcription"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Transcrição
-          </TabsTrigger>
-          <TabsTrigger
-            value="history"
-            className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-4 py-3"
-          >
-            Histórico
-          </TabsTrigger>
-        </TabsList>
+      <Tabs value={activeTab} onValueChange={setActiveTab} className="flex-1 flex flex-col min-h-0">
+        <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
+          <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
+            {[
+              { value: "activities", label: "Atividades" },
+              { value: "contact", label: "Contato" },
+              { value: "company", label: "Empresa" },
+              { value: "deal", label: "Negócio" },
+              { value: "files", label: "Arquivos" },
+              { value: "transcription", label: "Transcrição" },
+              { value: "history", label: "Histórico" },
+            ].map(tab => (
+              <TabsTrigger
+                key={tab.value}
+                value={tab.value}
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0"
+              >
+                {tab.label}
+              </TabsTrigger>
+            ))}
+          </TabsList>
+        </div>
 
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
           <LeadActivitiesTab
