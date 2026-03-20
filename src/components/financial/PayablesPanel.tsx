@@ -816,21 +816,12 @@ export function PayablesPanel() {
                 className="pl-10"
               />
             </div>
-            <Select value={periodFilter} onValueChange={(v) => { setPeriodFilter(v); setCurrentPage(0); }}>
-              <SelectTrigger className="w-[200px]">
-                <CalendarDays className="h-4 w-4 mr-2" />
-                <SelectValue placeholder="Período" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="today">Hoje</SelectItem>
-                <SelectItem value="this_week">Esta semana</SelectItem>
-                <SelectItem value="this_month">Este mês</SelectItem>
-                <SelectItem value="this_year">Este ano</SelectItem>
-                <SelectItem value="last_30_days">Últimos 30 dias</SelectItem>
-                <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                <SelectItem value="all">Todo o período</SelectItem>
-              </SelectContent>
-            </Select>
+            <PeriodNavigator
+              period={periodFilter}
+              offset={periodOffset}
+              onPeriodChange={(v) => { setPeriodFilter(v); setCurrentPage(0); }}
+              onOffsetChange={(o) => { setPeriodOffset(o); setCurrentPage(0); }}
+            />
             <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}>
               <SelectTrigger className="w-[180px]">
                 <SelectValue placeholder="Status" />
