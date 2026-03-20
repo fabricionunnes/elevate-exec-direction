@@ -913,12 +913,16 @@ const OnboardingTasksPage = () => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
     
-    // Calculate time elapsed percentage in the month
+    // Calculate time elapsed percentage using business days (D-1 logic)
     const today = new Date();
     const isCurrentMonth = today.getMonth() + 1 === periodMonth && today.getFullYear() === periodYear;
     const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
-    const currentDay = isCurrentMonth ? today.getDate() : daysInMonth;
-    const timeElapsedPercent = currentDay / daysInMonth;
+    const totalBizDays = getTotalBusinessDaysInMonth(periodYear, periodMonth - 1);
+    const elapsedBizDays = isCurrentMonth
+      ? getBusinessDayNumber(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
+      : totalBizDays;
+    const timeElapsedPercent = totalBizDays > 0 ? elapsedBizDays / totalBizDays : 0;
+    const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
     
     // Get active company IDs (exclude inactive/closed companies AND simulator companies)
     const activeCompanyIds = new Set(
