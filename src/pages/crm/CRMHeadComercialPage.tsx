@@ -538,9 +538,9 @@ export default function CRMHeadComercialPage() {
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-2xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20">
-              <Trophy className="h-6 w-6 text-amber-600" />
+          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
+            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 shrink-0">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
             </div>
             Briefing Diário
           </h1>
