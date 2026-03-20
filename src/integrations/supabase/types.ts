@@ -12211,6 +12211,7 @@ export type Database = {
           closed_at: string | null
           closer_staff_id: string | null
           company: string | null
+          contract_form_token: string | null
           cpf: string | null
           created_at: string
           created_by: string | null
@@ -12266,6 +12267,7 @@ export type Database = {
           closed_at?: string | null
           closer_staff_id?: string | null
           company?: string | null
+          contract_form_token?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
@@ -12321,6 +12323,7 @@ export type Database = {
           closed_at?: string | null
           closer_staff_id?: string | null
           company?: string | null
+          contract_form_token?: string | null
           cpf?: string | null
           created_at?: string
           created_by?: string | null
