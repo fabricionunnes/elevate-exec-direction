@@ -55,7 +55,7 @@ export const useCRMContext = () => {
   return context;
 };
 
-const navTabs = [
+const baseNavTabs = [
   { title: "Dashboard", href: "/crm/reports" },
   { title: "Negócios", href: "/crm/pipeline" },
   { title: "Contatos", href: "/crm/leads" },
@@ -65,6 +65,14 @@ const navTabs = [
   { title: "Contratos", href: "/contratos" },
   { title: "Escritório", href: "/crm/office" },
 ];
+
+const getNavTabs = (role: string | null) => {
+  const tabs = [...baseNavTabs];
+  if (role === "master" || role === "head_comercial") {
+    tabs.push({ title: "Head Comercial", href: "/crm/head" });
+  }
+  return tabs;
+};
 
 export const CRMLayout = () => {
   const [isLoading, setIsLoading] = useState(true);
