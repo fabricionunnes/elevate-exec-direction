@@ -62,6 +62,7 @@ const PublicAdsBriefingPage = () => {
         monthly_ad_budget: data.monthly_ad_budget || 0,
         payment_method: data.payment_method || "",
         additional_notes: data.additional_notes || "",
+        traffic_manager_name: (data as any).traffic_manager_name || "",
       });
     } catch (error) {
       console.error("Error loading:", error);
