@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -48,17 +49,12 @@ export const CRMOfficePage = () => {
   const handleConnect = async () => {
     setConnecting(true);
     try {
-      const redirectTo = `${window.location.origin}/#/crm/office`;
-
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo,
-          scopes: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: {
+          scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
+          access_type: "offline",
+          prompt: "consent",
         },
       });
 

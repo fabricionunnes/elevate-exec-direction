@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { lovable } from "@/integrations/lovable";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { ScrollArea } from "@/components/ui/scroll-area";
@@ -32,7 +33,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from "@/components/ui/alert-dialog";
-import { toast } from "sonner";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -40,47 +40,48 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { 
-  Calendar, 
-  Video, 
-  ExternalLink, 
-  RefreshCw, 
-  LogOut,
-  Clock,
+import { MeetingNotesDialog } from "@/components/onboarding-tasks/MeetingNotesDialog";
+import { cn } from "@/lib/utils";
+import {
+  Calendar,
+  CalendarDays,
+  Check,
   ChevronLeft,
   ChevronRight,
-  CalendarDays,
-  List,
-  LayoutGrid,
-  Plus,
+  Clock,
   Copy,
-  Check,
-  Users,
-  Pencil,
-  Trash2,
+  ExternalLink,
+  FileText,
+  LayoutGrid,
+  List,
+  LogOut,
   MoreVertical,
-  FileText
+  Pencil,
+  Plus,
+  RefreshCw,
+  Trash2,
+  Users,
+  Video,
 } from "lucide-react";
-import { MeetingNotesDialog } from "@/components/onboarding-tasks/MeetingNotesDialog";
-import { 
-  format, 
-  parseISO, 
-  isToday, 
-  isTomorrow, 
-  differenceInMinutes,
-  startOfMonth,
-  endOfMonth,
-  startOfWeek,
-  endOfWeek,
-  eachDayOfInterval,
-  isSameMonth,
+import {
   addMonths,
-  subMonths,
   addWeeks,
+  differenceInMinutes,
+  eachDayOfInterval,
+  endOfMonth,
+  endOfWeek,
+  format,
+  isSameMonth,
+  isToday,
+  isTomorrow,
+  parseISO,
+  startOfMonth,
+  startOfWeek,
+  subMonths,
   subWeeks,
 } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { cn } from "@/lib/utils";
+import { toast } from "sonner";
 
 interface CalendarEvent {
   id: string;
@@ -92,179 +93,114 @@ interface CalendarEvent {
   calendarLink: string;
   isOrganizer?: boolean;
   isAttendee?: boolean;
-  attendeeEmails?: string[];
 }
 
-interface StaffMember {
+interface ConnectedStaffMember {
   id: string;
-  name: string;
-  role: string;
   user_id: string;
+  name: string;
 }
-
-type ViewMode = "month" | "week" | "list";
 
 interface GoogleCalendarTabProps {
   currentStaff?: {
     id: string;
-    role: string;
-    user_id?: string;
-  };
+    user_id: string;
+    role?: string;
+  } | null;
 }
 
-const GoogleCalendarTab = ({ currentStaff }: GoogleCalendarTabProps) => {
+type ViewMode = "month" | "week" | "list";
+
+interface EventFormState {
+  title: string;
+  description: string;
+  date: string;
+  startTime: string;
+  endTime: string;
+  attendees: string;
+}
+
+const defaultEventForm: EventFormState = {
+  title: "",
+  description: "",
+  date: "",
+  startTime: "09:00",
+  endTime: "10:00",
+  attendees: "",
+};
+
+const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCalendarTabProps) => {
   const [connected, setConnected] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
+  const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
-  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [creating, setCreating] = useState(false);
+  const [deleting, setDeleting] = useState(false);
   const [currentDate, setCurrentDate] = useState(new Date());
-  
-  // Staff selection for CS/Admin
-  const [connectedStaff, setConnectedStaff] = useState<StaffMember[]>([]);
-  const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
-  const isCSOrAdmin = currentStaff?.role === "cs" || currentStaff?.role === "admin" || currentStaff?.role === "master";
-  
-  // Day detail panel
-  const [selectedDayForDetail, setSelectedDayForDetail] = useState<Date>(new Date());
-  
-  // Create/Edit event state
+  const [viewMode, setViewMode] = useState<ViewMode>("month");
+  const [selectedDayForDetail, setSelectedDayForDetail] = useState(new Date());
   const [showCreateDialog, setShowCreateDialog] = useState(false);
   const [selectedDate, setSelectedDate] = useState<Date | null>(null);
-  const [creating, setCreating] = useState(false);
+  const [newEvent, setNewEvent] = useState<EventFormState>(defaultEventForm);
   const [editingEvent, setEditingEvent] = useState<CalendarEvent | null>(null);
-  const [newEvent, setNewEvent] = useState({
-    title: "",
-    description: "",
-    date: "",
-    startTime: "09:00",
-    endTime: "10:00",
-    attendees: "",
-  });
   const [createdMeetLink, setCreatedMeetLink] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
-  
-  // Delete confirmation
   const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
   const [eventToDelete, setEventToDelete] = useState<CalendarEvent | null>(null);
-  const [deleting, setDeleting] = useState(false);
-  
-  // Meeting notes dialog
   const [showMeetingNotesDialog, setShowMeetingNotesDialog] = useState(false);
   const [eventForNotes, setEventForNotes] = useState<CalendarEvent | null>(null);
+  const [connectedStaff, setConnectedStaff] = useState<ConnectedStaffMember[]>([]);
+  const [currentStaff, setCurrentStaff] = useState<ConnectedStaffMember | null>(null);
+  const [selectedStaffUserId, setSelectedStaffUserId] = useState<string | null>(null);
 
-  useEffect(() => {
-    checkConnection();
-    if (isCSOrAdmin) {
-      loadConnectedStaff();
-    }
-    
-    const { data: { subscription } } = supabase.auth.onAuthStateChange(async (event, session) => {
-      if (event === "SIGNED_IN" && session) {
-        const providerToken = session.provider_token;
-        const providerRefreshToken = session.provider_refresh_token;
-        
-        if (providerToken) {
-          console.log("Google OAuth token captured, saving...");
-          try {
-            await supabase.functions.invoke("google-calendar?action=save-token", {
-              body: {
-                access_token: providerToken,
-                refresh_token: providerRefreshToken,
-                expires_in: 3600,
-              },
-            });
-            setConnected(true);
-            await fetchEvents();
-            if (isCSOrAdmin) {
-              await loadConnectedStaff();
-            }
-          } catch (error) {
-            console.error("Error saving Google token:", error);
-          }
-        }
-      }
-    });
-    
-    return () => subscription.unsubscribe();
-  }, []);
-
-  useEffect(() => {
-    if (connected) {
-      fetchEvents();
-    }
-  }, [selectedStaffUserId]);
-
-  const loadConnectedStaff = async () => {
-    try {
-      const { data, error } = await supabase.functions.invoke("google-calendar?action=list-connected-staff", {
-        body: {},
-      });
-
-      if (error) throw error;
-
-      if (data?.staff) {
-        setConnectedStaff(data.staff);
-      }
-    } catch (error) {
-      console.error("Error loading connected staff:", error);
-    }
-  };
+  const isCSOrAdmin = true;
 
   const checkConnection = async () => {
     try {
-      const { data: { session } } = await supabase.auth.getSession();
-      if (!session) {
-        setLoading(false);
-        return;
-      }
+      const [{ data: connectionData, error: connectionError }, { data: staffData, error: staffError }, { data: authUserData }] = await Promise.all([
+        supabase.functions.invoke("google-calendar?action=check-connection", { body: {} }),
+        supabase.functions.invoke("google-calendar?action=list-connected-staff", { body: {} }),
+        supabase.auth.getUser(),
+      ]);
 
-      if (session.provider_token) {
-        console.log("Found provider token in current session, saving...");
-        try {
-          await supabase.functions.invoke("google-calendar?action=save-token", {
-            body: {
-              access_token: session.provider_token,
-              refresh_token: session.provider_refresh_token,
-              expires_in: 3600,
-            },
-          });
-          setConnected(true);
-          await fetchEvents();
-          setLoading(false);
-          return;
-        } catch (error) {
-          console.error("Error saving Google token:", error);
-        }
-      }
+      if (connectionError) throw connectionError;
+      if (staffError) throw staffError;
 
-      const { data } = await supabase.functions.invoke("google-calendar?action=check-connection", {
-        body: {},
-      });
+      const staff = (staffData?.staff || staffData || []) as ConnectedStaffMember[];
+      const currentUserId = currentStaffProp?.user_id ?? authUserData.user?.id ?? null;
+      const ownStaff = staff.find((member) => member.user_id === currentUserId) ?? null;
 
-      if (data?.connected) {
-        setConnected(true);
-        await fetchEvents();
-      }
+      setConnected(connectionData?.connected ?? false);
+      setConnectedStaff(staff);
+      setCurrentStaff(ownStaff ?? (currentStaffProp ? { id: currentStaffProp.id, user_id: currentStaffProp.user_id, name: "Minha Agenda" } : null));
     } catch (error) {
       console.error("Error checking connection:", error);
+      setConnected(false);
+      setConnectedStaff([]);
+      setCurrentStaff(null);
     } finally {
       setLoading(false);
     }
   };
 
+  useEffect(() => {
+    void checkConnection();
+  }, []);
+
+  useEffect(() => {
+    if (!loading && connected) {
+      void fetchEvents();
+    }
+  }, [loading, connected, selectedStaffUserId]);
+
   const handleGoogleLogin = async () => {
     try {
-      const { error } = await supabase.auth.signInWithOAuth({
-        provider: "google",
-        options: {
-          redirectTo: `${window.location.origin}/onboarding-tasks/office`,
-          // Include Calendar (full) and Drive scopes for events, freebusy and recordings
-          scopes: "https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
-          queryParams: {
-            access_type: "offline",
-            prompt: "consent",
-          },
+      const { error } = await lovable.auth.signInWithOAuth("google", {
+        redirect_uri: window.location.origin,
+        extraParams: {
+          scope: "openid email profile https://www.googleapis.com/auth/calendar https://www.googleapis.com/auth/drive.readonly",
+          access_type: "offline",
+          prompt: "consent",
         },
       });
 
