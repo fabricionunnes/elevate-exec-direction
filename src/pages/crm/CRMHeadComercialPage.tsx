@@ -230,6 +230,8 @@ export default function CRMHeadComercialPage() {
   const [sdrCreatedYesterday, setSdrCreatedYesterday] = useState<any[]>([]);
   const [sdrCreatedToday, setSdrCreatedToday] = useState<any[]>([]);
   const [sdrCreatedMonth, setSdrCreatedMonth] = useState<any[]>([]);
+  const [dynamicForecastLeads, setDynamicForecastLeads] = useState<LeadWithStage[]>([]);
+  const [dynamicNegotiationLeads, setDynamicNegotiationLeads] = useState<LeadWithStage[]>([]);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
   const [activityNotes, setActivityNotes] = useState<Record<string, string>>({});
@@ -393,6 +395,55 @@ export default function CRMHeadComercialPage() {
       setSdrCreatedYesterday((sdrYesterdayRes.data || []) as any[]);
       setSdrCreatedToday((sdrTodayRes.data || []) as any[]);
       setSdrCreatedMonth((sdrMonthRes.data || []) as any[]);
+
+      // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
+      const { data: forecastStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%forecast%");
+
+      if (forecastStages && forecastStages.length > 0) {
+        const stageIds = forecastStages.map(s => s.id);
+        const { data: fLeads } = await supabase
+          .from("crm_leads")
+          .select(`
+            id, name, company, opportunity_value, probability, stage_id,
+            closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
+            head_status, head_closing_date,
+            stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
+          `)
+          .in("stage_id", stageIds)
+          .is("closed_at", null);
+        setDynamicForecastLeads((fLeads || []) as any[]);
+      } else {
+        setDynamicForecastLeads([]);
+      }
+
+      const { data: realizadaStages } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .ilike("name", "%realizada%");
+
+      if (realizadaStages && realizadaStages.length > 0) {
+        const stageIds = realizadaStages.map(s => s.id);
+        const { data: nLeads } = await supabase
+          .from("crm_leads")
+          .select(`
+            id, name, company, opportunity_value, probability, stage_id,
+            closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
+            head_status, head_closing_date,
+            stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
+          `)
+          .in("stage_id", stageIds)
+          .is("closed_at", null);
+        setDynamicNegotiationLeads((nLeads || []) as any[]);
+      } else {
+        setDynamicNegotiationLeads([]);
+      }
     } catch (err) {
       console.error("Error loading head data:", err);
     } finally {
@@ -579,18 +630,16 @@ export default function CRMHeadComercialPage() {
   }, [leads, filterCloser]);
 
   const forecastLeads = useMemo(() => {
-    return filteredLeads.filter((l) => {
-      const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("forecast");
-    });
-  }, [filteredLeads]);
+    const base = dynamicForecastLeads;
+    if (filterCloser === "all") return base;
+    return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
+  }, [dynamicForecastLeads, filterCloser]);
 
   const negotiationLeads = useMemo(() => {
-    return filteredLeads.filter((l) => {
-      const sn = (l.stage as any)?.name?.toLowerCase() || "";
-      return sn.includes("reunião realizada") || sn.includes("realizada");
-    });
-  }, [filteredLeads]);
+    const base = dynamicNegotiationLeads;
+    if (filterCloser === "all") return base;
+    return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
+  }, [dynamicNegotiationLeads, filterCloser]);
 
   const groupByCloser = (list: LeadWithStage[]) => {
     const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
