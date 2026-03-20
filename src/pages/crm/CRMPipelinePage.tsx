@@ -106,6 +106,12 @@ export const CRMPipelinePage = () => {
   const [ownerOptions, setOwnerOptions] = useState<{ id: string; name: string }[]>([]);
   const [originOptions, setOriginOptions] = useState<{ id: string; name: string }[]>([]);
   
+  // Summary cards state
+  const [forecastTotal, setForecastTotal] = useState(0);
+  const [forecastData, setForecastData] = useState<any[]>([]);
+  const [negotiationTotal, setNegotiationTotal] = useState(0);
+  const [negotiationData, setNegotiationData] = useState<any[]>([]);
+
   // Stage move dialog state
   const [stageMoveDialog, setStageMoveDialog] = useState<{
     open: boolean;
