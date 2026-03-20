@@ -368,6 +368,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       faltaSuper: Math.max(0, superMeta - totalRevenue),
       faltaHiper: Math.max(0, hiperMeta - totalRevenue),
       forecast: forecastTotal,
+      emNegociacao: negotiationTotal,
       projecaoReceita: projectedRevenue,
       projecaoPercent: projectedPercent,
     };
