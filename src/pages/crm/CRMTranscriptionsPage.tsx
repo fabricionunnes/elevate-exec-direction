@@ -19,14 +19,17 @@ import { TranscriptionsList, RealtimeTranscription } from "@/components/crm/tran
 import { useCRMContext } from "./CRMLayout";
 
 export const CRMTranscriptionsPage = () => {
-  const { isAdmin, isMaster } = useCRMContext();
+  const { isAdmin, isMaster, staffRole } = useCRMContext();
   const [searchTerm, setSearchTerm] = useState("");
   const [activeTab, setActiveTab] = useState("all");
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [newRecordingOpen, setNewRecordingOpen] = useState(false);
   const [copiedWebhook, setCopiedWebhook] = useState(false);
 
-  const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions();
+  const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions({
+    restrictToSalesTeam: true,
+    staffRole,
+  });
   
   const canDelete = isAdmin || isMaster;
 

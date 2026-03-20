@@ -40,6 +40,9 @@ interface UseCrmTranscriptionsOptions {
   leadId?: string;
   meetingEventId?: string;
   projectId?: string;
+  /** When true, closers/SDRs only see transcriptions made by closers/SDRs */
+  restrictToSalesTeam?: boolean;
+  staffRole?: string | null;
 }
 
 export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) {
@@ -52,6 +55,19 @@ export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) 
     setError(null);
 
     try {
+      // If restricted to sales team, get user_ids of closers and SDRs
+      let salesTeamUserIds: string[] | null = null;
+      if (options.restrictToSalesTeam && options.staffRole && ["closer", "sdr"].includes(options.staffRole)) {
+        const { data: salesStaff } = await supabase
+          .from("onboarding_staff")
+          .select("user_id")
+          .in("role", ["closer", "sdr"])
+          .eq("is_active", true)
+          .not("user_id", "is", null);
+        
+        salesTeamUserIds = (salesStaff || []).map(s => s.user_id).filter(Boolean) as string[];
+      }
+
       let query = supabase
         .from("crm_transcriptions")
         .select(`
@@ -73,6 +89,11 @@ export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) 
         query = query.eq("project_id", options.projectId);
       }
 
+      // Filter by sales team user_ids for closers/SDRs
+      if (salesTeamUserIds && salesTeamUserIds.length > 0) {
+        query = query.in("created_by", salesTeamUserIds);
+      }
+
       const { data, error: queryError } = await query;
 
       if (queryError) throw queryError;
@@ -91,7 +112,7 @@ export function useCrmTranscriptions(options: UseCrmTranscriptionsOptions = {}) 
     } finally {
       setLoading(false);
     }
-  }, [options.leadId, options.meetingEventId, options.projectId]);
+  }, [options.leadId, options.meetingEventId, options.projectId, options.restrictToSalesTeam, options.staffRole]);
 
   useEffect(() => {
     fetchTranscriptions();
