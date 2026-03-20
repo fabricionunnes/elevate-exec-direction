@@ -784,15 +784,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "update-event") {
-      if (!tokenData) {
-        return new Response(
-          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       const body = await req.json();
-      const { eventId, title, description, startDateTime, endDateTime, attendees } = body;
+      const { eventId, title, description, startDateTime, endDateTime, attendees, target_user_id } = body;
 
       if (!eventId || !title || !startDateTime || !endDateTime) {
         return new Response(
@@ -801,14 +794,66 @@ Deno.serve(async (req) => {
         );
       }
 
-      const accessToken = tokenData.access_token;
+      // Support target_user_id for cross-user calendar operations
+      const calendarUserId = target_user_id || user.id;
+      let calendarToken = tokenData;
+      if (target_user_id && target_user_id !== user.id) {
+        const { data: targetToken } = await supabase
+          .from("user_google_tokens")
+          .select("*")
+          .eq("user_id", target_user_id)
+          .maybeSingle();
+        calendarToken = targetToken;
+      }
 
-      // Check if token is expired
-      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+      if (!calendarToken) {
         return new Response(
-          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      let accessToken = calendarToken.access_token;
+
+      // Check if token is expired and refresh if needed
+      if (calendarToken.token_expires_at && new Date(calendarToken.token_expires_at) < new Date()) {
+        if (!calendarToken.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        if (!googleClientId || !googleClientSecret) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: calendarToken.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+        if (!refreshResponse.ok) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+        await supabase.from("user_google_tokens").update({
+          access_token: accessToken,
+          token_expires_at: newExpiresAt.toISOString(),
+        }).eq("user_id", calendarUserId);
       }
 
       // Update event
@@ -890,15 +935,8 @@ Deno.serve(async (req) => {
     }
 
     if (action === "delete-event") {
-      if (!tokenData) {
-        return new Response(
-          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
-          { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
-      }
-
       const body = await req.json();
-      const { eventId } = body;
+      const { eventId, target_user_id } = body;
 
       if (!eventId) {
         return new Response(
@@ -907,14 +945,66 @@ Deno.serve(async (req) => {
         );
       }
 
-      const accessToken = tokenData.access_token;
+      // Support target_user_id for cross-user calendar operations
+      const calendarUserId = target_user_id || user.id;
+      let calendarToken = tokenData;
+      if (target_user_id && target_user_id !== user.id) {
+        const { data: targetToken } = await supabase
+          .from("user_google_tokens")
+          .select("*")
+          .eq("user_id", target_user_id)
+          .maybeSingle();
+        calendarToken = targetToken;
+      }
 
-      // Check if token is expired
-      if (tokenData.token_expires_at && new Date(tokenData.token_expires_at) < new Date()) {
+      if (!calendarToken) {
         return new Response(
-          JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+          JSON.stringify({ error: "Not connected to Google Calendar", needsAuth: true }),
           { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
         );
+      }
+
+      let accessToken = calendarToken.access_token;
+
+      // Check if token is expired and refresh if needed
+      if (calendarToken.token_expires_at && new Date(calendarToken.token_expires_at) < new Date()) {
+        if (!calendarToken.refresh_token) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const googleClientId = Deno.env.get("GOOGLE_CLIENT_ID");
+        const googleClientSecret = Deno.env.get("GOOGLE_CLIENT_SECRET");
+        if (!googleClientId || !googleClientSecret) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const refreshResponse = await fetch("https://oauth2.googleapis.com/token", {
+          method: "POST",
+          headers: { "Content-Type": "application/x-www-form-urlencoded" },
+          body: new URLSearchParams({
+            client_id: googleClientId,
+            client_secret: googleClientSecret,
+            refresh_token: calendarToken.refresh_token,
+            grant_type: "refresh_token",
+          }),
+        });
+        if (!refreshResponse.ok) {
+          return new Response(
+            JSON.stringify({ error: "Token expired, please reconnect", needsAuth: true }),
+            { status: 401, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+          );
+        }
+        const refreshData = await refreshResponse.json();
+        accessToken = refreshData.access_token;
+        const newExpiresAt = new Date(Date.now() + (refreshData.expires_in || 3600) * 1000);
+        await supabase.from("user_google_tokens").update({
+          access_token: accessToken,
+          token_expires_at: newExpiresAt.toISOString(),
+        }).eq("user_id", calendarUserId);
       }
 
       console.log("Deleting calendar event...", eventId);
