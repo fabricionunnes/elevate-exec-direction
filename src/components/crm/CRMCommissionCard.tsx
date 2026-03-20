@@ -534,8 +534,13 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
     </div>
   );
 
-  const filteredData = isMaster && selectedStaffFilter !== "all"
-    ? commissionData.filter(d => d.staffId === selectedStaffFilter)
+  // Default to first staff member when "first" is set
+  const effectiveFilter = selectedStaffFilter === "first" && commissionData.length > 0
+    ? commissionData[0].staffId
+    : selectedStaffFilter;
+
+  const filteredData = isMaster
+    ? commissionData.filter(d => d.staffId === effectiveFilter)
     : commissionData;
 
   return (
@@ -544,12 +549,11 @@ export const CRMCommissionCard = ({ staffId, staffRole, isMaster }: Props) => {
       {isMaster && commissionData.length > 1 && (
         <div className="flex items-center gap-2">
           <Filter className="h-3.5 w-3.5 text-muted-foreground" />
-          <Select value={selectedStaffFilter} onValueChange={setSelectedStaffFilter}>
+          <Select value={effectiveFilter} onValueChange={setSelectedStaffFilter}>
             <SelectTrigger className="w-[220px] h-9 text-sm">
-              <SelectValue placeholder="Todos" />
+              <SelectValue placeholder="Selecione" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">Todos os colaboradores</SelectItem>
               {commissionData.map(d => (
                 <SelectItem key={d.staffId} value={d.staffId}>
                   {d.staffName} ({d.role === "closer" ? "Closer" : "SDR"})
