@@ -64,14 +64,20 @@ export function useGoogleCalendarTokenSync() {
       void saveIfNeeded(data?.session, "getSession");
     });
 
-    // 2) Salva quando o auth muda (ex: retorno do OAuth / refresh)
+    // 2) Salva quando o auth muda (ex: retorno do OAuth / sessão inicial / refresh)
     const { data: { subscription } } = supabase.auth.onAuthStateChange((event, session) => {
       if (!active) return;
       console.log(`[GoogleCalTokenSync] Auth event: ${event}`, {
         hasProviderToken: !!session?.provider_token,
         hasRefreshToken: !!session?.provider_refresh_token,
       });
-      if (event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
+
+      if (event === "SIGNED_OUT") {
+        lastSavedAccessTokenRef.current = null;
+        return;
+      }
+
+      if (event === "INITIAL_SESSION" || event === "SIGNED_IN" || event === "TOKEN_REFRESHED") {
         void saveIfNeeded(session, `onAuthStateChange:${event}`);
       }
     });
