@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
@@ -512,6 +512,32 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     return pipeline && s.pipeline === pipeline.name;
   }) : salesBySDR;
 
+  const visibleMetrics = useMemo(() => {
+    const agendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.callsScheduled, 0);
+    const reunioes = filteredSdrs.reduce((sum, sdr) => sum + sdr.meetings, 0);
+    const noShow = filteredSdrs.reduce((sum, sdr) => sum + sdr.noShow, 0);
+    const qualificacoes = filteredSdrs.reduce((sum, sdr) => sum + sdr.qualified, 0);
+    const cancelamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.cancelled, 0);
+    const reagendamentos = filteredSdrs.reduce((sum, sdr) => sum + sdr.rescheduled, 0);
+    const showUpPercent = agendamentos > 0 ? (reunioes / agendamentos) * 100 : 0;
+    const noShowPercent = agendamentos > 0 ? (noShow / agendamentos) * 100 : 0;
+
+    return {
+      ...metrics,
+      agendamentos,
+      reunioes,
+      noShow,
+      qualificacoes,
+      cancelamentos,
+      reagendamentos,
+      showUpPercent,
+      noShowPercent,
+      metaPercent: metrics.metaAgendamentos > 0 ? (agendamentos / metrics.metaAgendamentos) * 100 : 0,
+      metaAgendamentosPercent: metrics.metaAgendamentos > 0 ? (agendamentos / metrics.metaAgendamentos) * 100 : 0,
+      metaReunioesPercent: metrics.metaReunioes > 0 ? (reunioes / metrics.metaReunioes) * 100 : 0,
+    };
+  }, [filteredSdrs, metrics]);
+
   // 3D Card wrapper
   const GlowCard = ({ children, className = "", glowColor = "shadow-primary/10" }: { children: React.ReactNode; className?: string; glowColor?: string }) => (
     <div className={cn(
@@ -587,9 +613,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       {/* ── Destaques (Reuniões / Show Up / No Show) ── */}
       <div className="grid grid-cols-3 gap-4">
         {[
-          { label: "Reuniões", value: String(metrics.reunioes), icon: Phone, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
-          { label: "Show Up", value: `${metrics.showUpPercent.toFixed(0)}%`, icon: CheckCircle, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
-          { label: "No Show", value: `${metrics.noShowPercent.toFixed(0)}%`, icon: XCircle, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
+          { label: "Reuniões", value: String(visibleMetrics.reunioes), icon: Phone, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/25", textColor: "text-sky-400" },
+          { label: "Show Up", value: `${visibleMetrics.showUpPercent.toFixed(0)}%`, icon: CheckCircle, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/25", textColor: "text-emerald-400" },
+          { label: "No Show", value: `${visibleMetrics.noShowPercent.toFixed(0)}%`, icon: XCircle, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/25", textColor: "text-rose-400" },
         ].map((item, idx) => (
           <GlowCard key={idx} glowColor={item.glow}>
             <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
@@ -612,13 +638,13 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         </h3>
         <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
           {[
-            { label: "Agendamentos", value: metrics.agendamentos, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
-            { label: "Reuniões", value: metrics.reunioes, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
-            { label: "Qualificações", value: metrics.qualificacoes, gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
-            { label: "Cancelamentos", value: metrics.cancelamentos, gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
-            { label: "Reagendamentos", value: metrics.reagendamentos, gradient: "from-cyan-500 to-teal-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
-            { label: "No Show", value: metrics.noShow, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/20", textColor: "text-rose-400" },
-            { label: "% da Meta", value: `${metrics.metaPercent.toFixed(1)}%`, gradient: metrics.metaPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-amber-500 to-orange-500", glow: metrics.metaPercent >= 100 ? "shadow-emerald-500/20" : "shadow-amber-500/20", textColor: metrics.metaPercent >= 100 ? "text-emerald-400" : "text-amber-400" },
+            { label: "Agendamentos", value: visibleMetrics.agendamentos, gradient: "from-sky-500 to-blue-500", glow: "shadow-sky-500/20", textColor: "text-sky-400" },
+            { label: "Reuniões", value: visibleMetrics.reunioes, gradient: "from-emerald-500 to-teal-500", glow: "shadow-emerald-500/20", textColor: "text-emerald-400" },
+            { label: "Qualificações", value: visibleMetrics.qualificacoes, gradient: "from-violet-500 to-purple-500", glow: "shadow-violet-500/20", textColor: "text-violet-400" },
+            { label: "Cancelamentos", value: visibleMetrics.cancelamentos, gradient: "from-amber-500 to-orange-500", glow: "shadow-amber-500/20", textColor: "text-amber-400" },
+            { label: "Reagendamentos", value: visibleMetrics.reagendamentos, gradient: "from-cyan-500 to-teal-500", glow: "shadow-cyan-500/20", textColor: "text-cyan-400" },
+            { label: "No Show", value: visibleMetrics.noShow, gradient: "from-rose-500 to-pink-500", glow: "shadow-rose-500/20", textColor: "text-rose-400" },
+            { label: "% da Meta", value: `${visibleMetrics.metaPercent.toFixed(1)}%`, gradient: visibleMetrics.metaPercent >= 100 ? "from-emerald-500 to-teal-500" : "from-amber-500 to-orange-500", glow: visibleMetrics.metaPercent >= 100 ? "shadow-emerald-500/20" : "shadow-amber-500/20", textColor: visibleMetrics.metaPercent >= 100 ? "text-emerald-400" : "text-amber-400" },
           ].map((item, idx) => (
             <GlowCard key={idx} glowColor={item.glow}>
               <div className={`absolute inset-0 bg-gradient-to-br ${item.gradient} opacity-[0.06]`} />
