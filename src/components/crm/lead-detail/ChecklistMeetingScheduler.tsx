@@ -351,6 +351,60 @@ export function ChecklistMeetingScheduler({
           } as any);
         }
 
+        // Update lead: set closer as owner and move to "Agendada" stage
+        if (selectedStaff) {
+          // Get lead's pipeline_id
+          const { data: leadData } = await supabase
+            .from("crm_leads")
+            .select("pipeline_id")
+            .eq("id", leadId)
+            .single();
+
+          if (leadData?.pipeline_id) {
+            // Find "Agendada" stage
+            const { data: agendadaStage } = await supabase
+              .from("crm_stages")
+              .select("id, name")
+              .eq("pipeline_id", leadData.pipeline_id)
+              .or("name.ilike.%agendada%,name.ilike.%agendou%")
+              .limit(1)
+              .maybeSingle();
+
+            const updatePayload: Record<string, any> = {
+              owner_staff_id: selectedStaff.id,
+              closer_staff_id: selectedStaff.id,
+              updated_at: new Date().toISOString(),
+            };
+            if (agendadaStage) {
+              updatePayload.stage_id = agendadaStage.id;
+            }
+
+            await supabase
+              .from("crm_leads")
+              .update(updatePayload)
+              .eq("id", leadId);
+
+            // Log history
+            if (agendadaStage) {
+              await supabase.from("crm_lead_history").insert({
+                lead_id: leadId,
+                field_name: "stage_id",
+                new_value: agendadaStage.name,
+                changed_by_staff_id: staffData?.id,
+                notes: `Lead movido para ${agendadaStage.name} após agendamento`,
+              } as any);
+            }
+
+            await supabase.from("crm_lead_history").insert({
+              lead_id: leadId,
+              field_name: "owner_staff_id",
+              new_value: selectedStaff.name,
+              changed_by_staff_id: staffData?.id,
+              notes: `Closer ${selectedStaff.name} definido como responsável após agendamento`,
+            } as any);
+          }
+        }
+
         if (data.event?.meetingLink) {
           setCreatedMeetLink(data.event.meetingLink);
         }
