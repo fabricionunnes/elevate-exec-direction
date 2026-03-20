@@ -11901,6 +11901,9 @@ export type Database = {
         Row: {
           created_at: string
           goal_type_id: string
+          hiper_meta_bonus_image_url: string | null
+          hiper_meta_bonus_text: string | null
+          hiper_meta_bonus_value: number | null
           hiper_meta_value: number | null
           id: string
           meta_value: number
@@ -11909,6 +11912,9 @@ export type Database = {
           ote_base: number | null
           ote_variable: number | null
           staff_id: string
+          super_meta_bonus_image_url: string | null
+          super_meta_bonus_text: string | null
+          super_meta_bonus_value: number | null
           super_meta_value: number | null
           updated_at: string
           year: number
@@ -11916,6 +11922,9 @@ export type Database = {
         Insert: {
           created_at?: string
           goal_type_id: string
+          hiper_meta_bonus_image_url?: string | null
+          hiper_meta_bonus_text?: string | null
+          hiper_meta_bonus_value?: number | null
           hiper_meta_value?: number | null
           id?: string
           meta_value?: number
@@ -11924,6 +11933,9 @@ export type Database = {
           ote_base?: number | null
           ote_variable?: number | null
           staff_id: string
+          super_meta_bonus_image_url?: string | null
+          super_meta_bonus_text?: string | null
+          super_meta_bonus_value?: number | null
           super_meta_value?: number | null
           updated_at?: string
           year: number
@@ -11931,6 +11943,9 @@ export type Database = {
         Update: {
           created_at?: string
           goal_type_id?: string
+          hiper_meta_bonus_image_url?: string | null
+          hiper_meta_bonus_text?: string | null
+          hiper_meta_bonus_value?: number | null
           hiper_meta_value?: number | null
           id?: string
           meta_value?: number
@@ -11939,6 +11954,9 @@ export type Database = {
           ote_base?: number | null
           ote_variable?: number | null
           staff_id?: string
+          super_meta_bonus_image_url?: string | null
+          super_meta_bonus_text?: string | null
+          super_meta_bonus_value?: number | null
           super_meta_value?: number | null
           updated_at?: string
           year?: number
