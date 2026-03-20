@@ -650,12 +650,13 @@ export const LeadActivitiesTab = ({
             ) : selectedChecklistItem.item_type === 'reunion' ? (
               <ReunionPanel
                 leadId={leadId}
-                nextMeetingLink={nextMeetingLink}
-                nextMeetingDateTime={nextMeetingDateTime}
+                leadName={leadName}
+                leadEmail={leadEmail}
                 onNoShowToggle={() => {
                   toggleChecklist(selectedChecklistItem.id);
                   setSelectedChecklistItem({ ...selectedChecklistItem, completed: true });
                 }}
+                onRefresh={onRefresh}
               />
             ) : (
               <>
