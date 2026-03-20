@@ -1203,6 +1203,36 @@ export const CRMLeadDetailPage = () => {
         leadId={lead.id}
         onSuccess={loadLead}
       />
+
+      {/* WhatsApp Dialog */}
+      {whatsappDialogOpen && lead.phone && (
+        <WhatsAppMessageDialog
+          phone={lead.phone}
+          recipientName={lead.name}
+          onClose={() => setWhatsappDialogOpen(false)}
+          sending={sendingWhatsapp}
+          onSend={async (message) => {
+            setSendingWhatsapp(true);
+            try {
+              const instanceId = await getDefaultWhatsAppInstance();
+              await sendLoggedWhatsAppText({
+                instanceId,
+                phoneRaw: lead.phone!,
+                message,
+                leadId: lead.id,
+                leadName: lead.name,
+                staffId: staffId || undefined,
+              });
+              toast.success("Mensagem enviada com sucesso!");
+              setWhatsappDialogOpen(false);
+            } catch (error: any) {
+              toast.error(error.message || "Erro ao enviar mensagem");
+            } finally {
+              setSendingWhatsapp(false);
+            }
+          }}
+        />
+      )}
     </div>
   );
 };
