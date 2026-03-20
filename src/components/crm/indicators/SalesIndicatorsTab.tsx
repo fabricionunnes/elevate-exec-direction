@@ -513,18 +513,18 @@ export const SalesIndicatorsTab = () => {
 
   return (
     <>
-    <div className="p-4 space-y-6 bg-muted/30">
+    <div className="p-4 space-y-6">
       {/* Header with filters */}
       <div className="flex flex-wrap items-center gap-4">
         <div className="flex items-center gap-2">
-          <Badge variant="outline" className="text-lg font-bold px-4 py-2">
+          <div className="px-4 py-2 rounded-xl text-lg font-bold text-white shadow-lg" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', boxShadow: '0 4px 16px rgba(16,185,129,0.3)' }}>
             Bônus: 0
-          </Badge>
+          </div>
         </div>
         
         {/* Date filter */}
         <Select value={dateFilter} onValueChange={(v) => setDateFilter(v as DateFilterType)}>
-          <SelectTrigger className="w-[140px]">
+          <SelectTrigger className="w-[140px] rounded-full">
             <SelectValue placeholder="Período" />
           </SelectTrigger>
           <SelectContent>
@@ -544,7 +544,7 @@ export const SalesIndicatorsTab = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-[130px] justify-start text-left font-normal",
+                    "w-[130px] justify-start text-left font-normal rounded-full",
                     !customDateFrom && "text-muted-foreground"
                   )}
                 >
@@ -568,7 +568,7 @@ export const SalesIndicatorsTab = () => {
                 <Button
                   variant="outline"
                   className={cn(
-                    "w-[130px] justify-start text-left font-normal",
+                    "w-[130px] justify-start text-left font-normal rounded-full",
                     !customDateTo && "text-muted-foreground"
                   )}
                 >
@@ -590,7 +590,7 @@ export const SalesIndicatorsTab = () => {
         )}
         
         <Select value={selectedCloser} onValueChange={setSelectedCloser}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Closer" />
           </SelectTrigger>
           <SelectContent>
@@ -601,7 +601,7 @@ export const SalesIndicatorsTab = () => {
           </SelectContent>
         </Select>
         <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-          <SelectTrigger className="w-[180px]">
+          <SelectTrigger className="w-[180px] rounded-full">
             <SelectValue placeholder="Produto" />
           </SelectTrigger>
           <SelectContent>
@@ -611,215 +611,172 @@ export const SalesIndicatorsTab = () => {
             ))}
           </SelectContent>
         </Select>
-        <Badge variant="secondary" className="ml-auto">
+        <Badge variant="secondary" className="ml-auto rounded-full">
           {dateFilter === "custom" && customDateFrom && customDateTo
             ? `${format(customDateFrom, "dd/MM")} - ${format(customDateTo, "dd/MM/yyyy")}`
             : format(getDateRange().start, "MMMM yyyy", { locale: ptBR })}
         </Badge>
-        <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)}>
+        <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="rounded-full">
           <Upload className="h-4 w-4 mr-2" />
           Importar Vendas
         </Button>
       </div>
 
-      {/* Top ranking - closers */}
-      <div className="flex gap-2 flex-wrap">
-        {closers.slice(0, 3).map((closer, index) => (
-          <Card key={closer.id} className={`flex-1 min-w-[200px] ${index === 0 ? "border-yellow-500/50 bg-yellow-500/5" : ""}`}>
-            <CardContent className="p-3">
-              <div className="flex items-center gap-2">
-                <span className="text-lg font-bold text-muted-foreground">{index + 1}.</span>
+      {/* Top ranking - closers - Vibrant podium */}
+      <div className="flex gap-3 flex-wrap">
+        {closers.slice(0, 3).map((closer, index) => {
+          const podiumGradients = [
+            { bg: 'linear-gradient(135deg, rgba(245,158,11,0.15), rgba(239,68,68,0.08))', border: 'rgba(245,158,11,0.4)', icon: '🥇', shadow: '0 8px 24px rgba(245,158,11,0.2)' },
+            { bg: 'linear-gradient(135deg, rgba(148,163,184,0.15), rgba(100,116,139,0.08))', border: 'rgba(148,163,184,0.4)', icon: '🥈', shadow: '0 8px 24px rgba(148,163,184,0.2)' },
+            { bg: 'linear-gradient(135deg, rgba(180,83,9,0.15), rgba(217,119,6,0.08))', border: 'rgba(180,83,9,0.4)', icon: '🥉', shadow: '0 8px 24px rgba(180,83,9,0.2)' },
+          ];
+          const p = podiumGradients[index];
+          return (
+            <div key={closer.id} className="flex-1 min-w-[200px] relative overflow-hidden rounded-2xl p-4 transition-all hover:-translate-y-1" style={{ background: p.bg, border: `1px solid ${p.border}`, boxShadow: p.shadow }}>
+              <div className="flex items-center gap-3">
+                <span className="text-2xl">{p.icon}</span>
                 <div className="flex-1">
-                  <p className="font-medium text-sm truncate">{closer.name}</p>
-                  <p className="text-lg font-bold text-primary">{formatCurrency(closer.revenue)}</p>
+                  <p className="font-bold text-sm truncate">{closer.name}</p>
+                  <p className="text-lg font-black" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(closer.revenue)}</p>
                 </div>
                 <div className="text-right text-xs text-muted-foreground">
                   <p>Ticket: {formatCurrency(closer.ticketMedio)}</p>
                   <p>Conv: {closer.conversion.toFixed(1)}%</p>
                 </div>
               </div>
-            </CardContent>
-          </Card>
-        ))}
+            </div>
+          );
+        })}
       </div>
 
-      {/* Main metrics row */}
+      {/* Main metrics row - Vivid 3D cards */}
       <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Meta</p>
-            <p className="text-2xl font-bold text-primary">{metaPercent.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Conversão</p>
-            <p className="text-2xl font-bold">{metrics.conversao.toFixed(1)}%</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-l-4 border-l-red-500">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Meta Receita</p>
-            <p className="text-xl font-bold">{formatCurrency(metrics.metaReceita)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card border-l-4 border-l-green-500">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Receita</p>
-            <p className="text-xl font-bold text-green-600">{formatCurrency(metrics.receita)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Faltam</p>
-            <p className="text-xl font-bold text-orange-500">{formatCurrency(metrics.faltaReceita)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Qtd Vendas</p>
-            <p className="text-2xl font-bold">{metrics.vendas}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Ticket Médio</p>
-            <p className="text-xl font-bold">{formatCurrency(metrics.ticketMedio)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-card">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Forecast</p>
-            <p className="text-xl font-bold text-blue-500">{formatCurrency(metrics.forecast)}</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "% Meta", value: `${metaPercent.toFixed(1)}%`, gradient: "linear-gradient(135deg, #ec4899, #8b5cf6)", bg: "rgba(236,72,153,0.06)" },
+          { label: "Conversão", value: `${metrics.conversao.toFixed(1)}%`, gradient: "linear-gradient(135deg, #3b82f6, #06b6d4)", bg: "rgba(59,130,246,0.06)" },
+          { label: "Meta Receita", value: formatCurrency(metrics.metaReceita), gradient: "linear-gradient(135deg, #ef4444, #f43f5e)", bg: "rgba(239,68,68,0.06)" },
+          { label: "Receita", value: formatCurrency(metrics.receita), gradient: "linear-gradient(135deg, #10b981, #06b6d4)", bg: "rgba(16,185,129,0.08)" },
+          { label: "Faltam", value: formatCurrency(metrics.faltaReceita), gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", bg: "rgba(245,158,11,0.06)" },
+          { label: "Qtd Vendas", value: metrics.vendas, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.06)" },
+          { label: "Ticket Médio", value: formatCurrency(metrics.ticketMedio), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)", bg: "rgba(6,182,212,0.06)" },
+          { label: "Forecast", value: formatCurrency(metrics.forecast), gradient: "linear-gradient(135deg, #d946ef, #ec4899)", bg: "rgba(217,70,239,0.06)" },
+        ].map((item, idx) => (
+          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1" style={{ background: item.bg, border: '1px solid rgba(255,255,255,0.08)' }}>
+            <div className="absolute top-0 left-0 h-1.5 w-full rounded-t-2xl" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
+            <p className="text-xl font-black mt-1" style={{ background: item.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Secondary metrics - Super/Hiper */}
       <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        <Card className="bg-yellow-500/10 border-yellow-500/30">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Super Meta</p>
-            <p className="text-lg font-bold">{formatCurrency(metrics.superMeta)}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-purple-500/10 border-purple-500/30">
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Hiper Meta</p>
-            <p className="text-lg font-bold">{formatCurrency(metrics.hiperMeta)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Falta (Super)</p>
-            <p className="text-lg font-bold">{formatCurrency(metrics.faltaSuper)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Falta (Hiper)</p>
-            <p className="text-lg font-bold">{formatCurrency(metrics.faltaHiper)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">Projeção</p>
-            <p className="text-lg font-bold">{formatCurrency(metrics.projecaoReceita)}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-3">
-            <p className="text-[10px] text-muted-foreground uppercase">% Projetado</p>
-            <p className="text-lg font-bold">{metrics.projecaoPercent.toFixed(0)}%</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Super Meta", value: formatCurrency(metrics.superMeta), gradient: "linear-gradient(135deg, #f59e0b, #f97316)", bg: "rgba(245,158,11,0.08)" },
+          { label: "Hiper Meta", value: formatCurrency(metrics.hiperMeta), gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.08)" },
+          { label: "Falta (Super)", value: formatCurrency(metrics.faltaSuper), gradient: "linear-gradient(135deg, #f59e0b, #ef4444)" },
+          { label: "Falta (Hiper)", value: formatCurrency(metrics.faltaHiper), gradient: "linear-gradient(135deg, #8b5cf6, #ec4899)" },
+          { label: "Projeção", value: formatCurrency(metrics.projecaoReceita), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)" },
+          { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #10b981, #06b6d4)" },
+        ].map((item, idx) => (
+          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 bg-card border border-border/30 transition-all hover:-translate-y-1" style={{ background: (item as any).bg || undefined }}>
+            <div className="absolute top-0 left-0 h-1 w-full" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
+            <p className="text-lg font-bold mt-1">{item.value}</p>
+          </div>
+        ))}
       </div>
 
-      {/* Daily Goal Card */}
-      <Card className="bg-gradient-to-r from-blue-500/10 via-indigo-500/5 to-purple-500/10 border-blue-500/20">
-        <CardContent className="p-4">
-          <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
-            <div className="flex items-center gap-3">
-              <div className="p-2 bg-blue-100 dark:bg-blue-900/30 rounded-lg">
-                <CalendarDays className="h-6 w-6 text-blue-600" />
+      {/* Daily Goal Card - Vibrant Hero */}
+      <div className="relative overflow-hidden rounded-2xl p-[2px] shadow-xl" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6, #ec4899, #10b981)' }}>
+        <div className="relative rounded-[14px] overflow-hidden" style={{ background: 'linear-gradient(135deg, #0f172a 0%, #1e1b4b 50%, #1a1a2e 100%)' }}>
+          <div className="absolute top-0 right-0 h-40 w-40 rounded-full bg-blue-500/20 blur-[60px]" />
+          <div className="absolute bottom-0 left-0 h-32 w-32 rounded-full bg-emerald-500/15 blur-[50px]" />
+          <div className="relative z-10 p-5">
+            <div className="flex flex-col lg:flex-row lg:items-center lg:justify-between gap-4">
+              <div className="flex items-center gap-3">
+                <div className="p-2.5 rounded-xl text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)' }}>
+                  <CalendarDays className="h-6 w-6" />
+                </div>
+                <div>
+                  <h3 className="text-sm font-bold text-white">Meta Diária</h3>
+                  <p className="text-xs text-blue-300/60">
+                    {dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} úte{dailyGoal.businessDaysLeft !== 1 ? 'is' : 'il'} restante{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} no mês
+                  </p>
+                </div>
               </div>
-              <div>
-                <h3 className="text-sm font-semibold text-blue-700 dark:text-blue-400">Meta Diária</h3>
-                <p className="text-xs text-muted-foreground">
-                  {dailyGoal.businessDaysLeft} dia{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} úte{dailyGoal.businessDaysLeft !== 1 ? 'is' : 'il'} restante{dailyGoal.businessDaysLeft !== 1 ? 's' : ''} no mês
-                </p>
+              
+              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
+                <div className="text-center rounded-xl p-2 border border-white/10 backdrop-blur-md" style={{ background: 'rgba(59,130,246,0.1)' }}>
+                  <p className="text-[10px] text-blue-300/60 mb-0.5">Meta do Mês</p>
+                  <p className="text-sm font-bold text-white">{formatCurrency(dailyGoal.monthlyTarget)}</p>
+                </div>
+                <div className="text-center rounded-xl p-2 border border-emerald-400/20 backdrop-blur-md" style={{ background: 'rgba(16,185,129,0.1)' }}>
+                  <p className="text-[10px] text-emerald-300/60 mb-0.5">Realizado</p>
+                  <p className="text-sm font-bold text-emerald-300">{formatCurrency(dailyGoal.achieved)}</p>
+                </div>
+                <div className="text-center rounded-xl p-2 border border-rose-400/20 backdrop-blur-md" style={{ background: 'rgba(244,63,94,0.1)' }}>
+                  <p className="text-[10px] text-rose-300/60 mb-0.5">Falta</p>
+                  <p className="text-sm font-bold text-rose-300">{formatCurrency(dailyGoal.remaining)}</p>
+                </div>
+                <div className="text-center rounded-xl p-2 border border-amber-400/30 backdrop-blur-md" style={{ background: 'rgba(245,158,11,0.15)' }}>
+                  <p className="text-[10px] text-amber-300/70 mb-0.5 font-bold">Vender/Dia</p>
+                  <p className="text-lg font-extrabold text-amber-300">{formatCurrency(dailyGoal.dailyTarget)}</p>
+                </div>
               </div>
             </div>
             
-            <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 lg:gap-4">
-              <div className="text-center">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Meta do Mês</p>
-                <p className="text-sm font-bold">{formatCurrency(dailyGoal.monthlyTarget)}</p>
+            {/* Progress bar - rainbow */}
+            <div className="mt-4">
+              <div className="flex justify-between text-[10px] text-blue-200/50 mb-1">
+                <span>Progresso</span>
+                <span className="font-bold text-white">{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
               </div>
-              <div className="text-center">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Realizado</p>
-                <p className="text-sm font-bold text-emerald-600">{formatCurrency(dailyGoal.achieved)}</p>
-              </div>
-              <div className="text-center">
-                <p className="text-[10px] text-muted-foreground mb-0.5">Falta</p>
-                <p className="text-sm font-bold text-amber-600">{formatCurrency(dailyGoal.remaining)}</p>
-              </div>
-              <div className="text-center bg-blue-500/10 rounded-lg p-1.5">
-                <p className="text-[10px] text-blue-600 dark:text-blue-400 mb-0.5 font-medium">Vender/Dia</p>
-                <p className="text-lg font-bold text-blue-700 dark:text-blue-300">{formatCurrency(dailyGoal.dailyTarget)}</p>
+              <div className="h-3 bg-white/10 rounded-full overflow-hidden border border-white/5">
+                <div 
+                  className="h-full rounded-full transition-all duration-1000 relative"
+                  style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%`, background: 'linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ec4899)' }}
+                >
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+                </div>
               </div>
             </div>
           </div>
-          
-          {/* Progress bar */}
-          <div className="mt-3">
-            <div className="flex justify-between text-[10px] text-muted-foreground mb-1">
-              <span>Progresso</span>
-              <span>{dailyGoal.monthlyTarget > 0 ? Math.round((dailyGoal.achieved / dailyGoal.monthlyTarget) * 100) : 0}%</span>
-            </div>
-            <div className="h-1.5 bg-muted rounded-full overflow-hidden">
-              <div 
-                className="h-full bg-gradient-to-r from-blue-500 to-emerald-500 rounded-full transition-all"
-                style={{ width: `${Math.min(100, dailyGoal.monthlyTarget > 0 ? (dailyGoal.achieved / dailyGoal.monthlyTarget) * 100 : 0)}%` }}
-              />
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Term Vision Chart - QTR/YTD/MAT */}
       <TermVisionChart />
 
       {/* Agendamentos e Calls Row */}
       <div className="grid grid-cols-2 md:grid-cols-3 gap-4">
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] text-muted-foreground uppercase mb-1">Agendamentos</p>
-            <p className="text-3xl font-bold text-blue-500">{callsMetrics.agendadas}</p>
-          </CardContent>
-        </Card>
-        <Card className="bg-green-500/10 border-green-500/30">
-          <CardContent className="p-4">
-            <p className="text-[10px] text-muted-foreground uppercase mb-1">Reuniões Realizadas</p>
-            <p className="text-3xl font-bold text-green-600">{callsMetrics.realizadas}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <p className="text-[10px] text-muted-foreground uppercase mb-1">% No Show</p>
-            <p className="text-3xl font-bold text-red-500">{callsMetrics.noShowPercent.toFixed(0)}%</p>
-          </CardContent>
-        </Card>
+        {[
+          { label: "Agendamentos", value: callsMetrics.agendadas, gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)", bg: "linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.06))", border: "rgba(59,130,246,0.3)" },
+          { label: "Reuniões Realizadas", value: callsMetrics.realizadas, gradient: "linear-gradient(135deg, #10b981, #06b6d4)", bg: "linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.06))", border: "rgba(16,185,129,0.3)" },
+          { label: "% No Show", value: `${callsMetrics.noShowPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #ef4444, #ec4899)", bg: "linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.06))", border: "rgba(239,68,68,0.3)" },
+        ].map((item, idx) => (
+          <div key={idx} className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: item.bg, border: `1px solid ${item.border}` }}>
+            <div className="absolute -top-10 -right-10 h-24 w-24 rounded-full opacity-20 blur-2xl" style={{ background: item.gradient }} />
+            <p className="text-[10px] text-muted-foreground uppercase mb-1">{item.label}</p>
+            <p className="text-3xl font-black" style={{ background: item.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{item.value}</p>
+          </div>
+        ))}
       </div>
 
       {/* Charts row */}
       <div className="grid md:grid-cols-2 gap-4">
         {/* Receita por produto */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Receita por Produto</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #3b82f6, #8b5cf6, #ec4899)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
+                <DollarSign className="h-3.5 w-3.5" />
+              </div>
+              Receita por Produto
+            </h3>
+          </div>
+          <div className="px-4 pb-4">
             <div className="h-[120px]">
               <ResponsiveContainer width="100%" height="100%">
                 <PieChart>
@@ -835,66 +792,85 @@ export const SalesIndicatorsTab = () => {
                       <Cell key={`cell-${index}`} fill={entry.color} />
                     ))}
                   </Pie>
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
                 </PieChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
         {/* Projeções Super/Hiper */}
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Projeções Meta</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span>Meta</span>
-                <span>{metaPercent.toFixed(0)}%</span>
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f59e0b, #8b5cf6)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+                <Target className="h-3.5 w-3.5" />
               </div>
-              <Progress value={Math.min(100, metaPercent)} className="h-2" />
+              Projeções Meta
+            </h3>
+          </div>
+          <div className="px-4 pb-4 space-y-3">
+            <div>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="font-medium">Meta</span>
+                <span className="font-bold">{metaPercent.toFixed(0)}%</span>
+              </div>
+              <div className="h-3 bg-muted/60 rounded-full overflow-hidden">
+                <div className="h-full rounded-full relative" style={{ width: `${Math.min(100, metaPercent)}%`, background: 'linear-gradient(90deg, #ef4444, #f43f5e)' }}>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+                </div>
+              </div>
             </div>
             <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span>Super Meta</span>
-                <span>{metrics.superMeta > 0 ? ((metrics.receita / metrics.superMeta) * 100).toFixed(0) : 0}%</span>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="font-medium">Super Meta</span>
+                <span className="font-bold">{metrics.superMeta > 0 ? ((metrics.receita / metrics.superMeta) * 100).toFixed(0) : 0}%</span>
               </div>
-              <Progress value={Math.min(100, metrics.superMeta > 0 ? (metrics.receita / metrics.superMeta) * 100 : 0)} className="h-2 [&>div]:bg-yellow-500" />
+              <div className="h-3 bg-muted/60 rounded-full overflow-hidden">
+                <div className="h-full rounded-full relative" style={{ width: `${Math.min(100, metrics.superMeta > 0 ? (metrics.receita / metrics.superMeta) * 100 : 0)}%`, background: 'linear-gradient(90deg, #f59e0b, #f97316)' }}>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+                </div>
+              </div>
             </div>
             <div>
-              <div className="flex justify-between text-xs mb-1">
-                <span>Hiper Meta</span>
-                <span>{metrics.hiperMeta > 0 ? ((metrics.receita / metrics.hiperMeta) * 100).toFixed(0) : 0}%</span>
+              <div className="flex justify-between text-xs mb-1.5">
+                <span className="font-medium">Hiper Meta</span>
+                <span className="font-bold">{metrics.hiperMeta > 0 ? ((metrics.receita / metrics.hiperMeta) * 100).toFixed(0) : 0}%</span>
               </div>
-              <Progress value={Math.min(100, metrics.hiperMeta > 0 ? (metrics.receita / metrics.hiperMeta) * 100 : 0)} className="h-2 [&>div]:bg-purple-500" />
+              <div className="h-3 bg-muted/60 rounded-full overflow-hidden">
+                <div className="h-full rounded-full relative" style={{ width: `${Math.min(100, metrics.hiperMeta > 0 ? (metrics.receita / metrics.hiperMeta) * 100 : 0)}%`, background: 'linear-gradient(90deg, #8b5cf6, #d946ef)' }}>
+                  <div className="absolute inset-0 bg-gradient-to-b from-white/30 to-transparent rounded-full" />
+                </div>
+              </div>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       </div>
 
       {/* Evolution chart - Cumulative Revenue */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-base font-semibold text-center">EVOLUÇÃO DE RECEITA</CardTitle>
-        </CardHeader>
-        <CardContent>
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #10b981, #f59e0b, #3b82f6)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-base font-bold text-center" style={{ background: 'linear-gradient(90deg, #ef4444, #10b981, #3b82f6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>EVOLUÇÃO DE RECEITA</h3>
+        </div>
+        <div className="px-4 pb-4">
           <div className="flex items-center justify-center gap-6 mb-4 text-xs flex-wrap">
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5 bg-red-500" />
+              <div className="w-6 h-1 rounded-full" style={{ background: '#EF4444' }} />
               <span>Meta Receita</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5 bg-green-600" />
+              <div className="w-6 h-1 rounded-full" style={{ background: '#16A34A' }} />
               <span>Receita</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5 bg-orange-400" style={{ borderTop: "2px dashed" }} />
-              <span>Super Meta Receita</span>
+              <div className="w-6 h-0.5" style={{ borderTop: "2px dashed #F59E0B" }} />
+              <span>Super Meta</span>
             </div>
             <div className="flex items-center gap-1.5">
-              <div className="w-6 h-0.5 bg-blue-500" style={{ borderTop: "2px dashed" }} />
-              <span>Hiper Meta Receita</span>
+              <div className="w-6 h-0.5" style={{ borderTop: "2px dashed #3B82F6" }} />
+              <span>Hiper Meta</span>
             </div>
           </div>
           <div className="h-[280px]">
@@ -920,7 +896,7 @@ export const SalesIndicatorsTab = () => {
                     return [formatCurrency(value), name];
                   }}
                   labelFormatter={(day) => `Dia ${day}`}
-                  contentStyle={{ fontSize: 12 }}
+                  contentStyle={{ fontSize: 12, borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }}
                 />
                 <Line type="linear" dataKey="meta" name="Meta Receita" stroke="#EF4444" strokeWidth={2} dot={false} activeDot={{ r: 4, fill: "#EF4444" }} />
                 <Line type="linear" dataKey="receita" name="Receita" stroke="#16A34A" strokeWidth={2.5} dot={false} activeDot={{ r: 5, fill: "#16A34A" }} connectNulls={false} />
@@ -929,29 +905,35 @@ export const SalesIndicatorsTab = () => {
               </LineChart>
             </ResponsiveContainer>
           </div>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Acumulado diário por closer */}
       {dailyRevenueData.length > 0 && closers.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Acumulado Diário de Receita</CardTitle>
-          </CardHeader>
-          <CardContent>
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #ef4444, #8b5cf6)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>
+                <TrendingUp className="h-3.5 w-3.5" />
+              </div>
+              Acumulado Diário de Receita
+            </h3>
+          </div>
+          <div className="px-4 pb-4">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={dailyRevenueData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} tickFormatter={(v) => `${(v / 1000).toFixed(0)}k`} />
-                  <Tooltip formatter={(value: number) => formatCurrency(value)} />
+                  <Tooltip formatter={(value: number) => formatCurrency(value)} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
                   <Legend />
                   {closers.map((closer, i) => (
                     <Line
                       key={closer.id}
                       type="monotone"
                       dataKey={closer.name}
-                      stroke={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6"][i % 5]}
+                      stroke={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]}
                       strokeWidth={2}
                       dot={false}
                     />
@@ -959,19 +941,22 @@ export const SalesIndicatorsTab = () => {
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Desempenho dos Closers Table */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium flex items-center gap-2">
-            <Trophy className="h-4 w-4" />
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #8b5cf6, #3b82f6)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
+              <Trophy className="h-3.5 w-3.5" />
+            </div>
             Desempenho dos Closers
-          </CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+          </h3>
+        </div>
+        <div className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="text-xs">
@@ -992,18 +977,20 @@ export const SalesIndicatorsTab = () => {
                   <TableCell className="text-center">{closer.callsScheduled}</TableCell>
                   <TableCell className="text-center">{closer.callsCompleted}</TableCell>
                   <TableCell className="text-center">{closer.salesQty}</TableCell>
-                  <TableCell className="text-right font-medium">{formatCurrency(closer.revenue)}</TableCell>
+                  <TableCell className="text-right font-bold" style={{ color: '#10b981' }}>{formatCurrency(closer.revenue)}</TableCell>
                   <TableCell className="text-center">
-                    <Badge variant={closer.metaPercent >= 100 ? "default" : closer.metaPercent >= 70 ? "secondary" : "destructive"}>
+                    <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{
+                      background: closer.metaPercent >= 100 ? 'linear-gradient(135deg, #10b981, #06b6d4)' : closer.metaPercent >= 70 ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, #ef4444, #ec4899)'
+                    }}>
                       {closer.metaPercent.toFixed(1)}%
-                    </Badge>
+                    </span>
                   </TableCell>
                   <TableCell className="text-center">{closer.conversion.toFixed(1)}%</TableCell>
                   <TableCell className="text-right">{formatCurrency(closer.ticketMedio)}</TableCell>
                 </TableRow>
               ))}
               {closers.length > 0 && (
-                <TableRow className="bg-muted/50 font-bold text-sm">
+                <TableRow className="font-bold text-sm" style={{ background: 'rgba(139,92,246,0.05)' }}>
                   <TableCell>Total geral</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
                   <TableCell className="text-center">{closers.reduce((s, c) => s + c.callsCompleted, 0)}</TableCell>
@@ -1016,16 +1003,22 @@ export const SalesIndicatorsTab = () => {
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
 
       {/* Forecast */}
       {forecasts.length > 0 && (
-        <Card>
-          <CardHeader className="pb-2">
-            <CardTitle className="text-sm font-medium">Forecast no Mês</CardTitle>
-          </CardHeader>
-          <CardContent className="p-0">
+        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #06b6d4, #3b82f6, #8b5cf6)' }} />
+          <div className="p-4 pb-2">
+            <h3 className="text-sm font-bold flex items-center gap-2">
+              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #06b6d4, #3b82f6)' }}>
+                <Target className="h-3.5 w-3.5" />
+              </div>
+              Forecast no Mês
+            </h3>
+          </div>
+          <div className="p-0">
             <Table>
               <TableHeader>
                 <TableRow className="text-xs">
@@ -1047,21 +1040,27 @@ export const SalesIndicatorsTab = () => {
                       <Badge variant="outline">{f.status}</Badge>
                     </TableCell>
                     <TableCell>{f.product}</TableCell>
-                    <TableCell className="text-right font-medium text-green-600">{formatCurrency(f.value)}</TableCell>
+                    <TableCell className="text-right font-bold" style={{ color: '#10b981' }}>{formatCurrency(f.value)}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
             </Table>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
       )}
 
       {/* Vendas no Mês */}
-      <Card>
-        <CardHeader className="pb-2">
-          <CardTitle className="text-sm font-medium">Vendas no Mês</CardTitle>
-        </CardHeader>
-        <CardContent className="p-0">
+      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
+        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #f59e0b, #ec4899, #8b5cf6)' }} />
+        <div className="p-4 pb-2">
+          <h3 className="text-sm font-bold flex items-center gap-2">
+            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #10b981, #f59e0b)' }}>
+              <DollarSign className="h-3.5 w-3.5" />
+            </div>
+            Vendas no Mês
+          </h3>
+        </div>
+        <div className="p-0">
           <Table>
             <TableHeader>
               <TableRow className="text-xs">
@@ -1090,14 +1089,14 @@ export const SalesIndicatorsTab = () => {
                     <TableCell>{sale.sdr}</TableCell>
                     <TableCell>{sale.company}</TableCell>
                     <TableCell>{sale.product}</TableCell>
-                    <TableCell className="text-right font-medium text-green-600">{formatCurrency(sale.revenue)}</TableCell>
+                    <TableCell className="text-right font-bold" style={{ color: '#10b981' }}>{formatCurrency(sale.revenue)}</TableCell>
                   </TableRow>
                 ))
               )}
             </TableBody>
           </Table>
-        </CardContent>
-      </Card>
+        </div>
+      </div>
     </div>
 
       {/* Import Sales Dialog */}
