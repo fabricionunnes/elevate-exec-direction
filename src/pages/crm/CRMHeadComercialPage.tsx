@@ -537,34 +537,66 @@ export default function CRMHeadComercialPage() {
     return list.filter((a) => a.responsible_staff_id === filterCloser);
   }, [filterCloser]);
 
+  // Chart data for forecast by closer
+  const forecastChartData = useMemo(() => {
+    return forecastByCloser.map(([, group]) => ({
+      name: group.name.split(" ")[0],
+      value: group.total,
+    }));
+  }, [forecastByCloser]);
+
+  // Chart data for closer performance
+  const performanceChartData = useMemo(() => {
+    return closersPerf.map((p) => ({
+      name: p.staff.name.split(" ")[0],
+      realizado: p.realizado,
+      meta: p.metaVendas,
+      forecast: p.forecastValue,
+    }));
+  }, [closersPerf]);
+
+  const CHART_COLORS = ["#22c55e", "#3b82f6", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
+
   if (loading) {
     return (
       <div className="flex items-center justify-center min-h-[60vh]">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <div className="flex flex-col items-center gap-3">
+          <div className="relative">
+            <div className="h-12 w-12 rounded-full border-2 border-primary/30 border-t-primary animate-spin" />
+            <Sparkles className="h-5 w-5 text-primary absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2" />
+          </div>
+          <p className="text-sm text-muted-foreground animate-pulse">Carregando briefing...</p>
+        </div>
       </div>
     );
   }
 
   const globalPercent = totals.metaVendas > 0 ? (totals.realizado / totals.metaVendas) * 100 : 0;
+  const donutData = [
+    { name: "Realizado", value: totals.realizado },
+    { name: "Faltante", value: Math.max(0, totals.metaVendas - totals.realizado) },
+  ];
 
   return (
-    <div className="p-4 sm:p-6 space-y-6 max-w-[1400px] mx-auto">
+    <div className="p-3 sm:p-6 space-y-5 max-w-[1400px] mx-auto">
       {/* ── Header ── */}
       <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
         <div>
-          <h1 className="text-xl sm:text-2xl font-bold tracking-tight flex items-center gap-2">
-            <div className="p-2 rounded-xl bg-gradient-to-br from-amber-500/20 to-orange-500/20 shrink-0">
-              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-600" />
+          <h1 className="text-xl sm:text-2xl font-black tracking-tight flex items-center gap-2">
+            <div className="p-2.5 rounded-2xl bg-gradient-to-br from-amber-400/20 via-orange-500/20 to-rose-500/20 shadow-lg shadow-orange-500/10 shrink-0">
+              <Trophy className="h-5 w-5 sm:h-6 sm:w-6 text-amber-500" />
             </div>
-            Briefing Diário
+            <span className="bg-gradient-to-r from-amber-500 via-orange-500 to-rose-500 bg-clip-text text-transparent">
+              Briefing Diário
+            </span>
           </h1>
-          <p className="text-sm text-muted-foreground mt-1">
+          <p className="text-xs sm:text-sm text-muted-foreground mt-1.5 ml-12 sm:ml-14">
             {format(now, "EEEE, dd 'de' MMMM 'de' yyyy", { locale: ptBR })} — D{elapsedBizDays} de {totalBizDays} dias úteis
           </p>
         </div>
         <div className="flex flex-col sm:flex-row items-stretch sm:items-center gap-2">
           <Select value={filterCloser} onValueChange={setFilterCloser}>
-            <SelectTrigger className="w-full sm:w-[200px]">
+            <SelectTrigger className="w-full sm:w-[200px] border-white/10 bg-card/80 backdrop-blur-sm">
               <SelectValue placeholder="Todos" />
             </SelectTrigger>
             <SelectContent>
@@ -574,7 +606,9 @@ export default function CRMHeadComercialPage() {
               ))}
             </SelectContent>
           </Select>
-          <Button variant="outline" size="sm" onClick={loadData} className="w-full sm:w-auto">Atualizar</Button>
+          <Button variant="outline" size="sm" onClick={loadData} className="w-full sm:w-auto border-white/10">
+            Atualizar
+          </Button>
         </div>
       </div>
 
