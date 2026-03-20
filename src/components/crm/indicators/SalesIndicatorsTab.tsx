@@ -412,16 +412,19 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     }));
 
     // Forecast records (filtered)
-    const forecastRecords: ForecastRecord[] = forecastData.map(f => ({
-      id: f.id,
-      day: 0,
-      closer: "-",
-      closerId: f.owner_staff_id || "",
-      client: f.name || f.company || "-",
-      status: "open",
-      product: "-",
-      value: f.opportunity_value || 0,
-    }));
+    const forecastRecords: ForecastRecord[] = forecastData.map(f => {
+      const closerInfo = rawCloserStaff.find(s => s.id === f.owner_staff_id);
+      return {
+        id: f.id,
+        day: 0,
+        closer: closerInfo?.name || "-",
+        closerId: f.owner_staff_id || "",
+        client: f.name || f.company || "-",
+        status: "open",
+        product: "-",
+        value: f.opportunity_value || 0,
+      };
+    });
 
     // Daily revenue accumulation (always per closer for chart)
     const dailyRevenueData: { day: number; [key: string]: number }[] = [];
