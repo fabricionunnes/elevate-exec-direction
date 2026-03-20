@@ -922,9 +922,16 @@ export const CRMLeadDetailPage = () => {
             </PopoverTrigger>
             <PopoverContent className="w-56 p-2" align="start">
               <p className="text-xs font-semibold text-muted-foreground mb-2 px-1">Adicionar etiqueta</p>
+              <Input
+                placeholder="Buscar etiqueta..."
+                value={tagSearch}
+                onChange={(e) => setTagSearch(e.target.value)}
+                className="h-7 text-xs mb-2"
+              />
               <div className="max-h-48 overflow-y-auto space-y-0.5">
                 {allTags
                   .filter(tag => !lead.tags?.some(t => t.tag.id === tag.id))
+                  .filter(tag => tag.name.toLowerCase().includes(tagSearch.toLowerCase()))
                   .map(tag => (
                     <button
                       key={tag.id}
