@@ -442,337 +442,314 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
   if (loading) {
     return (
-      <div className="p-6 space-y-6">
-        <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-6 gap-4">
-          {Array(6).fill(0).map((_, i) => (
-            <Skeleton key={i} className="h-24" />
-          ))}
+      <div className="p-4 md:p-6 space-y-6">
+        <div className="grid grid-cols-3 gap-4">
+          {Array(3).fill(0).map((_, i) => <Skeleton key={i} className="h-28 rounded-xl" />)}
         </div>
-        <div className="grid md:grid-cols-2 gap-6">
-          <Skeleton className="h-80" />
-          <Skeleton className="h-80" />
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+          {Array(8).fill(0).map((_, i) => <Skeleton key={i} className="h-24 rounded-xl" />)}
         </div>
+        <Skeleton className="h-80 rounded-xl" />
       </div>
     );
   }
 
+  const getNoShowColor = (pct: number) =>
+    pct <= 10 ? "text-emerald-500 border-emerald-500/40" : pct <= 20 ? "text-amber-500 border-amber-500/40" : "text-rose-500 border-rose-500/40";
+
+  // Filter by SDR if selected
+  const filteredSdrs = selectedSDR !== "all" ? sdrs.filter(s => s.id === selectedSDR) : sdrs;
+  const filteredSales = selectedSDR !== "all" ? salesBySDR.filter(s => {
+    const sdr = sdrs.find(sd => sd.id === selectedSDR);
+    return sdr && s.sdr === sdr.name;
+  }) : selectedPipeline !== "all" ? salesBySDR.filter(s => {
+    const pipeline = pipelines.find(p => p.id === selectedPipeline);
+    return pipeline && s.pipeline === pipeline.name;
+  }) : salesBySDR;
+
   return (
-    <div className="p-4 space-y-6">
-      {/* Header with filters */}
-      <div className="flex flex-wrap items-center gap-4">
-        
-        {/* Date Range Filter */}
+    <div className="p-4 md:p-6 space-y-6">
+
+      {/* ── Filtros ── */}
+      <div className="flex flex-wrap items-center gap-3">
         <Popover open={dateOpen} onOpenChange={setDateOpen}>
           <PopoverTrigger asChild>
-            <Button
-              variant="outline"
-              size="sm"
-              className={cn(
-                "h-9 gap-2 rounded-full",
-                dateRange && "border-fuchsia-500/30"
-              )}
-              style={dateRange ? { background: 'rgba(217,70,239,0.08)' } : {}}
-            >
-              <CalendarIcon className="h-4 w-4" />
+            <Button variant="outline" size="sm" className="h-9 gap-2 rounded-lg text-xs">
+              <CalendarIcon className="h-3.5 w-3.5" />
               {dateRange?.from ? (
                 dateRange.to ? (
-                  <>
-                    {format(dateRange.from, "dd/MM", { locale: ptBR })} -{" "}
-                    {format(dateRange.to, "dd/MM", { locale: ptBR })}
-                  </>
-                ) : (
-                  format(dateRange.from, "dd/MM/yy", { locale: ptBR })
-                )
-              ) : (
-                "Data"
-              )}
+                  <>{format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM", { locale: ptBR })}</>
+                ) : format(dateRange.from, "dd/MM/yy", { locale: ptBR })
+              ) : "Período"}
               <ChevronDown className="h-3 w-3" />
             </Button>
           </PopoverTrigger>
           <PopoverContent className="w-auto p-0" align="start">
-            <Calendar
-              mode="range"
-              selected={dateRange}
-              onSelect={setDateRange}
-              locale={ptBR}
-              numberOfMonths={2}
-              className="pointer-events-auto"
-            />
+            <Calendar mode="range" selected={dateRange} onSelect={setDateRange} locale={ptBR} numberOfMonths={2} className="pointer-events-auto" />
           </PopoverContent>
         </Popover>
         
         {!isSDRUser && (
           <Select value={selectedSDR} onValueChange={setSelectedSDR}>
-            <SelectTrigger className="w-[180px] rounded-full">
+            <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs">
               <SelectValue placeholder="SDR / SS" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os SDRs</SelectItem>
-              {sdrs.map(s => (
-                <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-              ))}
+              {sdrs.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
             </SelectContent>
           </Select>
         )}
+
         <Select value={selectedPipeline} onValueChange={setSelectedPipeline}>
-          <SelectTrigger className="w-[180px] rounded-full">
+          <SelectTrigger className="w-[160px] h-9 rounded-lg text-xs">
             <SelectValue placeholder="Funil" />
           </SelectTrigger>
           <SelectContent>
             <SelectItem value="all">Todos os Funis</SelectItem>
-            {pipelines.map(p => (
-              <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
-            ))}
+            {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
           </SelectContent>
         </Select>
+
         <div className="ml-auto flex items-center gap-2">
-          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="rounded-full">
-            <Upload className="h-4 w-4 mr-2" />
-            Importar Pré-Vendas
+          <Button variant="outline" size="sm" onClick={() => setImportDialogOpen(true)} className="h-9 text-xs rounded-lg">
+            <Upload className="h-3.5 w-3.5 mr-1.5" />
+            Importar
           </Button>
           {dateRange?.from && dateRange?.to && (
-            <Badge variant="secondary" className="rounded-full">
+            <Badge variant="secondary" className="text-xs">
               {format(dateRange.from, "dd/MM", { locale: ptBR })} - {format(dateRange.to, "dd/MM/yyyy", { locale: ptBR })}
             </Badge>
           )}
         </div>
       </div>
 
-      {/* Top metrics - 3D Hero Cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 8px 24px rgba(59,130,246,0.15)' }}>
-          <div className="absolute -top-10 -right-10 h-28 w-28 rounded-full bg-blue-500/15 blur-2xl" />
-          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', boxShadow: '0 8px 24px rgba(59,130,246,0.4)' }}>
-            <Phone className="h-6 w-6" />
-          </div>
-          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.reunioes}</p>
-          <p className="text-xs text-muted-foreground mt-1">Reuniões</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 8px 24px rgba(16,185,129,0.15)' }}>
-          <div className="absolute -bottom-10 -left-10 h-28 w-28 rounded-full bg-emerald-500/15 blur-2xl" />
-          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', boxShadow: '0 8px 24px rgba(16,185,129,0.4)' }}>
-            <CheckCircle className="h-6 w-6" />
-          </div>
-          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.showUpPercent.toFixed(0)}%</p>
-          <p className="text-xs text-muted-foreground mt-1">Show up</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(239,68,68,0.12), rgba(236,72,153,0.08))', border: '1px solid rgba(239,68,68,0.3)', boxShadow: '0 8px 24px rgba(239,68,68,0.15)' }}>
-          <div className="absolute -top-10 -left-10 h-28 w-28 rounded-full bg-rose-500/15 blur-2xl" />
-          <div className="w-12 h-12 mx-auto rounded-xl flex items-center justify-center text-white mb-3" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', boxShadow: '0 8px 24px rgba(239,68,68,0.4)' }}>
-            <XCircle className="h-6 w-6" />
-          </div>
-          <p className="text-4xl font-black" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{metrics.noShowPercent.toFixed(0)}%</p>
-          <p className="text-xs text-muted-foreground mt-1">No show</p>
-        </div>
-      </div>
-
-      {/* Agendamentos e Reuniões - Vivid metric cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 lg:grid-cols-8 gap-3">
+      {/* ── Destaques (Reuniões / Show Up / No Show) ── */}
+      <div className="grid grid-cols-3 gap-3">
         {[
-          { label: "Agendamentos", value: metrics.agendamentos, gradient: "linear-gradient(135deg, #3b82f6, #06b6d4)", bg: "rgba(59,130,246,0.06)" },
-          { label: "Reuniões Realizadas", value: metrics.reunioes, gradient: "linear-gradient(135deg, #10b981, #059669)", bg: "rgba(16,185,129,0.08)" },
-          { label: "Qualificações", value: metrics.qualificacoes, gradient: "linear-gradient(135deg, #8b5cf6, #d946ef)", bg: "rgba(139,92,246,0.06)" },
-          { label: "Cancelamentos", value: metrics.cancelamentos, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)", bg: "rgba(245,158,11,0.06)" },
-          { label: "Reagendamentos", value: metrics.reagendamentos, gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)", bg: "rgba(6,182,212,0.06)" },
-          { label: "No show", value: metrics.noShow, gradient: "linear-gradient(135deg, #ef4444, #ec4899)", bg: "rgba(239,68,68,0.06)" },
-          { label: "% da Meta", value: `${metrics.metaPercent.toFixed(1)}%`, gradient: "linear-gradient(135deg, #ec4899, #8b5cf6)", bg: "rgba(236,72,153,0.06)", span: true },
+          { label: "Reuniões", value: String(metrics.reunioes), icon: Phone, accent: "text-sky-500", border: "border-sky-500/20" },
+          { label: "Show Up", value: `${metrics.showUpPercent.toFixed(0)}%`, icon: CheckCircle, accent: "text-emerald-500", border: "border-emerald-500/20" },
+          { label: "No Show", value: `${metrics.noShowPercent.toFixed(0)}%`, icon: XCircle, accent: "text-rose-500", border: "border-rose-500/20" },
         ].map((item, idx) => (
-          <div key={idx} className={`relative overflow-hidden rounded-2xl p-3 transition-all hover:-translate-y-1 ${(item as any).span ? 'col-span-2' : ''}`} style={{ background: item.bg, border: '1px solid rgba(255,255,255,0.08)' }}>
-            <div className="absolute top-0 left-0 h-1 w-full rounded-t-2xl" style={{ background: item.gradient }} />
-            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
-            <p className="text-2xl font-black mt-1" style={{ background: item.gradient, WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{item.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Meta de agendamentos */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        {[
-          { label: "Meta Agendamentos", value: metrics.metaAgendamentos, gradient: "linear-gradient(135deg, #3b82f6, #8b5cf6)" },
-          { label: "Meta Reuniões", value: metrics.metaReunioes, gradient: "linear-gradient(135deg, #10b981, #06b6d4)" },
-          { label: "% Meta Agend.", value: `${metrics.metaAgendamentosPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #f59e0b, #ef4444)" },
-          { label: "% Meta Reuniões", value: `${metrics.metaReunioesPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #ec4899, #d946ef)" },
-          { label: "Projeção", value: formatNumber(metrics.projecao, 0), gradient: "linear-gradient(135deg, #06b6d4, #3b82f6)" },
-          { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, gradient: "linear-gradient(135deg, #8b5cf6, #ec4899)" },
-        ].map((item, idx) => (
-          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 bg-card border border-border/30 transition-all hover:-translate-y-1">
-            <div className="absolute top-0 left-0 h-1 w-full" style={{ background: item.gradient }} />
-            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
-            <p className="text-lg font-bold mt-1">{item.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* Abordagem/Ligações */}
-      <div className="grid grid-cols-2 md:grid-cols-6 gap-3">
-        {[
-          { label: "Abordagens", value: formatNumber(approachMetrics.abordagens), gradient: "linear-gradient(135deg, #f43f5e, #ec4899)" },
-          { label: "Conexões", value: formatNumber(approachMetrics.conexoes), gradient: "linear-gradient(135deg, #8b5cf6, #3b82f6)" },
-          { label: "% Conv. Abord.", value: `${approachMetrics.conversaoAbord.toFixed(1)}%`, gradient: "linear-gradient(135deg, #f59e0b, #f43f5e)" },
-          { label: "% Conv. Agend.", value: `${approachMetrics.conversaoAgend.toFixed(1)}%`, gradient: "linear-gradient(135deg, #10b981, #06b6d4)" },
-          { label: "% Conv. Vendas", value: `${approachMetrics.conversaoVendas.toFixed(1)}%`, gradient: "linear-gradient(135deg, #06b6d4, #8b5cf6)" },
-          { label: "Diária Reuniões", value: approachMetrics.diariaReunioes.toFixed(1), gradient: "linear-gradient(135deg, #d946ef, #f43f5e)" },
-        ].map((item, idx) => (
-          <div key={idx} className="relative overflow-hidden rounded-2xl p-3 bg-card border border-border/30 transition-all hover:-translate-y-1">
-            <div className="absolute top-0 left-0 h-1 w-full" style={{ background: item.gradient }} />
-            <p className="text-[10px] text-muted-foreground uppercase">{item.label}</p>
-            <p className="text-lg font-bold mt-1">{item.value}</p>
-          </div>
-        ))}
-      </div>
-
-      {/* SDR Performance Table */}
-      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #8b5cf6, #ec4899, #f43f5e)' }} />
-        <div className="p-4 pb-2">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #8b5cf6, #ec4899)' }}>
-              <Users className="h-3.5 w-3.5" />
-            </div>
-            Agendamentos e Calls Realizadas
-          </h3>
-        </div>
-        <div className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="text-xs">
-                <TableHead>SDR</TableHead>
-                <TableHead className="text-center">Abordagens</TableHead>
-                <TableHead className="text-center">Conexões</TableHead>
-                <TableHead className="text-center">Agendamentos</TableHead>
-                <TableHead className="text-center">Calls Agend.</TableHead>
-                <TableHead className="text-center">Cancelados</TableHead>
-                <TableHead className="text-center">Reagend.</TableHead>
-                <TableHead className="text-center">No show</TableHead>
-                <TableHead className="text-center">Qualif.</TableHead>
-                <TableHead className="text-center">Reuniões</TableHead>
-                <TableHead className="text-center">% No show</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {sdrs.map(sdr => (
-                <TableRow key={sdr.id} className="text-sm">
-                  <TableCell className="font-medium">{sdr.name}</TableCell>
-                  <TableCell className="text-center">{formatNumber(sdr.approaches)}</TableCell>
-                  <TableCell className="text-center">{sdr.connections}</TableCell>
-                  <TableCell className="text-center">{sdr.scheduled}</TableCell>
-                  <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
-                  <TableCell className="text-center">{sdr.cancelled}</TableCell>
-                  <TableCell className="text-center">{sdr.rescheduled}</TableCell>
-                  <TableCell className="text-center font-bold" style={{ color: '#ef4444' }}>{sdr.noShow}</TableCell>
-                  <TableCell className="text-center">{sdr.qualified}</TableCell>
-                  <TableCell className="text-center font-bold" style={{ color: '#10b981' }}>{sdr.meetings}</TableCell>
-                  <TableCell className="text-center">
-                    <span className="text-xs font-bold px-2 py-0.5 rounded-full text-white" style={{
-                      background: sdr.noShowPercent <= 10 ? 'linear-gradient(135deg, #10b981, #06b6d4)' : sdr.noShowPercent <= 20 ? 'linear-gradient(135deg, #f59e0b, #f97316)' : 'linear-gradient(135deg, #ef4444, #ec4899)'
-                    }}>
-                      {sdr.noShowPercent.toFixed(1)}%
-                    </span>
-                  </TableCell>
-                </TableRow>
-              ))}
-              {sdrs.length > 0 && (
-                <TableRow className="font-bold text-sm" style={{ background: 'rgba(139,92,246,0.05)' }}>
-                  <TableCell>Total geral</TableCell>
-                  <TableCell className="text-center">{formatNumber(sdrs.reduce((s, c) => s + c.approaches, 0))}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.connections, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.scheduled, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.cancelled, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.rescheduled, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.noShow, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.qualified, 0)}</TableCell>
-                  <TableCell className="text-center">{sdrs.reduce((s, c) => s + c.meetings, 0)}</TableCell>
-                  <TableCell className="text-center">{metrics.noShowPercent.toFixed(1)}%</TableCell>
-                </TableRow>
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
-
-      {/* Charts Row */}
-      <div className="grid md:grid-cols-2 gap-4">
-        {/* Reuniões por dia */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #10b981, #06b6d4, #3b82f6)' }} />
-          <div className="p-4 pb-2">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #10b981, #3b82f6)' }}>
-                <TrendingUp className="h-3.5 w-3.5" />
+          <Card key={idx} className={cn("border", item.border)}>
+            <CardContent className="p-4 text-center">
+              <div className="mx-auto w-10 h-10 rounded-xl bg-muted flex items-center justify-center mb-2">
+                <item.icon className={cn("h-5 w-5", item.accent)} />
               </div>
-              Reuniões por Dia
-            </h3>
+              <p className={cn("text-3xl font-bold", item.accent)}>{item.value}</p>
+              <p className="text-[11px] text-muted-foreground mt-1">{item.label}</p>
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+
+      {/* ── KPIs de Atividade ── */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Phone className="h-3.5 w-3.5" /> Atividades
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-7 gap-3">
+          {[
+            { label: "Agendamentos", value: metrics.agendamentos, accent: "text-sky-500" },
+            { label: "Reuniões", value: metrics.reunioes, accent: "text-emerald-500" },
+            { label: "Qualificações", value: metrics.qualificacoes, accent: "text-violet-500" },
+            { label: "Cancelamentos", value: metrics.cancelamentos, accent: "text-amber-500" },
+            { label: "Reagendamentos", value: metrics.reagendamentos, accent: "text-sky-500" },
+            { label: "No Show", value: metrics.noShow, accent: "text-rose-500" },
+            { label: "% da Meta", value: `${metrics.metaPercent.toFixed(1)}%`, accent: metrics.metaPercent >= 100 ? "text-emerald-500" : "text-amber-500" },
+          ].map((item, idx) => (
+            <Card key={idx}>
+              <CardContent className="p-3">
+                <p className="text-[10px] text-muted-foreground mb-0.5">{item.label}</p>
+                <p className={cn("text-xl font-bold", item.accent)}>{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Metas & Projeção ── */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5" /> Metas & Projeção
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Meta Agend.", value: String(metrics.metaAgendamentos) },
+            { label: "Meta Reuniões", value: String(metrics.metaReunioes) },
+            { label: "% Meta Agend.", value: `${metrics.metaAgendamentosPercent.toFixed(0)}%`, accent: metrics.metaAgendamentosPercent >= 100 ? "text-emerald-500" : "text-amber-500" },
+            { label: "% Meta Reuniões", value: `${metrics.metaReunioesPercent.toFixed(0)}%`, accent: metrics.metaReunioesPercent >= 100 ? "text-emerald-500" : "text-amber-500" },
+            { label: "Projeção", value: formatNumber(metrics.projecao, 0) },
+            { label: "% Projetado", value: `${metrics.projecaoPercent.toFixed(0)}%`, accent: metrics.projecaoPercent >= 100 ? "text-emerald-500" : "text-sky-500" },
+          ].map((item, idx) => (
+            <Card key={idx}>
+              <CardContent className="p-3">
+                <p className="text-[10px] text-muted-foreground mb-0.5">{item.label}</p>
+                <p className={cn("text-lg font-bold", (item as any).accent || "text-foreground")}>{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Funil de Abordagem ── */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <Users className="h-3.5 w-3.5" /> Funil de Abordagem
+        </h3>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-6 gap-3">
+          {[
+            { label: "Abordagens", value: formatNumber(approachMetrics.abordagens) },
+            { label: "Conexões", value: formatNumber(approachMetrics.conexoes) },
+            { label: "% Conv. Abord.", value: `${approachMetrics.conversaoAbord.toFixed(1)}%`, accent: "text-sky-500" },
+            { label: "% Conv. Agend.", value: `${approachMetrics.conversaoAgend.toFixed(1)}%`, accent: "text-sky-500" },
+            { label: "% Conv. Vendas", value: `${approachMetrics.conversaoVendas.toFixed(1)}%`, accent: "text-emerald-500" },
+            { label: "Diária Reuniões", value: approachMetrics.diariaReunioes.toFixed(1) },
+          ].map((item, idx) => (
+            <Card key={idx}>
+              <CardContent className="p-3">
+                <p className="text-[10px] text-muted-foreground mb-0.5">{item.label}</p>
+                <p className={cn("text-lg font-bold", (item as any).accent || "text-foreground")}>{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
+        </div>
+      </div>
+
+      {/* ── Tabela SDRs ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-violet-500" />
+            Desempenho dos SDRs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="text-xs">
+                  <TableHead>SDR</TableHead>
+                  <TableHead className="text-center">Abord.</TableHead>
+                  <TableHead className="text-center">Conexões</TableHead>
+                  <TableHead className="text-center">Agend.</TableHead>
+                  <TableHead className="text-center">Calls</TableHead>
+                  <TableHead className="text-center">Cancel.</TableHead>
+                  <TableHead className="text-center">Reag.</TableHead>
+                  <TableHead className="text-center">No Show</TableHead>
+                  <TableHead className="text-center">Qualif.</TableHead>
+                  <TableHead className="text-center">Reuniões</TableHead>
+                  <TableHead className="text-center">% NS</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {filteredSdrs.map(sdr => (
+                  <TableRow key={sdr.id} className="text-sm">
+                    <TableCell className="font-medium">{sdr.name}</TableCell>
+                    <TableCell className="text-center">{formatNumber(sdr.approaches)}</TableCell>
+                    <TableCell className="text-center">{sdr.connections}</TableCell>
+                    <TableCell className="text-center">{sdr.scheduled}</TableCell>
+                    <TableCell className="text-center">{sdr.callsScheduled}</TableCell>
+                    <TableCell className="text-center">{sdr.cancelled}</TableCell>
+                    <TableCell className="text-center">{sdr.rescheduled}</TableCell>
+                    <TableCell className="text-center font-semibold text-rose-500">{sdr.noShow}</TableCell>
+                    <TableCell className="text-center">{sdr.qualified}</TableCell>
+                    <TableCell className="text-center font-semibold text-emerald-500">{sdr.meetings}</TableCell>
+                    <TableCell className="text-center">
+                      <Badge variant="outline" className={cn("text-[11px] font-bold", getNoShowColor(sdr.noShowPercent))}>
+                        {sdr.noShowPercent.toFixed(1)}%
+                      </Badge>
+                    </TableCell>
+                  </TableRow>
+                ))}
+                {filteredSdrs.length > 1 && (
+                  <TableRow className="font-bold text-sm bg-muted/30">
+                    <TableCell>Total</TableCell>
+                    <TableCell className="text-center">{formatNumber(filteredSdrs.reduce((s, c) => s + c.approaches, 0))}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.connections, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.scheduled, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.callsScheduled, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.cancelled, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.rescheduled, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.noShow, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.qualified, 0)}</TableCell>
+                    <TableCell className="text-center">{filteredSdrs.reduce((s, c) => s + c.meetings, 0)}</TableCell>
+                    <TableCell className="text-center">{metrics.noShowPercent.toFixed(1)}%</TableCell>
+                  </TableRow>
+                )}
+              </TableBody>
+            </Table>
           </div>
-          <div className="px-4 pb-4">
+        </CardContent>
+      </Card>
+
+      {/* ── Gráficos ── */}
+      <div className="grid md:grid-cols-2 gap-4">
+        {/* Reuniões por Dia */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <TrendingUp className="h-4 w-4 text-emerald-500" />
+              Reuniões por Dia
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={dailyMeetingsData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} />
-                  <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
+                  <Tooltip contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
                   <Legend />
                   {sdrs.map((sdr, i) => (
-                    <Bar
-                      key={sdr.id}
-                      dataKey={sdr.name}
-                      fill={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]}
-                      stackId="a"
-                      radius={[4, 4, 0, 0]}
-                    />
+                    <Bar key={sdr.id} dataKey={sdr.name} fill={["#3B82F6", "#10B981", "#F59E0B", "#EF4444", "#8B5CF6", "#EC4899"][i % 6]} stackId="a" radius={[3, 3, 0, 0]} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
 
-        {/* No Show Evolution */}
-        <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-          <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #ef4444, #f43f5e, #ec4899)' }} />
-          <div className="p-4 pb-2">
-            <h3 className="text-sm font-bold flex items-center gap-2">
-              <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #ef4444, #ec4899)' }}>
-                <AlertTriangle className="h-3.5 w-3.5" />
-              </div>
-              No Show
-            </h3>
-          </div>
-          <div className="px-4 pb-4">
+        {/* No Show */}
+        <Card>
+          <CardHeader className="pb-2">
+            <CardTitle className="text-sm font-semibold flex items-center gap-2">
+              <AlertTriangle className="h-4 w-4 text-rose-500" />
+              Evolução No Show
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="pb-4">
             <div className="h-[200px]">
               <ResponsiveContainer width="100%" height="100%">
                 <LineChart data={noShowData}>
                   <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                   <YAxis tick={{ fontSize: 10 }} domain={[0, 50]} />
-                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
+                  <Tooltip formatter={(value: number) => `${value.toFixed(1)}%`} contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
                   <Legend />
                   <Line type="monotone" dataKey="noShow" name="No Show %" stroke="#EF4444" strokeWidth={2} dot={{ r: 2 }} />
                   <Line type="monotone" dataKey="avg" name="Média" stroke="#6B7280" strokeDasharray="5 5" dot={false} />
                 </LineChart>
               </ResponsiveContainer>
             </div>
-          </div>
-        </div>
+          </CardContent>
+        </Card>
       </div>
 
-      {/* Calls Agendadas vs Realizadas */}
-      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #3b82f6, #10b981, #f59e0b, #8b5cf6)' }} />
-        <div className="p-4 pb-2">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #3b82f6, #10b981)' }}>
-              <Phone className="h-3.5 w-3.5" />
-            </div>
-            Calls Agendadas vs Realizadas
-          </h3>
-        </div>
-        <div className="px-4 pb-4">
+      {/* Agendadas vs Realizadas */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Phone className="h-4 w-4 text-sky-500" />
+            Agendadas vs Realizadas
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="pb-4">
           <div className="h-[200px]">
             <ResponsiveContainer width="100%" height="100%">
               <LineChart data={callsVsCompletedData}>
                 <XAxis dataKey="day" tick={{ fontSize: 10 }} />
                 <YAxis tick={{ fontSize: 10 }} />
-                <Tooltip contentStyle={{ borderRadius: "12px", border: "none", boxShadow: "0 8px 32px rgba(0,0,0,0.16)" }} />
+                <Tooltip contentStyle={{ borderRadius: "8px", fontSize: 12 }} />
                 <Legend />
                 <Line type="monotone" dataKey="agendamentos" name="Agendamentos" stroke="#3B82F6" strokeWidth={2} />
                 <Line type="monotone" dataKey="reunioes" name="Reuniões" stroke="#10B981" strokeWidth={2} />
@@ -781,76 +758,76 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
               </LineChart>
             </ResponsiveContainer>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* ── Vendas (Resumo) ── */}
+      <div className="space-y-2">
+        <h3 className="text-xs font-semibold text-muted-foreground uppercase tracking-wider flex items-center gap-2">
+          <TrendingUp className="h-3.5 w-3.5" /> Vendas Geradas
+        </h3>
+        <div className="grid grid-cols-3 gap-3">
+          {[
+            { label: "Faturamento", value: formatCurrency(salesSummary.faturamento), accent: "text-sky-500" },
+            { label: "Receita", value: formatCurrency(salesSummary.receita), accent: "text-emerald-500" },
+            { label: "Quantidade", value: String(salesSummary.quantidade), accent: "text-violet-500" },
+          ].map((item, idx) => (
+            <Card key={idx}>
+              <CardContent className="p-4 text-center">
+                <p className="text-[11px] text-muted-foreground mb-1">{item.label}</p>
+                <p className={cn("text-xl font-bold", item.accent)}>{item.value}</p>
+              </CardContent>
+            </Card>
+          ))}
         </div>
       </div>
 
-      {/* Vendas Summary - Vibrant cards */}
-      <div className="grid grid-cols-3 gap-4">
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(59,130,246,0.12), rgba(139,92,246,0.08))', border: '1px solid rgba(59,130,246,0.3)', boxShadow: '0 8px 24px rgba(59,130,246,0.15)' }}>
-          <div className="absolute -top-8 -right-8 h-24 w-24 rounded-full bg-blue-500/15 blur-2xl" />
-          <p className="text-[10px] text-muted-foreground uppercase">Faturamento</p>
-          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #3b82f6, #8b5cf6)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(salesSummary.faturamento)}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(16,185,129,0.12), rgba(6,182,212,0.08))', border: '1px solid rgba(16,185,129,0.3)', boxShadow: '0 8px 24px rgba(16,185,129,0.15)' }}>
-          <div className="absolute -bottom-8 -left-8 h-24 w-24 rounded-full bg-emerald-500/15 blur-2xl" />
-          <p className="text-[10px] text-muted-foreground uppercase">Receita</p>
-          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #10b981, #06b6d4)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{formatCurrency(salesSummary.receita)}</p>
-        </div>
-        <div className="relative overflow-hidden rounded-2xl p-5 text-center transition-all hover:-translate-y-1" style={{ background: 'linear-gradient(135deg, rgba(217,70,239,0.12), rgba(236,72,153,0.08))', border: '1px solid rgba(217,70,239,0.3)', boxShadow: '0 8px 24px rgba(217,70,239,0.15)' }}>
-          <div className="absolute -top-8 -left-8 h-24 w-24 rounded-full bg-fuchsia-500/15 blur-2xl" />
-          <p className="text-[10px] text-muted-foreground uppercase">Quantidade</p>
-          <p className="text-2xl font-black mt-1" style={{ background: 'linear-gradient(135deg, #d946ef, #ec4899)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent' }}>{salesSummary.quantidade}</p>
-        </div>
-      </div>
-
-      {/* Sales by SDR */}
-      <div className="relative overflow-hidden rounded-2xl bg-card border border-border/40 shadow-lg">
-        <div className="h-1.5 w-full" style={{ background: 'linear-gradient(90deg, #f59e0b, #ef4444, #ec4899, #8b5cf6)' }} />
-        <div className="p-4 pb-2">
-          <h3 className="text-sm font-bold flex items-center gap-2">
-            <div className="p-1.5 rounded-lg text-white" style={{ background: 'linear-gradient(135deg, #f59e0b, #ef4444)' }}>
-              <Users className="h-3.5 w-3.5" />
-            </div>
-            SDR / SS / BDR
-          </h3>
-        </div>
-        <div className="p-0">
-          <Table>
-            <TableHeader>
-              <TableRow className="text-xs">
-                <TableHead>Funil</TableHead>
-                <TableHead>Nome do cliente</TableHead>
-                <TableHead>Serviço(s)</TableHead>
-                <TableHead>SDR / SS / BDR</TableHead>
-                <TableHead className="text-right">Faturamento</TableHead>
-                <TableHead className="text-right">Receita</TableHead>
-                <TableHead>Closer</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {salesBySDR.length === 0 ? (
-                <TableRow>
-                  <TableCell colSpan={7} className="text-center text-muted-foreground py-8">
-                    Nenhuma venda registrada este mês
-                  </TableCell>
+      {/* ── Tabela de Vendas ── */}
+      <Card>
+        <CardHeader className="pb-2">
+          <CardTitle className="text-sm font-semibold flex items-center gap-2">
+            <Users className="h-4 w-4 text-amber-500" />
+            Vendas por SDR
+            <Badge variant="secondary" className="ml-auto text-xs">{filteredSales.length} vendas</Badge>
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+          <div className="overflow-x-auto">
+            <Table>
+              <TableHeader>
+                <TableRow className="text-xs">
+                  <TableHead>Funil</TableHead>
+                  <TableHead>Cliente</TableHead>
+                  <TableHead>Serviço</TableHead>
+                  <TableHead>SDR</TableHead>
+                  <TableHead className="text-right">Faturamento</TableHead>
+                  <TableHead className="text-right">Receita</TableHead>
+                  <TableHead>Closer</TableHead>
                 </TableRow>
-              ) : (
-                salesBySDR.map(sale => (
-                  <TableRow key={sale.id} className="text-sm">
-                    <TableCell>{sale.pipeline}</TableCell>
-                    <TableCell>{sale.client}</TableCell>
-                    <TableCell>{sale.service}</TableCell>
-                    <TableCell>{sale.sdr}</TableCell>
-                    <TableCell className="text-right">{formatCurrency(sale.billing)}</TableCell>
-                    <TableCell className="text-right font-bold" style={{ color: '#10b981' }}>{formatCurrency(sale.revenue)}</TableCell>
-                    <TableCell>{sale.closer}</TableCell>
+              </TableHeader>
+              <TableBody>
+                {filteredSales.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={7} className="text-center text-muted-foreground py-8">Nenhuma venda registrada</TableCell>
                   </TableRow>
-                ))
-              )}
-            </TableBody>
-          </Table>
-        </div>
-      </div>
+                ) : (
+                  filteredSales.map(sale => (
+                    <TableRow key={sale.id} className="text-sm">
+                      <TableCell>{sale.pipeline}</TableCell>
+                      <TableCell>{sale.client}</TableCell>
+                      <TableCell>{sale.service}</TableCell>
+                      <TableCell>{sale.sdr}</TableCell>
+                      <TableCell className="text-right">{formatCurrency(sale.billing)}</TableCell>
+                      <TableCell className="text-right font-semibold text-emerald-500">{formatCurrency(sale.revenue)}</TableCell>
+                      <TableCell>{sale.closer}</TableCell>
+                    </TableRow>
+                  ))
+                )}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
 
       <ImportPreSalesDialog
         open={importDialogOpen}
