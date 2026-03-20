@@ -42,6 +42,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "pipeline_id", label: "Pipeline específico", type: "text" },
     ],
+    variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "lead_created",
@@ -50,6 +51,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
     conditionFields: [],
+    variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "lead_won",
@@ -58,6 +60,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
     conditionFields: [],
+    variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "lead_lost",
@@ -66,6 +69,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
     conditionFields: [],
+    variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "nps_received",
@@ -76,6 +80,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "score", label: "Nota máxima (≤)", type: "number" },
     ],
+    variables: ["company_name", "score", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "health_score_changed",
@@ -86,6 +91,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "score", label: "Score abaixo de", type: "number" },
     ],
+    variables: ["company_name", "score", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "task_overdue",
@@ -96,6 +102,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "days_overdue", label: "Dias de atraso (≥)", type: "number" },
     ],
+    variables: ["company_name", "task_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "payment_confirmed",
@@ -104,6 +111,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "Financeiro",
     moduleColor: "bg-amber-100 text-amber-800",
     conditionFields: [],
+    variables: ["company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "payment_overdue",
@@ -114,6 +122,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "days_overdue", label: "Dias de atraso (≥)", type: "number" },
     ],
+    variables: ["company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
     type: "lead_inactive",
@@ -124,6 +133,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     conditionFields: [
       { key: "days_inactive", label: "Dias sem atividade (≥)", type: "number" },
     ],
+    variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   // ── RH Triggers ──
   {
