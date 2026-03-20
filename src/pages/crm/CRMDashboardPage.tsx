@@ -49,7 +49,7 @@ interface StageData {
 }
 
 export const CRMDashboardPage = () => {
-  const { staffRole, isAdmin } = useOutletContext<{ staffRole: string; isAdmin: boolean }>();
+  const { staffRole, isAdmin, staffId } = useOutletContext<{ staffRole: string; isAdmin: boolean; staffId: string | null }>();
   const [period, setPeriod] = useState("month");
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [selectedOwner, setSelectedOwner] = useState<string>("all");
