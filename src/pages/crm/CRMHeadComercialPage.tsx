@@ -559,7 +559,7 @@ export default function CRMHeadComercialPage() {
 
   const forecastByCloser = useMemo(() => groupByCloser(forecastLeads), [forecastLeads]);
   const negotiationByCloser = useMemo(() => groupByCloser(negotiationLeads), [negotiationLeads]);
-  }, [forecastLeads]);
+  
 
   const leadsByStage = useMemo(() => {
     const groups: Record<string, LeadWithStage[]> = {};
