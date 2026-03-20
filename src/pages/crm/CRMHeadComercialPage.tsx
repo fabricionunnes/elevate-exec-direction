@@ -37,7 +37,6 @@ import {
   ChevronRight,
   Save,
   StickyNote,
-  Send,
 } from "lucide-react";
 import { format, startOfDay, endOfDay, subDays } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -65,6 +64,7 @@ interface LeadWithStage {
 
 interface Activity {
   id: string;
+  lead_id: string | null;
   title: string;
   type: string;
   status: string | null;
@@ -73,7 +73,7 @@ interface Activity {
   notes: string | null;
   description: string | null;
   responsible_staff_id: string | null;
-  lead: { name: string; company: string | null } | null;
+  lead: { id: string; name: string; company: string | null } | null;
   staff: { name: string } | null;
 }
 
@@ -82,12 +82,15 @@ interface Activity {
 const formatCurrency = (value: number) =>
   new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(value);
 
+// All stages we want to show in the Head Comercial view
 const NEGOTIATION_STAGES = [
   "forecast",
   "realizada",
   "realizada / em negociação",
   "fup",
   "reunião realizada",
+  "agendada",
+  "agendou reunião",
 ];
 
 const activityTypeIcon: Record<string, React.ReactNode> = {
@@ -97,6 +100,7 @@ const activityTypeIcon: Record<string, React.ReactNode> = {
   email: <FileText className="h-4 w-4" />,
   followup: <Clock className="h-4 w-4" />,
   proposal: <FileText className="h-4 w-4" />,
+  note: <StickyNote className="h-4 w-4" />,
 };
 
 const activityTypeLabel: Record<string, string> = {
@@ -117,6 +121,7 @@ const stageColors: Record<string, string> = {
   "reunião realizada": "bg-violet-500/10 text-violet-700 border-violet-200",
   "fup": "bg-orange-500/10 text-orange-700 border-orange-200",
   "agendada": "bg-sky-500/10 text-sky-700 border-sky-200",
+  "agendou reunião": "bg-cyan-500/10 text-cyan-700 border-cyan-200",
 };
 
 // ─── Component ───
@@ -125,14 +130,17 @@ export default function CRMHeadComercialPage() {
   const { staffRole } = useCRMContext();
   const [loading, setLoading] = useState(true);
   const [leads, setLeads] = useState<LeadWithStage[]>([]);
+  const [allStaff, setAllStaff] = useState<{ id: string; name: string }[]>([]);
   const [yesterdayActivities, setYesterdayActivities] = useState<Activity[]>([]);
   const [todayActivities, setTodayActivities] = useState<Activity[]>([]);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
   const [savingNote, setSavingNote] = useState<string | null>(null);
+  const [activityNotes, setActivityNotes] = useState<Record<string, string>>({});
+  const [savingActivityNote, setSavingActivityNote] = useState<string | null>(null);
   const [expandedSections, setExpandedSections] = useState<Record<string, boolean>>({
     forecast: true,
     negotiation: true,
-    yesterday: false,
+    yesterday: true,
     today: true,
   });
   const [filterCloser, setFilterCloser] = useState<string>("all");
@@ -147,7 +155,7 @@ export default function CRMHeadComercialPage() {
       const now = new Date();
       const yesterday = subDays(now, 1);
 
-      const [leadsRes, yesterdayRes, todayRes] = await Promise.all([
+      const [leadsRes, yesterdayRes, todayRes, staffRes] = await Promise.all([
         supabase
           .from("crm_leads")
           .select(`
@@ -162,9 +170,9 @@ export default function CRMHeadComercialPage() {
         supabase
           .from("crm_activities")
           .select(`
-            id, title, type, status, scheduled_at, completed_at, notes, description,
+            id, lead_id, title, type, status, scheduled_at, completed_at, notes, description,
             responsible_staff_id,
-            lead:crm_leads!crm_activities_lead_id_fkey(name, company),
+            lead:crm_leads!crm_activities_lead_id_fkey(id, name, company),
             staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)
           `)
           .gte("scheduled_at", startOfDay(yesterday).toISOString())
@@ -174,20 +182,29 @@ export default function CRMHeadComercialPage() {
         supabase
           .from("crm_activities")
           .select(`
-            id, title, type, status, scheduled_at, completed_at, notes, description,
+            id, lead_id, title, type, status, scheduled_at, completed_at, notes, description,
             responsible_staff_id,
-            lead:crm_leads!crm_activities_lead_id_fkey(name, company),
+            lead:crm_leads!crm_activities_lead_id_fkey(id, name, company),
             staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)
           `)
           .gte("scheduled_at", startOfDay(now).toISOString())
           .lt("scheduled_at", endOfDay(now).toISOString())
           .order("scheduled_at", { ascending: true }),
+
+        // Fetch all commercial staff for the closer filter
+        supabase
+          .from("onboarding_staff")
+          .select("id, name")
+          .eq("is_active", true)
+          .in("role", ["closer", "sdr", "head_comercial", "master"])
+          .order("name"),
       ]);
 
       if (leadsRes.data) {
         const openLeads = (leadsRes.data as any[]).filter((l) => !l.stage?.is_final);
         setLeads(openLeads);
       }
+      if (staffRes.data) setAllStaff(staffRes.data as any[]);
       if (yesterdayRes.data) setYesterdayActivities(yesterdayRes.data as any[]);
       if (todayRes.data) setTodayActivities(todayRes.data as any[]);
     } catch (err) {
@@ -228,19 +245,55 @@ export default function CRMHeadComercialPage() {
     }
   };
 
+  // ── Save note on an activity ──
+
+  const handleSaveActivityNote = async (activityId: string) => {
+    const note = activityNotes[activityId];
+    if (note === undefined) return;
+
+    setSavingActivityNote(activityId);
+    try {
+      const { error } = await supabase
+        .from("crm_activities")
+        .update({ notes: note })
+        .eq("id", activityId);
+
+      if (error) throw error;
+
+      // Update local state
+      const updateActivities = (list: Activity[]) =>
+        list.map((a) => (a.id === activityId ? { ...a, notes: note } : a));
+      setYesterdayActivities(updateActivities);
+      setTodayActivities(updateActivities);
+      setActivityNotes((prev) => {
+        const copy = { ...prev };
+        delete copy[activityId];
+        return copy;
+      });
+      toast.success("Nota da atividade salva");
+    } catch (err: any) {
+      toast.error(err.message || "Erro ao salvar");
+    } finally {
+      setSavingActivityNote(null);
+    }
+  };
+
   // ── Computed ──
 
+  // Use allStaff for the filter dropdown so everyone appears (even if no leads match)
   const closers = useMemo(() => {
-    const set = new Map<string, string>();
+    // Merge staff from leads (owner/closer) + allStaff
+    const map = new Map<string, string>();
+    allStaff.forEach((s) => map.set(s.id, s.name));
     leads.forEach((l) => {
       const id = l.closer_staff_id || l.owner_staff_id;
       const name = (l.closer as any)?.name || (l.owner as any)?.name;
-      if (id && name) set.set(id, name);
+      if (id && name) map.set(id, name);
     });
-    return Array.from(set.entries())
+    return Array.from(map.entries())
       .map(([id, name]) => ({ id, name }))
       .sort((a, b) => a.name.localeCompare(b.name));
-  }, [leads]);
+  }, [leads, allStaff]);
 
   const filteredLeads = useMemo(() => {
     if (filterCloser === "all") return leads;
@@ -260,7 +313,6 @@ export default function CRMHeadComercialPage() {
         groups[stageName].push(lead);
       }
     });
-    // Sort groups by stage sort_order
     const sorted = Object.entries(groups).sort(([, a], [, b]) => {
       const aOrder = (a[0]?.stage as any)?.sort_order ?? 99;
       const bOrder = (b[0]?.stage as any)?.sort_order ?? 99;
@@ -300,14 +352,18 @@ export default function CRMHeadComercialPage() {
     };
   }, [filteredLeads]);
 
-  const todayMeetings = useMemo(
-    () => todayActivities.filter((a) => a.type === "meeting" || a.type === "call"),
-    [todayActivities]
-  );
+  // Filter activities by closer if selected
+  const filterActivitiesByCloser = (activities: Activity[]) => {
+    if (filterCloser === "all") return activities;
+    return activities.filter((a) => a.responsible_staff_id === filterCloser);
+  };
 
-  const yesterdayMeetings = useMemo(
-    () => yesterdayActivities.filter((a) => a.type === "meeting" || a.type === "call"),
-    [yesterdayActivities]
+  const filteredYesterday = useMemo(() => filterActivitiesByCloser(yesterdayActivities), [yesterdayActivities, filterCloser]);
+  const filteredToday = useMemo(() => filterActivitiesByCloser(todayActivities), [todayActivities, filterCloser]);
+
+  const todayMeetings = useMemo(
+    () => filteredToday.filter((a) => a.type === "meeting" || a.type === "call"),
+    [filteredToday]
   );
 
   const toggleSection = (key: string) =>
@@ -376,7 +432,7 @@ export default function CRMHeadComercialPage() {
                 <Target className="h-5 w-5 text-blue-600" />
               </div>
               <div>
-                <p className="text-xs text-muted-foreground">Pipeline (Negociação)</p>
+                <p className="text-xs text-muted-foreground">Pipeline Total</p>
                 <p className="text-lg font-bold">{formatCurrency(forecast.grandTotal)}</p>
               </div>
             </div>
@@ -521,142 +577,16 @@ export default function CRMHeadComercialPage() {
                       <div className="space-y-2">
                         {stageLeads
                           .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
-                          .map((lead) => {
-                            const daysSinceLast = lead.last_activity_at
-                              ? Math.floor(
-                                  (Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000
-                                )
-                              : null;
-                            const isEditing = editingNotes[lead.id] !== undefined;
-                            const closerName =
-                              (lead.closer as any)?.name || (lead.owner as any)?.name || "—";
-
-                            return (
-                              <div
-                                key={lead.id}
-                                className="border rounded-lg p-3 bg-card hover:shadow-sm transition-shadow"
-                              >
-                                <div className="flex items-start justify-between gap-3">
-                                  <div className="flex-1 min-w-0">
-                                    <div className="flex items-center gap-2 flex-wrap">
-                                      <p className="text-sm font-semibold truncate">
-                                        {lead.name}
-                                      </p>
-                                      {lead.company && (
-                                        <span className="text-xs text-muted-foreground">
-                                          — {lead.company}
-                                        </span>
-                                      )}
-                                    </div>
-                                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                                      <span className="flex items-center gap-1">
-                                        <User className="h-3 w-3" />
-                                        {closerName}
-                                      </span>
-                                      {lead.phone && (
-                                        <span className="flex items-center gap-1">
-                                          <Phone className="h-3 w-3" />
-                                          {lead.phone}
-                                        </span>
-                                      )}
-                                      {lead.scheduled_at && (
-                                        <span className="flex items-center gap-1">
-                                          <Calendar className="h-3 w-3" />
-                                          {format(new Date(lead.scheduled_at), "dd/MM HH:mm")}
-                                        </span>
-                                      )}
-                                      {daysSinceLast != null && daysSinceLast > 3 && (
-                                        <span className="flex items-center gap-1 text-destructive">
-                                          <AlertCircle className="h-3 w-3" />
-                                          {daysSinceLast}d sem atividade
-                                        </span>
-                                      )}
-                                    </div>
-                                  </div>
-                                  <div className="text-right shrink-0">
-                                    <p className="text-sm font-bold">
-                                      {formatCurrency(lead.opportunity_value || 0)}
-                                    </p>
-                                    {lead.probability != null && (
-                                      <p className="text-[11px] text-muted-foreground">
-                                        {lead.probability}% prob.
-                                      </p>
-                                    )}
-                                  </div>
-                                </div>
-
-                                {/* Notes section */}
-                                <div className="mt-2">
-                                  {isEditing ? (
-                                    <div className="space-y-2">
-                                      <Textarea
-                                        value={editingNotes[lead.id]}
-                                        onChange={(e) =>
-                                          setEditingNotes((prev) => ({
-                                            ...prev,
-                                            [lead.id]: e.target.value,
-                                          }))
-                                        }
-                                        placeholder="Adicione uma observação sobre este lead..."
-                                        className="text-xs min-h-[60px] resize-none"
-                                      />
-                                      <div className="flex justify-end gap-2">
-                                        <Button
-                                          variant="ghost"
-                                          size="sm"
-                                          className="h-7 text-xs"
-                                          onClick={() =>
-                                            setEditingNotes((prev) => {
-                                              const copy = { ...prev };
-                                              delete copy[lead.id];
-                                              return copy;
-                                            })
-                                          }
-                                        >
-                                          Cancelar
-                                        </Button>
-                                        <Button
-                                          size="sm"
-                                          className="h-7 text-xs gap-1"
-                                          onClick={() => handleSaveNote(lead.id)}
-                                          disabled={savingNote === lead.id}
-                                        >
-                                          {savingNote === lead.id ? (
-                                            <Loader2 className="h-3 w-3 animate-spin" />
-                                          ) : (
-                                            <Save className="h-3 w-3" />
-                                          )}
-                                          Salvar
-                                        </Button>
-                                      </div>
-                                    </div>
-                                  ) : (
-                                    <button
-                                      onClick={() =>
-                                        setEditingNotes((prev) => ({
-                                          ...prev,
-                                          [lead.id]: lead.notes || "",
-                                        }))
-                                      }
-                                      className="w-full text-left"
-                                    >
-                                      {lead.notes ? (
-                                        <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2 line-clamp-3 hover:bg-muted transition-colors">
-                                          <StickyNote className="h-3 w-3 inline mr-1 opacity-60" />
-                                          {lead.notes}
-                                        </p>
-                                      ) : (
-                                        <p className="text-xs text-muted-foreground/50 hover:text-muted-foreground bg-muted/30 hover:bg-muted/50 rounded p-2 transition-colors">
-                                          <StickyNote className="h-3 w-3 inline mr-1" />
-                                          Clique para adicionar observação...
-                                        </p>
-                                      )}
-                                    </button>
-                                  )}
-                                </div>
-                              </div>
-                            );
-                          })}
+                          .map((lead) => (
+                            <LeadCard
+                              key={lead.id}
+                              lead={lead}
+                              editingNotes={editingNotes}
+                              setEditingNotes={setEditingNotes}
+                              savingNote={savingNote}
+                              onSaveNote={handleSaveNote}
+                            />
+                          ))}
                       </div>
                     </div>
                   );
@@ -669,7 +599,7 @@ export default function CRMHeadComercialPage() {
 
       {/* Meetings Grid */}
       <div className="grid lg:grid-cols-2 gap-6">
-        {/* Yesterday's Meetings */}
+        {/* Yesterday's Activities */}
         <Collapsible open={expandedSections.yesterday} onOpenChange={() => toggleSection("yesterday")}>
           <Card>
             <CollapsibleTrigger asChild>
@@ -677,7 +607,7 @@ export default function CRMHeadComercialPage() {
                 <CardTitle className="text-base flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <Clock className="h-4 w-4 text-blue-600" />
-                    Reuniões de Ontem ({yesterdayMeetings.length})
+                    Atividades de Ontem ({filteredYesterday.length})
                   </span>
                   {expandedSections.yesterday ? (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -689,13 +619,20 @@ export default function CRMHeadComercialPage() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="pt-0">
-                <ScrollArea className="max-h-[350px]">
-                  {yesterdayMeetings.length === 0 ? (
-                    <p className="text-sm text-muted-foreground py-4">Nenhuma reunião ontem</p>
+                <ScrollArea className="max-h-[500px]">
+                  {filteredYesterday.length === 0 ? (
+                    <p className="text-sm text-muted-foreground py-4">Nenhuma atividade ontem</p>
                   ) : (
                     <div className="space-y-2">
-                      {yesterdayMeetings.map((act) => (
-                        <ActivityCard key={act.id} activity={act} />
+                      {filteredYesterday.map((act) => (
+                        <ActivityCard
+                          key={act.id}
+                          activity={act}
+                          activityNotes={activityNotes}
+                          setActivityNotes={setActivityNotes}
+                          savingActivityNote={savingActivityNote}
+                          onSaveActivityNote={handleSaveActivityNote}
+                        />
                       ))}
                     </div>
                   )}
@@ -713,7 +650,7 @@ export default function CRMHeadComercialPage() {
                 <CardTitle className="text-base flex items-center justify-between">
                   <span className="flex items-center gap-2">
                     <Calendar className="h-4 w-4 text-violet-600" />
-                    Agenda de Hoje ({todayActivities.length})
+                    Agenda de Hoje ({filteredToday.length})
                   </span>
                   {expandedSections.today ? (
                     <ChevronDown className="h-4 w-4 text-muted-foreground" />
@@ -725,13 +662,21 @@ export default function CRMHeadComercialPage() {
             </CollapsibleTrigger>
             <CollapsibleContent>
               <CardContent className="pt-0">
-                <ScrollArea className="max-h-[350px]">
-                  {todayActivities.length === 0 ? (
+                <ScrollArea className="max-h-[500px]">
+                  {filteredToday.length === 0 ? (
                     <p className="text-sm text-muted-foreground py-4">Nenhuma atividade hoje</p>
                   ) : (
                     <div className="space-y-2">
-                      {todayActivities.map((act) => (
-                        <ActivityCard key={act.id} activity={act} showStatus />
+                      {filteredToday.map((act) => (
+                        <ActivityCard
+                          key={act.id}
+                          activity={act}
+                          showStatus
+                          activityNotes={activityNotes}
+                          setActivityNotes={setActivityNotes}
+                          savingActivityNote={savingActivityNote}
+                          onSaveActivityNote={handleSaveActivityNote}
+                        />
                       ))}
                     </div>
                   )}
@@ -745,14 +690,160 @@ export default function CRMHeadComercialPage() {
   );
 }
 
-// ─── Activity Card Sub-Component ───
+// ─── Lead Card Sub-Component ───
 
-function ActivityCard({ activity: act, showStatus = false }: { activity: Activity; showStatus?: boolean }) {
-  const isPast = act.scheduled_at && new Date(act.scheduled_at) < new Date();
-  const isDone = act.status === "completed";
+function LeadCard({
+  lead,
+  editingNotes,
+  setEditingNotes,
+  savingNote,
+  onSaveNote,
+}: {
+  lead: LeadWithStage;
+  editingNotes: Record<string, string>;
+  setEditingNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  savingNote: string | null;
+  onSaveNote: (id: string) => Promise<void>;
+}) {
+  const daysSinceLast = lead.last_activity_at
+    ? Math.floor((Date.now() - new Date(lead.last_activity_at).getTime()) / 86400000)
+    : null;
+  const isEditing = editingNotes[lead.id] !== undefined;
+  const closerName = (lead.closer as any)?.name || (lead.owner as any)?.name || "—";
 
   return (
-    <div className={`border rounded-lg p-3 ${isDone ? "opacity-60" : ""}`}>
+    <div className="border rounded-lg p-3 bg-card hover:shadow-sm transition-shadow">
+      <div className="flex items-start justify-between gap-3">
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <p className="text-sm font-semibold truncate">{lead.name}</p>
+            {lead.company && (
+              <span className="text-xs text-muted-foreground">— {lead.company}</span>
+            )}
+          </div>
+          <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+            <span className="flex items-center gap-1">
+              <User className="h-3 w-3" />
+              {closerName}
+            </span>
+            {lead.phone && (
+              <span className="flex items-center gap-1">
+                <Phone className="h-3 w-3" />
+                {lead.phone}
+              </span>
+            )}
+            {lead.scheduled_at && (
+              <span className="flex items-center gap-1">
+                <Calendar className="h-3 w-3" />
+                {format(new Date(lead.scheduled_at), "dd/MM HH:mm")}
+              </span>
+            )}
+            {daysSinceLast != null && daysSinceLast > 3 && (
+              <span className="flex items-center gap-1 text-destructive">
+                <AlertCircle className="h-3 w-3" />
+                {daysSinceLast}d sem atividade
+              </span>
+            )}
+          </div>
+        </div>
+        <div className="text-right shrink-0">
+          <p className="text-sm font-bold">{formatCurrency(lead.opportunity_value || 0)}</p>
+          {lead.probability != null && (
+            <p className="text-[11px] text-muted-foreground">{lead.probability}% prob.</p>
+          )}
+        </div>
+      </div>
+
+      {/* Notes section */}
+      <div className="mt-2">
+        {isEditing ? (
+          <div className="space-y-2">
+            <Textarea
+              value={editingNotes[lead.id]}
+              onChange={(e) =>
+                setEditingNotes((prev) => ({ ...prev, [lead.id]: e.target.value }))
+              }
+              placeholder="Adicione uma observação sobre este lead..."
+              className="text-xs min-h-[60px] resize-none"
+            />
+            <div className="flex justify-end gap-2">
+              <Button
+                variant="ghost"
+                size="sm"
+                className="h-7 text-xs"
+                onClick={() =>
+                  setEditingNotes((prev) => {
+                    const copy = { ...prev };
+                    delete copy[lead.id];
+                    return copy;
+                  })
+                }
+              >
+                Cancelar
+              </Button>
+              <Button
+                size="sm"
+                className="h-7 text-xs gap-1"
+                onClick={() => onSaveNote(lead.id)}
+                disabled={savingNote === lead.id}
+              >
+                {savingNote === lead.id ? (
+                  <Loader2 className="h-3 w-3 animate-spin" />
+                ) : (
+                  <Save className="h-3 w-3" />
+                )}
+                Salvar
+              </Button>
+            </div>
+          </div>
+        ) : (
+          <button
+            onClick={() =>
+              setEditingNotes((prev) => ({ ...prev, [lead.id]: lead.notes || "" }))
+            }
+            className="w-full text-left"
+          >
+            {lead.notes ? (
+              <p className="text-xs text-muted-foreground bg-muted/50 rounded p-2 line-clamp-3 hover:bg-muted transition-colors">
+                <StickyNote className="h-3 w-3 inline mr-1 opacity-60" />
+                {lead.notes}
+              </p>
+            ) : (
+              <p className="text-xs text-muted-foreground/50 hover:text-muted-foreground bg-muted/30 hover:bg-muted/50 rounded p-2 transition-colors">
+                <StickyNote className="h-3 w-3 inline mr-1" />
+                Clique para adicionar observação...
+              </p>
+            )}
+          </button>
+        )}
+      </div>
+    </div>
+  );
+}
+
+// ─── Activity Card Sub-Component ───
+
+function ActivityCard({
+  activity: act,
+  showStatus = false,
+  activityNotes,
+  setActivityNotes,
+  savingActivityNote,
+  onSaveActivityNote,
+}: {
+  activity: Activity;
+  showStatus?: boolean;
+  activityNotes: Record<string, string>;
+  setActivityNotes: React.Dispatch<React.SetStateAction<Record<string, string>>>;
+  savingActivityNote: string | null;
+  onSaveActivityNote: (id: string) => Promise<void>;
+}) {
+  const isPast = act.scheduled_at && new Date(act.scheduled_at) < new Date();
+  const isDone = act.status === "completed";
+  const isEditingNote = activityNotes[act.id] !== undefined;
+
+  return (
+    <div className={`border rounded-lg p-3 ${isDone ? "opacity-70" : ""}`}>
       <div className="flex items-start gap-3">
         <div
           className={`mt-0.5 p-1.5 rounded-md ${
@@ -779,6 +870,11 @@ function ActivityCard({ activity: act, showStatus = false }: { activity: Activit
             {!showStatus && isDone && (
               <CheckCircle2 className="h-3.5 w-3.5 text-emerald-500 shrink-0" />
             )}
+            {!showStatus && !isDone && (
+              <Badge variant="outline" className="text-[10px] px-1.5 py-0 shrink-0">
+                {activityTypeLabel[act.type] || act.type}
+              </Badge>
+            )}
           </div>
           <div className="flex items-center gap-2 text-xs text-muted-foreground mt-0.5 flex-wrap">
             {act.scheduled_at && (
@@ -797,10 +893,70 @@ function ActivityCard({ activity: act, showStatus = false }: { activity: Activit
               </>
             )}
           </div>
-          {(act.notes || act.description) && (
+
+          {/* Existing note display */}
+          {(act.notes || act.description) && !isEditingNote && (
             <p className="text-xs text-muted-foreground mt-1.5 bg-muted/50 rounded p-2 line-clamp-3">
               {act.notes || act.description}
             </p>
+          )}
+
+          {/* Editable note */}
+          {isEditingNote ? (
+            <div className="mt-2 space-y-2">
+              <Textarea
+                value={activityNotes[act.id]}
+                onChange={(e) =>
+                  setActivityNotes((prev) => ({ ...prev, [act.id]: e.target.value }))
+                }
+                placeholder="Observação sobre esta atividade..."
+                className="text-xs min-h-[60px] resize-none"
+              />
+              <div className="flex justify-end gap-2">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  className="h-7 text-xs"
+                  onClick={() =>
+                    setActivityNotes((prev) => {
+                      const copy = { ...prev };
+                      delete copy[act.id];
+                      return copy;
+                    })
+                  }
+                >
+                  Cancelar
+                </Button>
+                <Button
+                  size="sm"
+                  className="h-7 text-xs gap-1"
+                  onClick={() => onSaveActivityNote(act.id)}
+                  disabled={savingActivityNote === act.id}
+                >
+                  {savingActivityNote === act.id ? (
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                  ) : (
+                    <Save className="h-3 w-3" />
+                  )}
+                  Salvar
+                </Button>
+              </div>
+            </div>
+          ) : (
+            <button
+              onClick={() =>
+                setActivityNotes((prev) => ({
+                  ...prev,
+                  [act.id]: act.notes || act.description || "",
+                }))
+              }
+              className="mt-1.5 w-full text-left"
+            >
+              <p className="text-[11px] text-muted-foreground/50 hover:text-muted-foreground bg-muted/30 hover:bg-muted/50 rounded px-2 py-1.5 transition-colors flex items-center gap-1">
+                <StickyNote className="h-3 w-3" />
+                {act.notes || act.description ? "Editar observação..." : "Adicionar observação..."}
+              </p>
+            </button>
           )}
         </div>
       </div>
