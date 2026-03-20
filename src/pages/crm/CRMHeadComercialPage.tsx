@@ -408,7 +408,7 @@ export default function CRMHeadComercialPage() {
           const sn = (l.stage as any)?.name?.toLowerCase() || "";
           if (!NEGOTIATION_STAGES.some((ns) => sn.includes(ns))) return;
           const val = l.opportunity_value || 0;
-          const prob = l.probability != null ? l.probability / 100 : 0.5;
+          const prob = l.probability != null && l.probability > 0 ? l.probability / 100 : 0.5;
           pipelineValue += val;
           pipelineCount++;
           if (sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup")) {
@@ -458,14 +458,15 @@ export default function CRMHeadComercialPage() {
   const totals = useMemo(() => {
     const t = {
       metaVendas: 0, realizado: 0, projecao: 0, pipeline: 0,
-      forecast: 0, todayMeetings: 0, yesterdayMeetings: 0,
+      forecast: 0, forecastWeighted: 0, todayMeetings: 0, yesterdayMeetings: 0,
     };
     closersPerf.forEach((p) => {
       t.metaVendas += p.metaVendas;
       t.realizado += p.realizado;
       t.projecao += p.projecao;
       t.pipeline += p.pipelineValue;
-      t.forecast += p.forecastWeighted;
+      t.forecast += p.forecastValue;
+      t.forecastWeighted += p.forecastWeighted;
       t.todayMeetings += p.todayMeetings;
       t.yesterdayMeetings += p.yesterdayMeetings;
     });
@@ -483,6 +484,25 @@ export default function CRMHeadComercialPage() {
     if (filterCloser === "all") return base;
     return base.filter((l) => l.closer_staff_id === filterCloser || l.owner_staff_id === filterCloser);
   }, [leads, filterCloser]);
+
+  const forecastLeads = useMemo(() => {
+    return filteredLeads.filter((l) => {
+      const sn = (l.stage as any)?.name?.toLowerCase() || "";
+      return sn.includes("forecast") || sn.includes("negociação") || sn.includes("fup");
+    });
+  }, [filteredLeads]);
+
+  const forecastByCloser = useMemo(() => {
+    const groups: Record<string, { name: string; leads: LeadWithStage[]; total: number }> = {};
+    forecastLeads.forEach((l) => {
+      const sid = l.closer_staff_id || l.owner_staff_id || "sem-dono";
+      const closerName = (l.closer as any)?.name || (l.owner as any)?.name || "Sem responsável";
+      if (!groups[sid]) groups[sid] = { name: closerName, leads: [], total: 0 };
+      groups[sid].leads.push(l);
+      groups[sid].total += l.opportunity_value || 0;
+    });
+    return Object.entries(groups).sort(([, a], [, b]) => b.total - a.total);
+  }, [forecastLeads]);
 
   const leadsByStage = useMemo(() => {
     const groups: Record<string, LeadWithStage[]> = {};
@@ -578,7 +598,7 @@ export default function CRMHeadComercialPage() {
           iconColor="text-orange-600"
           label="Forecast"
           value={formatCurrency(totals.forecast)}
-          sub={`Pipeline: ${formatCompact(totals.pipeline)}`}
+          sub={`${forecastLeads.length} leads | Pipeline: ${formatCompact(totals.pipeline)}`}
         />
         <KPICard
           icon={<CalendarCheck className="h-5 w-5" />}
@@ -621,9 +641,12 @@ export default function CRMHeadComercialPage() {
 
       {/* ── Tabs ── */}
       <Tabs value={activeTab} onValueChange={setActiveTab}>
-        <TabsList className="w-full grid grid-cols-3">
+        <TabsList className="w-full grid grid-cols-4">
           <TabsTrigger value="overview" className="gap-1">
             <Users className="h-4 w-4" /> Performance
+          </TabsTrigger>
+          <TabsTrigger value="forecast" className="gap-1">
+            <Flame className="h-4 w-4" /> Forecast
           </TabsTrigger>
           <TabsTrigger value="pipeline" className="gap-1">
             <BarChart3 className="h-4 w-4" /> Pipeline
@@ -660,6 +683,51 @@ export default function CRMHeadComercialPage() {
               <p className="text-sm text-muted-foreground py-4">Nenhum SDR encontrado</p>
             )}
           </div>
+        </TabsContent>
+
+        {/* ═══ TAB: Forecast ═══ */}
+        <TabsContent value="forecast" className="space-y-4 mt-4">
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="text-sm bg-emerald-500/10 text-emerald-700 border-emerald-200">
+                {forecastLeads.length} leads em forecast
+              </Badge>
+              <span className="text-sm font-bold">{formatCurrency(forecastLeads.reduce((s, l) => s + (l.opportunity_value || 0), 0))}</span>
+            </div>
+          </div>
+
+          {forecastByCloser.length === 0 ? (
+            <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhum lead em forecast</CardContent></Card>
+          ) : (
+            forecastByCloser.map(([closerId, group]) => (
+              <div key={closerId} className="space-y-2">
+                <div className="flex items-center justify-between bg-muted/50 rounded-lg px-3 py-2">
+                  <div className="flex items-center gap-2">
+                    <div className="h-8 w-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-xs font-bold text-emerald-700">
+                      {group.name.split(" ").map(n => n[0]).join("").slice(0, 2).toUpperCase()}
+                    </div>
+                    <div>
+                      <p className="text-sm font-semibold">{group.name}</p>
+                      <p className="text-[11px] text-muted-foreground">{group.leads.length} leads</p>
+                    </div>
+                  </div>
+                  <p className="text-sm font-bold">{formatCurrency(group.total)}</p>
+                </div>
+                {group.leads
+                  .sort((a, b) => (b.opportunity_value || 0) - (a.opportunity_value || 0))
+                  .map((lead) => (
+                    <LeadCard
+                      key={lead.id}
+                      lead={lead}
+                      editingNotes={editingNotes}
+                      setEditingNotes={setEditingNotes}
+                      savingNote={savingNote}
+                      onSaveNote={handleSaveNote}
+                    />
+                  ))}
+              </div>
+            ))
+          )}
         </TabsContent>
 
         {/* ═══ TAB: Pipeline ═══ */}
@@ -906,7 +974,7 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
             {/* Closer extras */}
             {isCloser && (
               <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-border/30">
-                <MetricBlock label="Forecast" value={formatCompact(p.forecastWeighted)} />
+                <MetricBlock label="Forecast" value={formatCompact(p.forecastValue)} />
                 <MetricBlock label="Reuniões Ontem" value={String(p.yesterdayMeetings)} />
                 <MetricBlock label="Reuniões Hoje" value={String(p.todayMeetings)} />
               </div>
