@@ -23,8 +23,21 @@ export function ReunionPanel({
 
   return (
     <div className="flex flex-col h-full">
-      {/* Meeting Info */}
       <div className="flex-1 p-4 space-y-4 overflow-auto">
+        {/* No-show toggle at top */}
+        <div className="flex items-center justify-between p-3 rounded-lg border border-border bg-muted/30">
+          <span className="text-sm font-medium">Marcar no-show</span>
+          <Switch
+            checked={markedNoShow}
+            onCheckedChange={(checked) => {
+              setMarkedNoShow(checked);
+              if (checked) {
+                onNoShowToggle();
+              }
+            }}
+          />
+        </div>
+
         <div className="flex items-center gap-2 text-sm font-medium">
           <Video className="h-4 w-4 text-blue-600" />
           Reunião
@@ -32,7 +45,6 @@ export function ReunionPanel({
 
         {hasMeeting ? (
           <div className="space-y-4">
-            {/* Date/Time */}
             <div className="bg-muted/50 rounded-lg p-4 space-y-3">
               <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
@@ -45,7 +57,6 @@ export function ReunionPanel({
               </div>
             </div>
 
-            {/* Meeting Link */}
             {nextMeetingLink ? (
               <div className="space-y-2">
                 <Label className="text-xs text-muted-foreground">Link da reunião</Label>
@@ -85,24 +96,6 @@ export function ReunionPanel({
             </p>
           </div>
         )}
-      </div>
-
-      {/* No-show toggle at bottom */}
-      <div className="p-4 border-t border-border">
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            <span className="text-sm">Marcar no-show</span>
-          </div>
-          <Switch
-            checked={markedNoShow}
-            onCheckedChange={(checked) => {
-              setMarkedNoShow(checked);
-              if (checked) {
-                onNoShowToggle();
-              }
-            }}
-          />
-        </div>
       </div>
     </div>
   );
