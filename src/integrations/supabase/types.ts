@@ -25144,6 +25144,7 @@ export type Database = {
           payment_method: string | null
           project_id: string
           submitted_at: string | null
+          traffic_manager_name: string | null
           updated_at: string
         }
         Insert: {
@@ -25159,6 +25160,7 @@ export type Database = {
           payment_method?: string | null
           project_id: string
           submitted_at?: string | null
+          traffic_manager_name?: string | null
           updated_at?: string
         }
         Update: {
@@ -25174,6 +25176,7 @@ export type Database = {
           payment_method?: string | null
           project_id?: string
           submitted_at?: string | null
+          traffic_manager_name?: string | null
           updated_at?: string
         }
         Relationships: [
