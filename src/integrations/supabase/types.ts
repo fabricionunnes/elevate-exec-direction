@@ -11387,6 +11387,8 @@ export type Database = {
           completed_at: string | null
           created_at: string
           description: string | null
+          google_calendar_event_id: string | null
+          google_calendar_user_id: string | null
           id: string
           is_automation: boolean | null
           lead_id: string
@@ -11405,6 +11407,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          google_calendar_event_id?: string | null
+          google_calendar_user_id?: string | null
           id?: string
           is_automation?: boolean | null
           lead_id: string
@@ -11423,6 +11427,8 @@ export type Database = {
           completed_at?: string | null
           created_at?: string
           description?: string | null
+          google_calendar_event_id?: string | null
+          google_calendar_user_id?: string | null
           id?: string
           is_automation?: boolean | null
           lead_id?: string
@@ -11447,6 +11453,64 @@ export type Database = {
           {
             foreignKeyName: "crm_activities_responsible_staff_id_fkey"
             columns: ["responsible_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_activity_history: {
+        Row: {
+          action: string
+          activity_id: string
+          created_at: string
+          id: string
+          lead_id: string
+          new_scheduled_at: string | null
+          notes: string | null
+          old_scheduled_at: string | null
+          performed_by_staff_id: string | null
+        }
+        Insert: {
+          action: string
+          activity_id: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          new_scheduled_at?: string | null
+          notes?: string | null
+          old_scheduled_at?: string | null
+          performed_by_staff_id?: string | null
+        }
+        Update: {
+          action?: string
+          activity_id?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          new_scheduled_at?: string | null
+          notes?: string | null
+          old_scheduled_at?: string | null
+          performed_by_staff_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_activity_history_activity_id_fkey"
+            columns: ["activity_id"]
+            isOneToOne: false
+            referencedRelation: "crm_activities"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activity_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_activity_history_performed_by_staff_id_fkey"
+            columns: ["performed_by_staff_id"]
             isOneToOne: false
             referencedRelation: "onboarding_staff"
             referencedColumns: ["id"]
