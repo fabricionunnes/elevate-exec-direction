@@ -362,6 +362,7 @@ export const DevicesSection = ({ onBack }: DevicesSectionProps) => {
               <TableRow>
                 <TableHead>NOME DISPOSITIVO</TableHead>
                 <TableHead>STATUS</TableHead>
+                <TableHead className="text-center">PADRÃO</TableHead>
                 <TableHead>SETORES</TableHead>
                 <TableHead>USUÁRIOS NESSE DISPOSITIVO</TableHead>
                 <TableHead></TableHead>
