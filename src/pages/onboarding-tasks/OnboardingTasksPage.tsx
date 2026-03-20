@@ -199,6 +199,29 @@ const OnboardingTasksPage = () => {
     loadData();
   }, []);
 
+  // Fetch kpi_monthly_targets for current dateRange period (and current month for badge projection)
+  useEffect(() => {
+    const fetchMonthlyTargets = async () => {
+      const periodMonth = dateRange.start.getMonth() + 1;
+      const periodYear = dateRange.start.getFullYear();
+      const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
+      
+      // Also fetch current month if different
+      const now = new Date();
+      const currentMonthYear = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}`;
+      const monthYears = [monthYear];
+      if (currentMonthYear !== monthYear) monthYears.push(currentMonthYear);
+      
+      const { data } = await supabase
+        .from("kpi_monthly_targets")
+        .select("kpi_id, company_id, target_value, month_year")
+        .in("month_year", monthYears);
+      
+      if (data) setMonthlyTargetsForProjection(data);
+    };
+    fetchMonthlyTargets();
+  }, [dateRange]);
+
   // Keep KPI entries synced with the selected period.
   // Fetching all entries without date filters hits the backend default limit (1000) and causes missing data,
   // which makes the projection badge show 0% even when the company has projection (e.g., Vitale 77%).
