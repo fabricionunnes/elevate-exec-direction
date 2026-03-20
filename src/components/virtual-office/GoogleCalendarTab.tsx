@@ -101,6 +101,14 @@ interface ConnectedStaffMember {
   name: string;
 }
 
+interface GoogleCalendarTabProps {
+  currentStaff?: {
+    id: string;
+    user_id: string;
+    role?: string;
+  } | null;
+}
+
 type ViewMode = "month" | "week" | "list";
 
 interface EventFormState {
@@ -121,7 +129,7 @@ const defaultEventForm: EventFormState = {
   attendees: "",
 };
 
-const GoogleCalendarTab = () => {
+const GoogleCalendarTab = ({ currentStaff: currentStaffProp = null }: GoogleCalendarTabProps) => {
   const [connected, setConnected] = useState(false);
   const [events, setEvents] = useState<CalendarEvent[]>([]);
   const [loading, setLoading] = useState(true);
