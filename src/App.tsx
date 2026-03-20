@@ -223,6 +223,7 @@ const CRMReportsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.
 const CRMSettingsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMSettingsPage })));
 const CRMInboxPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMInboxPage })));
 const CRMTranscriptionsPage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMTranscriptionsPage })));
+const CRMOfficePage = lazy(() => import("./pages/crm").then(m => ({ default: m.CRMOfficePage })));
 
 // Social Pipeline
 const SocialLayoutPage = lazy(() => import("./pages/social").then(m => ({ default: m.SocialLayout })));
