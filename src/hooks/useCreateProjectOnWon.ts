@@ -44,7 +44,7 @@ async function fetchLeadWithCustomFields(leadId: string): Promise<{
   // Buscar dados do lead
   const { data: leadData, error: leadError } = await supabase
     .from("crm_leads")
-    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name")
+    .select("id, name, company, phone, email, document, opportunity_value, product_id, plan_id, city, state, segment, address, zipcode, trade_name, legal_representative_name, cpf, rg, marital_status, address_number, address_complement, address_neighborhood")
     .eq("id", leadId)
     .single();
 
