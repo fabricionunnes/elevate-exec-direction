@@ -2,6 +2,7 @@ import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { AddressFields, AddressData } from "@/components/ui/address-fields";
 import {
@@ -12,7 +13,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { toast } from "sonner";
-import { Loader2, FileSignature } from "lucide-react";
+import { Loader2, FileSignature, Link2, Copy, ExternalLink } from "lucide-react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 
 interface LeadContractDataTabProps {
   leadId: string;
