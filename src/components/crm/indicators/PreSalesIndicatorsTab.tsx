@@ -54,11 +54,18 @@ interface SaleBySDR {
   closer: string;
 }
 
-export const PreSalesIndicatorsTab = () => {
+interface PreSalesIndicatorsTabProps {
+  staffId?: string | null;
+  staffRole?: string | null;
+}
+
+export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicatorsTabProps = {}) => {
+  const isSDRUser = staffRole === "sdr" || staffRole === "social_setter" || staffRole === "bdr";
+  const isAdmin = staffRole === "master" || staffRole === "admin" || staffRole === "head_comercial";
   const [loading, setLoading] = useState(true);
   const [sdrs, setSDRs] = useState<SDRMetrics[]>([]);
   const [salesBySDR, setSalesBySDR] = useState<SaleBySDR[]>([]);
-  const [selectedSDR, setSelectedSDR] = useState<string>("all");
+  const [selectedSDR, setSelectedSDR] = useState<string>(isSDRUser && staffId ? staffId : "all");
   const [selectedPipeline, setSelectedPipeline] = useState<string>("all");
   const [pipelines, setPipelines] = useState<{ id: string; name: string }[]>([]);
   const [importDialogOpen, setImportDialogOpen] = useState(false);
