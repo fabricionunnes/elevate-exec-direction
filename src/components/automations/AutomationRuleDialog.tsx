@@ -326,38 +326,49 @@ export function AutomationRuleDialog({
                   <Input
                     value={groupSearch}
                     onChange={(e) => setGroupSearch(e.target.value)}
-                    placeholder="Buscar grupo..."
-                    className="pl-8 h-8 text-xs"
+                    placeholder="Buscar grupo pelo nome..."
+                    className="pl-8 h-9 text-sm"
                   />
                 </div>
-                <Select
-                  value={actionConfig.group_jid || ""}
-                  onValueChange={(v) => {
-                    const g = groups.find(gr => gr.id === v);
-                    setActionConfig(prev => ({
-                      ...prev,
-                      group_jid: v,
-                      target_phone: v,
-                      group_name: g?.subject || "",
-                    }));
-                  }}
-                >
-                  <SelectTrigger>
-                    <SelectValue placeholder="Selecione o grupo..." />
-                  </SelectTrigger>
-                  <SelectContent className="max-h-[200px]">
-                    {filteredGroups.map((g) => (
-                      <SelectItem key={g.id} value={g.id}>
+                {actionConfig.group_jid && (
+                  <div className="flex items-center gap-2 px-2 py-1.5 rounded-md bg-muted text-sm">
+                    <span className="truncate font-medium">{actionConfig.group_name || actionConfig.group_jid}</span>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      className="h-5 w-5 p-0 ml-auto shrink-0"
+                      onClick={() => setActionConfig(prev => ({ ...prev, group_jid: "", target_phone: "", group_name: "" }))}
+                    >
+                      ×
+                    </Button>
+                  </div>
+                )}
+                <div className="border rounded-md max-h-[180px] overflow-y-auto">
+                  {filteredGroups.length === 0 ? (
+                    <div className="text-xs text-muted-foreground text-center py-3">
+                      Nenhum grupo encontrado
+                    </div>
+                  ) : (
+                    filteredGroups.map((g) => (
+                      <button
+                        key={g.id}
+                        type="button"
+                        className={`w-full text-left px-3 py-2 text-sm hover:bg-accent transition-colors ${actionConfig.group_jid === g.id ? 'bg-accent font-medium' : ''}`}
+                        onClick={() => {
+                          setActionConfig(prev => ({
+                            ...prev,
+                            group_jid: g.id,
+                            target_phone: g.id,
+                            group_name: g.subject,
+                          }));
+                        }}
+                      >
                         {g.subject}
-                      </SelectItem>
-                    ))}
-                    {filteredGroups.length === 0 && (
-                      <div className="text-xs text-muted-foreground text-center py-2">
-                        Nenhum grupo encontrado
-                      </div>
-                    )}
-                  </SelectContent>
-                </Select>
+                      </button>
+                    ))
+                  )}
+                </div>
                 {actionConfig.group_jid && (
                   <p className="text-[10px] text-muted-foreground font-mono break-all">
                     JID: {actionConfig.group_jid}
