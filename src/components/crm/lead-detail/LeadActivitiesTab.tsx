@@ -340,7 +340,7 @@ export const LeadActivitiesTab = ({
                         {index + 1}
                       </div>
                       <span className={cn(
-                        "text-xs font-medium whitespace-nowrap max-w-[100px] truncate",
+                        "text-xs font-medium whitespace-nowrap",
                         isActive 
                           ? "text-foreground" 
                           : isPast 
