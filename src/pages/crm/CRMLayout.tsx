@@ -62,6 +62,7 @@ const navTabs = [
   { title: "Atendimento", href: "/crm/inbox", badge: true },
   { title: "Transcrições", href: "/crm/transcriptions" },
   { title: "Contratos", href: "/contratos" },
+  { title: "Escritório", href: "/crm/office" },
 ];
 
 export const CRMLayout = () => {

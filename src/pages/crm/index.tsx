@@ -8,6 +8,7 @@ import { CRMIndicatorsPage } from "./CRMIndicatorsPage";
 import { CRMSettingsPage } from "./CRMSettingsPage";
 import { CRMInboxPage } from "./CRMInboxPage";
 import { CRMTranscriptionsPage } from "./CRMTranscriptionsPage";
+import { CRMOfficePage } from "./CRMOfficePage";
 
 // Keep old name for backward compatibility
 export const CRMReportsPage = CRMIndicatorsPage;
@@ -24,4 +25,5 @@ export {
   CRMSettingsPage,
   CRMInboxPage,
   CRMTranscriptionsPage,
+  CRMOfficePage,
 };
