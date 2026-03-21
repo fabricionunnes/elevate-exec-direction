@@ -654,7 +654,7 @@ const WhatsAppAdminPage = () => {
         </div>
 
         <Tabs defaultValue="instances" className="space-y-4">
-          <TabsList>
+          <TabsList className="flex-wrap h-auto">
             <TabsTrigger value="instances" className="gap-2">
               <Phone className="h-4 w-4" />
               Instâncias
