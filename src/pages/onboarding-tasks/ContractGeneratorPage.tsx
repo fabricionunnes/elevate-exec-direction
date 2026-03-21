@@ -1023,10 +1023,10 @@ export default function ContractGeneratorPage() {
                   }
                   setShowHistory(!showHistory);
                 }}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
               >
                 <History className="h-4 w-4" />
-                {showHistory ? "Novo Contrato" : "Contratos"}
+                <span className="hidden sm:inline">{showHistory ? "Novo Contrato" : "Contratos"}</span>
               </Button>
               <Button
                 variant="outline"
