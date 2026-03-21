@@ -331,28 +331,17 @@ const EntitySelectWrapper = ({
   options: { id: string; name: string }[];
   placeholder?: string;
 }) => {
-  const selectedOption = options.find(o => o.id === value);
+  const searchableOptions = options.map(o => ({ value: o.id, label: o.name }));
   
   return (
-    <Select
+    <SearchableSelect
       value={value || "none"}
       onValueChange={(v) => onSave(field, v === "none" ? "" : v)}
-      disabled={isSaving}
-    >
-      <SelectTrigger>
-        <SelectValue placeholder={placeholder}>
-          {selectedOption?.name || placeholder}
-        </SelectValue>
-      </SelectTrigger>
-      <SelectContent>
-        <SelectItem value="none">Nenhum</SelectItem>
-        {options.map((option) => (
-          <SelectItem key={option.id} value={option.id}>
-            {option.name}
-          </SelectItem>
-        ))}
-      </SelectContent>
-    </Select>
+      options={searchableOptions}
+      placeholder={placeholder}
+      allowNone
+      noneLabel="Nenhum"
+    />
   );
 };
 
