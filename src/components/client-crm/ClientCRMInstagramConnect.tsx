@@ -69,7 +69,7 @@ export const ClientCRMInstagramConnect = ({ projectId }: Props) => {
       const staffId = staffUser?.id || onbUser?.id;
       if (!staffId) throw new Error("Usuário não encontrado");
 
-      const redirectUri = `${window.location.origin}/#/auth/instagram/callback`;
+      const redirectUri = `${window.location.origin}/`;
 
       const { data, error } = await supabase.functions.invoke("instagram-oauth", {
         body: {
