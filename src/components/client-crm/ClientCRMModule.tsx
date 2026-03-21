@@ -151,6 +151,12 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
             onRefresh={crm.fetchAll}
           />
         </TabsContent>
+
+        {isMaster && (
+          <TabsContent value="api">
+            <ClientCRMApiDocs />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
