@@ -288,6 +288,11 @@ export const CRMLayout = () => {
                     <Link to="/crm/settings">Configurações</Link>
                   </DropdownMenuItem>
                 )}
+                {isMaster && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/crm/api">API</Link>
+                  </DropdownMenuItem>
+                )}
               </DropdownMenuContent>
             </DropdownMenu>
           </nav>
