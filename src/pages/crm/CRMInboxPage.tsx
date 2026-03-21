@@ -166,14 +166,26 @@ export const CRMInboxPage = () => {
     return hasAccess;
   });
 
+  const isInstagramConversation = selectedConversation?.channel === "instagram";
+
   const { 
-    messages, 
-    loading: loadingMessages, 
+    messages: whatsappMessages, 
+    loading: loadingWhatsAppMessages, 
     sending,
     sendMessage,
     sendMedia,
-    refetch: refetchMessages,
-  } = useWhatsAppMessages(selectedConversation?.id || null);
+    refetch: refetchWhatsAppMessages,
+  } = useWhatsAppMessages(isInstagramConversation ? null : (selectedConversation?.id || null));
+
+  const {
+    messages: igMessages,
+    loading: loadingIgMessages,
+    refetch: refetchIgMessages,
+  } = useInstagramMessages(isInstagramConversation ? (selectedConversation?.id || null) : null);
+
+  const messages = isInstagramConversation ? igMessages : whatsappMessages;
+  const loadingMessages = isInstagramConversation ? loadingIgMessages : loadingWhatsAppMessages;
+  const refetchMessages = isInstagramConversation ? refetchIgMessages : refetchWhatsAppMessages;
 
   // Company identification for receipt analysis
   const {
