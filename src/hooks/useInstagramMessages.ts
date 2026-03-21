@@ -27,12 +27,14 @@ export function useInstagramMessages(conversationId: string | null) {
       const mapped: WhatsAppMessage[] = (data || []).map((m: any) => ({
         id: m.id,
         conversation_id: m.conversation_id,
+        remote_id: m.message_id || null,
         content: m.is_reaction && m.reaction_emoji ? m.reaction_emoji : m.content,
         type: m.message_type === "photo" ? "image" : m.message_type || "text",
-        direction: m.direction === "incoming" ? "inbound" : m.direction === "outgoing" ? "outbound" : m.direction,
+        direction: (m.direction === "incoming" ? "inbound" : m.direction === "outgoing" ? "outbound" : m.direction) as "inbound" | "outbound",
         status: m.status || "sent",
         media_url: m.media_url,
-        whatsapp_message_id: m.message_id,
+        media_mimetype: null,
+        quoted_message_id: null,
         sent_by: m.sent_by,
         created_at: m.timestamp,
       }));
