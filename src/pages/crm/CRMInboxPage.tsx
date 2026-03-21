@@ -364,7 +364,11 @@ export const CRMInboxPage = () => {
   // Mark as read when selecting conversation
   useEffect(() => {
     if (selectedConversation && selectedConversation.unread_count > 0) {
-      markAsRead(selectedConversation.id);
+      if (selectedConversation.channel === "instagram") {
+        markIgAsRead(selectedConversation.id);
+      } else {
+        markAsRead(selectedConversation.id);
+      }
     }
   }, [selectedConversation?.id]);
 
