@@ -157,9 +157,7 @@ Deno.serve(async (req) => {
       for (const account of instagramAccounts) {
         const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-        const { data: instance, error: upsertError } = await supabase
-          .from("instagram_instances")
-          .upsert({
+        const upsertData: any = {
             instagram_user_id: account.instagram_user_id,
             username: account.username,
             profile_picture_url: account.profile_picture_url,
@@ -168,7 +166,16 @@ Deno.serve(async (req) => {
             facebook_page_id: account.facebook_page_id,
             status: "connected",
             connected_by: staffId,
-          }, { 
+        };
+
+        // If projectId was provided (from Client CRM), link the instance to that project
+        if (projectId) {
+          upsertData.project_id = projectId;
+        }
+
+        const { data: instance, error: upsertError } = await supabase
+          .from("instagram_instances")
+          .upsert(upsertData, { 
             onConflict: "instagram_user_id",
             ignoreDuplicates: false 
           })
