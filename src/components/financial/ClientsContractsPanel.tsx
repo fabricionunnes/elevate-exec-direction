@@ -528,6 +528,7 @@ export function ClientsContractsPanel() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>
