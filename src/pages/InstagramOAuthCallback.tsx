@@ -67,6 +67,7 @@ export default function InstagramOAuthCallback() {
           code,
           redirectUri: decodedState.redirectUri,
           staffId: decodedState.staffId,
+          projectId: decodedState.projectId || null,
         },
       });
 
