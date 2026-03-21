@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     // Action: Exchange code for tokens
     if (action === "exchange") {
-      const { code, redirectUri, staffId } = body;
+      const { code, redirectUri, staffId, projectId } = body;
 
       if (!code || !redirectUri || !staffId) {
         throw new Error("code, redirectUri and staffId are required");
