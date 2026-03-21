@@ -159,6 +159,7 @@ export const CRMLeadDetailPage = () => {
   const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
