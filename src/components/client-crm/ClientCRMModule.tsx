@@ -123,7 +123,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
         </TabsContent>
 
         <TabsContent value="atendimentos">
-          <ClientCRMWhatsApp projectId={projectId} />
+          <ClientCRMAtendimentos projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="transcricoes">
