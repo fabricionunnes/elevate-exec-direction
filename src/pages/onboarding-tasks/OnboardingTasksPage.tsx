@@ -2007,10 +2007,9 @@ const OnboardingTasksPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
-        {/* Header */}
-        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
-          {/* Top Row - Logo, Title & Logout */}
+      {/* Sticky mobile header - logo + action buttons */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/40 sm:static sm:border-b-0 sm:bg-transparent sm:backdrop-blur-none">
+        <div className="container mx-auto px-2 sm:px-4 py-2 sm:py-0 sm:pt-8">
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <NexusHeader />
@@ -2244,6 +2243,12 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Main content below sticky header */}
+      <div className="container mx-auto px-2 sm:px-4 pb-4 sm:pb-8">
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Actions - Second Row */}
           <div className="hidden sm:flex items-center gap-2 flex-wrap">
