@@ -35,14 +35,12 @@ Deno.serve(async (req) => {
         throw new Error("staffId and redirectUri are required");
       }
 
-      // Instagram Business/Creator scopes
+      // Instagram Business/Creator scopes (only standard-access permissions)
       const scopes = [
         "instagram_basic",
-        "instagram_manage_messages",
         "instagram_manage_comments",
         "pages_show_list",
-        "pages_messaging",
-        "pages_manage_metadata",
+        "pages_read_engagement",
         "business_management"
       ].join(",");
 
