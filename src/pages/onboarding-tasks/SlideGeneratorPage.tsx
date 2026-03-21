@@ -294,14 +294,16 @@ export default function SlideGeneratorPage() {
               </p>
             </div>
           </div>
-          <div className="flex gap-2">
-            <Button variant="outline" onClick={() => setViewMode("templates")} className="gap-2">
+          <div className="flex gap-1 sm:gap-2">
+            <Button variant="outline" size="sm" onClick={() => setViewMode("templates")} className="gap-1 sm:gap-2 text-xs sm:text-sm">
               <FolderOpen className="h-4 w-4" />
-              Modelos Prontos
+              <span className="hidden sm:inline">Modelos Prontos</span>
+              <span className="sm:hidden">Modelos</span>
             </Button>
-            <Button onClick={() => setViewMode("create")} className="gap-2">
+            <Button size="sm" onClick={() => setViewMode("create")} className="gap-1 sm:gap-2 text-xs sm:text-sm">
               <Plus className="h-4 w-4" />
-              Nova Apresentação
+              <span className="hidden sm:inline">Nova Apresentação</span>
+              <span className="sm:hidden">Nova</span>
             </Button>
           </div>
         </div>

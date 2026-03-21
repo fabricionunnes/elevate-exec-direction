@@ -579,7 +579,7 @@ const VirtualOfficePage = () => {
 
           {/* Status selector */}
           <Select value={myStatus} onValueChange={(value) => updatePresence(currentStaff?.id || "", value as PresenceStatus)}>
-            <SelectTrigger className="w-[140px] h-8">
+            <SelectTrigger className="w-[120px] sm:w-[140px] h-8">
               <div className="flex items-center gap-2">
                 <div className={cn("h-2 w-2 rounded-full", statusConfig[myStatus].color)} />
                 <span className="text-xs">{statusConfig[myStatus].label}</span>

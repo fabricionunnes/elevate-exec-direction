@@ -640,15 +640,15 @@ const WhatsAppAdminPage = () => {
     <div className="min-h-screen bg-background">
       <div className="container mx-auto px-4 py-6">
         {/* Header */}
-        <div className="flex items-center justify-between mb-6">
-          <div className="flex items-center gap-3">
-            <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
+        <div className="flex items-center justify-between mb-6 gap-2">
+          <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/onboarding-tasks")}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <NexusHeader />
-            <div className="flex items-center gap-2">
-              <MessageSquare className="h-5 w-5 text-green-500" />
-              <h1 className="text-xl font-bold">UNV Disparador</h1>
+            <div className="flex items-center gap-2 min-w-0">
+              <MessageSquare className="h-5 w-5 text-green-500 shrink-0" />
+              <h1 className="text-lg sm:text-xl font-bold truncate">UNV Disparador</h1>
             </div>
           </div>
         </div>
