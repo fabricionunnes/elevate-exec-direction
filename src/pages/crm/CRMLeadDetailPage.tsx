@@ -297,9 +297,28 @@ export const CRMLeadDetailPage = () => {
     }
   }, [id, navigate]);
 
+  // Load sibling leads in the same stage for navigation
+  const loadSiblingLeads = useCallback(async () => {
+    if (!lead?.stage_id) return;
+    const { data } = await supabase
+      .from("crm_leads")
+      .select("id")
+      .eq("stage_id", lead.stage_id)
+      .order("created_at", { ascending: false });
+    setSiblingLeadIds((data || []).map(l => l.id));
+  }, [lead?.stage_id]);
+
   useEffect(() => {
     loadLead();
   }, [loadLead]);
+
+  useEffect(() => {
+    loadSiblingLeads();
+  }, [loadSiblingLeads]);
+
+  const currentIndexInStage = siblingLeadIds.indexOf(id || "");
+  const prevLeadId = currentIndexInStage > 0 ? siblingLeadIds[currentIndexInStage - 1] : null;
+  const nextLeadId = currentIndexInStage >= 0 && currentIndexInStage < siblingLeadIds.length - 1 ? siblingLeadIds[currentIndexInStage + 1] : null;
 
   // Load all available tags
   useEffect(() => {
