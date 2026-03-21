@@ -707,32 +707,32 @@ export const AdminActivityHistory = ({ className }: AdminActivityHistoryProps) =
       {/* Main Content Card */}
       <Card className="border-0 shadow-xl bg-gradient-to-b from-background to-muted/20">
         <CardHeader className="pb-4 border-b">
-          <div className="flex items-center justify-between">
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
             <CardTitle className="flex items-center gap-3">
-              <div className="p-2 rounded-lg bg-primary/10">
+              <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                 <Clock className="h-5 w-5 text-primary" />
               </div>
-              <div>
-                <span className="text-lg">Histórico de Atividades</span>
+              <div className="min-w-0">
+                <span className="text-base sm:text-lg">Histórico de Atividades</span>
                 <p className="text-sm font-normal text-muted-foreground mt-0.5">
                   Acompanhe todas as ações da equipe em tempo real
                 </p>
               </div>
             </CardTitle>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-2 shrink-0">
               <Button 
                 variant="outline" 
                 size="sm" 
                 onClick={() => setShowFilters(!showFilters)}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm"
               >
                 <Filter className="h-4 w-4" />
                 Filtros
                 {showFilters ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
               </Button>
-              <Button variant="outline" size="sm" onClick={fetchActivities} className="gap-2">
+              <Button variant="outline" size="sm" onClick={fetchActivities} className="gap-1 sm:gap-2 text-xs sm:text-sm">
                 <RefreshCw className="h-4 w-4" />
-                Atualizar
+                <span className="hidden sm:inline">Atualizar</span>
               </Button>
             </div>
           </div>

@@ -1030,19 +1030,19 @@ export function ConsultantOneOnOnePanel() {
             {agendaSections.length > 0 && (
               <Card className="border bg-card">
                 <CardHeader className="pb-4">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-xl flex items-center gap-3">
-                      <div className="p-2 rounded-lg bg-muted">
+                  <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+                    <CardTitle className="text-lg sm:text-xl flex items-center gap-3">
+                      <div className="p-2 rounded-lg bg-muted shrink-0">
                         <FileText className="h-5 w-5 text-foreground" />
                       </div>
-                      <div>
+                      <div className="min-w-0">
                         <span className="text-foreground">Pauta Sugerida para 1:1</span>
                         <p className="text-sm font-normal text-muted-foreground mt-0.5">
                           Pontos organizados por prioridade
                         </p>
                       </div>
                     </CardTitle>
-                    <div className="flex items-center gap-2">
+                    <div className="flex items-center gap-2 shrink-0">
                       <LeadershipMeetingNotesDialog 
                         meetingType="one_on_one"
                         consultantId={selectedConsultant}
@@ -1051,7 +1051,7 @@ export function ConsultantOneOnOnePanel() {
                           <Button 
                             variant="default" 
                             size="sm" 
-                            className="bg-primary hover:bg-primary/90 gap-2"
+                            className="bg-primary hover:bg-primary/90 gap-1 sm:gap-2 text-xs sm:text-sm"
                           >
                             <NotebookPen className="h-4 w-4" />
                             Anotações
@@ -1062,10 +1062,10 @@ export function ConsultantOneOnOnePanel() {
                         variant="outline" 
                         size="sm"
                         onClick={copyAgendaToClipboard}
-                        className="gap-2"
+                        className="gap-1 sm:gap-2 text-xs sm:text-sm"
                       >
                         {copied ? <Check className="h-4 w-4" /> : <Copy className="h-4 w-4" />}
-                        {copied ? 'Copiado!' : 'Copiar Pauta'}
+                        <span className="hidden sm:inline">{copied ? 'Copiado!' : 'Copiar Pauta'}</span>
                       </Button>
                     </div>
                   </div>
