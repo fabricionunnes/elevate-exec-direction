@@ -56,6 +56,7 @@ import {
   X,
   ChevronLeft,
   Info,
+  Instagram,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -65,6 +66,8 @@ import { toast } from "sonner";
 import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConfigDialog";
 import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
+import { useInstagramConversations } from "@/hooks/useInstagramConversations";
+import { useInstagramMessages } from "@/hooks/useInstagramMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
