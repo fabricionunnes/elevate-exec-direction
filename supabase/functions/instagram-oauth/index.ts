@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     // Action: Get authorization URL
     if (action === "auth_url") {
-      const { staffId, redirectUri } = body;
+      const { staffId, redirectUri, projectId } = body;
       
       if (!staffId || !redirectUri) {
         throw new Error("staffId and redirectUri are required");
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         "business_management"
       ].join(",");
 
-      const state = JSON.stringify({ staffId, redirectUri });
+      const state = JSON.stringify({ staffId, redirectUri, projectId: projectId || null });
       const encodedState = btoa(state);
 
       const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
