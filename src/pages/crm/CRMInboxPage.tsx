@@ -85,10 +85,12 @@ export const CRMInboxPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
   const [allowedOfficialInstanceIds, setAllowedOfficialInstanceIds] = useState<string[]>([]);
+  const [allowedIgInstanceIds, setAllowedIgInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
