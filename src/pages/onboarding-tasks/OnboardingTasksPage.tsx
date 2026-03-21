@@ -2007,7 +2007,9 @@ const OnboardingTasksPage = () => {
 
   return (
     <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-2 sm:px-4 py-4 sm:py-8">
+      {/* Sticky mobile header */}
+      <div className="sticky top-0 z-50 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 border-b border-border/50 sm:relative sm:border-b-0 sm:bg-transparent sm:backdrop-blur-none">
+        <div className="container mx-auto px-2 sm:px-4 pt-3 pb-2 sm:pt-8 sm:pb-0">
         {/* Header */}
         <div className="flex flex-col gap-3 mb-4 sm:mb-6">
           {/* Top Row - Logo, Title & Logout */}
