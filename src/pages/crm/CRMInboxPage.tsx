@@ -765,12 +765,17 @@ export const CRMInboxPage = () => {
                         <MessageSquare className="h-3 w-3 mr-0.5" />
                       </Badge>
                     )}
-                    {conv.instance && (
+                    {conv.channel === "instagram" && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-pink-500/10 text-pink-600 border-pink-500/30">
+                        <Instagram className="h-2.5 w-2.5 mr-0.5" /> IG
+                      </Badge>
+                    )}
+                    {conv.channel !== "instagram" && conv.instance && (
                       <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-green-500/10 text-green-600 border-green-500/30">
                         {conv.instance.display_name || conv.instance.instance_name}
                       </Badge>
                     )}
-                    {conv.official_instance && !conv.instance && (
+                    {conv.channel !== "instagram" && conv.official_instance && !conv.instance && (
                       <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-blue-500/10 text-blue-600 border-blue-500/30">
                         📱 {conv.official_instance.display_name || 'API Oficial'}
                       </Badge>
