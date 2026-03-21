@@ -158,10 +158,14 @@ export const CRMPipelinePage = () => {
 
       if (forecastStages && forecastStages.length > 0) {
         const stageIds = forecastStages.map(s => s.id);
-        const { data: forecastLeads } = await supabase
+        let forecastQuery = supabase
           .from("crm_leads")
           .select("id, opportunity_value, owner_staff_id")
           .in("stage_id", stageIds);
+        if (selectedOrigin) {
+          forecastQuery = forecastQuery.eq("origin_id", selectedOrigin);
+        }
+        const { data: forecastLeads } = await forecastQuery;
         setForecastData(forecastLeads || []);
       } else {
         setForecastData([]);
@@ -175,10 +179,14 @@ export const CRMPipelinePage = () => {
 
       if (realizadaStages && realizadaStages.length > 0) {
         const stageIds = realizadaStages.map(s => s.id);
-        const { data: negotiationLeads } = await supabase
+        let negQuery = supabase
           .from("crm_leads")
           .select("id, opportunity_value, owner_staff_id")
           .in("stage_id", stageIds);
+        if (selectedOrigin) {
+          negQuery = negQuery.eq("origin_id", selectedOrigin);
+        }
+        const { data: negotiationLeads } = await negQuery;
         setNegotiationData(negotiationLeads || []);
       } else {
         setNegotiationData([]);
@@ -186,7 +194,7 @@ export const CRMPipelinePage = () => {
     } catch (error) {
       console.error("Error loading summary cards:", error);
     }
-  }, []);
+  }, [selectedOrigin]);
 
   // Compute filtered totals based on owner filter
   const filteredForecastTotal = useMemo(() => {
@@ -247,8 +255,11 @@ export const CRMPipelinePage = () => {
   useEffect(() => {
     loadPipelines();
     loadFilterOptions();
-    loadSummaryCards();
   }, []);
+
+  useEffect(() => {
+    loadSummaryCards();
+  }, [loadSummaryCards]);
 
   useEffect(() => {
     loadStagesAndLeads();
