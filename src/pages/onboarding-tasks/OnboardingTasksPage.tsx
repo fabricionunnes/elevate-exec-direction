@@ -2243,6 +2243,12 @@ const OnboardingTasksPage = () => {
               </DropdownMenu>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* Main content below sticky header */}
+      <div className="container mx-auto px-2 sm:px-4 pb-4 sm:pb-8">
+        <div className="flex flex-col gap-3 mb-4 sm:mb-6">
 
           {/* Desktop Actions - Second Row */}
           <div className="hidden sm:flex items-center gap-2 flex-wrap">
