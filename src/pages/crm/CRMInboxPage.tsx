@@ -104,8 +104,8 @@ export const CRMInboxPage = () => {
 
   // Use real data hooks
   const { 
-    conversations: allConversations, 
-    loading: loadingConversations, 
+    conversations: whatsappConversations, 
+    loading: loadingWhatsApp, 
     refetch: refetchConversations,
     markAsRead,
     closeConversation,
@@ -114,15 +114,44 @@ export const CRMInboxPage = () => {
     status: filterStatus !== "all" ? filterStatus : undefined,
   });
 
+  // Instagram conversations
+  const {
+    conversations: instagramConversations,
+    loading: loadingInstagram,
+    refetch: refetchIgConversations,
+    markAsRead: markIgAsRead,
+  } = useInstagramConversations();
+
+  const loadingConversations = loadingWhatsApp || loadingInstagram;
+
+  // Merge WhatsApp + Instagram conversations and tag the channel
+  const allConversations = [
+    ...whatsappConversations.map(c => ({ ...c, channel: "whatsapp" as const })),
+    ...instagramConversations,
+  ].sort((a, b) => {
+    const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+    const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+    return dateB - dateA;
+  });
+
   // Debug log
-  console.log('[Inbox] allConversations:', allConversations.length, 'staffRole:', staffRole, 'loadingAccess:', loadingAccess, 'allowedInstanceIds:', allowedInstanceIds.length, 'allowedOfficialInstanceIds:', allowedOfficialInstanceIds.length);
+  console.log('[Inbox] whatsapp:', whatsappConversations.length, 'instagram:', instagramConversations.length, 'staffRole:', staffRole, 'loadingAccess:', loadingAccess);
   
   // Filter conversations based on user's instance access
   const conversations = allConversations.filter((conv) => {
+    // Channel filter
+    if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
+
     // Master has access to all
     if (staffRole === "master") return true;
     // If still loading access, don't filter yet - will re-render when loaded
     if (loadingAccess) return false;
+
+    // Instagram conversations - check IG instance access
+    if (conv.channel === "instagram") {
+      if (!conv.instagram_instance_id) return true; // orphan
+      return allowedIgInstanceIds.includes(conv.instagram_instance_id);
+    }
     
     // Check Official API access
     if (conv.official_instance_id && !conv.instance_id) {
