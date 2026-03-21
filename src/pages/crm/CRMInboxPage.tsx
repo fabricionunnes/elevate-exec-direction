@@ -215,7 +215,6 @@ export const CRMInboxPage = () => {
             .from("whatsapp_instances")
             .select("id");
           const evolutionIds = (allEvolutionInstances || []).map((i: any) => i.id);
-          console.log('[Inbox] Master - all Evolution instances:', evolutionIds.length);
           setAllowedInstanceIds(evolutionIds);
           
           // Official API instances
@@ -223,8 +222,14 @@ export const CRMInboxPage = () => {
             .from("whatsapp_official_instances")
             .select("id");
           const officialIds = (allOfficialInstances || []).map((i: any) => i.id);
-          console.log('[Inbox] Master - all Official instances:', officialIds.length);
           setAllowedOfficialInstanceIds(officialIds);
+
+          // Instagram instances - master sees all
+          const { data: allIgInstances } = await supabase
+            .from("instagram_instances")
+            .select("id");
+          const igIds = (allIgInstances || []).map((i: any) => i.id);
+          setAllowedIgInstanceIds(igIds);
         } else {
           // Get Evolution API instances this user has explicit access to
           const { data: evolutionAccessData, error: evolutionError } = await supabase
@@ -238,7 +243,6 @@ export const CRMInboxPage = () => {
           }
           
           const evolutionIds = (evolutionAccessData || []).map((a: any) => a.instance_id);
-          console.log('[Inbox] Non-master - allowed Evolution instances:', evolutionIds);
           setAllowedInstanceIds(evolutionIds);
           
           // Get Official API instances this user has explicit access to
@@ -253,8 +257,17 @@ export const CRMInboxPage = () => {
           }
           
           const officialIds = (officialAccessData || []).map((a: any) => a.instance_id);
-          console.log('[Inbox] Non-master - allowed Official instances:', officialIds);
           setAllowedOfficialInstanceIds(officialIds);
+
+          // Get Instagram instances this user has explicit access to
+          const { data: igAccessData } = await supabase
+            .from("instagram_instance_access")
+            .select("instance_id")
+            .eq("staff_id", staffId)
+            .eq("can_view", true);
+          
+          const igIds = (igAccessData || []).map((a: any) => a.instance_id);
+          setAllowedIgInstanceIds(igIds);
         }
       } catch (error) {
         console.error("Error fetching allowed instances:", error);
