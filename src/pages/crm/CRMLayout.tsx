@@ -243,6 +243,15 @@ export const CRMLayout = () => {
                       Configurações
                     </Link>
                   )}
+                  {isMaster && (
+                    <Link
+                      to="/crm/api"
+                      onClick={() => setMobileMenuOpen(false)}
+                      className="px-4 py-3 text-sm font-medium rounded-md transition-colors text-muted-foreground hover:text-foreground hover:bg-muted flex items-center gap-2"
+                    >
+                      API
+                    </Link>
+                  )}
                 </nav>
               </SheetContent>
             </Sheet>
@@ -286,6 +295,11 @@ export const CRMLayout = () => {
                 {isAdmin && (
                   <DropdownMenuItem asChild>
                     <Link to="/crm/settings">Configurações</Link>
+                  </DropdownMenuItem>
+                )}
+                {isMaster && (
+                  <DropdownMenuItem asChild>
+                    <Link to="/crm/api">API</Link>
                   </DropdownMenuItem>
                 )}
               </DropdownMenuContent>
