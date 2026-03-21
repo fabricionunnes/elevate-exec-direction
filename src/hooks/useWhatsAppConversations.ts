@@ -25,6 +25,7 @@ export interface WhatsAppConversation {
   id: string;
   instance_id: string | null;
   official_instance_id: string | null;
+  instagram_instance_id?: string | null;
   contact_id: string;
   status: string;
   assigned_to: string | null;
@@ -35,6 +36,7 @@ export interface WhatsAppConversation {
   unread_count: number;
   created_at: string;
   updated_at: string;
+  channel?: "whatsapp" | "instagram";
   contact?: WhatsAppContact;
   assigned_staff?: {
     id: string;

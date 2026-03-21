@@ -56,6 +56,7 @@ import {
   X,
   ChevronLeft,
   Info,
+  Instagram,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -65,6 +66,8 @@ import { toast } from "sonner";
 import { ServiceConfigDialog } from "@/components/crm/service-config/ServiceConfigDialog";
 import { useWhatsAppConversations, WhatsAppConversation } from "@/hooks/useWhatsAppConversations";
 import { useWhatsAppMessages, WhatsAppMessage } from "@/hooks/useWhatsAppMessages";
+import { useInstagramConversations } from "@/hooks/useInstagramConversations";
+import { useInstagramMessages } from "@/hooks/useInstagramMessages";
 import { ConversationSidebar } from "@/components/crm/inbox/ConversationSidebar";
 import { ConversationFilters, ConversationFiltersData, defaultFilters } from "@/components/crm/inbox/ConversationFilters";
 import { AudioPlayer } from "@/components/crm/inbox/AudioPlayer";
@@ -82,10 +85,12 @@ export const CRMInboxPage = () => {
   const [newMessage, setNewMessage] = useState("");
   const [searchTerm, setSearchTerm] = useState("");
   const [filterStatus, setFilterStatus] = useState("all");
+  const [channelFilter, setChannelFilter] = useState<"all" | "whatsapp" | "instagram">("all");
   const [showConfigDialog, setShowConfigDialog] = useState(false);
   const [connectedInstances, setConnectedInstances] = useState<string[]>([]);
   const [allowedInstanceIds, setAllowedInstanceIds] = useState<string[]>([]);
   const [allowedOfficialInstanceIds, setAllowedOfficialInstanceIds] = useState<string[]>([]);
+  const [allowedIgInstanceIds, setAllowedIgInstanceIds] = useState<string[]>([]);
   const [projectId, setProjectId] = useState<string | null>(null);
   const [loadingAccess, setLoadingAccess] = useState(true);
   const [deleteDialogOpen, setDeleteDialogOpen] = useState(false);
@@ -99,8 +104,8 @@ export const CRMInboxPage = () => {
 
   // Use real data hooks
   const { 
-    conversations: allConversations, 
-    loading: loadingConversations, 
+    conversations: whatsappConversations, 
+    loading: loadingWhatsApp, 
     refetch: refetchConversations,
     markAsRead,
     closeConversation,
@@ -109,15 +114,44 @@ export const CRMInboxPage = () => {
     status: filterStatus !== "all" ? filterStatus : undefined,
   });
 
+  // Instagram conversations
+  const {
+    conversations: instagramConversations,
+    loading: loadingInstagram,
+    refetch: refetchIgConversations,
+    markAsRead: markIgAsRead,
+  } = useInstagramConversations();
+
+  const loadingConversations = loadingWhatsApp || loadingInstagram;
+
+  // Merge WhatsApp + Instagram conversations and tag the channel
+  const allConversations = [
+    ...whatsappConversations.map(c => ({ ...c, channel: "whatsapp" as const })),
+    ...instagramConversations,
+  ].sort((a, b) => {
+    const dateA = a.last_message_at ? new Date(a.last_message_at).getTime() : 0;
+    const dateB = b.last_message_at ? new Date(b.last_message_at).getTime() : 0;
+    return dateB - dateA;
+  });
+
   // Debug log
-  console.log('[Inbox] allConversations:', allConversations.length, 'staffRole:', staffRole, 'loadingAccess:', loadingAccess, 'allowedInstanceIds:', allowedInstanceIds.length, 'allowedOfficialInstanceIds:', allowedOfficialInstanceIds.length);
+  console.log('[Inbox] whatsapp:', whatsappConversations.length, 'instagram:', instagramConversations.length, 'staffRole:', staffRole, 'loadingAccess:', loadingAccess);
   
   // Filter conversations based on user's instance access
   const conversations = allConversations.filter((conv) => {
+    // Channel filter
+    if (channelFilter !== "all" && conv.channel !== channelFilter) return false;
+
     // Master has access to all
     if (staffRole === "master") return true;
     // If still loading access, don't filter yet - will re-render when loaded
     if (loadingAccess) return false;
+
+    // Instagram conversations - check IG instance access
+    if (conv.channel === "instagram") {
+      if (!conv.instagram_instance_id) return true; // orphan
+      return allowedIgInstanceIds.includes(conv.instagram_instance_id);
+    }
     
     // Check Official API access
     if (conv.official_instance_id && !conv.instance_id) {
@@ -132,14 +166,26 @@ export const CRMInboxPage = () => {
     return hasAccess;
   });
 
+  const isInstagramConversation = selectedConversation?.channel === "instagram";
+
   const { 
-    messages, 
-    loading: loadingMessages, 
+    messages: whatsappMessages, 
+    loading: loadingWhatsAppMessages, 
     sending,
     sendMessage,
     sendMedia,
-    refetch: refetchMessages,
-  } = useWhatsAppMessages(selectedConversation?.id || null);
+    refetch: refetchWhatsAppMessages,
+  } = useWhatsAppMessages(isInstagramConversation ? null : (selectedConversation?.id || null));
+
+  const {
+    messages: igMessages,
+    loading: loadingIgMessages,
+    refetch: refetchIgMessages,
+  } = useInstagramMessages(isInstagramConversation ? (selectedConversation?.id || null) : null);
+
+  const messages = isInstagramConversation ? igMessages : whatsappMessages;
+  const loadingMessages = isInstagramConversation ? loadingIgMessages : loadingWhatsAppMessages;
+  const refetchMessages = isInstagramConversation ? refetchIgMessages : refetchWhatsAppMessages;
 
   // Company identification for receipt analysis
   const {
@@ -169,7 +215,6 @@ export const CRMInboxPage = () => {
             .from("whatsapp_instances")
             .select("id");
           const evolutionIds = (allEvolutionInstances || []).map((i: any) => i.id);
-          console.log('[Inbox] Master - all Evolution instances:', evolutionIds.length);
           setAllowedInstanceIds(evolutionIds);
           
           // Official API instances
@@ -177,8 +222,14 @@ export const CRMInboxPage = () => {
             .from("whatsapp_official_instances")
             .select("id");
           const officialIds = (allOfficialInstances || []).map((i: any) => i.id);
-          console.log('[Inbox] Master - all Official instances:', officialIds.length);
           setAllowedOfficialInstanceIds(officialIds);
+
+          // Instagram instances - master sees all
+          const { data: allIgInstances } = await supabase
+            .from("instagram_instances")
+            .select("id");
+          const igIds = (allIgInstances || []).map((i: any) => i.id);
+          setAllowedIgInstanceIds(igIds);
         } else {
           // Get Evolution API instances this user has explicit access to
           const { data: evolutionAccessData, error: evolutionError } = await supabase
@@ -192,7 +243,6 @@ export const CRMInboxPage = () => {
           }
           
           const evolutionIds = (evolutionAccessData || []).map((a: any) => a.instance_id);
-          console.log('[Inbox] Non-master - allowed Evolution instances:', evolutionIds);
           setAllowedInstanceIds(evolutionIds);
           
           // Get Official API instances this user has explicit access to
@@ -207,8 +257,17 @@ export const CRMInboxPage = () => {
           }
           
           const officialIds = (officialAccessData || []).map((a: any) => a.instance_id);
-          console.log('[Inbox] Non-master - allowed Official instances:', officialIds);
           setAllowedOfficialInstanceIds(officialIds);
+
+          // Get Instagram instances this user has explicit access to
+          const { data: igAccessData } = await supabase
+            .from("instagram_instance_access")
+            .select("instance_id")
+            .eq("staff_id", staffId)
+            .eq("can_view", true);
+          
+          const igIds = (igAccessData || []).map((a: any) => a.instance_id);
+          setAllowedIgInstanceIds(igIds);
         }
       } catch (error) {
         console.error("Error fetching allowed instances:", error);
@@ -305,7 +364,11 @@ export const CRMInboxPage = () => {
   // Mark as read when selecting conversation
   useEffect(() => {
     if (selectedConversation && selectedConversation.unread_count > 0) {
-      markAsRead(selectedConversation.id);
+      if (selectedConversation.channel === "instagram") {
+        markIgAsRead(selectedConversation.id);
+      } else {
+        markAsRead(selectedConversation.id);
+      }
     }
   }, [selectedConversation?.id]);
 
@@ -557,29 +620,50 @@ export const CRMInboxPage = () => {
           </div>
         </div>
 
-        {/* Connection Status */}
-        <div className="px-2 sm:px-3 py-2 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {hasConnectedDevice ? (
-              <>
-                <Wifi className="h-4 w-4 text-green-500" />
-                <span className="text-xs text-green-600">WhatsApp conectado</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-4 w-4 text-destructive" />
-                <span className="text-xs text-destructive">Sem dispositivo</span>
-              </>
-            )}
+        {/* Channel Filter + Connection Status */}
+        <div className="px-2 sm:px-3 py-2 border-b border-border space-y-2">
+          <div className="flex gap-1">
+            {(["all", "whatsapp", "instagram"] as const).map((ch) => (
+              <Button
+                key={ch}
+                variant={channelFilter === ch ? "default" : "outline"}
+                size="sm"
+                className={cn("h-6 text-[10px] flex-1 gap-1 px-1.5",
+                  channelFilter === ch && ch === "instagram" && "bg-gradient-to-r from-purple-500 to-pink-500 border-none text-white"
+                )}
+                onClick={() => setChannelFilter(ch)}
+              >
+                {ch === "all" ? "Todos" : ch === "whatsapp" ? (
+                  <><MessageSquare className="h-3 w-3" /> WhatsApp</>
+                ) : (
+                  <><Instagram className="h-3 w-3" /> Instagram</>
+                )}
+              </Button>
+            ))}
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-7 w-7"
-            onClick={() => refetchConversations()}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {hasConnectedDevice ? (
+                <>
+                  <Wifi className="h-3.5 w-3.5 text-green-500" />
+                  <span className="text-[10px] text-green-600">Conectado</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-[10px] text-destructive">Sem dispositivo</span>
+                </>
+              )}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6"
+              onClick={() => { refetchConversations(); refetchIgConversations(); }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
@@ -685,12 +769,17 @@ export const CRMInboxPage = () => {
                         <MessageSquare className="h-3 w-3 mr-0.5" />
                       </Badge>
                     )}
-                    {conv.instance && (
+                    {conv.channel === "instagram" && (
+                      <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-pink-500/10 text-pink-600 border-pink-500/30">
+                        <Instagram className="h-2.5 w-2.5 mr-0.5" /> IG
+                      </Badge>
+                    )}
+                    {conv.channel !== "instagram" && conv.instance && (
                       <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-green-500/10 text-green-600 border-green-500/30">
                         {conv.instance.display_name || conv.instance.instance_name}
                       </Badge>
                     )}
-                    {conv.official_instance && !conv.instance && (
+                    {conv.channel !== "instagram" && conv.official_instance && !conv.instance && (
                       <Badge variant="outline" className="h-4 px-1 text-[9px] shrink-0 bg-blue-500/10 text-blue-600 border-blue-500/30">
                         📱 {conv.official_instance.display_name || 'API Oficial'}
                       </Badge>
