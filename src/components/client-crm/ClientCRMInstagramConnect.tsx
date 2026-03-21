@@ -4,8 +4,9 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Instagram, Wifi, WifiOff, RefreshCw, Trash2, ExternalLink } from "lucide-react";
+import { Loader2, Instagram, RefreshCw, Trash2 } from "lucide-react";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { getInstagramOAuthRedirectUri } from "@/lib/instagramOAuth";
 
 interface InstagramInstance {
   id: string;
