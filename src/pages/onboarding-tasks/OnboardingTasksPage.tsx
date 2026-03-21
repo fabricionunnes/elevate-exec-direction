@@ -3262,21 +3262,21 @@ const OnboardingTasksPage = () => {
 
             {/* Pagination Controls */}
             {totalPages > 1 && (
-              <div className="flex items-center justify-center gap-2 pt-4">
+              <div className="flex items-center justify-center gap-1 sm:gap-2 pt-4 max-w-full overflow-hidden">
                 <Button
                   variant="outline"
                   size="sm"
+                  className="shrink-0 px-2 sm:px-3"
                   onClick={() => setCurrentPage(p => Math.max(1, p - 1))}
                   disabled={currentPage === 1}
                 >
-                  <ChevronLeft className="h-4 w-4 mr-1" />
-                  Anterior
+                  <ChevronLeft className="h-4 w-4" />
+                  <span className="hidden sm:inline ml-1">Anterior</span>
                 </Button>
                 
-                <div className="flex items-center gap-1">
+                <div className="flex items-center gap-1 overflow-hidden">
                   {Array.from({ length: totalPages }, (_, i) => i + 1)
                     .filter(page => {
-                      // Show first, last, current, and adjacent pages
                       return page === 1 || 
                              page === totalPages || 
                              Math.abs(page - currentPage) <= 1;
@@ -3284,12 +3284,12 @@ const OnboardingTasksPage = () => {
                     .map((page, idx, arr) => (
                       <div key={page} className="flex items-center">
                         {idx > 0 && arr[idx - 1] !== page - 1 && (
-                          <span className="px-2 text-muted-foreground">...</span>
+                          <span className="px-1 sm:px-2 text-muted-foreground">...</span>
                         )}
                         <Button
                           variant={currentPage === page ? "default" : "outline"}
                           size="sm"
-                          className="min-w-[40px]"
+                          className="min-w-[32px] sm:min-w-[40px] px-2"
                           onClick={() => setCurrentPage(page)}
                         >
                           {page}
@@ -3302,11 +3302,12 @@ const OnboardingTasksPage = () => {
                 <Button
                   variant="outline"
                   size="sm"
+                  className="shrink-0 px-2 sm:px-3"
                   onClick={() => setCurrentPage(p => Math.min(totalPages, p + 1))}
                   disabled={currentPage === totalPages}
                 >
-                  Próximo
-                  <ChevronRight className="h-4 w-4 ml-1" />
+                  <span className="hidden sm:inline mr-1">Próximo</span>
+                  <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
             )}
