@@ -616,29 +616,50 @@ export const CRMInboxPage = () => {
           </div>
         </div>
 
-        {/* Connection Status */}
-        <div className="px-2 sm:px-3 py-2 border-b border-border flex items-center justify-between">
-          <div className="flex items-center gap-2">
-            {hasConnectedDevice ? (
-              <>
-                <Wifi className="h-4 w-4 text-green-500" />
-                <span className="text-xs text-green-600">WhatsApp conectado</span>
-              </>
-            ) : (
-              <>
-                <WifiOff className="h-4 w-4 text-destructive" />
-                <span className="text-xs text-destructive">Sem dispositivo</span>
-              </>
-            )}
+        {/* Channel Filter + Connection Status */}
+        <div className="px-2 sm:px-3 py-2 border-b border-border space-y-2">
+          <div className="flex gap-1">
+            {(["all", "whatsapp", "instagram"] as const).map((ch) => (
+              <Button
+                key={ch}
+                variant={channelFilter === ch ? "default" : "outline"}
+                size="sm"
+                className={cn("h-6 text-[10px] flex-1 gap-1 px-1.5",
+                  channelFilter === ch && ch === "instagram" && "bg-gradient-to-r from-purple-500 to-pink-500 border-none text-white"
+                )}
+                onClick={() => setChannelFilter(ch)}
+              >
+                {ch === "all" ? "Todos" : ch === "whatsapp" ? (
+                  <><MessageSquare className="h-3 w-3" /> WhatsApp</>
+                ) : (
+                  <><Instagram className="h-3 w-3" /> Instagram</>
+                )}
+              </Button>
+            ))}
           </div>
-          <Button 
-            variant="ghost" 
-            size="icon" 
-            className="h-7 w-7"
-            onClick={() => refetchConversations()}
-          >
-            <RefreshCw className="h-4 w-4" />
-          </Button>
+          <div className="flex items-center justify-between">
+            <div className="flex items-center gap-2">
+              {hasConnectedDevice ? (
+                <>
+                  <Wifi className="h-3.5 w-3.5 text-green-500" />
+                  <span className="text-[10px] text-green-600">Conectado</span>
+                </>
+              ) : (
+                <>
+                  <WifiOff className="h-3.5 w-3.5 text-destructive" />
+                  <span className="text-[10px] text-destructive">Sem dispositivo</span>
+                </>
+              )}
+            </div>
+            <Button 
+              variant="ghost" 
+              size="icon" 
+              className="h-6 w-6"
+              onClick={() => { refetchConversations(); refetchIgConversations(); }}
+            >
+              <RefreshCw className="h-3.5 w-3.5" />
+            </Button>
+          </div>
         </div>
 
         {/* Filter Tabs */}
