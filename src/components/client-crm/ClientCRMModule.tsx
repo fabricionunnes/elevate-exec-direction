@@ -9,7 +9,7 @@ import { ClientCRMDashboard } from "./ClientCRMDashboard";
 import { ClientCRMDeals } from "./ClientCRMDeals";
 import { ClientCRMContacts } from "./ClientCRMContacts";
 import { ClientCRMActivities } from "./ClientCRMActivities";
-import { ClientCRMWhatsApp } from "./ClientCRMWhatsApp";
+import { ClientCRMAtendimentos } from "./ClientCRMAtendimentos";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
 import { ClientCRMSettings } from "./ClientCRMSettings";
@@ -123,7 +123,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
         </TabsContent>
 
         <TabsContent value="atendimentos">
-          <ClientCRMWhatsApp projectId={projectId} />
+          <ClientCRMAtendimentos projectId={projectId} />
         </TabsContent>
 
         <TabsContent value="transcricoes">

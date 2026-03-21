@@ -29,7 +29,7 @@ Deno.serve(async (req) => {
 
     // Action: Get authorization URL
     if (action === "auth_url") {
-      const { staffId, redirectUri } = body;
+      const { staffId, redirectUri, projectId } = body;
       
       if (!staffId || !redirectUri) {
         throw new Error("staffId and redirectUri are required");
@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         "business_management"
       ].join(",");
 
-      const state = JSON.stringify({ staffId, redirectUri });
+      const state = JSON.stringify({ staffId, redirectUri, projectId: projectId || null });
       const encodedState = btoa(state);
 
       const authUrl = new URL("https://www.facebook.com/v19.0/dialog/oauth");
@@ -63,7 +63,7 @@ Deno.serve(async (req) => {
 
     // Action: Exchange code for tokens
     if (action === "exchange") {
-      const { code, redirectUri, staffId } = body;
+      const { code, redirectUri, staffId, projectId } = body;
 
       if (!code || !redirectUri || !staffId) {
         throw new Error("code, redirectUri and staffId are required");
@@ -157,9 +157,7 @@ Deno.serve(async (req) => {
       for (const account of instagramAccounts) {
         const expiresAt = new Date(Date.now() + expiresIn * 1000);
 
-        const { data: instance, error: upsertError } = await supabase
-          .from("instagram_instances")
-          .upsert({
+        const upsertData: any = {
             instagram_user_id: account.instagram_user_id,
             username: account.username,
             profile_picture_url: account.profile_picture_url,
@@ -168,7 +166,16 @@ Deno.serve(async (req) => {
             facebook_page_id: account.facebook_page_id,
             status: "connected",
             connected_by: staffId,
-          }, { 
+        };
+
+        // If projectId was provided (from Client CRM), link the instance to that project
+        if (projectId) {
+          upsertData.project_id = projectId;
+        }
+
+        const { data: instance, error: upsertError } = await supabase
+          .from("instagram_instances")
+          .upsert(upsertData, { 
             onConflict: "instagram_user_id",
             ignoreDuplicates: false 
           })
