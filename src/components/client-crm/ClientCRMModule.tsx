@@ -26,6 +26,7 @@ interface ClientCRMModuleProps {
 
 export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps) => {
   const { hasPermission } = useClientPermissions(projectId);
+  const { isMaster } = useStaffPermissions();
   const crm = useClientCRM(projectId);
 
   const tabs = [
@@ -39,7 +40,11 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
   ].filter((tab) => hasPermission(tab.key));
 
   // Always show settings tab
-  const allTabs = [...tabs, { key: "settings" as any, id: "settings", label: "Configurações", icon: Settings }];
+  const allTabs = [
+    ...tabs,
+    { key: "settings" as any, id: "settings", label: "Configurações", icon: Settings },
+    ...(isMaster ? [{ key: "api" as any, id: "api", label: "API", icon: Code2 }] : []),
+  ];
 
   const [activeTab, setActiveTab] = useState(allTabs[0]?.id || "dashboard");
 
