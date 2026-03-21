@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS, OnboardingUser } from "@/types/onboarding";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useClientCRM } from "./hooks/useClientCRM";
 import { ClientCRMDashboard } from "./ClientCRMDashboard";
 import { ClientCRMDeals } from "./ClientCRMDeals";
@@ -13,8 +14,9 @@ import { ClientCRMAtendimentos } from "./ClientCRMAtendimentos";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
 import { ClientCRMSettings } from "./ClientCRMSettings";
+import { ClientCRMApiDocs } from "./ClientCRMApiDocs";
 import {
-  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
