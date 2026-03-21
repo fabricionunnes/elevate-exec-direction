@@ -985,7 +985,7 @@ export default function ContractGeneratorPage() {
                 </p>
               </div>
             </div>
-            <div className="flex items-center gap-2">
+            <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
               {canEditTemplate && (
                 <Button
                   variant="ghost"
