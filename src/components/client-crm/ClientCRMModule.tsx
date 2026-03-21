@@ -4,6 +4,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2 } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS, OnboardingUser } from "@/types/onboarding";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { useClientCRM } from "./hooks/useClientCRM";
 import { ClientCRMDashboard } from "./ClientCRMDashboard";
 import { ClientCRMDeals } from "./ClientCRMDeals";
@@ -13,8 +14,9 @@ import { ClientCRMAtendimentos } from "./ClientCRMAtendimentos";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
 import { ClientCRMSettings } from "./ClientCRMSettings";
+import { ClientCRMApiDocs } from "./ClientCRMApiDocs";
 import {
-  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
@@ -24,6 +26,7 @@ interface ClientCRMModuleProps {
 
 export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps) => {
   const { hasPermission } = useClientPermissions(projectId);
+  const { isMaster } = useStaffPermissions();
   const crm = useClientCRM(projectId);
 
   const tabs = [
@@ -37,7 +40,11 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
   ].filter((tab) => hasPermission(tab.key));
 
   // Always show settings tab
-  const allTabs = [...tabs, { key: "settings" as any, id: "settings", label: "Configurações", icon: Settings }];
+  const allTabs = [
+    ...tabs,
+    { key: "settings" as any, id: "settings", label: "Configurações", icon: Settings },
+    ...(isMaster ? [{ key: "api" as any, id: "api", label: "API", icon: Code2 }] : []),
+  ];
 
   const [activeTab, setActiveTab] = useState(allTabs[0]?.id || "dashboard");
 
@@ -144,6 +151,12 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
             onRefresh={crm.fetchAll}
           />
         </TabsContent>
+
+        {isMaster && (
+          <TabsContent value="api">
+            <ClientCRMApiDocs />
+          </TabsContent>
+        )}
       </Tabs>
     </div>
   );
