@@ -117,35 +117,37 @@ export default function CEODashboardPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100">
-      <div className="space-y-6 p-6 max-w-[1600px] mx-auto">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 via-white to-slate-100 overflow-x-hidden">
+      <div className="space-y-6 p-4 sm:p-6 max-w-[1600px] mx-auto">
         {/* Header */}
-        <div className="flex items-center justify-between">
-          <div className="flex items-center gap-4">
+        <div className="flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
             <Button 
               variant="outline" 
               size="icon"
               onClick={() => navigate("/onboarding-tasks")}
-              className="h-10 w-10 bg-white shadow-sm"
+              className="h-9 w-9 sm:h-10 sm:w-10 bg-white shadow-sm shrink-0"
             >
               <ArrowLeft className="h-5 w-5" />
             </Button>
-            <div>
-            <h1 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
+            <div className="min-w-0">
+              <h1 className="text-xl sm:text-3xl font-bold tracking-tight bg-gradient-to-r from-slate-900 to-slate-600 bg-clip-text text-transparent">
                 Painel do CEO
               </h1>
-              <p className="text-slate-500">
+              <p className="text-slate-500 text-xs sm:text-sm">
                 Painel de Comando Estratégico
               </p>
             </div>
           </div>
           <Button 
             variant="outline"
+            size="sm"
             onClick={() => navigate("/onboarding-tasks/executive")}
-            className="gap-2 bg-white shadow-sm"
+            className="gap-1 sm:gap-2 bg-white shadow-sm text-xs sm:text-sm shrink-0"
           >
             <Activity className="h-4 w-4" />
-            Dashboard Executivo
+            <span className="hidden sm:inline">Dashboard Executivo</span>
+            <span className="sm:hidden">Executivo</span>
           </Button>
         </div>
 
