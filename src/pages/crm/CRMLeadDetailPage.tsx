@@ -787,12 +787,26 @@ export const CRMLeadDetailPage = () => {
             <h1 className="text-base sm:text-lg font-bold leading-tight truncate">{lead.name}</h1>
           </div>
 
-          {/* Desktop-only: nav arrows */}
+          {/* Nav arrows: previous/next lead in same stage */}
           <div className="hidden sm:flex items-center border-l border-border ml-1 pl-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!prevLeadId}
+              onClick={() => prevLeadId && navigate(`/crm/leads/${prevLeadId}`)}
+              title="Lead anterior na etapa"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!nextLeadId}
+              onClick={() => nextLeadId && navigate(`/crm/leads/${nextLeadId}`)}
+              title="Próximo lead na etapa"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
