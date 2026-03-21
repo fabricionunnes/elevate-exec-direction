@@ -6,25 +6,48 @@ import { Loader2, Instagram, CheckCircle, XCircle } from "lucide-react";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 
+interface CallbackState {
+  redirectUri?: string;
+  staffId?: string;
+  projectId?: string | null;
+  returnOrigin?: string | null;
+  returnPath?: string | null;
+}
+
 export default function InstagramOAuthCallback() {
   const navigate = useNavigate();
   const [status, setStatus] = useState<"loading" | "success" | "error">("loading");
   const [message, setMessage] = useState("Conectando sua conta Instagram...");
+  const [callbackState, setCallbackState] = useState<CallbackState | null>(null);
 
   useEffect(() => {
     handleCallback();
   }, []);
 
+  const normalizePath = (path?: string | null) => {
+    if (!path) return "/crm";
+    return path.startsWith("/") ? path : `/${path}`;
+  };
+
+  const redirectBack = (state?: CallbackState | null) => {
+    const targetPath = normalizePath(state?.returnPath || (state?.projectId ? "/crm" : "/crm/inbox"));
+
+    if (state?.returnOrigin && state.returnOrigin !== window.location.origin) {
+      window.location.href = `${state.returnOrigin}/#${targetPath}`;
+      return;
+    }
+
+    navigate(targetPath, { replace: true });
+  };
+
   const handleCallback = async () => {
-    // Check both window.location.search and the hash part for query params
     let searchParams = window.location.search;
-    
-    // Sometimes OAuth redirects put params before the hash
+
     if (!searchParams && window.location.href.includes("?")) {
       const fullUrl = window.location.href;
       const queryStart = fullUrl.indexOf("?");
       const hashStart = fullUrl.indexOf("#");
-      
+
       if (queryStart !== -1) {
         if (hashStart !== -1 && hashStart > queryStart) {
           searchParams = fullUrl.substring(queryStart, hashStart);
@@ -33,14 +56,24 @@ export default function InstagramOAuthCallback() {
         }
       }
     }
-    
+
     const urlParams = new URLSearchParams(searchParams);
     const code = urlParams.get("code");
-    const state = urlParams.get("state");
+    const stateParam = urlParams.get("state");
     const error = urlParams.get("error");
     const errorDescription = urlParams.get("error_description");
 
-    // Clean URL
+    let decodedState: CallbackState | null = null;
+
+    if (stateParam) {
+      try {
+        decodedState = JSON.parse(atob(stateParam));
+        setCallbackState(decodedState);
+      } catch (decodeError) {
+        console.warn("Failed to decode Instagram OAuth state:", decodeError);
+      }
+    }
+
     window.history.replaceState({}, document.title, window.location.origin + "/#/auth/instagram/callback");
 
     if (error) {
@@ -50,15 +83,13 @@ export default function InstagramOAuthCallback() {
       return;
     }
 
-    if (!code || !state) {
+    if (!code || !decodedState?.redirectUri || !decodedState?.staffId) {
       setStatus("error");
       setMessage("Parâmetros de autenticação inválidos. Tente novamente.");
       return;
     }
 
     try {
-      const decodedState = JSON.parse(atob(state));
-      
       setMessage("Trocando código por token de acesso...");
 
       const { data, error: exchangeError } = await supabase.functions.invoke("instagram-oauth", {
@@ -77,14 +108,11 @@ export default function InstagramOAuthCallback() {
 
       setStatus("success");
       setMessage(`${data.count || 1} conta(s) Instagram conectada(s) com sucesso!`);
-      
       toast.success(`${data.count || 1} conta(s) Instagram conectada(s)!`);
-      
-      // Redirect after 2 seconds - back to client CRM if projectId present, otherwise staff CRM
-      const redirectPath = decodedState.projectId ? "/client" : "/crm/inbox";
+
       setTimeout(() => {
-        navigate(redirectPath);
-      }, 2000);
+        redirectBack(decodedState);
+      }, 1800);
     } catch (err: any) {
       console.error("OAuth callback error:", err);
       setStatus("error");
@@ -93,7 +121,7 @@ export default function InstagramOAuthCallback() {
   };
 
   const handleRetry = () => {
-    navigate("/crm/inbox");
+    redirectBack(callbackState);
   };
 
   return (
