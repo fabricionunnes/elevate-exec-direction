@@ -159,6 +159,7 @@ export const CRMLeadDetailPage = () => {
   const [tagSearch, setTagSearch] = useState("");
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
+  const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
@@ -296,9 +297,28 @@ export const CRMLeadDetailPage = () => {
     }
   }, [id, navigate]);
 
+  // Load sibling leads in the same stage for navigation
+  const loadSiblingLeads = useCallback(async () => {
+    if (!lead?.stage_id) return;
+    const { data } = await supabase
+      .from("crm_leads")
+      .select("id")
+      .eq("stage_id", lead.stage_id)
+      .order("created_at", { ascending: false });
+    setSiblingLeadIds((data || []).map(l => l.id));
+  }, [lead?.stage_id]);
+
   useEffect(() => {
     loadLead();
   }, [loadLead]);
+
+  useEffect(() => {
+    loadSiblingLeads();
+  }, [loadSiblingLeads]);
+
+  const currentIndexInStage = siblingLeadIds.indexOf(id || "");
+  const prevLeadId = currentIndexInStage > 0 ? siblingLeadIds[currentIndexInStage - 1] : null;
+  const nextLeadId = currentIndexInStage >= 0 && currentIndexInStage < siblingLeadIds.length - 1 ? siblingLeadIds[currentIndexInStage + 1] : null;
 
   // Load all available tags
   useEffect(() => {
@@ -767,12 +787,26 @@ export const CRMLeadDetailPage = () => {
             <h1 className="text-base sm:text-lg font-bold leading-tight truncate">{lead.name}</h1>
           </div>
 
-          {/* Desktop-only: nav arrows */}
+          {/* Nav arrows: previous/next lead in same stage */}
           <div className="hidden sm:flex items-center border-l border-border ml-1 pl-1">
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!prevLeadId}
+              onClick={() => prevLeadId && navigate(`/crm/leads/${prevLeadId}`)}
+              title="Lead anterior na etapa"
+            >
               <ChevronLeft className="h-4 w-4" />
             </Button>
-            <Button variant="ghost" size="icon" className="h-8 w-8">
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-8 w-8"
+              disabled={!nextLeadId}
+              onClick={() => nextLeadId && navigate(`/crm/leads/${nextLeadId}`)}
+              title="Próximo lead na etapa"
+            >
               <ChevronRight className="h-4 w-4" />
             </Button>
           </div>
