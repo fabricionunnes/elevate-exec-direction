@@ -1031,10 +1031,10 @@ export default function ContractGeneratorPage() {
               <Button
                 variant="outline"
                 onClick={() => navigate("/distrato")}
-                className="gap-2"
+                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
               >
                 <FileText className="h-4 w-4" />
-                Distrato
+                <span className="hidden sm:inline">Distrato</span>
               </Button>
               <Button
                 variant="outline"
