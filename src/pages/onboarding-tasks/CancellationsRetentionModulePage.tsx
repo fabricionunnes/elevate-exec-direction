@@ -157,24 +157,24 @@ export default function CancellationsRetentionModulePage() {
       {/* Modern glassmorphism header */}
       <div className="border-b bg-card/80 backdrop-blur-sm sticky top-0 z-10">
         <div className="container mx-auto px-4 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center gap-4">
-              <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")} className="rounded-xl hover:bg-muted/80">
+          <div className="flex items-center justify-between gap-2">
+            <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+              <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")} className="rounded-xl hover:bg-muted/80 shrink-0">
                 <ArrowLeft className="h-5 w-5" />
               </Button>
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center shadow-lg shadow-rose-500/20">
-                  <AlertTriangle className="h-5 w-5 text-white" />
+              <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+                <div className="h-8 w-8 sm:h-10 sm:w-10 rounded-xl bg-gradient-to-br from-rose-500 to-orange-400 flex items-center justify-center shadow-lg shadow-rose-500/20 shrink-0">
+                  <AlertTriangle className="h-4 w-4 sm:h-5 sm:w-5 text-white" />
                 </div>
-                <div>
-                  <h1 className="text-lg font-bold tracking-tight">Cancelamentos & Retenção</h1>
-                  <p className="text-xs text-muted-foreground">Inteligência de churn e estratégias de retenção</p>
+                <div className="min-w-0">
+                  <h1 className="text-sm sm:text-lg font-bold tracking-tight truncate">Cancelamentos & Retenção</h1>
+                  <p className="text-xs text-muted-foreground hidden sm:block">Inteligência de churn e estratégias de retenção</p>
                 </div>
               </div>
             </div>
-            <div className="flex items-center gap-3">
+            <div className="flex items-center gap-1 sm:gap-3 shrink-0">
               <Select value={filters.segment} onValueChange={v => handleFilterChange("segment", v)}>
-                <SelectTrigger className="w-[160px] rounded-xl border-0 bg-muted/60 backdrop-blur-sm">
+                <SelectTrigger className="w-[100px] sm:w-[160px] rounded-xl border-0 bg-muted/60 backdrop-blur-sm text-xs sm:text-sm">
                   <Filter className="h-3 w-3 mr-1" />
                   <SelectValue placeholder="Segmento" />
                 </SelectTrigger>
@@ -186,8 +186,8 @@ export default function CancellationsRetentionModulePage() {
                 </SelectContent>
               </Select>
               <Button onClick={fetchData} variant="outline" size="sm" className="rounded-xl border-0 bg-muted/60 backdrop-blur-sm hover:bg-muted">
-                <RefreshCw className="h-4 w-4 mr-2" />
-                Atualizar
+                <RefreshCw className="h-4 w-4" />
+                <span className="hidden sm:inline ml-2">Atualizar</span>
               </Button>
             </div>
           </div>

@@ -553,14 +553,14 @@ const VirtualOfficePage = () => {
   return (
     <div className="h-screen bg-background flex flex-col overflow-hidden">
       {/* Header */}
-      <header className="border-b bg-card px-4 py-3 flex items-center justify-between">
-        <div className="flex items-center gap-3">
-          <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
+      <header className="border-b bg-card px-3 sm:px-4 py-3 flex items-center justify-between gap-2">
+        <div className="flex items-center gap-2 sm:gap-3 min-w-0">
+          <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate("/onboarding-tasks")}>
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <NexusHeader title="Escritório UNV" />
-          <div className="flex items-center gap-2 text-xs text-muted-foreground ml-2">
-            <span>•</span>
+          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+            <span className="hidden sm:inline">•</span>
             <span>{onlineStaff.length} online</span>
           </div>
         </div>
@@ -579,7 +579,7 @@ const VirtualOfficePage = () => {
 
           {/* Status selector */}
           <Select value={myStatus} onValueChange={(value) => updatePresence(currentStaff?.id || "", value as PresenceStatus)}>
-            <SelectTrigger className="w-[140px] h-8">
+            <SelectTrigger className="w-[120px] sm:w-[140px] h-8">
               <div className="flex items-center gap-2">
                 <div className={cn("h-2 w-2 rounded-full", statusConfig[myStatus].color)} />
                 <span className="text-xs">{statusConfig[myStatus].label}</span>

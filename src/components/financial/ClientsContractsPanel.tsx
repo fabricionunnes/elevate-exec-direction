@@ -471,6 +471,7 @@ export function ClientsContractsPanel() {
               <p className="text-sm mt-1">Crie contratos manualmente ou aguarde a integração com Conta Azul</p>
             </div>
           ) : (
+            <div className="overflow-x-auto">
             <Table>
               <TableHeader>
                 <TableRow>
@@ -527,6 +528,7 @@ export function ClientsContractsPanel() {
                 ))}
               </TableBody>
             </Table>
+            </div>
           )}
         </CardContent>
       </Card>

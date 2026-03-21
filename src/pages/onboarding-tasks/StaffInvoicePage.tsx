@@ -502,7 +502,7 @@ const StaffInvoicePage = () => {
         </div>
 
         <Tabs defaultValue="minha-nf">
-          <TabsList className="mb-6">
+          <TabsList className="mb-6 flex-wrap h-auto">
             <TabsTrigger value="minha-nf" className="gap-2">
               <FileText className="h-4 w-4" />
               Minha NF

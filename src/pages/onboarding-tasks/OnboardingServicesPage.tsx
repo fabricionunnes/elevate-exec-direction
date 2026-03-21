@@ -242,23 +242,23 @@ export default function OnboardingServicesPage() {
   return (
     <div className="min-h-screen bg-background">
       <header className="border-b bg-card">
-        <div className="container mx-auto px-4 py-4 flex items-center justify-between">
-          <div className="flex items-center gap-4">
-            <Button variant="ghost" size="icon" onClick={() => navigate('/onboarding-tasks')}>
+        <div className="container mx-auto px-4 py-4 flex items-center justify-between gap-2">
+          <div className="flex items-center gap-2 sm:gap-4 min-w-0">
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={() => navigate('/onboarding-tasks')}>
               <ArrowLeft className="h-5 w-5" />
             </Button>
             <NexusHeader title="Serviços" />
           </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" onClick={() => navigate('/onboarding-tasks/services/bulk')}>
-              <Layers className="h-4 w-4 mr-2" />
-              Adicionar em Lote
+          <div className="flex items-center gap-1 sm:gap-2 flex-wrap justify-end">
+            <Button variant="outline" size="sm" onClick={() => navigate('/onboarding-tasks/services/bulk')} className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Layers className="h-4 w-4" />
+              <span className="hidden sm:inline">Adicionar em Lote</span>
             </Button>
-            <Button onClick={openCreateDialog}>
-              <Plus className="h-4 w-4 mr-2" />
-              Novo Serviço
+            <Button size="sm" onClick={openCreateDialog} className="gap-1 sm:gap-2 text-xs sm:text-sm">
+              <Plus className="h-4 w-4" />
+              <span className="hidden sm:inline">Novo Serviço</span>
             </Button>
-            <Button variant="ghost" size="icon" onClick={handleLogout}>
+            <Button variant="ghost" size="icon" className="shrink-0" onClick={handleLogout}>
               <LogOut className="h-5 w-5" />
             </Button>
           </div>
