@@ -80,9 +80,10 @@ export default function InstagramOAuthCallback() {
       
       toast.success(`${data.count || 1} conta(s) Instagram conectada(s)!`);
       
-      // Redirect after 2 seconds
+      // Redirect after 2 seconds - back to client CRM if projectId present, otherwise staff CRM
+      const redirectPath = decodedState.projectId ? "/client" : "/crm/inbox";
       setTimeout(() => {
-        navigate("/crm/inbox");
+        navigate(redirectPath);
       }, 2000);
     } catch (err: any) {
       console.error("OAuth callback error:", err);
