@@ -254,6 +254,7 @@ export default function EmployeeContractPage() {
     }
   };
 
+  const handleGenerate = async () => {
     setIsGenerating(true);
     setZapSignSent(false);
     try {
