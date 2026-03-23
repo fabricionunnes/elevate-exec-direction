@@ -1203,6 +1203,22 @@ export const CRMSettingsPage = () => {
                         size="icon"
                         className="h-8 w-8"
                         onClick={() => {
+                          setCopyTargetStage(stage);
+                          setCopySourcePipeline("");
+                          setCopySourceStage("");
+                          setCopyChecklist(true);
+                          setCopyActions(true);
+                          setCopyDialogOpen(true);
+                        }}
+                        title="Copiar checklist/automações de outra etapa"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
                           setChecklistStage(stage);
                           setStageChecklistOpen(true);
                         }}
