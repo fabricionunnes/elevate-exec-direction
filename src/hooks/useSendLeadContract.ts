@@ -148,13 +148,19 @@ export function useSendLeadContract() {
         }
       }
 
-      // Build full address
+      // Build full address from contractual data fields
       const fullAddress = [
         lead.address,
+        lead.address_number ? `nº ${lead.address_number}` : null,
+        lead.address_complement,
+        lead.address_neighborhood,
         lead.city,
         lead.state,
         lead.zipcode
       ].filter(Boolean).join(", ");
+
+      // Use contractual data: company (razão social), trade_name, legal representative info
+      const clientName = lead.company || lead.trade_name || lead.name;
 
       // Check if there's already a contract for this lead
       const { data: existingContract } = await supabase
@@ -184,13 +190,9 @@ export function useSendLeadContract() {
           }
         }
       } else {
-        // Create a new contract in the database and generate PDF
-        // For now, we'll create a simple contract record
-        // The PDF generation would require the full contract generator logic
-        
-        // Create minimal contract record
+        // Create a new contract using contractual data from the lead card
         const contractData = {
-          client_name: lead.company || lead.name,
+          client_name: clientName,
           client_document: lead.document,
           client_address: fullAddress,
           client_email: lead.email,
