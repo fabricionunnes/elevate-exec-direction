@@ -56,9 +56,14 @@ export function CheckoutModal({
   priceLabel,
   paymentLinkId,
   provider = "pagarme",
+  fixedMethod,
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
-  const [method, setMethod] = useState<PaymentMethod>("credit_card");
+  const [method, setMethod] = useState<PaymentMethod>(fixedMethod || "credit_card");
+
+  const availableMethods = fixedMethod
+    ? paymentMethods.filter((pm) => pm.id === fixedMethod)
+    : paymentMethods;
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckoutResult | null>(null);
 
