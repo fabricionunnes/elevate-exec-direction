@@ -48,6 +48,15 @@ import {
   FileSignature,
   FileText,
   Building2,
+  Activity,
+  User,
+  Briefcase,
+  FileAudio,
+  ClipboardList,
+  Video,
+  ScrollText,
+  FolderOpen,
+  History,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -773,18 +782,23 @@ export const CRMLeadDetailPage = () => {
       </div>
 
       {/* Lead Header */}
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-gradient-to-r from-primary/5 via-transparent to-accent/5">
         {/* Row 1: Avatar + Name + Menu */}
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 shrink-0">
-            <AvatarFallback className="text-sm sm:text-base font-semibold">
+          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 ring-2 ring-primary/20">
+            <AvatarFallback 
+              className="text-sm sm:text-base font-semibold text-primary-foreground"
+              style={{ 
+                backgroundColor: lead.stage?.color || 'hsl(var(--primary))',
+              }}
+            >
               {lead.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0 flex-1">
             {lead.company && (
-              <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide block truncate">
+              <span className="text-[10px] sm:text-[11px] text-primary/70 uppercase tracking-wide block truncate font-medium">
                 {lead.company}
               </span>
             )}
@@ -1061,8 +1075,8 @@ export const CRMLeadDetailPage = () => {
       {/* Observações */}
       {lead.notes && (
         <div className="px-4 sm:px-6 py-2">
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1 flex items-center gap-1">
+          <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
               <StickyNote className="h-3 w-3" />
               Observações
             </p>
@@ -1076,22 +1090,23 @@ export const CRMLeadDetailPage = () => {
         <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
           <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
             {[
-              { value: "activities", label: "Atividades" },
-              { value: "contact", label: "Contato" },
-              { value: "company", label: "Empresa" },
-              { value: "deal", label: "Negócio" },
-              { value: "transcription", label: "Transcrição" },
-              { value: "form_answers", label: "Respostas" },
-              { value: "meetings", label: "Reuniões" },
-              { value: "contract_data", label: "Dados Contratuais" },
-              { value: "files", label: "Arquivos" },
-              { value: "history", label: "Histórico" },
+              { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
+              { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
+              { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
+              { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
+              { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
+              { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
+              { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
+              { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
+              { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
+              { value: "history", label: "Histórico", icon: History, color: "text-rose-500" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0 gap-1.5"
               >
+                <tab.icon className={`h-3.5 w-3.5 ${tab.color}`} />
                 {tab.label}
               </TabsTrigger>
             ))}
