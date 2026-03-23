@@ -386,13 +386,32 @@ export default function AllRecurringChargesPage() {
     }
   }, [activeTab]);
 
+  const fetchAllInvoices = async () => {
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("company_invoices")
+        .select("*")
+        .order("due_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) return { data: null, error };
+      allData = allData.concat(data || []);
+      hasMore = (data?.length || 0) === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    return { data: allData, error: null };
+  };
+
   const loadData = async () => {
     try {
       const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
         supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator, phone").order("name"),
         supabase.from("financial_payables").select("*").order("due_date", { ascending: true }),
-        supabase.from("company_invoices").select("*").order("due_date", { ascending: true }),
+        fetchAllInvoices(),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
