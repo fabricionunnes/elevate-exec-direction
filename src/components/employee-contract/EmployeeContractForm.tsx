@@ -236,7 +236,7 @@ export default function EmployeeContractForm({
               <Label>Valor Mensal (R$)</Label>
               <CurrencyInput
                 value={formData.contractValue}
-                onValueChange={(v) => update("contractValue", v)}
+                onChange={(v) => update("contractValue", v)}
               />
             </div>
             <div>
