@@ -138,7 +138,6 @@ Deno.serve(async (req) => {
         }
 
         const amountInReais = typeof amountCents === "number" ? amountCents : parseFloat(String(amountCents)) || 0;
-        const normalizedFederalServiceCode = typeof federalServiceCode === "string" ? federalServiceCode.trim() : "";
         const normalizedNbsCode = typeof nbsCode === "string" ? nbsCode.replace(/\D/g, "").trim() : "";
         const validNbsCode = /^\d{9}$/.test(normalizedNbsCode) ? normalizedNbsCode : "";
         const issuerCompany = await nfeioRequest(`/companies/${normalizedNfeioCompanyId}`);
@@ -146,7 +145,6 @@ Deno.serve(async (req) => {
 
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
-          ...(normalizedFederalServiceCode ? { federalServiceCode: normalizedFederalServiceCode } : {}),
           ...(validNbsCode ? { nbsCode: validNbsCode } : {}),
           ...(shouldZeroIssRate ? { issRate: 0 } : {}),
           description: serviceDescription,
