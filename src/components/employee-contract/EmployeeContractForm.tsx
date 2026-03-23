@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -12,9 +12,10 @@ import {
 } from "@/components/ui/select";
 import { Calendar } from "@/components/ui/calendar";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
-import { CalendarIcon, User, FileText, Loader2 } from "lucide-react";
+import { CalendarIcon, User, FileText, Loader2, Check, ChevronsUpDown } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { supabase } from "@/integrations/supabase/client";
 import { roleLabels } from "@/data/employeeContractTemplate";
@@ -73,6 +74,7 @@ export default function EmployeeContractForm({
 }: EmployeeContractFormProps) {
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
+  const [staffSearchOpen, setStaffSearchOpen] = useState(false);
 
   useEffect(() => {
     loadStaff();
@@ -106,8 +108,11 @@ export default function EmployeeContractForm({
         staffEmail: staff.email,
         staffPhone: staff.phone || "",
       });
+      setStaffSearchOpen(false);
     }
   };
+
+  const selectedStaff = staffList.find((s) => s.id === formData.staffId);
 
   const update = (field: keyof EmployeeContractFormData, value: any) => {
     onChange({ ...formData, [field]: value });
@@ -133,18 +138,49 @@ export default function EmployeeContractForm({
         <CardContent className="space-y-4">
           <div>
             <Label>Selecionar Colaborador</Label>
-            <Select value={formData.staffId} onValueChange={handleStaffSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingStaff ? "Carregando..." : "Selecione um colaborador"} />
-              </SelectTrigger>
-              <SelectContent>
-                {staffList.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} — {roleLabels[s.role] || s.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={staffSearchOpen} onOpenChange={setStaffSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={staffSearchOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {loadingStaff
+                    ? "Carregando..."
+                    : selectedStaff
+                      ? `${selectedStaff.name} — ${roleLabels[selectedStaff.role] || selectedStaff.role}`
+                      : "Pesquisar colaborador..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command className="rounded-lg border shadow-md">
+                  <CommandInput placeholder="Pesquisar por nome..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {staffList.map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          value={`${s.name} ${roleLabels[s.role] || s.role}`}
+                          onSelect={() => handleStaffSelect(s.id)}
+                          className="cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.staffId === s.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {s.name} — {roleLabels[s.role] || s.role}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
