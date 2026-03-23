@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_projects ADD COLUMN IF NOT EXISTS crm_lead_id uuid REFERENCES public.crm_leads(id) ON DELETE SET NULL;
