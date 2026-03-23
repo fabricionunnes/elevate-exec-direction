@@ -616,7 +616,87 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
           }
         }
       }
+}
+
+async function activatePendingProjects(supabase: any, paymentId: string) {
+  try {
+    // Find invoices paid by this payment (via pagarme_charge_id or payment_link)
+    const { data: paidInvoices } = await supabase
+      .from("company_invoices")
+      .select("company_id")
+      .eq("pagarme_charge_id", paymentId)
+      .eq("status", "paid")
+      .not("company_id", "is", null);
+
+    if (!paidInvoices?.length) return;
+
+    for (const inv of paidInvoices) {
+      // Find pending projects for this company
+      const { data: pendingProjects } = await supabase
+        .from("onboarding_projects")
+        .select("id, product_name, product_id")
+        .eq("onboarding_company_id", inv.company_id)
+        .eq("status", "pending");
+
+      if (!pendingProjects?.length) continue;
+
+      for (const project of pendingProjects) {
+        // Activate project
+        await supabase
+          .from("onboarding_projects")
+          .update({ status: "active" })
+          .eq("id", project.id);
+
+        console.log(`[Asaas Webhook] Activated pending project ${project.id} (${project.product_name}) for company ${inv.company_id}`);
+
+        // Create tasks from templates
+        const { data: templates } = await supabase
+          .from("onboarding_task_templates")
+          .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence, phase_order, is_internal")
+          .eq("product_id", project.product_id)
+          .order("phase_order", { ascending: true })
+          .order("sort_order", { ascending: true });
+
+        if (templates?.length) {
+          const today = new Date();
+          const tasksToInsert = templates.map((tpl: any, idx: number) => {
+            let dueDate: string | null = null;
+            const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
+            if (offset > 0) {
+              const due = new Date(today);
+              due.setDate(due.getDate() + offset);
+              dueDate = due.toISOString().split("T")[0];
+            }
+            return {
+              project_id: project.id,
+              template_id: tpl.id,
+              title: tpl.title,
+              description: tpl.description,
+              priority: tpl.priority || "medium",
+              status: "pending",
+              due_date: dueDate,
+              sort_order: tpl.sort_order ?? idx,
+              tags: tpl.phase ? [tpl.phase] : null,
+              recurrence: tpl.recurrence ?? null,
+              is_internal: tpl.is_internal ?? false,
+            };
+          });
+          await supabase.from("onboarding_tasks").insert(tasksToInsert);
+          console.log(`[Asaas Webhook] Created ${templates.length} tasks for project ${project.id}`);
+        }
+      }
+
+      // Activate the company
+      await supabase
+        .from("onboarding_companies")
+        .update({ status: "active", contract_start_date: new Date().toISOString().split("T")[0] })
+        .eq("id", inv.company_id)
+        .eq("status", "pending");
     }
+  } catch (err) {
+    console.error("[Asaas Webhook] Error activating pending projects:", err);
+  }
+}
   } catch (err) {
     console.error("[Asaas Webhook] Error handling service purchase permissions:", err);
   }
