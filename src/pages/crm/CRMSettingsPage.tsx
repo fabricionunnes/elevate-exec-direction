@@ -51,7 +51,8 @@ import {
   TrendingUp,
   ListChecks,
   Bell,
-  Link2
+  Link2,
+  FileText
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
