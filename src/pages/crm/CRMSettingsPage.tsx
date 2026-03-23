@@ -769,6 +769,10 @@ export const CRMSettingsPage = () => {
             <span className="hidden sm:inline">Integrações</span>
             <span className="sm:hidden">Integ.</span>
           </TabsTrigger>
+          <TabsTrigger value="forms" className="gap-1.5 text-xs sm:text-sm">
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Formulários
+          </TabsTrigger>
         </TabsList>
 
         {/* Pipelines Tab */}
