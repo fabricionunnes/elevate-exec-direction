@@ -40,14 +40,26 @@ const EXAMPLE_BODY = `{
   "faturamento": "R$ 500.000/mês",
   "qtd_vendedores": "12",
   "desafio": "Escalar o time comercial",
-  "tag": "PRIORIDADE"
+  "tag": "PRIORIDADE",
+  "pipeline_id": "uuid-do-pipeline",
+  "origin_name": "Landing Page Black Friday",
+  "utm_source": "instagram",
+  "utm_medium": "ads",
+  "utm_campaign": "black-friday-2025"
 }`;
 
 const EXAMPLE_CURL = `curl -X POST \\
   '${API_URL}' \\
   -H 'Content-Type: application/json' \\
   -H 'x-api-key: SUA_API_KEY_AQUI' \\
-  -d '${EXAMPLE_BODY}'`;
+  -d '{
+    "nome": "João Silva",
+    "telefone": "5511999999999",
+    "email": "joao@empresa.com",
+    "empresa": "Empresa XYZ",
+    "pipeline_id": "uuid-do-pipeline",
+    "utm_source": "instagram"
+  }'`;
 
 const EXAMPLE_RESPONSE_SUCCESS = `{
   "success": true,
@@ -71,6 +83,12 @@ const EXAMPLE_JS = `const response = await fetch(
       telefone: '5511999999999',
       email: 'joao@empresa.com',
       empresa: 'Empresa XYZ',
+      pipeline_id: 'uuid-do-pipeline',  // opcional
+      pipeline_name: 'Funil Inbound',   // alternativa ao pipeline_id
+      origin_name: 'Landing Page',
+      utm_source: 'google',
+      utm_medium: 'cpc',
+      utm_campaign: 'campanha-q4',
     }),
   }
 );
@@ -91,6 +109,9 @@ response = requests.post(
         'telefone': '5511999999999',
         'email': 'joao@empresa.com',
         'empresa': 'Empresa XYZ',
+        'pipeline_id': 'uuid-do-pipeline',
+        'utm_source': 'facebook',
+        'utm_medium': 'social',
     }
 )
 
@@ -112,6 +133,13 @@ const fields: FieldDoc[] = [
   { name: "qtd_vendedores", type: "string", required: false, description: "Quantidade de vendedores" },
   { name: "desafio", type: "string", required: false, description: "Principal desafio / dor do lead" },
   { name: "tag", type: "string", required: false, description: "Tag de classificação. Use 'PRIORIDADE' para urgência alta" },
+  { name: "pipeline_id", type: "uuid", required: false, description: "ID do pipeline de destino. Se omitido, usa 'Funil SE'" },
+  { name: "pipeline_name", type: "string", required: false, description: "Nome do pipeline (alternativa ao pipeline_id). Busca parcial" },
+  { name: "origin_name", type: "string", required: false, description: "Nome da origem para rastreio. Se omitido, usa 'Landing Page'" },
+  { name: "utm_source", type: "string", required: false, description: "Fonte do tráfego (ex: google, instagram, facebook)" },
+  { name: "utm_medium", type: "string", required: false, description: "Meio do tráfego (ex: cpc, ads, email, social)" },
+  { name: "utm_campaign", type: "string", required: false, description: "Nome da campanha (ex: black-friday-2025)" },
+  { name: "utm_content", type: "string", required: false, description: "Variante do conteúdo para testes A/B" },
 ];
 
 type TabId = "curl" | "javascript" | "python";
@@ -140,7 +168,10 @@ export const ClientCRMApiDocs = () => {
         <CardContent className="space-y-4">
           <p className="text-sm text-muted-foreground">
             Use esta API para enviar leads automaticamente de landing pages, formulários externos, ou qualquer
-            sistema que suporte requisições HTTP. Os leads são criados diretamente no pipeline <strong>"Funil SE"</strong>.
+            sistema que suporte requisições HTTP. Os leads podem ser criados em <strong>qualquer pipeline</strong> — 
+            basta informar o <code className="text-xs bg-muted px-1 rounded font-mono">pipeline_id</code> ou{" "}
+            <code className="text-xs bg-muted px-1 rounded font-mono">pipeline_name</code>. 
+            Se omitido, o lead vai para o pipeline padrão ("Funil SE").
           </p>
 
           <div className="flex items-center gap-2">
@@ -272,7 +303,7 @@ export const ClientCRMApiDocs = () => {
           <div>
             <div className="flex items-center gap-2 mb-2">
               <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 text-[10px]">400</Badge>
-              <span className="text-xs text-muted-foreground">Campos obrigatórios faltando</span>
+              <span className="text-xs text-muted-foreground">Campos obrigatórios faltando ou pipeline não encontrado</span>
             </div>
             <CodeBlock code={EXAMPLE_RESPONSE_ERROR} />
           </div>
@@ -284,14 +315,6 @@ export const ClientCRMApiDocs = () => {
             </div>
             <CodeBlock code={`{ "error": "Unauthorized" }`} />
           </div>
-
-          <div>
-            <div className="flex items-center gap-2 mb-2">
-              <Badge className="bg-red-500/20 text-red-700 dark:text-red-400 text-[10px]">500</Badge>
-              <span className="text-xs text-muted-foreground">Erro interno (pipeline não encontrado, etc.)</span>
-            </div>
-            <CodeBlock code={`{ "error": "Pipeline \\"Funil SE\\" não encontrado" }`} />
-          </div>
         </CardContent>
       </Card>
 
@@ -300,12 +323,31 @@ export const ClientCRMApiDocs = () => {
         <CardContent className="pt-6 space-y-3">
           <h4 className="font-medium text-sm">Comportamento automático</h4>
           <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
-            <li>O lead é criado na <strong>primeira etapa</strong> do pipeline "Funil SE".</li>
+            <li>O lead é criado na <strong>primeira etapa</strong> do pipeline selecionado.</li>
+            <li>Se <code className="bg-muted px-1 rounded font-mono">pipeline_id</code> ou <code className="bg-muted px-1 rounded font-mono">pipeline_name</code> não forem informados, o pipeline padrão ("Funil SE") é usado.</li>
             <li>O responsável é atribuído automaticamente ao primeiro staff admin/master ativo.</li>
-            <li>A origem é marcada como <strong>"Landing Page"</strong> (se existir nas origens cadastradas).</li>
+            <li>A origem é identificada pelo campo <code className="bg-muted px-1 rounded font-mono">origin_name</code> (padrão: "Landing Page").</li>
+            <li>Parâmetros UTM (<code className="bg-muted px-1 rounded font-mono">utm_source</code>, <code className="bg-muted px-1 rounded font-mono">utm_medium</code>, <code className="bg-muted px-1 rounded font-mono">utm_campaign</code>, <code className="bg-muted px-1 rounded font-mono">utm_content</code>) são salvos no lead para rastreio.</li>
             <li>Se a <code className="bg-muted px-1 rounded font-mono">tag</code> for <code className="bg-muted px-1 rounded font-mono">"PRIORIDADE"</code>, a urgência é definida como <strong>alta</strong>.</li>
             <li>Notificações via WhatsApp são enviadas automaticamente para os números configurados.</li>
           </ul>
+        </CardContent>
+      </Card>
+
+      {/* Pipeline Forms */}
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <h4 className="font-medium text-sm">📋 Formulários por Pipeline</h4>
+          <p className="text-xs text-muted-foreground">
+            Além da API, você pode criar <strong>formulários públicos</strong> para cada pipeline nas Configurações → Formulários. 
+            Cada formulário gera um link único que pode ser incorporado em landing pages ou compartilhado diretamente. 
+            Os leads criados pelo formulário entram automaticamente no pipeline correto, com rastreio de UTM via parâmetros na URL.
+          </p>
+          <div className="bg-muted/50 rounded-lg p-3">
+            <p className="text-[11px] text-muted-foreground font-mono">
+              Exemplo: seusite.com/#/form/TOKEN?utm_source=instagram&utm_medium=ads
+            </p>
+          </div>
         </CardContent>
       </Card>
     </div>
