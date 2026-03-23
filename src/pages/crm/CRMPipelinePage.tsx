@@ -333,6 +333,7 @@ export const CRMPipelinePage = () => {
           filter: `pipeline_id=eq.${selectedPipeline}`,
         },
         () => {
+          isRealtimeRefresh.current = true;
           loadStagesAndLeads();
         }
       )
