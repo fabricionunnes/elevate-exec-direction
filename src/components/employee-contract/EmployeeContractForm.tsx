@@ -74,6 +74,7 @@ export default function EmployeeContractForm({
 }: EmployeeContractFormProps) {
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [loadingStaff, setLoadingStaff] = useState(true);
+  const [staffSearchOpen, setStaffSearchOpen] = useState(false);
 
   useEffect(() => {
     loadStaff();
