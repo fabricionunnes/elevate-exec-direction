@@ -782,18 +782,23 @@ export const CRMLeadDetailPage = () => {
       </div>
 
       {/* Lead Header */}
-      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border">
+      <div className="px-4 sm:px-6 py-3 sm:py-4 border-b border-border bg-gradient-to-r from-primary/5 via-transparent to-accent/5">
         {/* Row 1: Avatar + Name + Menu */}
         <div className="flex items-center gap-3">
-          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 shrink-0">
-            <AvatarFallback className="text-sm sm:text-base font-semibold">
+          <Avatar className="h-10 w-10 sm:h-11 sm:w-11 shrink-0 ring-2 ring-primary/20">
+            <AvatarFallback 
+              className="text-sm sm:text-base font-semibold text-primary-foreground"
+              style={{ 
+                backgroundColor: lead.stage?.color || 'hsl(var(--primary))',
+              }}
+            >
               {lead.name.slice(0, 2).toUpperCase()}
             </AvatarFallback>
           </Avatar>
 
           <div className="min-w-0 flex-1">
             {lead.company && (
-              <span className="text-[10px] sm:text-[11px] text-muted-foreground uppercase tracking-wide block truncate">
+              <span className="text-[10px] sm:text-[11px] text-primary/70 uppercase tracking-wide block truncate font-medium">
                 {lead.company}
               </span>
             )}
