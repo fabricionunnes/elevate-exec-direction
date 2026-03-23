@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      interest_free_installments = 0,
       company_id,
       payment_link_id,
     } = body;
