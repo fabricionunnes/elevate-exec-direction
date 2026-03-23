@@ -51,8 +51,10 @@ interface CheckoutResult {
   success: boolean;
   payment_method: PaymentMethod;
   status: string;
-  order_id: string;
+  order_id?: string;
   paid?: boolean;
+  details?: string;
+  error?: string;
   checkout_url?: string | null;
   pix_qr_code?: string;
   pix_qr_code_url?: string;
@@ -69,6 +71,16 @@ const paymentMethods = [
 
 const DOM_SDK_ID = "dompagamentos-sdk";
 const DOM_SDK_SRC = "https://apiv3.dompagamentos.com.br/js/sdk-dompagamentos.min.js";
+const FAILED_PAYMENT_STATUSES = new Set([
+  "error",
+  "failed",
+  "failure",
+  "declined",
+  "denied",
+  "refused",
+  "canceled",
+  "cancelled",
+]);
 
 export function CheckoutModal({
   open,
@@ -293,9 +305,31 @@ export function CheckoutModal({
       console.log("Checkout response:", JSON.stringify(data));
       console.log("Checkout error:", error);
 
-      if (error) throw error;
+      if (error) {
+        let errorMessage = error.message;
+        const errorContext = (error as { context?: Response }).context;
+
+        if (errorContext instanceof Response) {
+          try {
+            const errorBody = await errorContext.json();
+            errorMessage = errorBody?.details || errorBody?.error || errorMessage;
+          } catch {
+            // mantém a mensagem original
+          }
+        }
+
+        throw new Error(errorMessage);
+      }
       if (data?.error) {
         throw new Error(data.details || data.error);
+      }
+
+      if (typeof data?.status === "string" && FAILED_PAYMENT_STATUSES.has(data.status.toLowerCase())) {
+        throw new Error(data.details || "A operadora recusou a cobrança.");
+      }
+
+      if (method === "credit_card" && !data?.paid && !data?.checkout_url && !data?.order_id) {
+        throw new Error(data?.details || "A operadora não confirmou a cobrança no cartão.");
       }
 
       setResult(data as CheckoutResult);
