@@ -138,18 +138,49 @@ export default function EmployeeContractForm({
         <CardContent className="space-y-4">
           <div>
             <Label>Selecionar Colaborador</Label>
-            <Select value={formData.staffId} onValueChange={handleStaffSelect}>
-              <SelectTrigger>
-                <SelectValue placeholder={loadingStaff ? "Carregando..." : "Selecione um colaborador"} />
-              </SelectTrigger>
-              <SelectContent>
-                {staffList.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name} — {roleLabels[s.role] || s.role}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <Popover open={staffSearchOpen} onOpenChange={setStaffSearchOpen}>
+              <PopoverTrigger asChild>
+                <Button
+                  variant="outline"
+                  role="combobox"
+                  aria-expanded={staffSearchOpen}
+                  className="w-full justify-between font-normal"
+                >
+                  {loadingStaff
+                    ? "Carregando..."
+                    : selectedStaff
+                      ? `${selectedStaff.name} — ${roleLabels[selectedStaff.role] || selectedStaff.role}`
+                      : "Pesquisar colaborador..."}
+                  <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                </Button>
+              </PopoverTrigger>
+              <PopoverContent className="w-[--radix-popover-trigger-width] p-0" align="start">
+                <Command className="rounded-lg border shadow-md">
+                  <CommandInput placeholder="Pesquisar por nome..." className="h-9" />
+                  <CommandList>
+                    <CommandEmpty>Nenhum colaborador encontrado.</CommandEmpty>
+                    <CommandGroup>
+                      {staffList.map((s) => (
+                        <CommandItem
+                          key={s.id}
+                          value={`${s.name} ${roleLabels[s.role] || s.role}`}
+                          onSelect={() => handleStaffSelect(s.id)}
+                          className="cursor-pointer"
+                        >
+                          <Check
+                            className={cn(
+                              "mr-2 h-4 w-4",
+                              formData.staffId === s.id ? "opacity-100" : "opacity-0"
+                            )}
+                          />
+                          {s.name} — {roleLabels[s.role] || s.role}
+                        </CommandItem>
+                      ))}
+                    </CommandGroup>
+                  </CommandList>
+                </Command>
+              </PopoverContent>
+            </Popover>
           </div>
 
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
