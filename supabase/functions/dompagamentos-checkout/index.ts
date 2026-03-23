@@ -15,19 +15,27 @@ Deno.serve(async (req) => {
 
   try {
     const SECRET_KEY = Deno.env.get("DOMPAGAMENTOS_SECRET_KEY");
+    const PUBLIC_KEY = Deno.env.get("DOMPAGAMENTOS_PUBLIC_KEY");
+
     if (!SECRET_KEY) {
       throw new Error("DOMPAGAMENTOS_SECRET_KEY not configured");
     }
 
     const body = await req.json();
 
-    // Test mode - validate the key
+    if (body.get_public_key === true) {
+      return new Response(
+        JSON.stringify({ public_key: PUBLIC_KEY || null }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     if (body.test_key === true) {
       const testResp = await fetch(`${DOM_API_URL}/transactions?page=1&per_page=1`, {
         method: "GET",
         headers: {
           "Content-Type": "application/json",
-          "Authorization": `Bearer ${SECRET_KEY}`,
+          Authorization: `Bearer ${SECRET_KEY}`,
         },
       });
       return new Response(
@@ -63,9 +71,8 @@ Deno.serve(async (req) => {
     const cleanDoc = (customer_document || "").replace(/\D/g, "");
     const cleanPhone = (customer_phone || "").replace(/\D/g, "");
 
-    // Build Dom Pagamentos transaction payload
     const domPayload: Record<string, unknown> = {
-      amount: amount_cents, // Dom uses cents
+      amount: amount_cents,
       currency: "BRL",
       cod_external: payment_link_id || product_id || crypto.randomUUID(),
       customer: {
@@ -89,17 +96,16 @@ Deno.serve(async (req) => {
       domPayload.payment_method = "boleto";
     } else if (payment_method === "credit_card") {
       domPayload.payment_method = "credit_card";
+
       if (card_token) {
-        // Direct charge with tokenized card
         domPayload.card = {
           token: card_token,
           bin: card_bin || undefined,
           brand: card_brand || undefined,
-          installments: installments,
+          installments,
           interest_free: interest_free_installments >= installments,
         };
       } else {
-        // Link generation mode — no card token, create a checkout link instead
         domPayload.installments = installments;
         domPayload.interest_free_installments = interest_free_installments;
       }
@@ -114,7 +120,7 @@ Deno.serve(async (req) => {
       method: "POST",
       headers: {
         "Content-Type": "application/json",
-        "Authorization": `Bearer ${SECRET_KEY}`,
+        Authorization: `Bearer ${SECRET_KEY}`,
       },
       body: JSON.stringify(domPayload),
       signal: controller.signal,
@@ -142,13 +148,13 @@ Deno.serve(async (req) => {
       );
     }
 
-    // Save to database
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const isPaid = domData.status === "paid" || domData.status === "authorized";
+    const normalizedStatus = String(domData.status || "pending").toLowerCase();
+    const isPaid = normalizedStatus === "paid" || normalizedStatus === "authorized";
 
     const orderData: Record<string, unknown> = {
       customer_name,
@@ -161,27 +167,26 @@ Deno.serve(async (req) => {
       payment_method,
       installments,
       provider: "dompagamentos",
-      status: isPaid ? "paid" : "pending",
+      status: isPaid ? "paid" : normalizedStatus,
       pagarme_order_id: String(domData.id),
       pagarme_charge_id: String(domData.id),
       payment_link_id: payment_link_id || null,
+      invoice_url: domData.checkout_url || domData.payment_url || null,
     };
 
-    // PIX data
     if (payment_method === "pix") {
       orderData.pix_qr_code = domData.pix_content || null;
       orderData.pix_qr_code_url = domData.pix_qrcode || null;
       orderData.pix_expires_at = domData.pix_expire || null;
     }
 
-    // Boleto data
     if (payment_method === "boleto") {
       orderData.boleto_url = domData.boleto_url || null;
+      orderData.boleto_barcode = domData.boleto_barcode || domData.digitable_line || null;
     }
 
     await supabase.from("pagarme_orders").insert(orderData);
 
-    // If paid immediately (credit card), update invoice
     if (isPaid && payment_link_id) {
       await supabase
         .from("company_invoices")
@@ -193,11 +198,10 @@ Deno.serve(async (req) => {
         .eq("payment_link_id", payment_link_id);
     }
 
-    // Build response
     const response: Record<string, unknown> = {
       success: true,
       order_id: String(domData.id),
-      status: domData.status,
+      status: normalizedStatus,
       payment_method,
     };
 
@@ -209,11 +213,11 @@ Deno.serve(async (req) => {
 
     if (payment_method === "boleto") {
       response.boleto_url = domData.boleto_url || null;
+      response.boleto_barcode = domData.boleto_barcode || domData.digitable_line || null;
     }
 
     if (payment_method === "credit_card") {
       response.paid = isPaid;
-      // If Dom returned a checkout URL for link-based credit card flow
       response.checkout_url = domData.checkout_url || domData.payment_url || null;
     }
 
@@ -223,7 +227,7 @@ Deno.serve(async (req) => {
   } catch (error) {
     console.error("Dom Pagamentos Checkout error:", error);
     return new Response(
-      JSON.stringify({ error: error.message || "Erro interno" }),
+      JSON.stringify({ error: error instanceof Error ? error.message : "Erro interno" }),
       { status: 500, headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   }
