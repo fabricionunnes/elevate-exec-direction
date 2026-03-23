@@ -12756,6 +12756,7 @@ export type Database = {
           is_active: boolean
           origin_name: string | null
           pipeline_id: string
+          redirect_url: string | null
           title: string | null
           updated_at: string
         }
@@ -12768,6 +12769,7 @@ export type Database = {
           is_active?: boolean
           origin_name?: string | null
           pipeline_id: string
+          redirect_url?: string | null
           title?: string | null
           updated_at?: string
         }
@@ -12780,6 +12782,7 @@ export type Database = {
           is_active?: boolean
           origin_name?: string | null
           pipeline_id?: string
+          redirect_url?: string | null
           title?: string | null
           updated_at?: string
         }
