@@ -419,17 +419,31 @@ export const LeadActivitiesTab = ({
       .replace(/\{\{data_hora_agendamento\}\}/g, nextMeetingDateTime || '');
   };
 
+  const stagesScrollRef = useRef<HTMLDivElement>(null);
+  const scrollStages = (dir: 'left' | 'right') => {
+    stagesScrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
+
+  const completedChecklist = checklistItems.filter(i => i.completed).length;
+  const totalChecklist = checklistItems.length;
+  const checklistProgress = totalChecklist > 0 ? Math.round((completedChecklist / totalChecklist) * 100) : 0;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Stage Progress Bar - Full Width */}
-      <div className="p-4 border-b border-border w-full">
-        <div className="flex items-center gap-2 relative">
-          <Button variant="ghost" size="icon" className="shrink-0 z-10">
-            <ChevronLeft className="h-4 w-4" />
+      {/* Stage Progress Bar - Redesigned */}
+      <div className="px-3 py-4 border-b border-border w-full bg-gradient-to-b from-muted/30 to-transparent">
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 h-7 w-7 rounded-full"
+            onClick={() => scrollStages('left')}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           
-          <div className="flex-1 overflow-x-auto">
-            <div className="flex items-center min-w-max">
+          <div ref={stagesScrollRef} className="flex-1 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center min-w-max px-2 py-1">
               {stages.filter(s => !s.is_final).map((stage, index, arr) => {
                 const isActive = stage.id === currentStageId;
                 const isPast = index < currentStageIndex;
@@ -439,25 +453,42 @@ export const LeadActivitiesTab = ({
                   <div key={stage.id} className="flex items-center">
                     <button
                       onClick={() => onStageChange(stage.id)}
-                      className="flex flex-col items-center gap-1 relative group"
+                      className="flex flex-col items-center gap-1.5 relative group min-w-[60px]"
                     >
-                      <div
-                        className={cn(
-                          "flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all",
-                          isActive
-                            ? "text-white ring-4 ring-offset-2 ring-offset-background ring-primary/40"
-                            : isPast
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/20"
+                      <div className="relative">
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold transition-all duration-200 border-2",
+                            isActive
+                              ? "text-white shadow-lg scale-110 border-transparent"
+                              : isPast
+                              ? "bg-primary/10 text-primary border-primary"
+                              : "bg-card text-muted-foreground border-border group-hover:border-muted-foreground/40"
+                          )}
+                          style={isActive ? {
+                            backgroundColor: stage.color,
+                            boxShadow: `0 0 0 3px ${stage.color}25, 0 4px 12px ${stage.color}30`,
+                          } : undefined}
+                        >
+                          {isPast ? (
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                        {isActive && (
+                          <div
+                            className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full"
+                            style={{ backgroundColor: stage.color }}
+                          />
                         )}
-                        style={isActive ? { backgroundColor: stage.color } : undefined}
-                      >
-                        {index + 1}
                       </div>
                       <span className={cn(
-                        "text-xs font-medium whitespace-nowrap",
+                        "text-[10px] font-medium whitespace-nowrap max-w-[80px] truncate leading-tight",
                         isActive 
-                          ? "text-foreground" 
+                          ? "text-foreground font-semibold" 
                           : isPast 
                           ? "text-primary"
                           : "text-muted-foreground"
@@ -466,11 +497,10 @@ export const LeadActivitiesTab = ({
                       </span>
                     </button>
                     
-                    {/* Connector line */}
                     {!isLast && (
                       <div className={cn(
-                        "w-12 lg:w-20 xl:w-28 h-0.5 mx-1",
-                        isPast ? "bg-primary" : "bg-muted"
+                        "w-8 lg:w-14 xl:w-20 h-[2px] mx-0.5 rounded-full transition-colors",
+                        isPast ? "bg-primary" : "bg-border"
                       )} />
                     )}
                   </div>
@@ -479,8 +509,13 @@ export const LeadActivitiesTab = ({
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" className="shrink-0 z-10">
-            <ChevronRight className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 h-7 w-7 rounded-full"
+            onClick={() => scrollStages('right')}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
@@ -488,78 +523,99 @@ export const LeadActivitiesTab = ({
       {/* Content - Two columns layout */}
       <div className="flex flex-1 min-h-0">
         {/* Left side - Checklist */}
-        <div className="w-[320px] lg:w-[380px] min-w-[280px] shrink-0 border-r border-border">
-          <ScrollArea className="h-full">
+        <div className="w-[320px] lg:w-[380px] min-w-[280px] shrink-0 border-r border-border flex flex-col">
+          {/* Checklist progress header */}
+          {totalChecklist > 0 && (
+            <div className="px-4 py-3 border-b border-border bg-muted/20">
+              <div className="flex items-center justify-between mb-1.5">
+                <span className="text-xs font-medium text-muted-foreground">Progresso da etapa</span>
+                <span className="text-xs font-semibold text-foreground">{completedChecklist}/{totalChecklist}</span>
+              </div>
+              <div className="h-1.5 bg-border rounded-full overflow-hidden">
+                <div
+                  className="h-full bg-primary rounded-full transition-all duration-500 ease-out"
+                  style={{ width: `${checklistProgress}%` }}
+                />
+              </div>
+            </div>
+          )}
+          <ScrollArea className="flex-1">
             {checklistLoading ? (
               <div className="flex items-center justify-center py-8">
-                <div className="animate-spin rounded-full h-6 w-6 border-b-2 border-primary" />
+                <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" />
               </div>
             ) : (
               <div>
                 {checklistItems.length > 0 ? (
-                  checklistItems.map((item) => (
-                    <div
-                      key={item.id}
-                      onClick={() => setSelectedChecklistItem(item)}
-                      className={cn(
-                        "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4",
-                        selectedChecklistItem?.id === item.id
-                          ? "bg-primary/5 border-l-primary"
-                          : "hover:bg-muted/30 border-l-transparent"
-                      )}
-                    >
-                      <button
-                        onClick={(e) => {
-                          e.stopPropagation();
-                          toggleChecklist(item.id);
-                          if (selectedChecklistItem?.id === item.id) {
-                            setSelectedChecklistItem({ ...item, completed: !item.completed });
-                          }
-                        }}
+                  <div className="py-1">
+                    {checklistItems.map((item, idx) => (
+                      <div
+                        key={item.id}
+                        onClick={() => setSelectedChecklistItem(item)}
                         className={cn(
-                          "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
-                          item.completed
-                            ? "bg-primary border-primary"
-                            : "border-muted-foreground/50 hover:border-primary"
+                          "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px] group",
+                          selectedChecklistItem?.id === item.id
+                            ? "bg-primary/5 border-l-primary"
+                            : "hover:bg-muted/40 border-l-transparent",
+                          item.completed && "opacity-60"
                         )}
                       >
-                        {item.completed && (
-                          <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
-                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
-                          </svg>
-                        )}
-                      </button>
-                      
-                      <span className="text-muted-foreground shrink-0">
-                        {getChecklistItemIcon(item.item_type)}
-                      </span>
-                      
-                      <span className={cn(
-                        "text-sm flex-1",
-                        item.completed && "line-through text-muted-foreground"
-                      )}>
-                        {item.title}
-                      </span>
-                    </div>
-                  ))
+                        <button
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            toggleChecklist(item.id);
+                            if (selectedChecklistItem?.id === item.id) {
+                              setSelectedChecklistItem({ ...item, completed: !item.completed });
+                            }
+                          }}
+                          className={cn(
+                            "w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200",
+                            item.completed
+                              ? "bg-primary border-primary scale-100"
+                              : "border-muted-foreground/30 group-hover:border-primary/60"
+                          )}
+                        >
+                          {item.completed && (
+                            <svg className="w-2.5 h-2.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
+                            </svg>
+                          )}
+                        </button>
+                        
+                        <span className="shrink-0 opacity-70">
+                          {getChecklistItemIcon(item.item_type)}
+                        </span>
+                        
+                        <span className={cn(
+                          "text-sm flex-1 leading-snug",
+                          item.completed && "line-through text-muted-foreground"
+                        )}>
+                          {item.title}
+                        </span>
+                      </div>
+                    ))}
+                  </div>
                 ) : (
-                  <div className="text-center py-8 text-sm text-muted-foreground">
-                    Nenhuma atividade configurada para esta etapa
+                  <div className="text-center py-10 px-6">
+                    <div className="w-10 h-10 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                      <FileText className="h-4 w-4 text-muted-foreground" />
+                    </div>
+                    <p className="text-sm text-muted-foreground">Nenhuma atividade configurada para esta etapa</p>
                   </div>
                 )}
                 
-                {/* Manual Activities (added via dialog) */}
+                {/* Manual Activities */}
                 {manualActivities.length > 0 && (
                   <>
-                    <div className="px-4 py-2 text-xs font-semibold text-muted-foreground uppercase tracking-wider border-t border-border bg-muted/30">
+                    <div className="px-4 py-2 text-[10px] font-bold text-muted-foreground uppercase tracking-widest border-t border-border bg-muted/20">
                       Tarefas adicionadas
                     </div>
                     {manualActivities.map((activity) => (
                       <div
                         key={activity.id}
                         className={cn(
-                          "flex items-center gap-3 px-4 py-3 cursor-pointer transition-colors border-l-4 hover:bg-muted/30 border-l-transparent",
-                          activity.status === "completed" && "opacity-60"
+                          "flex items-center gap-3 px-4 py-2.5 cursor-pointer transition-all duration-150 border-l-[3px] hover:bg-muted/40 border-l-transparent group",
+                          activity.status === "completed" && "opacity-50"
                         )}
                       >
                         <button
@@ -570,28 +626,28 @@ export const LeadActivitiesTab = ({
                             }
                           }}
                           className={cn(
-                            "w-5 h-5 rounded border-2 flex items-center justify-center shrink-0 transition-colors",
+                            "w-[18px] h-[18px] rounded-full border-2 flex items-center justify-center shrink-0 transition-all duration-200",
                             activity.status === "completed"
                               ? "bg-primary border-primary"
-                              : "border-muted-foreground/50 hover:border-primary"
+                              : "border-muted-foreground/30 group-hover:border-primary/60"
                           )}
                         >
                           {activity.status === "completed" && (
-                            <svg className="w-3 h-3 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <svg className="w-2.5 h-2.5 text-primary-foreground" fill="none" viewBox="0 0 24 24" stroke="currentColor">
                               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={3} d="M5 13l4 4L19 7" />
                             </svg>
                           )}
                         </button>
-                        <span className="text-muted-foreground shrink-0">
+                        <span className="shrink-0 opacity-70">
                           {getActivityIcon(activity.type)}
                         </span>
                         <div className="flex-1 min-w-0">
                           <span className={cn(
-                            "text-sm truncate block",
+                            "text-sm truncate block leading-snug",
                             activity.status === "completed" && "line-through text-muted-foreground"
                           )}>{activity.title}</span>
                           {activity.scheduled_at && (
-                            <span className="text-xs text-muted-foreground">
+                            <span className="text-[11px] text-muted-foreground">
                               {format(new Date(activity.scheduled_at), "dd/MM HH:mm")}
                             </span>
                           )}
@@ -602,9 +658,9 @@ export const LeadActivitiesTab = ({
                               e.stopPropagation();
                               setEditingActivity(activity);
                             }}
-                            className="shrink-0 p-1 rounded hover:bg-muted transition-colors text-muted-foreground hover:text-foreground"
+                            className="shrink-0 p-1 rounded-full hover:bg-muted transition-colors text-muted-foreground hover:text-foreground opacity-0 group-hover:opacity-100"
                           >
-                            <Pencil className="h-3.5 w-3.5" />
+                            <Pencil className="h-3 w-3" />
                           </button>
                         )}
                       </div>
@@ -615,7 +671,7 @@ export const LeadActivitiesTab = ({
                 {/* Add Task Button */}
                 <button
                   onClick={() => setShowAddActivityDialog(true)}
-                  className="flex items-center gap-2 px-4 py-3 w-full text-sm text-muted-foreground hover:text-foreground hover:bg-muted/30 transition-colors border-t border-border"
+                  className="flex items-center gap-2 px-4 py-3 w-full text-sm text-primary/70 hover:text-primary hover:bg-primary/5 transition-colors border-t border-border font-medium"
                 >
                   <Plus className="h-4 w-4" />
                   <span>Adicionar tarefa</span>
@@ -626,12 +682,14 @@ export const LeadActivitiesTab = ({
         </div>
 
         {/* Right side - Selected Checklist Item Details */}
-        <div className="flex-1 min-w-0 bg-card flex flex-col">
+        <div className="flex-1 min-w-0 bg-muted/10 flex flex-col">
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              {getChecklistItemIcon(selectedChecklistItem.item_type)}
-              <span className="font-medium text-sm">{selectedChecklistItem.title}</span>
+            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5 bg-card">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                {getChecklistItemIcon(selectedChecklistItem.item_type)}
+              </div>
+              <span className="font-semibold text-sm text-foreground">{selectedChecklistItem.title}</span>
             </div>
             
             {/* Meeting type - show full scheduler */}
@@ -827,10 +885,15 @@ export const LeadActivitiesTab = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Selecione uma atividade do checklist para ver os detalhes
-            </p>
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Selecione uma atividade do checklist<br />para ver os detalhes
+              </p>
+            </div>
           </div>
         )}
         </div>
