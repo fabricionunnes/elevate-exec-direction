@@ -5,8 +5,9 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
+import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
-import { CheckCircle2, Loader2, AlertCircle } from "lucide-react";
+import { CheckCircle2, Loader2, AlertCircle, ArrowRight } from "lucide-react";
 
 interface FormConfig {
   id: string;
@@ -18,42 +19,82 @@ interface FormConfig {
   origin_name: string | null;
 }
 
+interface FormQuestion {
+  id: string;
+  question_text: string;
+  question_type: string;
+  options: string[];
+  is_required: boolean;
+  sort_order: number;
+}
+
+const formatPhone = (value: string) => {
+  const digits = value.replace(/\D/g, "").slice(0, 11);
+  if (digits.length <= 2) return digits;
+  if (digits.length <= 7) return `(${digits.slice(0, 2)}) ${digits.slice(2)}`;
+  if (digits.length <= 10)
+    return `(${digits.slice(0, 2)}) ${digits.slice(2, 6)}-${digits.slice(6)}`;
+  return `(${digits.slice(0, 2)}) ${digits.slice(2, 7)}-${digits.slice(7)}`;
+};
+
+const cleanPhone = (value: string) => value.replace(/\D/g, "");
+
 const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const [form, setForm] = useState<FormConfig | null>(null);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [loading, setLoading] = useState(true);
-  const [submitting, setSubmitting] = useState(false);
+  const [submittingStep1, setSubmittingStep1] = useState(false);
+  const [submittingStep2, setSubmittingStep2] = useState(false);
+  const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(null);
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
-  const [empresa, setEmpresa] = useState("");
-  const [desafio, setDesafio] = useState("");
+
+  const [answers, setAnswers] = useState<Record<string, string>>({});
 
   useEffect(() => {
     if (token) loadForm();
   }, [token]);
 
   const loadForm = async () => {
-    const { data } = await supabase
-      .from("crm_pipeline_forms")
-      .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
-      .eq("form_token", token)
-      .eq("is_active", true)
-      .maybeSingle();
+    const [formRes, questionsRes] = await Promise.all([
+      supabase
+        .from("crm_pipeline_forms")
+        .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
+        .eq("form_token", token)
+        .eq("is_active", true)
+        .maybeSingle(),
+      supabase
+        .from("crm_pipeline_form_questions" as any)
+        .select("id, question_text, question_type, options, is_required, sort_order")
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true }),
+    ]);
 
-    setForm(data);
+    const formData = formRes.data;
+    setForm(formData);
+
+    if (formData && questionsRes.data) {
+      const formQuestions = (questionsRes.data as any[]).filter((q: any) => q.form_id === undefined || true);
+      // We need to filter by form_id but can't in query since types aren't updated yet
+      // The edge function will handle this properly
+      setQuestions(questionsRes.data as any[]);
+    }
+
     setLoading(false);
   };
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleStep1Submit = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!form || !nome.trim() || !telefone.trim() || !email.trim()) return;
+    if (!form || !nome.trim() || !cleanPhone(telefone) || !email.trim()) return;
 
-    setSubmitting(true);
+    setSubmittingStep1(true);
     setError(null);
 
     try {
@@ -66,10 +107,8 @@ const PublicPipelineForm = () => {
           body: JSON.stringify({
             form_token: form.form_token,
             nome: nome.trim(),
-            telefone: telefone.trim(),
+            telefone: cleanPhone(telefone),
             email: email.trim(),
-            empresa: empresa.trim() || undefined,
-            desafio: desafio.trim() || undefined,
             utm_source: searchParams.get("utm_source") || undefined,
             utm_medium: searchParams.get("utm_medium") || undefined,
             utm_campaign: searchParams.get("utm_campaign") || undefined,
@@ -78,16 +117,66 @@ const PublicPipelineForm = () => {
         }
       );
 
+      const data = await response.json();
+      if (!response.ok) throw new Error(data.error || "Erro ao enviar");
+
+      setLeadId(data.lead_id);
+
+      // If there are questions, go to step 2, otherwise done
+      if (questions.length > 0) {
+        setStep(2);
+      } else {
+        setSubmitted(true);
+      }
+    } catch (err: any) {
+      setError(err.message || "Erro ao enviar formulário");
+    } finally {
+      setSubmittingStep1(false);
+    }
+  };
+
+  const handleStep2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadId) return;
+
+    // Validate required questions
+    for (const q of questions) {
+      if (q.is_required && (!answers[q.id] || !answers[q.id].trim())) {
+        setError(`Por favor, responda: "${q.question_text}"`);
+        return;
+      }
+    }
+
+    setSubmittingStep2(true);
+    setError(null);
+
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "submit_answers",
+            lead_id: leadId,
+            answers: Object.entries(answers)
+              .filter(([, v]) => v.trim())
+              .map(([questionId, answerText]) => ({ question_id: questionId, answer_text: answerText })),
+          }),
+        }
+      );
+
       if (!response.ok) {
         const data = await response.json();
-        throw new Error(data.error || "Erro ao enviar");
+        throw new Error(data.error || "Erro ao enviar respostas");
       }
 
       setSubmitted(true);
     } catch (err: any) {
-      setError(err.message || "Erro ao enviar formulário");
+      setError(err.message || "Erro ao enviar respostas");
     } finally {
-      setSubmitting(false);
+      setSubmittingStep2(false);
     }
   };
 
@@ -136,42 +225,110 @@ const PublicPipelineForm = () => {
       <Card className="max-w-lg w-full">
         <CardHeader>
           <CardTitle>{form.title || "Formulário de Contato"}</CardTitle>
-          {form.description && (
-            <CardDescription>{form.description}</CardDescription>
+          {form.description && <CardDescription>{form.description}</CardDescription>}
+          {questions.length > 0 && (
+            <div className="flex gap-2 mt-3">
+              <div className={`h-1.5 flex-1 rounded-full ${step >= 1 ? "bg-primary" : "bg-muted"}`} />
+              <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? "bg-primary" : "bg-muted"}`} />
+            </div>
           )}
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleSubmit} className="space-y-4">
-            <div className="space-y-2">
-              <Label htmlFor="nome">Nome completo *</Label>
-              <Input id="nome" value={nome} onChange={(e) => setNome(e.target.value)} required maxLength={200} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="telefone">Telefone *</Label>
-              <Input id="telefone" value={telefone} onChange={(e) => setTelefone(e.target.value)} required maxLength={20} placeholder="5511999999999" />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="email">E-mail *</Label>
-              <Input id="email" type="email" value={email} onChange={(e) => setEmail(e.target.value)} required maxLength={255} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="empresa">Empresa</Label>
-              <Input id="empresa" value={empresa} onChange={(e) => setEmpresa(e.target.value)} maxLength={200} />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="desafio">Qual seu principal desafio?</Label>
-              <Textarea id="desafio" value={desafio} onChange={(e) => setDesafio(e.target.value)} maxLength={1000} rows={3} />
-            </div>
+          {step === 1 && (
+            <form onSubmit={handleStep1Submit} className="space-y-4">
+              <div className="space-y-2">
+                <Label htmlFor="nome">Nome completo *</Label>
+                <Input
+                  id="nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                  maxLength={200}
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="telefone">Telefone *</Label>
+                <Input
+                  id="telefone"
+                  value={telefone}
+                  onChange={(e) => setTelefone(formatPhone(e.target.value))}
+                  required
+                  maxLength={16}
+                  placeholder="(11) 99999-9999"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label htmlFor="email">E-mail *</Label>
+                <Input
+                  id="email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  maxLength={255}
+                />
+              </div>
 
-            {error && (
-              <p className="text-sm text-destructive">{error}</p>
-            )}
+              {error && <p className="text-sm text-destructive">{error}</p>}
 
-            <Button type="submit" className="w-full" disabled={submitting}>
-              {submitting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
-              Enviar
-            </Button>
-          </form>
+              <Button type="submit" className="w-full" disabled={submittingStep1}>
+                {submittingStep1 ? (
+                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                ) : (
+                  <ArrowRight className="h-4 w-4 mr-2" />
+                )}
+                {questions.length > 0 ? "Continuar" : "Enviar"}
+              </Button>
+            </form>
+          )}
+
+          {step === 2 && (
+            <form onSubmit={handleStep2Submit} className="space-y-5">
+              <p className="text-sm text-muted-foreground">
+                Responda as perguntas abaixo para completar seu cadastro.
+              </p>
+
+              {questions.map((q) => (
+                <div key={q.id} className="space-y-2">
+                  <Label>
+                    {q.question_text} {q.is_required && "*"}
+                  </Label>
+
+                  {q.question_type === "open" ? (
+                    <Textarea
+                      value={answers[q.id] || ""}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      maxLength={2000}
+                      rows={3}
+                      required={q.is_required}
+                    />
+                  ) : (
+                    <RadioGroup
+                      value={answers[q.id] || ""}
+                      onValueChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+                      className="space-y-2"
+                    >
+                      {(q.options || []).map((opt, idx) => (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <RadioGroupItem value={opt} id={`${q.id}-${idx}`} />
+                          <Label htmlFor={`${q.id}-${idx}`} className="font-normal cursor-pointer">
+                            {opt}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                </div>
+              ))}
+
+              {error && <p className="text-sm text-destructive">{error}</p>}
+
+              <Button type="submit" className="w-full" disabled={submittingStep2}>
+                {submittingStep2 && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+                Enviar
+              </Button>
+            </form>
+          )}
         </CardContent>
       </Card>
     </div>

@@ -5,59 +5,102 @@ const corsHeaders = {
   'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
-Deno.serve(async (req) => {
-  if (req.method === 'OPTIONS') {
-    return new Response(null, { headers: corsHeaders });
-  }
+const jsonResponse = (body: object, status = 200) =>
+  new Response(JSON.stringify(body), {
+    status,
+    headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+  });
 
-  if (req.method !== 'POST') {
-    return new Response(JSON.stringify({ error: 'Method not allowed' }), {
-      status: 405,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
-  }
+Deno.serve(async (req) => {
+  if (req.method === 'OPTIONS') return new Response(null, { headers: corsHeaders });
+  if (req.method !== 'POST') return jsonResponse({ error: 'Method not allowed' }, 405);
 
   try {
     const body = await req.json();
-    const {
-      form_token, nome, telefone, email, empresa, desafio,
-      utm_source, utm_medium, utm_campaign, utm_content
-    } = body;
-
-    if (!form_token) {
-      return new Response(JSON.stringify({ error: 'Token do formulário é obrigatório' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
-    if (!nome || !telefone || !email) {
-      return new Response(JSON.stringify({ error: 'Campos obrigatórios: nome, telefone, email' }), {
-        status: 400,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
-
     const supabase = createClient(
       Deno.env.get('SUPABASE_URL')!,
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Get form config
+    // ── Action: submit answers for an existing lead ──
+    if (body.action === 'submit_answers') {
+      const { lead_id, answers } = body;
+      if (!lead_id || !answers || !Array.isArray(answers)) {
+        return jsonResponse({ error: 'lead_id e answers são obrigatórios' }, 400);
+      }
+
+      const rows = answers.map((a: { question_id: string; answer_text: string }) => ({
+        lead_id,
+        question_id: a.question_id,
+        answer_text: a.answer_text,
+      }));
+
+      if (rows.length > 0) {
+        const { error: insertErr } = await supabase.from('crm_lead_form_answers').insert(rows);
+        if (insertErr) {
+          console.error('[submit-pipeline-form] Answers insert error:', insertErr);
+          return jsonResponse({ error: 'Erro ao salvar respostas' }, 500);
+        }
+      }
+
+      // Update lead notes with answers
+      const { data: answersData } = await supabase
+        .from('crm_lead_form_answers')
+        .select('answer_text, question_id')
+        .eq('lead_id', lead_id);
+
+      if (answersData && answersData.length > 0) {
+        const questionIds = answersData.map((a: any) => a.question_id);
+        const { data: questionsData } = await supabase
+          .from('crm_pipeline_form_questions')
+          .select('id, question_text')
+          .in('id', questionIds);
+
+        if (questionsData) {
+          const qMap = new Map(questionsData.map((q: any) => [q.id, q.question_text]));
+          const answerNotes = answersData
+            .map((a: any) => `${qMap.get(a.question_id) || 'Pergunta'}: ${a.answer_text}`)
+            .join(' | ');
+
+          // Append to existing notes
+          const { data: lead } = await supabase
+            .from('crm_leads')
+            .select('notes')
+            .eq('id', lead_id)
+            .single();
+
+          const existingNotes = lead?.notes || '';
+          const newNotes = existingNotes
+            ? `${existingNotes} | ${answerNotes}`
+            : answerNotes;
+
+          await supabase
+            .from('crm_leads')
+            .update({ notes: newNotes })
+            .eq('id', lead_id);
+        }
+      }
+
+      return jsonResponse({ success: true });
+    }
+
+    // ── Default action: create lead (step 1) ──
+    const {
+      form_token, nome, telefone, email, empresa, desafio,
+      utm_source, utm_medium, utm_campaign, utm_content
+    } = body;
+
+    if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
+    if (!nome || !telefone || !email) return jsonResponse({ error: 'Campos obrigatórios: nome, telefone, email' }, 400);
+
     const { data: form } = await supabase
       .from('crm_pipeline_forms')
       .select('id, pipeline_id, origin_name, is_active')
       .eq('form_token', form_token)
       .maybeSingle();
 
-    if (!form || !form.is_active) {
-      return new Response(JSON.stringify({ error: 'Formulário não encontrado ou inativo' }), {
-        status: 404,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (!form || !form.is_active) return jsonResponse({ error: 'Formulário não encontrado ou inativo' }, 404);
 
-    // Get first stage
     const { data: stage } = await supabase
       .from('crm_stages')
       .select('id')
@@ -66,14 +109,8 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    if (!stage) {
-      return new Response(JSON.stringify({ error: 'Pipeline sem etapas configuradas' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
-    }
+    if (!stage) return jsonResponse({ error: 'Pipeline sem etapas configuradas' }, 500);
 
-    // Get owner
     const { data: owner } = await supabase
       .from('onboarding_staff')
       .select('id, phone')
@@ -83,7 +120,6 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    // Resolve origin
     const originName = form.origin_name || 'Formulário Público';
     const { data: origin } = await supabase
       .from('crm_origins')
@@ -92,7 +128,7 @@ Deno.serve(async (req) => {
       .limit(1)
       .maybeSingle();
 
-    const notesParts = [];
+    const notesParts: string[] = [];
     if (desafio) notesParts.push(`Desafio: ${desafio}`);
     if (utm_source) notesParts.push(`UTM Source: ${utm_source}`);
     if (utm_medium) notesParts.push(`UTM Medium: ${utm_medium}`);
@@ -105,7 +141,7 @@ Deno.serve(async (req) => {
       .insert({
         name: nome,
         phone: telefone,
-        email: email,
+        email,
         company: empresa || null,
         main_pain: desafio || null,
         notes,
@@ -125,84 +161,81 @@ Deno.serve(async (req) => {
 
     if (insertError) {
       console.error('[submit-pipeline-form] Insert error:', insertError);
-      return new Response(JSON.stringify({ error: 'Erro ao criar lead' }), {
-        status: 500,
-        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-      });
+      return jsonResponse({ error: 'Erro ao criar lead' }, 500);
     }
 
     console.log('[submit-pipeline-form] Lead created:', lead.id);
 
-    // Send WhatsApp notification
-    const APP_URL = 'https://elevate-exec-direction.lovable.app';
-    const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
+    // ── WhatsApp notification ──
+    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
 
-    const message = `🚀 *Novo Lead via Formulário!*\n\n` +
-      `👤 *Nome:* ${nome}\n` +
-      `📞 *Telefone:* ${telefone}\n` +
-      `📧 *Email:* ${email}\n` +
-      (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
-      (desafio ? `🎯 *Desafio:* ${desafio}\n` : '') +
-      (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
-      `\n🔗 *Ver no CRM:* ${leadLink}`;
-
-    const { data: whatsappConfig } = await supabase
-      .from('whatsapp_default_config')
-      .select('setting_value')
-      .eq('setting_key', 'default_instance')
-      .maybeSingle();
-
-    const instanceName = whatsappConfig?.setting_value;
-
-    if (instanceName) {
-      const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-      const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-
-      if (evolutionUrl && evolutionKey) {
-        const numbersToNotify: string[] = [];
-
-        if (owner?.phone) {
-          const cleanPhone = owner.phone.replace(/\D/g, '');
-          if (cleanPhone) numbersToNotify.push(cleanPhone);
-        }
-
-        const { data: notifNumbers } = await supabase
-          .from('crm_lead_notification_numbers')
-          .select('phone')
-          .eq('is_active', true);
-
-        if (notifNumbers) {
-          for (const n of notifNumbers) {
-            const cleanPhone = n.phone.replace(/\D/g, '');
-            if (cleanPhone && !numbersToNotify.includes(cleanPhone)) {
-              numbersToNotify.push(cleanPhone);
-            }
-          }
-        }
-
-        for (const phone of numbersToNotify) {
-          try {
-            await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
-              method: 'POST',
-              headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
-              body: JSON.stringify({ number: phone, text: message }),
-            });
-          } catch (e) {
-            console.error(`[submit-pipeline-form] WhatsApp error for ${phone}:`, e);
-          }
-        }
-      }
-    }
-
-    return new Response(JSON.stringify({ success: true, lead_id: lead.id }), {
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ success: true, lead_id: lead.id });
 
   } catch (error: unknown) {
     console.error('[submit-pipeline-form] Error:', error);
-    return new Response(JSON.stringify({ error: String(error) }), {
-      status: 500,
-      headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-    });
+    return jsonResponse({ error: String(error) }, 500);
   }
 });
+
+async function sendWhatsAppNotification(
+  supabase: any, leadId: string,
+  nome: string, telefone: string, email: string,
+  empresa?: string, desafio?: string, utm_source?: string,
+  owner?: { id: string; phone: string | null } | null
+) {
+  const APP_URL = 'https://elevate-exec-direction.lovable.app';
+  const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
+
+  const message = `🚀 *Novo Lead via Formulário!*\n\n` +
+    `👤 *Nome:* ${nome}\n` +
+    `📞 *Telefone:* ${telefone}\n` +
+    `📧 *Email:* ${email}\n` +
+    (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
+    (desafio ? `🎯 *Desafio:* ${desafio}\n` : '') +
+    (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
+    `\n🔗 *Ver no CRM:* ${leadLink}`;
+
+  const { data: whatsappConfig } = await supabase
+    .from('whatsapp_default_config')
+    .select('setting_value')
+    .eq('setting_key', 'default_instance')
+    .maybeSingle();
+
+  const instanceName = whatsappConfig?.setting_value;
+  if (!instanceName) return;
+
+  const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
+  const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+  if (!evolutionUrl || !evolutionKey) return;
+
+  const numbersToNotify: string[] = [];
+
+  if (owner?.phone) {
+    const clean = owner.phone.replace(/\D/g, '');
+    if (clean) numbersToNotify.push(clean);
+  }
+
+  const { data: notifNumbers } = await supabase
+    .from('crm_lead_notification_numbers')
+    .select('phone')
+    .eq('is_active', true);
+
+  if (notifNumbers) {
+    for (const n of notifNumbers) {
+      const clean = n.phone.replace(/\D/g, '');
+      if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
+    }
+  }
+
+  for (const phone of numbersToNotify) {
+    try {
+      await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
+        body: JSON.stringify({ number: phone, text: message }),
+      });
+    } catch (e) {
+      console.error(`[submit-pipeline-form] WhatsApp error for ${phone}:`, e);
+    }
+  }
+}
