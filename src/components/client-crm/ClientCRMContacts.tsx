@@ -29,6 +29,7 @@ export const ClientCRMContacts = ({ contacts, projectId, pipelines, stages, acti
   const [form, setForm] = useState(emptyContact);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const filtered = contacts.filter((c) =>
     [c.name, c.email, c.phone, c.company].some((f) => f?.toLowerCase().includes(search.toLowerCase()))
