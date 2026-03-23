@@ -216,6 +216,20 @@ export const CRMPipelinePage = () => {
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
+    // If an origin is selected, verify it belongs to the current pipeline
+    // to avoid mismatched queries during state transitions
+    let effectiveOrigin = selectedOrigin;
+    if (effectiveOrigin) {
+      const { data: originData } = await supabase
+        .from("crm_origins")
+        .select("pipeline_id")
+        .eq("id", effectiveOrigin)
+        .single();
+      if (originData && originData.pipeline_id !== selectedPipeline) {
+        effectiveOrigin = null;
+      }
+    }
+
     setLoading(true);
     try {
       const { data: stagesData, error: stagesError } = await supabase
@@ -241,9 +255,9 @@ export const CRMPipelinePage = () => {
         .eq("pipeline_id", selectedPipeline)
         .order("created_at", { ascending: false });
 
-      // Apply origin filter from sidebar
-      if (selectedOrigin) {
-        query = query.eq("origin_id", selectedOrigin);
+      // Apply origin filter only if it belongs to this pipeline
+      if (effectiveOrigin) {
+        query = query.eq("origin_id", effectiveOrigin);
       }
 
       const { data: leadsData, error: leadsError } = await query;
