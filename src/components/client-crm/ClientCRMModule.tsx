@@ -114,9 +114,14 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
         <TabsContent value="contatos">
           <ClientCRMContacts
             contacts={crm.contacts}
+            projectId={projectId}
+            pipelines={crm.pipelines}
+            stages={crm.stages}
+            activePipelineId={crm.activePipelineId}
             onCreateContact={crm.createContact}
             onUpdateContact={crm.updateContact}
             onDeleteContact={crm.deleteContact}
+            onRefresh={crm.fetchAll}
           />
         </TabsContent>
 
