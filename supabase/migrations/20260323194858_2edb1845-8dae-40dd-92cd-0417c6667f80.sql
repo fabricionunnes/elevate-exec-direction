@@ -1,0 +1,1 @@
+UPDATE crm_custom_fields SET is_active = false WHERE context = 'deal' AND section = 'Dados do Fechamento';
