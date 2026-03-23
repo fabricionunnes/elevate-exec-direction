@@ -17,6 +17,7 @@ interface FormConfig {
   form_token: string;
   is_active: boolean;
   origin_name: string | null;
+  redirect_url: string | null;
 }
 
 interface FormQuestion {
