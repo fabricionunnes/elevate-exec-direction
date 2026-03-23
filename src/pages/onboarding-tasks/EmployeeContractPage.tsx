@@ -213,7 +213,47 @@ export default function EmployeeContractPage() {
     }
   };
 
-  const handleGenerate = async () => {
+  const checkSignatureStatus = async (documentToken: string) => {
+    setIsLoadingSignatures(true);
+    try {
+      const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
+        body: { documentToken },
+      });
+      if (error) {
+        console.error("Erro ao verificar status:", error);
+        return;
+      }
+      setSignatureStatus({
+        signers: data.signers || [],
+        allSigned: data.allSigned || false,
+        signedFileUrl: data.signedFileUrl || null,
+      });
+    } catch (error) {
+      console.error("Erro ao verificar status:", error);
+    } finally {
+      setIsLoadingSignatures(false);
+    }
+  };
+
+  const downloadFileFromUrl = async (url: string, filename: string) => {
+    try {
+      const res = await fetch(url, { method: "GET" });
+      if (!res.ok) throw new Error(`HTTP ${res.status}`);
+      const blob = await res.blob();
+      const blobUrl = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = blobUrl;
+      a.download = filename;
+      document.body.appendChild(a);
+      a.click();
+      document.body.removeChild(a);
+      setTimeout(() => URL.revokeObjectURL(blobUrl), 10_000);
+    } catch (e) {
+      console.error("Erro ao baixar arquivo:", e);
+      toast.error("Não consegui baixar o arquivo assinado. Tente novamente.");
+    }
+  };
+
     setIsGenerating(true);
     setZapSignSent(false);
     try {
