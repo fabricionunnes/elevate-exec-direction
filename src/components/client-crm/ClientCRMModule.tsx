@@ -100,12 +100,14 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
             activePipelineId={crm.activePipelineId}
             setActivePipelineId={(id) => { crm.setActivePipelineId(id); crm.fetchAll(); }}
             activities={crm.activities}
+            projectId={projectId}
             onCreateDeal={crm.createDeal}
             onUpdateDeal={crm.updateDeal}
             onDeleteDeal={crm.deleteDeal}
             onMoveDeal={crm.moveDealToStage}
             onCreateActivity={crm.createActivity}
             onCompleteActivity={crm.completeActivity}
+            onRefresh={crm.fetchAll}
           />
         </TabsContent>
 
