@@ -117,14 +117,15 @@ export function CheckoutModal({
       return () => existingScript.removeEventListener("load", onLoad);
     }
 
-    (window as Window & { module?: Record<string, unknown> }).module = {};
+    const sdkWindow = window as unknown as Window & { module?: Record<string, unknown> };
+    sdkWindow.module = {};
     const script = window.document.createElement("script");
     script.id = DOM_SDK_ID;
     script.src = DOM_SDK_SRC;
     script.async = true;
     script.onload = () => {
       setDomSdkReady(true);
-      delete (window as Window & { module?: Record<string, unknown> }).module;
+      delete sdkWindow.module;
     };
     script.onerror = () => {
       setDomSdkReady(false);
