@@ -120,6 +120,44 @@ export const clauseFirstByRole: Record<string, string> = {
 // Default fallback for roles not specifically defined
 export const clauseFirstDefault = clauseFirstByRole.consultor;
 
+// Dynamic CLÁUSULA QUINTA (payment + commission) content per role
+export const clausePaymentByRole: Record<string, string> = {
+  consultor: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.
+5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão de 5% (cinco por cento) sobre o valor dos contratos renovados pelos clientes sob sua gestão direta, pagos no mês subsequente à confirmação da renovação.`,
+
+  closer: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.
+5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão variável sobre as vendas realizadas, conforme as faixas abaixo:
+- Faixa 1: até R$ 30.000,00 em vendas — comissão de 5% (cinco por cento)
+- Faixa 2: de R$ 30.001,00 a R$ 60.000,00 em vendas — comissão de 7% (sete por cento)
+- Faixa 3: acima de R$ 60.000,00 em vendas — comissão de 10% (dez por cento)
+As comissões serão calculadas sobre o valor total das vendas fechadas e confirmadas no mês, pagas no mês subsequente.`,
+
+  sdr: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.
+5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão variável sobre as reuniões qualificadas agendadas e realizadas, conforme as faixas abaixo:
+- Faixa 1: até 20 reuniões qualificadas — comissão de R$ 30,00 (trinta reais) por reunião
+- Faixa 2: de 21 a 40 reuniões qualificadas — comissão de R$ 40,00 (quarenta reais) por reunião
+- Faixa 3: acima de 40 reuniões qualificadas — comissão de R$ 50,00 (cinquenta reais) por reunião
+As comissões serão calculadas sobre o número de reuniões qualificadas realizadas no mês, pagas no mês subsequente.`,
+
+  cs: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`,
+
+  head_comercial: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.
+5.3 COMISSÃO: Além da remuneração fixa, a CONTRATADA fará jus a comissão de 2% (dois por cento) sobre o faturamento total da equipe comercial sob sua gestão, paga no mês subsequente.`,
+
+  rh: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`,
+
+  admin: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
+5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`,
+};
+
+export const clausePaymentDefault = clausePaymentByRole.consultor;
+
 export const employeeContractClauses: EmployeeContractClause[] = [
   {
     id: "objeto",
@@ -166,8 +204,8 @@ Parágrafo Único: O CONTRATANTE, em caso de culpa grave ou de dolo por parte da
   {
     id: "pagamento",
     title: "CLÁUSULA QUINTA - DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO",
-    content: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
-5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`,
+    content: "", // Will be filled dynamically based on role (includes commission)
+    isDynamic: true,
   },
   {
     id: "descumprimento",
@@ -201,7 +239,7 @@ f) Penalidade: Caso ocorra violação dos termos acima mencionados, o Colaborado
   {
     id: "foro",
     title: "CLÁUSULA DÉCIMA - DO FORO",
-    content: `10.1 Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca de Conselheiro Lafaiete do Estado de MG.`,
+    content: `10.1 Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca de Nova Lima do Estado de MG.`,
   },
 ];
 

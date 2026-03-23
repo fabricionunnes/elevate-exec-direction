@@ -20,6 +20,8 @@ import {
   employeeContractClauses,
   clauseFirstByRole,
   clauseFirstDefault,
+  clausePaymentByRole,
+  clausePaymentDefault,
   roleLabels,
 } from "@/data/employeeContractTemplate";
 import { generateEmployeeContractPDF, downloadEmployeeContractPDF } from "@/components/employee-contract/generateEmployeeContractPDF";
@@ -59,13 +61,19 @@ interface SavedEmployeeContract {
 
 function getEditableClauses(role: string): EditableEmployeeClause[] {
   const clauseContent = clauseFirstByRole[role] || clauseFirstDefault;
-  return employeeContractClauses.map((c) => ({
-    id: c.id,
-    title: c.title,
-    content: c.id === "objeto" ? clauseContent : c.content,
-    originalContent: c.id === "objeto" ? clauseContent : c.content,
-    isDynamic: c.isDynamic,
-  }));
+  const paymentContent = clausePaymentByRole[role] || clausePaymentDefault;
+  return employeeContractClauses.map((c) => {
+    let content = c.content;
+    if (c.id === "objeto") content = clauseContent;
+    if (c.id === "pagamento") content = paymentContent;
+    return {
+      id: c.id,
+      title: c.title,
+      content,
+      originalContent: content,
+      isDynamic: c.isDynamic,
+    };
+  });
 }
 
 export default function EmployeeContractPage() {

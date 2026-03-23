@@ -21,7 +21,7 @@ interface EmployeeClausesEditorProps {
 
 export default function EmployeeClausesEditor({ clauses, onChange }: EmployeeClausesEditorProps) {
   // The "objeto" clause starts open by default since it's the dynamic one
-  const [openClauses, setOpenClauses] = useState<Record<string, boolean>>({ objeto: true });
+  const [openClauses, setOpenClauses] = useState<Record<string, boolean>>({ objeto: true, pagamento: true });
 
   const toggleClause = (id: string) => {
     setOpenClauses((prev) => ({ ...prev, [id]: !prev[id] }));
