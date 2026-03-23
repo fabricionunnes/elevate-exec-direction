@@ -175,6 +175,9 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
   // CLAUSES
   const clauses = customClauses || [];
   for (const clause of clauses) {
+    _currentFontSize = 10;
+    _currentFontStyle = "bold";
+    _currentTextColor = [...NAVY] as [number, number, number];
     checkPage(15);
     // Clause title
     doc.setFillColor(245, 245, 245);
@@ -186,6 +189,8 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
     y += 6;
 
     // Clause content
+    _currentFontStyle = "normal";
+    _currentTextColor = [50, 50, 50];
     doc.setFont("helvetica", "normal");
     doc.setTextColor(50, 50, 50);
 
