@@ -113,7 +113,11 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
         .eq("id", leadId)
         .single();
 
-      if (error) throw error;
+      if (error) {
+        console.error("Error loading contract data:", error);
+        // Don't clear existing data on error - preserve what we have
+        return;
+      }
       if (lead) {
         setData({
           company: lead.company || "",
@@ -121,22 +125,23 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
           document: lead.document || "",
           email: lead.email || "",
           phone: lead.phone || "",
-          legal_representative_name: (lead as any).legal_representative_name || "",
-          cpf: (lead as any).cpf || "",
-          rg: (lead as any).rg || "",
-          marital_status: (lead as any).marital_status || "",
+          legal_representative_name: lead.legal_representative_name || "",
+          cpf: lead.cpf || "",
+          rg: lead.rg || "",
+          marital_status: lead.marital_status || "",
           address: lead.address || "",
-          address_number: (lead as any).address_number || "",
-          address_complement: (lead as any).address_complement || "",
-          address_neighborhood: (lead as any).address_neighborhood || "",
+          address_number: lead.address_number || "",
+          address_complement: lead.address_complement || "",
+          address_neighborhood: lead.address_neighborhood || "",
           city: lead.city || "",
           state: lead.state || "",
           zipcode: lead.zipcode || "",
         });
-        setFormToken((lead as any).contract_form_token || null);
+        setFormToken(lead.contract_form_token || null);
       }
     } catch (error) {
       console.error("Error loading contract data:", error);
+      // Don't clear existing data on error - preserve what we have
     } finally {
       setLoading(false);
     }
