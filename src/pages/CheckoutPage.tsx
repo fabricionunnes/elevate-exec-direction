@@ -110,6 +110,7 @@ export default function CheckoutPage() {
         priceLabel={priceLabel}
         paymentLinkId={linkData.linkId}
         provider={linkData.provider}
+        fixedMethod={linkData.paymentMethod as "credit_card" | "pix" | "boleto" | undefined}
       />
       {!open && (
         <p className="text-muted-foreground">Pagamento fechado. Você pode fechar esta janela.</p>
