@@ -218,12 +218,16 @@ export const CRMPipelinePage = () => {
 
     setLoading(true);
     try {
-      const { data: stagesData } = await supabase
+      const { data: stagesData, error: stagesError } = await supabase
         .from("crm_stages")
         .select("*")
         .eq("pipeline_id", selectedPipeline)
         .order("sort_order");
 
+      if (stagesError) {
+        console.error("Error loading stages:", stagesError);
+        return; // Preserve existing data on error
+      }
       setStages(stagesData || []);
 
       let query = supabase
@@ -242,11 +246,17 @@ export const CRMPipelinePage = () => {
         query = query.eq("origin_id", selectedOrigin);
       }
 
-      const { data: leadsData } = await query;
+      const { data: leadsData, error: leadsError } = await query;
+      
+      if (leadsError) {
+        console.error("Error loading leads:", leadsError);
+        return; // Preserve existing leads on error - don't clear the board
+      }
+      
       setLeads(leadsData || []);
     } catch (error) {
       console.error("Error loading pipeline data:", error);
-      toast.error("Erro ao carregar dados do pipeline");
+      // Don't clear existing data on error - preserve what's on screen
     } finally {
       setLoading(false);
     }
