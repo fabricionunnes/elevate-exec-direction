@@ -213,6 +213,8 @@ Deno.serve(async (req) => {
 
     if (payment_method === "credit_card") {
       response.paid = isPaid;
+      // If Dom returned a checkout URL for link-based credit card flow
+      response.checkout_url = domData.checkout_url || domData.payment_url || null;
     }
 
     return new Response(JSON.stringify(response), {
