@@ -1,14 +1,26 @@
 import { supabase } from "@/integrations/supabase/client";
 
 function normalizeBrPhoneDigits(phoneRaw: string) {
-  const digits = (phoneRaw || "").replace(/\D/g, "");
+  let digits = (phoneRaw || "").replace(/\D/g, "");
   if (!digits) return { digits: "", formatted: "", suffix8: "", suffix9: "" };
+
+  // Ensure country code
+  if (!digits.startsWith("55")) {
+    digits = `55${digits}`;
+  }
+
+  // Brazilian mobile numbers: 55 + 2-digit DDD + 9 digits = 13 total
+  // If we have 12 digits (55 + DDD + 8-digit number), insert the 9th digit
+  if (digits.length === 12) {
+    const ddd = digits.slice(2, 4);
+    const number = digits.slice(4);
+    digits = `55${ddd}9${number}`;
+  }
 
   const suffix8 = digits.slice(-8);
   const suffix9 = digits.slice(-9);
-  const formatted = digits.startsWith("55") ? digits : `55${digits}`;
 
-  return { digits, formatted, suffix8, suffix9 };
+  return { digits, formatted: digits, suffix8, suffix9 };
 }
 
 type SendLoggedWhatsAppTextArgs = {
