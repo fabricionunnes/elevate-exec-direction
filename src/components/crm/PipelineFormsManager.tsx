@@ -1,4 +1,5 @@
 import { useState, useEffect } from "react";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -78,7 +79,7 @@ export const PipelineFormsManager = () => {
   };
 
   const getFormUrl = (token: string) => {
-    return `${window.location.origin}/#/form/${token}`;
+    return `${getPublicBaseUrl()}/#/form/${token}`;
   };
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
