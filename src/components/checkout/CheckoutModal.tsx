@@ -95,6 +95,7 @@ export function CheckoutModal({
   };
 
   const handleClose = (val: boolean) => {
+    if (loading) return; // Prevent closing while processing payment
     if (!val) resetForm();
     onOpenChange(val);
   };
