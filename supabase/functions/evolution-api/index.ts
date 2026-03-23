@@ -426,7 +426,6 @@ Deno.serve(async (req) => {
 
         // If the number doesn't exist on WhatsApp, return a friendly error (200 with error field)
         if (!response.ok) {
-          const dataStr = JSON.stringify(data);
           if (dataStr.includes('"exists":false') || dataStr.includes('"exists": false')) {
             return new Response(
               JSON.stringify({
