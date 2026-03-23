@@ -126,7 +126,6 @@ export function ConvertLeadToCompanyDialog({
         cnpj: document || null,
         segment: lead.segment,
         contract_value: lead.opportunity_value || null,
-        status: "pending",
         address: lead.address,
         address_number: lead.address_number,
         address_complement: lead.address_complement,
@@ -150,7 +149,10 @@ export function ConvertLeadToCompanyDialog({
       } else {
         const { data: newCompany, error: companyError } = await supabase
           .from("onboarding_companies")
-          .insert(companyPayload)
+          .insert({
+            ...companyPayload,
+            status: "inactive",
+          })
           .select("id")
           .single();
 
