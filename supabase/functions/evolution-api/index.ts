@@ -373,6 +373,7 @@ Deno.serve(async (req) => {
       case 'sendText': {
         // Send text message (alias for send-text, used by frontend)
         const { instanceId, phone, message } = body;
+        const digitsOnlyPhone = String(phone || '').replace(/\D/g, '');
         
         // Get instance name AND custom API credentials from database
         const supabaseService = createClient(
@@ -403,7 +404,7 @@ Deno.serve(async (req) => {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
-            number: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            number: digitsOnlyPhone,
             text: message,
           }),
         });
