@@ -79,7 +79,7 @@ export const PipelineFormsManager = () => {
   };
 
   const getFormUrl = (token: string) => {
-    return `${window.location.origin}/#/form/${token}`;
+    return `${getPublicBaseUrl()}/#/form/${token}`;
   };
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
