@@ -79,6 +79,9 @@ export const ClientCRMContacts = ({ contacts, projectId, pipelines, stages, acti
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar contatos..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImport(true)}>
+          <Upload className="h-4 w-4" /> Importar
+        </Button>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1" onClick={openNew}>
