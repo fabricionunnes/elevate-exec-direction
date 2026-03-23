@@ -9,15 +9,23 @@ interface LeadContractData {
   phone: string | null;
   document: string | null;
   company: string | null;
+  trade_name: string | null;
   product_id: string | null;
   opportunity_value: number | null;
   payment_method: string | null;
   installments: string | null;
   due_day: number | null;
   address: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
   city: string | null;
   state: string | null;
   zipcode: string | null;
+  legal_representative_name: string | null;
+  cpf: string | null;
+  rg: string | null;
+  marital_status: string | null;
 }
 
 interface MissingField {
