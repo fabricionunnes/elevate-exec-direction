@@ -716,6 +716,65 @@ export const CRMSettingsPage = () => {
     setEditOriginOpen(true);
   };
 
+  const handleCopyStageConfig = async () => {
+    if (!copySourceStage || !copyTargetStage) return;
+    if (!copyChecklist && !copyActions) {
+      toast.error("Selecione pelo menos uma opção para copiar");
+      return;
+    }
+
+    setCopying(true);
+    try {
+      if (copyChecklist) {
+        const { data: sourceChecklists, error: checkErr } = await supabase
+          .from("crm_stage_checklists")
+          .select("*")
+          .eq("stage_id", copySourceStage);
+        if (checkErr) throw checkErr;
+
+        if (sourceChecklists && sourceChecklists.length > 0) {
+          const newChecklists = sourceChecklists.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
+            ...rest,
+            stage_id: copyTargetStage.id,
+          }));
+          const { error: insertErr } = await supabase.from("crm_stage_checklists").insert(newChecklists);
+          if (insertErr) throw insertErr;
+        }
+      }
+
+      if (copyActions) {
+        const { data: sourceActions, error: actErr } = await supabase
+          .from("crm_stage_actions")
+          .select("*")
+          .eq("stage_id", copySourceStage);
+        if (actErr) throw actErr;
+
+        if (sourceActions && sourceActions.length > 0) {
+          const newActions = sourceActions.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
+            ...rest,
+            stage_id: copyTargetStage.id,
+          }));
+          const { error: insertErr } = await supabase.from("crm_stage_actions").insert(newActions);
+          if (insertErr) throw insertErr;
+        }
+      }
+
+      const copied = [copyChecklist && "checklist", copyActions && "automações"].filter(Boolean).join(" e ");
+      toast.success(`${copied} copiado(s) com sucesso para "${copyTargetStage.name}"!`);
+      setCopyDialogOpen(false);
+      setCopyTargetStage(null);
+      setCopySourcePipeline("");
+      setCopySourceStage("");
+    } catch (error: any) {
+      console.error("Error copying stage config:", error);
+      toast.error("Erro ao copiar configuração");
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const copySourceStages = stages.filter(s => s.pipeline_id === copySourcePipeline);
+
   const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
   const groupOrigins = origins.filter(o => o.group_id === selectedOriginGroup);
 
