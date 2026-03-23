@@ -1106,7 +1106,10 @@ export const CRMLeadDetailPage = () => {
           <LeadContractDataTab leadId={lead.id} onUpdate={loadLead} />
         </TabsContent>
 
-        <TabsContent value="contact" className="flex-1 mt-0 overflow-auto">
+        <TabsContent value="form_answers" className="flex-1 mt-0 overflow-auto">
+          <LeadFormAnswersTab leadId={lead.id} />
+        </TabsContent>
+
           <LeadCustomFieldsTab
             leadId={lead.id}
             context="contact"
