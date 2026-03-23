@@ -42,6 +42,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
     amount: contractValue || 0,
     paymentMethod: "pix" as string,
     installments: 1,
+    interestFreeInstallments: 1,
     customerName: companyName,
     customerEmail: customerEmail || "",
     customerPhone: customerPhone || "",
