@@ -23,7 +23,7 @@ interface Props {
 
 const emptyContact = { name: "", email: "", phone: "", company: "", role: "", document: "", notes: "" };
 
-export const ClientCRMContacts = ({ contacts, onCreateContact, onUpdateContact, onDeleteContact }: Props) => {
+export const ClientCRMContacts = ({ contacts, projectId, pipelines, stages, activePipelineId, onCreateContact, onUpdateContact, onDeleteContact, onRefresh }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ClientContact | null>(null);
   const [form, setForm] = useState(emptyContact);
