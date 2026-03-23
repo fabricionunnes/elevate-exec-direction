@@ -20,10 +20,12 @@ import {
   employeeContractClauses,
   clauseFirstByRole,
   clauseFirstDefault,
-  clausePaymentByRole,
-  clausePaymentDefault,
+  defaultCommissionByRole,
+  buildPaymentClauseText,
   roleLabels,
+  type RoleCommissionConfig,
 } from "@/data/employeeContractTemplate";
+import EmployeeCommissionEditor from "@/components/employee-contract/EmployeeCommissionEditor";
 import { generateEmployeeContractPDF, downloadEmployeeContractPDF } from "@/components/employee-contract/generateEmployeeContractPDF";
 import { formatCurrencyBR } from "@/lib/numberToWords";
 import { Input } from "@/components/ui/input";
@@ -59,9 +61,10 @@ interface SavedEmployeeContract {
   zapsign_sent_at: string | null;
 }
 
-function getEditableClauses(role: string, durationMonths?: number): EditableEmployeeClause[] {
+function getEditableClauses(role: string, durationMonths?: number, commissionConfig?: RoleCommissionConfig): EditableEmployeeClause[] {
   const clauseContent = clauseFirstByRole[role] || clauseFirstDefault;
-  const paymentContent = clausePaymentByRole[role] || clausePaymentDefault;
+  const commission = commissionConfig || defaultCommissionByRole[role] || defaultCommissionByRole.consultor;
+  const paymentContent = buildPaymentClauseText(commission);
   const duration = durationMonths || 3;
   return employeeContractClauses.map((c) => {
     let content = c.content;
@@ -84,6 +87,9 @@ export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
   const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
+  const [commissionConfig, setCommissionConfig] = useState<RoleCommissionConfig>(
+    defaultCommissionByRole.consultor
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [contracts, setContracts] = useState<SavedEmployeeContract[]>([]);
@@ -104,12 +110,20 @@ export default function EmployeeContractPage() {
     if (showHistory) loadContracts();
   }, [showHistory]);
 
-  // Update clauses when role or duration changes
+  // Reset commission when role changes
   useEffect(() => {
     if (formData.staffRole && !editingContractId) {
-      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths));
+      const roleConfig = defaultCommissionByRole[formData.staffRole] || defaultCommissionByRole.consultor;
+      setCommissionConfig({ ...roleConfig });
     }
-  }, [formData.staffRole, formData.durationMonths, editingContractId]);
+  }, [formData.staffRole, editingContractId]);
+
+  // Update clauses when role, duration or commission changes
+  useEffect(() => {
+    if (formData.staffRole && !editingContractId) {
+      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths, commissionConfig));
+    }
+  }, [formData.staffRole, formData.durationMonths, commissionConfig, editingContractId]);
 
   const canDelete = currentUserEmail === CEO_EMAIL;
 
@@ -418,6 +432,11 @@ export default function EmployeeContractPage() {
                 onChange={setFormData}
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
+              />
+              <EmployeeCommissionEditor
+                role={formData.staffRole || "consultor"}
+                config={commissionConfig}
+                onChange={setCommissionConfig}
               />
             </div>
             <div className="space-y-4">
