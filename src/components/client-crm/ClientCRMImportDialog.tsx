@@ -320,15 +320,15 @@ export const ClientCRMImportDialog = ({
           {/* Result */}
           {result && (
             <div className="space-y-3 text-center py-4">
-              <CheckCircle2 className="h-12 w-12 mx-auto text-green-500" />
+              <CheckCircle2 className="h-12 w-12 mx-auto text-primary" />
               <h3 className="font-semibold text-lg">Importação concluída!</h3>
               <div className="flex justify-center gap-6 text-sm">
                 <div>
-                  <span className="font-bold text-green-600">{result.inserted}</span>
+                  <span className="font-bold text-primary">{result.inserted}</span>
                   <p className="text-muted-foreground">Importados</p>
                 </div>
                 <div>
-                  <span className="font-bold text-yellow-600">{result.skipped}</span>
+                  <span className="font-bold text-accent-foreground">{result.skipped}</span>
                   <p className="text-muted-foreground">Ignorados</p>
                 </div>
                 {result.total_errors > 0 && (
