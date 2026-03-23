@@ -294,11 +294,11 @@ Deno.serve(async (req) => {
           }
         }
       }
-    }
 
-    // Activate pending projects when payment is confirmed
-    if (newStatus === "paid" && chargeId) {
-      await activatePendingProjects(supabase, chargeId);
+      // Activate pending projects when payment is confirmed
+      if (newStatus === "paid" && chargeId) {
+        await activatePendingProjects(supabase, chargeId);
+      }
     }
 
     // Always return 200 to acknowledge receipt
