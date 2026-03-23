@@ -239,7 +239,7 @@ f) Penalidade: Caso ocorra violação dos termos acima mencionados, o Colaborado
   {
     id: "foro",
     title: "CLÁUSULA DÉCIMA - DO FORO",
-    content: `10.1 Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca de Conselheiro Lafaiete do Estado de MG.`,
+    content: `10.1 Para dirimir quaisquer controvérsias oriundas do presente contrato, as partes elegem o foro da Comarca de Nova Lima do Estado de MG.`,
   },
 ];
 
