@@ -63,28 +63,24 @@ const PublicPipelineForm = () => {
   }, [token]);
 
   const loadForm = async () => {
-    const [formRes, questionsRes] = await Promise.all([
-      supabase
-        .from("crm_pipeline_forms")
-        .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
-        .eq("form_token", token)
-        .eq("is_active", true)
-        .maybeSingle(),
-      supabase
-        .from("crm_pipeline_form_questions" as any)
-        .select("id, question_text, question_type, options, is_required, sort_order")
-        .eq("is_active", true)
-        .order("sort_order", { ascending: true }),
-    ]);
+    const formRes = await supabase
+      .from("crm_pipeline_forms")
+      .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
+      .eq("form_token", token)
+      .eq("is_active", true)
+      .maybeSingle();
 
     const formData = formRes.data;
     setForm(formData);
 
-    if (formData && questionsRes.data) {
-      const formQuestions = (questionsRes.data as any[]).filter((q: any) => q.form_id === undefined || true);
-      // We need to filter by form_id but can't in query since types aren't updated yet
-      // The edge function will handle this properly
-      setQuestions(questionsRes.data as any[]);
+    if (formData) {
+      const { data: qData } = await supabase
+        .from("crm_pipeline_form_questions" as any)
+        .select("id, question_text, question_type, options, is_required, sort_order")
+        .eq("form_id", formData.id)
+        .eq("is_active", true)
+        .order("sort_order", { ascending: true });
+      setQuestions((qData as any[]) || []);
     }
 
     setLoading(false);
