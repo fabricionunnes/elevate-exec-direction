@@ -1364,6 +1364,15 @@ export const CRMLeadDetailPage = () => {
           }}
         />
       )}
+
+      {lead && (
+        <ConvertLeadToCompanyDialog
+          open={convertDialogOpen}
+          onOpenChange={setConvertDialogOpen}
+          lead={lead}
+          onSuccess={loadLead}
+        />
+      )}
     </div>
   );
 };
