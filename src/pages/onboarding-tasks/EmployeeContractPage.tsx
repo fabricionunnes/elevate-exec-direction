@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import EmployeeContractForm, {
   type EmployeeContractFormData,
   defaultEmployeeFormData,
