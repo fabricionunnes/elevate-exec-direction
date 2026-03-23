@@ -7,6 +7,16 @@ const corsHeaders = {
 };
 
 const DOM_API_URL = "https://apiv3.dompagamentos.com.br/checkout/production";
+const DOM_FAILURE_STATUSES = new Set([
+  "error",
+  "failed",
+  "failure",
+  "declined",
+  "denied",
+  "refused",
+  "canceled",
+  "cancelled",
+]);
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -136,24 +146,17 @@ Deno.serve(async (req) => {
     }
 
     const domData = await domResponse.json();
-
-    if (!domResponse.ok) {
-      console.error("Dom Pagamentos error:", JSON.stringify(domData));
-      return new Response(
-        JSON.stringify({
-          error: "Erro ao processar pagamento na Dom Pagamentos",
-          details: domData.message || domData.error || JSON.stringify(domData),
-        }),
-        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-      );
-    }
+    console.log("Dom Pagamentos response:", JSON.stringify(domData));
 
     const supabase = createClient(
       Deno.env.get("SUPABASE_URL")!,
       Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!
     );
 
-    const normalizedStatus = String(domData.status || "pending").toLowerCase();
+    const normalizedStatus = String(domData.status || (domResponse.ok ? "pending" : "error")).toLowerCase();
+    const providerMessage = domData.message || domData.error || domData.details || null;
+    const missingTransactionId = !domData.id && payment_method === "credit_card" && !domData.checkout_url && !domData.payment_url;
+    const isProviderFailure = DOM_FAILURE_STATUSES.has(normalizedStatus) || missingTransactionId;
     const isPaid = normalizedStatus === "paid" || normalizedStatus === "authorized";
 
     const orderData: Record<string, unknown> = {
@@ -167,11 +170,12 @@ Deno.serve(async (req) => {
       payment_method,
       installments,
       provider: "dompagamentos",
-      status: isPaid ? "paid" : normalizedStatus,
-      pagarme_order_id: String(domData.id),
-      pagarme_charge_id: String(domData.id),
+      status: isPaid ? "paid" : isProviderFailure ? "failed" : normalizedStatus,
+      pagarme_order_id: domData.id ? String(domData.id) : null,
+      pagarme_charge_id: domData.id ? String(domData.id) : null,
       payment_link_id: payment_link_id || null,
       invoice_url: domData.checkout_url || domData.payment_url || null,
+      metadata: domData,
     };
 
     if (payment_method === "pix") {
@@ -186,6 +190,18 @@ Deno.serve(async (req) => {
     }
 
     await supabase.from("pagarme_orders").insert(orderData);
+
+    if (!domResponse.ok || isProviderFailure) {
+      console.error("Dom Pagamentos charge rejected:", JSON.stringify(domData));
+      return new Response(
+        JSON.stringify({
+          error: "Pagamento recusado pela Dom Pagamentos",
+          details: providerMessage || "A operadora não autorizou a cobrança no cartão.",
+          status: normalizedStatus || "error",
+        }),
+        { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
 
     if (isPaid && payment_link_id) {
       await supabase
