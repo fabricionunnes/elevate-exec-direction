@@ -89,19 +89,20 @@ Deno.serve(async (req) => {
       domPayload.payment_method = "boleto";
     } else if (payment_method === "credit_card") {
       domPayload.payment_method = "credit_card";
-      if (!card_token) {
-        return new Response(
-          JSON.stringify({ error: "Token do cartão é obrigatório. Tokenize o cartão no frontend antes de enviar." }),
-          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
-        );
+      if (card_token) {
+        // Direct charge with tokenized card
+        domPayload.card = {
+          token: card_token,
+          bin: card_bin || undefined,
+          brand: card_brand || undefined,
+          installments: installments,
+          interest_free: interest_free_installments >= installments,
+        };
+      } else {
+        // Link generation mode — no card token, create a checkout link instead
+        domPayload.installments = installments;
+        domPayload.interest_free_installments = interest_free_installments;
       }
-      domPayload.card = {
-        token: card_token,
-        bin: card_bin || undefined,
-        brand: card_brand || undefined,
-        installments: installments,
-        interest_free: interest_free_installments >= installments,
-      };
     }
 
     console.log("Dom Pagamentos payload:", JSON.stringify(domPayload));
@@ -212,6 +213,8 @@ Deno.serve(async (req) => {
 
     if (payment_method === "credit_card") {
       response.paid = isPaid;
+      // If Dom returned a checkout URL for link-based credit card flow
+      response.checkout_url = domData.checkout_url || domData.payment_url || null;
     }
 
     return new Response(JSON.stringify(response), {
