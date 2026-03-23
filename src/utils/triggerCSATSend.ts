@@ -6,6 +6,18 @@ import { supabase } from "@/integrations/supabase/client";
  */
 export async function triggerCSATAfterFinalization(meetingId: string, projectId: string) {
   try {
+    // Check if the meeting is marked as no-show — skip CSAT in that case
+    const { data: meeting } = await supabase
+      .from("onboarding_meeting_notes")
+      .select("is_no_show")
+      .eq("id", meetingId)
+      .maybeSingle();
+
+    if (meeting?.is_no_show) {
+      console.log("Skipping CSAT: meeting marked as no-show");
+      return;
+    }
+
     // Check if a csat_survey already exists for this meeting
     const { data: existingSurvey } = await supabase
       .from("csat_surveys")
