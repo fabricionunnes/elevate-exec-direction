@@ -1732,6 +1732,11 @@ export const CRMSettingsPage = () => {
         <TabsContent value="integrations" className="mt-6">
           <ClintIntegrationTab />
         </TabsContent>
+
+        {/* Forms Tab */}
+        <TabsContent value="forms" className="mt-6">
+          <PipelineFormsManager />
+        </TabsContent>
       </Tabs>
 
       {/* Delete Dialog */}
