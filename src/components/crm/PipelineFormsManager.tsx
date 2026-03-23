@@ -75,6 +75,16 @@ export const PipelineFormsManager = () => {
     setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, is_active: isActive } : f)));
   };
 
+  const deleteForm = async (formId: string) => {
+    const { error } = await supabase.from("crm_pipeline_forms").delete().eq("id", formId);
+    if (error) {
+      toast.error("Erro ao excluir formulário");
+      return;
+    }
+    toast.success("Formulário excluído!");
+    loadData();
+  };
+
   const updateFormField = async (formId: string, field: string, value: string) => {
     await supabase.from("crm_pipeline_forms").update({ [field]: value }).eq("id", formId);
     toast.success("Salvo!");
