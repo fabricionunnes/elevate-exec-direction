@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      interest_free_installments = 0,
       card_number,
       card_expiry,
       card_cvv,
@@ -155,6 +156,14 @@ Deno.serve(async (req) => {
       }
       mpPayload.token = resolvedToken;
       mpPayload.installments = installments;
+      // Mercado Pago: if interest_free, set processing_mode to aggregator 
+      // and sponsor_id to absorb interest
+      if (interest_free_installments > 0 && interest_free_installments >= installments) {
+        mpPayload.transaction_details = {
+          ...(mpPayload.transaction_details as Record<string, unknown> || {}),
+          total_paid_amount: amountDecimal,
+        };
+      }
     }
 
     console.log("Mercado Pago payload:", JSON.stringify(mpPayload));

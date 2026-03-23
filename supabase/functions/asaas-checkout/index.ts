@@ -54,6 +54,7 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      interest_free_installments = 0,
       company_id,
       payment_link_id,
     } = body;
@@ -153,6 +154,17 @@ Deno.serve(async (req) => {
     if (billingType === "CREDIT_CARD" && installments > 1) {
       paymentPayload.installmentCount = installments;
       paymentPayload.installmentValue = Math.round((amountValue / installments) * 100) / 100;
+      // Asaas: split defines how many installments the seller absorbs interest for
+      if (interest_free_installments > 0) {
+        paymentPayload.split = [{
+          walletId: null,
+          fixedValue: null,
+          percentualValue: null,
+        }];
+        // Asaas doesn't have a direct "interest_free" field, so we set totalValue
+        // to signal no-interest installments in the payment link
+        paymentPayload.totalValue = amountValue;
+      }
     }
 
     const payment = await asaasRequest("/payments", "POST", ASAAS_API_KEY, paymentPayload);

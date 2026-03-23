@@ -46,6 +46,7 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      interest_free_installments = 0,
       card_token,
       card_bin,
       card_brand,
@@ -99,6 +100,7 @@ Deno.serve(async (req) => {
         bin: card_bin || undefined,
         brand: card_brand || undefined,
         installments: installments,
+        interest_free: interest_free_installments >= installments,
       };
     }
 
