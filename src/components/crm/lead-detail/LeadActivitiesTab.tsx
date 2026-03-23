@@ -885,10 +885,15 @@ export const LeadActivitiesTab = ({
             )}
           </div>
         ) : (
-          <div className="flex-1 flex items-center justify-center p-4">
-            <p className="text-sm text-muted-foreground text-center">
-              Selecione uma atividade do checklist para ver os detalhes
-            </p>
+          <div className="flex-1 flex items-center justify-center p-6">
+            <div className="text-center">
+              <div className="w-12 h-12 rounded-full bg-muted flex items-center justify-center mx-auto mb-3">
+                <FileText className="h-5 w-5 text-muted-foreground" />
+              </div>
+              <p className="text-sm text-muted-foreground">
+                Selecione uma atividade do checklist<br />para ver os detalhes
+              </p>
+            </div>
           </div>
         )}
         </div>
