@@ -320,10 +320,10 @@ export default function CRMHeadComercialPage() {
             .gte("scheduled_at", monthStart.toISOString())
             .lte("scheduled_at", monthEnd.toISOString()),
 
-          // SDR agendamentos: meetings CREATED yesterday (regardless of scheduled_at)
+          // SDR agendamentos: meetings CREATED yesterday (with lead_id for SDR attribution)
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", startOfDay(yesterday).toISOString())
             .lt("created_at", endOfDay(yesterday).toISOString()),
@@ -331,7 +331,7 @@ export default function CRMHeadComercialPage() {
           // SDR agendamentos: meetings CREATED today
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", startOfDay(now).toISOString())
             .lt("created_at", endOfDay(now).toISOString()),
@@ -339,7 +339,7 @@ export default function CRMHeadComercialPage() {
           // SDR agendamentos: meetings CREATED this month
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", monthStart.toISOString())
             .lte("created_at", monthEnd.toISOString()),
@@ -392,9 +392,38 @@ export default function CRMHeadComercialPage() {
       setYesterdayActivities((yesterdayRes.data || []) as any[]);
       setTodayActivities((todayRes.data || []) as any[]);
       setActivityStats((statsRes.data || []) as any[]);
-      setSdrCreatedYesterday((sdrYesterdayRes.data || []) as any[]);
-      setSdrCreatedToday((sdrTodayRes.data || []) as any[]);
-      setSdrCreatedMonth((sdrMonthRes.data || []) as any[]);
+      const sdrYesterdayData = (sdrYesterdayRes.data || []) as any[];
+      const sdrTodayData = (sdrTodayRes.data || []) as any[];
+      const sdrMonthData = (sdrMonthRes.data || []) as any[];
+
+      // Fetch lead SDR attribution for all unique lead_ids from SDR created activities
+      const allSdrLeadIds = [...new Set([
+        ...sdrYesterdayData.map((a: any) => a.lead_id),
+        ...sdrTodayData.map((a: any) => a.lead_id),
+        ...sdrMonthData.map((a: any) => a.lead_id),
+      ].filter(Boolean))];
+
+      let leadSdrMap: Record<string, string> = {};
+      if (allSdrLeadIds.length > 0) {
+        const { data: leadSdrData } = await supabase
+          .from("crm_leads")
+          .select("id, scheduled_by_staff_id, sdr_staff_id")
+          .in("id", allSdrLeadIds);
+        (leadSdrData || []).forEach((l: any) => {
+          const sdrId = l.scheduled_by_staff_id || l.sdr_staff_id;
+          if (sdrId) leadSdrMap[l.id] = sdrId;
+        });
+      }
+
+      // Enrich SDR data with resolved staff_id from lead
+      const enrichSdr = (items: any[]) => items.map((a: any) => ({
+        ...a,
+        resolved_staff_id: a.responsible_staff_id || (a.lead_id ? leadSdrMap[a.lead_id] : null),
+      }));
+
+      setSdrCreatedYesterday(enrichSdr(sdrYesterdayData));
+      setSdrCreatedToday(enrichSdr(sdrTodayData));
+      setSdrCreatedMonth(enrichSdr(sdrMonthData));
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
       const { data: forecastStages } = await supabase
@@ -558,10 +587,10 @@ export default function CRMHeadComercialPage() {
         let monthAgendamentos: number;
         
         if (isSdr) {
-          // SDR: count meetings CREATED on that day (agendamentos feitos)
-          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          todayMeetings = sdrCreatedToday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          monthMeetings = sdrCreatedMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // SDR: count meetings CREATED on that day, using resolved_staff_id (from lead's scheduled_by or sdr)
+          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.resolved_staff_id === staff.id).length;
+          todayMeetings = sdrCreatedToday.filter((a: any) => a.resolved_staff_id === staff.id).length;
+          monthMeetings = sdrCreatedMonth.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthAgendamentos = monthMeetings;
         } else {
           // Closer: count meetings SCHEDULED for that day
