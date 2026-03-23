@@ -748,7 +748,7 @@ export default function EmployeeContractPage() {
       </main>
 
       {/* Contract detail dialog */}
-      <Dialog open={!!selectedContract} onOpenChange={() => setSelectedContract(null)}>
+      <Dialog open={!!selectedContract} onOpenChange={(open) => { if (!open) { setSelectedContract(null); setSignatureStatus(null); } }}>
         <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes do Contrato</DialogTitle>
