@@ -1,4 +1,4 @@
-import { useEffect, useState, useCallback, useMemo } from "react";
+import { useEffect, useState, useCallback, useMemo, useRef } from "react";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { syncLeadToClint } from "@/hooks/useClintSync";
@@ -213,6 +213,8 @@ export const CRMPipelinePage = () => {
     return data.reduce((sum, l) => sum + (l.opportunity_value || 0), 0);
   }, [negotiationData, filters.owners]);
 
+  const isRealtimeRefresh = useRef(false);
+
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
@@ -230,7 +232,10 @@ export const CRMPipelinePage = () => {
       }
     }
 
-    setLoading(true);
+    // Only show loading spinner on manual/initial loads, not realtime refreshes
+    if (!isRealtimeRefresh.current) {
+      setLoading(true);
+    }
     try {
       const { data: stagesData, error: stagesError } = await supabase
         .from("crm_stages")
@@ -273,6 +278,7 @@ export const CRMPipelinePage = () => {
 
         if (leadsError) {
           console.error("Error loading leads:", leadsError);
+          // On realtime refresh errors, preserve existing leads
           return;
         }
 
@@ -285,12 +291,17 @@ export const CRMPipelinePage = () => {
         }
       }
 
-      setLeads(allLeads);
+      // Only update leads if we got results, or if this is NOT a realtime refresh
+      // This prevents leads from disappearing due to transient auth/session issues
+      if (allLeads.length > 0 || !isRealtimeRefresh.current) {
+        setLeads(allLeads);
+      }
     } catch (error) {
       console.error("Error loading pipeline data:", error);
       // Don't clear existing data on error - preserve what's on screen
     } finally {
       setLoading(false);
+      isRealtimeRefresh.current = false;
     }
   }, [selectedPipeline, selectedOrigin]);
 
@@ -322,6 +333,7 @@ export const CRMPipelinePage = () => {
           filter: `pipeline_id=eq.${selectedPipeline}`,
         },
         () => {
+          isRealtimeRefresh.current = true;
           loadStagesAndLeads();
         }
       )
