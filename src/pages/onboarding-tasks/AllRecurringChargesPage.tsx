@@ -386,16 +386,16 @@ export default function AllRecurringChargesPage() {
     }
   }, [activeTab]);
 
-  const fetchAllInvoices = async () => {
+  const fetchAllRows = async (table: string, orderCol: string, selectCols = "*") => {
     const PAGE_SIZE = 1000;
     let allData: any[] = [];
     let from = 0;
     let hasMore = true;
     while (hasMore) {
       const { data, error } = await supabase
-        .from("company_invoices")
-        .select("*")
-        .order("due_date", { ascending: true })
+        .from(table)
+        .select(selectCols)
+        .order(orderCol, { ascending: true })
         .range(from, from + PAGE_SIZE - 1);
       if (error) return { data: null, error };
       allData = allData.concat(data || []);
