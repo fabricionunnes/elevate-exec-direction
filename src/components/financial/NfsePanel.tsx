@@ -90,7 +90,6 @@ export function NfsePanel() {
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
-  const DEFAULT_FEDERAL_SERVICE_CODE = "170601";
   const DEFAULT_NBS_CODE = "";
 
   const [form, setForm] = useState({
@@ -102,7 +101,6 @@ export function NfsePanel() {
     tomadorDocument: "",
     tomadorEmail: "",
     cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
-    federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
     nbsCode: DEFAULT_NBS_CODE,
   });
 
@@ -267,7 +265,6 @@ export function NfsePanel() {
       tomadorDocument: "",
       tomadorEmail: "",
       cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
-      federalServiceCode: DEFAULT_FEDERAL_SERVICE_CODE,
       nbsCode: DEFAULT_NBS_CODE,
     });
     setCompanyInvoices([]);
@@ -629,14 +626,6 @@ export function NfsePanel() {
                       <Input
                         value={form.cityServiceCode}
                         onChange={(e) => setForm({ ...form, cityServiceCode: e.target.value })}
-                        placeholder="170601"
-                      />
-                    </div>
-                    <div>
-                      <Label>Lei Complementar 116</Label>
-                      <Input
-                        value={form.federalServiceCode}
-                        onChange={(e) => setForm({ ...form, federalServiceCode: e.target.value })}
                         placeholder="170601"
                       />
                     </div>

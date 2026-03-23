@@ -120,7 +120,6 @@ Deno.serve(async (req) => {
           tomadorDocument,
           tomadorEmail,
           cityServiceCode,
-          federalServiceCode,
           nbsCode,
         } = params;
 
