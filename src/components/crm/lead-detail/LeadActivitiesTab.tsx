@@ -409,8 +409,10 @@ export const LeadActivitiesTab = ({
 
   const processWhatsAppTemplate = (template: string | null) => {
     if (!template) return '';
+    const firstName = (leadName || '').split(' ')[0];
     return template
       .replace(/\{\{nome_cliente\}\}/g, leadName || '')
+      .replace(/\{\{primeiro_nome\}\}/g, firstName)
       .replace(/\{\{empresa\}\}/g, leadCompany || '')
       .replace(/\{\{email\}\}/g, leadEmail || '')
       .replace(/\{\{telefone\}\}/g, leadPhone || '')
