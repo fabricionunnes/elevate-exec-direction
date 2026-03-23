@@ -59,6 +59,14 @@ const PublicPipelineForm = () => {
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  const handleFormComplete = () => {
+    if (form?.redirect_url) {
+      window.location.href = form.redirect_url;
+    } else {
+      setSubmitted(true);
+    }
+  };
+
   useEffect(() => {
     if (token) loadForm();
   }, [token]);
