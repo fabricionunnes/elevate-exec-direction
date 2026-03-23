@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
+const ALLOWED_EMAILS = [CEO_EMAIL, "yasmim@universidadevendas.com.br"];
 const COMPANY_SIGNER_NAME = employeeContractCompanyInfo.representative;
 const COMPANY_SIGNER_EMAIL = employeeContractCompanyInfo.email;
 

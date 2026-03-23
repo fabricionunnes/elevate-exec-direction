@@ -1028,14 +1028,16 @@ export default function ContractGeneratorPage() {
                 <History className="h-4 w-4" />
                 <span className="hidden sm:inline">{showHistory ? "Novo Contrato" : "Contratos"}</span>
               </Button>
-              <Button
-                variant="outline"
-                onClick={() => navigate("/contratos/colaboradores")}
-                className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
-              >
-                <FileText className="h-4 w-4" />
-                <span className="hidden sm:inline">Colaboradores</span>
-              </Button>
+              {(currentUserEmail === CEO_EMAIL || currentUserEmail === "yasmim@universidadevendas.com.br") && (
+                <Button
+                  variant="outline"
+                  onClick={() => navigate("/contratos/colaboradores")}
+                  className="gap-1 sm:gap-2 text-xs sm:text-sm px-2 sm:px-3"
+                >
+                  <FileText className="h-4 w-4" />
+                  <span className="hidden sm:inline">Colaboradores</span>
+                </Button>
+              )}
               <Button
                 variant="outline"
                 onClick={() => navigate("/distrato")}
