@@ -177,7 +177,7 @@ const PublicPipelineForm = () => {
         throw new Error(data.error || "Erro ao enviar respostas");
       }
 
-      setSubmitted(true);
+      handleFormComplete();
     } catch (err: any) {
       setError(err.message || "Erro ao enviar respostas");
     } finally {
