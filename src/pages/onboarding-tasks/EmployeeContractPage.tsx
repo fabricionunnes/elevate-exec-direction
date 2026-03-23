@@ -107,7 +107,6 @@ function getZapSignStatusInfo(signers: ZapSignSigner[] | null) {
 export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const { isMaster, currentStaff } = useStaffPermissions();
-  const isAdmin = isMaster || currentStaff?.role === "admin";
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
   const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
   const [commissionConfig, setCommissionConfig] = useState<RoleCommissionConfig>(
