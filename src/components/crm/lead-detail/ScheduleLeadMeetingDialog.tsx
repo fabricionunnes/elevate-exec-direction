@@ -307,6 +307,21 @@ export const ScheduleLeadMeetingDialog = ({
           }
         }
 
+        // Notify the closer about the scheduled meeting
+        if (closerStaffId && closerStaffId !== staffData?.id) {
+          const meetingDate = format(new Date(formData.date), "dd/MM/yyyy", { locale: ptBR });
+          const meetingTime = formData.startTime;
+          
+          await supabase.from("onboarding_notifications").insert({
+            staff_id: closerStaffId,
+            type: "meeting_scheduled",
+            title: `📅 Nova reunião agendada: ${leadName}`,
+            message: `Uma reunião foi agendada para você com o lead "${leadName}" no dia ${meetingDate} às ${meetingTime}.`,
+            reference_id: leadId,
+            reference_type: "crm_lead",
+          });
+        }
+
         // If this was triggered from an automation activity, mark it as completed
         if (activityIdToComplete) {
           await supabase
