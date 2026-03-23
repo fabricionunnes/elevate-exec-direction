@@ -587,10 +587,10 @@ export default function CRMHeadComercialPage() {
         let monthAgendamentos: number;
         
         if (isSdr) {
-          // SDR: count meetings CREATED on that day (agendamentos feitos)
-          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          todayMeetings = sdrCreatedToday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          monthMeetings = sdrCreatedMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // SDR: count meetings CREATED on that day, using resolved_staff_id (from lead's scheduled_by or sdr)
+          yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.resolved_staff_id === staff.id).length;
+          todayMeetings = sdrCreatedToday.filter((a: any) => a.resolved_staff_id === staff.id).length;
+          monthMeetings = sdrCreatedMonth.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthAgendamentos = monthMeetings;
         } else {
           // Closer: count meetings SCHEDULED for that day
