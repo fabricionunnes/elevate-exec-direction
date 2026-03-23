@@ -90,6 +90,7 @@ Deno.serve(async (req) => {
       amount_cents,
       payment_method,
       installments = 1,
+      interest_free_installments = 0,
       card_number,
       card_expiry,
       card_cvv,
