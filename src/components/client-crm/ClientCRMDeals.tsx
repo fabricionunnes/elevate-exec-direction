@@ -35,8 +35,8 @@ const formatCurrency = (v: number) =>
 
 export const ClientCRMDeals = ({
   deals, stages, contacts, pipelines, activePipelineId, setActivePipelineId,
-  activities, onCreateDeal, onUpdateDeal, onDeleteDeal, onMoveDeal,
-  onCreateActivity, onCompleteActivity,
+  activities, projectId, onCreateDeal, onUpdateDeal, onDeleteDeal, onMoveDeal,
+  onCreateActivity, onCompleteActivity, onRefresh,
 }: Props) => {
   const [showNewDeal, setShowNewDeal] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<ClientDeal | null>(null);
@@ -50,6 +50,7 @@ export const ClientCRMDeals = ({
   const [moveDialog, setMoveDialog] = useState<{ dealId: string; stageId: string; stageName: string } | null>(null);
   const [newActivity, setNewActivity] = useState({ title: "", type: "task", scheduled_at: "" });
   const [showNewActivity, setShowNewActivity] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", value: "", contact_id: "", notes: "", expected_close_date: "" });
 
   const nonFinalStages = stages.filter(s => !s.is_final);
