@@ -32,7 +32,6 @@ declare global {
       installments: number,
       callback: (data: { token?: string; brand?: string; bin?: string; msgError?: string }) => void
     ) => void;
-    module?: unknown;
   }
 }
 
@@ -84,9 +83,6 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
   const [method, setMethod] = useState<PaymentMethod>(fixedMethod || "credit_card");
-  const availableMethods = fixedMethod
-    ? paymentMethods.filter((pm) => pm.id === fixedMethod)
-    : paymentMethods;
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckoutResult | null>(null);
   const [domSdkReady, setDomSdkReady] = useState(false);
@@ -94,13 +90,17 @@ export function CheckoutModal({
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
-  const [document, setDocument] = useState("");
+  const [customerDocument, setCustomerDocument] = useState("");
 
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
   const [cardHolder, setCardHolder] = useState("");
   const [installments, setInstallments] = useState(1);
+
+  const availableMethods = fixedMethod
+    ? paymentMethods.filter((pm) => pm.id === fixedMethod)
+    : paymentMethods;
 
   useEffect(() => {
     if (provider !== "dompagamentos" || method !== "credit_card" || !open) return;
@@ -110,28 +110,28 @@ export function CheckoutModal({
       return;
     }
 
-    const existingScript = document.getElementById(DOM_SDK_ID) as HTMLScriptElement | null;
+    const existingScript = window.document.getElementById(DOM_SDK_ID) as HTMLScriptElement | null;
     if (existingScript) {
       const onLoad = () => setDomSdkReady(true);
       existingScript.addEventListener("load", onLoad);
       return () => existingScript.removeEventListener("load", onLoad);
     }
 
-    window.module = {};
-    const script = document.createElement("script");
+    (window as Window & { module?: Record<string, unknown> }).module = {};
+    const script = window.document.createElement("script");
     script.id = DOM_SDK_ID;
     script.src = DOM_SDK_SRC;
     script.async = true;
     script.onload = () => {
       setDomSdkReady(true);
-      delete window.module;
+      delete (window as Window & { module?: Record<string, unknown> }).module;
     };
     script.onerror = () => {
       setDomSdkReady(false);
       toast.error("Não foi possível carregar a validação do cartão.");
     };
 
-    document.body.appendChild(script);
+    window.document.body.appendChild(script);
   }, [method, open, provider]);
 
   const resetForm = () => {
@@ -140,7 +140,7 @@ export function CheckoutModal({
     setName("");
     setEmail("");
     setPhone("");
-    setDocument("");
+    setCustomerDocument("");
     setCardNumber("");
     setCardExpiry("");
     setCardCvv("");
@@ -154,36 +154,38 @@ export function CheckoutModal({
     onOpenChange(val);
   };
 
-  const formatDocument = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 14);
-    if (d.length <= 11) {
-      return d
+  const formatDocument = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 14);
+    if (digits.length <= 11) {
+      return digits
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d)/, "$1.$2")
         .replace(/(\d{3})(\d{1,2})$/, "$1-$2");
     }
-    return d
+
+    return digits
       .replace(/(\d{2})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1.$2")
       .replace(/(\d{3})(\d)/, "$1/$2")
       .replace(/(\d{4})(\d{1,2})$/, "$1-$2");
   };
 
-  const formatPhone = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 11);
-    if (d.length <= 10) {
-      return d.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
+  const formatPhone = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 11);
+    if (digits.length <= 10) {
+      return digits.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
     }
-    return d.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
+
+    return digits.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
   };
 
-  const formatCardNumber = (v: string) => {
-    return v.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})/g, "$1 ").trim();
+  const formatCardNumber = (value: string) => {
+    return value.replace(/\D/g, "").slice(0, 16).replace(/(\d{4})/g, "$1 ").trim();
   };
 
-  const formatExpiry = (v: string) => {
-    const d = v.replace(/\D/g, "").slice(0, 4);
-    return d.replace(/(\d{2})(\d)/, "$1/$2");
+  const formatExpiry = (value: string) => {
+    const digits = value.replace(/\D/g, "").slice(0, 4);
+    return digits.replace(/(\d{2})(\d)/, "$1/$2");
   };
 
   const getDomPublicKey = async () => {
@@ -204,7 +206,7 @@ export function CheckoutModal({
       throw new Error("SDK da Dom Pagamentos ainda não carregou.");
     }
 
-    const cleanDocument = document.replace(/\D/g, "");
+    const cleanDocument = customerDocument.replace(/\D/g, "");
     const cleanNumber = cardNumber.replace(/\s/g, "");
     const [month = "", year = ""] = cardExpiry.split("/");
 
@@ -214,7 +216,7 @@ export function CheckoutModal({
 
     const publicKey = await getDomPublicKey();
 
-    return await new Promise<{ token: string; brand?: string; bin?: string }>((resolve, reject) => {
+    return new Promise<{ token: string; brand?: string; bin?: string }>((resolve, reject) => {
       window.getTokenCard?.(
         publicKey,
         {
@@ -240,7 +242,7 @@ export function CheckoutModal({
   };
 
   const handleSubmit = async () => {
-    if (!name || !email || !document) {
+    if (!name || !email || !customerDocument) {
       toast.error("Preencha nome, email e CPF/CNPJ");
       return;
     }
@@ -251,7 +253,7 @@ export function CheckoutModal({
         customer_name: name,
         customer_email: email,
         customer_phone: phone.replace(/\D/g, ""),
-        customer_document: document.replace(/\D/g, ""),
+        customer_document: customerDocument.replace(/\D/g, ""),
         product_id: productId,
         product_name: productName,
         amount_cents: amountCents,
@@ -362,7 +364,7 @@ export function CheckoutModal({
               <div className="grid grid-cols-2 gap-3">
                 <div>
                   <Label htmlFor="checkout-doc">CPF/CNPJ *</Label>
-                  <Input id="checkout-doc" value={document} onChange={(e) => setDocument(formatDocument(e.target.value))} placeholder="000.000.000-00 ou 00.000.000/0000-00" />
+                  <Input id="checkout-doc" value={customerDocument} onChange={(e) => setCustomerDocument(formatDocument(e.target.value))} placeholder="000.000.000-00 ou 00.000.000/0000-00" />
                 </div>
                 <div>
                   <Label htmlFor="checkout-phone">Telefone</Label>
@@ -410,9 +412,7 @@ export function CheckoutModal({
                   </div>
                 )}
                 {provider === "dompagamentos" && !domSdkReady && (
-                  <p className="text-sm text-muted-foreground">
-                    Carregando validação segura do cartão...
-                  </p>
+                  <p className="text-sm text-muted-foreground">Carregando validação segura do cartão...</p>
                 )}
               </div>
             )}
@@ -454,8 +454,8 @@ export function CheckoutModal({
           <div className="space-y-4">
             {result.paid && (
               <div className="text-center py-6">
-                <div className="h-16 w-16 rounded-full bg-green-500/10 flex items-center justify-center mx-auto mb-4">
-                  <Check className="h-8 w-8 text-green-500" />
+                <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center mx-auto mb-4">
+                  <Check className="h-8 w-8 text-primary" />
                 </div>
                 <h3 className="text-lg font-semibold text-foreground">Pagamento Aprovado!</h3>
                 <p className="text-muted-foreground mt-1">
