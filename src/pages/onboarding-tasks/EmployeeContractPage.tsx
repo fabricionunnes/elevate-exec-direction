@@ -87,6 +87,9 @@ export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
   const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
+  const [commissionConfig, setCommissionConfig] = useState<RoleCommissionConfig>(
+    defaultCommissionByRole.consultor
+  );
   const [isGenerating, setIsGenerating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [contracts, setContracts] = useState<SavedEmployeeContract[]>([]);
