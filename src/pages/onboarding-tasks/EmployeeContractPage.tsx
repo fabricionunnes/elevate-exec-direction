@@ -104,12 +104,12 @@ export default function EmployeeContractPage() {
     if (showHistory) loadContracts();
   }, [showHistory]);
 
-  // Update clauses when role changes
+  // Update clauses when role or duration changes
   useEffect(() => {
     if (formData.staffRole && !editingContractId) {
-      setEditableClauses(getEditableClauses(formData.staffRole));
+      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths));
     }
-  }, [formData.staffRole, editingContractId]);
+  }, [formData.staffRole, formData.durationMonths, editingContractId]);
 
   const canDelete = currentUserEmail === CEO_EMAIL;
 
