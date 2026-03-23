@@ -209,16 +209,16 @@ export const employeeContractCompanyInfo = {
   name: "UNIVERSIDADE NACIONAL DE VENDAS LTDA",
   fantasyName: "UNIVERSIDADE NACIONAL DE VENDAS",
   cnpj: "51.356.237/0001-40",
-  address: "Alameda Josué Caldas Neto, sn, Bairro Monteville, Conselheiro Lafaiete / MG, CEP 36.408-899",
+  address: "Rua Araguaia, 130, Alphaville Lagoa dos Ingleses, Nova Lima, MG, CEP 34.018-150",
   email: "fabricio@universidadevendas.com.br",
   representative: "FABRÍCIO AUGUSTO NUNES OLIVEIRA",
   cpf: "078.102.716-0",
   rg: "MG 14.314.694",
   maritalStatus: "casado",
   role: "CEO",
-  city: "Conselheiro Lafaiete",
+  city: "Nova Lima",
   state: "MG",
-  foro: "Comarca de Conselheiro Lafaiete do Estado de MG",
+  foro: "Comarca de Nova Lima do Estado de MG",
 };
 
 export const roleLabels: Record<string, string> = {
