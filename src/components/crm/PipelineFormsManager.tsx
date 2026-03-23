@@ -201,6 +201,7 @@ export const PipelineFormsManager = () => {
               />
             </div>
 
+            <div className="space-y-1">
               <Label className="text-xs">Link do formulário</Label>
               <div className="flex gap-2">
                 <code className="flex-1 text-xs bg-muted px-2 py-1.5 rounded font-mono truncate">
