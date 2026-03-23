@@ -924,8 +924,21 @@ export const LeadCustomFieldsTab = ({
                       <Label className="text-sm text-muted-foreground">
                         {field.field_label}
                       </Label>
-                      <div className="relative">
-                        {renderFieldInput(field)}
+                      <div className="relative flex items-center gap-1.5">
+                        <div className="flex-1">
+                          {renderFieldInput(field)}
+                        </div>
+                        {field.field_name === "instagram" && value && (
+                          <a
+                            href={value.startsWith("http") ? value : `https://instagram.com/${value.replace(/^@/, "")}`}
+                            target="_blank"
+                            rel="noopener noreferrer"
+                            className="shrink-0 inline-flex items-center justify-center h-8 w-8 rounded-md bg-gradient-to-br from-purple-500 via-pink-500 to-orange-400 text-white hover:opacity-80 transition-opacity"
+                            title="Abrir Instagram"
+                          >
+                            <Instagram className="h-4 w-4" />
+                          </a>
+                        )}
                         {saving === field.id && (
                           <div className="absolute right-2 top-1/2 -translate-y-1/2">
                             <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-primary" />
