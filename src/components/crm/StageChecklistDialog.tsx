@@ -65,6 +65,7 @@ const ITEM_TYPES = [
 
 const AVAILABLE_VARIABLES = [
   { key: '{{nome_cliente}}', label: 'Nome do Cliente' },
+  { key: '{{primeiro_nome}}', label: 'Primeiro Nome' },
   { key: '{{empresa}}', label: 'Empresa' },
   { key: '{{email}}', label: 'E-mail' },
   { key: '{{telefone}}', label: 'Telefone' },

@@ -53,8 +53,10 @@ function replaceTemplateVariables(
   pipelineName?: string,
   ownerName?: string
 ): string {
+  const firstName = (lead.name || '').split(' ')[0];
   return template
     .replace(/{nome}/g, lead.name || '')
+    .replace(/{primeiro_nome}/g, firstName)
     .replace(/{empresa}/g, lead.company || '')
     .replace(/{email}/g, lead.email || '')
     .replace(/{telefone}/g, lead.phone || '')
