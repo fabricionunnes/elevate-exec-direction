@@ -173,6 +173,17 @@ export const ClientCRMContacts = ({ contacts, projectId, pipelines, stages, acti
           </Table>
         </CardContent>
       </Card>
+
+      <ClientCRMImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        type="contacts"
+        projectId={projectId}
+        pipelines={pipelines}
+        stages={stages}
+        activePipelineId={activePipelineId}
+        onImportComplete={onRefresh}
+      />
     </div>
   );
 };

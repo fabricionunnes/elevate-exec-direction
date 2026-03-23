@@ -20,12 +20,14 @@ interface Props {
   activePipelineId: string | null;
   setActivePipelineId: (id: string | null) => void;
   activities: ClientActivity[];
+  projectId: string;
   onCreateDeal: (deal: Partial<ClientDeal>) => Promise<void>;
   onUpdateDeal: (id: string, updates: Partial<ClientDeal>) => Promise<void>;
   onDeleteDeal: (id: string) => Promise<void>;
   onMoveDeal: (dealId: string, stageId: string) => Promise<void>;
   onCreateActivity: (activity: Partial<ClientActivity>) => Promise<void>;
   onCompleteActivity: (id: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
 const formatCurrency = (v: number) =>
