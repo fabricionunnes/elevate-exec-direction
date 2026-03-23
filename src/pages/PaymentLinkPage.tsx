@@ -11,12 +11,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { CurrencyInput } from "@/components/ui/currency-input";
 
 type PaymentMethod = "credit_card" | "pix" | "boleto";
-type PaymentProvider = "pagarme" | "asaas" | "mercadopago";
+type PaymentProvider = "pagarme" | "asaas" | "mercadopago" | "dompagamentos";
 
 const providers: { id: PaymentProvider; label: string; description: string; color: string }[] = [
   { id: "pagarme", label: "Pagar.me", description: "Cartão, PIX e Boleto", color: "hsl(var(--primary))" },
   { id: "asaas", label: "Asaas", description: "PIX, Boleto e Cartão", color: "hsl(142 76% 36%)" },
   { id: "mercadopago", label: "Mercado Pago", description: "PIX, Cartão e Boleto", color: "hsl(199 89% 48%)" },
+  { id: "dompagamentos", label: "Dom Pagamentos", description: "PIX, Cartão e Boleto", color: "hsl(262 80% 50%)" },
 ];
 
 const paymentMethods = [
