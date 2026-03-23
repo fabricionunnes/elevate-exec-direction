@@ -1,14 +1,20 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
-import { 
+import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Send, Loader2, AlertCircle } from "lucide-react";
+import {
+  Popover,
+  PopoverContent,
+  PopoverTrigger,
+} from "@/components/ui/popover";
+import { Send, Loader2, AlertCircle, ChevronDown } from "lucide-react";
 import { toast } from "sonner";
+import { sendLoggedWhatsAppText } from "@/lib/whatsapp/sendLoggedWhatsAppText";
 
 interface AutomationConfig {
   mode: 'task' | 'whatsapp_send' | 'schedule_meeting';
@@ -25,6 +31,12 @@ interface Lead {
   company?: string | null;
 }
 
+interface InstanceOption {
+  id: string;
+  instance_name: string;
+  status: string;
+}
+
 interface WhatsAppQuickSendButtonProps {
   activityId: string;
   automationConfig: AutomationConfig;
@@ -35,8 +47,8 @@ interface WhatsAppQuickSendButtonProps {
 }
 
 function replaceTemplateVariables(
-  template: string, 
-  lead: Lead, 
+  template: string,
+  lead: Lead,
   stageName?: string,
   pipelineName?: string,
   ownerName?: string
@@ -63,8 +75,66 @@ export function WhatsAppQuickSendButton({
 }: WhatsAppQuickSendButtonProps) {
   const [sending, setSending] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [instances, setInstances] = useState<InstanceOption[]>([]);
+  const [staffId, setStaffId] = useState<string | null>(null);
+  const [popoverOpen, setPopoverOpen] = useState(false);
+  const [loading, setLoading] = useState(true);
 
-  const handleSend = async () => {
+  // Fetch user's authorized instances
+  useEffect(() => {
+    const fetchInstances = async () => {
+      try {
+        const { data: { user } } = await supabase.auth.getUser();
+        if (!user) return;
+
+        const { data: staff } = await supabase
+          .from("onboarding_staff")
+          .select("id, role")
+          .eq("user_id", user.id)
+          .eq("is_active", true)
+          .maybeSingle();
+
+        if (!staff) return;
+        setStaffId(staff.id);
+
+        if (staff.role === "master") {
+          // Master has access to all instances
+          const { data: allInstances } = await supabase
+            .from("whatsapp_instances")
+            .select("id, instance_name, status")
+            .eq("status", "connected")
+            .order("instance_name");
+
+          setInstances(allInstances || []);
+        } else {
+          // Others: only instances with can_send permission
+          const { data: access } = await supabase
+            .from("whatsapp_instance_access")
+            .select("instance_id, instance:whatsapp_instances(id, instance_name, status)")
+            .eq("staff_id", staff.id)
+            .eq("can_send", true);
+
+          const available = (access || [])
+            .filter((a: any) => a.instance?.status === "connected")
+            .map((a: any) => ({
+              id: a.instance.id,
+              instance_name: a.instance.instance_name,
+              status: a.instance.status,
+            }));
+
+          setInstances(available);
+        }
+      } catch (err) {
+        console.error("Error fetching instances:", err);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchInstances();
+  }, []);
+
+  const sendViaInstance = async (instanceId: string) => {
     if (!automationConfig.whatsapp_template || !lead.phone) {
       toast.error("Telefone do lead ou template não configurado");
       return;
@@ -72,50 +142,9 @@ export function WhatsAppQuickSendButton({
 
     setSending(true);
     setError(null);
+    setPopoverOpen(false);
 
     try {
-      // Get current staff's WhatsApp instance
-      const { data: { user } } = await supabase.auth.getUser();
-      if (!user) {
-        throw new Error("Usuário não autenticado");
-      }
-
-      // Get staff ID
-      const { data: staff } = await supabase
-        .from("onboarding_staff")
-        .select("id")
-        .eq("user_id", user.id)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (!staff) {
-        throw new Error("Staff não encontrado");
-      }
-
-      // Get linked WhatsApp instance
-      const { data: staffDevice } = await supabase
-        .from("crm_service_staff_devices")
-        .select(`
-          instance_id,
-          whatsapp_instances!inner(id, instance_name, status, api_endpoint, api_key)
-        `)
-        .eq("staff_id", staff.id)
-        .maybeSingle();
-
-      if (!staffDevice) {
-        setError("Você não tem uma instância WhatsApp vinculada");
-        toast.error("Você não tem uma instância WhatsApp vinculada. Vá em Configurações > Vinculação de dispositivos.");
-        return;
-      }
-
-      const instance = staffDevice.whatsapp_instances as any;
-      if (instance.status !== "connected") {
-        setError("Instância WhatsApp desconectada");
-        toast.error("Sua instância WhatsApp está desconectada. Reconecte-a antes de enviar.");
-        return;
-      }
-
-      // Prepare message with replaced variables
       const message = replaceTemplateVariables(
         automationConfig.whatsapp_template,
         lead,
@@ -123,33 +152,19 @@ export function WhatsAppQuickSendButton({
         pipelineName
       );
 
-      // Format phone number (ensure it's in WhatsApp format)
-      const phone = lead.phone.replace(/\D/g, '');
-      const formattedPhone = phone.startsWith('55') ? phone : `55${phone}`;
-      const remoteJid = `${formattedPhone}@s.whatsapp.net`;
-
-      // Send message via Evolution API
-      const response = await fetch(`${instance.api_endpoint}/message/sendText/${instance.instance_name}`, {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'apikey': instance.api_key,
-        },
-        body: JSON.stringify({
-          number: remoteJid,
-          text: message,
-        }),
+      await sendLoggedWhatsAppText({
+        instanceId,
+        phoneRaw: lead.phone,
+        message,
+        leadId: lead.id,
+        leadName: lead.name,
+        staffId: staffId || undefined,
       });
-
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        throw new Error(errorData.message || "Erro ao enviar mensagem");
-      }
 
       // Mark activity as completed
       await supabase
         .from("crm_activities")
-        .update({ 
+        .update({
           status: "completed",
           completed_at: new Date().toISOString(),
         })
@@ -159,12 +174,34 @@ export function WhatsAppQuickSendButton({
       onSuccess?.();
     } catch (err: any) {
       console.error("Error sending WhatsApp:", err);
-      setError(err.message);
-      toast.error(err.message || "Erro ao enviar mensagem");
+      const msg = err?.message || "Erro ao enviar mensagem";
+      setError(msg);
+      toast.error(msg);
     } finally {
       setSending(false);
     }
   };
+
+  const handleClick = () => {
+    if (instances.length === 0) {
+      toast.error("Você não tem nenhuma instância WhatsApp autorizada para envio.");
+      return;
+    }
+    if (instances.length === 1) {
+      sendViaInstance(instances[0].id);
+    } else {
+      setPopoverOpen(true);
+    }
+  };
+
+  if (loading) {
+    return (
+      <Button variant="outline" size="sm" disabled>
+        <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+        Carregando...
+      </Button>
+    );
+  }
 
   if (error) {
     return (
@@ -175,10 +212,10 @@ export function WhatsAppQuickSendButton({
               variant="outline"
               size="sm"
               className="text-destructive border-destructive/50"
-              onClick={handleSend}
+              onClick={handleClick}
             >
               <AlertCircle className="h-3.5 w-3.5 mr-1" />
-              Erro
+              Tentar novamente
             </Button>
           </TooltipTrigger>
           <TooltipContent>
@@ -189,11 +226,53 @@ export function WhatsAppQuickSendButton({
     );
   }
 
+  // Multiple instances: show popover selector
+  if (instances.length > 1) {
+    return (
+      <Popover open={popoverOpen} onOpenChange={setPopoverOpen}>
+        <PopoverTrigger asChild>
+          <Button
+            variant="default"
+            size="sm"
+            disabled={sending}
+            className="bg-green-600 hover:bg-green-700 text-white"
+          >
+            {sending ? (
+              <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" />
+            ) : (
+              <Send className="h-3.5 w-3.5 mr-1" />
+            )}
+            Enviar
+            <ChevronDown className="h-3 w-3 ml-1" />
+          </Button>
+        </PopoverTrigger>
+        <PopoverContent className="w-56 p-1" align="end">
+          <p className="text-xs font-medium text-muted-foreground px-2 py-1.5">
+            Enviar por qual instância?
+          </p>
+          {instances.map((inst) => (
+            <Button
+              key={inst.id}
+              variant="ghost"
+              size="sm"
+              className="w-full justify-start text-sm font-normal"
+              onClick={() => sendViaInstance(inst.id)}
+            >
+              <div className="h-2 w-2 rounded-full bg-green-500 mr-2" />
+              {inst.instance_name}
+            </Button>
+          ))}
+        </PopoverContent>
+      </Popover>
+    );
+  }
+
+  // Single or no instance
   return (
     <Button
       variant="default"
       size="sm"
-      onClick={handleSend}
+      onClick={handleClick}
       disabled={sending}
       className="bg-green-600 hover:bg-green-700 text-white"
     >
