@@ -21746,6 +21746,7 @@ export type Database = {
           consultant_id: string | null
           created_at: string
           created_by: string | null
+          crm_lead_id: string | null
           crm_link: string | null
           crm_login: string | null
           crm_password: string | null
@@ -21785,6 +21786,7 @@ export type Database = {
           consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          crm_lead_id?: string | null
           crm_link?: string | null
           crm_login?: string | null
           crm_password?: string | null
@@ -21824,6 +21826,7 @@ export type Database = {
           consultant_id?: string | null
           created_at?: string
           created_by?: string | null
+          crm_lead_id?: string | null
           crm_link?: string | null
           crm_login?: string | null
           crm_password?: string | null
@@ -21868,6 +21871,13 @@ export type Database = {
             columns: ["created_by"]
             isOneToOne: false
             referencedRelation: "portal_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "onboarding_projects_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
             referencedColumns: ["id"]
           },
           {

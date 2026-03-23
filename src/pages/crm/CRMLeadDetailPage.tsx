@@ -47,6 +47,7 @@ import {
   Copy,
   FileSignature,
   FileText,
+  Building2,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
@@ -70,6 +71,7 @@ import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswers
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
+import { ConvertLeadToCompanyDialog } from "@/components/crm/lead-detail/ConvertLeadToCompanyDialog";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 
@@ -161,6 +163,7 @@ export const CRMLeadDetailPage = () => {
   const [whatsappDialogOpen, setWhatsappDialogOpen] = useState(false);
   const [sendingWhatsapp, setSendingWhatsapp] = useState(false);
   const [siblingLeadIds, setSiblingLeadIds] = useState<string[]>([]);
+  const [convertDialogOpen, setConvertDialogOpen] = useState(false);
 
   const loadLead = useCallback(async () => {
     if (!id) return;
@@ -919,6 +922,10 @@ export const CRMLeadDetailPage = () => {
                   <Copy className="h-4 w-4 mr-2" />
                   Duplicar Lead
                 </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => setConvertDialogOpen(true)}>
+                  <Building2 className="h-4 w-4 mr-2 text-emerald-500" />
+                  Converter em Empresa
+                </DropdownMenuItem>
                 {isAdmin && (
                   <>
                     <DropdownMenuSeparator />
@@ -1355,6 +1362,15 @@ export const CRMLeadDetailPage = () => {
               setSendingWhatsapp(false);
             }
           }}
+        />
+      )}
+
+      {lead && (
+        <ConvertLeadToCompanyDialog
+          open={convertDialogOpen}
+          onOpenChange={setConvertDialogOpen}
+          lead={lead}
+          onSuccess={loadLead}
         />
       )}
     </div>
