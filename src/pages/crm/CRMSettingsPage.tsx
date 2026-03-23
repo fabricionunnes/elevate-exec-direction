@@ -1864,6 +1864,87 @@ export const CRMSettingsPage = () => {
           stageName={checklistStage.name}
         />
       )}
+
+      {/* Copy Stage Config Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={(open) => {
+        setCopyDialogOpen(open);
+        if (!open) {
+          setCopyTargetStage(null);
+          setCopySourcePipeline("");
+          setCopySourceStage("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Copiar configuração para "{copyTargetStage?.name}"
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Pipeline de origem</Label>
+              <Select value={copySourcePipeline} onValueChange={(v) => { setCopySourcePipeline(v); setCopySourceStage(""); }}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione o pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.filter(p => p.is_active).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {copySourcePipeline && (
+              <div>
+                <Label>Etapa de origem</Label>
+                <Select value={copySourceStage} onValueChange={setCopySourceStage}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione a etapa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {copySourceStages
+                      .filter(s => s.id !== copyTargetStage?.id)
+                      .map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2 border-t">
+              <Label>O que copiar?</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={copyChecklist} onCheckedChange={setCopyChecklist} id="copy-checklist" />
+                  <Label htmlFor="copy-checklist" className="flex items-center gap-1.5 cursor-pointer">
+                    <ListChecks className="h-4 w-4" />
+                    Checklist
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={copyActions} onCheckedChange={setCopyActions} id="copy-actions" />
+                  <Label htmlFor="copy-actions" className="flex items-center gap-1.5 cursor-pointer">
+                    <Zap className="h-4 w-4" />
+                    Automações
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleCopyStageConfig} 
+              disabled={copying || !copySourceStage || (!copyChecklist && !copyActions)} 
+              className="w-full"
+            >
+              {copying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Copiar Configuração
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
