@@ -39,6 +39,7 @@ import {
 } from "@/components/ui/dialog";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
+const ALLOWED_EMAILS = [CEO_EMAIL, "yasmim@universidadevendas.com.br"];
 const COMPANY_SIGNER_NAME = employeeContractCompanyInfo.representative;
 const COMPANY_SIGNER_EMAIL = employeeContractCompanyInfo.email;
 
@@ -106,7 +107,6 @@ function getZapSignStatusInfo(signers: ZapSignSigner[] | null) {
 export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const { isMaster, currentStaff } = useStaffPermissions();
-  const isAdmin = isMaster || currentStaff?.role === "admin";
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
   const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
   const [commissionConfig, setCommissionConfig] = useState<RoleCommissionConfig>(
@@ -159,7 +159,20 @@ export default function EmployeeContractPage() {
     }
   }, [formData.staffRole, formData.durationMonths, commissionConfig, editingContractId]);
 
+  const hasAccess = currentUserEmail && ALLOWED_EMAILS.includes(currentUserEmail);
   const canDelete = currentUserEmail === CEO_EMAIL;
+
+  // Block access for unauthorized users
+  if (currentUserEmail !== null && !hasAccess) {
+    return (
+      <div className="min-h-screen flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <p className="text-muted-foreground">Você não tem permissão para acessar esta página.</p>
+          <Button variant="outline" onClick={() => navigate(-1)}>Voltar</Button>
+        </div>
+      </div>
+    );
+  }
 
   const loadContracts = async () => {
     setLoadingHistory(true);
@@ -575,7 +588,7 @@ export default function EmployeeContractPage() {
                   Cancelar Edição
                 </Button>
               )}
-              {isAdmin && (
+              {currentUserEmail && ALLOWED_EMAILS.includes(currentUserEmail) && (
                 <Button
                   variant="outline"
                   onClick={() => {
