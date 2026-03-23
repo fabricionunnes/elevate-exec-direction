@@ -5,14 +5,20 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Trash2, Pencil, Phone, Mail, Building } from "lucide-react";
-import type { ClientContact } from "./hooks/useClientCRM";
+import { Plus, Search, Trash2, Pencil, Phone, Mail, Building, Upload } from "lucide-react";
+import type { ClientContact, ClientPipeline, ClientStage } from "./hooks/useClientCRM";
+import { ClientCRMImportDialog } from "./ClientCRMImportDialog";
 
 interface Props {
   contacts: ClientContact[];
+  projectId: string;
+  pipelines: ClientPipeline[];
+  stages: ClientStage[];
+  activePipelineId: string | null;
   onCreateContact: (contact: Partial<ClientContact>) => Promise<void>;
   onUpdateContact: (id: string, updates: Partial<ClientContact>) => Promise<void>;
   onDeleteContact: (id: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
 const emptyContact = { name: "", email: "", phone: "", company: "", role: "", document: "", notes: "" };
