@@ -682,12 +682,14 @@ export const LeadActivitiesTab = ({
         </div>
 
         {/* Right side - Selected Checklist Item Details */}
-        <div className="flex-1 min-w-0 bg-card flex flex-col">
+        <div className="flex-1 min-w-0 bg-muted/10 flex flex-col">
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
-            <div className="p-4 border-b border-border flex items-center gap-2">
-              {getChecklistItemIcon(selectedChecklistItem.item_type)}
-              <span className="font-medium text-sm">{selectedChecklistItem.title}</span>
+            <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5 bg-card">
+              <div className="p-1.5 rounded-lg bg-primary/10">
+                {getChecklistItemIcon(selectedChecklistItem.item_type)}
+              </div>
+              <span className="font-semibold text-sm text-foreground">{selectedChecklistItem.title}</span>
             </div>
             
             {/* Meeting type - show full scheduler */}
