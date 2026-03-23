@@ -9,15 +9,23 @@ interface LeadContractData {
   phone: string | null;
   document: string | null;
   company: string | null;
+  trade_name: string | null;
   product_id: string | null;
   opportunity_value: number | null;
   payment_method: string | null;
   installments: string | null;
   due_day: number | null;
   address: string | null;
+  address_number: string | null;
+  address_complement: string | null;
+  address_neighborhood: string | null;
   city: string | null;
   state: string | null;
   zipcode: string | null;
+  legal_representative_name: string | null;
+  cpf: string | null;
+  rg: string | null;
+  marital_status: string | null;
 }
 
 interface MissingField {
@@ -81,7 +89,7 @@ export function useSendLeadContract() {
       // Fetch lead data
       const { data: lead, error: leadError } = await supabase
         .from("crm_leads")
-        .select("id, name, email, phone, document, company, product_id, opportunity_value, payment_method, installments, due_day, address, city, state, zipcode")
+        .select("id, name, email, phone, document, company, trade_name, product_id, opportunity_value, payment_method, installments, due_day, address, address_number, address_complement, address_neighborhood, city, state, zipcode, legal_representative_name, cpf, rg, marital_status")
         .eq("id", leadId)
         .single();
 
@@ -140,13 +148,19 @@ export function useSendLeadContract() {
         }
       }
 
-      // Build full address
+      // Build full address from contractual data fields
       const fullAddress = [
         lead.address,
+        lead.address_number ? `nº ${lead.address_number}` : null,
+        lead.address_complement,
+        lead.address_neighborhood,
         lead.city,
         lead.state,
         lead.zipcode
       ].filter(Boolean).join(", ");
+
+      // Use contractual data: company (razão social), trade_name, legal representative info
+      const clientName = lead.company || lead.trade_name || lead.name;
 
       // Check if there's already a contract for this lead
       const { data: existingContract } = await supabase
@@ -176,13 +190,9 @@ export function useSendLeadContract() {
           }
         }
       } else {
-        // Create a new contract in the database and generate PDF
-        // For now, we'll create a simple contract record
-        // The PDF generation would require the full contract generator logic
-        
-        // Create minimal contract record
+        // Create a new contract using contractual data from the lead card
         const contractData = {
-          client_name: lead.company || lead.name,
+          client_name: clientName,
           client_document: lead.document,
           client_address: fullAddress,
           client_email: lead.email,
@@ -220,8 +230,9 @@ export function useSendLeadContract() {
         };
       }
 
-      // Send to ZapSign
-      const documentName = `Contrato - ${lead.company || lead.name} - ${productName}`;
+      // Send to ZapSign - use contractual data
+      const signerName = lead.legal_representative_name || lead.name;
+      const documentName = `Contrato - ${clientName} - ${productName}`;
 
       const { data: zapSignData, error: zapSignError } = await supabase.functions.invoke("send-to-zapsign", {
         body: {
@@ -233,7 +244,7 @@ export function useSendLeadContract() {
               email: COMPANY_SIGNER_EMAIL,
             },
             {
-              name: lead.name,
+              name: signerName,
               email: lead.email,
               phone: lead.phone || "",
             },
