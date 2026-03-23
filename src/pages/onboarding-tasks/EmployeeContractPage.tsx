@@ -528,17 +528,19 @@ export default function EmployeeContractPage() {
                   Cancelar Edição
                 </Button>
               )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (showHistory) resetForm();
-                  setShowHistory(!showHistory);
-                }}
-                className="gap-2"
-              >
-                <History className="h-4 w-4" />
-                {showHistory ? "Novo Contrato" : "Histórico"}
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (showHistory) resetForm();
+                    setShowHistory(!showHistory);
+                  }}
+                  className="gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  {showHistory ? "Novo Contrato" : "Histórico"}
+                </Button>
+              )}
             </div>
           </div>
         </div>
