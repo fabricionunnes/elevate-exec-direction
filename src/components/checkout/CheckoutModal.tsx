@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Dialog,
   DialogContent,
@@ -9,12 +9,32 @@ import {
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { CreditCard, QrCode, FileText, Loader2, Check, Copy } from "lucide-react";
+import { CreditCard, QrCode, FileText, Loader2, Check, Copy, ExternalLink } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
 
 type PaymentMethod = "credit_card" | "pix" | "boleto";
+
+declare global {
+  interface Window {
+    getTokenCard?: (
+      publicKey: string,
+      cardData: {
+        name: string;
+        document: string;
+        customer_id: string;
+        number: string;
+        cvv: string;
+        month: string;
+        year: string;
+      },
+      installments: number,
+      callback: (data: { token?: string; brand?: string; bin?: string; msgError?: string }) => void
+    ) => void;
+    module?: unknown;
+  }
+}
 
 interface CheckoutModalProps {
   open: boolean;
@@ -34,6 +54,7 @@ interface CheckoutResult {
   status: string;
   order_id: string;
   paid?: boolean;
+  checkout_url?: string | null;
   pix_qr_code?: string;
   pix_qr_code_url?: string;
   pix_expires_at?: string;
@@ -46,6 +67,9 @@ const paymentMethods = [
   { id: "pix" as const, label: "PIX", icon: QrCode },
   { id: "boleto" as const, label: "Boleto", icon: FileText },
 ];
+
+const DOM_SDK_ID = "dompagamentos-sdk";
+const DOM_SDK_SRC = "https://apiv3.dompagamentos.com.br/js/sdk-dompagamentos.min.js";
 
 export function CheckoutModal({
   open,
@@ -60,25 +84,55 @@ export function CheckoutModal({
 }: CheckoutModalProps) {
   const [step, setStep] = useState<"form" | "result">("form");
   const [method, setMethod] = useState<PaymentMethod>(fixedMethod || "credit_card");
-
   const availableMethods = fixedMethod
     ? paymentMethods.filter((pm) => pm.id === fixedMethod)
     : paymentMethods;
   const [loading, setLoading] = useState(false);
   const [result, setResult] = useState<CheckoutResult | null>(null);
+  const [domSdkReady, setDomSdkReady] = useState(false);
 
-  // Form fields
   const [name, setName] = useState("");
   const [email, setEmail] = useState("");
   const [phone, setPhone] = useState("");
   const [document, setDocument] = useState("");
 
-  // Card fields
   const [cardNumber, setCardNumber] = useState("");
   const [cardExpiry, setCardExpiry] = useState("");
   const [cardCvv, setCardCvv] = useState("");
   const [cardHolder, setCardHolder] = useState("");
   const [installments, setInstallments] = useState(1);
+
+  useEffect(() => {
+    if (provider !== "dompagamentos" || method !== "credit_card" || !open) return;
+
+    if (typeof window.getTokenCard === "function") {
+      setDomSdkReady(true);
+      return;
+    }
+
+    const existingScript = document.getElementById(DOM_SDK_ID) as HTMLScriptElement | null;
+    if (existingScript) {
+      const onLoad = () => setDomSdkReady(true);
+      existingScript.addEventListener("load", onLoad);
+      return () => existingScript.removeEventListener("load", onLoad);
+    }
+
+    window.module = {};
+    const script = document.createElement("script");
+    script.id = DOM_SDK_ID;
+    script.src = DOM_SDK_SRC;
+    script.async = true;
+    script.onload = () => {
+      setDomSdkReady(true);
+      delete window.module;
+    };
+    script.onerror = () => {
+      setDomSdkReady(false);
+      toast.error("Não foi possível carregar a validação do cartão.");
+    };
+
+    document.body.appendChild(script);
+  }, [method, open, provider]);
 
   const resetForm = () => {
     setStep("form");
@@ -95,7 +149,7 @@ export function CheckoutModal({
   };
 
   const handleClose = (val: boolean) => {
-    if (loading) return; // Prevent closing while processing payment
+    if (loading) return;
     if (!val) resetForm();
     onOpenChange(val);
   };
@@ -117,8 +171,9 @@ export function CheckoutModal({
 
   const formatPhone = (v: string) => {
     const d = v.replace(/\D/g, "").slice(0, 11);
-    if (d.length <= 10)
+    if (d.length <= 10) {
       return d.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{4})(\d)/, "$1-$2");
+    }
     return d.replace(/(\d{2})(\d)/, "($1) $2").replace(/(\d{5})(\d)/, "$1-$2");
   };
 
@@ -131,6 +186,59 @@ export function CheckoutModal({
     return d.replace(/(\d{2})(\d)/, "$1/$2");
   };
 
+  const getDomPublicKey = async () => {
+    const { data, error } = await supabase.functions.invoke("dompagamentos-checkout", {
+      body: { get_public_key: true },
+    });
+
+    if (error) throw error;
+    if (!data?.public_key) {
+      throw new Error("Chave pública da Dom Pagamentos não configurada.");
+    }
+
+    return data.public_key as string;
+  };
+
+  const tokenizeDomCard = async () => {
+    if (typeof window.getTokenCard !== "function") {
+      throw new Error("SDK da Dom Pagamentos ainda não carregou.");
+    }
+
+    const cleanDocument = document.replace(/\D/g, "");
+    const cleanNumber = cardNumber.replace(/\s/g, "");
+    const [month = "", year = ""] = cardExpiry.split("/");
+
+    if (!cleanNumber || !month || !year || !cardCvv || !cardHolder.trim()) {
+      throw new Error("Preencha todos os dados do cartão.");
+    }
+
+    const publicKey = await getDomPublicKey();
+
+    return await new Promise<{ token: string; brand?: string; bin?: string }>((resolve, reject) => {
+      window.getTokenCard?.(
+        publicKey,
+        {
+          name: cardHolder.trim(),
+          document: cleanDocument,
+          customer_id: "",
+          number: cleanNumber,
+          cvv: cardCvv,
+          month,
+          year,
+        },
+        installments,
+        (data) => {
+          if (data?.token) {
+            resolve({ token: data.token, brand: data.brand, bin: data.bin });
+            return;
+          }
+
+          reject(new Error(data?.msgError || "Não foi possível validar o cartão."));
+        }
+      );
+    });
+  };
+
   const handleSubmit = async () => {
     if (!name || !email || !document) {
       toast.error("Preencha nome, email e CPF/CNPJ");
@@ -139,8 +247,6 @@ export function CheckoutModal({
 
     setLoading(true);
     try {
-      // For credit card, we'd need card tokenization via Pagar.me JS SDK
-      // For now, we send card data to the edge function which handles it
       const payload: Record<string, unknown> = {
         customer_name: name,
         customer_email: email,
@@ -155,19 +261,24 @@ export function CheckoutModal({
       };
 
       if (method === "credit_card") {
-        // Note: In production, use Pagar.me's JS SDK to tokenize the card
-        // For now we pass card details to the edge function
-        payload.card_number = cardNumber.replace(/\s/g, "");
-        payload.card_expiry = cardExpiry;
-        payload.card_cvv = cardCvv;
-        payload.card_holder = cardHolder;
+        if (provider === "dompagamentos") {
+          const tokenizedCard = await tokenizeDomCard();
+          payload.card_token = tokenizedCard.token;
+          payload.card_brand = tokenizedCard.brand;
+          payload.card_bin = tokenizedCard.bin;
+        } else {
+          payload.card_number = cardNumber.replace(/\s/g, "");
+          payload.card_expiry = cardExpiry;
+          payload.card_cvv = cardCvv;
+          payload.card_holder = cardHolder;
+        }
       }
 
-      const edgeFunctionName = provider === "mercadopago" 
-        ? "mercadopago-checkout" 
+      const edgeFunctionName = provider === "mercadopago"
+        ? "mercadopago-checkout"
         : provider === "dompagamentos"
-        ? "dompagamentos-checkout"
-        : "pagarme-checkout";
+          ? "dompagamentos-checkout"
+          : "pagarme-checkout";
 
       console.log("Checkout payload:", JSON.stringify(payload));
       console.log("Edge function:", edgeFunctionName);
@@ -180,7 +291,9 @@ export function CheckoutModal({
       console.log("Checkout error:", error);
 
       if (error) throw error;
-      if (data?.error) throw new Error(data.error);
+      if (data?.error) {
+        throw new Error(data.details || data.error);
+      }
 
       setResult(data as CheckoutResult);
       setStep("result");
@@ -197,11 +310,15 @@ export function CheckoutModal({
     }
   };
 
-  const maxInstallments = Math.min(12, Math.floor(amountCents / 100 / 50)); // min R$50 per installment
+  const maxInstallments = Math.max(1, Math.min(12, Math.floor(amountCents / 100 / 50)));
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => loading && e.preventDefault()} onEscapeKeyDown={(e) => loading && e.preventDefault()}>
+      <DialogContent
+        className="max-w-lg max-h-[90vh] overflow-y-auto"
+        onPointerDownOutside={(e) => loading && e.preventDefault()}
+        onEscapeKeyDown={(e) => loading && e.preventDefault()}
+      >
         <DialogHeader>
           <DialogTitle className="text-xl">Comprar {productName}</DialogTitle>
           <DialogDescription>
@@ -211,7 +328,6 @@ export function CheckoutModal({
 
         {step === "form" && (
           <div className="space-y-5">
-            {/* Payment Method Selector */}
             <div>
               <Label className="text-sm font-medium mb-2 block">Forma de Pagamento</Label>
               <div className={cn("grid gap-2", availableMethods.length === 1 ? "grid-cols-1" : "grid-cols-3")}>
@@ -234,7 +350,6 @@ export function CheckoutModal({
               </div>
             </div>
 
-            {/* Customer Info */}
             <div className="space-y-3">
               <div>
                 <Label htmlFor="checkout-name">Nome Completo *</Label>
@@ -256,7 +371,6 @@ export function CheckoutModal({
               </div>
             </div>
 
-            {/* Card fields */}
             {method === "credit_card" && (
               <div className="space-y-3 p-4 rounded-lg bg-muted/30 border border-border/50">
                 <div>
@@ -295,6 +409,11 @@ export function CheckoutModal({
                     </select>
                   </div>
                 )}
+                {provider === "dompagamentos" && !domSdkReady && (
+                  <p className="text-sm text-muted-foreground">
+                    Carregando validação segura do cartão...
+                  </p>
+                )}
               </div>
             )}
 
@@ -317,7 +436,7 @@ export function CheckoutModal({
               className="w-full"
               size="lg"
               onClick={handleSubmit}
-              disabled={loading}
+              disabled={loading || (provider === "dompagamentos" && method === "credit_card" && !domSdkReady)}
             >
               {loading ? (
                 <>
@@ -345,6 +464,29 @@ export function CheckoutModal({
               </div>
             )}
 
+            {result.payment_method === "credit_card" && !result.paid && (
+              <div className="space-y-4 text-center">
+                <div className="py-2">
+                  <h3 className="text-lg font-semibold text-foreground">
+                    {result.checkout_url ? "Continue o pagamento" : "Pagamento em processamento"}
+                  </h3>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    {result.checkout_url
+                      ? "A operadora solicitou uma etapa extra para concluir a cobrança no cartão."
+                      : "Recebemos sua solicitação e estamos aguardando a confirmação da operadora."}
+                  </p>
+                </div>
+                {result.checkout_url && (
+                  <a href={result.checkout_url} target="_blank" rel="noopener noreferrer">
+                    <Button variant="premium" className="w-full">
+                      <ExternalLink className="mr-2 h-4 w-4" />
+                      Continuar pagamento
+                    </Button>
+                  </a>
+                )}
+              </div>
+            )}
+
             {result.payment_method === "pix" && result.pix_qr_code && (
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-semibold">Pague via PIX</h3>
@@ -356,11 +498,7 @@ export function CheckoutModal({
                   />
                 )}
                 <div className="relative">
-                  <Input
-                    readOnly
-                    value={result.pix_qr_code}
-                    className="pr-10 text-xs"
-                  />
+                  <Input readOnly value={result.pix_qr_code} className="pr-10 text-xs" />
                   <button
                     className="absolute right-2 top-1/2 -translate-y-1/2"
                     onClick={() => {
@@ -380,11 +518,7 @@ export function CheckoutModal({
             {result.payment_method === "boleto" && result.boleto_url && (
               <div className="text-center space-y-4">
                 <h3 className="text-lg font-semibold">Boleto Gerado</h3>
-                <a
-                  href={result.boleto_url}
-                  target="_blank"
-                  rel="noopener noreferrer"
-                >
+                <a href={result.boleto_url} target="_blank" rel="noopener noreferrer">
                   <Button variant="outline" className="w-full">
                     <FileText className="mr-2 h-4 w-4" />
                     Abrir Boleto
