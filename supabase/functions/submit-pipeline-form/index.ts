@@ -36,6 +36,9 @@ Deno.serve(async (req) => {
       }));
 
       if (rows.length > 0) {
+        // Delete previous answers for this lead before inserting new ones
+        await supabase.from('crm_lead_form_answers').delete().eq('lead_id', lead_id);
+
         const { error: insertErr } = await supabase.from('crm_lead_form_answers').insert(rows);
         if (insertErr) {
           console.error('[submit-pipeline-form] Answers insert error:', insertErr);
