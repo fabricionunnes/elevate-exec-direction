@@ -244,13 +244,15 @@ export const CRMPipelinePage = () => {
       }
       setStages(stagesData || []);
 
-      // Fetch all leads in batches to bypass the 1000-row limit
+      // Fetch leads in batches to bypass the 1000-row limit
+      // Cap at 10,000 to avoid browser memory issues on very large pipelines
       const PAGE_SIZE = 1000;
+      const MAX_LEADS = 10000;
       let allLeads: Lead[] = [];
       let from = 0;
       let hasMore = true;
 
-      while (hasMore) {
+      while (hasMore && allLeads.length < MAX_LEADS) {
         let query = supabase
           .from("crm_leads")
           .select(`
