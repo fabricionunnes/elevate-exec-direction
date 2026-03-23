@@ -59,7 +59,8 @@ export const PipelineFormQuestionsManager = ({ formId }: { formId: string }) => 
     } as any);
 
     if (error) {
-      toast.error("Erro ao criar pergunta");
+      console.error("Error creating question:", error);
+      toast.error("Erro ao criar pergunta: " + error.message);
       return;
     }
 
