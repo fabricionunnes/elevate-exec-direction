@@ -66,6 +66,7 @@ import {
   LeadTranscriptionTab,
 } from "@/components/crm/lead-detail";
 import { LeadContractDataTab } from "@/components/crm/lead-detail/LeadContractDataTab";
+import { LeadFormAnswersTab } from "@/components/crm/lead-detail/LeadFormAnswersTab";
 import { LeadMeetingsPanel } from "@/components/crm/lead-detail/LeadMeetingsPanel";
 import { OwnerSelector } from "@/components/crm/lead-detail/OwnerSelector";
 import { SendContractButton } from "@/components/crm/SendContractButton";
@@ -1058,6 +1059,7 @@ export const CRMLeadDetailPage = () => {
               { value: "activities", label: "Atividades" },
               { value: "meetings", label: "Reuniões" },
               { value: "contract_data", label: "Dados Contratuais" },
+              { value: "form_answers", label: "Respostas" },
               { value: "contact", label: "Contato" },
               { value: "company", label: "Empresa" },
               { value: "deal", label: "Negócio" },
@@ -1102,6 +1104,10 @@ export const CRMLeadDetailPage = () => {
 
         <TabsContent value="contract_data" className="flex-1 mt-0 overflow-hidden">
           <LeadContractDataTab leadId={lead.id} onUpdate={loadLead} />
+        </TabsContent>
+
+        <TabsContent value="form_answers" className="flex-1 mt-0 overflow-auto">
+          <LeadFormAnswersTab leadId={lead.id} />
         </TabsContent>
 
         <TabsContent value="contact" className="flex-1 mt-0 overflow-auto">

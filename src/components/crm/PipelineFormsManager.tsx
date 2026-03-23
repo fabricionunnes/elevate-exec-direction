@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Copy, Check, ExternalLink, Plus, FileText } from "lucide-react";
+import { PipelineFormQuestionsManager } from "./PipelineFormQuestionsManager";
 
 interface Pipeline {
   id: string;
@@ -181,6 +182,8 @@ export const PipelineFormsManager = () => {
                 Exemplo: <code className="text-[10px]">?utm_source=instagram&utm_medium=ads&utm_campaign=black-friday</code>
               </p>
             </div>
+
+            <PipelineFormQuestionsManager formId={form.id} />
           </CardContent>
         </Card>
       ))}
