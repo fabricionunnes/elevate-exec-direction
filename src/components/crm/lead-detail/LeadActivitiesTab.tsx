@@ -419,17 +419,31 @@ export const LeadActivitiesTab = ({
       .replace(/\{\{data_hora_agendamento\}\}/g, nextMeetingDateTime || '');
   };
 
+  const stagesScrollRef = useRef<HTMLDivElement>(null);
+  const scrollStages = (dir: 'left' | 'right') => {
+    stagesScrollRef.current?.scrollBy({ left: dir === 'left' ? -200 : 200, behavior: 'smooth' });
+  };
+
+  const completedChecklist = checklistItems.filter(i => i.completed).length;
+  const totalChecklist = checklistItems.length;
+  const checklistProgress = totalChecklist > 0 ? Math.round((completedChecklist / totalChecklist) * 100) : 0;
+
   return (
     <div className="flex flex-col h-full">
-      {/* Stage Progress Bar - Full Width */}
-      <div className="p-4 border-b border-border w-full">
-        <div className="flex items-center gap-2 relative">
-          <Button variant="ghost" size="icon" className="shrink-0 z-10">
-            <ChevronLeft className="h-4 w-4" />
+      {/* Stage Progress Bar - Redesigned */}
+      <div className="px-3 py-4 border-b border-border w-full bg-gradient-to-b from-muted/30 to-transparent">
+        <div className="flex items-center gap-1">
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 h-7 w-7 rounded-full"
+            onClick={() => scrollStages('left')}
+          >
+            <ChevronLeft className="h-3.5 w-3.5" />
           </Button>
           
-          <div className="flex-1 overflow-x-auto">
-            <div className="flex items-center min-w-max">
+          <div ref={stagesScrollRef} className="flex-1 overflow-x-auto scrollbar-hide">
+            <div className="flex items-center min-w-max px-2 py-1">
               {stages.filter(s => !s.is_final).map((stage, index, arr) => {
                 const isActive = stage.id === currentStageId;
                 const isPast = index < currentStageIndex;
@@ -439,25 +453,42 @@ export const LeadActivitiesTab = ({
                   <div key={stage.id} className="flex items-center">
                     <button
                       onClick={() => onStageChange(stage.id)}
-                      className="flex flex-col items-center gap-1 relative group"
+                      className="flex flex-col items-center gap-1.5 relative group min-w-[60px]"
                     >
-                      <div
-                        className={cn(
-                          "flex items-center justify-center w-8 h-8 rounded-full text-sm font-semibold transition-all",
-                          isActive
-                            ? "text-white ring-4 ring-offset-2 ring-offset-background ring-primary/40"
-                            : isPast
-                            ? "bg-primary text-primary-foreground"
-                            : "bg-muted text-muted-foreground group-hover:bg-muted-foreground/20"
+                      <div className="relative">
+                        <div
+                          className={cn(
+                            "flex items-center justify-center w-9 h-9 rounded-full text-xs font-bold transition-all duration-200 border-2",
+                            isActive
+                              ? "text-white shadow-lg scale-110 border-transparent"
+                              : isPast
+                              ? "bg-primary/10 text-primary border-primary"
+                              : "bg-card text-muted-foreground border-border group-hover:border-muted-foreground/40"
+                          )}
+                          style={isActive ? {
+                            backgroundColor: stage.color,
+                            boxShadow: `0 0 0 3px ${stage.color}25, 0 4px 12px ${stage.color}30`,
+                          } : undefined}
+                        >
+                          {isPast ? (
+                            <svg className="w-3.5 h-3.5" fill="none" viewBox="0 0 24 24" stroke="currentColor" strokeWidth={3}>
+                              <path strokeLinecap="round" strokeLinejoin="round" d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            index + 1
+                          )}
+                        </div>
+                        {isActive && (
+                          <div
+                            className="absolute -bottom-0.5 left-1/2 -translate-x-1/2 w-4 h-1 rounded-full"
+                            style={{ backgroundColor: stage.color }}
+                          />
                         )}
-                        style={isActive ? { backgroundColor: stage.color } : undefined}
-                      >
-                        {index + 1}
                       </div>
                       <span className={cn(
-                        "text-xs font-medium whitespace-nowrap",
+                        "text-[10px] font-medium whitespace-nowrap max-w-[80px] truncate leading-tight",
                         isActive 
-                          ? "text-foreground" 
+                          ? "text-foreground font-semibold" 
                           : isPast 
                           ? "text-primary"
                           : "text-muted-foreground"
@@ -466,11 +497,10 @@ export const LeadActivitiesTab = ({
                       </span>
                     </button>
                     
-                    {/* Connector line */}
                     {!isLast && (
                       <div className={cn(
-                        "w-12 lg:w-20 xl:w-28 h-0.5 mx-1",
-                        isPast ? "bg-primary" : "bg-muted"
+                        "w-8 lg:w-14 xl:w-20 h-[2px] mx-0.5 rounded-full transition-colors",
+                        isPast ? "bg-primary" : "bg-border"
                       )} />
                     )}
                   </div>
@@ -479,8 +509,13 @@ export const LeadActivitiesTab = ({
             </div>
           </div>
 
-          <Button variant="ghost" size="icon" className="shrink-0 z-10">
-            <ChevronRight className="h-4 w-4" />
+          <Button
+            variant="ghost"
+            size="icon"
+            className="shrink-0 h-7 w-7 rounded-full"
+            onClick={() => scrollStages('right')}
+          >
+            <ChevronRight className="h-3.5 w-3.5" />
           </Button>
         </div>
       </div>
