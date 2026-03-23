@@ -801,36 +801,115 @@ export default function EmployeeContractPage() {
                 <>
                   <Separator />
                   <div className="space-y-3">
-                    <h4 className="font-semibold text-sm flex items-center gap-2">
-                      <Send className="h-4 w-4" />
-                      Assinatura Digital (ZapSign)
-                    </h4>
-                    <div className="space-y-2">
-                      {(selectedContract.zapsign_signers as ZapSignSigner[] || []).map((signer, i) => (
-                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
-                          <div>
-                            <p className="font-medium">{signer.name}</p>
-                            <p className="text-xs text-muted-foreground">{signer.email}</p>
-                          </div>
-                          <div className="flex items-center gap-2">
-                            {signer.status === "signed" ? (
-                              <Badge variant="outline" className="bg-green-500/20 text-green-700 border-green-500/30 text-xs">
-                                <CheckCircle2 className="h-3 w-3 mr-1" /> Assinado
-                              </Badge>
-                            ) : (
-                              <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
-                                <Clock className="h-3 w-3 mr-1" /> Pendente
-                              </Badge>
-                            )}
-                            {signer.signUrl && (
-                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(signer.signUrl!)}>
-                                <Copy className="h-3.5 w-3.5" />
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      ))}
+                    <div className="flex items-center justify-between">
+                      <h4 className="font-semibold text-sm flex items-center gap-2">
+                        <Send className="h-4 w-4" />
+                        Assinatura Digital (ZapSign)
+                      </h4>
+                      {selectedContract.zapsign_document_token && (
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          className="text-xs gap-1"
+                          disabled={isLoadingSignatures}
+                          onClick={() => checkSignatureStatus(selectedContract.zapsign_document_token!)}
+                        >
+                          {isLoadingSignatures ? (
+                            <Loader2 className="h-3 w-3 animate-spin" />
+                          ) : (
+                            <Eye className="h-3 w-3" />
+                          )}
+                          Atualizar Status
+                        </Button>
+                      )}
                     </div>
+
+                    {/* Show real-time signature status if loaded */}
+                    {signatureStatus ? (
+                      <div className="space-y-2">
+                        {signatureStatus.signers.map((signer: any, i: number) => (
+                          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
+                            <div>
+                              <p className="font-medium">{signer.name}</p>
+                              <p className="text-xs text-muted-foreground">{signer.email}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {signer.status === "signed" ? (
+                                <Badge variant="outline" className="bg-green-500/20 text-green-700 border-green-500/30 text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Assinado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
+                                  <Clock className="h-3 w-3 mr-1" /> Pendente
+                                </Badge>
+                              )}
+                              {signer.signUrl && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(signer.signUrl!)}>
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+
+                        {/* All signed - download button */}
+                        {signatureStatus.allSigned && signatureStatus.signedFileUrl && (
+                          <div className="bg-green-50 dark:bg-green-950/30 border border-green-200 dark:border-green-900 rounded-lg p-4">
+                            <div className="flex items-center gap-2 mb-3">
+                              <CheckCircle2 className="h-5 w-5 text-green-600" />
+                              <span className="text-sm font-medium text-green-800 dark:text-green-300">
+                                Todas as partes assinaram!
+                              </span>
+                            </div>
+                            <Button
+                              onClick={() =>
+                                downloadFileFromUrl(
+                                  signatureStatus.signedFileUrl!,
+                                  `Contrato_Assinado_${selectedContract.staff_name.replace(/\s+/g, "_")}.pdf`
+                                )
+                              }
+                              className="w-full bg-green-600 hover:bg-green-700"
+                              size="sm"
+                            >
+                              <Download className="h-4 w-4 mr-2" />
+                              Baixar Contrato Assinado
+                            </Button>
+                          </div>
+                        )}
+                      </div>
+                    ) : (
+                      /* Fallback: show cached signer data */
+                      <div className="space-y-2">
+                        {(selectedContract.zapsign_signers as ZapSignSigner[] || []).map((signer, i) => (
+                          <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
+                            <div>
+                              <p className="font-medium">{signer.name}</p>
+                              <p className="text-xs text-muted-foreground">{signer.email}</p>
+                            </div>
+                            <div className="flex items-center gap-2">
+                              {signer.status === "signed" ? (
+                                <Badge variant="outline" className="bg-green-500/20 text-green-700 border-green-500/30 text-xs">
+                                  <CheckCircle2 className="h-3 w-3 mr-1" /> Assinado
+                                </Badge>
+                              ) : (
+                                <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
+                                  <Clock className="h-3 w-3 mr-1" /> Pendente
+                                </Badge>
+                              )}
+                              {signer.signUrl && (
+                                <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(signer.signUrl!)}>
+                                  <Copy className="h-3.5 w-3.5" />
+                                </Button>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                        <p className="text-xs text-muted-foreground text-center">
+                          Clique em "Atualizar Status" para ver o status atual e baixar o contrato assinado.
+                        </p>
+                      </div>
+                    )}
+
                     {selectedContract.zapsign_document_url && (
                       <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.open(selectedContract.zapsign_document_url!, "_blank")}>
                         <ExternalLink className="h-4 w-4" />
