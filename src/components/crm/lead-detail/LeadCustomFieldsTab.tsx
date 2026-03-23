@@ -19,7 +19,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Settings, EyeOff, Flag } from "lucide-react";
+import { ChevronDown, Settings, EyeOff, Flag, Instagram, ExternalLink } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ManageCustomFieldsDialog } from "./ManageCustomFieldsDialog";
