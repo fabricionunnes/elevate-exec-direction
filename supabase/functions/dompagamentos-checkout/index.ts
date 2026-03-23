@@ -100,6 +100,7 @@ Deno.serve(async (req) => {
         bin: card_bin || undefined,
         brand: card_brand || undefined,
         installments: installments,
+        interest_free: interest_free_installments >= installments,
       };
     }
 
