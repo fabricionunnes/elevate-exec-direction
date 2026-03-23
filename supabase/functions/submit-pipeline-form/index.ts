@@ -211,7 +211,43 @@ Deno.serve(async (req) => {
   }
 });
 
-async function sendWhatsAppNotification(
+async function sendInternalNotifications(
+  supabase: any, leadId: string,
+  nome: string, email: string,
+  empresa?: string, originName?: string
+) {
+  try {
+    const { data: staffToNotify } = await supabase
+      .from('onboarding_staff')
+      .select('id')
+      .eq('is_active', true)
+      .in('role', ['master', 'head_comercial', 'sdr']);
+
+    if (!staffToNotify || staffToNotify.length === 0) return;
+
+    const title = `🚀 Novo Lead: ${nome}`;
+    const message = `Novo lead via formulário: ${nome}` +
+      (empresa ? ` | Empresa: ${empresa}` : '') +
+      ` | Email: ${email}` +
+      (originName ? ` | Origem: ${originName}` : '');
+
+    const notifications = staffToNotify.map((s: { id: string }) => ({
+      staff_id: s.id,
+      type: 'new_lead',
+      title,
+      message,
+      reference_id: leadId,
+      reference_type: 'lead',
+    }));
+
+    const { error } = await supabase.from('onboarding_notifications').insert(notifications);
+    if (error) console.error('[submit-pipeline-form] Notification insert error:', error);
+  } catch (e) {
+    console.error('[submit-pipeline-form] Internal notification error:', e);
+  }
+}
+
+
   supabase: any, leadId: string,
   nome: string, telefone: string, email: string,
   empresa?: string, desafio?: string, utm_source?: string,
