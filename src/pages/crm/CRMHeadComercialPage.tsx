@@ -320,10 +320,10 @@ export default function CRMHeadComercialPage() {
             .gte("scheduled_at", monthStart.toISOString())
             .lte("scheduled_at", monthEnd.toISOString()),
 
-          // SDR agendamentos: meetings CREATED yesterday (regardless of scheduled_at)
+          // SDR agendamentos: meetings CREATED yesterday (with lead_id for SDR attribution)
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", startOfDay(yesterday).toISOString())
             .lt("created_at", endOfDay(yesterday).toISOString()),
@@ -331,7 +331,7 @@ export default function CRMHeadComercialPage() {
           // SDR agendamentos: meetings CREATED today
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", startOfDay(now).toISOString())
             .lt("created_at", endOfDay(now).toISOString()),
@@ -339,7 +339,7 @@ export default function CRMHeadComercialPage() {
           // SDR agendamentos: meetings CREATED this month
           supabase
             .from("crm_activities")
-            .select("responsible_staff_id, type")
+            .select("responsible_staff_id, lead_id, type")
             .eq("type", "meeting")
             .gte("created_at", monthStart.toISOString())
             .lte("created_at", monthEnd.toISOString()),
