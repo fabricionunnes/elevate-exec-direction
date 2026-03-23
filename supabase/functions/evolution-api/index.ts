@@ -424,9 +424,26 @@ Deno.serve(async (req) => {
           );
         }
 
+        // If the number doesn't exist on WhatsApp, return a friendly error (200 with error field)
+        if (!response.ok) {
+          if (dataStr.includes('"exists":false') || dataStr.includes('"exists": false')) {
+            return new Response(
+              JSON.stringify({
+                error: 'Este número não possui WhatsApp. Verifique se o telefone está correto.',
+                number_not_found: true,
+              }),
+              { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+            );
+          }
+          return new Response(
+            JSON.stringify({ error: data?.message || 'Erro ao enviar mensagem', details: data }),
+            { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
         return new Response(
           JSON.stringify(data),
-          { status: response.ok ? 200 : response.status, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
