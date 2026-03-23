@@ -197,6 +197,9 @@ Deno.serve(async (req) => {
 
     console.log('[submit-pipeline-form] Lead created:', lead.id);
 
+    // ── Internal notifications for head_comercial, sdr, master ──
+    await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName);
+
     // ── WhatsApp notification ──
     await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
 
