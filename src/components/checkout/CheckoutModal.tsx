@@ -156,7 +156,11 @@ export function CheckoutModal({
         payload.card_holder = cardHolder;
       }
 
-      const edgeFunctionName = provider === "mercadopago" ? "mercadopago-checkout" : "pagarme-checkout";
+      const edgeFunctionName = provider === "mercadopago" 
+        ? "mercadopago-checkout" 
+        : provider === "dompagamentos"
+        ? "dompagamentos-checkout"
+        : "pagarme-checkout";
 
       const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
         body: payload,
