@@ -9,6 +9,7 @@ import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
 import { Copy, Check, ExternalLink, Plus, FileText } from "lucide-react";
+import { PipelineFormQuestionsManager } from "./PipelineFormQuestionsManager";
 
 interface Pipeline {
   id: string;
