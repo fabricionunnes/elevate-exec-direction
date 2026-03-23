@@ -89,7 +89,7 @@ export function useSendLeadContract() {
       // Fetch lead data
       const { data: lead, error: leadError } = await supabase
         .from("crm_leads")
-        .select("id, name, email, phone, document, company, product_id, opportunity_value, payment_method, installments, due_day, address, city, state, zipcode")
+        .select("id, name, email, phone, document, company, trade_name, product_id, opportunity_value, payment_method, installments, due_day, address, address_number, address_complement, address_neighborhood, city, state, zipcode, legal_representative_name, cpf, rg, marital_status")
         .eq("id", leadId)
         .single();
 
