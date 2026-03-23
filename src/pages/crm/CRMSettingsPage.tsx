@@ -152,6 +152,13 @@ export const CRMSettingsPage = () => {
   const [editingReason, setEditingReason] = useState<LossReason | null>(null);
   const [actionsStage, setActionsStage] = useState<Stage | null>(null);
   const [checklistStage, setChecklistStage] = useState<Stage | null>(null);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyTargetStage, setCopyTargetStage] = useState<Stage | null>(null);
+  const [copySourcePipeline, setCopySourcePipeline] = useState("");
+  const [copySourceStage, setCopySourceStage] = useState("");
+  const [copyChecklist, setCopyChecklist] = useState(true);
+  const [copyActions, setCopyActions] = useState(true);
+  const [copying, setCopying] = useState(false);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
@@ -709,6 +716,65 @@ export const CRMSettingsPage = () => {
     setEditOriginOpen(true);
   };
 
+  const handleCopyStageConfig = async () => {
+    if (!copySourceStage || !copyTargetStage) return;
+    if (!copyChecklist && !copyActions) {
+      toast.error("Selecione pelo menos uma opção para copiar");
+      return;
+    }
+
+    setCopying(true);
+    try {
+      if (copyChecklist) {
+        const { data: sourceChecklists, error: checkErr } = await supabase
+          .from("crm_stage_checklists")
+          .select("*")
+          .eq("stage_id", copySourceStage);
+        if (checkErr) throw checkErr;
+
+        if (sourceChecklists && sourceChecklists.length > 0) {
+          const newChecklists = sourceChecklists.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
+            ...rest,
+            stage_id: copyTargetStage.id,
+          }));
+          const { error: insertErr } = await supabase.from("crm_stage_checklists").insert(newChecklists);
+          if (insertErr) throw insertErr;
+        }
+      }
+
+      if (copyActions) {
+        const { data: sourceActions, error: actErr } = await supabase
+          .from("crm_stage_actions")
+          .select("*")
+          .eq("stage_id", copySourceStage);
+        if (actErr) throw actErr;
+
+        if (sourceActions && sourceActions.length > 0) {
+          const newActions = sourceActions.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
+            ...rest,
+            stage_id: copyTargetStage.id,
+          }));
+          const { error: insertErr } = await supabase.from("crm_stage_actions").insert(newActions);
+          if (insertErr) throw insertErr;
+        }
+      }
+
+      const copied = [copyChecklist && "checklist", copyActions && "automações"].filter(Boolean).join(" e ");
+      toast.success(`${copied} copiado(s) com sucesso para "${copyTargetStage.name}"!`);
+      setCopyDialogOpen(false);
+      setCopyTargetStage(null);
+      setCopySourcePipeline("");
+      setCopySourceStage("");
+    } catch (error: any) {
+      console.error("Error copying stage config:", error);
+      toast.error("Erro ao copiar configuração");
+    } finally {
+      setCopying(false);
+    }
+  };
+
+  const copySourceStages = stages.filter(s => s.pipeline_id === copySourcePipeline);
+
   const pipelineStages = stages.filter(s => s.pipeline_id === selectedPipeline);
   const groupOrigins = origins.filter(o => o.group_id === selectedOriginGroup);
 
@@ -1132,6 +1198,22 @@ export const CRMSettingsPage = () => {
                           {stage.final_type === "won" ? "Ganho" : "Perdido"}
                         </Badge>
                       )}
+                      <Button
+                        variant="ghost"
+                        size="icon"
+                        className="h-8 w-8"
+                        onClick={() => {
+                          setCopyTargetStage(stage);
+                          setCopySourcePipeline("");
+                          setCopySourceStage("");
+                          setCopyChecklist(true);
+                          setCopyActions(true);
+                          setCopyDialogOpen(true);
+                        }}
+                        title="Copiar checklist/automações de outra etapa"
+                      >
+                        <Copy className="h-4 w-4" />
+                      </Button>
                       <Button
                         variant="ghost"
                         size="icon"
@@ -1782,6 +1864,87 @@ export const CRMSettingsPage = () => {
           stageName={checklistStage.name}
         />
       )}
+
+      {/* Copy Stage Config Dialog */}
+      <Dialog open={copyDialogOpen} onOpenChange={(open) => {
+        setCopyDialogOpen(open);
+        if (!open) {
+          setCopyTargetStage(null);
+          setCopySourcePipeline("");
+          setCopySourceStage("");
+        }
+      }}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <Copy className="h-5 w-5" />
+              Copiar configuração para "{copyTargetStage?.name}"
+            </DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div>
+              <Label>Pipeline de origem</Label>
+              <Select value={copySourcePipeline} onValueChange={(v) => { setCopySourcePipeline(v); setCopySourceStage(""); }}>
+                <SelectTrigger className="mt-1">
+                  <SelectValue placeholder="Selecione o pipeline" />
+                </SelectTrigger>
+                <SelectContent>
+                  {pipelines.filter(p => p.is_active).map(p => (
+                    <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+
+            {copySourcePipeline && (
+              <div>
+                <Label>Etapa de origem</Label>
+                <Select value={copySourceStage} onValueChange={setCopySourceStage}>
+                  <SelectTrigger className="mt-1">
+                    <SelectValue placeholder="Selecione a etapa" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {copySourceStages
+                      .filter(s => s.id !== copyTargetStage?.id)
+                      .map(s => (
+                        <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
+                      ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            )}
+
+            <div className="space-y-3 pt-2 border-t">
+              <Label>O que copiar?</Label>
+              <div className="flex items-center gap-3">
+                <div className="flex items-center gap-2">
+                  <Switch checked={copyChecklist} onCheckedChange={setCopyChecklist} id="copy-checklist" />
+                  <Label htmlFor="copy-checklist" className="flex items-center gap-1.5 cursor-pointer">
+                    <ListChecks className="h-4 w-4" />
+                    Checklist
+                  </Label>
+                </div>
+                <div className="flex items-center gap-2">
+                  <Switch checked={copyActions} onCheckedChange={setCopyActions} id="copy-actions" />
+                  <Label htmlFor="copy-actions" className="flex items-center gap-1.5 cursor-pointer">
+                    <Zap className="h-4 w-4" />
+                    Automações
+                  </Label>
+                </div>
+              </div>
+            </div>
+
+            <Button 
+              onClick={handleCopyStageConfig} 
+              disabled={copying || !copySourceStage || (!copyChecklist && !copyActions)} 
+              className="w-full"
+            >
+              {copying && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
+              Copiar Configuração
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
