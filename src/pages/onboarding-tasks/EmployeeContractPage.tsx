@@ -129,12 +129,12 @@ export default function EmployeeContractPage() {
       // Upload PDF
       const fileName = `employee_contracts/${Date.now()}_${formData.staffName.replace(/\s+/g, "_")}.pdf`;
       const { error: uploadError } = await supabase.storage
-        .from("contracts")
+        .from("contract-pdfs")
         .upload(fileName, blob, { contentType: "application/pdf", upsert: true });
 
       let pdfUrl: string | null = null;
       if (!uploadError) {
-        const { data: urlData } = supabase.storage.from("contracts").getPublicUrl(fileName);
+        const { data: urlData } = supabase.storage.from("contract-pdfs").getPublicUrl(fileName);
         pdfUrl = urlData?.publicUrl || null;
       }
 
