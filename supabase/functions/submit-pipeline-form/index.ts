@@ -101,6 +101,34 @@ Deno.serve(async (req) => {
 
     if (!form || !form.is_active) return jsonResponse({ error: 'Formulário não encontrado ou inativo' }, 404);
 
+    // ── Check for existing lead by email or phone in the same pipeline ──
+    const cleanPhone = telefone.replace(/\D/g, '');
+    const { data: existingLead } = await supabase
+      .from('crm_leads')
+      .select('id')
+      .eq('pipeline_id', form.pipeline_id)
+      .or(`email.eq.${email},phone.eq.${cleanPhone}`)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingLead) {
+      // Lead already exists — update name/phone/email but keep current stage
+      await supabase
+        .from('crm_leads')
+        .update({
+          name: nome,
+          phone: cleanPhone,
+          email,
+          ...(empresa ? { company: empresa } : {}),
+          ...(desafio ? { main_pain: desafio } : {}),
+        })
+        .eq('id', existingLead.id);
+
+      console.log('[submit-pipeline-form] Existing lead updated:', existingLead.id);
+      return jsonResponse({ success: true, lead_id: existingLead.id });
+    }
+
+    // ── New lead: create normally ──
     const { data: stage } = await supabase
       .from('crm_stages')
       .select('id')
@@ -140,7 +168,7 @@ Deno.serve(async (req) => {
       .from('crm_leads')
       .insert({
         name: nome,
-        phone: telefone,
+        phone: cleanPhone,
         email,
         company: empresa || null,
         main_pain: desafio || null,
