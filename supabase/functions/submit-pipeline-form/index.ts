@@ -247,7 +247,7 @@ async function sendInternalNotifications(
   }
 }
 
-
+async function sendWhatsAppNotification(
   supabase: any, leadId: string,
   nome: string, telefone: string, email: string,
   empresa?: string, desafio?: string, utm_source?: string,
