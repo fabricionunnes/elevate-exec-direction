@@ -154,7 +154,10 @@ export function ConvertLeadToCompanyDialog({
           .select("id")
           .single();
 
-        if (companyError || !newCompany) throw new Error("Erro ao criar empresa");
+        if (companyError || !newCompany) {
+          console.error("Error creating company:", companyError);
+          throw new Error("Erro ao criar empresa: " + (companyError?.message || "sem dados retornados"));
+        }
         companyId = newCompany.id;
       }
 
