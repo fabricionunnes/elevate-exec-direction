@@ -3,6 +3,7 @@ import { useCallback, useRef, useState } from "react";
 /**
  * Enables click-and-drag horizontal scrolling on a container.
  * - Works with mouse and touch
+ * - Prevents text selection during drag
  * - Exposes a flag to suppress clicks when the user was dragging
  */
 export function useDragScroll() {
@@ -26,7 +27,10 @@ export function useDragScroll() {
 
     startXRef.current = e.clientX;
     startScrollLeftRef.current = el.scrollLeft;
-    // Don't use setPointerCapture - it prevents clicks on child elements
+
+    // Prevent text selection during drag
+    document.body.style.userSelect = "none";
+    document.body.style.webkitUserSelect = "none";
   }, []);
 
   const onPointerMove = useCallback((e: React.PointerEvent) => {
@@ -35,14 +39,16 @@ export function useDragScroll() {
     if (!pointerDownRef.current) return;
 
     const dx = e.clientX - startXRef.current;
-    // Increase threshold to 10px to better differentiate between click and drag
-    if (Math.abs(dx) > 10) movedRef.current = true;
+    if (Math.abs(dx) > 5) movedRef.current = true;
     el.scrollLeft = startScrollLeftRef.current - dx;
   }, []);
 
   const endDrag = useCallback(() => {
     pointerDownRef.current = false;
     setIsDragging(false);
+    // Re-enable text selection
+    document.body.style.userSelect = "";
+    document.body.style.webkitUserSelect = "";
   }, []);
 
   const onPointerUp = useCallback(() => {

@@ -72,144 +72,178 @@ export const KanbanLeadCard = ({
   };
 
   const handleCardClick = (e: React.MouseEvent) => {
-    // If in selection mode and master, clicking the card toggles selection
     if (isSelectionMode && isMaster) {
       e.preventDefault();
       onSelect(lead.id, !isSelected);
     }
   };
 
+  // Generate initials for avatar
+  const initials = lead.name
+    .split(" ")
+    .slice(0, 2)
+    .map(w => w[0])
+    .join("")
+    .toUpperCase();
+
+  // Simple hash for avatar color
+  const hashCode = lead.name.split("").reduce((a, c) => a + c.charCodeAt(0), 0);
+  const avatarColors = [
+    { bg: "bg-blue-100 dark:bg-blue-900/40", text: "text-blue-700 dark:text-blue-300" },
+    { bg: "bg-violet-100 dark:bg-violet-900/40", text: "text-violet-700 dark:text-violet-300" },
+    { bg: "bg-emerald-100 dark:bg-emerald-900/40", text: "text-emerald-700 dark:text-emerald-300" },
+    { bg: "bg-amber-100 dark:bg-amber-900/40", text: "text-amber-700 dark:text-amber-300" },
+    { bg: "bg-rose-100 dark:bg-rose-900/40", text: "text-rose-700 dark:text-rose-300" },
+    { bg: "bg-cyan-100 dark:bg-cyan-900/40", text: "text-cyan-700 dark:text-cyan-300" },
+  ];
+  const avatarColor = avatarColors[hashCode % avatarColors.length];
+
   const CardContent = (
     <div
       className={cn(
-        "bg-card border rounded-lg p-3 transition-all shadow-sm",
-        isDragging && "opacity-50",
-        isSelected ? "border-primary ring-2 ring-primary/20" : "border-border hover:border-primary/50"
+        "bg-card rounded-xl p-3 transition-all duration-200 border select-none",
+        isDragging && "opacity-40 scale-95",
+        isSelected 
+          ? "border-primary ring-2 ring-primary/20 shadow-md" 
+          : "border-border/60 hover:border-primary/40 hover:shadow-md shadow-sm"
       )}
     >
-      {/* Selection Checkbox + Origin Tag */}
-      <div className="flex items-start gap-2 mb-2">
-        {isMaster && (
-          <div 
-            onClick={handleCheckboxClick}
-            className="pt-0.5"
+      {/* Origin Badge */}
+      {lead.origin?.name && (
+        <div className="flex items-center gap-2 mb-2">
+          {isMaster && (
+            <div onClick={handleCheckboxClick} className="shrink-0">
+              <Checkbox checked={isSelected} className="cursor-pointer" />
+            </div>
+          )}
+          <Badge 
+            variant="secondary" 
+            className="text-[10px] px-2 py-0.5 bg-primary/8 text-primary border-0 font-medium"
           >
-            <Checkbox 
-              checked={isSelected}
-              className="cursor-pointer"
-            />
+            novo contato via {lead.origin.name}
+          </Badge>
+        </div>
+      )}
+
+      {/* Name + Avatar row */}
+      <div className="flex items-start gap-2.5">
+        {!lead.origin?.name && isMaster && (
+          <div onClick={handleCheckboxClick} className="pt-1 shrink-0">
+            <Checkbox checked={isSelected} className="cursor-pointer" />
           </div>
         )}
-        <div className="flex-1">
-          {lead.origin?.name && (
-            <Badge variant="secondary" className="text-[10px] bg-pink-100 text-pink-700 border-0">
-              novo contato via {lead.origin.name}
-            </Badge>
-          )}
+        
+        <div className={cn(
+          "w-8 h-8 rounded-full flex items-center justify-center shrink-0 text-[10px] font-bold",
+          avatarColor.bg,
+          avatarColor.text
+        )}>
+          {initials}
         </div>
-      </div>
 
-      <div className="flex items-start gap-2">
         <div className="flex-1 min-w-0">
-          <div className="flex items-center gap-2">
-            <p className="font-medium text-sm truncate">{lead.name}</p>
+          <div className="flex items-center gap-1.5">
+            <p className="font-semibold text-sm truncate text-foreground">{lead.name}</p>
             {lead.urgency === "high" && (
-              <Badge variant="destructive" className="text-[10px] px-1 py-0">
-                URGENTE
-              </Badge>
+              <span className="inline-flex items-center px-1.5 py-0.5 rounded text-[9px] font-bold bg-destructive/10 text-destructive uppercase tracking-wide">
+                !
+              </span>
             )}
           </div>
 
           {lead.company && (
-            <div className="flex items-center gap-1 text-xs text-muted-foreground mt-0.5">
-              <Building2 className="h-3 w-3" />
+            <div className="flex items-center gap-1 text-[11px] text-muted-foreground mt-0.5">
+              <Building2 className="h-3 w-3 shrink-0" />
               <span className="truncate">{lead.company}</span>
             </div>
           )}
+        </div>
+      </div>
 
-          {/* Tags */}
-          {lead.tags && lead.tags.length > 0 && (
-            <div className="flex flex-wrap gap-1 mt-2">
-              {lead.tags.slice(0, 2).map(t => (
-                <Badge
-                  key={t.tag.id}
-                  variant="outline"
-                  className="text-[10px] px-1.5"
-                  style={{ borderColor: t.tag.color, color: t.tag.color }}
-                >
-                  {t.tag.name}
-                </Badge>
-              ))}
+      {/* Tags */}
+      {lead.tags && lead.tags.length > 0 && (
+        <div className="flex flex-wrap gap-1 mt-2">
+          {lead.tags.slice(0, 3).map(t => (
+            <Badge
+              key={t.tag.id}
+              variant="outline"
+              className="text-[9px] px-1.5 py-0 h-4 rounded-md font-medium"
+              style={{ 
+                borderColor: `${t.tag.color}50`, 
+                color: t.tag.color, 
+                backgroundColor: `${t.tag.color}10`,
+              }}
+            >
+              {t.tag.name}
+            </Badge>
+          ))}
+        </div>
+      )}
+
+      {/* Meeting Actions */}
+      <div className="flex items-center justify-between mt-2.5 pt-2 border-t border-border/50">
+        <LeadMeetingActions
+          leadId={lead.id}
+          pipelineId={pipelineId}
+          stageId={lead.stage_id}
+          ownerStaffId={lead.owner_staff_id}
+          onEventTracked={onRefresh}
+        />
+        
+        {lead.opportunity_value ? (
+          <span className="text-xs font-bold text-emerald-600 dark:text-emerald-400 tabular-nums">
+            {formatCurrency(lead.opportunity_value)}
+          </span>
+        ) : (
+          <span className="text-[10px] text-muted-foreground/50 tabular-nums">0</span>
+        )}
+      </div>
+
+      {/* Footer */}
+      <div className="flex items-center gap-1.5 mt-1.5" onClick={(e) => e.stopPropagation()}>
+        <OwnerSelector
+          leadId={lead.id}
+          currentOwnerId={lead.owner_staff_id}
+          currentOwnerName={lead.owner?.name}
+          onOwnerChange={onRefresh}
+        />
+        <LeadCardNotes
+          leadId={lead.id}
+          onNotesChange={onRefresh}
+        />
+        
+        <div className="flex items-center gap-0.5 ml-auto">
+          {lead.phone && (
+            <div className="p-1 rounded-md hover:bg-muted transition-colors">
+              <Phone className="h-3 w-3 text-muted-foreground" />
             </div>
           )}
-
-          {/* Meeting Actions */}
-          <div className="flex items-center justify-between mt-2 pt-2 border-t border-border">
-            <LeadMeetingActions
-              leadId={lead.id}
-              pipelineId={pipelineId}
-              stageId={lead.stage_id}
-              ownerStaffId={lead.owner_staff_id}
-              onEventTracked={onRefresh}
-            />
-            
-            <div className="flex items-center gap-1">
-              {lead.opportunity_value && (
-                <span className="text-xs text-green-600">
-                  {formatCurrency(lead.opportunity_value)}
-                </span>
-              )}
-            </div>
-          </div>
-
-          {/* Footer with icons */}
-          <div className="flex items-center gap-2 mt-1.5" onClick={(e) => e.stopPropagation()}>
-            <div className="flex items-center gap-1">
-              <OwnerSelector
-                leadId={lead.id}
-                currentOwnerId={lead.owner_staff_id}
-                currentOwnerName={lead.owner?.name}
-                onOwnerChange={onRefresh}
-              />
-              <LeadCardNotes
-                leadId={lead.id}
-                onNotesChange={onRefresh}
-              />
-              {lead.phone && <Phone className="h-3 w-3 text-muted-foreground" />}
-              {lead.email && <Mail className="h-3 w-3 text-muted-foreground" />}
-              {lead.phone && (
-                <button
-                  onClick={(e) => onOpenChat(e, lead)}
-                  className="p-1 rounded hover:bg-primary/10 transition-colors group"
-                  title="Abrir conversa no WhatsApp"
-                >
-                  <MessageSquare className="h-3.5 w-3.5 text-muted-foreground group-hover:text-primary" />
-                </button>
-              )}
-              {!lead.phone && <MessageSquare className="h-3 w-3 text-muted-foreground/50" />}
-            </div>
-
-            {lead.last_activity_at && (
-              <span className="text-[10px] text-muted-foreground ml-auto">
-                {formatDistanceToNow(new Date(lead.last_activity_at), { 
-                  locale: ptBR, 
-                  addSuffix: false 
-                })}
-              </span>
-            )}
-          </div>
+          {lead.phone && (
+            <button
+              onClick={(e) => onOpenChat(e, lead)}
+              className="p-1 rounded-md hover:bg-emerald-50 dark:hover:bg-emerald-950/30 transition-colors group"
+              title="Abrir conversa no WhatsApp"
+            >
+              <MessageSquare className="h-3 w-3 text-muted-foreground group-hover:text-emerald-600" />
+            </button>
+          )}
         </div>
+
+        {lead.last_activity_at && (
+          <span className="text-[9px] text-muted-foreground/70 tabular-nums">
+            {formatDistanceToNow(new Date(lead.last_activity_at), { 
+              locale: ptBR, 
+              addSuffix: false 
+            })}
+          </span>
+        )}
       </div>
     </div>
   );
 
-  // If in selection mode (master only), don't wrap with Link
   if (isSelectionMode && isMaster) {
     return (
-      <div
-        onClick={handleCardClick}
-        className="cursor-pointer"
-      >
+      <div onClick={handleCardClick} className="cursor-pointer">
         {CardContent}
       </div>
     );
@@ -220,7 +254,7 @@ export const KanbanLeadCard = ({
       to={`/crm/leads/${lead.id}`}
       draggable
       onDragStart={(e) => onDragStart(e, lead)}
-      className="block cursor-grab active:cursor-grabbing"
+      className="block cursor-grab active:cursor-grabbing select-none"
     >
       {CardContent}
     </Link>
