@@ -718,6 +718,10 @@ export const CRMSettingsPage = () => {
 
   const handleCopyStageConfig = async () => {
     if (!copySourceStage || !copyTargetStage) return;
+    if (copySourceStage === copyTargetStage.id) {
+      toast.error("Selecione uma etapa de origem diferente da etapa de destino");
+      return;
+    }
     if (!copyChecklist && !copyActions) {
       toast.error("Selecione pelo menos uma opção para copiar");
       return;
@@ -725,68 +729,122 @@ export const CRMSettingsPage = () => {
 
     setCopying(true);
     try {
-      let copiedChecklistCount = 0;
-      let copiedActionsCount = 0;
+      const [checklistsRes, actionsRes] = await Promise.all([
+        copyChecklist
+          ? supabase
+              .from("crm_stage_checklists")
+              .select("title, description, sort_order, is_active, item_type, whatsapp_template, whatsapp_attachments")
+              .eq("stage_id", copySourceStage)
+              .order("sort_order")
+          : Promise.resolve({ data: [], error: null }),
+        copyActions
+          ? supabase
+              .from("crm_stage_actions")
+              .select("activity_type, activity_title, activity_description, days_offset, is_required, sort_order, action_mode, whatsapp_template, meeting_staff_id, meeting_duration_minutes")
+              .eq("stage_id", copySourceStage)
+              .order("sort_order")
+          : Promise.resolve({ data: [], error: null }),
+      ]);
+
+      if (checklistsRes.error) throw checklistsRes.error;
+      if (actionsRes.error) throw actionsRes.error;
+
+      const sourceChecklists = checklistsRes.data || [];
+      const sourceActions = actionsRes.data || [];
+
+      if ((copyChecklist && sourceChecklists.length === 0) && (copyActions && sourceActions.length === 0)) {
+        toast.info("A etapa de origem não possui checklist nem automações para copiar.");
+        return;
+      }
 
       if (copyChecklist) {
-        const { data: sourceChecklists, error: checkErr } = await supabase
+        const { error: deleteChecklistError } = await supabase
           .from("crm_stage_checklists")
-          .select("*")
-          .eq("stage_id", copySourceStage);
-        if (checkErr) throw checkErr;
+          .delete()
+          .eq("stage_id", copyTargetStage.id);
 
-        if (sourceChecklists && sourceChecklists.length > 0) {
-          const newChecklists = sourceChecklists.map((item) => ({
+        if (deleteChecklistError) throw deleteChecklistError;
+
+        if (sourceChecklists.length > 0) {
+          const newChecklists = sourceChecklists.map((item, index) => ({
             stage_id: copyTargetStage.id,
             title: item.title,
             description: item.description,
-            sort_order: item.sort_order,
-            is_active: item.is_active,
+            sort_order: index,
+            is_active: item.is_active ?? true,
             item_type: item.item_type,
             whatsapp_template: item.whatsapp_template,
-            whatsapp_attachments: item.whatsapp_attachments,
+            whatsapp_attachments: Array.isArray(item.whatsapp_attachments) ? item.whatsapp_attachments : [],
           }));
-          const { error: insertErr } = await supabase.from("crm_stage_checklists").insert(newChecklists);
-          if (insertErr) throw insertErr;
-          copiedChecklistCount = newChecklists.length;
+
+          const { error: insertChecklistError } = await supabase
+            .from("crm_stage_checklists")
+            .insert(newChecklists as any);
+
+          if (insertChecklistError) throw insertChecklistError;
         }
       }
 
       if (copyActions) {
-        const { data: sourceActions, error: actErr } = await supabase
+        const { error: deleteActionsError } = await supabase
           .from("crm_stage_actions")
-          .select("*")
-          .eq("stage_id", copySourceStage);
-        if (actErr) throw actErr;
+          .delete()
+          .eq("stage_id", copyTargetStage.id);
 
-        if (sourceActions && sourceActions.length > 0) {
-          const newActions = sourceActions.map((item) => ({
+        if (deleteActionsError) throw deleteActionsError;
+
+        if (sourceActions.length > 0) {
+          const newActions = sourceActions.map((item, index) => ({
             stage_id: copyTargetStage.id,
             activity_type: item.activity_type,
             activity_title: item.activity_title,
             activity_description: item.activity_description,
             days_offset: item.days_offset,
-            is_required: item.is_required,
-            sort_order: item.sort_order,
+            is_required: item.is_required ?? true,
+            sort_order: index,
             action_mode: item.action_mode,
             whatsapp_template: item.whatsapp_template,
             meeting_staff_id: item.meeting_staff_id,
             meeting_duration_minutes: item.meeting_duration_minutes,
           }));
-          const { error: insertErr } = await supabase.from("crm_stage_actions").insert(newActions);
-          if (insertErr) throw insertErr;
-          copiedActionsCount = newActions.length;
+
+          const { error: insertActionsError } = await supabase
+            .from("crm_stage_actions")
+            .insert(newActions);
+
+          if (insertActionsError) throw insertActionsError;
         }
       }
+
+      const [targetChecklistCountRes, targetActionsCountRes] = await Promise.all([
+        copyChecklist
+          ? supabase
+              .from("crm_stage_checklists")
+              .select("id", { count: "exact", head: true })
+              .eq("stage_id", copyTargetStage.id)
+          : Promise.resolve({ count: 0, error: null }),
+        copyActions
+          ? supabase
+              .from("crm_stage_actions")
+              .select("id", { count: "exact", head: true })
+              .eq("stage_id", copyTargetStage.id)
+          : Promise.resolve({ count: 0, error: null }),
+      ]);
+
+      if (targetChecklistCountRes.error) throw targetChecklistCountRes.error;
+      if (targetActionsCountRes.error) throw targetActionsCountRes.error;
+
+      const copiedChecklistCount = targetChecklistCountRes.count || 0;
+      const copiedActionsCount = targetActionsCountRes.count || 0;
 
       const parts = [];
       if (copiedChecklistCount > 0) parts.push(`${copiedChecklistCount} itens de checklist`);
       if (copiedActionsCount > 0) parts.push(`${copiedActionsCount} automações`);
       
       if (parts.length === 0) {
-        toast.info("Nenhum item encontrado na etapa de origem para copiar.");
+        toast.info("A etapa de destino foi limpa porque a origem não tinha itens desse tipo.");
       } else {
-        toast.success(`${parts.join(" e ")} copiado(s) para "${copyTargetStage.name}"!`);
+        toast.success(`${parts.join(" e ")} copiado(s) para "${copyTargetStage.name}".`);
       }
       
       setCopyDialogOpen(false);
