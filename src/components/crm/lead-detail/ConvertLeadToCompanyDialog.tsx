@@ -143,7 +143,10 @@ export function ConvertLeadToCompanyDialog({
           .update(companyPayload)
           .eq("id", companyId);
 
-        if (updateCompanyError) throw new Error("Erro ao atualizar empresa");
+        if (updateCompanyError) {
+          console.error("Error updating company:", updateCompanyError);
+          throw new Error("Erro ao atualizar empresa: " + updateCompanyError.message);
+        }
       } else {
         const { data: newCompany, error: companyError } = await supabase
           .from("onboarding_companies")
