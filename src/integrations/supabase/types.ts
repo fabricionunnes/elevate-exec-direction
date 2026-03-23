@@ -12090,6 +12090,45 @@ export type Database = {
           },
         ]
       }
+      crm_lead_form_answers: {
+        Row: {
+          answer_text: string | null
+          created_at: string | null
+          id: string
+          lead_id: string
+          question_id: string
+        }
+        Insert: {
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id: string
+          question_id: string
+        }
+        Update: {
+          answer_text?: string | null
+          created_at?: string | null
+          id?: string
+          lead_id?: string
+          question_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_form_answers_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_lead_form_answers_question_id_fkey"
+            columns: ["question_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_form_questions"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_history: {
         Row: {
           action: string
@@ -12662,6 +12701,50 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      crm_pipeline_form_questions: {
+        Row: {
+          created_at: string | null
+          form_id: string
+          id: string
+          is_active: boolean | null
+          is_required: boolean | null
+          options: Json | null
+          question_text: string
+          question_type: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string | null
+          form_id: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          options?: Json | null
+          question_text: string
+          question_type?: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string | null
+          form_id?: string
+          id?: string
+          is_active?: boolean | null
+          is_required?: boolean | null
+          options?: Json | null
+          question_text?: string
+          question_type?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_form_questions_form_id_fkey"
+            columns: ["form_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipeline_forms"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_pipeline_forms: {
         Row: {
