@@ -48,6 +48,15 @@ import {
   FileSignature,
   FileText,
   Building2,
+  Activity,
+  User,
+  Briefcase,
+  FileAudio,
+  ClipboardList,
+  Video,
+  ScrollText,
+  FolderOpen,
+  History,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
