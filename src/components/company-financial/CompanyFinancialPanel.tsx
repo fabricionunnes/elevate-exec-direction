@@ -63,6 +63,8 @@ export function CompanyFinancialPanel({
             contractValue={contractValue}
             customerEmail={customerEmail}
             customerPhone={customerPhone}
+            customerDocument={customerDocument}
+            onChargeCreated={() => setActiveTab("invoices")}
           />
         </TabsContent>
 
