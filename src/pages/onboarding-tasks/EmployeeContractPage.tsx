@@ -433,6 +433,11 @@ export default function EmployeeContractPage() {
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
               />
+              <EmployeeCommissionEditor
+                role={formData.staffRole || "consultor"}
+                config={commissionConfig}
+                onChange={setCommissionConfig}
+              />
             </div>
             <div className="space-y-4">
               <EmployeeClausesEditor
