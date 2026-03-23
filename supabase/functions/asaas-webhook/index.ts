@@ -304,6 +304,11 @@ Deno.serve(async (req) => {
     // Handle service purchase permission management
     await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus, paymentValueCents, dueDate);
 
+    // Activate pending projects when invoice is paid
+    if (newStatus === "paid") {
+      await activatePendingProjects(supabase, paymentId);
+    }
+
     return new Response(JSON.stringify({ received: true, matched }), {
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
