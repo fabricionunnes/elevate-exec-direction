@@ -575,7 +575,7 @@ export default function EmployeeContractPage() {
                   Cancelar Edição
                 </Button>
               )}
-              {isAdmin && (
+              {currentUserEmail && ALLOWED_EMAILS.includes(currentUserEmail) && (
                 <Button
                   variant="outline"
                   onClick={() => {
