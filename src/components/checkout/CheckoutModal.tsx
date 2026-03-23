@@ -206,16 +206,17 @@ export function CheckoutModal({
             {/* Payment Method Selector */}
             <div>
               <Label className="text-sm font-medium mb-2 block">Forma de Pagamento</Label>
-              <div className="grid grid-cols-3 gap-2">
-                {paymentMethods.map((pm) => (
+              <div className={cn("grid gap-2", availableMethods.length === 1 ? "grid-cols-1" : "grid-cols-3")}>
+                {availableMethods.map((pm) => (
                   <button
                     key={pm.id}
-                    onClick={() => setMethod(pm.id)}
+                    onClick={() => !fixedMethod && setMethod(pm.id)}
                     className={cn(
                       "flex flex-col items-center gap-1.5 p-3 rounded-lg border-2 transition-all text-sm",
                       method === pm.id
                         ? "border-primary bg-primary/5 text-primary"
-                        : "border-border hover:border-primary/30 text-muted-foreground"
+                        : "border-border hover:border-primary/30 text-muted-foreground",
+                      fixedMethod && "cursor-default"
                     )}
                   >
                     <pm.icon className="h-5 w-5" />
