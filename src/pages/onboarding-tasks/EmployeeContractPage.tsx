@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Separator } from "@/components/ui/separator";
-import { ArrowLeft, FileText, Download, History, Eye, Calendar, DollarSign, Loader2, Search, Trash2, Users, Pencil, XCircle } from "lucide-react";
+import { ArrowLeft, FileText, Download, History, Eye, Calendar, DollarSign, Loader2, Search, Trash2, Users, Pencil, XCircle, Send, ExternalLink, Copy, CheckCircle2, Clock, AlertCircle } from "lucide-react";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -23,6 +23,7 @@ import {
   defaultCommissionByRole,
   buildPaymentClauseText,
   roleLabels,
+  employeeContractCompanyInfo,
   type RoleCommissionConfig,
 } from "@/data/employeeContractTemplate";
 import EmployeeCommissionEditor from "@/components/employee-contract/EmployeeCommissionEditor";
@@ -37,6 +38,15 @@ import {
 } from "@/components/ui/dialog";
 
 const CEO_EMAIL = "fabricio@universidadevendas.com.br";
+const COMPANY_SIGNER_NAME = employeeContractCompanyInfo.representative;
+const COMPANY_SIGNER_EMAIL = employeeContractCompanyInfo.email;
+
+interface ZapSignSigner {
+  name: string;
+  email: string;
+  signUrl?: string;
+  status?: string;
+}
 
 interface SavedEmployeeContract {
   id: string;
@@ -83,6 +93,15 @@ function getEditableClauses(role: string, durationMonths?: number, commissionCon
   });
 }
 
+function getZapSignStatusInfo(signers: ZapSignSigner[] | null) {
+  if (!signers || signers.length === 0) return { label: "Pendente", color: "bg-muted text-muted-foreground", icon: Clock };
+  const allSigned = signers.every((s) => s.status === "signed");
+  const someSigned = signers.some((s) => s.status === "signed");
+  if (allSigned) return { label: "Assinado", color: "bg-green-500/20 text-green-700 border-green-500/30", icon: CheckCircle2 };
+  if (someSigned) return { label: "Parcial", color: "bg-amber-500/20 text-amber-700 border-amber-500/30", icon: AlertCircle };
+  return { label: "Enviado", color: "bg-blue-500/20 text-blue-700 border-blue-500/30", icon: Send };
+}
+
 export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
@@ -99,6 +118,12 @@ export default function EmployeeContractPage() {
   const [selectedContract, setSelectedContract] = useState<SavedEmployeeContract | null>(null);
   const [editingContractId, setEditingContractId] = useState<string | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
+
+  // ZapSign states
+  const [isSendingToZapSign, setIsSendingToZapSign] = useState(false);
+  const [lastSavedContractId, setLastSavedContractId] = useState<string | null>(null);
+  const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
+  const [zapSignSent, setZapSignSent] = useState(false);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
@@ -135,7 +160,12 @@ export default function EmployeeContractPage() {
         .select("*")
         .order("created_at", { ascending: false });
       if (error) throw error;
-      setContracts((data as unknown as SavedEmployeeContract[]) || []);
+      const contractsList = (data as unknown as SavedEmployeeContract[]) || [];
+      setContracts(contractsList);
+
+      // Refresh ZapSign statuses
+      const withZapSign = contractsList.filter((c) => c.zapsign_document_token);
+      if (withZapSign.length > 0) refreshZapSignStatuses(withZapSign);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar contratos");
@@ -144,8 +174,39 @@ export default function EmployeeContractPage() {
     }
   };
 
+  const refreshZapSignStatuses = async (contractsList: SavedEmployeeContract[]) => {
+    for (const contract of contractsList) {
+      try {
+        const { data, error } = await supabase.functions.invoke("check-zapsign-status", {
+          body: { documentToken: contract.zapsign_document_token },
+        });
+        if (error || !data?.signers) continue;
+
+        const signersChanged = JSON.stringify(data.signers.map((s: any) => s.status)) !==
+          JSON.stringify((contract.zapsign_signers as any[] || []).map((s: any) => s.status));
+
+        if (signersChanged) {
+          await supabase
+            .from("employee_contracts")
+            .update({ zapsign_signers: data.signers })
+            .eq("id", contract.id);
+
+          setContracts((prev) =>
+            prev.map((c) => (c.id === contract.id ? { ...c, zapsign_signers: data.signers } : c))
+          );
+          if (selectedContract?.id === contract.id) {
+            setSelectedContract((prev) => prev ? { ...prev, zapsign_signers: data.signers } : prev);
+          }
+        }
+      } catch {
+        // ignore individual failures
+      }
+    }
+  };
+
   const handleGenerate = async () => {
     setIsGenerating(true);
+    setZapSignSent(false);
     try {
       const blob = await generateEmployeeContractPDF({
         formData,
@@ -195,30 +256,162 @@ export default function EmployeeContractPage() {
         created_by: createdByStaffId,
       };
 
+      let savedId: string | null = null;
+
       if (editingContractId) {
+        // Cancel old ZapSign if exists
+        const oldContract = contracts.find((c) => c.id === editingContractId);
+        if (oldContract?.zapsign_document_token) {
+          try {
+            await supabase.functions.invoke("cancel-zapsign", {
+              body: { documentToken: oldContract.zapsign_document_token },
+            });
+            toast.info("Documento anterior cancelado na ZapSign.");
+          } catch {}
+        }
+
         const { error } = await supabase
           .from("employee_contracts")
-          .update(contractData)
+          .update({
+            ...contractData,
+            zapsign_document_token: null,
+            zapsign_document_url: null,
+            zapsign_signers: null,
+            zapsign_sent_at: null,
+          })
           .eq("id", editingContractId);
         if (error) throw error;
+        savedId = editingContractId;
         toast.success("Contrato atualizado com sucesso!");
         setEditingContractId(null);
       } else {
-        const { error } = await supabase
+        const { data: inserted, error } = await supabase
           .from("employee_contracts")
-          .insert(contractData);
+          .insert(contractData)
+          .select("id")
+          .single();
         if (error) throw error;
+        savedId = inserted?.id || null;
         toast.success("Contrato gerado com sucesso!");
       }
 
+      setLastSavedContractId(savedId);
+      setLastGeneratedPdfUrl(pdfUrl);
+
       downloadEmployeeContractPDF(blob, formData.staffName);
-      setFormData(defaultEmployeeFormData);
-      setEditableClauses(getEditableClauses("consultor"));
     } catch (err: any) {
       console.error(err);
       toast.error("Erro ao gerar contrato: " + (err.message || "erro desconhecido"));
     } finally {
       setIsGenerating(false);
+    }
+  };
+
+  const handleSendToZapSign = async () => {
+    if (!lastGeneratedPdfUrl) {
+      toast.error("PDF não disponível. Gere o contrato novamente.");
+      return;
+    }
+    if (!formData.staffEmail) {
+      toast.error("E-mail do colaborador é obrigatório para envio via ZapSign.");
+      return;
+    }
+
+    setIsSendingToZapSign(true);
+    try {
+      const documentName = `Contrato Colaborador - ${formData.staffName} - ${roleLabels[formData.staffRole] || formData.staffRole}`;
+      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: lastGeneratedPdfUrl,
+          documentName,
+          signers: [
+            { name: COMPANY_SIGNER_NAME, email: COMPANY_SIGNER_EMAIL },
+            { name: formData.staffName, email: formData.staffEmail, phone: formData.staffPhone },
+          ],
+          sendAutomatically: true,
+        },
+      });
+
+      if (error) {
+        toast.error("Erro ao enviar para ZapSign. Verifique a configuração.");
+        return;
+      }
+
+      if (lastSavedContractId) {
+        await supabase
+          .from("employee_contracts")
+          .update({
+            zapsign_document_token: data.documentToken,
+            zapsign_document_url: data.documentUrl,
+            zapsign_signers: data.signers,
+            zapsign_sent_at: new Date().toISOString(),
+          })
+          .eq("id", lastSavedContractId);
+      }
+
+      setZapSignSent(true);
+      toast.success(data.message || "Contrato enviado para assinatura!");
+    } catch {
+      toast.error("Erro ao enviar para ZapSign.");
+    } finally {
+      setIsSendingToZapSign(false);
+    }
+  };
+
+  const handleSendToZapSignFromHistory = async (contract: SavedEmployeeContract) => {
+    if (!contract.pdf_url) {
+      toast.error("PDF não disponível.");
+      return;
+    }
+    if (!contract.staff_email) {
+      toast.error("E-mail do colaborador não informado neste contrato.");
+      return;
+    }
+
+    setIsSendingToZapSign(true);
+    try {
+      const documentName = `Contrato Colaborador - ${contract.staff_name} - ${roleLabels[contract.staff_role] || contract.staff_role}`;
+      const { data, error } = await supabase.functions.invoke("send-to-zapsign", {
+        body: {
+          pdfUrl: contract.pdf_url,
+          documentName,
+          signers: [
+            { name: COMPANY_SIGNER_NAME, email: COMPANY_SIGNER_EMAIL },
+            { name: contract.staff_name, email: contract.staff_email, phone: contract.staff_phone || "" },
+          ],
+          sendAutomatically: true,
+        },
+      });
+
+      if (error) {
+        toast.error("Erro ao enviar para ZapSign.");
+        return;
+      }
+
+      await supabase
+        .from("employee_contracts")
+        .update({
+          zapsign_document_token: data.documentToken,
+          zapsign_document_url: data.documentUrl,
+          zapsign_signers: data.signers,
+          zapsign_sent_at: new Date().toISOString(),
+        })
+        .eq("id", contract.id);
+
+      setSelectedContract({
+        ...contract,
+        zapsign_document_token: data.documentToken,
+        zapsign_document_url: data.documentUrl,
+        zapsign_signers: data.signers,
+        zapsign_sent_at: new Date().toISOString(),
+      });
+
+      loadContracts();
+      toast.success(data.message || "Contrato enviado para assinatura!");
+    } catch {
+      toast.error("Erro ao enviar para ZapSign.");
+    } finally {
+      setIsSendingToZapSign(false);
     }
   };
 
@@ -238,7 +431,6 @@ export default function EmployeeContractPage() {
       durationMonths: contract.duration_months || 3,
     });
 
-    // Restore clauses snapshot if available
     if (contract.clauses_snapshot && Array.isArray(contract.clauses_snapshot)) {
       const restored = (contract.clauses_snapshot as any[]).map((c: any) => ({
         id: c.id,
@@ -254,28 +446,53 @@ export default function EmployeeContractPage() {
 
     setEditingContractId(contract.id);
     setShowHistory(false);
+    setZapSignSent(false);
+    setLastSavedContractId(null);
+    setLastGeneratedPdfUrl(null);
   };
 
   const handleDelete = async (id: string) => {
     if (!confirm("Tem certeza que deseja excluir este contrato?")) return;
     setIsDeleting(true);
     try {
+      const contract = contracts.find((c) => c.id === id);
+      if (contract?.zapsign_document_token) {
+        try {
+          await supabase.functions.invoke("cancel-zapsign", {
+            body: { documentToken: contract.zapsign_document_token },
+          });
+        } catch {}
+      }
       const { error } = await supabase.from("employee_contracts").delete().eq("id", id);
       if (error) throw error;
       toast.success("Contrato excluído");
       loadContracts();
       setSelectedContract(null);
-    } catch (err) {
+    } catch {
       toast.error("Erro ao excluir");
     } finally {
       setIsDeleting(false);
     }
   };
 
+  const copyToClipboard = (text: string) => {
+    navigator.clipboard.writeText(text);
+    toast.success("Link copiado!");
+  };
+
   const filteredContracts = contracts.filter((c) =>
     c.staff_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
     (roleLabels[c.staff_role] || c.staff_role).toLowerCase().includes(searchTerm.toLowerCase())
   );
+
+  const resetForm = () => {
+    setEditingContractId(null);
+    setFormData(defaultEmployeeFormData);
+    setEditableClauses(getEditableClauses("consultor"));
+    setZapSignSent(false);
+    setLastSavedContractId(null);
+    setLastGeneratedPdfUrl(null);
+  };
 
   return (
     <div className="min-h-screen bg-background overflow-x-hidden">
@@ -301,12 +518,7 @@ export default function EmployeeContractPage() {
                 <Button
                   variant="ghost"
                   size="sm"
-                  onClick={() => {
-                    setEditingContractId(null);
-                    setFormData(defaultEmployeeFormData);
-                    setEditableClauses(getEditableClauses("consultor"));
-                    toast.info("Edição cancelada");
-                  }}
+                  onClick={() => { resetForm(); toast.info("Edição cancelada"); }}
                   className="text-destructive hover:text-destructive gap-1"
                 >
                   <XCircle className="h-4 w-4" />
@@ -316,11 +528,7 @@ export default function EmployeeContractPage() {
               <Button
                 variant="outline"
                 onClick={() => {
-                  if (showHistory) {
-                    setEditingContractId(null);
-                    setFormData(defaultEmployeeFormData);
-                    setEditableClauses(getEditableClauses("consultor"));
-                  }
+                  if (showHistory) resetForm();
                   setShowHistory(!showHistory);
                 }}
                 className="gap-2"
@@ -362,56 +570,58 @@ export default function EmployeeContractPage() {
               </Card>
             ) : (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                {filteredContracts.map((c) => (
-                  <Card key={c.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedContract(c)}>
-                    <CardContent className="p-4">
-                      <div className="flex items-start justify-between mb-2">
-                        <div>
-                          <h3 className="font-semibold text-sm">{c.staff_name}</h3>
-                          <Badge variant="secondary" className="text-xs mt-1">
-                            {roleLabels[c.staff_role] || c.staff_role}
-                          </Badge>
-                        </div>
-                        <div className="flex gap-1">
-                          <Button
-                            variant="ghost"
-                            size="icon"
-                            className="h-7 w-7"
-                            onClick={(e) => { e.stopPropagation(); handleEdit(c); }}
-                          >
-                            <Pencil className="h-3.5 w-3.5" />
-                          </Button>
-                          {c.pdf_url && (
-                            <Button
-                              variant="ghost"
-                              size="icon"
-                              className="h-7 w-7"
-                              onClick={(e) => { e.stopPropagation(); window.open(c.pdf_url!, "_blank"); }}
-                            >
-                              <Download className="h-3.5 w-3.5" />
-                            </Button>
-                          )}
-                        </div>
-                      </div>
-                      <Separator className="my-2" />
-                      <div className="space-y-1 text-xs text-muted-foreground">
-                        <div className="flex items-center gap-1">
-                          <DollarSign className="h-3 w-3" />
-                          {formatCurrencyBR(c.contract_value)}/mês
-                        </div>
-                        {c.start_date && (
-                          <div className="flex items-center gap-1">
-                            <Calendar className="h-3 w-3" />
-                            Início: {format(new Date(c.start_date), "dd/MM/yyyy")}
+                {filteredContracts.map((c) => {
+                  const zapStatus = getZapSignStatusInfo(c.zapsign_signers as ZapSignSigner[] | null);
+                  const StatusIcon = zapStatus.icon;
+                  return (
+                    <Card key={c.id} className="hover:shadow-md transition-shadow cursor-pointer" onClick={() => setSelectedContract(c)}>
+                      <CardContent className="p-4">
+                        <div className="flex items-start justify-between mb-2">
+                          <div>
+                            <h3 className="font-semibold text-sm">{c.staff_name}</h3>
+                            <div className="flex items-center gap-1.5 mt-1 flex-wrap">
+                              <Badge variant="secondary" className="text-xs">
+                                {roleLabels[c.staff_role] || c.staff_role}
+                              </Badge>
+                              {c.zapsign_sent_at && (
+                                <Badge variant="outline" className={`text-xs ${zapStatus.color}`}>
+                                  <StatusIcon className="h-3 w-3 mr-1" />
+                                  {zapStatus.label}
+                                </Badge>
+                              )}
+                            </div>
                           </div>
-                        )}
-                        <div className="text-xs">
-                          Gerado em {format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); handleEdit(c); }}>
+                              <Pencil className="h-3.5 w-3.5" />
+                            </Button>
+                            {c.pdf_url && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={(e) => { e.stopPropagation(); window.open(c.pdf_url!, "_blank"); }}>
+                                <Download className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
                         </div>
-                      </div>
-                    </CardContent>
-                  </Card>
-                ))}
+                        <Separator className="my-2" />
+                        <div className="space-y-1 text-xs text-muted-foreground">
+                          <div className="flex items-center gap-1">
+                            <DollarSign className="h-3 w-3" />
+                            {formatCurrencyBR(c.contract_value)}/mês
+                          </div>
+                          {c.start_date && (
+                            <div className="flex items-center gap-1">
+                              <Calendar className="h-3 w-3" />
+                              Início: {format(new Date(c.start_date), "dd/MM/yyyy")}
+                            </div>
+                          )}
+                          <div className="text-xs">
+                            Gerado em {format(new Date(c.created_at), "dd/MM/yyyy HH:mm")}
+                          </div>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             )}
           </div>
@@ -433,6 +643,42 @@ export default function EmployeeContractPage() {
                 onGenerate={handleGenerate}
                 isGenerating={isGenerating}
               />
+
+              {/* ZapSign send button after generation */}
+              {lastGeneratedPdfUrl && lastSavedContractId && !zapSignSent && (
+                <Card className="border-primary/30 bg-primary/5">
+                  <CardContent className="py-4 px-4 space-y-3">
+                    <p className="text-sm font-medium">📄 Contrato gerado com sucesso! Deseja enviar para assinatura digital?</p>
+                    <Button
+                      onClick={handleSendToZapSign}
+                      disabled={isSendingToZapSign || !formData.staffEmail}
+                      className="w-full gap-2"
+                    >
+                      {isSendingToZapSign ? (
+                        <><Loader2 className="h-4 w-4 animate-spin" /> Enviando...</>
+                      ) : (
+                        <><Send className="h-4 w-4" /> Enviar para ZapSign</>
+                      )}
+                    </Button>
+                    {!formData.staffEmail && (
+                      <p className="text-xs text-destructive">Preencha o e-mail do colaborador para enviar via ZapSign.</p>
+                    )}
+                  </CardContent>
+                </Card>
+              )}
+
+              {zapSignSent && (
+                <Card className="border-green-500/30 bg-green-500/5">
+                  <CardContent className="py-4 px-4">
+                    <div className="flex items-center gap-2 text-green-700">
+                      <CheckCircle2 className="h-5 w-5" />
+                      <p className="text-sm font-medium">Contrato enviado para assinatura digital!</p>
+                    </div>
+                    <p className="text-xs text-muted-foreground mt-1">Os signatários receberão um e-mail com o link de assinatura.</p>
+                  </CardContent>
+                </Card>
+              )}
+
               <EmployeeCommissionEditor
                 role={formData.staffRole || "consultor"}
                 config={commissionConfig}
@@ -451,7 +697,7 @@ export default function EmployeeContractPage() {
 
       {/* Contract detail dialog */}
       <Dialog open={!!selectedContract} onOpenChange={() => setSelectedContract(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg max-h-[85vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>Detalhes do Contrato</DialogTitle>
           </DialogHeader>
@@ -497,11 +743,73 @@ export default function EmployeeContractPage() {
                   <p className="font-medium">{format(new Date(selectedContract.created_at), "dd/MM/yyyy HH:mm")}</p>
                 </div>
               </div>
-              <div className="flex gap-2 pt-2">
+
+              {/* ZapSign status section */}
+              {selectedContract.zapsign_sent_at && (
+                <>
+                  <Separator />
+                  <div className="space-y-3">
+                    <h4 className="font-semibold text-sm flex items-center gap-2">
+                      <Send className="h-4 w-4" />
+                      Assinatura Digital (ZapSign)
+                    </h4>
+                    <div className="space-y-2">
+                      {(selectedContract.zapsign_signers as ZapSignSigner[] || []).map((signer, i) => (
+                        <div key={i} className="flex items-center justify-between p-2 rounded-lg bg-muted/50 text-sm">
+                          <div>
+                            <p className="font-medium">{signer.name}</p>
+                            <p className="text-xs text-muted-foreground">{signer.email}</p>
+                          </div>
+                          <div className="flex items-center gap-2">
+                            {signer.status === "signed" ? (
+                              <Badge variant="outline" className="bg-green-500/20 text-green-700 border-green-500/30 text-xs">
+                                <CheckCircle2 className="h-3 w-3 mr-1" /> Assinado
+                              </Badge>
+                            ) : (
+                              <Badge variant="outline" className="bg-amber-500/20 text-amber-700 border-amber-500/30 text-xs">
+                                <Clock className="h-3 w-3 mr-1" /> Pendente
+                              </Badge>
+                            )}
+                            {signer.signUrl && (
+                              <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => copyToClipboard(signer.signUrl!)}>
+                                <Copy className="h-3.5 w-3.5" />
+                              </Button>
+                            )}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                    {selectedContract.zapsign_document_url && (
+                      <Button variant="outline" size="sm" className="w-full gap-2" onClick={() => window.open(selectedContract.zapsign_document_url!, "_blank")}>
+                        <ExternalLink className="h-4 w-4" />
+                        Abrir na ZapSign
+                      </Button>
+                    )}
+                  </div>
+                </>
+              )}
+
+              <Separator />
+
+              <div className="flex flex-wrap gap-2 pt-1">
                 {selectedContract.pdf_url && (
                   <Button variant="outline" size="sm" onClick={() => window.open(selectedContract.pdf_url!, "_blank")}>
                     <Download className="h-4 w-4 mr-1" />
                     Download PDF
+                  </Button>
+                )}
+                {!selectedContract.zapsign_sent_at && selectedContract.pdf_url && (
+                  <Button
+                    variant="default"
+                    size="sm"
+                    disabled={isSendingToZapSign || !selectedContract.staff_email}
+                    onClick={() => handleSendToZapSignFromHistory(selectedContract)}
+                  >
+                    {isSendingToZapSign ? (
+                      <><Loader2 className="h-4 w-4 mr-1 animate-spin" /> Enviando...</>
+                    ) : (
+                      <><Send className="h-4 w-4 mr-1" /> Enviar ZapSign</>
+                    )}
                   </Button>
                 )}
                 <Button variant="outline" size="sm" onClick={() => { handleEdit(selectedContract); setSelectedContract(null); }}>
