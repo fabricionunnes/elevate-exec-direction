@@ -95,6 +95,7 @@ export function CheckoutModal({
   };
 
   const handleClose = (val: boolean) => {
+    if (loading) return; // Prevent closing while processing payment
     if (!val) resetForm();
     onOpenChange(val);
   };
@@ -168,9 +169,15 @@ export function CheckoutModal({
         ? "dompagamentos-checkout"
         : "pagarme-checkout";
 
+      console.log("Checkout payload:", JSON.stringify(payload));
+      console.log("Edge function:", edgeFunctionName);
+
       const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
         body: payload,
       });
+
+      console.log("Checkout response:", JSON.stringify(data));
+      console.log("Checkout error:", error);
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -182,6 +189,7 @@ export function CheckoutModal({
         toast.success("Pagamento aprovado!");
       }
     } catch (err: unknown) {
+      console.error("Checkout submit error:", err);
       const msg = err instanceof Error ? err.message : "Erro ao processar pagamento";
       toast.error(msg);
     } finally {
@@ -193,7 +201,7 @@ export function CheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => loading && e.preventDefault()} onEscapeKeyDown={(e) => loading && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-xl">Comprar {productName}</DialogTitle>
           <DialogDescription>
