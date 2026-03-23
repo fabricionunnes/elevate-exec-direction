@@ -110,12 +110,20 @@ export default function EmployeeContractPage() {
     if (showHistory) loadContracts();
   }, [showHistory]);
 
-  // Update clauses when role or duration changes
+  // Reset commission when role changes
   useEffect(() => {
     if (formData.staffRole && !editingContractId) {
-      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths));
+      const roleConfig = defaultCommissionByRole[formData.staffRole] || defaultCommissionByRole.consultor;
+      setCommissionConfig({ ...roleConfig });
     }
-  }, [formData.staffRole, formData.durationMonths, editingContractId]);
+  }, [formData.staffRole, editingContractId]);
+
+  // Update clauses when role, duration or commission changes
+  useEffect(() => {
+    if (formData.staffRole && !editingContractId) {
+      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths, commissionConfig));
+    }
+  }, [formData.staffRole, formData.durationMonths, commissionConfig, editingContractId]);
 
   const canDelete = currentUserEmail === CEO_EMAIL;
 
