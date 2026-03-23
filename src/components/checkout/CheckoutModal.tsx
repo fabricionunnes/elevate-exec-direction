@@ -25,6 +25,7 @@ interface CheckoutModalProps {
   priceLabel: string;
   paymentLinkId?: string;
   provider?: string;
+  fixedMethod?: PaymentMethod;
 }
 
 interface CheckoutResult {
