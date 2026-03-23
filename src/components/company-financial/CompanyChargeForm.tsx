@@ -208,24 +208,56 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
         </div>
 
         {form.paymentMethod === "credit_card" && (
-          <div className="space-y-2 max-w-xs">
-            <Label>Parcelas</Label>
-            <Select
-              value={String(form.installments)}
-              onValueChange={(v) => setForm({ ...form, installments: parseInt(v) })}
-            >
-              <SelectTrigger>
-                <SelectValue />
-              </SelectTrigger>
-              <SelectContent>
-                {Array.from({ length: Math.max(1, maxInstallments) }, (_, i) => i + 1).map((n) => (
-                  <SelectItem key={n} value={String(n)}>
-                    {n}x de R$ {((form.amount / n)).toFixed(2).replace(".", ",")}
-                    {n === 1 ? " (à vista)" : ""}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label>Total de Parcelas</Label>
+              <Select
+                value={String(form.installments)}
+                onValueChange={(v) => {
+                  const inst = parseInt(v);
+                  setForm({ 
+                    ...form, 
+                    installments: inst,
+                    interestFreeInstallments: Math.min(form.interestFreeInstallments, inst),
+                  });
+                }}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: Math.max(1, maxInstallments) }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n}x de R$ {((form.amount / n)).toFixed(2).replace(".", ",")}
+                      {n === 1 ? " (à vista)" : ""}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="space-y-2">
+              <Label>Parcelas sem Juros</Label>
+              <Select
+                value={String(form.interestFreeInstallments)}
+                onValueChange={(v) => setForm({ ...form, interestFreeInstallments: parseInt(v) })}
+              >
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  {Array.from({ length: form.installments }, (_, i) => i + 1).map((n) => (
+                    <SelectItem key={n} value={String(n)}>
+                      {n === form.installments ? `Todas (${n}x sem juros)` : `Até ${n}x sem juros`}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+              <p className="text-xs text-muted-foreground">
+                {form.interestFreeInstallments >= form.installments 
+                  ? "Cliente não pagará juros em nenhuma parcela"
+                  : `Juros aplicados a partir da ${form.interestFreeInstallments + 1}ª parcela`}
+              </p>
+            </div>
           </div>
         )}
 
