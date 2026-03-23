@@ -14951,6 +14951,96 @@ export type Database = {
           },
         ]
       }
+      employee_contracts: {
+        Row: {
+          clauses_snapshot: Json | null
+          contract_value: number
+          created_at: string
+          created_by: string | null
+          duration_months: number | null
+          id: string
+          payment_method: string
+          pdf_url: string | null
+          staff_address: string | null
+          staff_cnpj: string | null
+          staff_cpf: string | null
+          staff_email: string | null
+          staff_id: string | null
+          staff_name: string
+          staff_phone: string | null
+          staff_role: string
+          start_date: string | null
+          updated_at: string
+          zapsign_document_token: string | null
+          zapsign_document_url: string | null
+          zapsign_sent_at: string | null
+          zapsign_signers: Json | null
+        }
+        Insert: {
+          clauses_snapshot?: Json | null
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          duration_months?: number | null
+          id?: string
+          payment_method?: string
+          pdf_url?: string | null
+          staff_address?: string | null
+          staff_cnpj?: string | null
+          staff_cpf?: string | null
+          staff_email?: string | null
+          staff_id?: string | null
+          staff_name: string
+          staff_phone?: string | null
+          staff_role: string
+          start_date?: string | null
+          updated_at?: string
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
+        }
+        Update: {
+          clauses_snapshot?: Json | null
+          contract_value?: number
+          created_at?: string
+          created_by?: string | null
+          duration_months?: number | null
+          id?: string
+          payment_method?: string
+          pdf_url?: string | null
+          staff_address?: string | null
+          staff_cnpj?: string | null
+          staff_cpf?: string | null
+          staff_email?: string | null
+          staff_id?: string | null
+          staff_name?: string
+          staff_phone?: string | null
+          staff_role?: string
+          start_date?: string | null
+          updated_at?: string
+          zapsign_document_token?: string | null
+          zapsign_document_url?: string | null
+          zapsign_sent_at?: string | null
+          zapsign_signers?: Json | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "employee_contracts_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "employee_contracts_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       endomarketing_balloon_achievements: {
         Row: {
           achieved_value: number | null

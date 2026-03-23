@@ -1,0 +1,313 @@
+import { useState, useEffect } from "react";
+import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import { Button } from "@/components/ui/button";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import { Calendar } from "@/components/ui/calendar";
+import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
+import { format } from "date-fns";
+import { ptBR } from "date-fns/locale";
+import { CalendarIcon, User, FileText, Loader2 } from "lucide-react";
+import { cn } from "@/lib/utils";
+import { supabase } from "@/integrations/supabase/client";
+import { roleLabels } from "@/data/employeeContractTemplate";
+import { CurrencyInput } from "@/components/ui/currency-input";
+
+export interface EmployeeContractFormData {
+  staffId: string;
+  staffName: string;
+  staffRole: string;
+  staffEmail: string;
+  staffPhone: string;
+  staffCpf: string;
+  staffCnpj: string;
+  staffAddress: string;
+  contractValue: number;
+  paymentMethod: string;
+  startDate: Date | undefined;
+  durationMonths: number;
+}
+
+interface StaffOption {
+  id: string;
+  name: string;
+  role: string;
+  email: string;
+  phone: string | null;
+}
+
+interface EmployeeContractFormProps {
+  formData: EmployeeContractFormData;
+  onChange: (data: EmployeeContractFormData) => void;
+  onGenerate: () => void;
+  isGenerating: boolean;
+}
+
+export const defaultEmployeeFormData: EmployeeContractFormData = {
+  staffId: "",
+  staffName: "",
+  staffRole: "",
+  staffEmail: "",
+  staffPhone: "",
+  staffCpf: "",
+  staffCnpj: "",
+  staffAddress: "",
+  contractValue: 0,
+  paymentMethod: "boleto",
+  startDate: new Date(),
+  durationMonths: 3,
+};
+
+export default function EmployeeContractForm({
+  formData,
+  onChange,
+  onGenerate,
+  isGenerating,
+}: EmployeeContractFormProps) {
+  const [staffList, setStaffList] = useState<StaffOption[]>([]);
+  const [loadingStaff, setLoadingStaff] = useState(true);
+
+  useEffect(() => {
+    loadStaff();
+  }, []);
+
+  const loadStaff = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("onboarding_staff")
+        .select("id, name, role, email, phone")
+        .eq("is_active", true)
+        .order("name");
+
+      if (error) throw error;
+      setStaffList(data || []);
+    } catch (err) {
+      console.error("Error loading staff:", err);
+    } finally {
+      setLoadingStaff(false);
+    }
+  };
+
+  const handleStaffSelect = (staffId: string) => {
+    const staff = staffList.find((s) => s.id === staffId);
+    if (staff) {
+      onChange({
+        ...formData,
+        staffId: staff.id,
+        staffName: staff.name,
+        staffRole: staff.role,
+        staffEmail: staff.email,
+        staffPhone: staff.phone || "",
+      });
+    }
+  };
+
+  const update = (field: keyof EmployeeContractFormData, value: any) => {
+    onChange({ ...formData, [field]: value });
+  };
+
+  const isValid =
+    formData.staffName &&
+    formData.staffRole &&
+    formData.staffCpf &&
+    formData.contractValue > 0 &&
+    formData.startDate;
+
+  return (
+    <div className="space-y-4">
+      {/* Colaborador */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <User className="h-5 w-5" />
+            Colaborador (Contratada)
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div>
+            <Label>Selecionar Colaborador</Label>
+            <Select value={formData.staffId} onValueChange={handleStaffSelect}>
+              <SelectTrigger>
+                <SelectValue placeholder={loadingStaff ? "Carregando..." : "Selecione um colaborador"} />
+              </SelectTrigger>
+              <SelectContent>
+                {staffList.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name} — {roleLabels[s.role] || s.role}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Nome Completo</Label>
+              <Input
+                value={formData.staffName}
+                onChange={(e) => update("staffName", e.target.value)}
+                placeholder="Nome completo"
+              />
+            </div>
+            <div>
+              <Label>Cargo / Função</Label>
+              <Select value={formData.staffRole} onValueChange={(v) => update("staffRole", v)}>
+                <SelectTrigger>
+                  <SelectValue placeholder="Selecione o cargo" />
+                </SelectTrigger>
+                <SelectContent>
+                  {Object.entries(roleLabels).map(([key, label]) => (
+                    <SelectItem key={key} value={key}>
+                      {label}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>CPF</Label>
+              <Input
+                value={formData.staffCpf}
+                onChange={(e) => update("staffCpf", e.target.value)}
+                placeholder="000.000.000-00"
+              />
+            </div>
+            <div>
+              <Label>CNPJ (PJ)</Label>
+              <Input
+                value={formData.staffCnpj}
+                onChange={(e) => update("staffCnpj", e.target.value)}
+                placeholder="00.000.000/0001-00"
+              />
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>E-mail</Label>
+              <Input
+                value={formData.staffEmail}
+                onChange={(e) => update("staffEmail", e.target.value)}
+                placeholder="email@exemplo.com"
+              />
+            </div>
+            <div>
+              <Label>Telefone</Label>
+              <Input
+                value={formData.staffPhone}
+                onChange={(e) => update("staffPhone", e.target.value)}
+                placeholder="(00) 00000-0000"
+              />
+            </div>
+          </div>
+
+          <div>
+            <Label>Endereço Completo</Label>
+            <Input
+              value={formData.staffAddress}
+              onChange={(e) => update("staffAddress", e.target.value)}
+              placeholder="Rua, nº, Bairro, CEP, Cidade-UF"
+            />
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Condições */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="flex items-center gap-2 text-lg">
+            <FileText className="h-5 w-5" />
+            Condições do Contrato
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Valor Mensal (R$)</Label>
+              <CurrencyInput
+                value={formData.contractValue}
+                onChange={(v) => update("contractValue", v)}
+              />
+            </div>
+            <div>
+              <Label>Forma de Pagamento</Label>
+              <Select value={formData.paymentMethod} onValueChange={(v) => update("paymentMethod", v)}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="boleto">Boleto</SelectItem>
+                  <SelectItem value="pix">PIX</SelectItem>
+                  <SelectItem value="transferencia">Transferência</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div>
+              <Label>Data de Início</Label>
+              <Popover>
+                <PopoverTrigger asChild>
+                  <Button
+                    variant="outline"
+                    className={cn("w-full justify-start text-left font-normal", !formData.startDate && "text-muted-foreground")}
+                  >
+                    <CalendarIcon className="mr-2 h-4 w-4" />
+                    {formData.startDate ? format(formData.startDate, "dd/MM/yyyy") : "Selecione"}
+                  </Button>
+                </PopoverTrigger>
+                <PopoverContent className="w-auto p-0">
+                  <Calendar
+                    mode="single"
+                    selected={formData.startDate}
+                    onSelect={(d) => update("startDate", d)}
+                    locale={ptBR}
+                  />
+                </PopoverContent>
+              </Popover>
+            </div>
+            <div>
+              <Label>Duração (meses)</Label>
+              <Select value={String(formData.durationMonths)} onValueChange={(v) => update("durationMonths", Number(v))}>
+                <SelectTrigger>
+                  <SelectValue />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="3">3 meses</SelectItem>
+                  <SelectItem value="6">6 meses</SelectItem>
+                  <SelectItem value="12">12 meses</SelectItem>
+                  <SelectItem value="24">24 meses</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Button onClick={onGenerate} disabled={!isValid || isGenerating} className="w-full" size="lg">
+        {isGenerating ? (
+          <>
+            <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+            Gerando Contrato...
+          </>
+        ) : (
+          <>
+            <FileText className="h-4 w-4 mr-2" />
+            Gerar Contrato de Colaborador
+          </>
+        )}
+      </Button>
+    </div>
+  );
+}
