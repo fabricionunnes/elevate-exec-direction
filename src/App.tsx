@@ -333,6 +333,9 @@ const AppShell = () => {
             <Route path="/distrato" element={<DistratoPage />} />
             <Route path="/distratos" element={<DistratoHistoryPage />} />
             
+            {/* Public Pipeline Form */}
+            <Route path="/form/:token" element={<PublicPipelineForm />} />
+            
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
