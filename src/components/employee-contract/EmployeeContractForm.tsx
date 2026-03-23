@@ -108,8 +108,11 @@ export default function EmployeeContractForm({
         staffEmail: staff.email,
         staffPhone: staff.phone || "",
       });
+      setStaffSearchOpen(false);
     }
   };
+
+  const selectedStaff = staffList.find((s) => s.id === formData.staffId);
 
   const update = (field: keyof EmployeeContractFormData, value: any) => {
     onChange({ ...formData, [field]: value });
