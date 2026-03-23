@@ -328,6 +328,7 @@ const AppShell = () => {
             
             {/* Contract Generator - Public */}
             <Route path="/contratos" element={<ContractGeneratorPage />} />
+            <Route path="/contratos/colaboradores" element={<EmployeeContractPage />} />
             <Route path="/distrato" element={<DistratoPage />} />
             <Route path="/distratos" element={<DistratoHistoryPage />} />
             
