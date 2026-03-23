@@ -386,6 +386,25 @@ export default function AllRecurringChargesPage() {
     }
   }, [activeTab]);
 
+  const fetchAllInvoices = async () => {
+    const PAGE_SIZE = 1000;
+    let allData: any[] = [];
+    let from = 0;
+    let hasMore = true;
+    while (hasMore) {
+      const { data, error } = await supabase
+        .from("company_invoices")
+        .select("*")
+        .order("due_date", { ascending: true })
+        .range(from, from + PAGE_SIZE - 1);
+      if (error) return { data: null, error };
+      allData = allData.concat(data || []);
+      hasMore = (data?.length || 0) === PAGE_SIZE;
+      from += PAGE_SIZE;
+    }
+    return { data: allData, error: null };
+  };
+
   const loadData = async () => {
     try {
       const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
