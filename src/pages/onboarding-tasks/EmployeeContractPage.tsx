@@ -59,13 +59,17 @@ interface SavedEmployeeContract {
   zapsign_sent_at: string | null;
 }
 
-function getEditableClauses(role: string): EditableEmployeeClause[] {
+function getEditableClauses(role: string, durationMonths?: number): EditableEmployeeClause[] {
   const clauseContent = clauseFirstByRole[role] || clauseFirstDefault;
   const paymentContent = clausePaymentByRole[role] || clausePaymentDefault;
+  const duration = durationMonths || 3;
   return employeeContractClauses.map((c) => {
     let content = c.content;
     if (c.id === "objeto") content = clauseContent;
     if (c.id === "pagamento") content = paymentContent;
+    if (c.id === "prazo") {
+      content = content.replace("válido por 3 meses", `válido por ${duration} meses`);
+    }
     return {
       id: c.id,
       title: c.title,
@@ -79,7 +83,7 @@ function getEditableClauses(role: string): EditableEmployeeClause[] {
 export default function EmployeeContractPage() {
   const navigate = useNavigate();
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
-  const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor"));
+  const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
   const [isGenerating, setIsGenerating] = useState(false);
   const [showHistory, setShowHistory] = useState(false);
   const [contracts, setContracts] = useState<SavedEmployeeContract[]>([]);
@@ -100,12 +104,12 @@ export default function EmployeeContractPage() {
     if (showHistory) loadContracts();
   }, [showHistory]);
 
-  // Update clauses when role changes
+  // Update clauses when role or duration changes
   useEffect(() => {
     if (formData.staffRole && !editingContractId) {
-      setEditableClauses(getEditableClauses(formData.staffRole));
+      setEditableClauses(getEditableClauses(formData.staffRole, formData.durationMonths));
     }
-  }, [formData.staffRole, editingContractId]);
+  }, [formData.staffRole, formData.durationMonths, editingContractId]);
 
   const canDelete = currentUserEmail === CEO_EMAIL;
 
