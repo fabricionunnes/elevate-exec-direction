@@ -9,6 +9,7 @@ import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { supabase } from "@/integrations/supabase/client";
+import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import EmployeeContractForm, {
   type EmployeeContractFormData,
   defaultEmployeeFormData,
@@ -104,6 +105,8 @@ function getZapSignStatusInfo(signers: ZapSignSigner[] | null) {
 
 export default function EmployeeContractPage() {
   const navigate = useNavigate();
+  const { isMaster, currentStaff } = useStaffPermissions();
+  const isAdmin = isMaster || currentStaff?.role === "admin";
   const [formData, setFormData] = useState<EmployeeContractFormData>(defaultEmployeeFormData);
   const [editableClauses, setEditableClauses] = useState<EditableEmployeeClause[]>(getEditableClauses("consultor", 3));
   const [commissionConfig, setCommissionConfig] = useState<RoleCommissionConfig>(
@@ -525,17 +528,19 @@ export default function EmployeeContractPage() {
                   Cancelar Edição
                 </Button>
               )}
-              <Button
-                variant="outline"
-                onClick={() => {
-                  if (showHistory) resetForm();
-                  setShowHistory(!showHistory);
-                }}
-                className="gap-2"
-              >
-                <History className="h-4 w-4" />
-                {showHistory ? "Novo Contrato" : "Histórico"}
-              </Button>
+              {isAdmin && (
+                <Button
+                  variant="outline"
+                  onClick={() => {
+                    if (showHistory) resetForm();
+                    setShowHistory(!showHistory);
+                  }}
+                  className="gap-2"
+                >
+                  <History className="h-4 w-4" />
+                  {showHistory ? "Novo Contrato" : "Histórico"}
+                </Button>
+              )}
             </div>
           </div>
         </div>

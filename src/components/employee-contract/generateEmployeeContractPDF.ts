@@ -87,6 +87,11 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
   let pageNum = 1;
   let y = 0;
 
+  // Track current font state for restoration after page breaks
+  let _currentFontSize = 9;
+  let _currentFontStyle: string = "normal";
+  let _currentTextColor: [number, number, number] = [50, 50, 50];
+
   const checkPage = (needed: number) => {
     if (y + needed > ph - 20) {
       addFooter(pageNum);
@@ -94,10 +99,15 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
       pageNum++;
       addHeader();
       y = 28;
+      // Restore font state after page break (footer/header change it)
+      doc.setFontSize(_currentFontSize);
+      doc.setFont("helvetica", _currentFontStyle);
+      doc.setTextColor(..._currentTextColor);
     }
   };
 
-  const writeWrapped = (text: string, startY: number, fontSize = 9, lineH = 4.5): number => {
+  const writeWrapped = (text: string, startY: number, fontSize = 10, lineH = 5): number => {
+    _currentFontSize = fontSize;
     doc.setFontSize(fontSize);
     const lines = doc.splitTextToSize(text, contentWidth);
     for (const line of lines) {
@@ -165,6 +175,9 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
   // CLAUSES
   const clauses = customClauses || [];
   for (const clause of clauses) {
+    _currentFontSize = 10;
+    _currentFontStyle = "bold";
+    _currentTextColor = [...NAVY] as [number, number, number];
     checkPage(15);
     // Clause title
     doc.setFillColor(245, 245, 245);
@@ -176,6 +189,8 @@ export async function generateEmployeeContractPDF({ formData, customClauses }: G
     y += 6;
 
     // Clause content
+    _currentFontStyle = "normal";
+    _currentTextColor = [50, 50, 50];
     doc.setFont("helvetica", "normal");
     doc.setTextColor(50, 50, 50);
 
