@@ -152,6 +152,13 @@ export const CRMSettingsPage = () => {
   const [editingReason, setEditingReason] = useState<LossReason | null>(null);
   const [actionsStage, setActionsStage] = useState<Stage | null>(null);
   const [checklistStage, setChecklistStage] = useState<Stage | null>(null);
+  const [copyDialogOpen, setCopyDialogOpen] = useState(false);
+  const [copyTargetStage, setCopyTargetStage] = useState<Stage | null>(null);
+  const [copySourcePipeline, setCopySourcePipeline] = useState("");
+  const [copySourceStage, setCopySourceStage] = useState("");
+  const [copyChecklist, setCopyChecklist] = useState(true);
+  const [copyActions, setCopyActions] = useState(true);
+  const [copying, setCopying] = useState(false);
 
   // Form states
   const [newPipelineName, setNewPipelineName] = useState("");
