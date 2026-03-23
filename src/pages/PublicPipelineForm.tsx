@@ -17,6 +17,7 @@ interface FormConfig {
   form_token: string;
   is_active: boolean;
   origin_name: string | null;
+  redirect_url: string | null;
 }
 
 interface FormQuestion {
@@ -58,6 +59,14 @@ const PublicPipelineForm = () => {
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
+  const handleFormComplete = () => {
+    if (form?.redirect_url) {
+      window.location.href = form.redirect_url;
+    } else {
+      setSubmitted(true);
+    }
+  };
+
   useEffect(() => {
     if (token) loadForm();
   }, [token]);
@@ -65,7 +74,7 @@ const PublicPipelineForm = () => {
   const loadForm = async () => {
     const formRes = await supabase
       .from("crm_pipeline_forms")
-      .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
+      .select("id, title, description, pipeline_id, form_token, is_active, origin_name, redirect_url")
       .eq("form_token", token)
       .eq("is_active", true)
       .maybeSingle();
@@ -122,7 +131,7 @@ const PublicPipelineForm = () => {
       if (questions.length > 0) {
         setStep(2);
       } else {
-        setSubmitted(true);
+        handleFormComplete();
       }
     } catch (err: any) {
       setError(err.message || "Erro ao enviar formulário");
@@ -168,7 +177,7 @@ const PublicPipelineForm = () => {
         throw new Error(data.error || "Erro ao enviar respostas");
       }
 
-      setSubmitted(true);
+      handleFormComplete();
     } catch (err: any) {
       setError(err.message || "Erro ao enviar respostas");
     } finally {

@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_pipeline_forms ADD COLUMN redirect_url TEXT DEFAULT NULL;

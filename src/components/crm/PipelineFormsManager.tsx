@@ -8,7 +8,8 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Copy, Check, ExternalLink, Plus, FileText } from "lucide-react";
+import { Copy, Check, ExternalLink, Plus, FileText, Trash2 } from "lucide-react";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PipelineFormQuestionsManager } from "./PipelineFormQuestionsManager";
 
 interface Pipeline {
@@ -24,6 +25,7 @@ interface PipelineForm {
   description: string | null;
   is_active: boolean;
   origin_name: string | null;
+  redirect_url: string | null;
   pipeline_name?: string;
 }
 
@@ -71,6 +73,16 @@ export const PipelineFormsManager = () => {
   const toggleForm = async (formId: string, isActive: boolean) => {
     await supabase.from("crm_pipeline_forms").update({ is_active: isActive }).eq("id", formId);
     setForms((prev) => prev.map((f) => (f.id === formId ? { ...f, is_active: isActive } : f)));
+  };
+
+  const deleteForm = async (formId: string) => {
+    const { error } = await supabase.from("crm_pipeline_forms").delete().eq("id", formId);
+    if (error) {
+      toast.error("Erro ao excluir formulário");
+      return;
+    }
+    toast.success("Formulário excluído!");
+    loadData();
   };
 
   const updateFormField = async (formId: string, field: string, value: string) => {
@@ -136,6 +148,27 @@ export const PipelineFormsManager = () => {
                 </Badge>
               </CardTitle>
               <Switch checked={form.is_active} onCheckedChange={(v) => toggleForm(form.id, v)} />
+              <AlertDialog>
+                <AlertDialogTrigger asChild>
+                  <Button variant="ghost" size="icon" className="h-7 w-7">
+                    <Trash2 className="h-3.5 w-3.5 text-destructive" />
+                  </Button>
+                </AlertDialogTrigger>
+                <AlertDialogContent>
+                  <AlertDialogHeader>
+                    <AlertDialogTitle>Excluir formulário?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                      Esta ação não pode ser desfeita. As perguntas associadas também serão excluídas.
+                    </AlertDialogDescription>
+                  </AlertDialogHeader>
+                  <AlertDialogFooter>
+                    <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                    <AlertDialogAction onClick={() => deleteForm(form.id)} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                      Excluir
+                    </AlertDialogAction>
+                  </AlertDialogFooter>
+                </AlertDialogContent>
+              </AlertDialog>
             </div>
           </CardHeader>
           <CardContent className="space-y-3">
@@ -156,6 +189,16 @@ export const PipelineFormsManager = () => {
                   className="h-8 text-sm"
                 />
               </div>
+            </div>
+
+            <div className="space-y-1">
+              <Label className="text-xs">Link de redirecionamento (após envio)</Label>
+              <Input
+                defaultValue={form.redirect_url || ""}
+                onBlur={(e) => updateFormField(form.id, "redirect_url", e.target.value)}
+                className="h-8 text-sm"
+                placeholder="https://seusite.com.br/obrigado"
+              />
             </div>
 
             <div className="space-y-1">
