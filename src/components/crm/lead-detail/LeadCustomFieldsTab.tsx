@@ -739,7 +739,8 @@ export const LeadCustomFieldsTab = ({
           );
         }
         // Special handling for due_day field
-        if (field.field_name === "due_day") {
+        if (field.field_name === "due_day" || field.field_name === "due_date") {
+          const dueDayOptions = [1, 5, 10, 15, 20, 25];
           return (
             <Select
               value={value || "none"}
@@ -753,7 +754,7 @@ export const LeadCustomFieldsTab = ({
               </SelectTrigger>
               <SelectContent>
                 <SelectItem value="none">Nenhum</SelectItem>
-                {Array.from({ length: 31 }, (_, i) => i + 1).map((day) => (
+                {dueDayOptions.map((day) => (
                   <SelectItem key={day} value={day.toString()}>
                     Dia {day}
                   </SelectItem>
