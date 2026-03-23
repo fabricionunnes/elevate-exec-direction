@@ -194,7 +194,7 @@ export function CheckoutModal({
 
   return (
     <Dialog open={open} onOpenChange={handleClose}>
-      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
+      <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" onPointerDownOutside={(e) => loading && e.preventDefault()} onEscapeKeyDown={(e) => loading && e.preventDefault()}>
         <DialogHeader>
           <DialogTitle className="text-xl">Comprar {productName}</DialogTitle>
           <DialogDescription>
