@@ -169,9 +169,15 @@ export function CheckoutModal({
         ? "dompagamentos-checkout"
         : "pagarme-checkout";
 
+      console.log("Checkout payload:", JSON.stringify(payload));
+      console.log("Edge function:", edgeFunctionName);
+
       const { data, error } = await supabase.functions.invoke(edgeFunctionName, {
         body: payload,
       });
+
+      console.log("Checkout response:", JSON.stringify(data));
+      console.log("Checkout error:", error);
 
       if (error) throw error;
       if (data?.error) throw new Error(data.error);
@@ -183,6 +189,7 @@ export function CheckoutModal({
         toast.success("Pagamento aprovado!");
       }
     } catch (err: unknown) {
+      console.error("Checkout submit error:", err);
       const msg = err instanceof Error ? err.message : "Erro ao processar pagamento";
       toast.error(msg);
     } finally {
