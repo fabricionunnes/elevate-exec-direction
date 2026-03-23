@@ -76,6 +76,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           amount_cents: Math.round(form.amount * 100),
           payment_method: form.paymentMethod,
           installments: form.installments,
+          interest_free_installments: form.interestFreeInstallments,
           company_id: companyId,
         },
       });
