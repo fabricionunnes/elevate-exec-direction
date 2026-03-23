@@ -29626,6 +29626,10 @@ export type Database = {
       }
       is_tenant_admin: { Args: { check_tenant_id: string }; Returns: boolean }
       is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
+      merge_crm_leads: {
+        Args: { p_primary_lead_id: string; p_secondary_lead_ids: string[] }
+        Returns: Json
+      }
       record_ad_click: {
         Args: {
           p_ad_id: string
