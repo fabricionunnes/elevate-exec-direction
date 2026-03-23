@@ -230,8 +230,9 @@ export function useSendLeadContract() {
         };
       }
 
-      // Send to ZapSign
-      const documentName = `Contrato - ${lead.company || lead.name} - ${productName}`;
+      // Send to ZapSign - use contractual data
+      const signerName = lead.legal_representative_name || lead.name;
+      const documentName = `Contrato - ${clientName} - ${productName}`;
 
       const { data: zapSignData, error: zapSignError } = await supabase.functions.invoke("send-to-zapsign", {
         body: {
@@ -243,7 +244,7 @@ export function useSendLeadContract() {
               email: COMPANY_SIGNER_EMAIL,
             },
             {
-              name: lead.name,
+              name: signerName,
               email: lead.email,
               phone: lead.phone || "",
             },
