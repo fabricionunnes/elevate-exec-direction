@@ -1090,22 +1090,23 @@ export const CRMLeadDetailPage = () => {
         <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
           <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
             {[
-              { value: "activities", label: "Atividades" },
-              { value: "contact", label: "Contato" },
-              { value: "company", label: "Empresa" },
-              { value: "deal", label: "Negócio" },
-              { value: "transcription", label: "Transcrição" },
-              { value: "form_answers", label: "Respostas" },
-              { value: "meetings", label: "Reuniões" },
-              { value: "contract_data", label: "Dados Contratuais" },
-              { value: "files", label: "Arquivos" },
-              { value: "history", label: "Histórico" },
+              { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
+              { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
+              { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
+              { value: "deal", label: "Negócio", icon: Briefcase, color: "text-amber-500" },
+              { value: "transcription", label: "Transcrição", icon: FileAudio, color: "text-pink-500" },
+              { value: "form_answers", label: "Respostas", icon: ClipboardList, color: "text-cyan-500" },
+              { value: "meetings", label: "Reuniões", icon: Video, color: "text-indigo-500" },
+              { value: "contract_data", label: "Dados Contratuais", icon: ScrollText, color: "text-orange-500" },
+              { value: "files", label: "Arquivos", icon: FolderOpen, color: "text-teal-500" },
+              { value: "history", label: "Histórico", icon: History, color: "text-rose-500" },
             ].map(tab => (
               <TabsTrigger
                 key={tab.value}
                 value={tab.value}
-                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-transparent px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0"
+                className="rounded-none border-b-2 border-transparent data-[state=active]:border-primary data-[state=active]:bg-primary/5 px-3 sm:px-4 py-2.5 text-sm whitespace-nowrap flex-shrink-0 gap-1.5"
               >
+                <tab.icon className={`h-3.5 w-3.5 ${tab.color}`} />
                 {tab.label}
               </TabsTrigger>
             ))}
