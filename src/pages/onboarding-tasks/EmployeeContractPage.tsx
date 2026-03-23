@@ -61,9 +61,10 @@ interface SavedEmployeeContract {
   zapsign_sent_at: string | null;
 }
 
-function getEditableClauses(role: string, durationMonths?: number): EditableEmployeeClause[] {
+function getEditableClauses(role: string, durationMonths?: number, commissionConfig?: RoleCommissionConfig): EditableEmployeeClause[] {
   const clauseContent = clauseFirstByRole[role] || clauseFirstDefault;
-  const paymentContent = clausePaymentByRole[role] || clausePaymentDefault;
+  const commission = commissionConfig || defaultCommissionByRole[role] || defaultCommissionByRole.consultor;
+  const paymentContent = buildPaymentClauseText(commission);
   const duration = durationMonths || 3;
   return employeeContractClauses.map((c) => {
     let content = c.content;
