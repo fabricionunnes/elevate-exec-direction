@@ -5,24 +5,31 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Plus, Search, Trash2, Pencil, Phone, Mail, Building } from "lucide-react";
-import type { ClientContact } from "./hooks/useClientCRM";
+import { Plus, Search, Trash2, Pencil, Phone, Mail, Building, Upload } from "lucide-react";
+import type { ClientContact, ClientPipeline, ClientStage } from "./hooks/useClientCRM";
+import { ClientCRMImportDialog } from "./ClientCRMImportDialog";
 
 interface Props {
   contacts: ClientContact[];
+  projectId: string;
+  pipelines: ClientPipeline[];
+  stages: ClientStage[];
+  activePipelineId: string | null;
   onCreateContact: (contact: Partial<ClientContact>) => Promise<void>;
   onUpdateContact: (id: string, updates: Partial<ClientContact>) => Promise<void>;
   onDeleteContact: (id: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
 const emptyContact = { name: "", email: "", phone: "", company: "", role: "", document: "", notes: "" };
 
-export const ClientCRMContacts = ({ contacts, onCreateContact, onUpdateContact, onDeleteContact }: Props) => {
+export const ClientCRMContacts = ({ contacts, projectId, pipelines, stages, activePipelineId, onCreateContact, onUpdateContact, onDeleteContact, onRefresh }: Props) => {
   const [showForm, setShowForm] = useState(false);
   const [editing, setEditing] = useState<ClientContact | null>(null);
   const [form, setForm] = useState(emptyContact);
   const [search, setSearch] = useState("");
   const [saving, setSaving] = useState(false);
+  const [showImport, setShowImport] = useState(false);
 
   const filtered = contacts.filter((c) =>
     [c.name, c.email, c.phone, c.company].some((f) => f?.toLowerCase().includes(search.toLowerCase()))
@@ -72,6 +79,9 @@ export const ClientCRMContacts = ({ contacts, onCreateContact, onUpdateContact, 
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar contatos..." className="pl-9" value={search} onChange={(e) => setSearch(e.target.value)} />
         </div>
+        <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImport(true)}>
+          <Upload className="h-4 w-4" /> Importar
+        </Button>
         <Dialog open={showForm} onOpenChange={setShowForm}>
           <DialogTrigger asChild>
             <Button size="sm" className="gap-1" onClick={openNew}>
@@ -163,6 +173,17 @@ export const ClientCRMContacts = ({ contacts, onCreateContact, onUpdateContact, 
           </Table>
         </CardContent>
       </Card>
+
+      <ClientCRMImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        type="contacts"
+        projectId={projectId}
+        pipelines={pipelines}
+        stages={stages}
+        activePipelineId={activePipelineId}
+        onImportComplete={onRefresh}
+      />
     </div>
   );
 };

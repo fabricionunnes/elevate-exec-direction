@@ -7,9 +7,10 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Search, Pencil } from "lucide-react";
+import { Plus, Trash2, Search, Pencil, Upload } from "lucide-react";
 import { toast } from "sonner";
 import type { ClientDeal, ClientStage, ClientContact, ClientPipeline, ClientActivity } from "./hooks/useClientCRM";
+import { ClientCRMImportDialog } from "./ClientCRMImportDialog";
 
 interface Props {
   deals: ClientDeal[];
@@ -19,12 +20,14 @@ interface Props {
   activePipelineId: string | null;
   setActivePipelineId: (id: string | null) => void;
   activities: ClientActivity[];
+  projectId: string;
   onCreateDeal: (deal: Partial<ClientDeal>) => Promise<void>;
   onUpdateDeal: (id: string, updates: Partial<ClientDeal>) => Promise<void>;
   onDeleteDeal: (id: string) => Promise<void>;
   onMoveDeal: (dealId: string, stageId: string) => Promise<void>;
   onCreateActivity: (activity: Partial<ClientActivity>) => Promise<void>;
   onCompleteActivity: (id: string) => Promise<void>;
+  onRefresh: () => void;
 }
 
 const formatCurrency = (v: number) =>
@@ -32,8 +35,8 @@ const formatCurrency = (v: number) =>
 
 export const ClientCRMDeals = ({
   deals, stages, contacts, pipelines, activePipelineId, setActivePipelineId,
-  activities, onCreateDeal, onUpdateDeal, onDeleteDeal, onMoveDeal,
-  onCreateActivity, onCompleteActivity,
+  activities, projectId, onCreateDeal, onUpdateDeal, onDeleteDeal, onMoveDeal,
+  onCreateActivity, onCompleteActivity, onRefresh,
 }: Props) => {
   const [showNewDeal, setShowNewDeal] = useState(false);
   const [selectedDeal, setSelectedDeal] = useState<ClientDeal | null>(null);
@@ -47,6 +50,7 @@ export const ClientCRMDeals = ({
   const [moveDialog, setMoveDialog] = useState<{ dealId: string; stageId: string; stageName: string } | null>(null);
   const [newActivity, setNewActivity] = useState({ title: "", type: "task", scheduled_at: "" });
   const [showNewActivity, setShowNewActivity] = useState(false);
+  const [showImport, setShowImport] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", value: "", contact_id: "", notes: "", expected_close_date: "" });
 
   const nonFinalStages = stages.filter(s => !s.is_final);
@@ -189,6 +193,9 @@ export const ClientCRMDeals = ({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 h-8 w-[180px]" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImport(true)}>
+            <Upload className="h-4 w-4" /> Importar
+          </Button>
           <Dialog open={showNewDeal} onOpenChange={setShowNewDeal}>
             <DialogTrigger asChild>
               <Button size="sm" className="gap-1"><Plus className="h-4 w-4" /> Novo Negócio</Button>
@@ -383,6 +390,16 @@ export const ClientCRMDeals = ({
           )}
         </DialogContent>
       </Dialog>
+      <ClientCRMImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        type="deals"
+        projectId={projectId}
+        pipelines={pipelines}
+        stages={stages}
+        activePipelineId={activePipelineId}
+        onImportComplete={onRefresh}
+      />
     </div>
   );
 };
