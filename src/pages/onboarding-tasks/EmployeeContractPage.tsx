@@ -59,13 +59,17 @@ interface SavedEmployeeContract {
   zapsign_sent_at: string | null;
 }
 
-function getEditableClauses(role: string): EditableEmployeeClause[] {
+function getEditableClauses(role: string, durationMonths?: number): EditableEmployeeClause[] {
   const clauseContent = clauseFirstByRole[role] || clauseFirstDefault;
   const paymentContent = clausePaymentByRole[role] || clausePaymentDefault;
+  const duration = durationMonths || 3;
   return employeeContractClauses.map((c) => {
     let content = c.content;
     if (c.id === "objeto") content = clauseContent;
     if (c.id === "pagamento") content = paymentContent;
+    if (c.id === "prazo") {
+      content = content.replace("válido por 3 meses", `válido por ${duration} meses`);
+    }
     return {
       id: c.id,
       title: c.title,
