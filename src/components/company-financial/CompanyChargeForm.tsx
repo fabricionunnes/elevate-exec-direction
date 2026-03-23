@@ -32,9 +32,11 @@ interface Props {
   contractValue?: number;
   customerEmail?: string;
   customerPhone?: string;
+  customerDocument?: string;
+  onChargeCreated?: () => void;
 }
 
-export function CompanyChargeForm({ companyId, companyName, contractValue, customerEmail, customerPhone }: Props) {
+export function CompanyChargeForm({ companyId, companyName, contractValue, customerEmail, customerPhone, customerDocument, onChargeCreated }: Props) {
   const [loading, setLoading] = useState(false);
   const [provider, setProvider] = useState<PaymentProvider>("asaas");
   const [form, setForm] = useState({
@@ -46,7 +48,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
     customerName: companyName,
     customerEmail: customerEmail || "",
     customerPhone: customerPhone || "",
-    customerDocument: "",
+    customerDocument: customerDocument || "",
   });
   const [result, setResult] = useState<any>(null);
 
@@ -65,6 +67,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
 
     try {
       const edgeFunction = edgeFunctionMap[provider];
+      const amountCents = Math.round(form.amount * 100);
 
       const { data, error } = await supabase.functions.invoke(edgeFunction, {
         body: {
@@ -73,7 +76,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           customer_phone: form.customerPhone,
           customer_document: form.customerDocument,
           product_name: form.description,
-          amount_cents: Math.round(form.amount * 100),
+          amount_cents: amountCents,
           payment_method: form.paymentMethod,
           installments: form.installments,
           interest_free_installments: form.interestFreeInstallments,
@@ -92,8 +95,60 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           .eq("pagarme_order_id", data.order_id);
       }
 
+      // Extract the payment link URL from result
+      const paymentLinkUrl = data?.pix_qr_code || data?.boleto_url || data?.checkout_url || data?.invoice_url || "";
+
+      // Create invoice + payment_link so it appears in the Faturas tab
+      try {
+        const dueDate = new Date();
+        dueDate.setDate(dueDate.getDate() + 3); // 3 days from now
+        const dueDateStr = dueDate.toISOString().split("T")[0];
+
+        // 1. Create invoice
+        const { data: invoiceData } = await supabase.from("company_invoices").insert({
+          company_id: companyId,
+          description: form.description,
+          amount_cents: amountCents,
+          due_date: dueDateStr,
+          installment_number: 1,
+          total_installments: form.installments,
+          status: data?.paid ? "paid" : "pending",
+        } as any).select("id").single();
+
+        // 2. Create payment_link
+        if (invoiceData) {
+          const encodedDesc = encodeURIComponent(form.description);
+          const baseUrl = "https://elevate-exec-direction.lovable.app";
+
+          const { data: linkData } = await supabase.from("payment_links").insert({
+            description: `[${providers.find(p => p.id === provider)?.label}] ${form.description}`,
+            amount_cents: amountCents,
+            payment_method: form.paymentMethod,
+            installments: form.installments,
+            url: paymentLinkUrl || "pending",
+            company_id: companyId,
+            provider: provider,
+          } as any).select("id").single();
+
+          if (linkData) {
+            const fullUrl = paymentLinkUrl || `${baseUrl}/#/checkout?link_id=${linkData.id}&amount=${amountCents}&product=${encodedDesc}`;
+            if (!paymentLinkUrl) {
+              await supabase.from("payment_links").update({ url: fullUrl } as any).eq("id", linkData.id);
+            }
+            await supabase.from("company_invoices").update({
+              payment_link_id: linkData.id,
+              payment_link_url: fullUrl,
+            } as any).eq("id", (invoiceData as any).id);
+          }
+        }
+      } catch (invoiceErr) {
+        console.error("Error creating invoice record:", invoiceErr);
+        // Don't fail the whole charge for this
+      }
+
       setResult(data);
       toast.success("Cobrança gerada com sucesso!");
+      onChargeCreated?.();
     } catch (err: any) {
       console.error("Charge error:", err);
       toast.error(err.message || "Erro ao gerar cobrança");
