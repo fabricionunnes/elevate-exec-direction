@@ -166,8 +166,8 @@ Parágrafo Único: O CONTRATANTE, em caso de culpa grave ou de dolo por parte da
   {
     id: "pagamento",
     title: "CLÁUSULA QUINTA - DO PREÇO E DAS CONDIÇÕES DE PAGAMENTO",
-    content: `5.1 Os serviços OBJETO deste contrato serão remunerados pela quantia especificada neste instrumento. O CONTRATANTE deverá efetuar o pagamento até o quinto dia útil do mês subsequente, por pagamento de boleto enviado, servindo o comprovante de pagamento como recibo de pagamento para todos os efeitos legais. Deverá a CONTRATADA emitir Recibo de Pagamento de Autônomo (RPA) ou nota fiscal a cada mês de serviço prestado.
-5.2 A CONTRATADA apresentará ao CONTRATANTE, em formulário próprio, até o último dia de cada mês o memorial descritivo, contendo todos os atendimentos prestados durante o mês anterior.`,
+    content: "", // Will be filled dynamically based on role (includes commission)
+    isDynamic: true,
   },
   {
     id: "descumprimento",
