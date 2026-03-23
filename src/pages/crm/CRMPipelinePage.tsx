@@ -244,30 +244,48 @@ export const CRMPipelinePage = () => {
       }
       setStages(stagesData || []);
 
-      let query = supabase
-        .from("crm_leads")
-        .select(`
-          *,
-          origin:crm_origins(name),
-          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
-          tags:crm_lead_tags(tag:crm_tags(id, name, color))
-        `)
-        .eq("pipeline_id", selectedPipeline)
-        .order("created_at", { ascending: false });
+      // Fetch leads in batches to bypass the 1000-row limit
+      // Cap at 10,000 to avoid browser memory issues on very large pipelines
+      const PAGE_SIZE = 1000;
+      const MAX_LEADS = 10000;
+      let allLeads: Lead[] = [];
+      let from = 0;
+      let hasMore = true;
 
-      // Apply origin filter only if it belongs to this pipeline
-      if (effectiveOrigin) {
-        query = query.eq("origin_id", effectiveOrigin);
+      while (hasMore && allLeads.length < MAX_LEADS) {
+        let query = supabase
+          .from("crm_leads")
+          .select(`
+            *,
+            origin:crm_origins(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+            tags:crm_lead_tags(tag:crm_tags(id, name, color))
+          `)
+          .eq("pipeline_id", selectedPipeline)
+          .order("created_at", { ascending: false })
+          .range(from, from + PAGE_SIZE - 1);
+
+        if (effectiveOrigin) {
+          query = query.eq("origin_id", effectiveOrigin);
+        }
+
+        const { data: leadsData, error: leadsError } = await query;
+
+        if (leadsError) {
+          console.error("Error loading leads:", leadsError);
+          return;
+        }
+
+        if (leadsData && leadsData.length > 0) {
+          allLeads = allLeads.concat(leadsData as Lead[]);
+          from += PAGE_SIZE;
+          hasMore = leadsData.length === PAGE_SIZE;
+        } else {
+          hasMore = false;
+        }
       }
 
-      const { data: leadsData, error: leadsError } = await query;
-      
-      if (leadsError) {
-        console.error("Error loading leads:", leadsError);
-        return; // Preserve existing leads on error - don't clear the board
-      }
-      
-      setLeads(leadsData || []);
+      setLeads(allLeads);
     } catch (error) {
       console.error("Error loading pipeline data:", error);
       // Don't clear existing data on error - preserve what's on screen
