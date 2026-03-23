@@ -127,6 +127,12 @@ export default function EmployeeContractPage() {
   const [lastSavedContractId, setLastSavedContractId] = useState<string | null>(null);
   const [lastGeneratedPdfUrl, setLastGeneratedPdfUrl] = useState<string | null>(null);
   const [zapSignSent, setZapSignSent] = useState(false);
+  const [isLoadingSignatures, setIsLoadingSignatures] = useState(false);
+  const [signatureStatus, setSignatureStatus] = useState<{
+    signers: any[];
+    allSigned: boolean;
+    signedFileUrl: string | null;
+  } | null>(null);
 
   useEffect(() => {
     supabase.auth.getUser().then(({ data }) => {
