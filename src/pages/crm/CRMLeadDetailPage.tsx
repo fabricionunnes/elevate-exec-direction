@@ -1058,6 +1058,7 @@ export const CRMLeadDetailPage = () => {
               { value: "activities", label: "Atividades" },
               { value: "meetings", label: "Reuniões" },
               { value: "contract_data", label: "Dados Contratuais" },
+              { value: "form_answers", label: "Respostas" },
               { value: "contact", label: "Contato" },
               { value: "company", label: "Empresa" },
               { value: "deal", label: "Negócio" },

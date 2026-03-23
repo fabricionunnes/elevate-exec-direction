@@ -182,6 +182,8 @@ export const PipelineFormsManager = () => {
                 Exemplo: <code className="text-[10px]">?utm_source=instagram&utm_medium=ads&utm_campaign=black-friday</code>
               </p>
             </div>
+
+            <PipelineFormQuestionsManager formId={form.id} />
           </CardContent>
         </Card>
       ))}
