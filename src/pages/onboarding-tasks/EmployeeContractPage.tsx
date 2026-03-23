@@ -20,10 +20,12 @@ import {
   employeeContractClauses,
   clauseFirstByRole,
   clauseFirstDefault,
-  clausePaymentByRole,
-  clausePaymentDefault,
+  defaultCommissionByRole,
+  buildPaymentClauseText,
   roleLabels,
+  type RoleCommissionConfig,
 } from "@/data/employeeContractTemplate";
+import EmployeeCommissionEditor from "@/components/employee-contract/EmployeeCommissionEditor";
 import { generateEmployeeContractPDF, downloadEmployeeContractPDF } from "@/components/employee-contract/generateEmployeeContractPDF";
 import { formatCurrencyBR } from "@/lib/numberToWords";
 import { Input } from "@/components/ui/input";
