@@ -131,7 +131,7 @@ const PublicPipelineForm = () => {
       if (questions.length > 0) {
         setStep(2);
       } else {
-        setSubmitted(true);
+        handleFormComplete();
       }
     } catch (err: any) {
       setError(err.message || "Erro ao enviar formulário");
