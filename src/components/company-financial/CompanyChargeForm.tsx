@@ -8,6 +8,23 @@ import { CurrencyInput } from "@/components/ui/currency-input";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { Loader2, Send, CreditCard, QrCode, FileText } from "lucide-react";
+import { cn } from "@/lib/utils";
+
+type PaymentProvider = "asaas" | "pagarme" | "mercadopago" | "dompagamentos";
+
+const providers: { id: PaymentProvider; label: string; color: string }[] = [
+  { id: "asaas", label: "Asaas", color: "hsl(142 76% 36%)" },
+  { id: "pagarme", label: "Pagar.me", color: "hsl(var(--primary))" },
+  { id: "mercadopago", label: "Mercado Pago", color: "hsl(199 89% 48%)" },
+  { id: "dompagamentos", label: "Dom Pagamentos", color: "hsl(262 80% 50%)" },
+];
+
+const edgeFunctionMap: Record<PaymentProvider, string> = {
+  asaas: "asaas-checkout",
+  pagarme: "pagarme-checkout",
+  mercadopago: "mercadopago-checkout",
+  dompagamentos: "dompagamentos-checkout",
+};
 
 interface Props {
   companyId: string;
@@ -19,6 +36,7 @@ interface Props {
 
 export function CompanyChargeForm({ companyId, companyName, contractValue, customerEmail, customerPhone }: Props) {
   const [loading, setLoading] = useState(false);
+  const [provider, setProvider] = useState<PaymentProvider>("asaas");
   const [form, setForm] = useState({
     description: `Serviço - ${companyName}`,
     amount: contractValue || 0,
@@ -45,7 +63,9 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
     setResult(null);
 
     try {
-      const { data, error } = await supabase.functions.invoke("asaas-checkout", {
+      const edgeFunction = edgeFunctionMap[provider];
+
+      const { data, error } = await supabase.functions.invoke(edgeFunction, {
         body: {
           customer_name: form.customerName,
           customer_email: form.customerEmail,
@@ -90,9 +110,31 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           <CreditCard className="h-5 w-5 text-primary" />
           Gerar Cobrança Avulsa
         </CardTitle>
-        <CardDescription>Cobre via PIX, cartão de crédito ou boleto usando Asaas</CardDescription>
+        <CardDescription>Cobre via PIX, cartão de crédito ou boleto</CardDescription>
       </CardHeader>
       <CardContent className="space-y-4">
+        {/* Provider selector */}
+        <div className="space-y-2">
+          <Label>Integração de Pagamento</Label>
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+            {providers.map((p) => (
+              <button
+                key={p.id}
+                type="button"
+                onClick={() => setProvider(p.id)}
+                className={cn(
+                  "flex items-center justify-center gap-2 rounded-lg border-2 px-3 py-2.5 text-sm font-medium transition-all",
+                  provider === p.id
+                    ? "border-primary bg-primary/10 text-primary"
+                    : "border-border bg-card text-muted-foreground hover:border-primary/50"
+                )}
+              >
+                {p.label}
+              </button>
+            ))}
+          </div>
+        </div>
+
         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
           <div className="space-y-2">
             <Label>Descrição</Label>
@@ -191,7 +233,7 @@ export function CompanyChargeForm({ companyId, companyName, contractValue, custo
           ) : (
             <Send className="h-4 w-4 mr-2" />
           )}
-          Gerar Cobrança
+          Gerar Cobrança via {providers.find(p => p.id === provider)?.label}
         </Button>
 
         {/* Result display */}
