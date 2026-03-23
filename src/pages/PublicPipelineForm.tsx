@@ -66,7 +66,7 @@ const PublicPipelineForm = () => {
   const loadForm = async () => {
     const formRes = await supabase
       .from("crm_pipeline_forms")
-      .select("id, title, description, pipeline_id, form_token, is_active, origin_name")
+      .select("id, title, description, pipeline_id, form_token, is_active, origin_name, redirect_url")
       .eq("form_token", token)
       .eq("is_active", true)
       .maybeSingle();
