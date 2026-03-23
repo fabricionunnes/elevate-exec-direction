@@ -51,7 +51,8 @@ import {
   TrendingUp,
   ListChecks,
   Bell,
-  Link2
+  Link2,
+  FileText
 } from "lucide-react";
 import { StageActionsDialog } from "@/components/crm/StageActionsDialog";
 import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
@@ -59,6 +60,7 @@ import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
+import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -767,6 +769,10 @@ export const CRMSettingsPage = () => {
             <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Integrações</span>
             <span className="sm:hidden">Integ.</span>
+          </TabsTrigger>
+          <TabsTrigger value="forms" className="gap-1.5 text-xs sm:text-sm">
+            <FileText className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            Formulários
           </TabsTrigger>
         </TabsList>
 
@@ -1725,6 +1731,11 @@ export const CRMSettingsPage = () => {
         {/* Integrations Tab */}
         <TabsContent value="integrations" className="mt-6">
           <ClintIntegrationTab />
+        </TabsContent>
+
+        {/* Forms Tab */}
+        <TabsContent value="forms" className="mt-6">
+          <PipelineFormsManager />
         </TabsContent>
       </Tabs>
 

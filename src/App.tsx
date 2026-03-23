@@ -68,6 +68,7 @@ const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
 const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
 const NPSSurveyPage = lazy(() => import("./pages/NPSSurveyPage"));
 const CSATSurveyPage = lazy(() => import("./pages/CSATSurveyPage"));
+const PublicPipelineForm = lazy(() => import("./pages/PublicPipelineForm"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
@@ -331,6 +332,9 @@ const AppShell = () => {
             <Route path="/contratos/colaboradores" element={<EmployeeContractPage />} />
             <Route path="/distrato" element={<DistratoPage />} />
             <Route path="/distratos" element={<DistratoHistoryPage />} />
+            
+            {/* Public Pipeline Form */}
+            <Route path="/form/:token" element={<PublicPipelineForm />} />
             
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>

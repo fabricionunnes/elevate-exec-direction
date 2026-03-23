@@ -2,7 +2,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const corsHeaders = {
   'Access-Control-Allow-Origin': '*',
-  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type, x-api-key',
+  'Access-Control-Allow-Headers': 'authorization, x-client-info, apikey, content-type',
 };
 
 Deno.serve(async (req) => {
@@ -18,22 +18,18 @@ Deno.serve(async (req) => {
   }
 
   try {
-    const apiKey = req.headers.get('x-api-key');
-    const expectedKey = Deno.env.get('EXTERNAL_LEAD_API_KEY');
+    const body = await req.json();
+    const {
+      form_token, nome, telefone, email, empresa, desafio,
+      utm_source, utm_medium, utm_campaign, utm_content
+    } = body;
 
-    if (!expectedKey || apiKey !== expectedKey) {
-      return new Response(JSON.stringify({ error: 'Unauthorized' }), {
-        status: 401,
+    if (!form_token) {
+      return new Response(JSON.stringify({ error: 'Token do formulário é obrigatório' }), {
+        status: 400,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
-
-    const body = await req.json();
-    const {
-      nome, telefone, email, empresa, faturamento, qtd_vendedores, desafio, tag,
-      pipeline_id, pipeline_name, origin_name,
-      utm_source, utm_medium, utm_campaign, utm_content
-    } = body;
 
     if (!nome || !telefone || !email) {
       return new Response(JSON.stringify({ error: 'Campos obrigatórios: nome, telefone, email' }), {
@@ -47,59 +43,31 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // Resolve pipeline: by id, by name, or fallback to "Funil SE"
-    let resolvedPipelineId: string | null = null;
+    // Get form config
+    const { data: form } = await supabase
+      .from('crm_pipeline_forms')
+      .select('id, pipeline_id, origin_name, is_active')
+      .eq('form_token', form_token)
+      .maybeSingle();
 
-    if (pipeline_id) {
-      const { data: p } = await supabase
-        .from('crm_pipelines')
-        .select('id')
-        .eq('id', pipeline_id)
-        .eq('is_active', true)
-        .maybeSingle();
-      resolvedPipelineId = p?.id || null;
-    }
-
-    if (!resolvedPipelineId && pipeline_name) {
-      const { data: p } = await supabase
-        .from('crm_pipelines')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('name', `%${pipeline_name}%`)
-        .limit(1)
-        .maybeSingle();
-      resolvedPipelineId = p?.id || null;
-    }
-
-    if (!resolvedPipelineId) {
-      const { data: p } = await supabase
-        .from('crm_pipelines')
-        .select('id')
-        .eq('is_active', true)
-        .ilike('name', '%Funil SE%')
-        .limit(1)
-        .maybeSingle();
-      resolvedPipelineId = p?.id || null;
-    }
-
-    if (!resolvedPipelineId) {
-      return new Response(JSON.stringify({ error: 'Pipeline não encontrado' }), {
-        status: 400,
+    if (!form || !form.is_active) {
+      return new Response(JSON.stringify({ error: 'Formulário não encontrado ou inativo' }), {
+        status: 404,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    // Get first stage of pipeline
+    // Get first stage
     const { data: stage } = await supabase
       .from('crm_stages')
       .select('id')
-      .eq('pipeline_id', resolvedPipelineId)
+      .eq('pipeline_id', form.pipeline_id)
       .order('sort_order', { ascending: true })
       .limit(1)
       .maybeSingle();
 
     if (!stage) {
-      return new Response(JSON.stringify({ error: 'Nenhuma etapa encontrada no pipeline' }), {
+      return new Response(JSON.stringify({ error: 'Pipeline sem etapas configuradas' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
@@ -116,28 +84,22 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     // Resolve origin
-    const searchOriginName = origin_name || 'Landing Page';
+    const originName = form.origin_name || 'Formulário Público';
     const { data: origin } = await supabase
       .from('crm_origins')
       .select('id')
-      .ilike('name', `%${searchOriginName}%`)
+      .ilike('name', `%${originName}%`)
       .limit(1)
       .maybeSingle();
 
-    // Build notes
     const notesParts = [];
-    if (faturamento) notesParts.push(`Faturamento: ${faturamento}`);
-    if (qtd_vendedores) notesParts.push(`Vendedores: ${qtd_vendedores}`);
-    if (tag) notesParts.push(`Tag: ${tag}`);
+    if (desafio) notesParts.push(`Desafio: ${desafio}`);
     if (utm_source) notesParts.push(`UTM Source: ${utm_source}`);
     if (utm_medium) notesParts.push(`UTM Medium: ${utm_medium}`);
     if (utm_campaign) notesParts.push(`UTM Campaign: ${utm_campaign}`);
-    notesParts.push(`Origem: ${searchOriginName}`);
+    notesParts.push(`Origem: ${originName}`);
     const notes = notesParts.join(' | ');
 
-    const urgency = tag === 'PRIORIDADE' ? 'high' : 'medium';
-
-    // Insert lead
     const { data: lead, error: insertError } = await supabase
       .from('crm_leads')
       .insert({
@@ -146,9 +108,9 @@ Deno.serve(async (req) => {
         email: email,
         company: empresa || null,
         main_pain: desafio || null,
-        notes: notes,
-        urgency: urgency,
-        pipeline_id: resolvedPipelineId,
+        notes,
+        urgency: 'medium',
+        pipeline_id: form.pipeline_id,
         stage_id: stage.id,
         owner_staff_id: owner?.id || null,
         origin_id: origin?.id || null,
@@ -162,28 +124,25 @@ Deno.serve(async (req) => {
       .single();
 
     if (insertError) {
-      console.error('[receive-external-lead] Insert error:', insertError);
-      return new Response(JSON.stringify({ error: 'Erro ao inserir lead', details: insertError.message }), {
+      console.error('[submit-pipeline-form] Insert error:', insertError);
+      return new Response(JSON.stringify({ error: 'Erro ao criar lead' }), {
         status: 500,
         headers: { ...corsHeaders, 'Content-Type': 'application/json' },
       });
     }
 
-    console.log('[receive-external-lead] Lead created:', lead.id);
+    console.log('[submit-pipeline-form] Lead created:', lead.id);
 
-    // === Send WhatsApp notifications ===
+    // Send WhatsApp notification
     const APP_URL = 'https://elevate-exec-direction.lovable.app';
     const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
 
-    const message = `🚀 *Novo Lead Externo!*\n\n` +
+    const message = `🚀 *Novo Lead via Formulário!*\n\n` +
       `👤 *Nome:* ${nome}\n` +
       `📞 *Telefone:* ${telefone}\n` +
       `📧 *Email:* ${email}\n` +
       (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
-      (faturamento ? `💰 *Faturamento:* ${faturamento}\n` : '') +
-      (qtd_vendedores ? `👥 *Vendedores:* ${qtd_vendedores}\n` : '') +
       (desafio ? `🎯 *Desafio:* ${desafio}\n` : '') +
-      (tag ? `🏷️ *Tag:* ${tag}\n` : '') +
       (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
       `\n🔗 *Ver no CRM:* ${leadLink}`;
 
@@ -223,18 +182,13 @@ Deno.serve(async (req) => {
 
         for (const phone of numbersToNotify) {
           try {
-            const sendUrl = `${evolutionUrl}/message/sendText/${instanceName}`;
-            await fetch(sendUrl, {
+            await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
               method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': evolutionKey,
-              },
+              headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
               body: JSON.stringify({ number: phone, text: message }),
             });
-            console.log(`[receive-external-lead] WhatsApp sent to ${phone}`);
-          } catch (whatsappError) {
-            console.error(`[receive-external-lead] WhatsApp error for ${phone}:`, whatsappError);
+          } catch (e) {
+            console.error(`[submit-pipeline-form] WhatsApp error for ${phone}:`, e);
           }
         }
       }
@@ -245,7 +199,7 @@ Deno.serve(async (req) => {
     });
 
   } catch (error: unknown) {
-    console.error('[receive-external-lead] Error:', error);
+    console.error('[submit-pipeline-form] Error:', error);
     return new Response(JSON.stringify({ error: String(error) }), {
       status: 500,
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },

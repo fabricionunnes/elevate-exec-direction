@@ -12256,6 +12256,10 @@ export type Database = {
           trade_name: string | null
           updated_at: string
           urgency: string | null
+          utm_campaign: string | null
+          utm_content: string | null
+          utm_medium: string | null
+          utm_source: string | null
           zipcode: string | null
         }
         Insert: {
@@ -12312,6 +12316,10 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           urgency?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           zipcode?: string | null
         }
         Update: {
@@ -12368,6 +12376,10 @@ export type Database = {
           trade_name?: string | null
           updated_at?: string
           urgency?: string | null
+          utm_campaign?: string | null
+          utm_content?: string | null
+          utm_medium?: string | null
+          utm_source?: string | null
           zipcode?: string | null
         }
         Relationships: [
@@ -12650,6 +12662,53 @@ export type Database = {
           sort_order?: number | null
         }
         Relationships: []
+      }
+      crm_pipeline_forms: {
+        Row: {
+          created_at: string
+          custom_fields: Json | null
+          description: string | null
+          form_token: string
+          id: string
+          is_active: boolean
+          origin_name: string | null
+          pipeline_id: string
+          title: string | null
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          custom_fields?: Json | null
+          description?: string | null
+          form_token?: string
+          id?: string
+          is_active?: boolean
+          origin_name?: string | null
+          pipeline_id: string
+          title?: string | null
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          custom_fields?: Json | null
+          description?: string | null
+          form_token?: string
+          id?: string
+          is_active?: boolean
+          origin_name?: string | null
+          pipeline_id?: string
+          title?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_pipeline_forms_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: true
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       crm_pipelines: {
         Row: {
