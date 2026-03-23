@@ -725,6 +725,9 @@ export const CRMSettingsPage = () => {
 
     setCopying(true);
     try {
+      let copiedChecklistCount = 0;
+      let copiedActionsCount = 0;
+
       if (copyChecklist) {
         const { data: sourceChecklists, error: checkErr } = await supabase
           .from("crm_stage_checklists")
@@ -733,12 +736,19 @@ export const CRMSettingsPage = () => {
         if (checkErr) throw checkErr;
 
         if (sourceChecklists && sourceChecklists.length > 0) {
-          const newChecklists = sourceChecklists.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
-            ...rest,
+          const newChecklists = sourceChecklists.map((item) => ({
             stage_id: copyTargetStage.id,
+            title: item.title,
+            description: item.description,
+            sort_order: item.sort_order,
+            is_active: item.is_active,
+            item_type: item.item_type,
+            whatsapp_template: item.whatsapp_template,
+            whatsapp_attachments: item.whatsapp_attachments,
           }));
           const { error: insertErr } = await supabase.from("crm_stage_checklists").insert(newChecklists);
           if (insertErr) throw insertErr;
+          copiedChecklistCount = newChecklists.length;
         }
       }
 
@@ -750,21 +760,40 @@ export const CRMSettingsPage = () => {
         if (actErr) throw actErr;
 
         if (sourceActions && sourceActions.length > 0) {
-          const newActions = sourceActions.map(({ id, created_at, updated_at, stage_id, ...rest }) => ({
-            ...rest,
+          const newActions = sourceActions.map((item) => ({
             stage_id: copyTargetStage.id,
+            activity_type: item.activity_type,
+            activity_title: item.activity_title,
+            activity_description: item.activity_description,
+            days_offset: item.days_offset,
+            is_required: item.is_required,
+            sort_order: item.sort_order,
+            action_mode: item.action_mode,
+            whatsapp_template: item.whatsapp_template,
+            meeting_staff_id: item.meeting_staff_id,
+            meeting_duration_minutes: item.meeting_duration_minutes,
           }));
           const { error: insertErr } = await supabase.from("crm_stage_actions").insert(newActions);
           if (insertErr) throw insertErr;
+          copiedActionsCount = newActions.length;
         }
       }
 
-      const copied = [copyChecklist && "checklist", copyActions && "automações"].filter(Boolean).join(" e ");
-      toast.success(`${copied} copiado(s) com sucesso para "${copyTargetStage.name}"!`);
+      const parts = [];
+      if (copiedChecklistCount > 0) parts.push(`${copiedChecklistCount} itens de checklist`);
+      if (copiedActionsCount > 0) parts.push(`${copiedActionsCount} automações`);
+      
+      if (parts.length === 0) {
+        toast.info("Nenhum item encontrado na etapa de origem para copiar.");
+      } else {
+        toast.success(`${parts.join(" e ")} copiado(s) para "${copyTargetStage.name}"!`);
+      }
+      
       setCopyDialogOpen(false);
       setCopyTargetStage(null);
       setCopySourcePipeline("");
       setCopySourceStage("");
+      await loadData();
     } catch (error: any) {
       console.error("Error copying stage config:", error);
       toast.error("Erro ao copiar configuração");
