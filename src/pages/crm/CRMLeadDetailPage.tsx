@@ -1075,8 +1075,8 @@ export const CRMLeadDetailPage = () => {
       {/* Observações */}
       {lead.notes && (
         <div className="px-4 sm:px-6 py-2">
-          <div className="rounded-lg border border-border bg-muted/30 p-3">
-            <p className="text-[10px] uppercase tracking-wide text-muted-foreground font-medium mb-1 flex items-center gap-1">
+          <div className="rounded-lg border border-amber-200/50 dark:border-amber-800/30 bg-amber-50/50 dark:bg-amber-950/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-amber-600 dark:text-amber-400 font-medium mb-1 flex items-center gap-1">
               <StickyNote className="h-3 w-3" />
               Observações
             </p>
