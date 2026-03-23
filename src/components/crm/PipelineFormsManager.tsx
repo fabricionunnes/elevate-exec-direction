@@ -25,6 +25,7 @@ interface PipelineForm {
   description: string | null;
   is_active: boolean;
   origin_name: string | null;
+  redirect_url: string | null;
   pipeline_name?: string;
 }
 
