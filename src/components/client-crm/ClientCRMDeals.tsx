@@ -390,6 +390,16 @@ export const ClientCRMDeals = ({
           )}
         </DialogContent>
       </Dialog>
+      <ClientCRMImportDialog
+        open={showImport}
+        onOpenChange={setShowImport}
+        type="deals"
+        projectId={projectId}
+        pipelines={pipelines}
+        stages={stages}
+        activePipelineId={activePipelineId}
+        onImportComplete={onRefresh}
+      />
     </div>
   );
 };
