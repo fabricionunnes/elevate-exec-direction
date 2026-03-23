@@ -20,6 +20,8 @@ import {
   employeeContractClauses,
   clauseFirstByRole,
   clauseFirstDefault,
+  clausePaymentByRole,
+  clausePaymentDefault,
   roleLabels,
 } from "@/data/employeeContractTemplate";
 import { generateEmployeeContractPDF, downloadEmployeeContractPDF } from "@/components/employee-contract/generateEmployeeContractPDF";
