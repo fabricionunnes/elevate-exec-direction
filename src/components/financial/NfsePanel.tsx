@@ -630,14 +630,6 @@ export function NfsePanel() {
                       />
                     </div>
                     <div>
-                      <Label>Lei Complementar 116</Label>
-                      <Input
-                        value={form.federalServiceCode}
-                        onChange={(e) => setForm({ ...form, federalServiceCode: e.target.value })}
-                        placeholder="170601"
-                      />
-                    </div>
-                    <div>
                       <Label>NBS (opcional)</Label>
                       <Input
                         value={form.nbsCode}
