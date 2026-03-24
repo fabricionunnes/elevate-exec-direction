@@ -160,6 +160,8 @@ interface StaffPerformance {
   todayMeetings: number;
   monthMeetings: number;
   monthAgendamentos: number;
+  yesterdayScheduledMeetings: number;
+  monthCompletedMeetings: number;
   falta: number;
   percentAtingido: number;
   projecao: number;
@@ -230,6 +232,8 @@ export default function CRMHeadComercialPage() {
   const [sdrCreatedYesterday, setSdrCreatedYesterday] = useState<any[]>([]);
   const [sdrCreatedToday, setSdrCreatedToday] = useState<any[]>([]);
   const [sdrCreatedMonth, setSdrCreatedMonth] = useState<any[]>([]);
+  const [completedMeetingsMonth, setCompletedMeetingsMonth] = useState<any[]>([]);
+  const [meetingsScheduledYesterday, setMeetingsScheduledYesterday] = useState<any[]>([]);
   const [dynamicForecastLeads, setDynamicForecastLeads] = useState<LeadWithStage[]>([]);
   const [dynamicNegotiationLeads, setDynamicNegotiationLeads] = useState<LeadWithStage[]>([]);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
@@ -261,7 +265,7 @@ export default function CRMHeadComercialPage() {
       const monthEnd = endOfMonth(now);
 
       const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes,
-             sdrYesterdayRes, sdrTodayRes, sdrMonthRes] =
+             sdrYesterdayRes, sdrTodayRes, sdrMonthRes, completedMeetingsRes, scheduledYesterdayRes] =
         await Promise.all([
           supabase
             .from("crm_leads")
@@ -343,6 +347,23 @@ export default function CRMHeadComercialPage() {
             .eq("type", "meeting")
             .gte("created_at", monthStart.toISOString())
             .lte("created_at", monthEnd.toISOString()),
+
+          // Completed meetings this month (reuniões realizadas)
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, lead_id, type, status, completed_at")
+            .eq("type", "meeting")
+            .eq("status", "completed")
+            .gte("completed_at", monthStart.toISOString())
+            .lte("completed_at", monthEnd.toISOString()),
+
+          // Meetings SCHEDULED for yesterday (for SDR "reuniões agendadas para ontem")
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, lead_id, type")
+            .eq("type", "meeting")
+            .gte("scheduled_at", startOfDay(yesterday).toISOString())
+            .lt("scheduled_at", endOfDay(yesterday).toISOString()),
         ]);
 
       if (leadsRes.data) {
@@ -396,11 +417,16 @@ export default function CRMHeadComercialPage() {
       const sdrTodayData = (sdrTodayRes.data || []) as any[];
       const sdrMonthData = (sdrMonthRes.data || []) as any[];
 
-      // Fetch lead SDR attribution for all unique lead_ids from SDR created activities
+      // Fetch lead SDR attribution for all unique lead_ids
+      const completedMeetingsData = (completedMeetingsRes.data || []) as any[];
+      const scheduledYesterdayData = (scheduledYesterdayRes.data || []) as any[];
+
       const allSdrLeadIds = [...new Set([
         ...sdrYesterdayData.map((a: any) => a.lead_id),
         ...sdrTodayData.map((a: any) => a.lead_id),
         ...sdrMonthData.map((a: any) => a.lead_id),
+        ...completedMeetingsData.map((a: any) => a.lead_id),
+        ...scheduledYesterdayData.map((a: any) => a.lead_id),
       ].filter(Boolean))];
 
       let leadSdrMap: Record<string, string> = {};
@@ -419,11 +445,14 @@ export default function CRMHeadComercialPage() {
       const enrichSdr = (items: any[]) => items.map((a: any) => ({
         ...a,
         resolved_staff_id: a.responsible_staff_id || (a.lead_id ? leadSdrMap[a.lead_id] : null),
+        resolved_sdr_id: a.lead_id ? leadSdrMap[a.lead_id] : null,
       }));
 
       setSdrCreatedYesterday(enrichSdr(sdrYesterdayData));
       setSdrCreatedToday(enrichSdr(sdrTodayData));
       setSdrCreatedMonth(enrichSdr(sdrMonthData));
+      setCompletedMeetingsMonth(enrichSdr(completedMeetingsData));
+      setMeetingsScheduledYesterday(enrichSdr(scheduledYesterdayData));
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
       const { data: forecastStages } = await supabase
@@ -586,12 +615,21 @@ export default function CRMHeadComercialPage() {
         let monthMeetings: number;
         let monthAgendamentos: number;
         
+        // SDR: "reuniões agendadas para ontem" = meetings SCHEDULED for yesterday attributed to this SDR
+        let yesterdayScheduledMeetings: number;
+        // "Reuniões realizadas no mês" - completed meetings that count for both closer AND SDR
+        let monthCompletedMeetings: number;
+
         if (isSdr) {
           // SDR: count meetings CREATED on that day, using resolved_staff_id (from lead's scheduled_by or sdr)
           yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.resolved_staff_id === staff.id).length;
           todayMeetings = sdrCreatedToday.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthMeetings = sdrCreatedMonth.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthAgendamentos = monthMeetings;
+          // Meetings scheduled FOR yesterday attributed to this SDR
+          yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id).length;
+          // Completed meetings attributed to this SDR (reunião realizada counts for SDR too)
+          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
         } else {
           // Closer: count meetings SCHEDULED for that day
           yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
@@ -602,6 +640,10 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = activityStats.filter(
             (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
           ).length;
+          // Meetings scheduled for yesterday for this closer
+          yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // Completed meetings for this closer
+          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
         }
 
         const falta = Math.max(0, metaVendas - realizado);
@@ -618,11 +660,12 @@ export default function CRMHeadComercialPage() {
           pipelineValue, pipelineCount,
           yesterdayMeetings, todayMeetings,
           monthMeetings, monthAgendamentos,
+          yesterdayScheduledMeetings, monthCompletedMeetings,
           falta, percentAtingido, projecao, ritmo,
         };
       })
       .sort((a, b) => b.percentAtingido - a.percentAtingido);
-  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, elapsedBizDays, totalBizDays, remainingBizDays]);
+  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, meetingsScheduledYesterday, elapsedBizDays, totalBizDays, remainingBizDays]);
 
   const closersPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "closer"), [staffPerformance]);
   const sdrsPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "sdr"), [staffPerformance]);
@@ -1309,12 +1352,22 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
               )}
             </div>
 
+            {/* SDR extras - reuniões agendadas para ontem + realizadas */}
+            {!isCloser && (
+              <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-white/5">
+                <MetricBlock label="Reun. p/ Ontem" value={String(p.yesterdayScheduledMeetings)} />
+                <MetricBlock label="Realizadas (mês)" value={String(p.monthCompletedMeetings)} good={p.monthCompletedMeetings > 0} />
+                <MetricBlock label="Agend. no Mês" value={String(p.monthMeetings)} />
+              </div>
+            )}
+
             {/* Closer extras */}
             {isCloser && (
-              <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-white/5">
+              <div className="grid grid-cols-4 gap-3 mt-2 pt-2 border-t border-white/5">
                 <MetricBlock label="Forecast" value={formatCompact(p.forecastValue)} />
                 <MetricBlock label="Reuniões Ontem" value={String(p.yesterdayMeetings)} />
                 <MetricBlock label="Reuniões Hoje" value={String(p.todayMeetings)} />
+                <MetricBlock label="Realizadas (mês)" value={String(p.monthCompletedMeetings)} good={p.monthCompletedMeetings > 0} />
               </div>
             )}
 
