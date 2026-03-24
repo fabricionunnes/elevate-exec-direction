@@ -614,7 +614,13 @@ Deno.serve(async (req) => {
           }
 
           const pdfArrayBuffer = await pdfRes.arrayBuffer();
-          const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
+          const pdfBytes = new Uint8Array(pdfArrayBuffer);
+          let binaryString = "";
+          const chunkSize = 8192;
+          for (let i = 0; i < pdfBytes.length; i += chunkSize) {
+            binaryString += String.fromCharCode(...pdfBytes.subarray(i, i + chunkSize));
+          }
+          const pdfBase64 = btoa(binaryString);
 
           // Format phone number
           const cleanPhone = phone.replace(/\D/g, "");
