@@ -1,4 +1,3 @@
-import { useState } from "react";
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { CheckCircle, XCircle, Calendar, AlertTriangle, ArrowUpRight, ChevronDown, ChevronUp } from "lucide-react";
