@@ -403,10 +403,15 @@ export const ClientCRMApiDocs = () => {
                   { name: "lead_id", type: "uuid", required: true, description: "ID do lead a ser atualizado" },
                   { name: "status", type: "string", required: true, description: 'Status do lead: "won" (ganho) ou "lost" (perdido)' },
                   { name: "opportunity_value", type: "number", required: false, description: "Valor do negócio em reais (ex: 5000)" },
+                  { name: "paid_value", type: "number", required: false, description: "Valor pago em reais. Se informado, cria um Contas a Receber já como pago" },
+                  { name: "bank_id", type: "uuid", required: false, description: "ID do banco onde o pagamento foi recebido. Se informado junto com paid_value, credita o banco" },
+                  { name: "payment_method", type: "string", required: false, description: 'Forma de pagamento (ex: "pix", "cartao", "boleto", "transferencia"). Padrão: "pix"' },
+                  { name: "description", type: "string", required: false, description: "Descrição do recebível financeiro. Padrão: nome da empresa/lead" },
+                  { name: "company_id", type: "uuid", required: false, description: "ID da empresa no financeiro (para vincular ao cliente correto)" },
                   { name: "closer_staff_id", type: "uuid", required: false, description: "ID do closer responsável pelo fechamento" },
                   { name: "notes", type: "string", required: false, description: "Observações sobre o fechamento" },
                 ].map((f, i) => (
-                  <tr key={f.name} className={i < 4 ? "border-b" : ""}>
+                  <tr key={f.name} className={i < 9 ? "border-b" : ""}>
                     <td className="px-3 py-2">
                       <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{f.name}</code>
                     </td>
@@ -432,7 +437,7 @@ export const ClientCRMApiDocs = () => {
         <CardHeader className="pb-3">
           <CardTitle className="text-sm flex items-center gap-2">
             <Send className="h-4 w-4" />
-            Exemplo — Marcar como Ganho
+            Exemplo — Marcar como Ganho com Financeiro
           </CardTitle>
         </CardHeader>
         <CardContent className="space-y-4">
@@ -443,8 +448,11 @@ export const ClientCRMApiDocs = () => {
   -d '{
     "lead_id": "uuid-do-lead",
     "status": "won",
-    "opportunity_value": 5000,
-    "notes": "Fechamento via integração"
+    "paid_value": 5000,
+    "bank_id": "uuid-do-banco",
+    "payment_method": "pix",
+    "description": "Venda Empresa XYZ - Plano Premium",
+    "notes": "Pagamento confirmado via PIX"
   }'`} language="bash" />
 
           <CodeBlock code={`// Resposta de sucesso:
@@ -452,8 +460,20 @@ export const ClientCRMApiDocs = () => {
   "success": true,
   "lead_id": "uuid-do-lead",
   "status": "won",
-  "stage": "Ganho"
+  "stage": "Ganho",
+  "receivable_id": "uuid-do-recebivel",
+  "bank": "Banco Inter"
 }`} language="json" />
+
+          <div className="flex items-start gap-2 p-3 rounded-lg bg-primary/5 border border-primary/20">
+            <Code2 className="h-4 w-4 text-primary flex-shrink-0 mt-0.5" />
+            <div className="text-xs text-muted-foreground space-y-1">
+              <p><strong>Exemplo simples</strong> (só mover para ganho, sem financeiro):</p>
+              <code className="block bg-muted px-2 py-1 rounded font-mono text-[11px]">
+                {`{ "lead_id": "uuid", "status": "won", "opportunity_value": 5000 }`}
+              </code>
+            </div>
+          </div>
         </CardContent>
       </Card>
 
@@ -468,6 +488,25 @@ export const ClientCRMApiDocs = () => {
             <li>O <code className="bg-muted px-1 rounded font-mono">opportunity_value</code> atualiza o valor do negócio.</li>
             <li>Usa a mesma <code className="bg-muted px-1 rounded font-mono">x-api-key</code> do endpoint de criação de leads.</li>
           </ul>
+
+          <h4 className="font-medium text-sm mt-4">💰 Financeiro automático (quando <code className="bg-muted px-1 rounded font-mono text-xs">paid_value</code> é informado)</h4>
+          <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
+            <li>Cria um registro em <strong>Contas a Receber</strong> já com status <strong>"Pago"</strong>.</li>
+            <li>Se <code className="bg-muted px-1 rounded font-mono">bank_id</code> for informado, credita o valor no banco correspondente.</li>
+            <li>O nome do banco é retornado na resposta para confirmação.</li>
+            <li>A forma de pagamento pode ser: <code className="bg-muted px-1 rounded font-mono">pix</code>, <code className="bg-muted px-1 rounded font-mono">cartao</code>, <code className="bg-muted px-1 rounded font-mono">boleto</code>, <code className="bg-muted px-1 rounded font-mono">transferencia</code>.</li>
+          </ul>
+        </CardContent>
+      </Card>
+
+      {/* How to get bank_id */}
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <h4 className="font-medium text-sm">🏦 Como obter o <code className="bg-muted px-1 rounded font-mono text-xs">bank_id</code>?</h4>
+          <p className="text-xs text-muted-foreground">
+            Para obter o ID do banco, acesse o menu <strong>Financeiro → Bancos</strong> e copie o ID do banco desejado. 
+            Ou entre em contato com o administrador do sistema. Os bancos cadastrados são os mesmos que aparecem no módulo financeiro.
+          </p>
         </CardContent>
       </Card>
     </div>

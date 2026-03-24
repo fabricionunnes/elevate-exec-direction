@@ -29,7 +29,19 @@ Deno.serve(async (req) => {
     }
 
     const body = await req.json();
-    const { lead_id, status, opportunity_value, closer_staff_id, notes } = body;
+    const {
+      lead_id,
+      status,
+      opportunity_value,
+      closer_staff_id,
+      notes,
+      // Financial fields
+      paid_value,
+      bank_id,
+      payment_method,
+      description,
+      company_id,
+    } = body;
 
     if (!lead_id) {
       return new Response(JSON.stringify({ error: 'Campo obrigatório: lead_id' }), {
@@ -50,10 +62,10 @@ Deno.serve(async (req) => {
       Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
     );
 
-    // 1. Verify lead exists and get its pipeline
+    // 1. Verify lead exists and get its pipeline + data
     const { data: lead, error: leadError } = await supabase
       .from('crm_leads')
-      .select('id, pipeline_id, name, phone, email')
+      .select('id, pipeline_id, name, phone, email, company, opportunity_value')
       .eq('id', lead_id)
       .single();
 
@@ -85,13 +97,16 @@ Deno.serve(async (req) => {
 
     // 3. Build update data
     const now = new Date().toISOString();
+    const today = now.split('T')[0];
+    const finalValue = opportunity_value ?? paid_value ?? lead.opportunity_value;
+
     const updateData: Record<string, any> = {
       stage_id: targetStage.id,
       closed_at: now,
     };
 
-    if (opportunity_value !== undefined && opportunity_value !== null) {
-      updateData.opportunity_value = opportunity_value;
+    if (finalValue !== undefined && finalValue !== null) {
+      updateData.opportunity_value = finalValue;
     }
 
     if (closer_staff_id) {
@@ -122,10 +137,86 @@ Deno.serve(async (req) => {
 
     console.log(`[update-lead-status] Lead ${lead_id} marked as ${status}`);
 
-    // 5. If won, send notification (optional, best-effort)
+    // 5. If won + paid_value, create financial receivable as paid + bank transaction
+    let receivableId: string | null = null;
+    let bankName: string | null = null;
+
+    if (status === 'won' && paid_value && paid_value > 0) {
+      const receivableDescription = description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
+      const referenceMonth = today.substring(0, 7); // yyyy-MM
+
+      // Validate bank_id if provided
+      if (bank_id) {
+        const { data: bank } = await supabase
+          .from('financial_banks')
+          .select('id, name')
+          .eq('id', bank_id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!bank) {
+          return new Response(JSON.stringify({ error: 'Banco não encontrado ou inativo' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+        bankName = bank.name;
+      }
+
+      // Create receivable already as paid
+      const { data: receivable, error: recError } = await supabase
+        .from('financial_receivables')
+        .insert({
+          amount: paid_value,
+          paid_amount: paid_value,
+          description: receivableDescription,
+          due_date: today,
+          paid_date: today,
+          status: 'paid',
+          company_id: company_id || null,
+          custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
+          payment_method: payment_method || 'pix',
+          reference_month: referenceMonth,
+          bank_account_id: null,
+          notes: `Lead: ${lead.name || ''} | Criado via API`,
+        })
+        .select('id')
+        .single();
+
+      if (recError) {
+        console.error('[update-lead-status] Receivable error:', recError);
+      } else {
+        receivableId = receivable.id;
+        console.log(`[update-lead-status] Receivable created: ${receivable.id}`);
+      }
+
+      // Credit the bank if bank_id provided
+      if (bank_id && !recError) {
+        const amountCents = Math.round(paid_value * 100);
+        
+        // Increment bank balance
+        await supabase.rpc('increment_bank_balance' as any, {
+          p_bank_id: bank_id,
+          p_amount: amountCents,
+        });
+
+        // Create bank transaction
+        await supabase.from('financial_bank_transactions').insert({
+          bank_id: bank_id,
+          type: 'credit',
+          amount_cents: amountCents,
+          description: receivableDescription,
+          reference_type: 'receivable',
+          reference_id: receivableId,
+        } as any);
+
+        console.log(`[update-lead-status] Bank credited: ${bank_id} +${amountCents} cents`);
+      }
+    }
+
+    // 6. If won, send notification (optional, best-effort)
     if (status === 'won') {
       try {
-        // Load won notification settings
         const { data: settings } = await supabase
           .from('crm_settings')
           .select('setting_key, setting_value')
@@ -141,13 +232,16 @@ Deno.serve(async (req) => {
         });
 
         if (config.won_notification_enabled === 'true' && config.won_notification_instance_id && config.won_notification_group_jid) {
-          // Send notification via evolution-api edge function
+          const valueStr = paid_value ? `\n💵 *Valor pago:* R$ ${Number(paid_value).toLocaleString('pt-BR')}` : 
+                          (finalValue ? `\n💵 *Valor:* R$ ${Number(finalValue).toLocaleString('pt-BR')}` : '');
+          const bankStr = bankName ? `\n🏦 *Banco:* ${bankName}` : '';
+
           await supabase.functions.invoke('evolution-api', {
             body: {
               action: 'sendGroupText',
               instanceId: config.won_notification_instance_id,
               groupId: config.won_notification_group_jid,
-              message: `🎉 *NOVA VENDA FECHADA (via API)!*\n\n👤 *Lead:* ${lead.name || 'N/A'}\n📱 *Telefone:* ${lead.phone || 'N/A'}\n✉️ *Email:* ${lead.email || 'N/A'}${opportunity_value ? `\n💵 *Valor:* R$ ${Number(opportunity_value).toLocaleString('pt-BR')}` : ''}`,
+              message: `🎉 *NOVA VENDA FECHADA (via API)!*\n\n👤 *Lead:* ${lead.name || 'N/A'}\n📱 *Telefone:* ${lead.phone || 'N/A'}\n🏢 *Empresa:* ${lead.company || 'N/A'}${valueStr}${bankStr}`,
             },
           });
         }
@@ -161,6 +255,8 @@ Deno.serve(async (req) => {
       lead_id: lead_id,
       status: status,
       stage: targetStage.name,
+      receivable_id: receivableId,
+      bank: bankName,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
