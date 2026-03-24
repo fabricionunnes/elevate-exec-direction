@@ -25,6 +25,7 @@ import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceIn
 import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
+import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
@@ -120,6 +121,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     quantidade: 0,
   });
 
+  // Meeting event details for cards
+  const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
+
   useEffect(() => {
     loadPipelines();
   }, []);
@@ -200,7 +204,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         .from("crm_meeting_events")
         .select(`
           *,
-          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+          lead:crm_leads!crm_meeting_events_lead_id_fkey(id, name, company)
         `)
         .gte("event_date", periodStart.toISOString())
         .lte("event_date", periodEnd.toISOString());
@@ -280,10 +285,31 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
       
-      // Calculate meeting events metrics (from card buttons)
+      // Calculate meeting events metrics (from card buttons) - out_of_icp does NOT count as realized
       const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
       const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
       const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
+      
+      // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
+      const seenEventKeys = new Set<string>();
+      const eventDetails: MeetingEventDetail[] = (meetingEvents || [])
+        .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
+        .filter(e => {
+          const key = `${e.lead_id}-${e.event_type}`;
+          if (seenEventKeys.has(key)) return false;
+          seenEventKeys.add(key);
+          return true;
+        })
+        .map(e => ({
+          id: e.id,
+          lead_id: e.lead_id,
+          lead_name: e.lead?.name || "Lead",
+          lead_company: e.lead?.company || undefined,
+          event_type: e.event_type,
+          event_date: e.event_date,
+          credited_staff_name: e.credited_staff?.name || undefined,
+        }));
+      setMeetingEventDetails(eventDetails);
       
       // Combined totals (prefer meeting events when available, fallback to scheduled calls)
       const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
@@ -629,6 +655,15 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
             </div>
           </GlowCard>
         ))}
+      </div>
+
+      {/* ── Detalhamento de Reuniões ── */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-sky-400 shadow-lg shadow-emerald-500/30" />
+          Detalhamento das Reuniões
+        </h3>
+        <MeetingDetailCards events={meetingEventDetails} />
       </div>
 
       {/* ── KPIs de Atividade ── */}

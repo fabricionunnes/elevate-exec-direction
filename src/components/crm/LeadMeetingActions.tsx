@@ -6,13 +6,13 @@ import {
   TooltipProvider,
   TooltipTrigger,
 } from "@/components/ui/tooltip";
-import { Calendar, CheckCircle, XCircle, Loader2, FileSignature } from "lucide-react";
+import { Calendar, CheckCircle, XCircle, Loader2, FileSignature, AlertTriangle } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SendContractButton } from "./SendContractButton";
 
-export type MeetingEventType = "scheduled" | "realized" | "no_show";
+export type MeetingEventType = "scheduled" | "realized" | "no_show" | "out_of_icp";
 
 interface LeadMeetingActionsProps {
   leadId: string;
@@ -76,8 +76,8 @@ const trackMeetingEvent = async (
       event_date: eventDate,
     }];
 
-    // For realized/no_show: also credit the SDR who scheduled if different
-    if (eventType === "realized" || eventType === "no_show") {
+    // For realized/no_show/out_of_icp: also credit the SDR who scheduled if different
+    if (eventType === "realized" || eventType === "no_show" || eventType === "out_of_icp") {
       const { data: leadData } = await supabase
         .from("crm_leads")
         .select("scheduled_by_staff_id")
@@ -204,6 +204,7 @@ export function LeadMeetingActions({
           scheduled: "Reunião agendada registrada!",
           realized: "Reunião realizada registrada!",
           no_show: "No show registrado!",
+          out_of_icp: "Fora do ICP registrado!",
         };
         toast.success(labels[eventType]);
         onEventTracked?.();
@@ -275,6 +276,23 @@ export function LeadMeetingActions({
             <Loader2 className="h-3 w-3 animate-spin" />
           ) : (
             <XCircle className="h-3 w-3" />
+          )}
+        </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 rounded-full",
+            trackedEvents.has("out_of_icp") && "text-amber-500 bg-amber-50"
+          )}
+          onClick={(e) => handleTrackEvent(e, "out_of_icp")}
+          disabled={loading !== null}
+          title="Fora do ICP"
+        >
+          {loading === "out_of_icp" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <AlertTriangle className="h-3 w-3" />
           )}
         </Button>
         {showContractButton && (
@@ -367,6 +385,31 @@ export function LeadMeetingActions({
           </TooltipTrigger>
           <TooltipContent side="top" className="text-xs">
             No Show
+          </TooltipContent>
+        </Tooltip>
+
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-md hover:bg-amber-100 hover:text-amber-600",
+                trackedEvents.has("out_of_icp") &&
+                  "text-amber-500 bg-amber-50 border border-amber-200"
+              )}
+              onClick={(e) => handleTrackEvent(e, "out_of_icp")}
+              disabled={loading !== null}
+            >
+              {loading === "out_of_icp" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Fora do ICP
           </TooltipContent>
         </Tooltip>
 
