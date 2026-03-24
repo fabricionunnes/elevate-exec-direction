@@ -14,6 +14,7 @@ import { ClientCRMAtendimentos } from "./ClientCRMAtendimentos";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
 import { ClientCRMSettings } from "./ClientCRMSettings";
+import { ClientCRMMeetings } from "./ClientCRMMeetings";
 import { ClientCRMApiDocs } from "./ClientCRMApiDocs";
 import {
   BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2,
