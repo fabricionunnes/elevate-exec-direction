@@ -295,9 +295,20 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       ? rawSalesData.filter(s => s.closer_staff_id === selectedCloser)
       : rawSalesData;
 
+    const uniqueMeetingEvents = (() => {
+      const seen = new Set<string>();
+      return rawMeetingEvents.filter((event) => {
+        const attributedCloserId = event.lead?.owner_staff_id || event.credited_staff_id || "unassigned";
+        const key = `${event.lead_id}-${event.event_type}-${attributedCloserId}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    })();
+
     const meetingEvents = isCloserFilter
-      ? rawMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedCloser || e.credited_staff_id === selectedCloser)
-      : rawMeetingEvents;
+      ? uniqueMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedCloser)
+      : uniqueMeetingEvents;
 
     const calls = isCloserFilter
       ? rawCalls.filter(c => c.assigned_to === selectedCloser)
@@ -329,18 +340,9 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const totalSales = salesData.length;
     const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    // Calls metrics
-    const totalScheduledCalls = calls.length;
-    const totalCompletedCalls = calls.filter(c => c.status === "completed").length;
-    const totalNoShowCalls = calls.filter(c => c.status === "no_show").length;
-
-    const meetingEventsScheduled = meetingEvents.filter(e => e.event_type === "scheduled").length;
-    const meetingEventsRealized = meetingEvents.filter(e => e.event_type === "realized").length;
-    const meetingEventsNoShow = meetingEvents.filter(e => e.event_type === "no_show").length;
-
-    const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
-    const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
-    const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
+    const totalScheduled = meetingEvents.filter(e => e.event_type === "scheduled").length;
+    const totalCompleted = meetingEvents.filter(e => e.event_type === "realized").length;
+    const totalNoShow = meetingEvents.filter(e => e.event_type === "no_show").length;
 
     const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
     const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
@@ -395,34 +397,11 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
 
     // Closer metrics table (always show all closers in the table)
     const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
-      const closerCalls = rawCalls.filter(c => c.assigned_to === closer.id);
       const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-
-      // For closer performance: count by lead ownership (owner_staff_id), not credited_staff_id
-      const closerMeetingEvts = rawMeetingEvents.filter(e => e.lead?.owner_staff_id === closer.id);
-      // Deduplicate by lead_id + event_type to avoid double counting
-      const seenCloserKeys = new Set<string>();
-      const closerEventsScheduled = closerMeetingEvts.filter(e => {
-        if (e.event_type !== "scheduled") return false;
-        const key = `${e.lead_id}-scheduled`;
-        if (seenCloserKeys.has(key)) return false;
-        seenCloserKeys.add(key);
-        return true;
-      }).length;
-      const closerEventsRealized = closerMeetingEvts.filter(e => {
-        if (e.event_type !== "realized") return false;
-        const key = `${e.lead_id}-realized`;
-        if (seenCloserKeys.has(key)) return false;
-        seenCloserKeys.add(key);
-        return true;
-      }).length;
-
-      const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
-      const closerScheduledFromCalls = closerCalls.length;
-
-      const closerScheduled = closerEventsScheduled > 0 ? closerEventsScheduled : closerScheduledFromCalls;
-      const closerCompleted = closerEventsRealized > 0 ? closerEventsRealized : closerCompletedFromCalls;
+      const closerMeetingEvents = uniqueMeetingEvents.filter(e => e.lead?.owner_staff_id === closer.id);
+      const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
+      const closerCompleted = closerMeetingEvents.filter(e => e.event_type === "realized").length;
 
       const closerGoal = staffGoalsMap.get(closer.id);
       const closerMeta = closerGoal?.meta || (totalGoals.meta / (rawCloserStaff.length || 1));
