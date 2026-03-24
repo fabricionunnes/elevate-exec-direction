@@ -1,5 +1,6 @@
 import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
@@ -284,19 +285,22 @@ export function ChecklistMeetingScheduler({
 
       const attendees = leadEmail ? [leadEmail] : undefined;
 
-      const { data, error } = await supabase.functions.invoke(
-        "google-calendar?action=create-event",
-        {
-          body: {
-            title: meetingTitle,
-            description: `Agendamento via checklist CRM: ${checklistItemTitle}`,
-            startDateTime,
-            endDateTime,
-            attendees,
-            target_user_id: selectedStaffUserId,
-          },
-        }
-      );
+        const leadCardUrl = `${getPublicBaseUrl()}/#/crm?lead=${leadId}`;
+        const eventDescription = `Agendamento via checklist CRM: ${checklistItemTitle}\n\n📋 Link do lead no CRM: ${leadCardUrl}`;
+
+        const { data, error } = await supabase.functions.invoke(
+          "google-calendar?action=create-event",
+          {
+            body: {
+              title: meetingTitle,
+              description: eventDescription,
+              startDateTime,
+              endDateTime,
+              attendees,
+              target_user_id: selectedStaffUserId,
+            },
+          }
+        );
 
       if (error) throw error;
 
