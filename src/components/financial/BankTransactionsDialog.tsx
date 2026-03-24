@@ -196,7 +196,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
             </div>
           ) : (
             <>
-              <ScrollArea className="flex-1 min-h-0 max-h-[40vh]">
+              <ScrollArea className="flex-1 min-h-0 max-h-[50vh]">
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-2">
                   {paginatedTransactions.map((t) => (
