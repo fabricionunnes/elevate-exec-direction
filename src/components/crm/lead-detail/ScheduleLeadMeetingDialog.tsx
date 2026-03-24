@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { getPublicBaseUrl } from "@/lib/publicDomain";
 import {
   Dialog,
   DialogContent,
