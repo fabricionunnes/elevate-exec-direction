@@ -614,19 +614,38 @@ Deno.serve(async (req) => {
           }
 
           const pdfArrayBuffer = await pdfRes.arrayBuffer();
-          const pdfBytes = new Uint8Array(pdfArrayBuffer);
-          let binaryString = "";
-          const chunkSize = 8192;
-          for (let i = 0; i < pdfBytes.length; i += chunkSize) {
-            binaryString += String.fromCharCode(...pdfBytes.subarray(i, i + chunkSize));
+
+          // Upload PDF to Supabase Storage to get a public URL
+          const supabaseService = createClient(
+            Deno.env.get("SUPABASE_URL")!,
+            Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
+          );
+
+          const storagePath = `nfse-pdfs/${normalizedNfeioId}.pdf`;
+          const { error: uploadError } = await supabaseService.storage
+            .from("whatsapp-media")
+            .upload(storagePath, new Uint8Array(pdfArrayBuffer), {
+              contentType: "application/pdf",
+              upsert: true,
+            });
+
+          if (uploadError) {
+            console.error("Storage upload error:", uploadError);
+            throw new Error(`Falha ao fazer upload do PDF: ${uploadError.message}`);
           }
-          const pdfBase64 = btoa(binaryString);
+
+          const { data: urlData } = supabaseService.storage
+            .from("whatsapp-media")
+            .getPublicUrl(storagePath);
+
+          const pdfPublicUrl = urlData.publicUrl;
+          console.log("PDF uploaded to:", pdfPublicUrl);
 
           // Format phone number
           const cleanPhone = phone.replace(/\D/g, "");
           const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
 
-          // Send via Evolution API as document
+          // Send via Evolution API as document using public URL
           const fileName = `NFS-e${nfseNumber ? `-${nfseNumber}` : ""}.pdf`;
           const caption = `📄 *Nota Fiscal de Serviço*\n\nOlá ${tomadorName}, segue sua NFS-e${nfseNumber ? ` nº ${nfseNumber}` : ""} em anexo.`;
 
@@ -638,9 +657,9 @@ Deno.serve(async (req) => {
               apikey: instance.api_key,
             },
             body: JSON.stringify({
-              number: `${formattedPhone}@s.whatsapp.net`,
+              number: formattedPhone,
               mediatype: "document",
-              media: `data:application/pdf;base64,${pdfBase64}`,
+              media: pdfPublicUrl,
               caption,
               fileName,
             }),
