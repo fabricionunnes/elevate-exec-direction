@@ -164,6 +164,57 @@ export const CRMDashboardPage = () => {
 
         const { data: activitiesData } = await activitiesQuery;
 
+        // Load meeting events from CRM card buttons
+        let meetingEventsQuery = supabase
+          .from("crm_meeting_events")
+          .select(`
+            *,
+            credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+            lead:crm_leads!crm_meeting_events_lead_id_fkey(id, name, company, owner_staff_id, pipeline_id)
+          `)
+          .gte("event_date", start.toISOString())
+          .lte("event_date", end.toISOString());
+
+        if (selectedPipeline !== "all") {
+          meetingEventsQuery = meetingEventsQuery.eq("pipeline_id", selectedPipeline);
+        }
+
+        const { data: meetingEventsData } = await meetingEventsQuery;
+
+        // Filter meeting events by owner if needed
+        let filteredMeetingEvents = meetingEventsData || [];
+        if (selectedOwner !== "all" && isAdmin) {
+          filteredMeetingEvents = filteredMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedOwner);
+        }
+        if (!isAdmin && staffId) {
+          filteredMeetingEvents = filteredMeetingEvents.filter(e => e.lead?.owner_staff_id === staffId);
+        }
+
+        // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
+        const seenKeys = new Set<string>();
+        const eventDetails: MeetingEventDetail[] = filteredMeetingEvents
+          .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
+          .filter(e => {
+            const key = `${e.lead_id}-${e.event_type}`;
+            if (seenKeys.has(key)) return false;
+            seenKeys.add(key);
+            return true;
+          })
+          .map(e => ({
+            id: e.id,
+            lead_id: e.lead_id,
+            lead_name: e.lead?.name || "Lead",
+            lead_company: e.lead?.company || undefined,
+            event_type: e.event_type,
+            event_date: e.event_date,
+            credited_staff_name: e.credited_staff?.name || undefined,
+          }));
+        setMeetingEventDetails(eventDetails);
+
+        // Use meeting events for meeting counts (prefer over activities)
+        const meScheduled = filteredMeetingEvents.filter(e => e.event_type === "scheduled").length;
+        const meRealized = filteredMeetingEvents.filter(e => e.event_type === "realized").length;
+
         let filteredActivities = activitiesData || [];
         if (selectedPipeline !== "all") {
           filteredActivities = filteredActivities.filter(a => a.lead?.pipeline_id === selectedPipeline);
@@ -172,13 +223,16 @@ export const CRMDashboardPage = () => {
           filteredActivities = filteredActivities.filter(a => a.lead?.owner_staff_id === selectedOwner);
         }
 
-        const meetingsScheduled = filteredActivities.filter(a =>
+        const meetingsScheduledFromActivities = filteredActivities.filter(a =>
           a.type === "meeting" && a.scheduled_at
         ).length;
         
-        const meetingsHeld = filteredActivities.filter(a =>
+        const meetingsHeldFromActivities = filteredActivities.filter(a =>
           a.type === "meeting" && a.status === "completed"
         ).length;
+
+        const meetingsScheduled = meScheduled > 0 ? meScheduled : meetingsScheduledFromActivities;
+        const meetingsHeld = meRealized > 0 ? meRealized : meetingsHeldFromActivities;
         
         const proposalsSent = filteredActivities.filter(a =>
           a.type === "proposal" || a.title?.toLowerCase().includes("proposta")
