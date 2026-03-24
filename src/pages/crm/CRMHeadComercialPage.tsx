@@ -615,12 +615,21 @@ export default function CRMHeadComercialPage() {
         let monthMeetings: number;
         let monthAgendamentos: number;
         
+        // SDR: "reuniões agendadas para ontem" = meetings SCHEDULED for yesterday attributed to this SDR
+        let yesterdayScheduledMeetings: number;
+        // "Reuniões realizadas no mês" - completed meetings that count for both closer AND SDR
+        let monthCompletedMeetings: number;
+
         if (isSdr) {
           // SDR: count meetings CREATED on that day, using resolved_staff_id (from lead's scheduled_by or sdr)
           yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => a.resolved_staff_id === staff.id).length;
           todayMeetings = sdrCreatedToday.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthMeetings = sdrCreatedMonth.filter((a: any) => a.resolved_staff_id === staff.id).length;
           monthAgendamentos = monthMeetings;
+          // Meetings scheduled FOR yesterday attributed to this SDR
+          yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id).length;
+          // Completed meetings attributed to this SDR (reunião realizada counts for SDR too)
+          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
         } else {
           // Closer: count meetings SCHEDULED for that day
           yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
@@ -631,6 +640,10 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = activityStats.filter(
             (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
           ).length;
+          // Meetings scheduled for yesterday for this closer
+          yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // Completed meetings for this closer
+          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
         }
 
         const falta = Math.max(0, metaVendas - realizado);
@@ -647,6 +660,7 @@ export default function CRMHeadComercialPage() {
           pipelineValue, pipelineCount,
           yesterdayMeetings, todayMeetings,
           monthMeetings, monthAgendamentos,
+          yesterdayScheduledMeetings, monthCompletedMeetings,
           falta, percentAtingido, projecao, ritmo,
         };
       })
