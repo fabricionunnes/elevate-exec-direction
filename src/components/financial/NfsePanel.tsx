@@ -299,7 +299,10 @@ export function NfsePanel() {
       ? sanitizeUuidLikeValue(selectedInvoiceId)
       : null;
 
-    if (!companyId || !nfeioCompanyId || !form.serviceDescription || !form.amountCents || !form.tomadorName) {
+    const selectedCompany = onboardingCompanies.find((company: any) => company.id === companyId);
+    const effectiveTomadorName = sanitizeStringValue(selectedCompany?.name) ?? sanitizeStringValue(form.tomadorName);
+
+    if (!companyId || !nfeioCompanyId || !form.serviceDescription || !form.amountCents || !effectiveTomadorName) {
       toast.error("Preencha todos os campos obrigatórios com valores válidos.");
       return;
     }
