@@ -180,12 +180,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .lte("scheduled_at", filterEnd.toISOString());
       setRawCalls(calls || []);
 
-      // Load meeting events
+      // Load meeting events (include lead owner for closer attribution)
       const { data: meetingEvents } = await supabase
         .from("crm_meeting_events")
         .select(`
           *,
-          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+          lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id)
         `)
         .gte("event_date", filterStart.toISOString())
         .lte("event_date", filterEnd.toISOString());
