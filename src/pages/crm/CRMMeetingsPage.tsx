@@ -139,17 +139,40 @@ const CRMMeetingsPage = () => {
       const leadIds = [...new Set(allActivities.map(a => a.lead_id).filter(Boolean))];
       
       let realMeetingLeadIds = new Set<string>();
+      let meetingEventsByLead = new Map<string, string>();
       if (leadIds.length > 0) {
         const { data: meetingEvents } = await supabase
           .from("crm_meeting_events")
-          .select("lead_id")
-          .in("lead_id", leadIds)
-          .eq("event_type", "scheduled");
-        realMeetingLeadIds = new Set((meetingEvents || []).map(e => e.lead_id));
+          .select("lead_id, event_type")
+          .in("lead_id", leadIds);
+        
+        for (const e of (meetingEvents || [])) {
+          // Track which leads have scheduled events (to filter real meetings)
+          if (e.event_type === "scheduled") {
+            realMeetingLeadIds.add(e.lead_id);
+          }
+          // Track the latest meaningful status per lead (realized > no_show > out_of_icp > scheduled)
+          const current = meetingEventsByLead.get(e.lead_id);
+          const priority: Record<string, number> = { realized: 4, no_show: 3, out_of_icp: 3, scheduled: 1 };
+          if (!current || (priority[e.event_type] || 0) > (priority[current] || 0)) {
+            meetingEventsByLead.set(e.lead_id, e.event_type);
+          }
+        }
       }
 
       // Keep only activities whose lead has a real scheduled meeting event
-      const filtered = allActivities.filter(a => a.lead_id && realMeetingLeadIds.has(a.lead_id));
+      // Also sync status from crm_meeting_events
+      const filtered = allActivities
+        .filter(a => a.lead_id && realMeetingLeadIds.has(a.lead_id))
+        .map(a => {
+          const eventType = a.lead_id ? meetingEventsByLead.get(a.lead_id) : null;
+          if (eventType === "realized") {
+            return { ...a, status: "completed" };
+          } else if (eventType === "no_show" || eventType === "out_of_icp") {
+            return { ...a, status: "cancelled" };
+          }
+          return a;
+        });
       setMeetings(filtered);
       setSelectedIds(new Set());
     } catch (err) {
