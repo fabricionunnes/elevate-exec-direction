@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
