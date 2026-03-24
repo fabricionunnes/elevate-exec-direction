@@ -590,6 +590,23 @@ export const CRMLeadDetailPage = () => {
     if (!lead) return;
 
     try {
+      // Delete all related records first to avoid foreign key violations
+      const leadIdTables = [
+        "crm_lead_tags", "crm_lead_history", "crm_activities", "crm_attachments",
+        "crm_lead_files", "crm_custom_field_values", "crm_scheduled_calls",
+        "crm_sales", "crm_forecasts", "crm_meeting_events", "crm_activity_history",
+        "crm_lead_form_answers", "crm_transcriptions",
+        "crm_whatsapp_conversations", "crm_whatsapp_contacts", "instagram_conversations",
+      ];
+
+      for (const table of leadIdTables) {
+        await supabase.from(table as any).delete().eq("lead_id", lead.id);
+      }
+
+      // Clean references with different column names
+      await supabase.from("crm_clint_sync_log" as any).delete().eq("crm_lead_id", lead.id);
+      await supabase.from("onboarding_projects").update({ crm_lead_id: null } as any).eq("crm_lead_id", lead.id);
+
       const { error } = await supabase
         .from("crm_leads")
         .delete()
