@@ -43,6 +43,100 @@ function normalizeStringParam(value: unknown): string | null {
   return normalized;
 }
 
+function normalizeText(value: string): string {
+  return value
+    .toLowerCase()
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .trim();
+}
+
+async function resolveCityFromIbge(params: { city?: string | null; state?: string | null }) {
+  const city = normalizeStringParam(params.city);
+  const state = normalizeStringParam(params.state)?.toUpperCase() ?? null;
+
+  if (!city) return null;
+
+  try {
+    if (state) {
+      const ibgeRes = await fetch(
+        `https://servicodados.ibge.gov.br/api/v1/localidades/estados/${state}/municipios`,
+      );
+
+      if (ibgeRes.ok) {
+        const municipios = await ibgeRes.json();
+        const normalizedCity = normalizeText(city);
+        const found = municipios.find((m: any) => normalizeText(m.nome) === normalizedCity);
+
+        if (found) {
+          return { city: found.nome as string, state, code: String(found.id) };
+        }
+      }
+    }
+
+    const ibgeRes = await fetch("https://servicodados.ibge.gov.br/api/v1/localidades/municipios");
+    if (!ibgeRes.ok) return null;
+
+    const municipios = await ibgeRes.json();
+    const normalizedCity = normalizeText(city);
+    const found = municipios.find((m: any) => normalizeText(m.nome) === normalizedCity);
+
+    if (!found) return null;
+
+    return {
+      city: found.nome as string,
+      state: String(found?.microrregiao?.mesorregiao?.UF?.sigla || state || "").toUpperCase(),
+      code: String(found.id),
+    };
+  } catch (error) {
+    console.warn("IBGE city resolution failed:", error);
+    return null;
+  }
+}
+
+function deriveStateFromCep(cleanPostalCode: string): string | undefined {
+  if (!cleanPostalCode) return undefined;
+
+  const cepPrefix = parseInt(cleanPostalCode.substring(0, 2), 10);
+  const cepStateMap: Record<string, [number, number][]> = {
+    SP: [[1, 19]],
+    RJ: [[20, 28]],
+    ES: [[29, 29]],
+    MG: [[30, 39]],
+    BA: [[40, 48]],
+    SE: [[49, 49]],
+    PE: [[50, 56]],
+    AL: [[57, 57]],
+    PB: [[58, 58]],
+    RN: [[59, 59]],
+    CE: [[60, 63]],
+    PI: [[64, 64]],
+    MA: [[65, 65]],
+    PA: [[66, 68]],
+    AP: [[68, 68]],
+    AM: [[69, 69]],
+    RR: [[69, 69]],
+    DF: [[70, 73]],
+    GO: [[74, 76]],
+    TO: [[77, 77]],
+    MT: [[78, 78]],
+    MS: [[79, 79]],
+    PR: [[80, 87]],
+    SC: [[88, 89]],
+    RS: [[90, 99]],
+  };
+
+  for (const [uf, ranges] of Object.entries(cepStateMap)) {
+    for (const [min, max] of ranges) {
+      if (cepPrefix >= min && cepPrefix <= max) {
+        return uf;
+      }
+    }
+  }
+
+  return undefined;
+}
+
 function normalizeUuidParam(
   value: unknown,
   options: { required?: boolean; fieldName?: string } = {},
@@ -149,19 +243,43 @@ Deno.serve(async (req) => {
         const issuerCompany = await nfeioRequest(`/companies/${normalizedNfeioCompanyId}`);
         const shouldZeroIssRate = issuerCompany?.taxRegime === "SimplesNacional" && issuerCompany?.municipalTaxDetermination === "SimplesNacional";
 
+        const { data: companyData, error: companyError } = await supabase
+          .from("onboarding_companies")
+          .select("name, cnpj, email, address, address_number, address_complement, address_neighborhood, address_city, address_state, address_zipcode")
+          .eq("id", normalizedCompanyId)
+          .maybeSingle();
+
+        if (companyError) {
+          console.error("Failed to load onboarding company for NFS-e:", companyError);
+        }
+
+        const companySource = companyData || {};
+        console.info("NFS-e company source:", JSON.stringify(companySource));
+
+        const effectiveTomadorName = normalizeStringParam(companySource.name) ?? normalizeStringParam(tomadorName);
+        const effectiveTomadorDocument = normalizeStringParam(companySource.cnpj) ?? normalizeStringParam(tomadorDocument);
+        const effectiveTomadorEmail = normalizeStringParam(companySource.email) ?? normalizeStringParam(tomadorEmail);
+        const effectiveStreet = normalizeStringParam(companySource.address) ?? normalizeStringParam(tomadorStreet);
+        const effectiveNumber = normalizeStringParam(companySource.address_number) ?? normalizeStringParam(tomadorNumber);
+        const effectiveComplement = normalizeStringParam(companySource.address_complement) ?? normalizeStringParam(tomadorComplement);
+        const effectiveNeighborhood = normalizeStringParam(companySource.address_neighborhood) ?? normalizeStringParam(tomadorNeighborhood);
+        const effectiveCity = normalizeStringParam(companySource.address_city) ?? normalizeStringParam(tomadorCity);
+        const effectiveState = normalizeStringParam(companySource.address_state)?.toUpperCase() ?? normalizeStringParam(tomadorState)?.toUpperCase() ?? undefined;
+        const effectivePostalCode = normalizeStringParam(companySource.address_zipcode) ?? normalizeStringParam(tomadorPostalCode);
+
         const borrower: any = {
-          name: tomadorName,
-          federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
-          email: tomadorEmail || undefined,
+          name: effectiveTomadorName,
+          federalTaxNumber: effectiveTomadorDocument?.replace(/\D/g, "") || undefined,
+          email: effectiveTomadorEmail || undefined,
         };
 
-        const cleanPostalCode = (tomadorPostalCode || "").replace(/\D/g, "");
+        const cleanPostalCode = (effectivePostalCode || "").replace(/\D/g, "");
         
         // Try to enrich address data via ViaCEP if we have a postal code
-        let enrichedCity = (tomadorCity && String(tomadorCity).trim()) || undefined;
-        let enrichedState = (tomadorState && String(tomadorState).trim()) || undefined;
-        let enrichedDistrict = (tomadorNeighborhood && String(tomadorNeighborhood).trim()) || undefined;
-        let enrichedStreet = (tomadorStreet && String(tomadorStreet).trim()) || undefined;
+        let enrichedCity = effectiveCity || undefined;
+        let enrichedState = effectiveState || undefined;
+        let enrichedDistrict = effectiveNeighborhood || undefined;
+        let enrichedStreet = effectiveStreet || undefined;
         let ibgeCityCode: string | undefined;
         
         if (cleanPostalCode && cleanPostalCode.length === 8) {
@@ -188,45 +306,21 @@ Deno.serve(async (req) => {
           }
         }
         
-        // If state is still empty, try to derive from CEP prefix (SP fallback for 01xxx-19xxx)
+        if ((!enrichedState || !ibgeCityCode) && enrichedCity) {
+          const resolvedFromCity = await resolveCityFromIbge({ city: enrichedCity, state: enrichedState });
+          if (resolvedFromCity) {
+            enrichedCity = resolvedFromCity.city || enrichedCity;
+            enrichedState = resolvedFromCity.state || enrichedState;
+            ibgeCityCode = resolvedFromCity.code || ibgeCityCode;
+            console.info("IBGE city resolution applied:", JSON.stringify(resolvedFromCity));
+          }
+        }
+
+        // If state is still empty, try to derive from CEP prefix
         if (!enrichedState && cleanPostalCode) {
-          const cepPrefix = parseInt(cleanPostalCode.substring(0, 2), 10);
-          const cepStateMap: Record<string, [number, number][]> = {
-            SP: [[1, 19]],
-            RJ: [[20, 28]],
-            ES: [[29, 29]],
-            MG: [[30, 39]],
-            BA: [[40, 48]],
-            SE: [[49, 49]],
-            PE: [[50, 56]],
-            AL: [[57, 57]],
-            PB: [[58, 58]],
-            RN: [[59, 59]],
-            CE: [[60, 63]],
-            PI: [[64, 64]],
-            MA: [[65, 65]],
-            PA: [[66, 68]],
-            AP: [[68, 68]],
-            AM: [[69, 69]],
-            RR: [[69, 69]],
-            DF: [[70, 73]],
-            GO: [[74, 76]],
-            TO: [[77, 77]],
-            MT: [[78, 78]],
-            MS: [[79, 79]],
-            PR: [[80, 87]],
-            SC: [[88, 89]],
-            RS: [[90, 99]],
-          };
-          for (const [uf, ranges] of Object.entries(cepStateMap)) {
-            for (const [min, max] of ranges) {
-              if (cepPrefix >= min && cepPrefix <= max) {
-                enrichedState = uf;
-                console.info("State derived from CEP prefix:", uf);
-                break;
-              }
-            }
-            if (enrichedState) break;
+          enrichedState = deriveStateFromCep(cleanPostalCode);
+          if (enrichedState) {
+            console.info("State derived from CEP prefix:", enrichedState);
           }
         }
         
@@ -236,9 +330,9 @@ Deno.serve(async (req) => {
             const ibgeRes = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${enrichedState}/municipios`);
             if (ibgeRes.ok) {
               const municipios = await ibgeRes.json();
-              const normalizedCity = enrichedCity.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const normalizedCity = normalizeText(enrichedCity);
               const found = municipios.find((m: any) => {
-                const mName = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                const mName = normalizeText(m.nome);
                 return mName === normalizedCity;
               });
               if (found) {
@@ -264,8 +358,8 @@ Deno.serve(async (req) => {
             country: "BRA",
             postalCode: cleanPostalCode || undefined,
             street: enrichedStreet || undefined,
-            number: tomadorNumber || undefined,
-            additionalInformation: tomadorComplement || undefined,
+            number: effectiveNumber || undefined,
+            additionalInformation: effectiveComplement || undefined,
             district: enrichedDistrict || undefined,
             city: Object.keys(cityObj).length > 0 ? cityObj : undefined,
             state: enrichedState || undefined,
@@ -309,9 +403,9 @@ Deno.serve(async (req) => {
             status: mapNfeioStatus(result.status),
             amount_cents: Math.round(amountInReais * 100),
             service_description: serviceDescription,
-            tomador_name: tomadorName,
-            tomador_document: tomadorDocument,
-            tomador_email: tomadorEmail,
+            tomador_name: effectiveTomadorName,
+            tomador_document: effectiveTomadorDocument,
+            tomador_email: effectiveTomadorEmail,
             city_service_code: cityServiceCode || "170601",
             error_message: result.flowStatus === "IssueFailed" ? result.flowMessage || null : null,
             pdf_url: result.pdfUrl || null,
