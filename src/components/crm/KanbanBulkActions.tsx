@@ -217,10 +217,10 @@ export const KanbanBulkActions = ({
       ];
 
       for (const table of relatedTables) {
-        await supabase.from(table).delete().in("lead_id", selectedLeads);
+        await supabase.from(table as any).delete().in("lead_id", selectedLeads);
       }
 
-      await supabase.from("crm_clint_sync_log").delete().in("crm_lead_id", selectedLeads);
+      await supabase.from("crm_clint_sync_log" as any).delete().in("crm_lead_id", selectedLeads);
 
       const { error } = await supabase
         .from("crm_leads")
