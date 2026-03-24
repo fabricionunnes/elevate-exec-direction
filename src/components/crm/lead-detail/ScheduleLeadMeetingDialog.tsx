@@ -176,7 +176,7 @@ export const ScheduleLeadMeetingDialog = ({
 
       // Build description with lead card link
       const baseUrl = getPublicBaseUrl();
-      const leadCardUrl = `${baseUrl}/#/crm?lead=${leadId}`;
+      const leadCardUrl = `${baseUrl}/#/crm/leads/${leadId}`;
       const descriptionParts: string[] = [];
       if (formData.description) {
         descriptionParts.push(formData.description);
