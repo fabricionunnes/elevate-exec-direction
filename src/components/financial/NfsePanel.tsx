@@ -100,6 +100,13 @@ export function NfsePanel() {
     tomadorName: "",
     tomadorDocument: "",
     tomadorEmail: "",
+    tomadorStreet: "",
+    tomadorNumber: "",
+    tomadorComplement: "",
+    tomadorNeighborhood: "",
+    tomadorCity: "",
+    tomadorState: "",
+    tomadorPostalCode: "",
     cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
     nbsCode: DEFAULT_NBS_CODE,
   });
@@ -113,7 +120,7 @@ export function NfsePanel() {
   const loadOnboardingCompanies = async () => {
     const { data } = await supabase
       .from("onboarding_companies")
-      .select("id, name, cnpj, email")
+      .select("id, name, cnpj, email, address, address_number, address_complement, address_neighborhood, address_city, address_state, address_zipcode")
       .eq("status", "active")
       .order("name");
     if (data) setOnboardingCompanies(data);
@@ -147,6 +154,13 @@ export function NfsePanel() {
         tomadorName: company.name || prev.tomadorName,
         tomadorDocument: company.cnpj || prev.tomadorDocument,
         tomadorEmail: company.email || prev.tomadorEmail,
+        tomadorStreet: company.address || prev.tomadorStreet,
+        tomadorNumber: company.address_number || prev.tomadorNumber,
+        tomadorComplement: company.address_complement || prev.tomadorComplement,
+        tomadorNeighborhood: company.address_neighborhood || prev.tomadorNeighborhood,
+        tomadorCity: company.address_city || prev.tomadorCity,
+        tomadorState: company.address_state || prev.tomadorState,
+        tomadorPostalCode: company.address_zipcode || prev.tomadorPostalCode,
       }));
       loadCompanyInvoices(companyId);
     } else {
@@ -264,6 +278,13 @@ export function NfsePanel() {
       tomadorName: "",
       tomadorDocument: "",
       tomadorEmail: "",
+      tomadorStreet: "",
+      tomadorNumber: "",
+      tomadorComplement: "",
+      tomadorNeighborhood: "",
+      tomadorCity: "",
+      tomadorState: "",
+      tomadorPostalCode: "",
       cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
       nbsCode: DEFAULT_NBS_CODE,
     });

@@ -119,6 +119,13 @@ Deno.serve(async (req) => {
           tomadorName,
           tomadorDocument,
           tomadorEmail,
+          tomadorStreet,
+          tomadorNumber,
+          tomadorComplement,
+          tomadorNeighborhood,
+          tomadorCity,
+          tomadorState,
+          tomadorPostalCode,
           cityServiceCode,
           nbsCode,
         } = params;
@@ -142,17 +149,33 @@ Deno.serve(async (req) => {
         const issuerCompany = await nfeioRequest(`/companies/${normalizedNfeioCompanyId}`);
         const shouldZeroIssRate = issuerCompany?.taxRegime === "SimplesNacional" && issuerCompany?.municipalTaxDetermination === "SimplesNacional";
 
+        const borrower: any = {
+          name: tomadorName,
+          federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
+          email: tomadorEmail || undefined,
+        };
+
+        const cleanPostalCode = (tomadorPostalCode || "").replace(/\D/g, "");
+        if (tomadorStreet || cleanPostalCode || tomadorCity) {
+          borrower.address = {
+            country: "BRA",
+            postalCode: cleanPostalCode || undefined,
+            street: tomadorStreet || undefined,
+            number: tomadorNumber || undefined,
+            additionalInformation: tomadorComplement || undefined,
+            district: tomadorNeighborhood || undefined,
+            city: tomadorCity ? { name: tomadorCity } : undefined,
+            state: tomadorState || undefined,
+          };
+        }
+
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
           ...(validNbsCode ? { nbsCode: validNbsCode } : {}),
           ...(shouldZeroIssRate ? { issRate: 0 } : {}),
           description: serviceDescription,
           servicesAmount: amountInReais,
-          borrower: {
-            name: tomadorName,
-            federalTaxNumber: tomadorDocument?.replace(/\D/g, "") || undefined,
-            email: tomadorEmail || undefined,
-          },
+          borrower,
         };
 
         if (normalizedNbsCode && !validNbsCode) {
