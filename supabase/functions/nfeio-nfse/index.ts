@@ -522,6 +522,7 @@ Deno.serve(async (req) => {
       }
 
       case "download-pdf": {
+        // falls through to download-pdf logic
         const normalizedNfeioCompanyId = normalizeStringParam(params.nfeioCompanyId) ?? "";
         const normalizedNfeioId = normalizeStringParam(params.nfeioId) ?? "";
         const apiKey = Deno.env.get("NFEIO_API_KEY");
@@ -557,6 +558,101 @@ Deno.serve(async (req) => {
       }
 
       default:
+        // Check send-whatsapp before unknown action
+        if (action === "send-whatsapp") {
+          const normalizedNfeioCompanyId = normalizeStringParam(params.nfeioCompanyId) ?? "";
+          const normalizedNfeioId = normalizeStringParam(params.nfeioId) ?? "";
+          const phone = normalizeStringParam(params.phone) ?? "";
+          const tomadorName = normalizeStringParam(params.tomadorName) ?? "Cliente";
+          const nfseNumber = normalizeStringParam(params.nfseNumber) ?? "";
+          const apiKey = Deno.env.get("NFEIO_API_KEY");
+
+          if (!apiKey) throw new Error("NFEIO_API_KEY not configured");
+          if (!normalizedNfeioCompanyId || !normalizedNfeioId) {
+            throw new Error("Parâmetros obrigatórios ausentes para enviar a NFS-e");
+          }
+          if (!phone) {
+            throw new Error("Telefone do cliente não informado");
+          }
+
+          // Get the financial WhatsApp instance
+          const { data: defaultConfig } = await supabase
+            .from("whatsapp_default_config")
+            .select("setting_value")
+            .eq("setting_key", "default_instance")
+            .maybeSingle();
+
+          const instanceName = defaultConfig?.setting_value;
+          if (!instanceName) {
+            throw new Error("Nenhuma instância WhatsApp configurada no módulo financeiro");
+          }
+
+          // Get instance credentials
+          const { data: instance } = await supabase
+            .from("whatsapp_instances")
+            .select("api_url, api_key, instance_name")
+            .eq("instance_name", instanceName)
+            .maybeSingle();
+
+          if (!instance?.api_url || !instance?.api_key) {
+            throw new Error("Instância WhatsApp não encontrada ou sem credenciais");
+          }
+
+          // Download PDF from NFE.io
+          const pdfRes = await fetch(
+            `${NFEIO_BASE}/companies/${normalizedNfeioCompanyId}/serviceinvoices/${normalizedNfeioId}/pdf`,
+            {
+              headers: {
+                Authorization: apiKey,
+                Accept: "application/pdf",
+              },
+            },
+          );
+
+          if (!pdfRes.ok) {
+            throw new Error(`Falha ao baixar PDF da NFS-e: ${pdfRes.status}`);
+          }
+
+          const pdfArrayBuffer = await pdfRes.arrayBuffer();
+          const pdfBase64 = btoa(String.fromCharCode(...new Uint8Array(pdfArrayBuffer)));
+
+          // Format phone number
+          const cleanPhone = phone.replace(/\D/g, "");
+          const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
+
+          // Send via Evolution API as document
+          const fileName = `NFS-e${nfseNumber ? `-${nfseNumber}` : ""}.pdf`;
+          const caption = `📄 *Nota Fiscal de Serviço*\n\nOlá ${tomadorName}, segue sua NFS-e${nfseNumber ? ` nº ${nfseNumber}` : ""} em anexo.`;
+
+          const baseUrl = instance.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+          const sendRes = await fetch(`${baseUrl}/message/sendMedia/${instance.instance_name}`, {
+            method: "POST",
+            headers: {
+              "Content-Type": "application/json",
+              apikey: instance.api_key,
+            },
+            body: JSON.stringify({
+              number: formattedPhone,
+              mediatype: "document",
+              mimetype: "application/pdf",
+              caption,
+              media: `data:application/pdf;base64,${pdfBase64}`,
+              fileName,
+            }),
+          });
+
+          if (!sendRes.ok) {
+            const errText = await sendRes.text();
+            console.error("WhatsApp send error:", errText);
+            throw new Error(`Falha ao enviar via WhatsApp: ${sendRes.status}`);
+          }
+
+          return new Response(
+            JSON.stringify({ success: true, message: "NFS-e enviada via WhatsApp com sucesso" }),
+            { headers: { ...corsHeaders, "Content-Type": "application/json" } },
+          );
+        }
+
         return new Response(JSON.stringify({ error: "Unknown action" }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
