@@ -672,7 +672,7 @@ export default function CRMHeadComercialPage() {
           pipelineValue, pipelineCount,
           yesterdayMeetings, todayMeetings,
           monthMeetings, monthAgendamentos,
-          yesterdayScheduledMeetings, monthCompletedMeetings,
+          yesterdayScheduledMeetings, monthCompletedMeetings, monthNoShowMeetings,
           falta, percentAtingido, projecao, ritmo,
         };
       })
