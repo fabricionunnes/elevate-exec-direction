@@ -417,11 +417,16 @@ export default function CRMHeadComercialPage() {
       const sdrTodayData = (sdrTodayRes.data || []) as any[];
       const sdrMonthData = (sdrMonthRes.data || []) as any[];
 
-      // Fetch lead SDR attribution for all unique lead_ids from SDR created activities
+      // Fetch lead SDR attribution for all unique lead_ids
+      const completedMeetingsData = (completedMeetingsRes.data || []) as any[];
+      const scheduledYesterdayData = (scheduledYesterdayRes.data || []) as any[];
+
       const allSdrLeadIds = [...new Set([
         ...sdrYesterdayData.map((a: any) => a.lead_id),
         ...sdrTodayData.map((a: any) => a.lead_id),
         ...sdrMonthData.map((a: any) => a.lead_id),
+        ...completedMeetingsData.map((a: any) => a.lead_id),
+        ...scheduledYesterdayData.map((a: any) => a.lead_id),
       ].filter(Boolean))];
 
       let leadSdrMap: Record<string, string> = {};
@@ -440,11 +445,14 @@ export default function CRMHeadComercialPage() {
       const enrichSdr = (items: any[]) => items.map((a: any) => ({
         ...a,
         resolved_staff_id: a.responsible_staff_id || (a.lead_id ? leadSdrMap[a.lead_id] : null),
+        resolved_sdr_id: a.lead_id ? leadSdrMap[a.lead_id] : null,
       }));
 
       setSdrCreatedYesterday(enrichSdr(sdrYesterdayData));
       setSdrCreatedToday(enrichSdr(sdrTodayData));
       setSdrCreatedMonth(enrichSdr(sdrMonthData));
+      setCompletedMeetingsMonth(enrichSdr(completedMeetingsData));
+      setMeetingsScheduledYesterday(enrichSdr(scheduledYesterdayData));
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
       const { data: forecastStages } = await supabase
