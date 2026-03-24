@@ -107,7 +107,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const now = new Date();
     switch (dateFilter) {
       case "today":
-        return { start: now, end: now };
+        return { start: startOfDay(now), end: endOfDay(now) };
       case "week":
         return { start: startOfWeek(now, { locale: ptBR }), end: endOfWeek(now, { locale: ptBR }) };
       case "month":
