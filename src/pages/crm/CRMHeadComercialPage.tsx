@@ -1352,12 +1352,22 @@ function StaffPerformanceCard({ perf, type }: { perf: StaffPerformance; type: "c
               )}
             </div>
 
+            {/* SDR extras - reuniões agendadas para ontem + realizadas */}
+            {!isCloser && (
+              <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-white/5">
+                <MetricBlock label="Reun. p/ Ontem" value={String(p.yesterdayScheduledMeetings)} />
+                <MetricBlock label="Realizadas (mês)" value={String(p.monthCompletedMeetings)} good={p.monthCompletedMeetings > 0} />
+                <MetricBlock label="Agend. no Mês" value={String(p.monthMeetings)} />
+              </div>
+            )}
+
             {/* Closer extras */}
             {isCloser && (
-              <div className="grid grid-cols-3 gap-3 mt-2 pt-2 border-t border-white/5">
+              <div className="grid grid-cols-4 gap-3 mt-2 pt-2 border-t border-white/5">
                 <MetricBlock label="Forecast" value={formatCompact(p.forecastValue)} />
                 <MetricBlock label="Reuniões Ontem" value={String(p.yesterdayMeetings)} />
                 <MetricBlock label="Reuniões Hoje" value={String(p.todayMeetings)} />
+                <MetricBlock label="Realizadas (mês)" value={String(p.monthCompletedMeetings)} good={p.monthCompletedMeetings > 0} />
               </div>
             )}
 
