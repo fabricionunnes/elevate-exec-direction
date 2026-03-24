@@ -154,6 +154,13 @@ export function NfsePanel() {
         tomadorName: company.name || prev.tomadorName,
         tomadorDocument: company.cnpj || prev.tomadorDocument,
         tomadorEmail: company.email || prev.tomadorEmail,
+        tomadorStreet: company.address || prev.tomadorStreet,
+        tomadorNumber: company.address_number || prev.tomadorNumber,
+        tomadorComplement: company.address_complement || prev.tomadorComplement,
+        tomadorNeighborhood: company.address_neighborhood || prev.tomadorNeighborhood,
+        tomadorCity: company.address_city || prev.tomadorCity,
+        tomadorState: company.address_state || prev.tomadorState,
+        tomadorPostalCode: company.address_zipcode || prev.tomadorPostalCode,
       }));
       loadCompanyInvoices(companyId);
     } else {
