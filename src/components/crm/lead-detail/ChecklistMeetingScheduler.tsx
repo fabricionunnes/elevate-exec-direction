@@ -285,7 +285,7 @@ export function ChecklistMeetingScheduler({
 
       const attendees = leadEmail ? [leadEmail] : undefined;
 
-        const leadCardUrl = `${getPublicBaseUrl()}/#/crm?lead=${leadId}`;
+        const leadCardUrl = `${getPublicBaseUrl()}/#/crm/leads/${leadId}`;
         const eventDescription = `Agendamento via checklist CRM: ${checklistItemTitle}\n\n📋 Link do lead no CRM: ${leadCardUrl}`;
 
         const { data, error } = await supabase.functions.invoke(
