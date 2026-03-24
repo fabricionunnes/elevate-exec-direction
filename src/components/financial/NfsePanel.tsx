@@ -14,6 +14,7 @@ import { ScrollArea } from "@/components/ui/scroll-area";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Command, CommandEmpty, CommandGroup, CommandInput, CommandItem, CommandList } from "@/components/ui/command";
 import { Loader2, FileText, Plus, RefreshCw, XCircle, Download, CheckCircle2, Clock, AlertTriangle, Receipt, Trash2, ChevronsUpDown, Check } from "lucide-react";
+ import { MessageSquare } from "lucide-react";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { toast } from "sonner";
 import { format } from "date-fns";
@@ -88,6 +89,7 @@ export function NfsePanel() {
   const { currentStaff, isMaster } = useStaffPermissions();
   const isAdmin = isMaster || currentStaff?.role === "admin";
   const [companySearchOpen, setCompanySearchOpen] = useState(false);
+   const [sendingWhatsApp, setSendingWhatsApp] = useState<string | null>(null);
 
   const DEFAULT_CITY_SERVICE_CODE = "170601";
   const DEFAULT_NBS_CODE = "";
@@ -455,6 +457,49 @@ export function NfsePanel() {
     }
   };
 
+   const handleSendWhatsApp = async (record: NfseRecord) => {
+     const nfeioId = sanitizeStringValue(record.nfeio_id);
+     const nfeioCompanyId = getDefaultNfeioCompanyId();
+
+     if (!nfeioId || !nfeioCompanyId) {
+       toast.error("Dados da NFS-e inválidos para envio.");
+       return;
+     }
+
+     // Get company phone from onboarding_companies via the nfse record's company_id
+     let phone = "";
+     if (record.company_id) {
+       const { data: company } = await supabase
+         .from("onboarding_companies")
+         .select("phone")
+         .eq("id", record.company_id)
+         .maybeSingle();
+       phone = company?.phone || "";
+     }
+
+     if (!phone) {
+       toast.error("Telefone do cliente não encontrado. Verifique o cadastro da empresa.");
+       return;
+     }
+
+     setSendingWhatsApp(record.id);
+     try {
+       await invokeNfseFunction({
+         action: "send-whatsapp",
+         nfeioCompanyId,
+         nfeioId,
+         phone,
+         tomadorName: record.tomador_name || "Cliente",
+         nfseNumber: record.number || "",
+       });
+       toast.success("NFS-e enviada via WhatsApp com sucesso!");
+     } catch (err: any) {
+       toast.error("Erro ao enviar via WhatsApp: " + err.message);
+     } finally {
+       setSendingWhatsApp(null);
+     }
+   };
+
   const formatCurrency = (cents: number) =>
     (cents / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
 
@@ -747,6 +792,22 @@ export function NfsePanel() {
                           <Download className="h-4 w-4" />
                         </Button>
                       )}
+                       {record.status === "authorized" && record.nfeio_id && (
+                         <Button
+                           type="button"
+                           variant="ghost"
+                           size="icon"
+                           onClick={() => handleSendWhatsApp(record)}
+                           disabled={sendingWhatsApp === record.id}
+                           title="Enviar NFS-e via WhatsApp"
+                         >
+                           {sendingWhatsApp === record.id ? (
+                             <Loader2 className="h-4 w-4 animate-spin" />
+                           ) : (
+                             <MessageSquare className="h-4 w-4 text-green-600" />
+                           )}
+                         </Button>
+                       )}
                       {record.status === "authorized" && record.nfeio_id && (
                         <Button variant="ghost" size="icon" onClick={() => handleCancel(record)} title="Cancelar NFS-e">
                           <XCircle className="h-4 w-4 text-destructive" />
