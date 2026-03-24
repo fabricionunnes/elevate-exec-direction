@@ -285,10 +285,31 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
       
-      // Calculate meeting events metrics (from card buttons)
+      // Calculate meeting events metrics (from card buttons) - out_of_icp does NOT count as realized
       const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
       const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
       const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
+      
+      // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
+      const seenEventKeys = new Set<string>();
+      const eventDetails: MeetingEventDetail[] = (meetingEvents || [])
+        .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
+        .filter(e => {
+          const key = `${e.lead_id}-${e.event_type}`;
+          if (seenEventKeys.has(key)) return false;
+          seenEventKeys.add(key);
+          return true;
+        })
+        .map(e => ({
+          id: e.id,
+          lead_id: e.lead_id,
+          lead_name: e.lead?.name || "Lead",
+          lead_company: e.lead?.company || undefined,
+          event_type: e.event_type,
+          event_date: e.event_date,
+          credited_staff_name: e.credited_staff?.name || undefined,
+        }));
+      setMeetingEventDetails(eventDetails);
       
       // Combined totals (prefer meeting events when available, fallback to scheduled calls)
       const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
