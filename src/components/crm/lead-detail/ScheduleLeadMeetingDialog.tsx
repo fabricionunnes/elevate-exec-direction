@@ -173,12 +173,21 @@ export const ScheduleLeadMeetingDialog = ({
         .map((e) => e.trim())
         .filter((e) => e.includes("@"));
 
+      // Build description with lead card link
+      const leadCardUrl = `${window.location.origin}/#/crm?lead=${leadId}`;
+      const descriptionParts: string[] = [];
+      if (formData.description) {
+        descriptionParts.push(formData.description);
+      }
+      descriptionParts.push(`📋 Link do lead no CRM: ${leadCardUrl}`);
+      const fullDescription = descriptionParts.join("\n\n");
+
       const { data, error } = await supabase.functions.invoke(
         "google-calendar?action=create-event",
         {
           body: {
             title: formData.title,
-            description: formData.description,
+            description: fullDescription,
             startDateTime,
             endDateTime,
             attendees: attendees.length > 0 ? attendees : undefined,
