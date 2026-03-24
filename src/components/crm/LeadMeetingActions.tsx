@@ -57,24 +57,45 @@ const trackMeetingEvent = async (
         .eq("id", leadId);
     }
 
-    // Create the meeting event
-    const { error } = await supabase.from("crm_meeting_events").insert({
+    const eventDate = new Date().toISOString();
+    const eventsToInsert: Array<Record<string, string>> = [{
       lead_id: leadId,
       pipeline_id: pipelineId,
       event_type: eventType,
       credited_staff_id: creditedStaffId,
       triggered_by_staff_id: triggeredByStaffId,
       stage_id: stageId,
-      event_date: new Date().toISOString(),
-    });
+      event_date: eventDate,
+    }];
+
+    // For realized/no_show: also credit the SDR who scheduled if different
+    if (eventType === "realized" || eventType === "no_show") {
+      const { data: leadData } = await supabase
+        .from("crm_leads")
+        .select("scheduled_by_staff_id")
+        .eq("id", leadId)
+        .single();
+
+      const sdrId = leadData?.scheduled_by_staff_id;
+      if (sdrId && sdrId !== creditedStaffId) {
+        eventsToInsert.push({
+          lead_id: leadId,
+          pipeline_id: pipelineId,
+          event_type: eventType,
+          credited_staff_id: sdrId,
+          triggered_by_staff_id: triggeredByStaffId,
+          stage_id: stageId,
+          event_date: eventDate,
+        });
+      }
+    }
+
+    const { error } = await supabase.from("crm_meeting_events").insert(eventsToInsert);
 
     if (error) {
       console.error("Error tracking meeting event:", error);
       return false;
     }
-
-    // NOTE: Double-credit logic removed to avoid duplicate counting
-    // Each event should only be credited once to the lead owner
 
     return true;
   } catch (error) {
