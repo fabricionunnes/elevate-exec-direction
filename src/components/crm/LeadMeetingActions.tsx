@@ -204,6 +204,7 @@ export function LeadMeetingActions({
           scheduled: "Reunião agendada registrada!",
           realized: "Reunião realizada registrada!",
           no_show: "No show registrado!",
+          out_of_icp: "Fora do ICP registrado!",
         };
         toast.success(labels[eventType]);
         onEventTracked?.();
