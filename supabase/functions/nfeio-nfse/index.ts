@@ -158,10 +158,10 @@ Deno.serve(async (req) => {
         const cleanPostalCode = (tomadorPostalCode || "").replace(/\D/g, "");
         
         // Try to enrich address data via ViaCEP if we have a postal code
-        let enrichedCity = tomadorCity || undefined;
-        let enrichedState = tomadorState || undefined;
-        let enrichedDistrict = tomadorNeighborhood || undefined;
-        let enrichedStreet = tomadorStreet || undefined;
+        let enrichedCity = (tomadorCity && String(tomadorCity).trim()) || undefined;
+        let enrichedState = (tomadorState && String(tomadorState).trim()) || undefined;
+        let enrichedDistrict = (tomadorNeighborhood && String(tomadorNeighborhood).trim()) || undefined;
+        let enrichedStreet = (tomadorStreet && String(tomadorStreet).trim()) || undefined;
         let ibgeCityCode: string | undefined;
         
         if (cleanPostalCode && cleanPostalCode.length === 8) {
@@ -170,10 +170,13 @@ Deno.serve(async (req) => {
             if (viaCepRes.ok) {
               const viaCepData = await viaCepRes.json();
               if (!viaCepData.erro) {
-                enrichedCity = enrichedCity || viaCepData.localidade;
-                enrichedState = enrichedState || viaCepData.uf;
-                enrichedDistrict = enrichedDistrict || viaCepData.bairro;
-                enrichedStreet = enrichedStreet || viaCepData.logradouro;
+                // ViaCEP values take priority to fill gaps, but also override empty values
+                if (!enrichedCity && viaCepData.localidade) enrichedCity = viaCepData.localidade;
+                if (!enrichedState && viaCepData.uf) enrichedState = viaCepData.uf;
+                if (!enrichedDistrict && viaCepData.bairro) enrichedDistrict = viaCepData.bairro;
+                if (!enrichedStreet && viaCepData.logradouro) enrichedStreet = viaCepData.logradouro;
+                // Always use ViaCEP state if available (most reliable source)
+                if (viaCepData.uf) enrichedState = viaCepData.uf;
                 ibgeCityCode = viaCepData.ibge;
                 console.info("ViaCEP enrichment:", JSON.stringify({ city: enrichedCity, state: enrichedState, ibge: ibgeCityCode }));
               }
@@ -182,6 +185,8 @@ Deno.serve(async (req) => {
             console.warn("ViaCEP lookup failed, continuing without enrichment:", e);
           }
         }
+        
+        console.info("Final enriched address:", JSON.stringify({ street: enrichedStreet, city: enrichedCity, state: enrichedState, district: enrichedDistrict }));
 
         if (enrichedStreet || cleanPostalCode || enrichedCity) {
           const cityObj: any = {};
