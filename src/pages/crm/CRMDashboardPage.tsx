@@ -575,6 +575,9 @@ export const CRMDashboardPage = () => {
         ))}
       </div>
 
+      {/* Meeting Detail Cards */}
+      <MeetingDetailCards events={meetingEventDetails} />
+
       {/* Financial Metrics Row - Glassmorphism with vivid accents */}
       <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
         {[
