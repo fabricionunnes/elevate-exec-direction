@@ -638,11 +638,10 @@ Deno.serve(async (req) => {
               apikey: instance.api_key,
             },
             body: JSON.stringify({
-              number: formattedPhone,
+              number: `${formattedPhone}@s.whatsapp.net`,
               mediatype: "document",
-              mimetype: "application/pdf",
+              media: `data:application/pdf;base64,${pdfBase64}`,
               caption,
-              mediaUrl: `data:application/pdf;base64,${pdfBase64}`,
               fileName,
             }),
           });
