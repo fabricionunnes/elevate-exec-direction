@@ -63,6 +63,7 @@ const baseNavTabs = [
   { title: "Atendimento", href: "/crm/inbox", badge: true },
   { title: "Transcrições", href: "/crm/transcriptions" },
   { title: "Contratos", href: "/contratos" },
+  { title: "Reuniões", href: "/crm/meetings" },
   { title: "Escritório", href: "/crm/office" },
 ];
 

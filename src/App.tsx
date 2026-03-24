@@ -439,6 +439,7 @@ const AppShell = () => {
               <Route path="transcriptions" element={<CRMTranscriptionsPage />} />
               <Route path="reports" element={<CRMReportsPage />} />
               <Route path="settings" element={<CRMSettingsPage />} />
+              <Route path="meetings" element={<CRMMeetingsPage />} />
               <Route path="office" element={<CRMOfficePage />} />
               <Route path="head" element={<CRMHeadComercialPage />} />
               <Route path="api" element={<CRMApiPage />} />
