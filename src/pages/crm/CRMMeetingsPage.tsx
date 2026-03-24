@@ -133,7 +133,24 @@ const CRMMeetingsPage = () => {
       const { data, error } = await query;
       if (error) throw error;
 
-      setMeetings((data || []) as unknown as MeetingActivity[]);
+      // Filter out stage-action tasks (e.g. "Agendar reunião") that aren't real scheduled meetings
+      // Real meetings have a corresponding entry in crm_meeting_events
+      const allActivities = (data || []) as unknown as MeetingActivity[];
+      const leadIds = [...new Set(allActivities.map(a => a.lead_id).filter(Boolean))];
+      
+      let realMeetingLeadIds = new Set<string>();
+      if (leadIds.length > 0) {
+        const { data: meetingEvents } = await supabase
+          .from("crm_meeting_events")
+          .select("lead_id")
+          .in("lead_id", leadIds)
+          .eq("event_type", "scheduled");
+        realMeetingLeadIds = new Set((meetingEvents || []).map(e => e.lead_id));
+      }
+
+      // Keep only activities whose lead has a real scheduled meeting event
+      const filtered = allActivities.filter(a => a.lead_id && realMeetingLeadIds.has(a.lead_id));
+      setMeetings(filtered);
       setSelectedIds(new Set());
     } catch (err) {
       console.error("Error fetching meetings:", err);
