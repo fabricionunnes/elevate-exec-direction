@@ -292,7 +292,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       
       // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
       const seenEventKeys = new Set<string>();
-      const eventDetails: MeetingEventDetail[] = (meetingEvents || [])
+      const eventDetails: MeetingEventDetail[] = attributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
         .filter(e => {
           const key = `${e.lead_id}-${e.event_type}`;
@@ -308,6 +308,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           event_type: e.event_type,
           event_date: e.event_date,
           credited_staff_name: e.credited_staff?.name || undefined,
+          attributed_sdr_id: e.attributed_sdr_id || undefined,
         }));
       setMeetingEventDetails(eventDetails);
       
