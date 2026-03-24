@@ -38,9 +38,6 @@ const CardSection = ({
   borderColor: string;
   events: MeetingEventDetail[];
 }) => {
-  const [expanded, setExpanded] = useState(false);
-  const displayEvents = expanded ? events : events.slice(0, 5);
-
   return (
     <div className={cn(
       "relative overflow-hidden rounded-2xl bg-card border shadow-lg hover:shadow-xl transition-all",
@@ -62,45 +59,35 @@ const CardSection = ({
       </div>
 
       <div className="px-4 pb-3 relative z-10">
-        <div className="space-y-0.5">
+        <div className={cn("space-y-0.5", events.length > 5 && "max-h-[240px] overflow-y-auto pr-1 scrollbar-thin")}>
           {events.length === 0 ? (
             <p className="text-sm text-muted-foreground text-center py-4">Nenhum registro</p>
           ) : (
-            <>
-              {displayEvents.map(event => (
-                <Link
-                  key={event.id}
-                  to={`/crm/leads/${event.lead_id}`}
-                  className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-all group"
-                >
-                  <div className="min-w-0 flex-1">
-                    <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
-                      {event.lead_name}
-                    </p>
-                    <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
-                      {event.lead_company && <span className="truncate">{event.lead_company}</span>}
-                      <span>•</span>
-                      <span>{format(new Date(event.event_date), "dd/MM HH:mm", { locale: ptBR })}</span>
-                      {event.credited_staff_name && (
-                        <>
-                          <span>•</span>
-                          <span className="truncate">{event.credited_staff_name}</span>
-                        </>
-                      )}
-                    </div>
+            events.map(event => (
+              <Link
+                key={event.id}
+                to={`/crm/leads/${event.lead_id}`}
+                className="flex items-center justify-between p-2 rounded-xl hover:bg-muted/50 transition-all group"
+              >
+                <div className="min-w-0 flex-1">
+                  <p className="font-medium text-sm truncate group-hover:text-primary transition-colors">
+                    {event.lead_name}
+                  </p>
+                  <div className="flex items-center gap-2 text-[11px] text-muted-foreground">
+                    {event.lead_company && <span className="truncate">{event.lead_company}</span>}
+                    <span>•</span>
+                    <span>{format(new Date(event.event_date), "dd/MM HH:mm", { locale: ptBR })}</span>
+                    {event.credited_staff_name && (
+                      <>
+                        <span>•</span>
+                        <span className="truncate">{event.credited_staff_name}</span>
+                      </>
+                    )}
                   </div>
-                  <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-all" />
-                </Link>
-              ))}
-              {events.length > 5 && (
-                <button
-                  onClick={(e) => { e.preventDefault(); setExpanded(!expanded); }}
-                  className="w-full text-center text-xs text-muted-foreground hover:text-primary py-1.5 flex items-center justify-center gap-1 transition-colors"
-                >
-                  {expanded ? <><ChevronUp className="h-3 w-3" /> Mostrar menos</> : <><ChevronDown className="h-3 w-3" /> Ver todos ({events.length})</>}
-                </button>
-              )}
-            </>
+                </div>
+                <ArrowUpRight className="h-3.5 w-3.5 shrink-0 text-muted-foreground/50 group-hover:text-primary transition-all" />
+              </Link>
+            ))
           )}
         </div>
       </div>
