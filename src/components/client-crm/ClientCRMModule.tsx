@@ -159,7 +159,6 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
             onRefresh={crm.fetchAll}
           />
         </TabsContent>
-        </TabsContent>
 
         <TabsContent value="settings">
           <ClientCRMSettings
