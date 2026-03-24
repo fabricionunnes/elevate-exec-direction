@@ -309,6 +309,9 @@ const CRMMeetingsPage = () => {
                 case "today":
                   setDateRange({ from: now, to: now });
                   break;
+                case "tomorrow":
+                  setDateRange({ from: addDays(now, 1), to: addDays(now, 1) });
+                  break;
                 case "this_week":
                   setDateRange({ from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) });
                   break;
@@ -340,6 +343,7 @@ const CRMMeetingsPage = () => {
               <SelectItem value="custom" disabled className="text-muted-foreground text-xs">Período rápido</SelectItem>
               <SelectItem value="yesterday">Ontem</SelectItem>
               <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="tomorrow">Amanhã</SelectItem>
               <SelectItem value="this_week">Esta semana</SelectItem>
               <SelectItem value="last_week">Semana passada</SelectItem>
               <SelectItem value="this_month">Este mês</SelectItem>
