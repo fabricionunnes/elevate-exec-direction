@@ -15,6 +15,7 @@ export interface MeetingEventDetail {
   event_date: string;
   credited_staff_name?: string;
   sdr_name?: string;
+  attributed_sdr_id?: string;
 }
 
 interface MeetingDetailCardsProps {
