@@ -208,10 +208,20 @@ export const KanbanBulkActions = ({
     
     setLoading(true);
     try {
-      await supabase.from("crm_lead_tags").delete().in("lead_id", selectedLeads);
-      await supabase.from("crm_lead_history").delete().in("lead_id", selectedLeads);
-      await supabase.from("crm_activities").delete().in("lead_id", selectedLeads);
-      
+      const relatedTables = [
+        "crm_lead_tags", "crm_lead_history", "crm_activities", "crm_attachments",
+        "crm_lead_files", "crm_custom_field_values", "crm_scheduled_calls",
+        "crm_sales", "crm_forecasts", "crm_meeting_events", "crm_activity_history",
+        "crm_lead_form_answers", "crm_transcriptions",
+        "crm_whatsapp_conversations", "crm_whatsapp_contacts", "instagram_conversations",
+      ];
+
+      for (const table of relatedTables) {
+        await supabase.from(table).delete().in("lead_id", selectedLeads);
+      }
+
+      await supabase.from("crm_clint_sync_log").delete().in("crm_lead_id", selectedLeads);
+
       const { error } = await supabase
         .from("crm_leads")
         .delete()
