@@ -234,6 +234,7 @@ export default function CRMHeadComercialPage() {
   const [sdrCreatedToday, setSdrCreatedToday] = useState<any[]>([]);
   const [sdrCreatedMonth, setSdrCreatedMonth] = useState<any[]>([]);
   const [completedMeetingsMonth, setCompletedMeetingsMonth] = useState<any[]>([]);
+  const [noShowMeetingsMonth, setNoShowMeetingsMonth] = useState<any[]>([]);
   const [meetingsScheduledYesterday, setMeetingsScheduledYesterday] = useState<any[]>([]);
   const [dynamicForecastLeads, setDynamicForecastLeads] = useState<LeadWithStage[]>([]);
   const [dynamicNegotiationLeads, setDynamicNegotiationLeads] = useState<LeadWithStage[]>([]);
