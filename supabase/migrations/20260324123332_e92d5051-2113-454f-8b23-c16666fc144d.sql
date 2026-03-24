@@ -1,0 +1,1 @@
+DELETE FROM user_google_tokens WHERE user_id = 'f0fa079a-c7b4-42df-9c3a-a63652369ccc';

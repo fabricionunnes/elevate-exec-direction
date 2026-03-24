@@ -416,6 +416,24 @@ Deno.serve(async (req) => {
       const body = await req.json();
       const { access_token, refresh_token, expires_in } = body;
 
+      // Check if user already has a token saved via the dedicated Calendar OAuth flow
+      // (exchange-code). Those tokens have a refresh_token and proper Calendar scopes.
+      // The Supabase Auth provider_token does NOT have Calendar scopes, so we must
+      // NOT overwrite a good token with a limited one.
+      const { data: existingToken } = await supabase
+        .from("user_google_tokens")
+        .select("refresh_token")
+        .eq("user_id", user.id)
+        .maybeSingle();
+
+      if (existingToken?.refresh_token) {
+        console.log("save-token: User already has a Calendar token with refresh_token, skipping overwrite.");
+        return new Response(
+          JSON.stringify({ success: true, skipped: true }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       const expiresAt = new Date(Date.now() + (expires_in || 3600) * 1000);
 
       const { error: upsertError } = await supabase
