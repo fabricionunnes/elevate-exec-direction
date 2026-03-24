@@ -17,7 +17,7 @@ import { ClientCRMSettings } from "./ClientCRMSettings";
 import { ClientCRMMeetings } from "./ClientCRMMeetings";
 import { ClientCRMApiDocs } from "./ClientCRMApiDocs";
 import {
-  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2, Video,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
