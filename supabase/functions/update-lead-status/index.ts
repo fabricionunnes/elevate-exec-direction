@@ -177,7 +177,7 @@ Deno.serve(async (req) => {
           custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
           payment_method: payment_method || 'pix',
           reference_month: referenceMonth,
-          bank_account_id: null,
+          bank_account_id: bank_id || null,
           notes: `Lead: ${lead.name || ''} | Criado via API`,
         })
         .select('id')
