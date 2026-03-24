@@ -63,13 +63,10 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
   const [isLoading, setIsLoading] = useState(false);
   const [search, setSearch] = useState("");
   const [currentMonth, setCurrentMonth] = useState(new Date());
-  const [page, setPage] = useState(0);
-  const PAGE_SIZE = 20;
 
   useEffect(() => {
     if (open && bank) {
       loadTransactions();
-      setPage(0);
     }
   }, [open, bank, currentMonth]);
 
@@ -101,9 +98,6 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
     !search || (t.description || "").toLowerCase().includes(search.toLowerCase())
   );
 
-  const paginatedTransactions = filteredTransactions.slice(page * PAGE_SIZE, (page + 1) * PAGE_SIZE);
-  const totalPages = Math.ceil(filteredTransactions.length / PAGE_SIZE);
-
   const totalCredits = filteredTransactions
     .filter(t => t.type === "credit")
     .reduce((s, t) => s + t.amount_cents, 0);
@@ -115,12 +109,10 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
 
   const prevMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() - 1, 1));
-    setPage(0);
   };
 
   const nextMonth = () => {
     setCurrentMonth(prev => new Date(prev.getFullYear(), prev.getMonth() + 1, 1));
-    setPage(0);
   };
 
   if (!bank) return null;
@@ -179,7 +171,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
               <Input
                 placeholder="Buscar descrição..."
                 value={search}
-                onChange={(e) => { setSearch(e.target.value); setPage(0); }}
+                onChange={(e) => { setSearch(e.target.value); }}
                 className="pl-9 h-9"
               />
             </div>
@@ -199,7 +191,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
               <ScrollArea className="flex-1 min-h-0 max-h-[50vh]">
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-2">
-                  {paginatedTransactions.map((t) => (
+                  {filteredTransactions.map((t) => (
                     <div key={t.id} className="border rounded-lg p-3 flex items-center justify-between gap-2">
                       <div className="flex items-center gap-2 min-w-0">
                         {t.type === "credit" ? (
@@ -236,7 +228,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {paginatedTransactions.map((t) => (
+                    {filteredTransactions.map((t) => (
                       <TableRow key={t.id}>
                         <TableCell className="text-sm">
                           {format(new Date(t.created_at), "dd/MM/yyyy HH:mm")}
@@ -255,23 +247,11 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                 </Table>
               </ScrollArea>
 
-              {/* Pagination */}
-              {totalPages > 1 && (
-                <div className="flex items-center justify-between pt-1">
-                  <p className="text-xs text-muted-foreground">
-                    {filteredTransactions.length} lançamento(s)
-                  </p>
-                  <div className="flex items-center gap-1">
-                    <Button variant="ghost" size="sm" disabled={page === 0} onClick={() => setPage(p => p - 1)}>
-                      Anterior
-                    </Button>
-                    <span className="text-xs text-muted-foreground px-2">{page + 1}/{totalPages}</span>
-                    <Button variant="ghost" size="sm" disabled={page >= totalPages - 1} onClick={() => setPage(p => p + 1)}>
-                      Próximo
-                    </Button>
-                  </div>
-                </div>
-              )}
+              <div className="flex items-center justify-between pt-1">
+                <p className="text-xs text-muted-foreground">
+                  {filteredTransactions.length} lançamento(s)
+                </p>
+              </div>
             </>
           )}
         </div>
