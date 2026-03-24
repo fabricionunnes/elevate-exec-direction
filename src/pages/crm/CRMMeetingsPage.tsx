@@ -78,10 +78,10 @@ const CRMMeetingsPage = () => {
 
   const fetchStages = useCallback(async () => {
     const { data } = await supabase
-      .from("crm_pipeline_stages")
+      .from("crm_pipeline_stages" as any)
       .select("id, name, pipeline_id")
       .order("position");
-    setStages(data || []);
+    setStages((data as any) || []);
   }, []);
 
   const fetchMeetings = useCallback(async () => {
