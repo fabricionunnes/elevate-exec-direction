@@ -266,7 +266,7 @@ export default function CRMHeadComercialPage() {
       const monthEnd = endOfMonth(now);
 
       const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes,
-             sdrYesterdayRes, sdrTodayRes, sdrMonthRes, completedMeetingsRes, scheduledYesterdayRes] =
+             sdrYesterdayRes, sdrTodayRes, sdrMonthRes, completedMeetingsRes, noShowMeetingsRes, scheduledYesterdayRes] =
         await Promise.all([
           supabase
             .from("crm_leads")
