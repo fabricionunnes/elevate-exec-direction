@@ -160,6 +160,8 @@ interface StaffPerformance {
   todayMeetings: number;
   monthMeetings: number;
   monthAgendamentos: number;
+  yesterdayScheduledMeetings: number;
+  monthCompletedMeetings: number;
   falta: number;
   percentAtingido: number;
   projecao: number;
