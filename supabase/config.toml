@@ -297,5 +297,8 @@ verify_jwt = false
 [functions.receive-external-lead]
 verify_jwt = false
 
+[functions.update-lead-status]
+verify_jwt = false
+
 [functions.asaas-service-purchase]
 verify_jwt = false

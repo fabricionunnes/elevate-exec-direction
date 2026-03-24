@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, Send, Key, FileJson, AlertTriangle } from "lucide-react";
+import { Copy, Check, Code2, Send, Key, FileJson, AlertTriangle, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-external-lead`;
+const UPDATE_STATUS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-lead-status`;
 
 const CodeBlock = ({ code, language = "json" }: { code: string; language?: string }) => {
   const [copied, setCopied] = useState(false);
@@ -348,6 +349,125 @@ export const ClientCRMApiDocs = () => {
               Exemplo: seusite.com/#/form/TOKEN?utm_source=instagram&utm_medium=ads
             </p>
           </div>
+        </CardContent>
+      </Card>
+
+      {/* === UPDATE LEAD STATUS ENDPOINT === */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-base flex items-center gap-2">
+            <Trophy className="h-4 w-4 text-primary" />
+            Marcar Lead como Ganho/Perdido
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <p className="text-sm text-muted-foreground">
+            Use este endpoint para atualizar o status de um lead existente para <strong>Ganho</strong> ou <strong>Perdido</strong> via API.
+            O lead será movido automaticamente para a etapa correspondente no funil.
+          </p>
+
+          <div className="flex items-center gap-2">
+            <Badge variant="default" className="text-[10px]">POST</Badge>
+            <code className="text-xs bg-muted px-2 py-1 rounded flex-1 truncate font-mono">{UPDATE_STATUS_URL}</code>
+            <Button variant="outline" size="icon" className="h-7 w-7 flex-shrink-0" onClick={() => {
+              navigator.clipboard.writeText(UPDATE_STATUS_URL);
+              toast.success("URL copiada!");
+            }}>
+              <Copy className="h-3 w-3" />
+            </Button>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Status Fields */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <FileJson className="h-4 w-4" />
+            Campos — Atualizar Status
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <div className="border rounded-lg overflow-hidden">
+            <table className="w-full text-sm">
+              <thead>
+                <tr className="bg-muted/50 border-b">
+                  <th className="text-left px-3 py-2 font-medium text-xs">Campo</th>
+                  <th className="text-left px-3 py-2 font-medium text-xs">Tipo</th>
+                  <th className="text-left px-3 py-2 font-medium text-xs">Obrigatório</th>
+                  <th className="text-left px-3 py-2 font-medium text-xs">Descrição</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { name: "lead_id", type: "uuid", required: true, description: "ID do lead a ser atualizado" },
+                  { name: "status", type: "string", required: true, description: 'Status do lead: "won" (ganho) ou "lost" (perdido)' },
+                  { name: "opportunity_value", type: "number", required: false, description: "Valor do negócio em reais (ex: 5000)" },
+                  { name: "closer_staff_id", type: "uuid", required: false, description: "ID do closer responsável pelo fechamento" },
+                  { name: "notes", type: "string", required: false, description: "Observações sobre o fechamento" },
+                ].map((f, i) => (
+                  <tr key={f.name} className={i < 4 ? "border-b" : ""}>
+                    <td className="px-3 py-2">
+                      <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{f.name}</code>
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.type}</td>
+                    <td className="px-3 py-2">
+                      {f.required ? (
+                        <Badge variant="destructive" className="text-[10px]">Sim</Badge>
+                      ) : (
+                        <Badge variant="secondary" className="text-[10px]">Não</Badge>
+                      )}
+                    </td>
+                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.description}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Update Status Examples */}
+      <Card>
+        <CardHeader className="pb-3">
+          <CardTitle className="text-sm flex items-center gap-2">
+            <Send className="h-4 w-4" />
+            Exemplo — Marcar como Ganho
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <CodeBlock code={`curl -X POST \\
+  '${UPDATE_STATUS_URL}' \\
+  -H 'Content-Type: application/json' \\
+  -H 'x-api-key: SUA_API_KEY_AQUI' \\
+  -d '{
+    "lead_id": "uuid-do-lead",
+    "status": "won",
+    "opportunity_value": 5000,
+    "notes": "Fechamento via integração"
+  }'`} language="bash" />
+
+          <CodeBlock code={`// Resposta de sucesso:
+{
+  "success": true,
+  "lead_id": "uuid-do-lead",
+  "status": "won",
+  "stage": "Ganho"
+}`} language="json" />
+        </CardContent>
+      </Card>
+
+      {/* Update Status Behavior */}
+      <Card>
+        <CardContent className="pt-6 space-y-3">
+          <h4 className="font-medium text-sm">Comportamento — Atualizar Status</h4>
+          <ul className="text-xs text-muted-foreground space-y-2 list-disc pl-4">
+            <li>O lead é movido automaticamente para a etapa <strong>"Ganho"</strong> ou <strong>"Perdido"</strong> do pipeline atual.</li>
+            <li>A data de fechamento (<code className="bg-muted px-1 rounded font-mono">closed_at</code>) é registrada automaticamente.</li>
+            <li>Se marcado como ganho, uma notificação é enviada ao grupo do WhatsApp (se configurado).</li>
+            <li>O <code className="bg-muted px-1 rounded font-mono">opportunity_value</code> atualiza o valor do negócio.</li>
+            <li>Usa a mesma <code className="bg-muted px-1 rounded font-mono">x-api-key</code> do endpoint de criação de leads.</li>
+          </ul>
         </CardContent>
       </Card>
     </div>
