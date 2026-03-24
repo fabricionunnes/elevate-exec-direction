@@ -141,11 +141,10 @@ Deno.serve(async (req) => {
     // 5. If won + paid_value, create financial receivable as paid + bank transaction
     let receivableId: string | null = null;
     let bankName: string | null = null;
-    let receivableBankAccountId: string | null = null;
 
     if (status === 'won' && paid_value && paid_value > 0) {
       const receivableDescription = description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
-      const referenceMonth = today.substring(0, 7); // yyyy-MM
+      const amountCents = Math.round(paid_value * 100);
 
       // Validate bank_id if provided
       if (bank_id) {
@@ -165,59 +164,34 @@ Deno.serve(async (req) => {
         bankName = bank.name;
       }
 
-      // Validate bank_account_id separately when provided.
-      // financial_receivables.bank_account_id references financial_bank_accounts,
-      // while bank_id and financial_bank_transactions use financial_banks.
-      if (bank_account_id) {
-        const { data: bankAccount } = await supabase
-          .from('financial_bank_accounts')
-          .select('id, name, bank_name')
-          .eq('id', bank_account_id)
-          .eq('is_active', true)
-          .maybeSingle();
-
-        if (!bankAccount) {
-          return new Response(JSON.stringify({ error: 'Conta bancária não encontrada ou inativa' }), {
-            status: 400,
-            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
-          });
-        }
-
-        receivableBankAccountId = bankAccount.id;
-        bankName = bankName || bankAccount.bank_name || bankAccount.name;
-      }
-
-      // Create receivable already as paid
-      const { data: receivable, error: recError } = await supabase
-        .from('financial_receivables')
+      // Create invoice in company_invoices (staff financial module)
+      const { data: invoice, error: recError } = await supabase
+        .from('company_invoices')
         .insert({
-          amount: paid_value,
-          paid_amount: paid_value,
+          amount_cents: amountCents,
+          paid_amount_cents: amountCents,
           description: receivableDescription,
           due_date: today,
-          paid_date: today,
-          status: 'paid',
+          paid_at: now,
+          status: 'pago',
           company_id: company_id || null,
           custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
           payment_method: payment_method || 'pix',
-          reference_month: referenceMonth,
-          bank_account_id: receivableBankAccountId,
+          bank_id: bank_id || null,
           notes: `Lead: ${lead.name || ''} | Criado via API`,
         })
         .select('id')
         .single();
 
       if (recError) {
-        console.error('[update-lead-status] Receivable error:', recError);
+        console.error('[update-lead-status] Invoice error:', recError);
       } else {
-        receivableId = receivable.id;
-        console.log(`[update-lead-status] Receivable created: ${receivable.id}`);
+        receivableId = invoice.id;
+        console.log(`[update-lead-status] Invoice created: ${invoice.id}`);
       }
 
       // Credit the bank if bank_id provided
       if (bank_id && !recError) {
-        const amountCents = Math.round(paid_value * 100);
-        
         // Increment bank balance
         await supabase.rpc('increment_bank_balance' as any, {
           p_bank_id: bank_id,
@@ -230,7 +204,7 @@ Deno.serve(async (req) => {
           type: 'credit',
           amount_cents: amountCents,
           description: receivableDescription,
-          reference_type: 'receivable',
+          reference_type: 'invoice',
           reference_id: receivableId,
         } as any);
 
@@ -281,7 +255,6 @@ Deno.serve(async (req) => {
       stage: targetStage.name,
       receivable_id: receivableId,
       bank: bankName,
-      bank_account_id: receivableBankAccountId,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
