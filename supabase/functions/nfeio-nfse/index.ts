@@ -230,7 +230,30 @@ Deno.serve(async (req) => {
           }
         }
         
-        console.info("Final enriched address:", JSON.stringify({ street: enrichedStreet, city: enrichedCity, state: enrichedState, district: enrichedDistrict }));
+        // If we still don't have an IBGE code but have city+state, look it up via IBGE API
+        if (!ibgeCityCode && enrichedCity && enrichedState) {
+          try {
+            const ibgeRes = await fetch(`https://servicodados.ibge.gov.br/api/v1/localidades/estados/${enrichedState}/municipios`);
+            if (ibgeRes.ok) {
+              const municipios = await ibgeRes.json();
+              const normalizedCity = enrichedCity.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+              const found = municipios.find((m: any) => {
+                const mName = m.nome.toLowerCase().normalize("NFD").replace(/[\u0300-\u036f]/g, "");
+                return mName === normalizedCity;
+              });
+              if (found) {
+                ibgeCityCode = String(found.id);
+                console.info("IBGE code found via API:", ibgeCityCode, "for city:", enrichedCity);
+              } else {
+                console.warn("City not found in IBGE API for state:", enrichedState, "city:", enrichedCity);
+              }
+            }
+          } catch (e) {
+            console.warn("IBGE API lookup failed:", e);
+          }
+        }
+        
+        console.info("Final enriched address:", JSON.stringify({ street: enrichedStreet, city: enrichedCity, state: enrichedState, district: enrichedDistrict, ibge: ibgeCityCode }));
 
         if (enrichedStreet || cleanPostalCode || enrichedCity) {
           const cityObj: any = {};
