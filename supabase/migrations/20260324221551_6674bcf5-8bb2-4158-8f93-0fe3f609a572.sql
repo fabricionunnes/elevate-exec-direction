@@ -1,0 +1,1 @@
+UPDATE financial_bank_transactions SET amount_cents = 24850 WHERE id IN ('6a80de68-7420-436a-9f7b-fd5abcfbde51', '9483c87e-b35c-4312-8a3d-708c45d9e65a');
