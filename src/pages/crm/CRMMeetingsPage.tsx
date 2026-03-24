@@ -11,8 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
+import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX, X } from "lucide-react";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -309,6 +309,9 @@ const CRMMeetingsPage = () => {
                 case "today":
                   setDateRange({ from: now, to: now });
                   break;
+                case "tomorrow":
+                  setDateRange({ from: addDays(now, 1), to: addDays(now, 1) });
+                  break;
                 case "this_week":
                   setDateRange({ from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) });
                   break;
@@ -340,6 +343,7 @@ const CRMMeetingsPage = () => {
               <SelectItem value="custom" disabled className="text-muted-foreground text-xs">Período rápido</SelectItem>
               <SelectItem value="yesterday">Ontem</SelectItem>
               <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="tomorrow">Amanhã</SelectItem>
               <SelectItem value="this_week">Esta semana</SelectItem>
               <SelectItem value="last_week">Semana passada</SelectItem>
               <SelectItem value="this_month">Este mês</SelectItem>
@@ -393,6 +397,23 @@ const CRMMeetingsPage = () => {
                 ))}
               </SelectContent>
             </Select>
+          )}
+
+          {/* Clear filters */}
+          {(filterStatus !== "all" || filterStaff !== "all" || dateRange.from?.getTime() !== startOfMonth(new Date()).getTime()) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs gap-1 text-muted-foreground"
+              onClick={() => {
+                setFilterStatus("all");
+                setFilterStaff("all");
+                setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
           )}
         </CardContent>
       </Card>
