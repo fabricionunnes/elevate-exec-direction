@@ -237,7 +237,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
 
       const attributedMeetingEvents = (meetingEvents || []).map((event) => ({
         ...event,
-        attributed_sdr_id: leadAttributionMap.get(event.lead_id) || null,
+        attributed_sdr_id: leadAttributionMap.get(event.lead_id) || event.credited_staff_id || null,
       }));
 
       const attributedMeetingActivities = (meetingActivities || []).map((activity) => ({
