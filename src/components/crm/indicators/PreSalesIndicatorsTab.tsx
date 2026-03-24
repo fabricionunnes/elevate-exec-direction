@@ -657,6 +657,15 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         ))}
       </div>
 
+      {/* ── Detalhamento de Reuniões ── */}
+      <div className="space-y-3">
+        <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <div className="h-3 w-3 rounded-full bg-gradient-to-r from-emerald-400 to-sky-400 shadow-lg shadow-emerald-500/30" />
+          Detalhamento das Reuniões
+        </h3>
+        <MeetingDetailCards events={meetingEventDetails} />
+      </div>
+
       {/* ── KPIs de Atividade ── */}
       <div className="space-y-3">
         <h3 className="text-xs font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
