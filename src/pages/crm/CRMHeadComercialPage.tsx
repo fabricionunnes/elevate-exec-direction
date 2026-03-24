@@ -430,6 +430,7 @@ export default function CRMHeadComercialPage() {
 
       // Fetch lead SDR attribution for all unique lead_ids
       const completedMeetingsData = (completedMeetingsRes.data || []) as any[];
+      const noShowMeetingsData = (noShowMeetingsRes.data || []) as any[];
       const scheduledYesterdayData = (scheduledYesterdayRes.data || []) as any[];
 
       const allSdrLeadIds = [...new Set([
