@@ -76,8 +76,8 @@ const trackMeetingEvent = async (
       event_date: eventDate,
     }];
 
-    // For realized/no_show: also credit the SDR who scheduled if different
-    if (eventType === "realized" || eventType === "no_show") {
+    // For realized/no_show/out_of_icp: also credit the SDR who scheduled if different
+    if (eventType === "realized" || eventType === "no_show" || eventType === "out_of_icp") {
       const { data: leadData } = await supabase
         .from("crm_leads")
         .select("scheduled_by_staff_id")
