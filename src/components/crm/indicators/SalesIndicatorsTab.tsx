@@ -26,7 +26,7 @@ import {
   Area,
   AreaChart,
 } from "recharts";
-import { format, subDays, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
+import { format, subDays, startOfDay, endOfDay, startOfMonth, endOfMonth, getDaysInMonth, getDate, startOfWeek, endOfWeek, startOfQuarter, endOfQuarter } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Trophy, Target, Phone, TrendingUp, DollarSign, Percent, Users, CalendarDays } from "lucide-react";
 import { cn } from "@/lib/utils";
@@ -107,7 +107,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const now = new Date();
     switch (dateFilter) {
       case "today":
-        return { start: now, end: now };
+        return { start: startOfDay(now), end: endOfDay(now) };
       case "week":
         return { start: startOfWeek(now, { locale: ptBR }), end: endOfWeek(now, { locale: ptBR }) };
       case "month":
