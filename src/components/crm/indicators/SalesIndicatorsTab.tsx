@@ -296,7 +296,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       : rawSalesData;
 
     const meetingEvents = isCloserFilter
-      ? rawMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
+      ? rawMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedCloser || e.credited_staff_id === selectedCloser)
       : rawMeetingEvents;
 
     const calls = isCloserFilter
