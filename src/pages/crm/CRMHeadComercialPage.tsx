@@ -642,10 +642,9 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = monthMeetings;
           // Meetings scheduled FOR yesterday attributed to this SDR
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id).length;
-          // Completed meetings attributed to this SDR (reunião realizada counts for SDR too)
           monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
+          monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
         } else {
-          // Closer: count meetings SCHEDULED for that day
           yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
           todayMeetings = myToday.filter((a) => a.type === "meeting" || a.type === "call").length;
           monthMeetings = activityStats.filter(
@@ -654,10 +653,9 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = activityStats.filter(
             (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
           ).length;
-          // Meetings scheduled for yesterday for this closer
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          // Completed meetings for this closer
           monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
         }
 
         const falta = Math.max(0, metaVendas - realizado);
