@@ -512,8 +512,3 @@ export const ClientCRMApiDocs = () => {
     </div>
   );
 };
-                  <tr key={f.name} className={i < 4 ? "border-b" : ""}>
-                    <td className="px-3 py-2">
-                      <code className="text-xs font-mono bg-muted px-1.5 py-0.5 rounded">{f.name}</code>
-                    </td>
-                    <td className="px-3 py-2 text-xs text-muted-foreground">{f.type}</td>
