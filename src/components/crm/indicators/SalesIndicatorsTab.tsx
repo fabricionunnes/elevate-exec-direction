@@ -399,9 +399,24 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
 
-      const closerMeetingEvts = rawMeetingEvents.filter(e => e.credited_staff_id === closer.id);
-      const closerEventsScheduled = closerMeetingEvts.filter(e => e.event_type === "scheduled").length;
-      const closerEventsRealized = closerMeetingEvts.filter(e => e.event_type === "realized").length;
+      // For closer performance: count by lead ownership (owner_staff_id), not credited_staff_id
+      const closerMeetingEvts = rawMeetingEvents.filter(e => e.lead?.owner_staff_id === closer.id);
+      // Deduplicate by lead_id + event_type to avoid double counting
+      const seenCloserKeys = new Set<string>();
+      const closerEventsScheduled = closerMeetingEvts.filter(e => {
+        if (e.event_type !== "scheduled") return false;
+        const key = `${e.lead_id}-scheduled`;
+        if (seenCloserKeys.has(key)) return false;
+        seenCloserKeys.add(key);
+        return true;
+      }).length;
+      const closerEventsRealized = closerMeetingEvts.filter(e => {
+        if (e.event_type !== "realized") return false;
+        const key = `${e.lead_id}-realized`;
+        if (seenCloserKeys.has(key)) return false;
+        seenCloserKeys.add(key);
+        return true;
+      }).length;
 
       const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
       const closerScheduledFromCalls = closerCalls.length;
