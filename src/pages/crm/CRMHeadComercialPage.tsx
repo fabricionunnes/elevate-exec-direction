@@ -438,6 +438,7 @@ export default function CRMHeadComercialPage() {
         ...sdrTodayData.map((a: any) => a.lead_id),
         ...sdrMonthData.map((a: any) => a.lead_id),
         ...completedMeetingsData.map((a: any) => a.lead_id),
+        ...noShowMeetingsData.map((a: any) => a.lead_id),
         ...scheduledYesterdayData.map((a: any) => a.lead_id),
       ].filter(Boolean))];
 
