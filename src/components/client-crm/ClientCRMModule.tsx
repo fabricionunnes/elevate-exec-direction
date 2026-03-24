@@ -14,9 +14,10 @@ import { ClientCRMAtendimentos } from "./ClientCRMAtendimentos";
 import { ClientCRMTranscriptions } from "./ClientCRMTranscriptions";
 import { ClientCRMContracts } from "./ClientCRMContracts";
 import { ClientCRMSettings } from "./ClientCRMSettings";
+import { ClientCRMMeetings } from "./ClientCRMMeetings";
 import { ClientCRMApiDocs } from "./ClientCRMApiDocs";
 import {
-  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2,
+  BarChart3, Briefcase, Users, CalendarCheck, MessageCircle, FileText, FileSignature, Settings, Code2, Video,
 } from "lucide-react";
 
 interface ClientCRMModuleProps {
@@ -37,6 +38,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
     { key: CLIENT_MENU_KEYS.crm_comercial_atendimentos, id: "atendimentos", label: "Atendimentos", icon: MessageCircle },
     { key: CLIENT_MENU_KEYS.crm_comercial_transcricoes, id: "transcricoes", label: "Transcrições", icon: FileText },
     { key: CLIENT_MENU_KEYS.crm_comercial_contratos, id: "contratos", label: "Contratos", icon: FileSignature },
+    { key: CLIENT_MENU_KEYS.crm_comercial_reunioes, id: "reunioes", label: "Reuniões", icon: Video },
   ].filter((tab) => hasPermission(tab.key));
 
   // Always show settings tab
@@ -146,6 +148,16 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
 
         <TabsContent value="contratos">
           <ClientCRMContracts />
+        </TabsContent>
+
+        <TabsContent value="reunioes">
+          <ClientCRMMeetings
+            projectId={projectId}
+            currentUser={currentUser}
+            stages={crm.stages}
+            onMoveDeal={crm.moveDealToStage}
+            onRefresh={crm.fetchAll}
+          />
         </TabsContent>
 
         <TabsContent value="settings">
