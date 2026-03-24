@@ -642,7 +642,7 @@ Deno.serve(async (req) => {
               mediatype: "document",
               mimetype: "application/pdf",
               caption,
-              media: `data:application/pdf;base64,${pdfBase64}`,
+              mediaUrl: `data:application/pdf;base64,${pdfBase64}`,
               fileName,
             }),
           });
