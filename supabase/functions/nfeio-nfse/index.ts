@@ -156,18 +156,51 @@ Deno.serve(async (req) => {
         };
 
         const cleanPostalCode = (tomadorPostalCode || "").replace(/\D/g, "");
-        if (tomadorStreet || cleanPostalCode || tomadorCity) {
+        
+        // Try to enrich address data via ViaCEP if we have a postal code
+        let enrichedCity = tomadorCity || undefined;
+        let enrichedState = tomadorState || undefined;
+        let enrichedDistrict = tomadorNeighborhood || undefined;
+        let enrichedStreet = tomadorStreet || undefined;
+        let ibgeCityCode: string | undefined;
+        
+        if (cleanPostalCode && cleanPostalCode.length === 8) {
+          try {
+            const viaCepRes = await fetch(`https://viacep.com.br/ws/${cleanPostalCode}/json/`);
+            if (viaCepRes.ok) {
+              const viaCepData = await viaCepRes.json();
+              if (!viaCepData.erro) {
+                enrichedCity = enrichedCity || viaCepData.localidade;
+                enrichedState = enrichedState || viaCepData.uf;
+                enrichedDistrict = enrichedDistrict || viaCepData.bairro;
+                enrichedStreet = enrichedStreet || viaCepData.logradouro;
+                ibgeCityCode = viaCepData.ibge;
+                console.info("ViaCEP enrichment:", JSON.stringify({ city: enrichedCity, state: enrichedState, ibge: ibgeCityCode }));
+              }
+            }
+          } catch (e) {
+            console.warn("ViaCEP lookup failed, continuing without enrichment:", e);
+          }
+        }
+
+        if (enrichedStreet || cleanPostalCode || enrichedCity) {
+          const cityObj: any = {};
+          if (enrichedCity) cityObj.name = enrichedCity;
+          if (ibgeCityCode) cityObj.code = ibgeCityCode;
+
           borrower.address = {
             country: "BRA",
             postalCode: cleanPostalCode || undefined,
-            street: tomadorStreet || undefined,
+            street: enrichedStreet || undefined,
             number: tomadorNumber || undefined,
             additionalInformation: tomadorComplement || undefined,
-            district: tomadorNeighborhood || undefined,
-            city: tomadorCity ? { name: tomadorCity } : undefined,
-            state: tomadorState || undefined,
+            district: enrichedDistrict || undefined,
+            city: Object.keys(cityObj).length > 0 ? cityObj : undefined,
+            state: enrichedState || undefined,
           };
         }
+
+        console.info("Borrower address being sent:", JSON.stringify(borrower.address || {}));
 
         const nfsePayload: any = {
           cityServiceCode: cityServiceCode || "170601",
