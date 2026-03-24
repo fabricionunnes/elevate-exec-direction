@@ -398,6 +398,23 @@ const CRMMeetingsPage = () => {
               </SelectContent>
             </Select>
           )}
+
+          {/* Clear filters */}
+          {(filterStatus !== "all" || filterStaff !== "all" || dateRange.from?.getTime() !== startOfMonth(new Date()).getTime()) && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="h-8 text-xs gap-1 text-muted-foreground"
+              onClick={() => {
+                setFilterStatus("all");
+                setFilterStaff("all");
+                setDateRange({ from: startOfMonth(new Date()), to: endOfMonth(new Date()) });
+              }}
+            >
+              <X className="h-3.5 w-3.5" />
+              Limpar filtros
+            </Button>
+          )}
         </CardContent>
       </Card>
 
