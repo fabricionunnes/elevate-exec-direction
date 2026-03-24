@@ -465,6 +465,7 @@ export default function CRMHeadComercialPage() {
       setSdrCreatedToday(enrichSdr(sdrTodayData));
       setSdrCreatedMonth(enrichSdr(sdrMonthData));
       setCompletedMeetingsMonth(enrichSdr(completedMeetingsData));
+      setNoShowMeetingsMonth(enrichSdr(noShowMeetingsData));
       setMeetingsScheduledYesterday(enrichSdr(scheduledYesterdayData));
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
