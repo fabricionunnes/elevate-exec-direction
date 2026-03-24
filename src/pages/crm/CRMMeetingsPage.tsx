@@ -1,17 +1,18 @@
-import { useState, useEffect, useMemo, useCallback } from "react";
+import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCRMContext } from "./CRMLayout";
 import { Card, CardContent } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Textarea } from "@/components/ui/textarea";
+import { Checkbox } from "@/components/ui/checkbox";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Calendar, Clock, Video, RefreshCw, Loader2, User, FileText, ExternalLink, CheckCircle2, CalendarIcon, Filter } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfWeek, endOfWeek, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX } from "lucide-react";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -32,22 +33,15 @@ interface MeetingActivity {
   responsible_staff?: { id: string; name: string } | null;
 }
 
-interface StaffOption {
-  id: string;
-  name: string;
-}
-
-interface PipelineStage {
-  id: string;
-  name: string;
-  pipeline_id: string;
-}
+interface StaffOption { id: string; name: string; }
+interface PipelineStage { id: string; name: string; pipeline_id: string; }
 
 const CRMMeetingsPage = () => {
   const { staffRole, staffId, isAdmin, isMaster } = useCRMContext();
   const navigate = useNavigate();
   const isHead = staffRole === "head_comercial";
   const canFilterStaff = isMaster || isAdmin || isHead;
+  const canDelete = isMaster || isAdmin;
 
   const [meetings, setMeetings] = useState<MeetingActivity[]>([]);
   const [loading, setLoading] = useState(true);
@@ -64,6 +58,12 @@ const CRMMeetingsPage = () => {
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingActivity | null>(null);
   const [briefing, setBriefing] = useState("");
   const [saving, setSaving] = useState(false);
+
+  // Selection state for bulk actions
+  const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
+  const [showDeleteConfirm, setShowDeleteConfirm] = useState(false);
+  const [deleteTargetIds, setDeleteTargetIds] = useState<string[]>([]);
+  const [deleting, setDeleting] = useState(false);
 
   const fetchStaff = useCallback(async () => {
     if (!canFilterStaff) return;
@@ -105,12 +105,10 @@ const CRMMeetingsPage = () => {
         query = query.lte("scheduled_at", endOfDay(dateRange.to).toISOString());
       }
 
-      // Role-based filtering
       if (!canFilterStaff) {
         if (staffRole === "closer") {
           query = query.eq("responsible_staff_id", staffId);
         } else if (staffRole === "sdr") {
-          // SDR sees meetings they created (via lead attribution)
           const { data: sdrLeads } = await supabase
             .from("crm_leads")
             .select("id")
@@ -136,6 +134,7 @@ const CRMMeetingsPage = () => {
       if (error) throw error;
 
       setMeetings((data || []) as unknown as MeetingActivity[]);
+      setSelectedIds(new Set());
     } catch (err) {
       console.error("Error fetching meetings:", err);
       toast.error("Erro ao carregar reuniões");
@@ -144,20 +143,26 @@ const CRMMeetingsPage = () => {
     }
   }, [dateRange, filterStaff, filterStatus, staffId, staffRole, canFilterStaff]);
 
-  useEffect(() => {
-    fetchStaff();
-    fetchStages();
-  }, [fetchStaff, fetchStages]);
+  useEffect(() => { fetchStaff(); fetchStages(); }, [fetchStaff, fetchStages]);
+  useEffect(() => { fetchMeetings(); }, [fetchMeetings]);
 
-  useEffect(() => {
-    fetchMeetings();
-  }, [fetchMeetings]);
+  const moveLead = async (meeting: MeetingActivity, targetStageName: string) => {
+    if (!meeting.lead_id || !meeting.lead?.stage_id) return;
+    const currentStage = stages.find(s => s.id === meeting.lead!.stage_id);
+    if (!currentStage) return;
+    const targetStage = stages.find(
+      s => s.pipeline_id === currentStage.pipeline_id &&
+        s.name.toLowerCase().includes(targetStageName.toLowerCase())
+    );
+    if (targetStage) {
+      await supabase.from("crm_leads").update({ stage_id: targetStage.id }).eq("id", meeting.lead_id);
+    }
+  };
 
   const handleFinalize = async () => {
     if (!selectedMeeting) return;
     setSaving(true);
     try {
-      // Update meeting with briefing and mark completed
       const { error } = await supabase
         .from("crm_activities")
         .update({
@@ -166,29 +171,9 @@ const CRMMeetingsPage = () => {
           description: briefing || selectedMeeting.description,
         })
         .eq("id", selectedMeeting.id);
-
       if (error) throw error;
 
-      // Move lead to "Reunião Realizada" stage if possible
-      if (selectedMeeting.lead_id) {
-        const currentLead = selectedMeeting.lead;
-        if (currentLead?.stage_id) {
-          const currentStage = stages.find(s => s.id === currentLead.stage_id);
-          if (currentStage) {
-            const reuniaoRealizadaStage = stages.find(
-              s => s.pipeline_id === currentStage.pipeline_id &&
-                (s.name.toLowerCase().includes("reunião realizada") || s.name.toLowerCase().includes("reuniao realizada"))
-            );
-            if (reuniaoRealizadaStage) {
-              await supabase
-                .from("crm_leads")
-                .update({ stage_id: reuniaoRealizadaStage.id })
-                .eq("id", selectedMeeting.lead_id);
-            }
-          }
-        }
-      }
-
+      await moveLead(selectedMeeting, "reunião realizada");
       toast.success("Reunião finalizada com sucesso!");
       setSelectedMeeting(null);
       setBriefing("");
@@ -201,10 +186,77 @@ const CRMMeetingsPage = () => {
     }
   };
 
+  const handleNoShow = async () => {
+    if (!selectedMeeting) return;
+    setSaving(true);
+    try {
+      const { error } = await supabase
+        .from("crm_activities")
+        .update({
+          status: "no_show",
+          completed_at: new Date().toISOString(),
+          description: briefing || selectedMeeting.description || "Cliente não compareceu",
+        })
+        .eq("id", selectedMeeting.id);
+      if (error) throw error;
+
+      // Move lead to "No Show" stage if it exists, otherwise keep current
+      await moveLead(selectedMeeting, "no show");
+      toast.success("Reunião marcada como No Show");
+      setSelectedMeeting(null);
+      setBriefing("");
+      fetchMeetings();
+    } catch (err) {
+      console.error("Error marking no show:", err);
+      toast.error("Erro ao marcar no show");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const handleDelete = async (ids: string[]) => {
+    setDeleting(true);
+    try {
+      const { error } = await supabase
+        .from("crm_activities")
+        .delete()
+        .in("id", ids);
+      if (error) throw error;
+      toast.success(`${ids.length} reunião(ões) excluída(s)`);
+      setSelectedMeeting(null);
+      setShowDeleteConfirm(false);
+      setDeleteTargetIds([]);
+      fetchMeetings();
+    } catch (err) {
+      console.error("Error deleting meetings:", err);
+      toast.error("Erro ao excluir reuniões");
+    } finally {
+      setDeleting(false);
+    }
+  };
+
+  const toggleSelect = (id: string) => {
+    setSelectedIds(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  const toggleSelectAll = () => {
+    if (selectedIds.size === meetings.length) {
+      setSelectedIds(new Set());
+    } else {
+      setSelectedIds(new Set(meetings.map(m => m.id)));
+    }
+  };
+
   const getStatusBadge = (status: string | null) => {
     switch (status) {
       case "completed":
         return <Badge className="bg-green-500/10 text-green-600 border-green-500/20">Realizada</Badge>;
+      case "no_show":
+        return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20">No Show</Badge>;
       case "cancelled":
         return <Badge variant="destructive">Cancelada</Badge>;
       default:
@@ -222,10 +274,22 @@ const CRMMeetingsPage = () => {
           </h1>
           <p className="text-sm text-muted-foreground">Gerencie suas reuniões agendadas</p>
         </div>
-        <Button variant="outline" size="sm" onClick={fetchMeetings} disabled={loading}>
-          <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
-          Atualizar
-        </Button>
+        <div className="flex items-center gap-2">
+          {canDelete && selectedIds.size > 0 && (
+            <Button
+              variant="destructive"
+              size="sm"
+              onClick={() => { setDeleteTargetIds(Array.from(selectedIds)); setShowDeleteConfirm(true); }}
+            >
+              <Trash2 className="h-4 w-4 mr-1" />
+              Excluir ({selectedIds.size})
+            </Button>
+          )}
+          <Button variant="outline" size="sm" onClick={fetchMeetings} disabled={loading}>
+            <RefreshCw className={cn("h-4 w-4 mr-1", loading && "animate-spin")} />
+            Atualizar
+          </Button>
+        </div>
       </div>
 
       {/* Filters */}
@@ -261,6 +325,7 @@ const CRMMeetingsPage = () => {
               <SelectItem value="all">Todos</SelectItem>
               <SelectItem value="pending">Pendente</SelectItem>
               <SelectItem value="completed">Realizada</SelectItem>
+              <SelectItem value="no_show">No Show</SelectItem>
               <SelectItem value="cancelled">Cancelada</SelectItem>
             </SelectContent>
           </Select>
@@ -294,50 +359,93 @@ const CRMMeetingsPage = () => {
         </Card>
       ) : (
         <div className="space-y-2">
+          {/* Select all */}
+          {canDelete && meetings.length > 0 && (
+            <div className="flex items-center gap-2 px-1">
+              <Checkbox
+                checked={selectedIds.size === meetings.length}
+                onCheckedChange={toggleSelectAll}
+              />
+              <span className="text-xs text-muted-foreground">Selecionar tudo ({meetings.length})</span>
+            </div>
+          )}
+
           {meetings.map(meeting => (
             <Card
               key={meeting.id}
-              className="cursor-pointer hover:border-primary/30 transition-colors"
-              onClick={() => {
-                setSelectedMeeting(meeting);
-                setBriefing(meeting.description || "");
-              }}
+              className={cn(
+                "cursor-pointer hover:border-primary/30 transition-colors",
+                selectedIds.has(meeting.id) && "border-primary/50 bg-primary/5"
+              )}
             >
               <CardContent className="py-3 flex items-center justify-between flex-wrap gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div className={cn(
-                    "rounded-full p-2",
-                    meeting.status === "completed" ? "bg-green-500/10" : "bg-primary/10"
-                  )}>
-                    <Video className={cn(
-                      "h-4 w-4",
-                      meeting.status === "completed" ? "text-green-600" : "text-primary"
-                    )} />
-                  </div>
-                  <div className="min-w-0">
-                    <p className="text-sm font-medium truncate">{meeting.title}</p>
-                    <div className="flex items-center gap-2 text-xs text-muted-foreground">
-                      {meeting.scheduled_at && (
-                        <span className="flex items-center gap-1">
-                          <Clock className="h-3 w-3" />
-                          {format(parseISO(meeting.scheduled_at), "dd/MM/yy HH:mm", { locale: ptBR })}
-                        </span>
+                  {canDelete && (
+                    <Checkbox
+                      checked={selectedIds.has(meeting.id)}
+                      onCheckedChange={() => toggleSelect(meeting.id)}
+                      onClick={(e) => e.stopPropagation()}
+                    />
+                  )}
+                  <div
+                    className="flex items-center gap-3 min-w-0 flex-1"
+                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); }}
+                  >
+                    <div className={cn(
+                      "rounded-full p-2 shrink-0",
+                      meeting.status === "completed" ? "bg-green-500/10" :
+                      meeting.status === "no_show" ? "bg-amber-500/10" : "bg-primary/10"
+                    )}>
+                      {meeting.status === "no_show" ? (
+                        <UserX className="h-4 w-4 text-amber-600" />
+                      ) : (
+                        <Video className={cn(
+                          "h-4 w-4",
+                          meeting.status === "completed" ? "text-green-600" : "text-primary"
+                        )} />
                       )}
-                      {meeting.lead && (
-                        <span className="flex items-center gap-1">
-                          <User className="h-3 w-3" />
-                          {meeting.lead.name}
-                        </span>
-                      )}
-                      {meeting.responsible_staff && (
-                        <Badge variant="outline" className="text-[10px] h-4">
-                          {meeting.responsible_staff.name}
-                        </Badge>
-                      )}
+                    </div>
+                    <div className="min-w-0">
+                      <p className="text-sm font-medium truncate">{meeting.title}</p>
+                      <div className="flex items-center gap-2 text-xs text-muted-foreground flex-wrap">
+                        {meeting.scheduled_at && (
+                          <span className="flex items-center gap-1">
+                            <Clock className="h-3 w-3" />
+                            {format(parseISO(meeting.scheduled_at), "dd/MM/yy HH:mm", { locale: ptBR })}
+                          </span>
+                        )}
+                        {meeting.lead && (
+                          <span className="flex items-center gap-1">
+                            <User className="h-3 w-3" />
+                            {meeting.lead.name}
+                          </span>
+                        )}
+                        {meeting.responsible_staff && (
+                          <Badge variant="outline" className="text-[10px] h-4">
+                            {meeting.responsible_staff.name}
+                          </Badge>
+                        )}
+                      </div>
                     </div>
                   </div>
                 </div>
-                {getStatusBadge(meeting.status)}
+                <div className="flex items-center gap-2">
+                  {getStatusBadge(meeting.status)}
+                  {canDelete && (
+                    <Button
+                      variant="ghost"
+                      size="icon"
+                      className="h-7 w-7 text-muted-foreground hover:text-destructive"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        setDeleteTargetIds([meeting.id]);
+                        setShowDeleteConfirm(true);
+                      }}
+                    >
+                      <Trash2 className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                </div>
               </CardContent>
             </Card>
           ))}
@@ -390,7 +498,7 @@ const CRMMeetingsPage = () => {
                   onChange={(e) => setBriefing(e.target.value)}
                   placeholder="Descreva o que foi discutido na reunião..."
                   rows={4}
-                  disabled={selectedMeeting.status === "completed"}
+                  disabled={selectedMeeting.status === "completed" || selectedMeeting.status === "no_show"}
                 />
               </div>
 
@@ -405,21 +513,70 @@ const CRMMeetingsPage = () => {
                     Abrir Lead
                   </Button>
                 )}
-                {selectedMeeting.status !== "completed" && (
+
+                {canDelete && (
                   <Button
+                    variant="destructive"
                     size="sm"
-                    onClick={handleFinalize}
-                    disabled={saving}
+                    onClick={() => { setDeleteTargetIds([selectedMeeting.id]); setShowDeleteConfirm(true); }}
                   >
-                    {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
-                    Finalizar Reunião
+                    <Trash2 className="h-3.5 w-3.5 mr-1" />
+                    Excluir
                   </Button>
+                )}
+
+                {selectedMeeting.status !== "completed" && selectedMeeting.status !== "no_show" && (
+                  <>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={handleNoShow}
+                      disabled={saving}
+                      className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                    >
+                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                      No Show
+                    </Button>
+                    <Button
+                      size="sm"
+                      onClick={handleFinalize}
+                      disabled={saving}
+                    >
+                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                      Finalizar Reunião
+                    </Button>
+                  </>
                 )}
               </DialogFooter>
             </div>
           )}
         </DialogContent>
       </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={showDeleteConfirm} onOpenChange={setShowDeleteConfirm}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Excluir {deleteTargetIds.length > 1 ? `${deleteTargetIds.length} reuniões` : "reunião"}?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Esta ação não pode ser desfeita. {deleteTargetIds.length > 1
+                ? `As ${deleteTargetIds.length} reuniões selecionadas serão excluídas permanentemente.`
+                : "A reunião será excluída permanentemente."}
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel disabled={deleting}>Cancelar</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => handleDelete(deleteTargetIds)}
+              disabled={deleting}
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+            >
+              {deleting ? <Loader2 className="h-4 w-4 mr-1 animate-spin" /> : <Trash2 className="h-4 w-4 mr-1" />}
+              Excluir
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 };
