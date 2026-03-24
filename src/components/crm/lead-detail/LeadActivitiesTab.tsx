@@ -522,10 +522,13 @@ export const LeadActivitiesTab = ({
         </div>
       </div>
 
-      {/* Content - Two columns layout */}
-      <div className="flex flex-1 min-h-0">
+      {/* Content - Two columns on desktop, stacked on mobile */}
+      <div className="flex flex-col md:flex-row flex-1 min-h-0">
         {/* Left side - Checklist */}
-        <div className="w-[320px] lg:w-[380px] min-w-[280px] shrink-0 border-r border-border flex flex-col">
+        <div className={cn(
+          "w-full md:w-[320px] lg:w-[380px] md:min-w-[280px] shrink-0 md:border-r border-border flex flex-col",
+          selectedChecklistItem ? "hidden md:flex" : "flex"
+        )}>
           {/* Checklist progress header */}
           {totalChecklist > 0 && (
             <div className="px-4 py-3 border-b border-border bg-muted/20">
