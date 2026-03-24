@@ -2,10 +2,11 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, Send, Key, FileJson, AlertTriangle } from "lucide-react";
+import { Copy, Check, Code2, Send, Key, FileJson, AlertTriangle, Trophy } from "lucide-react";
 import { toast } from "sonner";
 
 const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/receive-external-lead`;
+const UPDATE_STATUS_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/update-lead-status`;
 
 const CodeBlock = ({ code, language = "json" }: { code: string; language?: string }) => {
   const [copied, setCopied] = useState(false);
