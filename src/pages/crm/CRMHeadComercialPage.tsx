@@ -347,6 +347,23 @@ export default function CRMHeadComercialPage() {
             .eq("type", "meeting")
             .gte("created_at", monthStart.toISOString())
             .lte("created_at", monthEnd.toISOString()),
+
+          // Completed meetings this month (reuniões realizadas)
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, lead_id, type, status, completed_at")
+            .eq("type", "meeting")
+            .eq("status", "completed")
+            .gte("completed_at", monthStart.toISOString())
+            .lte("completed_at", monthEnd.toISOString()),
+
+          // Meetings SCHEDULED for yesterday (for SDR "reuniões agendadas para ontem")
+          supabase
+            .from("crm_activities")
+            .select("responsible_staff_id, lead_id, type")
+            .eq("type", "meeting")
+            .gte("scheduled_at", startOfDay(yesterday).toISOString())
+            .lt("scheduled_at", endOfDay(yesterday).toISOString()),
         ]);
 
       if (leadsRes.data) {
