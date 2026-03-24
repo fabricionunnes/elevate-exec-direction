@@ -105,6 +105,26 @@ const trackMeetingEvent = async (
       return false;
     }
 
+    // When marking as realized, also update matching meeting activities to completed
+    if (eventType === "realized") {
+      await supabase
+        .from("crm_activities")
+        .update({ status: "completed", completed_at: eventDate })
+        .eq("lead_id", leadId)
+        .eq("type", "meeting")
+        .eq("status", "pending");
+    }
+
+    // When marking as no_show or out_of_icp, update matching meeting activities to cancelled
+    if (eventType === "no_show" || eventType === "out_of_icp") {
+      await supabase
+        .from("crm_activities")
+        .update({ status: "cancelled" })
+        .eq("lead_id", leadId)
+        .eq("type", "meeting")
+        .eq("status", "pending");
+    }
+
     return true;
   } catch (error) {
     console.error("Error in trackMeetingEvent:", error);

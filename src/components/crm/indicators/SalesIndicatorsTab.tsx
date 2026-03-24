@@ -180,12 +180,13 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
         .lte("scheduled_at", filterEnd.toISOString());
       setRawCalls(calls || []);
 
-      // Load meeting events
+      // Load meeting events (include lead owner for closer attribution)
       const { data: meetingEvents } = await supabase
         .from("crm_meeting_events")
         .select(`
           *,
-          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+          lead:crm_leads!crm_meeting_events_lead_id_fkey(id, owner_staff_id)
         `)
         .gte("event_date", filterStart.toISOString())
         .lte("event_date", filterEnd.toISOString());
@@ -295,7 +296,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       : rawSalesData;
 
     const meetingEvents = isCloserFilter
-      ? rawMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
+      ? rawMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedCloser || e.credited_staff_id === selectedCloser)
       : rawMeetingEvents;
 
     const calls = isCloserFilter
@@ -398,9 +399,24 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
       const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
 
-      const closerMeetingEvts = rawMeetingEvents.filter(e => e.credited_staff_id === closer.id);
-      const closerEventsScheduled = closerMeetingEvts.filter(e => e.event_type === "scheduled").length;
-      const closerEventsRealized = closerMeetingEvts.filter(e => e.event_type === "realized").length;
+      // For closer performance: count by lead ownership (owner_staff_id), not credited_staff_id
+      const closerMeetingEvts = rawMeetingEvents.filter(e => e.lead?.owner_staff_id === closer.id);
+      // Deduplicate by lead_id + event_type to avoid double counting
+      const seenCloserKeys = new Set<string>();
+      const closerEventsScheduled = closerMeetingEvts.filter(e => {
+        if (e.event_type !== "scheduled") return false;
+        const key = `${e.lead_id}-scheduled`;
+        if (seenCloserKeys.has(key)) return false;
+        seenCloserKeys.add(key);
+        return true;
+      }).length;
+      const closerEventsRealized = closerMeetingEvts.filter(e => {
+        if (e.event_type !== "realized") return false;
+        const key = `${e.lead_id}-realized`;
+        if (seenCloserKeys.has(key)) return false;
+        seenCloserKeys.add(key);
+        return true;
+      }).length;
 
       const closerCompletedFromCalls = closerCalls.filter(c => c.status === "completed").length;
       const closerScheduledFromCalls = closerCalls.length;
