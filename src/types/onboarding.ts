@@ -298,6 +298,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "CRM > Contratos",
     group: "CRM Comercial",
   },
+  {
+    key: CLIENT_MENU_KEYS.crm_comercial_reunioes,
+    label: "CRM > Reuniões",
+    group: "CRM Comercial",
+  },
 ] as const;
 
 // Role labels in Portuguese
