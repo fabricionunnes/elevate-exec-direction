@@ -687,10 +687,21 @@ export const LeadActivitiesTab = ({
         </div>
 
         {/* Right side - Selected Checklist Item Details */}
-        <div className="flex-1 min-w-0 bg-muted/10 flex flex-col">
+        <div className={cn(
+          "flex-1 min-w-0 bg-muted/10 flex flex-col",
+          selectedChecklistItem ? "flex" : "hidden md:flex"
+        )}>
         {selectedChecklistItem ? (
           <div className="flex flex-col h-full">
             <div className="px-5 py-3.5 border-b border-border flex items-center gap-2.5 bg-card">
+              <Button
+                variant="ghost"
+                size="icon"
+                className="h-7 w-7 md:hidden shrink-0"
+                onClick={() => setSelectedChecklistItem(null)}
+              >
+                <ChevronLeft className="h-4 w-4" />
+              </Button>
               <div className="p-1.5 rounded-lg bg-primary/10">
                 {getChecklistItemIcon(selectedChecklistItem.item_type)}
               </div>
