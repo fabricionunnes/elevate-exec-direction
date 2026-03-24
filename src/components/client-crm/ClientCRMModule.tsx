@@ -38,6 +38,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
     { key: CLIENT_MENU_KEYS.crm_comercial_atendimentos, id: "atendimentos", label: "Atendimentos", icon: MessageCircle },
     { key: CLIENT_MENU_KEYS.crm_comercial_transcricoes, id: "transcricoes", label: "Transcrições", icon: FileText },
     { key: CLIENT_MENU_KEYS.crm_comercial_contratos, id: "contratos", label: "Contratos", icon: FileSignature },
+    { key: CLIENT_MENU_KEYS.crm_comercial_reunioes, id: "reunioes", label: "Reuniões", icon: Video },
   ].filter((tab) => hasPermission(tab.key));
 
   // Always show settings tab
