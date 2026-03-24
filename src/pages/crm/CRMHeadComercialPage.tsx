@@ -631,8 +631,8 @@ export default function CRMHeadComercialPage() {
         
         // SDR: "reuniões agendadas para ontem" = meetings SCHEDULED for yesterday attributed to this SDR
         let yesterdayScheduledMeetings: number;
-        // "Reuniões realizadas no mês" - completed meetings that count for both closer AND SDR
         let monthCompletedMeetings: number;
+        let monthNoShowMeetings: number;
 
         if (isSdr) {
           // SDR: count meetings CREATED on that day, using resolved_staff_id (from lead's scheduled_by or sdr)
