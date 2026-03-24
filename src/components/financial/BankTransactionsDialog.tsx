@@ -15,7 +15,6 @@ import {
 } from "@/components/ui/table";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { supabase } from "@/integrations/supabase/client";
 import { format, startOfMonth, endOfMonth } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -188,7 +187,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
             </div>
           ) : (
             <>
-              <ScrollArea className="flex-1 min-h-0 max-h-[50vh]">
+              <div className="flex-1 min-h-0 max-h-[50vh] overflow-y-auto pr-2">
                 {/* Mobile cards */}
                 <div className="sm:hidden space-y-2">
                   {filteredTransactions.map((t) => (
@@ -245,7 +244,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                     ))}
                   </TableBody>
                 </Table>
-              </ScrollArea>
+              </div>
 
               <div className="flex items-center justify-between pt-1">
                 <p className="text-xs text-muted-foreground">
