@@ -12,7 +12,7 @@ import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { SendContractButton } from "./SendContractButton";
 
-export type MeetingEventType = "scheduled" | "realized" | "no_show";
+export type MeetingEventType = "scheduled" | "realized" | "no_show" | "out_of_icp";
 
 interface LeadMeetingActionsProps {
   leadId: string;
