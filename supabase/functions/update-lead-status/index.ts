@@ -38,6 +38,7 @@ Deno.serve(async (req) => {
       // Financial fields
       paid_value,
       bank_id,
+      bank_account_id,
       payment_method,
       description,
       company_id,
@@ -140,6 +141,7 @@ Deno.serve(async (req) => {
     // 5. If won + paid_value, create financial receivable as paid + bank transaction
     let receivableId: string | null = null;
     let bankName: string | null = null;
+    let receivableBankAccountId: string | null = null;
 
     if (status === 'won' && paid_value && paid_value > 0) {
       const receivableDescription = description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
@@ -163,6 +165,28 @@ Deno.serve(async (req) => {
         bankName = bank.name;
       }
 
+      // Validate bank_account_id separately when provided.
+      // financial_receivables.bank_account_id references financial_bank_accounts,
+      // while bank_id and financial_bank_transactions use financial_banks.
+      if (bank_account_id) {
+        const { data: bankAccount } = await supabase
+          .from('financial_bank_accounts')
+          .select('id, name, bank_name')
+          .eq('id', bank_account_id)
+          .eq('is_active', true)
+          .maybeSingle();
+
+        if (!bankAccount) {
+          return new Response(JSON.stringify({ error: 'Conta bancária não encontrada ou inativa' }), {
+            status: 400,
+            headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+          });
+        }
+
+        receivableBankAccountId = bankAccount.id;
+        bankName = bankName || bankAccount.bank_name || bankAccount.name;
+      }
+
       // Create receivable already as paid
       const { data: receivable, error: recError } = await supabase
         .from('financial_receivables')
@@ -177,7 +201,7 @@ Deno.serve(async (req) => {
           custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
           payment_method: payment_method || 'pix',
           reference_month: referenceMonth,
-          bank_account_id: bank_id || null,
+          bank_account_id: receivableBankAccountId,
           notes: `Lead: ${lead.name || ''} | Criado via API`,
         })
         .select('id')
@@ -257,6 +281,7 @@ Deno.serve(async (req) => {
       stage: targetStage.name,
       receivable_id: receivableId,
       bank: bankName,
+      bank_account_id: receivableBankAccountId,
     }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
