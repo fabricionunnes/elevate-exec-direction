@@ -1,6 +1,6 @@
 import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
-import { CheckCircle, XCircle, Calendar, AlertTriangle, ArrowUpRight, ChevronDown, ChevronUp } from "lucide-react";
+import { CheckCircle, XCircle, Calendar, AlertTriangle, ArrowUpRight } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
