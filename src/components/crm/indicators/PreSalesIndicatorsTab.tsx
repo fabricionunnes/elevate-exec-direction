@@ -250,6 +250,16 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         attributed_sdr_id: leadAttributionMap.get(activity.lead_id) || null,
       }));
 
+      const uniqueAttributedMeetingEvents = (() => {
+        const seen = new Set<string>();
+        return attributedMeetingEvents.filter((event) => {
+          const key = `${event.lead_id}-${event.event_type}-${event.attributed_sdr_id || "unassigned"}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      })();
+
       // Load sales
       const { data: salesData } = await supabase
         .from("crm_sales")
@@ -275,31 +285,18 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       // Calculate approach totals
       const totalApproaches = (dailyActivities || []).reduce((sum, a) => sum + (a.approaches || 0), 0);
       const totalConnections = (dailyActivities || []).reduce((sum, a) => sum + (a.connections || 0), 0);
-      const totalScheduledFromActivities = (dailyActivities || []).reduce((sum, a) => sum + (a.scheduled || 0), 0);
       const totalQualifications = (dailyActivities || []).reduce((sum, a) => sum + (a.qualifications || 0), 0);
 
-      // Calculate calls metrics (from scheduled_calls table)
-      const totalScheduledCalls = calls?.length || 0;
-      const totalCompletedCalls = (calls || []).filter(c => c.status === "completed").length;
-      const totalNoShowCalls = (calls || []).filter(c => c.status === "no_show").length;
+      // Call-management metrics remain on scheduled_calls; meeting KPIs are canonical from meeting events
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
-      
-      // Calculate meeting events metrics (from card buttons) - out_of_icp does NOT count as realized
-      const meetingEventsScheduled = (meetingEvents || []).filter(e => e.event_type === "scheduled").length;
-      const meetingEventsRealized = (meetingEvents || []).filter(e => e.event_type === "realized").length;
-      const meetingEventsNoShow = (meetingEvents || []).filter(e => e.event_type === "no_show").length;
-      
-      // Build meeting event details for detail cards (deduplicate by lead_id + event_type)
-      const seenEventKeys = new Set<string>();
-      const eventDetails: MeetingEventDetail[] = attributedMeetingEvents
+
+      const meetingEventsScheduled = uniqueAttributedMeetingEvents.filter(e => e.event_type === "scheduled").length;
+      const meetingEventsRealized = uniqueAttributedMeetingEvents.filter(e => e.event_type === "realized").length;
+      const meetingEventsNoShow = uniqueAttributedMeetingEvents.filter(e => e.event_type === "no_show").length;
+
+      const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
-        .filter(e => {
-          const key = `${e.lead_id}-${e.event_type}`;
-          if (seenEventKeys.has(key)) return false;
-          seenEventKeys.add(key);
-          return true;
-        })
         .map(e => ({
           id: e.id,
           lead_id: e.lead_id,
@@ -311,12 +308,11 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
           attributed_sdr_id: e.attributed_sdr_id || undefined,
         }));
       setMeetingEventDetails(eventDetails);
-      
-      // Combined totals (prefer meeting events when available, fallback to scheduled calls)
-      const totalScheduled = meetingEventsScheduled > 0 ? meetingEventsScheduled : totalScheduledCalls;
-      const totalCompleted = meetingEventsRealized > 0 ? meetingEventsRealized : totalCompletedCalls;
-      const totalNoShow = meetingEventsNoShow > 0 ? meetingEventsNoShow : totalNoShowCalls;
-      
+
+      const totalScheduled = meetingEventsScheduled;
+      const totalCompleted = meetingEventsRealized;
+      const totalNoShow = meetingEventsNoShow;
+
       const showUpPercent = totalScheduled > 0 ? ((totalCompleted / totalScheduled) * 100) : 0;
       const noShowPercent = totalScheduled > 0 ? ((totalNoShow / totalScheduled) * 100) : 0;
 
@@ -363,39 +359,24 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         diariaReunioes: dailyAvgMeetings,
       });
 
-      // Calculate SDR metrics
+      // Calculate SDR metrics from canonical meeting events
       const sdrMetricsList: SDRMetrics[] = (sdrStaff || []).map(sdr => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
-        
-        // Meeting events/activities attributed to this SDR through the lead ownership
-        const sdrMeetingEvents = attributedMeetingEvents.filter(e => e.attributed_sdr_id === sdr.id);
-        const sdrMeetingActivities = attributedMeetingActivities.filter(a => a.attributed_sdr_id === sdr.id);
+        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.attributed_sdr_id === sdr.id);
         const sdrEventsScheduled = sdrMeetingEvents.filter(e => e.event_type === "scheduled").length;
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
-        
+
         const approaches = sdrActivities.reduce((sum, a) => sum + (a.approaches || 0), 0);
         const connections = sdrActivities.reduce((sum, a) => sum + (a.connections || 0), 0);
         const scheduled = sdrActivities.reduce((sum, a) => sum + (a.scheduled || 0), 0);
         const qualified = sdrActivities.reduce((sum, a) => sum + (a.qualifications || 0), 0);
-        
-        // Combine scheduled_calls with meeting_events (prefer events when available)
-        const callsScheduledFromCalls = sdrCalls.length;
-        const cancelledFromCalls = sdrCalls.filter(c => c.status === "cancelled").length;
-        const rescheduledFromCalls = sdrCalls.filter(c => c.status === "rescheduled").length;
-        const noShowFromCalls = sdrCalls.filter(c => c.status === "no_show").length;
-        const meetingsFromCalls = sdrCalls.filter(c => c.status === "completed").length;
-        const meetingsFromActivities = sdrMeetingActivities.filter(a => a.status === "completed").length;
-        const noShowFromActivities = sdrMeetingActivities.filter(a => a.status === "no_show").length;
-        
-        // Use attributed CRM meeting data first, then fallback to legacy scheduled calls
-        const callsScheduled = sdrEventsScheduled > 0 ? sdrEventsScheduled : callsScheduledFromCalls;
-        const noShow = sdrEventsNoShow > 0 ? sdrEventsNoShow : (noShowFromActivities > 0 ? noShowFromActivities : noShowFromCalls);
-        const meetings = sdrEventsRealized > 0 ? sdrEventsRealized : (meetingsFromActivities > 0 ? meetingsFromActivities : meetingsFromCalls);
-        const cancelled = cancelledFromCalls;
-        const rescheduled = rescheduledFromCalls;
-        
+        const cancelled = sdrCalls.filter(c => c.status === "cancelled").length;
+        const rescheduled = sdrCalls.filter(c => c.status === "rescheduled").length;
+        const callsScheduled = sdrEventsScheduled;
+        const noShow = sdrEventsNoShow;
+        const meetings = sdrEventsRealized;
         const noShowPct = callsScheduled > 0 ? (noShow / callsScheduled) * 100 : 0;
 
         return {
