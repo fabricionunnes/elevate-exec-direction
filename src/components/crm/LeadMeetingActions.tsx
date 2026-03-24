@@ -388,6 +388,31 @@ export function LeadMeetingActions({
           </TooltipContent>
         </Tooltip>
 
+        <Tooltip>
+          <TooltipTrigger asChild>
+            <Button
+              variant="ghost"
+              size="icon"
+              className={cn(
+                "h-7 w-7 rounded-md hover:bg-amber-100 hover:text-amber-600",
+                trackedEvents.has("out_of_icp") &&
+                  "text-amber-500 bg-amber-50 border border-amber-200"
+              )}
+              onClick={(e) => handleTrackEvent(e, "out_of_icp")}
+              disabled={loading !== null}
+            >
+              {loading === "out_of_icp" ? (
+                <Loader2 className="h-3.5 w-3.5 animate-spin" />
+              ) : (
+                <AlertTriangle className="h-3.5 w-3.5" />
+              )}
+            </Button>
+          </TooltipTrigger>
+          <TooltipContent side="top" className="text-xs">
+            Fora do ICP
+          </TooltipContent>
+        </Tooltip>
+
         {showContractButton && (
           <SendContractButton
             leadId={leadId}
