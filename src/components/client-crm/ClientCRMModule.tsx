@@ -150,6 +150,17 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
           <ClientCRMContracts />
         </TabsContent>
 
+        <TabsContent value="reunioes">
+          <ClientCRMMeetings
+            projectId={projectId}
+            currentUser={currentUser}
+            stages={crm.stages}
+            onMoveDeal={crm.moveDealToStage}
+            onRefresh={crm.fetchAll}
+          />
+        </TabsContent>
+        </TabsContent>
+
         <TabsContent value="settings">
           <ClientCRMSettings
             projectId={projectId}
