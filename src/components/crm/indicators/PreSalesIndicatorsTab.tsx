@@ -200,7 +200,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         .from("crm_meeting_events")
         .select(`
           *,
-          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name)
+          credited_staff:onboarding_staff!crm_meeting_events_credited_staff_id_fkey(id, name),
+          lead:crm_leads!crm_meeting_events_lead_id_fkey(id, name, company)
         `)
         .gte("event_date", periodStart.toISOString())
         .lte("event_date", periodEnd.toISOString());
