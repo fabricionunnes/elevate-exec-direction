@@ -43,6 +43,73 @@ function normalizeStringParam(value: unknown): string | null {
   return normalized;
 }
 
+function encodeBase64(bytes: Uint8Array): string {
+  let binary = "";
+  const chunkSize = 0x8000;
+
+  for (let i = 0; i < bytes.length; i += chunkSize) {
+    const chunk = bytes.subarray(i, i + chunkSize);
+    binary += String.fromCharCode(...chunk);
+  }
+
+  return btoa(binary);
+}
+
+async function sendEvolutionDocument(params: {
+  apiUrl: string;
+  apiKey: string;
+  instanceName: string;
+  phone: string;
+  fileName: string;
+  caption: string;
+  publicUrl: string;
+  pdfBytes: Uint8Array;
+}) {
+  const baseUrl = params.apiUrl.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
+  const endpoint = `${baseUrl}/message/sendMedia/${params.instanceName}`;
+  const headers = {
+    "Content-Type": "application/json",
+    apikey: params.apiKey,
+    Authorization: `Bearer ${params.apiKey}`,
+    "x-api-key": params.apiKey,
+  };
+
+  const base64 = encodeBase64(params.pdfBytes);
+  const attempts = [
+    { label: "public-url", media: params.publicUrl },
+    { label: "data-uri", media: `data:application/pdf;base64,${base64}` },
+    { label: "raw-base64", media: base64 },
+  ];
+
+  let lastError = "";
+
+  for (const attempt of attempts) {
+    const response = await fetch(endpoint, {
+      method: "POST",
+      headers,
+      body: JSON.stringify({
+        number: params.phone,
+        mediatype: "document",
+        mimetype: "application/pdf",
+        media: attempt.media,
+        caption: params.caption,
+        fileName: params.fileName,
+      }),
+    });
+
+    const responseText = await response.text();
+    console.log(`[nfeio-nfse] WhatsApp attempt ${attempt.label}: status=${response.status} body=${responseText}`);
+
+    if (response.ok) {
+      return;
+    }
+
+    lastError = responseText || `HTTP ${response.status}`;
+  }
+
+  throw new Error(`Falha ao enviar via WhatsApp: ${lastError}`);
+}
+
 function normalizeText(value: string): string {
   return value
     .toLowerCase()
@@ -614,6 +681,7 @@ Deno.serve(async (req) => {
           }
 
           const pdfArrayBuffer = await pdfRes.arrayBuffer();
+          const pdfBytes = new Uint8Array(pdfArrayBuffer);
 
           // Upload PDF to Supabase Storage to get a public URL
           const supabaseService = createClient(
@@ -621,10 +689,10 @@ Deno.serve(async (req) => {
             Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!,
           );
 
-          const storagePath = `nfse-pdfs/${normalizedNfeioId}.pdf`;
+          const storagePath = `nfse-pdfs/${normalizedNfeioCompanyId}/${normalizedNfeioId}.pdf`;
           const { error: uploadError } = await supabaseService.storage
             .from("whatsapp-media")
-            .upload(storagePath, new Uint8Array(pdfArrayBuffer), {
+            .upload(storagePath, pdfBytes, {
               contentType: "application/pdf",
               upsert: true,
             });
@@ -639,7 +707,11 @@ Deno.serve(async (req) => {
             .getPublicUrl(storagePath);
 
           const pdfPublicUrl = urlData.publicUrl;
-          console.log("PDF uploaded to:", pdfPublicUrl);
+          console.log("[nfeio-nfse] PDF public URL:", pdfPublicUrl);
+
+          if (!/^https?:\/\//i.test(pdfPublicUrl)) {
+            throw new Error("URL pública do PDF inválida");
+          }
 
           // Format phone number
           const cleanPhone = phone.replace(/\D/g, "");
@@ -649,27 +721,16 @@ Deno.serve(async (req) => {
           const fileName = `NFS-e${nfseNumber ? `-${nfseNumber}` : ""}.pdf`;
           const caption = `📄 *Nota Fiscal de Serviço*\n\nOlá ${tomadorName}, segue sua NFS-e${nfseNumber ? ` nº ${nfseNumber}` : ""} em anexo.`;
 
-          const baseUrl = instance.api_url.replace(/\/manager\/?$/i, "").replace(/\/+$/g, "");
-          const sendRes = await fetch(`${baseUrl}/message/sendMedia/${instance.instance_name}`, {
-            method: "POST",
-            headers: {
-              "Content-Type": "application/json",
-              apikey: instance.api_key,
-            },
-            body: JSON.stringify({
-              number: formattedPhone,
-              mediatype: "document",
-              media: pdfPublicUrl,
-              caption,
-              fileName,
-            }),
+          await sendEvolutionDocument({
+            apiUrl: instance.api_url,
+            apiKey: instance.api_key,
+            instanceName: instance.instance_name,
+            phone: formattedPhone,
+            fileName,
+            caption,
+            publicUrl: pdfPublicUrl,
+            pdfBytes,
           });
-
-          if (!sendRes.ok) {
-            const errText = await sendRes.text();
-            console.error("WhatsApp send error:", errText);
-            throw new Error(`Falha ao enviar via WhatsApp: ${sendRes.status}`);
-          }
 
           return new Response(
             JSON.stringify({ success: true, message: "NFS-e enviada via WhatsApp com sucesso" }),
