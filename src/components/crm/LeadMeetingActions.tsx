@@ -278,6 +278,23 @@ export function LeadMeetingActions({
             <XCircle className="h-3 w-3" />
           )}
         </Button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className={cn(
+            "h-6 w-6 rounded-full",
+            trackedEvents.has("out_of_icp") && "text-amber-500 bg-amber-50"
+          )}
+          onClick={(e) => handleTrackEvent(e, "out_of_icp")}
+          disabled={loading !== null}
+          title="Fora do ICP"
+        >
+          {loading === "out_of_icp" ? (
+            <Loader2 className="h-3 w-3 animate-spin" />
+          ) : (
+            <AlertTriangle className="h-3 w-3" />
+          )}
+        </Button>
         {showContractButton && (
           <SendContractButton
             leadId={leadId}
