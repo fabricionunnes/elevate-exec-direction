@@ -173,7 +173,7 @@ Deno.serve(async (req) => {
           description: receivableDescription,
           due_date: today,
           paid_at: now,
-          status: 'pago',
+          status: 'paid',
           company_id: company_id || null,
           custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
           payment_method: payment_method || 'pix',
