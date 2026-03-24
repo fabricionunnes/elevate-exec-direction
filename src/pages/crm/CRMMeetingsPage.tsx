@@ -290,23 +290,24 @@ const CRMMeetingsPage = () => {
       await moveLead(selectedMeeting, "no show");
 
       // Track no_show meeting event for Closer + SDR
-      if (selectedMeeting.lead_id && selectedMeeting.lead?.stage_id) {
+      if (selectedMeeting.lead_id) {
         const closerId = selectedMeeting.responsible_staff_id || staffId;
         if (closerId) {
           const { data: leadData } = await supabase
             .from("crm_leads")
-            .select("pipeline_id, scheduled_by_staff_id")
+            .select("pipeline_id, scheduled_by_staff_id, stage_id")
             .eq("id", selectedMeeting.lead_id)
             .single();
           if (leadData?.pipeline_id) {
             const eventDate = new Date().toISOString();
+            const stageId = selectedMeeting.lead?.stage_id || leadData.stage_id;
             const events: any[] = [{
               lead_id: selectedMeeting.lead_id,
               pipeline_id: leadData.pipeline_id,
               event_type: "no_show",
               credited_staff_id: closerId,
               triggered_by_staff_id: staffId,
-              stage_id: selectedMeeting.lead.stage_id,
+              stage_id: stageId,
               event_date: eventDate,
             }];
             if (leadData.scheduled_by_staff_id && leadData.scheduled_by_staff_id !== closerId) {
@@ -316,7 +317,7 @@ const CRMMeetingsPage = () => {
                 event_type: "no_show",
                 credited_staff_id: leadData.scheduled_by_staff_id,
                 triggered_by_staff_id: staffId,
-                stage_id: selectedMeeting.lead.stage_id,
+                stage_id: stageId,
                 event_date: eventDate,
               });
             }
