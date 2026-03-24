@@ -174,7 +174,8 @@ export const ScheduleLeadMeetingDialog = ({
         .filter((e) => e.includes("@"));
 
       // Build description with lead card link
-      const leadCardUrl = `${window.location.origin}/#/crm?lead=${leadId}`;
+      const baseUrl = getPublicBaseUrl();
+      const leadCardUrl = `${baseUrl}/#/crm?lead=${leadId}`;
       const descriptionParts: string[] = [];
       if (formData.description) {
         descriptionParts.push(formData.description);
