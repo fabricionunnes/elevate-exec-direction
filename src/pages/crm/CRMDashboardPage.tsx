@@ -27,6 +27,7 @@ import { getRemainingBusinessDaysInMonth } from "@/lib/businessDays";
 import { ptBR } from "date-fns/locale";
 import { BarChart, Bar, XAxis, YAxis, ResponsiveContainer, Tooltip, Cell, PieChart, Pie } from "recharts";
 import { Link } from "react-router-dom";
+import { MeetingDetailCards, type MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 
 interface DashboardMetrics {
   newLeads: number;
