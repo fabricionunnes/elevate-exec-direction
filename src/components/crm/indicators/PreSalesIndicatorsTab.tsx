@@ -121,6 +121,9 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
     quantidade: 0,
   });
 
+  // Meeting event details for cards
+  const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
+
   useEffect(() => {
     loadPipelines();
   }, []);
