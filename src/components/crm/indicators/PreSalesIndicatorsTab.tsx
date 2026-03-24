@@ -25,6 +25,7 @@ import { format, startOfMonth, endOfMonth, getDaysInMonth, getDate, differenceIn
 import { ptBR } from "date-fns/locale";
 import { Phone, Users, Calendar as CalendarIcon, AlertTriangle, CheckCircle, XCircle, TrendingUp, Upload, ChevronDown } from "lucide-react";
 import { ImportPreSalesDialog } from "@/components/crm/ImportPreSalesDialog";
+import { MeetingDetailCards, MeetingEventDetail } from "@/components/crm/MeetingDetailCards";
 import { DateRange } from "react-day-picker";
 import { cn } from "@/lib/utils";
 
