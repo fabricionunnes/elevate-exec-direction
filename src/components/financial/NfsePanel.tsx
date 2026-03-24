@@ -100,6 +100,13 @@ export function NfsePanel() {
     tomadorName: "",
     tomadorDocument: "",
     tomadorEmail: "",
+    tomadorStreet: "",
+    tomadorNumber: "",
+    tomadorComplement: "",
+    tomadorNeighborhood: "",
+    tomadorCity: "",
+    tomadorState: "",
+    tomadorPostalCode: "",
     cityServiceCode: DEFAULT_CITY_SERVICE_CODE,
     nbsCode: DEFAULT_NBS_CODE,
   });
