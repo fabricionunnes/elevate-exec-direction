@@ -12,7 +12,7 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX } from "lucide-react";
-import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO } from "date-fns";
+import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
@@ -296,6 +296,57 @@ const CRMMeetingsPage = () => {
       <Card>
         <CardContent className="py-3 flex flex-wrap items-center gap-3">
           <Filter className="h-4 w-4 text-muted-foreground" />
+
+          {/* Quick period selector */}
+          <Select
+            value="custom"
+            onValueChange={(val) => {
+              const now = new Date();
+              switch (val) {
+                case "yesterday":
+                  setDateRange({ from: subDays(now, 1), to: subDays(now, 1) });
+                  break;
+                case "today":
+                  setDateRange({ from: now, to: now });
+                  break;
+                case "this_week":
+                  setDateRange({ from: startOfWeek(now, { weekStartsOn: 1 }), to: endOfWeek(now, { weekStartsOn: 1 }) });
+                  break;
+                case "last_week": {
+                  const lw = subWeeks(now, 1);
+                  setDateRange({ from: startOfWeek(lw, { weekStartsOn: 1 }), to: endOfWeek(lw, { weekStartsOn: 1 }) });
+                  break;
+                }
+                case "this_month":
+                  setDateRange({ from: startOfMonth(now), to: endOfMonth(now) });
+                  break;
+                case "last_month": {
+                  const lm = subMonths(now, 1);
+                  setDateRange({ from: startOfMonth(lm), to: endOfMonth(lm) });
+                  break;
+                }
+                case "next_week": {
+                  const nw = addWeeks(now, 1);
+                  setDateRange({ from: startOfWeek(nw, { weekStartsOn: 1 }), to: endOfWeek(nw, { weekStartsOn: 1 }) });
+                  break;
+                }
+              }
+            }}
+          >
+            <SelectTrigger className="w-[150px] h-8 text-xs">
+              <SelectValue placeholder="Período rápido" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="custom" disabled className="text-muted-foreground text-xs">Período rápido</SelectItem>
+              <SelectItem value="yesterday">Ontem</SelectItem>
+              <SelectItem value="today">Hoje</SelectItem>
+              <SelectItem value="this_week">Esta semana</SelectItem>
+              <SelectItem value="last_week">Semana passada</SelectItem>
+              <SelectItem value="this_month">Este mês</SelectItem>
+              <SelectItem value="last_month">Mês passado</SelectItem>
+              <SelectItem value="next_week">Semana que vem</SelectItem>
+            </SelectContent>
+          </Select>
 
           <Popover>
             <PopoverTrigger asChild>
