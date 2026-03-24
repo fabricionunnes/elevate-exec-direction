@@ -169,20 +169,64 @@ Deno.serve(async (req) => {
             const viaCepRes = await fetch(`https://viacep.com.br/ws/${cleanPostalCode}/json/`);
             if (viaCepRes.ok) {
               const viaCepData = await viaCepRes.json();
+              console.info("ViaCEP raw response:", JSON.stringify(viaCepData));
               if (!viaCepData.erro) {
-                // ViaCEP values take priority to fill gaps, but also override empty values
-                if (!enrichedCity && viaCepData.localidade) enrichedCity = viaCepData.localidade;
-                if (!enrichedState && viaCepData.uf) enrichedState = viaCepData.uf;
-                if (!enrichedDistrict && viaCepData.bairro) enrichedDistrict = viaCepData.bairro;
-                if (!enrichedStreet && viaCepData.logradouro) enrichedStreet = viaCepData.logradouro;
-                // Always use ViaCEP state if available (most reliable source)
+                if (viaCepData.localidade) enrichedCity = viaCepData.localidade;
                 if (viaCepData.uf) enrichedState = viaCepData.uf;
+                if (viaCepData.bairro && !enrichedDistrict) enrichedDistrict = viaCepData.bairro;
+                if (viaCepData.logradouro && !enrichedStreet) enrichedStreet = viaCepData.logradouro;
                 ibgeCityCode = viaCepData.ibge;
-                console.info("ViaCEP enrichment:", JSON.stringify({ city: enrichedCity, state: enrichedState, ibge: ibgeCityCode }));
+                console.info("ViaCEP enrichment applied:", JSON.stringify({ city: enrichedCity, state: enrichedState, ibge: ibgeCityCode }));
+              } else {
+                console.warn("ViaCEP returned erro:true for CEP:", cleanPostalCode);
               }
+            } else {
+              console.warn("ViaCEP HTTP error:", viaCepRes.status);
             }
           } catch (e) {
-            console.warn("ViaCEP lookup failed, continuing without enrichment:", e);
+            console.warn("ViaCEP lookup failed:", e);
+          }
+        }
+        
+        // If state is still empty, try to derive from CEP prefix (SP fallback for 01xxx-19xxx)
+        if (!enrichedState && cleanPostalCode) {
+          const cepPrefix = parseInt(cleanPostalCode.substring(0, 2), 10);
+          const cepStateMap: Record<string, [number, number][]> = {
+            SP: [[1, 19]],
+            RJ: [[20, 28]],
+            ES: [[29, 29]],
+            MG: [[30, 39]],
+            BA: [[40, 48]],
+            SE: [[49, 49]],
+            PE: [[50, 56]],
+            AL: [[57, 57]],
+            PB: [[58, 58]],
+            RN: [[59, 59]],
+            CE: [[60, 63]],
+            PI: [[64, 64]],
+            MA: [[65, 65]],
+            PA: [[66, 68]],
+            AP: [[68, 68]],
+            AM: [[69, 69]],
+            RR: [[69, 69]],
+            DF: [[70, 73]],
+            GO: [[74, 76]],
+            TO: [[77, 77]],
+            MT: [[78, 78]],
+            MS: [[79, 79]],
+            PR: [[80, 87]],
+            SC: [[88, 89]],
+            RS: [[90, 99]],
+          };
+          for (const [uf, ranges] of Object.entries(cepStateMap)) {
+            for (const [min, max] of ranges) {
+              if (cepPrefix >= min && cepPrefix <= max) {
+                enrichedState = uf;
+                console.info("State derived from CEP prefix:", uf);
+                break;
+              }
+            }
+            if (enrichedState) break;
           }
         }
         
