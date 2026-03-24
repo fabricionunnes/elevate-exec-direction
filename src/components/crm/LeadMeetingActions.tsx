@@ -58,7 +58,15 @@ const trackMeetingEvent = async (
     }
 
     const eventDate = new Date().toISOString();
-    const eventsToInsert: Array<Record<string, string>> = [{
+    const eventsToInsert: Array<{
+      lead_id: string;
+      pipeline_id: string;
+      event_type: string;
+      credited_staff_id: string;
+      triggered_by_staff_id: string;
+      stage_id: string;
+      event_date: string;
+    }> = [{
       lead_id: leadId,
       pipeline_id: pipelineId,
       event_type: eventType,
