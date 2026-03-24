@@ -365,7 +365,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         // Use attributed CRM meeting data first, then fallback to legacy scheduled calls
         const callsScheduled = sdrEventsScheduled > 0 ? sdrEventsScheduled : callsScheduledFromCalls;
         const noShow = sdrEventsNoShow > 0 ? sdrEventsNoShow : (noShowFromActivities > 0 ? noShowFromActivities : noShowFromCalls);
-        const meetings = meetingsFromActivities > 0 ? meetingsFromActivities : meetingsFromCalls;
+        const meetings = sdrEventsRealized > 0 ? sdrEventsRealized : (meetingsFromActivities > 0 ? meetingsFromActivities : meetingsFromCalls);
         const cancelled = cancelledFromCalls;
         const rescheduled = rescheduledFromCalls;
         
