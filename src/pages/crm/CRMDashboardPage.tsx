@@ -75,6 +75,7 @@ export const CRMDashboardPage = () => {
   const [noActivityLeads, setNoActivityLeads] = useState<any[]>([]);
   const [topOpportunities, setTopOpportunities] = useState<any[]>([]);
   const [lossReasons, setLossReasons] = useState<any[]>([]);
+  const [meetingEventDetails, setMeetingEventDetails] = useState<MeetingEventDetail[]>([]);
   const [dailyGoal, setDailyGoal] = useState<{
     monthlyTarget: number;
     achieved: number;
