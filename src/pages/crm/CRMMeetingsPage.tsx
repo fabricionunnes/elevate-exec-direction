@@ -248,6 +248,51 @@ const CRMMeetingsPage = () => {
 
       // Move lead to "No Show" stage if it exists, otherwise keep current
       await moveLead(selectedMeeting, "no show");
+
+      // Track no_show meeting event for Closer + SDR
+      if (selectedMeeting.lead_id && selectedMeeting.lead?.stage_id) {
+        const closerId = selectedMeeting.responsible_staff_id || staffId;
+        if (closerId) {
+          const { data: leadData } = await supabase
+            .from("crm_leads")
+            .select("pipeline_id, scheduled_by_staff_id")
+            .eq("id", selectedMeeting.lead_id)
+            .single();
+          if (leadData?.pipeline_id) {
+            const eventDate = new Date().toISOString();
+            const events: any[] = [{
+              lead_id: selectedMeeting.lead_id,
+              pipeline_id: leadData.pipeline_id,
+              event_type: "no_show",
+              credited_staff_id: closerId,
+              triggered_by_staff_id: staffId,
+              stage_id: selectedMeeting.lead.stage_id,
+              event_date: eventDate,
+            }];
+            if (leadData.scheduled_by_staff_id && leadData.scheduled_by_staff_id !== closerId) {
+              events.push({
+                lead_id: selectedMeeting.lead_id,
+                pipeline_id: leadData.pipeline_id,
+                event_type: "no_show",
+                credited_staff_id: leadData.scheduled_by_staff_id,
+                triggered_by_staff_id: staffId,
+                stage_id: selectedMeeting.lead.stage_id,
+                event_date: eventDate,
+              });
+            }
+            const { data: existing } = await supabase
+              .from("crm_meeting_events")
+              .select("id")
+              .eq("lead_id", selectedMeeting.lead_id)
+              .eq("event_type", "no_show")
+              .limit(1);
+            if (!existing || existing.length === 0) {
+              await supabase.from("crm_meeting_events").insert(events);
+            }
+          }
+        }
+      }
+
       toast.success("Reunião marcada como No Show");
       setSelectedMeeting(null);
       setBriefing("");
