@@ -1,0 +1,2 @@
+ALTER TABLE crm_meeting_events DROP CONSTRAINT crm_meeting_events_event_type_check;
+ALTER TABLE crm_meeting_events ADD CONSTRAINT crm_meeting_events_event_type_check CHECK (event_type = ANY (ARRAY['scheduled'::text, 'realized'::text, 'no_show'::text, 'out_of_icp'::text]));
