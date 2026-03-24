@@ -113,7 +113,7 @@ export function NfsePanel() {
   const loadOnboardingCompanies = async () => {
     const { data } = await supabase
       .from("onboarding_companies")
-      .select("id, name, cnpj, email")
+      .select("id, name, cnpj, email, address, address_number, address_complement, address_neighborhood, address_city, address_state, address_zipcode")
       .eq("status", "active")
       .order("name");
     if (data) setOnboardingCompanies(data);
