@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, lazy, Suspense } from "react";
 import { useNavigate } from "react-router-dom";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
@@ -20,7 +20,8 @@ import {
   Truck,
   MessageSquare,
   Headphones,
-  FileCheck
+  FileCheck,
+  Code2
 } from "lucide-react";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
@@ -42,6 +43,7 @@ import { FinancialInboxPanel } from "@/components/financial/FinancialInboxPanel"
 import { BankStatementFullPanel } from "@/components/financial/BankStatementFullPanel";
 import { NfsePanel } from "@/components/financial/NfsePanel";
 import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
+import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
 
 // Map tab IDs to financial permission keys (null = always visible if user has financial access)
 const TAB_PERMISSION_MAP: Record<string, string | null> = {
@@ -62,6 +64,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   "bank-statement": "fin_bank_statement",
   "general-statement": null, // always visible
   "nfse": null, // always visible
+  "api": "master_only", // master only
 };
 
 const ALL_TABS = [
@@ -82,6 +85,7 @@ const ALL_TABS = [
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
   { id: "general-statement", label: "Extrato Geral", icon: FileText },
   { id: "nfse", label: "NFS-e", icon: FileCheck },
+  { id: "api", label: "API", icon: Code2 },
 ];
 
 export default function FinancialModulePage() {
@@ -93,6 +97,7 @@ export default function FinancialModulePage() {
     return ALL_TABS.filter(tab => {
       const permKey = TAB_PERMISSION_MAP[tab.id];
       if (permKey === null) return true; // always visible
+      if (permKey === "master_only") return false; // master only tabs
       return hasFinancialPermission(permKey);
     });
   }, [isMaster, hasFinancialPermission]);
@@ -226,6 +231,9 @@ export default function FinancialModulePage() {
           </TabsContent>
           <TabsContent value="nfse" className="mt-0">
             <NfsePanel />
+          </TabsContent>
+          <TabsContent value="api" className="mt-0">
+            <FinancialApiDocs />
           </TabsContent>
         </Tabs>
       </main>
