@@ -808,6 +808,7 @@ export function ConsultantOneOnOnePanel() {
 
             return {
               id: p.id,
+              company_id: p.company_id,
               company_name: p.onboarding_companies?.name || "Empresa",
               days_since_start: daysSince,
               health_score: p.client_health_scores?.total_score || 50,

@@ -71,6 +71,11 @@ export function NewCompanyCard({ company, index, onClick, onCreateInternalTask }
           <h4 className="font-semibold text-foreground text-sm leading-tight line-clamp-2 group-hover:text-blue-700 dark:group-hover:text-blue-400 transition-colors">
             {company.company_name}
           </h4>
+          {company.company_id && (
+            <p className="text-[10px] text-muted-foreground/60 font-mono mt-0.5 truncate">
+              ID: {company.company_id}
+            </p>
+          )}
           <div className="flex items-center gap-1.5 mt-1.5">
             <User className="h-3 w-3 text-muted-foreground/70" />
             <span className="text-xs text-muted-foreground truncate">
