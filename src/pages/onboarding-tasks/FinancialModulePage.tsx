@@ -234,7 +234,10 @@ export default function FinancialModulePage() {
             <NfsePanel />
           </TabsContent>
           <TabsContent value="api" className="mt-0">
-            <FinancialApiDocs />
+            <div className="space-y-8">
+              <FinancialApiDocs />
+              <SystemApiDocs />
+            </div>
           </TabsContent>
         </Tabs>
       </main>
