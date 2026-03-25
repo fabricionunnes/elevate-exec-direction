@@ -44,6 +44,7 @@ import { BankStatementFullPanel } from "@/components/financial/BankStatementFull
 import { NfsePanel } from "@/components/financial/NfsePanel";
 import { GeneralStatementPanel } from "@/components/financial/GeneralStatementPanel";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
+import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
 
 // Map tab IDs to financial permission keys (null = always visible if user has financial access)
 const TAB_PERMISSION_MAP: Record<string, string | null> = {
