@@ -91,7 +91,7 @@ const ALL_TABS = [
 
 export default function FinancialModulePage() {
   const navigate = useNavigate();
-  const { loading, hasFinancialAccess, isMaster, hasFinancialPermission } = useFinancialPermissions();
+  const { loading, hasFinancialAccess, isMaster, hasFinancialPermission, userRole } = useFinancialPermissions();
   
   const visibleTabs = useMemo(() => {
     if (isMaster || (userRole === "admin")) {
