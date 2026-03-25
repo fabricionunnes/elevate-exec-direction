@@ -85,6 +85,7 @@ const ALL_TABS = [
   { id: "bank-statement", label: "Extrato Bancário", icon: FileText },
   { id: "general-statement", label: "Extrato Geral", icon: FileText },
   { id: "nfse", label: "NFS-e", icon: FileCheck },
+  { id: "api", label: "API", icon: Code2 },
 ];
 
 export default function FinancialModulePage() {
