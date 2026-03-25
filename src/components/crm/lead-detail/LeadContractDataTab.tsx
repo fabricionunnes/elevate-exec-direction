@@ -197,9 +197,13 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
   }, [leadId, onUpdate]);
 
   const debouncedSave = useCallback((updates: Partial<ContractData>) => {
+    // Accumulate all pending changes instead of replacing
+    pendingUpdatesRef.current = { ...pendingUpdatesRef.current, ...updates };
     if (debounceRef.current) clearTimeout(debounceRef.current);
     debounceRef.current = setTimeout(() => {
-      saveField(updates);
+      const batch = { ...pendingUpdatesRef.current };
+      pendingUpdatesRef.current = {};
+      saveField(batch);
     }, 800);
   }, [saveField]);
 
