@@ -488,10 +488,11 @@ export function FinancialApiDocs() {
         </CardContent>
       </Card>
 
-      {/* Endpoints */}
+      {/* Read Endpoints */}
+      <h3 className="text-lg font-semibold mt-2">📊 Consultas (Leitura)</h3>
       <Tabs defaultValue="summary">
         <TabsList className="flex flex-wrap h-auto gap-1">
-          {endpoints.map((ep) => (
+          {readEndpoints.map((ep) => (
             <TabsTrigger key={ep.endpoint} value={ep.endpoint} className="text-xs gap-1.5">
               <ep.icon className="h-3.5 w-3.5" />
               {ep.name}
@@ -499,40 +500,28 @@ export function FinancialApiDocs() {
           ))}
         </TabsList>
 
-        {endpoints.map((ep) => (
+        {readEndpoints.map((ep) => (
           <TabsContent key={ep.endpoint} value={ep.endpoint} className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200">{ep.method}</Badge>
+                  <Badge variant="secondary">{ep.method}</Badge>
                   <CardTitle className="text-base">{ep.name}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{ep.description}</p>
-
                 {ep.params.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Parâmetros (Query String)</h4>
+                    <h4 className="text-sm font-medium mb-2">Parâmetros</h4>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-muted">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium">Parâmetro</th>
-                            <th className="text-left px-3 py-2 font-medium">Descrição</th>
-                            <th className="text-left px-3 py-2 font-medium">Obrigatório</th>
-                          </tr>
-                        </thead>
+                        <thead className="bg-muted"><tr><th className="text-left px-3 py-2">Parâmetro</th><th className="text-left px-3 py-2">Descrição</th></tr></thead>
                         <tbody>
                           {ep.params.map((p) => (
                             <tr key={p.name} className="border-t">
                               <td className="px-3 py-2 font-mono text-primary">{p.name}</td>
                               <td className="px-3 py-2 text-muted-foreground">{p.desc}</td>
-                              <td className="px-3 py-2">
-                                <Badge variant={p.required ? "default" : "secondary"} className="text-[10px]">
-                                  {p.required ? "Sim" : "Não"}
-                                </Badge>
-                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -540,26 +529,83 @@ export function FinancialApiDocs() {
                     </div>
                   </div>
                 )}
-
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Exemplo de Requisição</h4>
+                  <h4 className="text-sm font-medium mb-2">Exemplo</h4>
                   <CodeBlock code={ep.example} language="http" />
                 </div>
-
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Exemplo de Resposta</h4>
+                  <h4 className="text-sm font-medium mb-2">Resposta</h4>
                   <CodeBlock code={ep.response} language="json" />
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
 
-                {/* cURL example */}
+      {/* Write Endpoints */}
+      <h3 className="text-lg font-semibold mt-6">✏️ Operações (Escrita)</h3>
+      <p className="text-sm text-muted-foreground mb-3">
+        Todas as operações de escrita usam a URL: <code className="bg-muted px-1 rounded text-xs">{SYSTEM_API_URL}</code>
+      </p>
+      <Tabs defaultValue={writeEndpoints[0]?.action || "create"}>
+        <TabsList className="flex flex-wrap h-auto gap-1">
+          {writeEndpoints.map((ep, i) => (
+            <TabsTrigger key={`${ep.module}-${ep.action}-${i}`} value={`${ep.module}-${ep.action}-${i}`} className="text-xs gap-1.5">
+              <ep.icon className="h-3.5 w-3.5" />
+              {ep.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {writeEndpoints.map((ep, i) => (
+          <TabsContent key={`${ep.module}-${ep.action}-${i}`} value={`${ep.module}-${ep.action}-${i}`} className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">{ep.method}</Badge>
+                  <CardTitle className="text-base">{ep.name}</CardTitle>
+                </div>
+                <code className="text-xs text-muted-foreground">?module={ep.module}&action={ep.action}</code>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{ep.description}</p>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Campos do Body (JSON)</h4>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="text-left px-3 py-2">Campo</th>
+                          <th className="text-left px-3 py-2">Tipo</th>
+                          <th className="text-left px-3 py-2">Obrigatório</th>
+                          <th className="text-left px-3 py-2">Descrição</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ep.bodyFields.map((f) => (
+                          <tr key={f.name} className="border-t">
+                            <td className="px-3 py-2 font-mono text-primary">{f.name}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{f.type}</td>
+                            <td className="px-3 py-2">
+                              <Badge variant={f.required ? "default" : "secondary"} className="text-[10px]">
+                                {f.required ? "Sim" : "Não"}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">{f.desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 <div>
                   <h4 className="text-sm font-medium mb-2">cURL</h4>
-                  <CodeBlock
-                    code={`curl -X GET "${ep.example.replace("GET ", "")}" \\
-  -H "apikey: SUA_CHAVE_PUBLICA" \\
-  -H "Authorization: Bearer SEU_TOKEN"`}
-                    language="bash"
-                  />
+                  <CodeBlock code={ep.example} language="bash" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Resposta</h4>
+                  <CodeBlock code={ep.response} language="json" />
                 </div>
               </CardContent>
             </Card>
