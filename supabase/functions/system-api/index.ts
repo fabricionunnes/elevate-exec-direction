@@ -70,6 +70,30 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
         },
+        search: async (c) => {
+          const query = c.url.searchParams.get("query");
+          if (!query || query.trim().length < 2) return json({ error: "Parâmetro 'query' obrigatório (mínimo 2 caracteres)" }, 400);
+          const { data, error } = await c.supabase
+            .from("onboarding_companies")
+            .select("id, name, cnpj, status, segment, contract_value, consultant_id, cs_id, contract_start_date, contract_end_date")
+            .eq("is_simulator", false)
+            .ilike("name", `%${query.trim()}%`)
+            .order("name")
+            .limit(20);
+          if (error) throw error;
+          // Enrich with active project info
+          const enriched = [];
+          for (const company of (data || [])) {
+            const { data: project } = await c.supabase
+              .from("onboarding_projects")
+              .select("id, status, product")
+              .eq("company_id", company.id)
+              .in("status", ["active", "implementation", "ongoing"])
+              .maybeSingle();
+            enriched.push({ ...company, active_project: project || null });
+          }
+          return json({ data: enriched, total: enriched.length });
+        },
         get: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
           const { data, error } = await c.supabase.from("onboarding_companies").select("*").eq("id", c.id).single();
