@@ -620,7 +620,7 @@ export default function AllRecurringChargesPage() {
 
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const selectablePaginatedInvoices = paginatedInvoices.filter(inv => inv.source_table === "company_invoices");
+  const selectablePaginatedInvoices = paginatedInvoices;
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
