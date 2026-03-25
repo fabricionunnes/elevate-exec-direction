@@ -1,8 +1,10 @@
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Code2 } from "lucide-react";
+import { ArrowLeft, Code2, DollarSign, Target, Briefcase } from "lucide-react";
 import { FinancialApiDocs } from "@/components/financial-api/FinancialApiDocs";
-import { SystemApiDocs } from "@/components/financial-api/SystemApiDocs";
+import { CrmApiDocs } from "@/components/financial-api/CrmApiDocs";
+import { ProductApiDocs } from "@/components/financial-api/ProductApiDocs";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 export default function ApiDocsPage() {
   const navigate = useNavigate();
@@ -27,9 +29,35 @@ export default function ApiDocsPage() {
         </div>
       </header>
 
-      <main className="container mx-auto px-4 py-6 space-y-8">
-        <FinancialApiDocs />
-        <SystemApiDocs />
+      <main className="container mx-auto px-4 py-6">
+        <Tabs defaultValue="crm" className="space-y-6">
+          <TabsList className="grid w-full max-w-lg grid-cols-3">
+            <TabsTrigger value="financial" className="gap-2">
+              <DollarSign className="h-4 w-4" />
+              Financeiro
+            </TabsTrigger>
+            <TabsTrigger value="crm" className="gap-2">
+              <Target className="h-4 w-4" />
+              CRM Comercial
+            </TabsTrigger>
+            <TabsTrigger value="product" className="gap-2">
+              <Briefcase className="h-4 w-4" />
+              Produto
+            </TabsTrigger>
+          </TabsList>
+
+          <TabsContent value="financial">
+            <FinancialApiDocs />
+          </TabsContent>
+
+          <TabsContent value="crm">
+            <CrmApiDocs />
+          </TabsContent>
+
+          <TabsContent value="product">
+            <ProductApiDocs />
+          </TabsContent>
+        </Tabs>
       </main>
     </div>
   );
