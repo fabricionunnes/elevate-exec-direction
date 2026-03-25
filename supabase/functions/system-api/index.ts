@@ -628,9 +628,21 @@ serve(async (req) => {
         },
         delete: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          // Find and reverse associated bank transactions before deleting
+          const { data: txs } = await c.supabase.from("financial_bank_transactions")
+            .select("id, amount_cents, bank_id, type")
+            .eq("reference_type", "receivable")
+            .eq("reference_id", c.id);
+          if (txs && txs.length > 0) {
+            for (const tx of txs) {
+              const reverseAmount = tx.type === "credit" ? -tx.amount_cents : tx.amount_cents;
+              await c.supabase.rpc("increment_bank_balance", { p_bank_id: tx.bank_id, p_amount: reverseAmount });
+            }
+            await c.supabase.from("financial_bank_transactions").delete().eq("reference_type", "receivable").eq("reference_id", c.id);
+          }
           const { error } = await c.supabase.from("financial_receivables").delete().eq("id", c.id);
           if (error) throw error;
-          return json({ success: true });
+          return json({ success: true, transactions_reversed: txs?.length || 0 });
         },
       },
 
