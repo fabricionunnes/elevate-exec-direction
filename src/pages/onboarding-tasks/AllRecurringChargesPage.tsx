@@ -1739,9 +1739,7 @@ export default function AllRecurringChargesPage() {
                               <TableCell>
                                 <Checkbox
                                   checked={selectedInvoiceIds.has(inv.id)}
-                                  disabled={inv.source_table !== "company_invoices"}
                                   onCheckedChange={(checked) => {
-                                    if (inv.source_table !== "company_invoices") return;
                                     const next = new Set(selectedInvoiceIds);
                                     if (checked) { next.add(inv.id); } else { next.delete(inv.id); }
                                     setSelectedInvoiceIds(next);
