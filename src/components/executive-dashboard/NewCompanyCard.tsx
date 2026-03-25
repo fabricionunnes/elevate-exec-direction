@@ -9,6 +9,7 @@ import { cn } from "@/lib/utils";
 interface NewCompanyCardProps {
   company: {
     id: string;
+    company_id?: string;
     company_name: string;
     consultant_name?: string;
     health_score: number;
