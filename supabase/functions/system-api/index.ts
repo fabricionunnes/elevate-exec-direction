@@ -553,6 +553,324 @@ serve(async (req) => {
         },
       },
 
+      // ===== FINANCIAL RECEIVABLES =====
+      receivables: {
+        list: async (c) => {
+          let q = c.supabase.from("financial_receivables").select("id, company_id, description, amount, due_date, status, paid_amount, paid_date, payment_method, category_id, bank_account_id, contract_id, custom_receiver_name, discount_amount, interest_amount, late_fee_amount, fee_amount, notes, reference_month, is_recurring, payment_link, created_at, updated_at").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
+          if (c.status) q = q.eq("status", c.status);
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
+          if (c.dateTo) q = q.lte("due_date", c.dateTo);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        get: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_receivables").select("*").eq("id", c.id).single();
+          if (error) throw error;
+          return json({ data });
+        },
+        create: async (c) => {
+          const b = c.body;
+          if (!b.description || !b.amount || !b.due_date) return json({ error: "Campos 'description', 'amount' e 'due_date' obrigatórios" }, 400);
+          const insertData: any = {
+            description: b.description, amount: b.amount, due_date: b.due_date,
+            company_id: b.company_id || null, custom_receiver_name: b.custom_receiver_name || null,
+            payment_method: b.payment_method || null, category_id: b.category_id || null,
+            bank_account_id: b.bank_account_id || null, contract_id: b.contract_id || null,
+            notes: b.notes || null, reference_month: b.reference_month || null,
+            is_recurring: b.is_recurring || false, status: "pending",
+          };
+          const { data, error } = await c.supabase.from("financial_receivables").insert(insertData).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_receivables").update({ ...c.body, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+        mark_paid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: rec } = await c.supabase.from("financial_receivables").select("*").eq("id", c.id).single();
+          if (!rec) return json({ error: "Recebível não encontrado" }, 404);
+          const now = new Date().toISOString();
+          const paidAmount = c.body.paid_amount ?? rec.amount;
+          const paidDate = c.body.paid_date || now.split("T")[0];
+          const bankId = c.body.bank_id || null;
+          const updateData: any = { status: "paid", paid_amount: paidAmount, paid_date: paidDate, updated_at: now };
+          if (c.body.payment_method) updateData.payment_method = c.body.payment_method;
+          if (c.body.discount_amount !== undefined) updateData.discount_amount = c.body.discount_amount;
+          if (c.body.interest_amount !== undefined) updateData.interest_amount = c.body.interest_amount;
+          if (c.body.late_fee_amount !== undefined) updateData.late_fee_amount = c.body.late_fee_amount;
+          const { data, error } = await c.supabase.from("financial_receivables").update(updateData).eq("id", c.id).select().single();
+          if (error) throw error;
+          // Register bank transaction if bank_id provided
+          if (bankId) {
+            const amountCents = Math.round(paidAmount * 100);
+            await c.supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: amountCents });
+            await c.supabase.from("financial_bank_transactions").insert({
+              bank_id: bankId, type: "credit", amount_cents: amountCents,
+              description: `Recebível: ${rec.description}`, reference_type: "receivable", reference_id: c.id,
+              discount_cents: c.body.discount_amount ? Math.round(c.body.discount_amount * 100) : 0,
+              interest_cents: c.body.interest_amount ? Math.round(c.body.interest_amount * 100) : 0,
+            } as any);
+          }
+          return json({ data, bank_credited: !!bankId });
+        },
+        mark_unpaid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_receivables").update({ status: "pending", paid_amount: null, paid_date: null, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { error } = await c.supabase.from("financial_receivables").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true });
+        },
+      },
+
+      // ===== FINANCIAL PAYABLES =====
+      payables: {
+        list: async (c) => {
+          let q = c.supabase.from("financial_payables").select("id, supplier_name, description, amount, due_date, status, paid_amount, paid_date, payment_method, category_id, bank_id, bank_account_id, cost_center, cost_center_id, cost_type, notes, reference_month, is_recurring, recurrence_type, installment_number, total_installments, created_at, updated_at").order("due_date", { ascending: true }).range(c.offset, c.offset + c.limit - 1);
+          if (c.status) q = q.eq("status", c.status);
+          if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
+          if (c.dateTo) q = q.lte("due_date", c.dateTo);
+          const supplier = c.url.searchParams.get("supplier");
+          if (supplier) q = q.ilike("supplier_name", `%${supplier}%`);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        get: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_payables").select("*").eq("id", c.id).single();
+          if (error) throw error;
+          return json({ data });
+        },
+        create: async (c) => {
+          const b = c.body;
+          if (!b.supplier_name || !b.description || !b.amount || !b.due_date) return json({ error: "Campos 'supplier_name', 'description', 'amount' e 'due_date' obrigatórios" }, 400);
+          const insertData: any = {
+            supplier_name: b.supplier_name, description: b.description, amount: b.amount, due_date: b.due_date,
+            payment_method: b.payment_method || null, category_id: b.category_id || null,
+            bank_id: b.bank_id || null, bank_account_id: b.bank_account_id || null,
+            cost_center: b.cost_center || null, cost_center_id: b.cost_center_id || null,
+            cost_type: b.cost_type || null, notes: b.notes || null,
+            reference_month: b.reference_month || null, is_recurring: b.is_recurring || false,
+            recurrence_type: b.recurrence_type || null, installment_number: b.installment_number || null,
+            total_installments: b.total_installments || null, status: "pending",
+          };
+          const { data, error } = await c.supabase.from("financial_payables").insert(insertData).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        update: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_payables").update({ ...c.body, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+        mark_paid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: pay } = await c.supabase.from("financial_payables").select("*").eq("id", c.id).single();
+          if (!pay) return json({ error: "Conta a pagar não encontrada" }, 404);
+          const now = new Date().toISOString();
+          const paidAmount = c.body.paid_amount ?? pay.amount;
+          const paidDate = c.body.paid_date || now.split("T")[0];
+          const bankId = c.body.bank_id || pay.bank_id || null;
+          const updateData: any = { status: "paid", paid_amount: paidAmount, paid_date: paidDate, updated_at: now };
+          if (c.body.payment_method) updateData.payment_method = c.body.payment_method;
+          const { data, error } = await c.supabase.from("financial_payables").update(updateData).eq("id", c.id).select().single();
+          if (error) throw error;
+          // Register bank transaction (debit)
+          if (bankId) {
+            const amountCents = Math.round(paidAmount * 100);
+            await c.supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: -amountCents });
+            await c.supabase.from("financial_bank_transactions").insert({
+              bank_id: bankId, type: "debit", amount_cents: amountCents,
+              description: `Pagamento: ${pay.description}`, reference_type: "payable", reference_id: c.id,
+            } as any);
+          }
+          return json({ data, bank_debited: !!bankId });
+        },
+        mark_unpaid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("financial_payables").update({ status: "pending", paid_amount: null, paid_date: null, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { error } = await c.supabase.from("financial_payables").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true });
+        },
+      },
+
+      // ===== INVOICES (company_invoices) =====
+      invoices: {
+        list: async (c) => {
+          let q = c.supabase.from("company_invoices").select("id, company_id, description, amount_cents, paid_amount_cents, due_date, status, paid_at, payment_method, bank_id, bank_account_id, notes, custom_receiver_name, recurring_charge_id, payment_link_id, pagarme_charge_id, installment_number, total_installments, late_fee_cents, interest_cents, discount_cents, created_at, updated_at").order("due_date", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
+          if (c.status) q = q.eq("status", c.status);
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
+          if (c.dateTo) q = q.lte("due_date", c.dateTo);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        get: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("company_invoices").select("*").eq("id", c.id).single();
+          if (error) throw error;
+          return json({ data });
+        },
+        create: async (c) => {
+          const b = c.body;
+          if (!b.description || !b.amount_cents || !b.due_date) return json({ error: "Campos 'description', 'amount_cents' e 'due_date' obrigatórios" }, 400);
+          const insertData: any = {
+            description: b.description, amount_cents: b.amount_cents, due_date: b.due_date,
+            company_id: b.company_id || null, custom_receiver_name: b.custom_receiver_name || null,
+            payment_method: b.payment_method || null, bank_id: b.bank_id || null,
+            bank_account_id: b.bank_account_id || null, notes: b.notes || null,
+            status: "pending",
+          };
+          const { data, error } = await c.supabase.from("company_invoices").insert(insertData).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        mark_paid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: inv } = await c.supabase.from("company_invoices").select("*").eq("id", c.id).single();
+          if (!inv) return json({ error: "Fatura não encontrada" }, 404);
+          const now = new Date().toISOString();
+          const paidCents = c.body.paid_amount_cents ?? (inv as any).amount_cents;
+          const bankId = c.body.bank_id || (inv as any).bank_id || null;
+          const updateData: any = {
+            status: "paid", paid_amount_cents: paidCents, paid_at: now, updated_at: now,
+          };
+          if (c.body.payment_method) updateData.payment_method = c.body.payment_method;
+          if (c.body.late_fee_cents !== undefined) updateData.late_fee_cents = c.body.late_fee_cents;
+          if (c.body.interest_cents !== undefined) updateData.interest_cents = c.body.interest_cents;
+          if (c.body.discount_cents !== undefined) updateData.discount_cents = c.body.discount_cents;
+          const { data, error } = await c.supabase.from("company_invoices").update(updateData).eq("id", c.id).select().single();
+          if (error) throw error;
+          if (bankId) {
+            await c.supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: paidCents });
+            await c.supabase.from("financial_bank_transactions").insert({
+              bank_id: bankId, type: "credit", amount_cents: paidCents,
+              description: `Fatura: ${(inv as any).description}`, reference_type: "invoice", reference_id: c.id,
+            } as any);
+          }
+          return json({ data, bank_credited: !!bankId });
+        },
+        mark_unpaid: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("company_invoices").update({ status: "pending", paid_amount_cents: null, paid_at: null, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          if (error) throw error;
+          return json({ data });
+        },
+      },
+
+      // ===== ASAAS CHARGES =====
+      asaas: {
+        create_charge: async (c) => {
+          const ASAAS_API_KEY = Deno.env.get("ASAAS_API_KEY");
+          if (!ASAAS_API_KEY) return json({ error: "ASAAS_API_KEY não configurada" }, 500);
+          const b = c.body;
+          if (!b.customer_name || !b.amount_cents || !b.payment_method) {
+            return json({ error: "Campos 'customer_name', 'amount_cents' e 'payment_method' obrigatórios" }, 400);
+          }
+          // Invoke existing asaas-checkout edge function
+          const payload: any = {
+            customer_name: b.customer_name,
+            customer_email: b.customer_email || null,
+            customer_phone: b.customer_phone || null,
+            customer_document: b.customer_document || null,
+            product_name: b.description || "Cobrança via API",
+            amount_cents: b.amount_cents,
+            payment_method: b.payment_method,
+            installments: b.installments || 1,
+            interest_free_installments: b.interest_free_installments || 0,
+            company_id: b.company_id || null,
+          };
+          const ASAAS_BASE = "https://api.asaas.com/v3";
+          // Find or create customer
+          let cleanDoc = (b.customer_document || "").replace(/\D/g, "");
+          if (cleanDoc.length > 0 && cleanDoc.length <= 11) cleanDoc = cleanDoc.padStart(11, "0");
+          else if (cleanDoc.length > 11 && cleanDoc.length <= 14) cleanDoc = cleanDoc.padStart(14, "0");
+          let customerId: string | null = null;
+          const customerPayload: any = { name: b.customer_name, email: b.customer_email, notificationDisabled: true };
+          if (cleanDoc) customerPayload.cpfCnpj = cleanDoc;
+          if (b.customer_phone) customerPayload.mobilePhone = b.customer_phone.replace(/\D/g, "");
+          if (cleanDoc) {
+            const existingRes = await fetch(`${ASAAS_BASE}/customers?cpfCnpj=${cleanDoc}`, { headers: { "access_token": ASAAS_API_KEY } });
+            const existing = await existingRes.json();
+            if (existing.data?.length > 0) customerId = existing.data[0].id;
+          }
+          if (!customerId) {
+            const newRes = await fetch(`${ASAAS_BASE}/customers`, { method: "POST", headers: { "Content-Type": "application/json", "access_token": ASAAS_API_KEY }, body: JSON.stringify(customerPayload) });
+            const newCustomer = await newRes.json();
+            if (!newRes.ok) throw new Error(newCustomer.errors?.[0]?.description || "Erro ao criar cliente no Asaas");
+            customerId = newCustomer.id;
+          }
+          // Create payment
+          let billingType = "PIX";
+          if (b.payment_method === "credit_card") billingType = "CREDIT_CARD";
+          else if (b.payment_method === "boleto") billingType = "BOLETO";
+          const amountValue = b.amount_cents / 100;
+          const dueDate = b.due_date || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
+          const paymentPayload: any = {
+            customer: customerId, billingType, value: amountValue, dueDate,
+            description: b.description || "Cobrança via API", notificationDisabled: false,
+          };
+          if (billingType === "CREDIT_CARD" && b.installments > 1) {
+            paymentPayload.installmentCount = b.installments;
+            paymentPayload.installmentValue = Math.round((amountValue / b.installments) * 100) / 100;
+          }
+          const payRes = await fetch(`${ASAAS_BASE}/payments`, { method: "POST", headers: { "Content-Type": "application/json", "access_token": ASAAS_API_KEY }, body: JSON.stringify(paymentPayload) });
+          const payment = await payRes.json();
+          if (!payRes.ok) throw new Error(payment.errors?.[0]?.description || "Erro ao criar cobrança no Asaas");
+          // Get PIX QR if applicable
+          let pixData: any = null;
+          if (billingType === "PIX" && payment.id) {
+            try {
+              const pixRes = await fetch(`${ASAAS_BASE}/payments/${payment.id}/pixQrCode`, { headers: { "access_token": ASAAS_API_KEY } });
+              if (pixRes.ok) pixData = await pixRes.json();
+            } catch {}
+          }
+          const response: any = {
+            success: true, asaas_payment_id: payment.id, status: payment.status,
+            invoice_url: payment.invoiceUrl, billing_type: billingType,
+          };
+          if (pixData) {
+            response.pix_qr_code = pixData.payload;
+            response.pix_qr_code_base64 = pixData.encodedImage;
+          }
+          if (billingType === "BOLETO") response.boleto_url = payment.bankSlipUrl;
+          // Optionally create receivable record
+          if (b.create_receivable !== false) {
+            const recInsert: any = {
+              description: b.description || `Cobrança Asaas: ${b.customer_name}`,
+              amount: amountValue, due_date: dueDate, status: "pending",
+              company_id: b.company_id || null,
+              custom_receiver_name: !b.company_id ? b.customer_name : null,
+              payment_method: b.payment_method,
+              notes: `Asaas ID: ${payment.id} | Via API`,
+            };
+            const { data: recData } = await c.supabase.from("financial_receivables").insert(recInsert).select("id").single();
+            if (recData) response.receivable_id = recData.id;
+          }
+          return json(response, 201);
+        },
+      },
+
       // ===== SYSTEM INFO =====
       system: {
         endpoints: async () => {
@@ -562,7 +880,7 @@ serve(async (req) => {
               projects: { actions: ["list", "get"], description: "Visualizar projetos" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
               staff: { actions: ["list"], description: "Listar colaboradores" },
-              leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo: todos os campos, ganho/perda, notas, tags" },
+              leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo" },
               tags: { actions: ["list", "create", "add_to_lead", "remove_from_lead", "lead_tags"], description: "Tags do CRM" },
               pipelines: { actions: ["list", "stages"], description: "Pipelines e etapas" },
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
@@ -570,6 +888,10 @@ serve(async (req) => {
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
               kpis: { actions: ["list", "entries", "create_entry"], description: "KPIs e lançamentos" },
               salespeople: { actions: ["list", "create", "update"], description: "Vendedores das empresas" },
+              receivables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a receber (CRUD + baixa)" },
+              payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },
+              invoices: { actions: ["list", "get", "create", "mark_paid", "mark_unpaid"], description: "Faturas de empresas" },
+              asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",

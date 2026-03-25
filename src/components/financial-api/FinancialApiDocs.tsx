@@ -35,7 +35,9 @@ const CodeBlock = ({ code, language = "json" }: { code: string; language?: strin
   );
 };
 
-const endpoints = [
+const SYSTEM_API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/system-api`;
+
+const readEndpoints = [
   {
     name: "Resumo Financeiro",
     endpoint: "summary",
@@ -45,98 +47,10 @@ const endpoints = [
     params: [],
     example: `GET ${API_URL}?endpoint=summary`,
     response: `{
-  "date": "2026-03-25",
-  "bank_balance": {
-    "total": 150000.00,
-    "accounts": [
-      { "id": "uuid", "name": "Conta Principal", "balance": 150000.00 }
-    ]
-  },
-  "receivables": {
-    "total_pending": 45000.00,
-    "total_overdue": 12000.00,
-    "received_this_month": 38000.00,
-    "count_pending": 15,
-    "count_overdue": 4
-  },
-  "payables": {
-    "total_pending": 22000.00,
-    "total_overdue": 3000.00,
-    "count_pending": 8,
-    "count_overdue": 2
-  },
-  "mrr": 65000.00,
-  "active_recurring_charges": 42
-}`,
-  },
-  {
-    name: "Contas a Receber",
-    endpoint: "receivables",
-    icon: CreditCard,
-    method: "GET",
-    description: "Lista todas as faturas/contas a receber com filtros por status, data e empresa.",
-    params: [
-      { name: "status", desc: "pending, paid, overdue, cancelled, partial", required: false },
-      { name: "date_from", desc: "Data início (YYYY-MM-DD)", required: false },
-      { name: "date_to", desc: "Data fim (YYYY-MM-DD)", required: false },
-      { name: "company_id", desc: "UUID da empresa", required: false },
-      { name: "limit", desc: "Máx. registros (padrão 500, máx 2000)", required: false },
-      { name: "offset", desc: "Paginação (padrão 0)", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=receivables&status=pending&date_from=2026-01-01`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "company_id": "uuid",
-      "description": "Mensalidade Jan/2026",
-      "amount": 5000.00,
-      "due_date": "2026-01-15",
-      "status": "pending",
-      "paid_at": null,
-      "paid_amount": null,
-      "late_fee": 0,
-      "interest": 0,
-      "discount": 0,
-      "total_with_fees": 5000.00,
-      "payment_method": null,
-      "installment_number": 1,
-      "total_installments": 1
-    }
-  ],
-  "pagination": { "limit": 500, "offset": 0 }
-}`,
-  },
-  {
-    name: "Contas a Pagar",
-    endpoint: "payables",
-    icon: Database,
-    method: "GET",
-    description: "Lista todas as contas a pagar com filtros por status e período.",
-    params: [
-      { name: "status", desc: "pending, paid, overdue, cancelled", required: false },
-      { name: "date_from", desc: "Data início (YYYY-MM-DD)", required: false },
-      { name: "date_to", desc: "Data fim (YYYY-MM-DD)", required: false },
-      { name: "limit", desc: "Máx. registros (padrão 500, máx 2000)", required: false },
-      { name: "offset", desc: "Paginação (padrão 0)", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=payables&status=pending`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "supplier_name": "Fornecedor XYZ",
-      "description": "Aluguel escritório",
-      "amount": 8500.00,
-      "due_date": "2026-03-10",
-      "status": "pending",
-      "paid_date": null,
-      "paid_amount": null,
-      "payment_method": "pix",
-      "cost_type": "fixed"
-    }
-  ],
-  "pagination": { "limit": 500, "offset": 0 }
+  "bank_balance": { "total": 150000.00, "accounts": [...] },
+  "receivables": { "total_pending": 45000.00, "total_overdue": 12000.00 },
+  "payables": { "total_pending": 22000.00, "total_overdue": 3000.00 },
+  "mrr": 65000.00
 }`,
   },
   {
@@ -147,348 +61,242 @@ const endpoints = [
     description: "Lista todas as contas bancárias com saldos atuais.",
     params: [],
     example: `GET ${API_URL}?endpoint=banks`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Conta Principal",
-      "bank_code": "341",
-      "agency": "1234",
-      "account_number": "56789-0",
-      "initial_balance": 100000.00,
-      "current_balance": 150000.00,
-      "is_active": true
-    }
-  ]
-}`,
+    response: `{ "data": [{ "id": "uuid", "name": "Conta Principal", "current_balance": 150000.00 }] }`,
   },
   {
-    name: "Transações Bancárias",
+    name: "Transações",
     endpoint: "transactions",
     icon: RefreshCw,
     method: "GET",
-    description: "Lista o extrato de transações bancárias (créditos e débitos).",
+    description: "Lista o extrato de transações bancárias.",
     params: [
       { name: "date_from", desc: "Data início (YYYY-MM-DD)", required: false },
       { name: "date_to", desc: "Data fim (YYYY-MM-DD)", required: false },
-      { name: "limit", desc: "Máx. registros (padrão 500, máx 2000)", required: false },
-      { name: "offset", desc: "Paginação (padrão 0)", required: false },
     ],
     example: `GET ${API_URL}?endpoint=transactions&date_from=2026-03-01`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "bank_id": "uuid",
-      "type": "credit",
-      "amount": 5000.00,
-      "description": "Pagamento fatura #123",
-      "reference_type": "invoice",
-      "reference_id": "uuid",
-      "discount": 0,
-      "interest": 0,
-      "fee": 1.99
-    }
-  ],
-  "pagination": { "limit": 500, "offset": 0 }
-}`,
+    response: `{ "data": [{ "type": "credit", "amount": 5000.00, "description": "Pagamento fatura" }] }`,
   },
   {
     name: "Recorrências",
     endpoint: "recurring",
     icon: RefreshCw,
     method: "GET",
-    description: "Lista as cobranças recorrentes ativas.",
-    params: [
-      { name: "company_id", desc: "UUID da empresa (opcional)", required: false },
-    ],
+    description: "Lista cobranças recorrentes ativas.",
+    params: [{ name: "company_id", desc: "UUID da empresa", required: false }],
     example: `GET ${API_URL}?endpoint=recurring`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "company_id": "uuid",
-      "description": "Mensalidade Consultoria",
-      "amount": 5000.00,
-      "recurrence": "monthly",
-      "next_charge_date": "2026-04-01",
-      "is_active": true,
-      "customer_name": "Empresa XYZ"
-    }
-  ]
-}`,
-  },
-  {
-    name: "Empresas",
-    endpoint: "companies",
-    icon: Building2,
-    method: "GET",
-    description: "Lista empresas com dados financeiros básicos (valor contrato, segmento, etc.).",
-    params: [
-      { name: "status", desc: "active, inactive, churned", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=companies&status=active`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Empresa ABC",
-      "status": "active",
-      "contract_value": 5000,
-      "segment": "Tecnologia",
-      "billing_day": 10,
-      "contact_email": "financeiro@abc.com",
-      "cnpj": "12.345.678/0001-00"
-    }
-  ]
-}`,
-  },
-  {
-    name: "Fornecedores",
-    endpoint: "suppliers",
-    icon: Truck,
-    method: "GET",
-    description: "Lista todos os fornecedores cadastrados.",
-    params: [
-      { name: "status", desc: "active, inactive", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=suppliers`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Fornecedor XYZ",
-      "cnpj": "12.345.678/0001-00",
-      "email": "contato@fornecedor.com",
-      "phone": "11999999999",
-      "contact_name": "João",
-      "is_active": true
-    }
-  ]
-}`,
-  },
-  {
-    name: "Categorias",
-    endpoint: "categories",
-    icon: Tag,
-    method: "GET",
-    description: "Lista todas as categorias financeiras (receita e despesa) com classificação DRE e DFC.",
-    params: [],
-    example: `GET ${API_URL}?endpoint=categories`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Consultoria",
-      "type": "receita",
-      "group_name": "Operacional",
-      "dre_line": "receita_bruta",
-      "dfc_section": "operacional",
-      "is_active": true
-    }
-  ]
-}`,
-  },
-  {
-    name: "Centros de Custo",
-    endpoint: "cost_centers",
-    icon: Target,
-    method: "GET",
-    description: "Lista todos os centros de custo.",
-    params: [],
-    example: `GET ${API_URL}?endpoint=cost_centers`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Marketing",
-      "description": "Despesas de marketing",
-      "is_active": true
-    }
-  ]
-}`,
-  },
-  {
-    name: "Contratos",
-    endpoint: "contracts",
-    icon: FileText,
-    method: "GET",
-    description: "Lista contratos financeiros com empresas.",
-    params: [
-      { name: "status", desc: "active, inactive, cancelled", required: false },
-      { name: "company_id", desc: "UUID da empresa", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=contracts&status=active`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "company_id": "uuid",
-      "contract_name": "Consultoria Empresarial",
-      "contract_type": "recurring",
-      "billing_cycle": "monthly",
-      "contract_value": 5000.00,
-      "start_date": "2025-01-01",
-      "status": "active"
-    }
-  ]
-}`,
-  },
-  {
-    name: "Links de Pagamento",
-    endpoint: "payment_links",
-    icon: Link2,
-    method: "GET",
-    description: "Lista links de pagamento gerados.",
-    params: [
-      { name: "company_id", desc: "UUID da empresa", required: false },
-      { name: "limit", desc: "Máx. registros (padrão 500)", required: false },
-      { name: "offset", desc: "Paginação (padrão 0)", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=payment_links`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "description": "Mensalidade Jan/2026",
-      "amount": 5000.00,
-      "payment_method": "credit_card",
-      "url": "https://checkout.example.com/...",
-      "provider": "pagarme"
-    }
-  ]
-}`,
-  },
-  {
-    name: "Régua de Cobranças",
-    endpoint: "billing_rules",
-    icon: Bell,
-    method: "GET",
-    description: "Lista as regras de notificação de cobrança configuradas.",
-    params: [],
-    example: `GET ${API_URL}?endpoint=billing_rules`,
-    response: `{
-  "data": [
-    {
-      "id": "uuid",
-      "name": "Lembrete 3 dias antes",
-      "trigger_type": "before",
-      "days_offset": 3,
-      "is_active": true,
-      "include_payment_link": true
-    }
-  ]
-}`,
-  },
-  {
-    name: "Clientes Inadimplentes",
-    endpoint: "overdue_clients",
-    icon: AlertTriangle,
-    method: "GET",
-    description: "Lista clientes com faturas em atraso, agrupados por empresa, com total em aberto e detalhes.",
-    params: [],
-    example: `GET ${API_URL}?endpoint=overdue_clients`,
-    response: `{
-  "data": [
-    {
-      "company_id": "uuid",
-      "company_name": "Empresa ABC",
-      "contact_email": "email@empresa.com",
-      "contact_phone": "11999999999",
-      "cnpj": "12.345.678/0001-00",
-      "total_overdue": 15000.00,
-      "invoices_count": 3,
-      "oldest_due_date": "2025-12-15",
-      "invoices": [
-        { "id": "uuid", "description": "Mensalidade Dez/2025", "amount": 5000.00, "due_date": "2025-12-15" }
-      ]
-    }
-  ],
-  "total_clients": 5,
-  "total_overdue": 75000.00
-}`,
-  },
-  {
-    name: "Relatório de Inadimplência",
-    endpoint: "delinquency_report",
-    icon: BarChart3,
-    method: "GET",
-    description: "Relatório consolidado de inadimplência com aging (1-30, 31-60, 61-90, 90+ dias).",
-    params: [],
-    example: `GET ${API_URL}?endpoint=delinquency_report`,
-    response: `{
-  "total_due_invoices": 200,
-  "total_overdue_invoices": 25,
-  "total_paid_on_time": 160,
-  "total_paid_late": 15,
-  "delinquency_rate": "12.5%",
-  "total_overdue_amount": 125000.00,
-  "aging_breakdown": {
-    "1-30": 50000.00,
-    "31-60": 35000.00,
-    "61-90": 25000.00,
-    "90+": 15000.00
-  }
-}`,
-  },
-  {
-    name: "Fluxo de Caixa",
-    endpoint: "cashflow",
-    icon: TrendingUp,
-    method: "GET",
-    description: "Projeção de fluxo de caixa com receitas e despesas agrupadas por mês.",
-    params: [
-      { name: "date_from", desc: "Data início (YYYY-MM-DD, padrão: início do mês)", required: false },
-      { name: "date_to", desc: "Data fim (YYYY-MM-DD, padrão: +3 meses)", required: false },
-    ],
-    example: `GET ${API_URL}?endpoint=cashflow&date_from=2026-01-01&date_to=2026-06-30`,
-    response: `{
-  "current_balance": 150000.00,
-  "period": { "from": "2026-01-01", "to": "2026-06-30" },
-  "projection": [
-    {
-      "month": "2026-01",
-      "expected_income": 85000.00,
-      "expected_expense": 45000.00,
-      "net": 40000.00,
-      "projected_balance": 190000.00,
-      "already_received": 82000.00,
-      "already_paid": 42000.00
-    }
-  ]
-}`,
+    response: `{ "data": [{ "description": "Mensalidade", "amount": 5000.00, "recurrence": "monthly" }] }`,
   },
   {
     name: "DRE",
     endpoint: "dre",
     icon: FileText,
     method: "GET",
-    description: "Demonstrativo de Resultado do Exercício com receitas, despesas, lucro e margem por mês e categoria.",
-    params: [
-      { name: "date_from", desc: "Ano de referência (YYYY-01-01, padrão: ano atual)", required: false },
-    ],
+    description: "Demonstrativo de Resultado do Exercício.",
+    params: [{ name: "date_from", desc: "Ano de referência (YYYY-01-01)", required: false }],
     example: `GET ${API_URL}?endpoint=dre&date_from=2026-01-01`,
+    response: `{ "year": 2026, "realized": { "revenue": 450000, "expenses": 280000, "profit": 170000 } }`,
+  },
+  {
+    name: "Fluxo de Caixa",
+    endpoint: "cashflow",
+    icon: TrendingUp,
+    method: "GET",
+    description: "Projeção de fluxo de caixa.",
+    params: [
+      { name: "date_from", desc: "Data início", required: false },
+      { name: "date_to", desc: "Data fim", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=cashflow`,
+    response: `{ "current_balance": 150000, "projection": [{ "month": "2026-01", "net": 40000 }] }`,
+  },
+  {
+    name: "Inadimplentes",
+    endpoint: "overdue_clients",
+    icon: AlertTriangle,
+    method: "GET",
+    description: "Clientes com faturas em atraso.",
+    params: [],
+    example: `GET ${API_URL}?endpoint=overdue_clients`,
+    response: `{ "data": [{ "company_name": "Empresa ABC", "total_overdue": 15000 }], "total_overdue": 75000 }`,
+  },
+];
+
+const writeEndpoints = [
+  {
+    name: "Criar Conta a Receber",
+    module: "receivables",
+    action: "create",
+    method: "POST",
+    icon: CreditCard,
+    description: "Cria uma nova conta a receber no financeiro.",
+    bodyFields: [
+      { name: "description", type: "string", required: true, desc: "Descrição do recebível" },
+      { name: "amount", type: "number", required: true, desc: "Valor em reais (ex: 1500.00)" },
+      { name: "due_date", type: "string", required: true, desc: "Data de vencimento (YYYY-MM-DD)" },
+      { name: "company_id", type: "uuid", required: false, desc: "UUID da empresa (se vinculado)" },
+      { name: "custom_receiver_name", type: "string", required: false, desc: "Nome do cliente (se sem empresa)" },
+      { name: "payment_method", type: "string", required: false, desc: "pix, boleto, credit_card, transfer" },
+      { name: "category_id", type: "uuid", required: false, desc: "UUID da categoria financeira" },
+      { name: "bank_account_id", type: "uuid", required: false, desc: "UUID da conta bancária" },
+      { name: "notes", type: "string", required: false, desc: "Observações" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=receivables&action=create" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"description":"Consultoria Mar/2026","amount":5000,"due_date":"2026-03-31","custom_receiver_name":"Cliente XYZ"}'`,
+    response: `{ "data": { "id": "uuid", "description": "Consultoria Mar/2026", "amount": 5000, "status": "pending" } }`,
+  },
+  {
+    name: "Marcar Recebível como Pago",
+    module: "receivables",
+    action: "mark_paid",
+    method: "POST",
+    icon: Check,
+    description: "Dá baixa em uma conta a receber. Se informar bank_id, credita o saldo automaticamente.",
+    bodyFields: [
+      { name: "id (query)", type: "uuid", required: true, desc: "UUID do recebível (na query string)" },
+      { name: "paid_amount", type: "number", required: false, desc: "Valor pago (padrão: valor total)" },
+      { name: "paid_date", type: "string", required: false, desc: "Data do pagamento (YYYY-MM-DD)" },
+      { name: "bank_id", type: "uuid", required: false, desc: "UUID do banco para creditar saldo" },
+      { name: "payment_method", type: "string", required: false, desc: "Método de pagamento" },
+      { name: "discount_amount", type: "number", required: false, desc: "Valor do desconto" },
+      { name: "interest_amount", type: "number", required: false, desc: "Valor dos juros" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=receivables&action=mark_paid&id=UUID" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"bank_id":"uuid-banco","payment_method":"pix"}'`,
+    response: `{ "data": { "id": "uuid", "status": "paid", "paid_amount": 5000 }, "bank_credited": true }`,
+  },
+  {
+    name: "Reverter Pagamento (Recebível)",
+    module: "receivables",
+    action: "mark_unpaid",
+    method: "POST",
+    icon: RefreshCw,
+    description: "Reverte o status de um recebível para pendente.",
+    bodyFields: [
+      { name: "id (query)", type: "uuid", required: true, desc: "UUID do recebível" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=receivables&action=mark_unpaid&id=UUID" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" -d '{}'`,
+    response: `{ "data": { "id": "uuid", "status": "pending", "paid_amount": null } }`,
+  },
+  {
+    name: "Criar Conta a Pagar",
+    module: "payables",
+    action: "create",
+    method: "POST",
+    icon: Database,
+    description: "Cria uma nova conta a pagar para um fornecedor.",
+    bodyFields: [
+      { name: "supplier_name", type: "string", required: true, desc: "Nome do fornecedor" },
+      { name: "description", type: "string", required: true, desc: "Descrição da despesa" },
+      { name: "amount", type: "number", required: true, desc: "Valor em reais" },
+      { name: "due_date", type: "string", required: true, desc: "Data de vencimento (YYYY-MM-DD)" },
+      { name: "payment_method", type: "string", required: false, desc: "Método de pagamento" },
+      { name: "category_id", type: "uuid", required: false, desc: "UUID da categoria" },
+      { name: "bank_id", type: "uuid", required: false, desc: "UUID do banco" },
+      { name: "cost_type", type: "string", required: false, desc: "fixed, variable" },
+      { name: "notes", type: "string", required: false, desc: "Observações" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=payables&action=create" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"supplier_name":"Fornecedor ABC","description":"Aluguel escritório","amount":8500,"due_date":"2026-04-10"}'`,
+    response: `{ "data": { "id": "uuid", "supplier_name": "Fornecedor ABC", "amount": 8500, "status": "pending" } }`,
+  },
+  {
+    name: "Marcar Pagável como Pago",
+    module: "payables",
+    action: "mark_paid",
+    method: "POST",
+    icon: Check,
+    description: "Dá baixa em uma conta a pagar. Se informar bank_id, debita o saldo automaticamente.",
+    bodyFields: [
+      { name: "id (query)", type: "uuid", required: true, desc: "UUID da conta a pagar" },
+      { name: "paid_amount", type: "number", required: false, desc: "Valor pago (padrão: valor total)" },
+      { name: "paid_date", type: "string", required: false, desc: "Data do pagamento" },
+      { name: "bank_id", type: "uuid", required: false, desc: "UUID do banco para debitar" },
+      { name: "payment_method", type: "string", required: false, desc: "Método de pagamento" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=payables&action=mark_paid&id=UUID" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"bank_id":"uuid-banco","payment_method":"transfer"}'`,
+    response: `{ "data": { "id": "uuid", "status": "paid" }, "bank_debited": true }`,
+  },
+  {
+    name: "Criar Fatura (Empresa)",
+    module: "invoices",
+    action: "create",
+    method: "POST",
+    icon: FileText,
+    description: "Cria uma fatura vinculada a uma empresa.",
+    bodyFields: [
+      { name: "description", type: "string", required: true, desc: "Descrição da fatura" },
+      { name: "amount_cents", type: "number", required: true, desc: "Valor em centavos (ex: 500000 = R$ 5.000)" },
+      { name: "due_date", type: "string", required: true, desc: "Data de vencimento" },
+      { name: "company_id", type: "uuid", required: false, desc: "UUID da empresa" },
+      { name: "custom_receiver_name", type: "string", required: false, desc: "Nome do pagador (se sem empresa)" },
+      { name: "payment_method", type: "string", required: false, desc: "Método de pagamento" },
+      { name: "bank_id", type: "uuid", required: false, desc: "UUID do banco" },
+      { name: "notes", type: "string", required: false, desc: "Observações" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=invoices&action=create" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"description":"Mensalidade Abr/2026","amount_cents":500000,"due_date":"2026-04-15","company_id":"uuid"}'`,
+    response: `{ "data": { "id": "uuid", "amount_cents": 500000, "status": "pending" } }`,
+  },
+  {
+    name: "Marcar Fatura como Paga",
+    module: "invoices",
+    action: "mark_paid",
+    method: "POST",
+    icon: Check,
+    description: "Dá baixa em uma fatura. Credita banco automaticamente se bank_id informado.",
+    bodyFields: [
+      { name: "id (query)", type: "uuid", required: true, desc: "UUID da fatura" },
+      { name: "paid_amount_cents", type: "number", required: false, desc: "Valor pago em centavos" },
+      { name: "bank_id", type: "uuid", required: false, desc: "UUID do banco para creditar" },
+      { name: "payment_method", type: "string", required: false, desc: "Método de pagamento" },
+      { name: "late_fee_cents", type: "number", required: false, desc: "Multa em centavos" },
+      { name: "interest_cents", type: "number", required: false, desc: "Juros em centavos" },
+      { name: "discount_cents", type: "number", required: false, desc: "Desconto em centavos" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=invoices&action=mark_paid&id=UUID" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"bank_id":"uuid-banco"}'`,
+    response: `{ "data": { "id": "uuid", "status": "paid" }, "bank_credited": true }`,
+  },
+  {
+    name: "Criar Cobrança Asaas",
+    module: "asaas",
+    action: "create_charge",
+    method: "POST",
+    icon: CreditCard,
+    description: "Cria uma cobrança no Asaas (PIX, Boleto ou Cartão). Retorna QR Code PIX, link de boleto ou status do cartão. Cria automaticamente um recebível no financeiro.",
+    bodyFields: [
+      { name: "customer_name", type: "string", required: true, desc: "Nome do cliente" },
+      { name: "amount_cents", type: "number", required: true, desc: "Valor em centavos" },
+      { name: "payment_method", type: "string", required: true, desc: "pix, boleto, credit_card" },
+      { name: "customer_email", type: "string", required: false, desc: "E-mail do cliente" },
+      { name: "customer_phone", type: "string", required: false, desc: "Telefone do cliente" },
+      { name: "customer_document", type: "string", required: false, desc: "CPF ou CNPJ" },
+      { name: "description", type: "string", required: false, desc: "Descrição da cobrança" },
+      { name: "due_date", type: "string", required: false, desc: "Vencimento (YYYY-MM-DD, padrão: +3 dias)" },
+      { name: "installments", type: "number", required: false, desc: "Parcelas (cartão, padrão: 1)" },
+      { name: "company_id", type: "uuid", required: false, desc: "UUID da empresa vinculada" },
+      { name: "create_receivable", type: "boolean", required: false, desc: "Criar recebível (padrão: true)" },
+    ],
+    example: `curl -X POST "${SYSTEM_API_URL}?module=asaas&action=create_charge" \\
+  -H "x-api-key: SUA_CHAVE" -H "Content-Type: application/json" \\
+  -d '{"customer_name":"João Silva","customer_document":"123.456.789-00","amount_cents":15000,"payment_method":"pix","description":"Serviço de consultoria"}'`,
     response: `{
-  "year": 2026,
-  "realized": {
-    "revenue": 450000.00,
-    "expenses": 280000.00,
-    "profit": 170000.00,
-    "margin": "37.8%"
-  },
-  "expected": {
-    "revenue": 600000.00,
-    "expenses": 350000.00,
-    "profit": 250000.00
-  },
-  "expenses_by_category": {
-    "Salários": 120000.00,
-    "Marketing": 45000.00,
-    "Infraestrutura": 30000.00
-  },
-  "monthly": [
-    { "month": "2026-01", "revenue": 75000.00, "expenses": 42000.00, "profit": 33000.00 }
-  ]
+  "success": true,
+  "asaas_payment_id": "pay_abc123",
+  "status": "PENDING",
+  "billing_type": "PIX",
+  "invoice_url": "https://www.asaas.com/i/...",
+  "pix_qr_code": "00020126...",
+  "pix_qr_code_base64": "iVBOR...",
+  "receivable_id": "uuid"
 }`,
   },
 ];
@@ -680,10 +488,11 @@ export function FinancialApiDocs() {
         </CardContent>
       </Card>
 
-      {/* Endpoints */}
+      {/* Read Endpoints */}
+      <h3 className="text-lg font-semibold mt-2">📊 Consultas (Leitura)</h3>
       <Tabs defaultValue="summary">
         <TabsList className="flex flex-wrap h-auto gap-1">
-          {endpoints.map((ep) => (
+          {readEndpoints.map((ep) => (
             <TabsTrigger key={ep.endpoint} value={ep.endpoint} className="text-xs gap-1.5">
               <ep.icon className="h-3.5 w-3.5" />
               {ep.name}
@@ -691,40 +500,28 @@ export function FinancialApiDocs() {
           ))}
         </TabsList>
 
-        {endpoints.map((ep) => (
+        {readEndpoints.map((ep) => (
           <TabsContent key={ep.endpoint} value={ep.endpoint} className="mt-4 space-y-4">
             <Card>
               <CardHeader>
                 <div className="flex items-center gap-2">
-                  <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-200">{ep.method}</Badge>
+                  <Badge variant="secondary">{ep.method}</Badge>
                   <CardTitle className="text-base">{ep.name}</CardTitle>
                 </div>
               </CardHeader>
               <CardContent className="space-y-4">
                 <p className="text-sm text-muted-foreground">{ep.description}</p>
-
                 {ep.params.length > 0 && (
                   <div>
-                    <h4 className="text-sm font-medium mb-2">Parâmetros (Query String)</h4>
+                    <h4 className="text-sm font-medium mb-2">Parâmetros</h4>
                     <div className="border rounded-lg overflow-hidden">
                       <table className="w-full text-xs">
-                        <thead className="bg-muted">
-                          <tr>
-                            <th className="text-left px-3 py-2 font-medium">Parâmetro</th>
-                            <th className="text-left px-3 py-2 font-medium">Descrição</th>
-                            <th className="text-left px-3 py-2 font-medium">Obrigatório</th>
-                          </tr>
-                        </thead>
+                        <thead className="bg-muted"><tr><th className="text-left px-3 py-2">Parâmetro</th><th className="text-left px-3 py-2">Descrição</th></tr></thead>
                         <tbody>
                           {ep.params.map((p) => (
                             <tr key={p.name} className="border-t">
                               <td className="px-3 py-2 font-mono text-primary">{p.name}</td>
                               <td className="px-3 py-2 text-muted-foreground">{p.desc}</td>
-                              <td className="px-3 py-2">
-                                <Badge variant={p.required ? "default" : "secondary"} className="text-[10px]">
-                                  {p.required ? "Sim" : "Não"}
-                                </Badge>
-                              </td>
                             </tr>
                           ))}
                         </tbody>
@@ -732,26 +529,83 @@ export function FinancialApiDocs() {
                     </div>
                   </div>
                 )}
-
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Exemplo de Requisição</h4>
+                  <h4 className="text-sm font-medium mb-2">Exemplo</h4>
                   <CodeBlock code={ep.example} language="http" />
                 </div>
-
                 <div>
-                  <h4 className="text-sm font-medium mb-2">Exemplo de Resposta</h4>
+                  <h4 className="text-sm font-medium mb-2">Resposta</h4>
                   <CodeBlock code={ep.response} language="json" />
                 </div>
+              </CardContent>
+            </Card>
+          </TabsContent>
+        ))}
+      </Tabs>
 
-                {/* cURL example */}
+      {/* Write Endpoints */}
+      <h3 className="text-lg font-semibold mt-6">✏️ Operações (Escrita)</h3>
+      <p className="text-sm text-muted-foreground mb-3">
+        Todas as operações de escrita usam a URL: <code className="bg-muted px-1 rounded text-xs">{SYSTEM_API_URL}</code>
+      </p>
+      <Tabs defaultValue={writeEndpoints[0]?.action || "create"}>
+        <TabsList className="flex flex-wrap h-auto gap-1">
+          {writeEndpoints.map((ep, i) => (
+            <TabsTrigger key={`${ep.module}-${ep.action}-${i}`} value={`${ep.module}-${ep.action}-${i}`} className="text-xs gap-1.5">
+              <ep.icon className="h-3.5 w-3.5" />
+              {ep.name}
+            </TabsTrigger>
+          ))}
+        </TabsList>
+
+        {writeEndpoints.map((ep, i) => (
+          <TabsContent key={`${ep.module}-${ep.action}-${i}`} value={`${ep.module}-${ep.action}-${i}`} className="mt-4 space-y-4">
+            <Card>
+              <CardHeader>
+                <div className="flex items-center gap-2">
+                  <Badge className="bg-primary/10 text-primary border-primary/20">{ep.method}</Badge>
+                  <CardTitle className="text-base">{ep.name}</CardTitle>
+                </div>
+                <code className="text-xs text-muted-foreground">?module={ep.module}&action={ep.action}</code>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                <p className="text-sm text-muted-foreground">{ep.description}</p>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Campos do Body (JSON)</h4>
+                  <div className="border rounded-lg overflow-hidden">
+                    <table className="w-full text-xs">
+                      <thead className="bg-muted">
+                        <tr>
+                          <th className="text-left px-3 py-2">Campo</th>
+                          <th className="text-left px-3 py-2">Tipo</th>
+                          <th className="text-left px-3 py-2">Obrigatório</th>
+                          <th className="text-left px-3 py-2">Descrição</th>
+                        </tr>
+                      </thead>
+                      <tbody>
+                        {ep.bodyFields.map((f) => (
+                          <tr key={f.name} className="border-t">
+                            <td className="px-3 py-2 font-mono text-primary">{f.name}</td>
+                            <td className="px-3 py-2 text-muted-foreground">{f.type}</td>
+                            <td className="px-3 py-2">
+                              <Badge variant={f.required ? "default" : "secondary"} className="text-[10px]">
+                                {f.required ? "Sim" : "Não"}
+                              </Badge>
+                            </td>
+                            <td className="px-3 py-2 text-muted-foreground">{f.desc}</td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
                 <div>
                   <h4 className="text-sm font-medium mb-2">cURL</h4>
-                  <CodeBlock
-                    code={`curl -X GET "${ep.example.replace("GET ", "")}" \\
-  -H "apikey: SUA_CHAVE_PUBLICA" \\
-  -H "Authorization: Bearer SEU_TOKEN"`}
-                    language="bash"
-                  />
+                  <CodeBlock code={ep.example} language="bash" />
+                </div>
+                <div>
+                  <h4 className="text-sm font-medium mb-2">Resposta</h4>
+                  <CodeBlock code={ep.response} language="json" />
                 </div>
               </CardContent>
             </Card>
