@@ -197,8 +197,8 @@ const OnboardingResultsPage = () => {
         supabase.from("onboarding_projects").select("id, product_id, product_name, onboarding_company_id, status").eq("status", "active"),
       ]);
       
-      // Filter out simulator companies from the results
-      const realCompanies = (companiesRes.data || []).filter(c => !c.is_simulator);
+      // Filter out simulator companies and goal_not_required companies from the results
+      const realCompanies = (companiesRes.data || []).filter(c => !c.is_simulator && !c.goal_not_required);
 
       setCompanies(realCompanies);
       setConsultants((staffRes.data || []).filter(s => s.role === "consultant" || s.role === "cs"));
