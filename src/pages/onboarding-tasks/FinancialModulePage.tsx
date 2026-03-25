@@ -94,7 +94,13 @@ export default function FinancialModulePage() {
   const { loading, hasFinancialAccess, isMaster, hasFinancialPermission } = useFinancialPermissions();
   
   const visibleTabs = useMemo(() => {
-    if (isMaster) return ALL_TABS;
+    if (isMaster || (userRole === "admin")) {
+      return ALL_TABS.filter(tab => {
+        const permKey = TAB_PERMISSION_MAP[tab.id];
+        if (permKey === "master_only") return isMaster;
+        return true;
+      });
+    }
     return ALL_TABS.filter(tab => {
       const permKey = TAB_PERMISSION_MAP[tab.id];
       if (permKey === null) return true; // always visible
