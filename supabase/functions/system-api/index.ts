@@ -787,22 +787,11 @@ serve(async (req) => {
           if (!b.customer_name || !b.amount_cents || !b.payment_method) {
             return json({ error: "Campos 'customer_name', 'amount_cents' e 'payment_method' obrigatórios" }, 400);
           }
-          // Invoke existing asaas-checkout edge function
-          const payload: any = {
-            customer_name: b.customer_name,
-            customer_email: b.customer_email || null,
-            customer_phone: b.customer_phone || null,
-            customer_document: b.customer_document || null,
-            product_name: b.description || "Cobrança via API",
-            amount_cents: b.amount_cents,
-            payment_method: b.payment_method,
-            installments: b.installments || 1,
-            interest_free_installments: b.interest_free_installments || 0,
-            company_id: b.company_id || null,
-          };
+          // Accept multiple field names for document
+          const rawDocument = b.customer_document || b.document || b.cpf_cnpj || "";
           const ASAAS_BASE = "https://api.asaas.com/v3";
           // Find or create customer
-          let cleanDoc = (b.customer_document || "").replace(/\D/g, "");
+          let cleanDoc = String(rawDocument).replace(/\D/g, "");
           if (cleanDoc.length > 0 && cleanDoc.length <= 11) cleanDoc = cleanDoc.padStart(11, "0");
           else if (cleanDoc.length > 11 && cleanDoc.length <= 14) cleanDoc = cleanDoc.padStart(14, "0");
           let customerId: string | null = null;
