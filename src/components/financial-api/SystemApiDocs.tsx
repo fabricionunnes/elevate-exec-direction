@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, Building2, ListTodo, Users, Target, Handshake, CalendarCheck, DollarSign, BarChart3, UserCheck } from "lucide-react";
+import { Copy, Check, Code2, Building2, ListTodo, Users, Target, Handshake, CalendarCheck, DollarSign, BarChart3, UserCheck, Tag, FolderOpen, Trophy, Skull, StickyNote, Trash2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from "@/components/ui/accordion";
@@ -108,7 +108,7 @@ const systemModules: ModuleDoc[] = [
           { name: "date_from / date_to", desc: "Período (YYYY-MM-DD)", required: false },
         ],
         example: `GET ${API_URL}?module=tasks&action=list&project_id=UUID&status=pending`,
-        response: `{ "data": [{ "id": "uuid", "title": "Tarefa X", "status": "pending", "due_date": "2026-04-01", "responsible_staff_id": "uuid" }] }`,
+        response: `{ "data": [{ "id": "uuid", "title": "Tarefa X", "status": "pending", "due_date": "2026-04-01" }] }`,
       },
       {
         action: "create", method: "POST", description: "Criar tarefa",
@@ -125,7 +125,7 @@ const systemModules: ModuleDoc[] = [
           { name: "estimated_hours", desc: "Horas estimadas", required: false },
         ],
         example: `POST ${API_URL}?module=tasks&action=create\n\n{ "project_id": "UUID", "title": "Implementar CRM", "due_date": "2026-04-15", "responsible_staff_id": "UUID", "priority": "high" }`,
-        response: `{ "data": { "id": "uuid-gerado", "title": "Implementar CRM", "status": "pending", ... } }`,
+        response: `{ "data": { "id": "uuid-gerado", "title": "Implementar CRM", "status": "pending" } }`,
       },
       {
         action: "update", method: "POST", description: "Atualizar tarefa (status, responsável, data, etc.)",
@@ -137,7 +137,7 @@ const systemModules: ModuleDoc[] = [
           { name: "priority", desc: "Nova prioridade", required: false },
           { name: "observations", desc: "Observações", required: false },
         ],
-        example: `POST ${API_URL}?module=tasks&action=update&id=UUID\n\n{ "status": "completed", "observations": "Finalizado com sucesso" }`,
+        example: `POST ${API_URL}?module=tasks&action=update&id=UUID\n\n{ "status": "completed" }`,
         response: `{ "data": { "id": "uuid", "status": "completed", "completed_at": "2026-03-25T..." } }`,
       },
       {
@@ -152,41 +152,87 @@ const systemModules: ModuleDoc[] = [
     name: "Leads (CRM)",
     icon: Target,
     module: "leads",
-    description: "Criar, atualizar e mover leads entre etapas",
+    description: "CRM completo: todos os campos, ganho/perda, notas, tags, exclusão",
     endpoints: [
       {
-        action: "list", method: "GET", description: "Listar leads",
+        action: "list", method: "GET", description: "Listar leads com todos os campos",
         params: [
           { name: "pipeline_id", desc: "UUID do pipeline", required: false },
           { name: "stage_id", desc: "UUID da etapa", required: false },
           { name: "owner_id", desc: "UUID do responsável", required: false },
+          { name: "search", desc: "Busca por nome, empresa, telefone ou email", required: false },
+          { name: "date_from / date_to", desc: "Período de criação", required: false },
         ],
-        example: `GET ${API_URL}?module=leads&action=list&pipeline_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "João Silva", "company": "Empresa X", "stage_id": "uuid", "opportunity_value": 50000 }] }`,
+        example: `GET ${API_URL}?module=leads&action=list&pipeline_id=UUID&search=empresa`,
+        response: `{ "data": [{ "id": "uuid", "name": "João", "company": "Empresa X", "cpf": "123.456.789-00", "city": "São Paulo", "opportunity_value": 50000, ... }] }`,
       },
       {
-        action: "create", method: "POST", description: "Criar lead",
+        action: "get", method: "GET", description: "Detalhes completos do lead (inclui tags)",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        example: `GET ${API_URL}?module=leads&action=get&id=UUID`,
+        response: `{ "data": { "id": "uuid", "name": "João", "tags": [{ "id": "uuid", "name": "VIP", "color": "#f00" }], ... } }`,
+      },
+      {
+        action: "create", method: "POST", description: "Criar lead com todos os campos possíveis",
         bodyFields: [
           { name: "name", desc: "Nome do lead", required: true },
           { name: "phone", desc: "Telefone", required: false },
           { name: "email", desc: "E-mail", required: false },
-          { name: "company", desc: "Empresa", required: false },
+          { name: "company", desc: "Nome da empresa", required: false },
+          { name: "trade_name", desc: "Nome fantasia", required: false },
+          { name: "cpf", desc: "CPF do responsável", required: false },
+          { name: "document", desc: "CNPJ da empresa", required: false },
+          { name: "rg", desc: "RG do responsável", required: false },
+          { name: "role", desc: "Cargo/função", required: false },
+          { name: "city", desc: "Cidade", required: false },
+          { name: "state", desc: "Estado (UF)", required: false },
+          { name: "address", desc: "Endereço", required: false },
+          { name: "address_number", desc: "Número", required: false },
+          { name: "address_complement", desc: "Complemento", required: false },
+          { name: "address_neighborhood", desc: "Bairro", required: false },
+          { name: "zipcode", desc: "CEP", required: false },
+          { name: "marital_status", desc: "Estado civil", required: false },
+          { name: "legal_representative_name", desc: "Nome do representante legal", required: false },
+          { name: "employee_count", desc: "Nº de funcionários", required: false },
+          { name: "estimated_revenue", desc: "Faturamento estimado", required: false },
           { name: "pipeline_id", desc: "UUID do pipeline", required: false },
           { name: "stage_id", desc: "UUID da etapa inicial", required: false },
+          { name: "plan_id", desc: "UUID do plano/produto", required: false },
+          { name: "product_id", desc: "UUID do produto", required: false },
           { name: "owner_staff_id", desc: "Responsável", required: false },
           { name: "sdr_staff_id", desc: "SDR", required: false },
           { name: "closer_staff_id", desc: "Closer", required: false },
+          { name: "scheduled_by_staff_id", desc: "Quem agendou", required: false },
           { name: "opportunity_value", desc: "Valor da oportunidade", required: false },
+          { name: "probability", desc: "Probabilidade (0-100)", required: false },
           { name: "segment", desc: "Segmento", required: false },
           { name: "main_pain", desc: "Principal dor", required: false },
+          { name: "urgency", desc: "Urgência", required: false },
+          { name: "fit_score", desc: "Score de fit", required: false },
+          { name: "payment_method", desc: "Forma de pagamento", required: false },
+          { name: "installments", desc: "Parcelas", required: false },
+          { name: "due_day", desc: "Dia de vencimento (1,5,10,15,20,25)", required: false },
+          { name: "team", desc: "Equipe", required: false },
+          { name: "notes", desc: "Observações", required: false },
+          { name: "origin", desc: "Origem (texto)", required: false },
+          { name: "origin_id", desc: "UUID da origem", required: false },
+          { name: "utm_source", desc: "UTM Source", required: false },
+          { name: "utm_medium", desc: "UTM Medium", required: false },
+          { name: "utm_campaign", desc: "UTM Campaign", required: false },
+          { name: "utm_content", desc: "UTM Content", required: false },
+          { name: "tag_ids", desc: "Array de UUIDs de tags para vincular", required: false },
         ],
-        example: `POST ${API_URL}?module=leads&action=create\n\n{ "name": "Maria Costa", "phone": "11999999999", "company": "Tech Corp", "pipeline_id": "UUID", "stage_id": "UUID", "opportunity_value": 25000 }`,
-        response: `{ "data": { "id": "uuid-gerado", "name": "Maria Costa", ... } }`,
+        example: `POST ${API_URL}?module=leads&action=create\n\n{\n  "name": "Maria Costa",\n  "phone": "11999999999",\n  "email": "maria@techcorp.com",\n  "company": "Tech Corp LTDA",\n  "document": "12.345.678/0001-00",\n  "cpf": "123.456.789-00",\n  "city": "São Paulo",\n  "state": "SP",\n  "pipeline_id": "UUID",\n  "stage_id": "UUID",\n  "opportunity_value": 25000,\n  "payment_method": "pix",\n  "tag_ids": ["uuid-tag-1", "uuid-tag-2"]\n}`,
+        response: `{ "data": { "id": "uuid-gerado", "name": "Maria Costa", "document": "12.345.678/0001-00", ... } }`,
       },
       {
-        action: "update", method: "POST", description: "Atualizar lead",
+        action: "update", method: "POST", description: "Atualizar qualquer campo do lead",
         params: [{ name: "id", desc: "UUID do lead", required: true }],
-        example: `POST ${API_URL}?module=leads&action=update&id=UUID\n\n{ "opportunity_value": 35000, "closer_staff_id": "UUID" }`,
+        bodyFields: [
+          { name: "*", desc: "Qualquer campo do lead (name, company, cpf, document, city, etc.)", required: false },
+          { name: "tag_ids", desc: "Array de UUIDs de tags (substitui todas as tags atuais)", required: false },
+        ],
+        example: `POST ${API_URL}?module=leads&action=update&id=UUID\n\n{\n  "company": "Nova Razão Social",\n  "document": "98.765.432/0001-00",\n  "opportunity_value": 35000,\n  "closer_staff_id": "UUID",\n  "payment_method": "boleto",\n  "installments": "12x",\n  "tag_ids": ["uuid-tag-vip"]\n}`,
         response: `{ "data": { ... } }`,
       },
       {
@@ -196,13 +242,104 @@ const systemModules: ModuleDoc[] = [
         example: `POST ${API_URL}?module=leads&action=move_stage&id=UUID\n\n{ "stage_id": "UUID-NOVA-ETAPA" }`,
         response: `{ "data": { "id": "uuid", "stage_id": "uuid-nova-etapa" } }`,
       },
+      {
+        action: "win", method: "POST", description: "🏆 Dar GANHO no lead (move para etapa won + cria financeiro)",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        bodyFields: [
+          { name: "opportunity_value", desc: "Valor final da oportunidade", required: false },
+          { name: "paid_value", desc: "Valor pago (cria fatura no financeiro)", required: false },
+          { name: "closer_staff_id", desc: "UUID do closer", required: false },
+          { name: "payment_method", desc: "Forma de pagamento (pix, boleto, cartao)", required: false },
+          { name: "installments", desc: "Parcelas", required: false },
+          { name: "due_day", desc: "Dia de vencimento", required: false },
+          { name: "bank_id", desc: "UUID do banco (credita saldo)", required: false },
+          { name: "company_id", desc: "UUID da empresa (vincula fatura)", required: false },
+          { name: "description", desc: "Descrição da fatura", required: false },
+          { name: "notes", desc: "Observações", required: false },
+        ],
+        example: `POST ${API_URL}?module=leads&action=win&id=UUID\n\n{\n  "paid_value": 25000,\n  "payment_method": "pix",\n  "closer_staff_id": "UUID",\n  "bank_id": "UUID-BANCO",\n  "notes": "Fechou após reunião"\n}`,
+        response: `{ "success": true, "lead_id": "uuid", "status": "won", "stage": "Ganho", "invoice_id": "uuid-fatura" }`,
+      },
+      {
+        action: "lose", method: "POST", description: "❌ Dar PERDA no lead (move para etapa lost)",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        bodyFields: [
+          { name: "loss_reason_id", desc: "UUID do motivo de perda", required: false },
+          { name: "notes", desc: "Observações", required: false },
+        ],
+        example: `POST ${API_URL}?module=leads&action=lose&id=UUID\n\n{ "loss_reason_id": "UUID-MOTIVO", "notes": "Sem orçamento" }`,
+        response: `{ "success": true, "lead_id": "uuid", "status": "lost", "stage": "Perdido" }`,
+      },
+      {
+        action: "add_note", method: "POST", description: "📝 Adicionar nota/anotação ao histórico do lead",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        bodyFields: [
+          { name: "content", desc: "Conteúdo da nota", required: true },
+          { name: "author_name", desc: "Nome do autor", required: false },
+          { name: "staff_id", desc: "UUID do staff responsável", required: false },
+        ],
+        example: `POST ${API_URL}?module=leads&action=add_note&id=UUID\n\n{ "content": "Cliente pediu proposta atualizada", "author_name": "João" }`,
+        response: `{ "data": { "id": "uuid", "type": "note", "title": "Nota de João", "description": "Cliente pediu proposta atualizada" } }`,
+      },
+      {
+        action: "delete", method: "POST", description: "🗑️ Excluir lead (cascata: limpa tags, atividades, histórico, etc.)",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        example: `POST ${API_URL}?module=leads&action=delete&id=UUID`,
+        response: `{ "success": true }`,
+      },
+    ],
+  },
+  {
+    name: "Tags (CRM)",
+    icon: Tag,
+    module: "tags",
+    description: "Gerenciar tags e vincular/desvincular de leads",
+    endpoints: [
+      {
+        action: "list", method: "GET", description: "Listar todas as tags disponíveis",
+        example: `GET ${API_URL}?module=tags&action=list`,
+        response: `{ "data": [{ "id": "uuid", "name": "VIP", "color": "#f59e0b", "is_active": true }] }`,
+      },
+      {
+        action: "create", method: "POST", description: "Criar nova tag",
+        bodyFields: [
+          { name: "name", desc: "Nome da tag", required: true },
+          { name: "color", desc: "Cor hex (ex: #f59e0b)", required: false },
+        ],
+        example: `POST ${API_URL}?module=tags&action=create\n\n{ "name": "Prioridade Alta", "color": "#ef4444" }`,
+        response: `{ "data": { "id": "uuid-gerado", "name": "Prioridade Alta", "color": "#ef4444" } }`,
+      },
+      {
+        action: "add_to_lead", method: "POST", description: "Vincular tag a um lead",
+        bodyFields: [
+          { name: "lead_id", desc: "UUID do lead", required: true },
+          { name: "tag_id", desc: "UUID da tag", required: true },
+        ],
+        example: `POST ${API_URL}?module=tags&action=add_to_lead\n\n{ "lead_id": "UUID-LEAD", "tag_id": "UUID-TAG" }`,
+        response: `{ "data": { "id": "uuid", "lead_id": "...", "tag_id": "..." } }`,
+      },
+      {
+        action: "remove_from_lead", method: "POST", description: "Desvincular tag de um lead",
+        bodyFields: [
+          { name: "lead_id", desc: "UUID do lead", required: true },
+          { name: "tag_id", desc: "UUID da tag", required: true },
+        ],
+        example: `POST ${API_URL}?module=tags&action=remove_from_lead\n\n{ "lead_id": "UUID-LEAD", "tag_id": "UUID-TAG" }`,
+        response: `{ "success": true }`,
+      },
+      {
+        action: "lead_tags", method: "GET", description: "Listar tags de um lead específico",
+        params: [{ name: "id", desc: "UUID do lead", required: true }],
+        example: `GET ${API_URL}?module=tags&action=lead_tags&id=UUID-LEAD`,
+        response: `{ "data": [{ "id": "uuid", "name": "VIP", "color": "#f59e0b" }] }`,
+      },
     ],
   },
   {
     name: "Atividades (CRM)",
     icon: Handshake,
     module: "activities",
-    description: "Criar e gerenciar atividades de vendas",
+    description: "Criar, gerenciar e excluir atividades de vendas",
     endpoints: [
       {
         action: "list", method: "GET", description: "Listar atividades",
@@ -212,7 +349,7 @@ const systemModules: ModuleDoc[] = [
           { name: "staff_id", desc: "UUID do responsável", required: false },
         ],
         example: `GET ${API_URL}?module=activities&action=list&lead_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "type": "meeting", "title": "Reunião de apresentação", "status": "pending" }] }`,
+        response: `{ "data": [{ "id": "uuid", "type": "meeting", "title": "Reunião", "status": "pending" }] }`,
       },
       {
         action: "create", method: "POST", description: "Criar atividade",
@@ -225,7 +362,7 @@ const systemModules: ModuleDoc[] = [
           { name: "responsible_staff_id", desc: "UUID responsável", required: false },
           { name: "meeting_link", desc: "Link da reunião", required: false },
         ],
-        example: `POST ${API_URL}?module=activities&action=create\n\n{ "lead_id": "UUID", "type": "meeting", "title": "Demo do produto", "scheduled_at": "2026-04-01T14:00:00Z", "responsible_staff_id": "UUID" }`,
+        example: `POST ${API_URL}?module=activities&action=create\n\n{ "lead_id": "UUID", "type": "meeting", "title": "Demo do produto", "scheduled_at": "2026-04-01T14:00:00Z" }`,
         response: `{ "data": { "id": "uuid-gerado", ... } }`,
       },
       {
@@ -234,6 +371,12 @@ const systemModules: ModuleDoc[] = [
         bodyFields: [{ name: "notes", desc: "Notas de conclusão", required: false }],
         example: `POST ${API_URL}?module=activities&action=complete&id=UUID\n\n{ "notes": "Cliente demonstrou interesse" }`,
         response: `{ "data": { "id": "uuid", "status": "completed", "completed_at": "..." } }`,
+      },
+      {
+        action: "delete", method: "POST", description: "Excluir atividade",
+        params: [{ name: "id", desc: "UUID da atividade", required: true }],
+        example: `POST ${API_URL}?module=activities&action=delete&id=UUID`,
+        response: `{ "success": true }`,
       },
     ],
   },
@@ -265,14 +408,14 @@ const systemModules: ModuleDoc[] = [
           { name: "event_date", desc: "Data/hora (ISO 8601)", required: false },
         ],
         example: `POST ${API_URL}?module=meetings&action=schedule\n\n{ "lead_id": "UUID", "pipeline_id": "UUID", "credited_staff_id": "UUID", "event_date": "2026-04-02T10:00:00Z" }`,
-        response: `{ "data": { "id": "uuid-gerado", "event_type": "scheduled", ... } }`,
+        response: `{ "data": { "id": "uuid-gerado", "event_type": "scheduled" } }`,
       },
       {
         action: "finalize", method: "POST", description: "Finalizar reunião (realizada, no show, fora do ICP)",
         params: [{ name: "id", desc: "UUID do evento de agendamento", required: true }],
         bodyFields: [{ name: "event_type", desc: "realized, no_show, out_of_icp", required: true }],
         example: `POST ${API_URL}?module=meetings&action=finalize&id=UUID\n\n{ "event_type": "realized" }`,
-        response: `{ "data": { "id": "uuid-novo", "event_type": "realized", ... } }`,
+        response: `{ "data": { "id": "uuid-novo", "event_type": "realized" } }`,
       },
     ],
   },
@@ -289,7 +432,7 @@ const systemModules: ModuleDoc[] = [
           { name: "date_from / date_to", desc: "Período (YYYY-MM-DD)", required: false },
         ],
         example: `GET ${API_URL}?module=sales&action=list&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "company_id": "uuid", "month_year": "2026-03-01", "revenue": 150000, "sales_count": 45 }] }`,
+        response: `{ "data": [{ "id": "uuid", "month_year": "2026-03-01", "revenue": 150000, "sales_count": 45 }] }`,
       },
       {
         action: "create", method: "POST", description: "Lançar venda mensal (upsert por empresa+mês)",
@@ -301,7 +444,7 @@ const systemModules: ModuleDoc[] = [
           { name: "target_revenue", desc: "Meta de faturamento", required: false },
           { name: "notes", desc: "Observações", required: false },
         ],
-        example: `POST ${API_URL}?module=sales&action=create\n\n{ "company_id": "UUID", "month_year": "2026-03-01", "revenue": 185000, "sales_count": 52, "target_revenue": 200000 }`,
+        example: `POST ${API_URL}?module=sales&action=create\n\n{ "company_id": "UUID", "month_year": "2026-03-01", "revenue": 185000, "sales_count": 52 }`,
         response: `{ "data": { "id": "uuid", "revenue": 185000, ... } }`,
       },
     ],
@@ -316,7 +459,7 @@ const systemModules: ModuleDoc[] = [
         action: "list", method: "GET", description: "Listar KPIs configurados",
         params: [{ name: "company_id", desc: "UUID da empresa", required: false }],
         example: `GET ${API_URL}?module=kpis&action=list&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "Vendas Mensais", "kpi_type": "monetary", "target_value": 100000 }] }`,
+        response: `{ "data": [{ "id": "uuid", "name": "Vendas Mensais", "target_value": 100000 }] }`,
       },
       {
         action: "entries", method: "GET", description: "Listar lançamentos de KPIs",
@@ -326,11 +469,11 @@ const systemModules: ModuleDoc[] = [
           { name: "salesperson_id", desc: "UUID do vendedor", required: false },
           { name: "date_from / date_to", desc: "Período", required: false },
         ],
-        example: `GET ${API_URL}?module=kpis&action=entries&company_id=UUID&kpi_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "kpi_id": "uuid", "salesperson_id": "uuid", "entry_date": "2026-03-25", "value": 15000 }] }`,
+        example: `GET ${API_URL}?module=kpis&action=entries&company_id=UUID`,
+        response: `{ "data": [{ "id": "uuid", "kpi_id": "uuid", "entry_date": "2026-03-25", "value": 15000 }] }`,
       },
       {
-        action: "create_entry", method: "POST", description: "Lançar resultado de KPI (upsert por vendedor+KPI+data)",
+        action: "create_entry", method: "POST", description: "Lançar resultado de KPI",
         bodyFields: [
           { name: "company_id", desc: "UUID da empresa", required: true },
           { name: "salesperson_id", desc: "UUID do vendedor", required: true },
@@ -339,8 +482,8 @@ const systemModules: ModuleDoc[] = [
           { name: "value", desc: "Valor numérico", required: false },
           { name: "observations", desc: "Observações", required: false },
         ],
-        example: `POST ${API_URL}?module=kpis&action=create_entry\n\n{ "company_id": "UUID", "salesperson_id": "UUID", "kpi_id": "UUID", "entry_date": "2026-03-25", "value": 15000 }`,
-        response: `{ "data": { "id": "uuid", "value": 15000, ... } }`,
+        example: `POST ${API_URL}?module=kpis&action=create_entry\n\n{ "company_id": "UUID", "salesperson_id": "UUID", "kpi_id": "UUID", "value": 15000 }`,
+        response: `{ "data": { "id": "uuid", "value": 15000 } }`,
       },
     ],
   },
@@ -357,7 +500,7 @@ const systemModules: ModuleDoc[] = [
           { name: "status", desc: "active, inactive", required: false },
         ],
         example: `GET ${API_URL}?module=salespeople&action=list&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "Carlos Silva", "company_id": "uuid", "is_active": true }] }`,
+        response: `{ "data": [{ "id": "uuid", "name": "Carlos Silva", "is_active": true }] }`,
       },
       {
         action: "create", method: "POST", description: "Criar vendedor",
@@ -367,8 +510,8 @@ const systemModules: ModuleDoc[] = [
           { name: "email", desc: "E-mail", required: false },
           { name: "phone", desc: "Telefone", required: false },
         ],
-        example: `POST ${API_URL}?module=salespeople&action=create\n\n{ "company_id": "UUID", "name": "Ana Costa", "email": "ana@empresa.com" }`,
-        response: `{ "data": { "id": "uuid-gerado", "name": "Ana Costa", ... } }`,
+        example: `POST ${API_URL}?module=salespeople&action=create\n\n{ "company_id": "UUID", "name": "Ana Costa" }`,
+        response: `{ "data": { "id": "uuid-gerado", "name": "Ana Costa" } }`,
       },
     ],
   },
@@ -385,15 +528,15 @@ const systemModules: ModuleDoc[] = [
           { name: "role", desc: "admin, cs, consultant, master, closer, sdr, etc.", required: false },
         ],
         example: `GET ${API_URL}?module=staff&action=list&status=active`,
-        response: `{ "data": [{ "id": "uuid", "name": "João Admin", "email": "joao@empresa.com", "role": "admin", "is_active": true }] }`,
+        response: `{ "data": [{ "id": "uuid", "name": "João", "role": "admin", "is_active": true }] }`,
       },
     ],
   },
   {
     name: "Pipelines",
-    icon: Target,
+    icon: FolderOpen,
     module: "pipelines",
-    description: "Consultar pipelines e etapas do CRM",
+    description: "Consultar pipelines e etapas do CRM (inclui final_type)",
     endpoints: [
       {
         action: "list", method: "GET", description: "Listar pipelines",
@@ -401,10 +544,10 @@ const systemModules: ModuleDoc[] = [
         response: `{ "data": [{ "id": "uuid", "name": "Pipeline Principal", "is_default": true }] }`,
       },
       {
-        action: "stages", method: "GET", description: "Listar etapas de um pipeline",
+        action: "stages", method: "GET", description: "Listar etapas (inclui final_type: won/lost)",
         params: [{ name: "pipeline_id", desc: "UUID do pipeline", required: false }],
         example: `GET ${API_URL}?module=pipelines&action=stages&pipeline_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "Qualificação", "sort_order": 1, "color": "#3b82f6" }] }`,
+        response: `{ "data": [{ "id": "uuid", "name": "Qualificação", "sort_order": 1, "final_type": null }, { "id": "uuid", "name": "Ganho", "final_type": "won" }] }`,
       },
     ],
   },
@@ -420,7 +563,7 @@ export function SystemApiDocs() {
         <div>
           <h2 className="text-xl font-bold">API do Sistema (Gestão)</h2>
           <p className="text-sm text-muted-foreground">
-            API completa para gerenciar empresas, tarefas, CRM, reuniões, vendas e KPIs
+            API completa para gerenciar empresas, tarefas, CRM (leads, tags, ganho/perda, notas), reuniões, vendas e KPIs
           </p>
         </div>
       </div>
@@ -457,7 +600,7 @@ export function SystemApiDocs() {
       </Card>
 
       {/* Modules */}
-      <Tabs defaultValue="companies">
+      <Tabs defaultValue="leads">
         <TabsList className="flex flex-wrap h-auto gap-1">
           {systemModules.map(m => (
             <TabsTrigger key={m.module} value={m.module} className="text-xs gap-1.5">
@@ -513,7 +656,7 @@ export function SystemApiDocs() {
                         {ep.bodyFields && ep.bodyFields.length > 0 && (
                           <div>
                             <h4 className="text-xs font-medium mb-1 text-muted-foreground">BODY (JSON)</h4>
-                            <div className="border rounded overflow-hidden">
+                            <div className="border rounded overflow-hidden max-h-[400px] overflow-y-auto">
                               <table className="w-full text-xs">
                                 <tbody>
                                   {ep.bodyFields.map(f => (
@@ -538,7 +681,7 @@ export function SystemApiDocs() {
                         </div>
                         <div>
                           <h4 className="text-xs font-medium mb-1 text-muted-foreground">cURL</h4>
-                          <CodeBlock code={`curl -X ${ep.method} "${ep.example.split("\n")[0].replace(`${ep.method} `, "")}" \\\n  -H "apikey: SUA_CHAVE_PUBLICA" \\\n  -H "x-api-key: SUA_API_KEY"${ep.method === "POST" ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${ep.example.includes("\n\n") ? ep.example.split("\n\n")[1] : "{}"}'` : ""}`} language="bash" />
+                          <CodeBlock code={`curl -X ${ep.method} "${ep.example.split("\n")[0].replace(`${ep.method} `, "")}" \\\n  -H "apikey: SUA_CHAVE_PUBLICA" \\\n  -H "x-api-key: SUA_API_KEY"${ep.method === "POST" ? ` \\\n  -H "Content-Type: application/json" \\\n  -d '${ep.example.includes("\n\n") ? ep.example.split("\n\n").slice(1).join("\n\n") : "{}"}'` : ""}`} language="bash" />
                         </div>
                       </AccordionContent>
                     </AccordionItem>

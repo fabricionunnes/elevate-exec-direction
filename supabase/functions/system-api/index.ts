@@ -49,7 +49,6 @@ serve(async (req) => {
       body = await req.json();
     }
 
-    // Query params for filtering
     const status = url.searchParams.get("status");
     const dateFrom = url.searchParams.get("date_from");
     const dateTo = url.searchParams.get("date_to");
@@ -59,9 +58,8 @@ serve(async (req) => {
     const pipelineId = url.searchParams.get("pipeline_id");
     const limit = Math.min(parseInt(url.searchParams.get("limit") || "500"), 5000);
     const offset = parseInt(url.searchParams.get("offset") || "0");
-    const ctx = { supabase, status, dateFrom, dateTo, companyId, projectId, leadId, pipelineId, limit, offset, id, body, staffId: authenticatedStaffId };
+    const ctx = { supabase, status, dateFrom, dateTo, companyId, projectId, leadId, pipelineId, limit, offset, id, body, staffId: authenticatedStaffId, url };
 
-    // Route
     const modules: Record<string, Record<string, (c: any) => Promise<Response>>> = {
       // ===== COMPANIES =====
       companies: {
@@ -119,7 +117,7 @@ serve(async (req) => {
           if (c.projectId) q = q.eq("project_id", c.projectId);
           if (c.dateFrom) q = q.gte("due_date", c.dateFrom);
           if (c.dateTo) q = q.lte("due_date", c.dateTo);
-          const staffId = url.searchParams.get("staff_id");
+          const staffId = c.url.searchParams.get("staff_id");
           if (staffId) q = q.eq("responsible_staff_id", staffId);
           const { data, error } = await q;
           if (error) throw error;
@@ -162,7 +160,7 @@ serve(async (req) => {
           let q = c.supabase.from("onboarding_staff").select("id, name, email, role, phone, is_active, avatar_url, created_at").order("name");
           if (c.status === "active") q = q.eq("is_active", true);
           if (c.status === "inactive") q = q.eq("is_active", false);
-          const role = url.searchParams.get("role");
+          const role = c.url.searchParams.get("role");
           if (role) q = q.eq("role", role);
           const { data, error } = await q;
           if (error) throw error;
@@ -170,17 +168,19 @@ serve(async (req) => {
         },
       },
 
-      // ===== CRM LEADS =====
+      // ===== CRM LEADS (FULL) =====
       leads: {
         list: async (c) => {
-          let q = c.supabase.from("crm_leads").select("id, name, phone, email, company, role, city, state, origin, owner_staff_id, sdr_staff_id, closer_staff_id, pipeline_id, stage_id, opportunity_value, probability, segment, main_pain, urgency, fit_score, notes, entered_pipeline_at, last_activity_at, closed_at, created_at, updated_at").order("created_at", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
+          let q = c.supabase.from("crm_leads").select("id, name, phone, email, company, trade_name, cpf, document, rg, role, city, state, address, address_number, address_complement, address_neighborhood, zipcode, marital_status, legal_representative_name, employee_count, estimated_revenue, origin, origin_id, owner_staff_id, sdr_staff_id, closer_staff_id, scheduled_by_staff_id, pipeline_id, stage_id, plan_id, product_id, opportunity_value, probability, segment, main_pain, urgency, fit_score, payment_method, installments, due_day, team, head_status, head_closing_date, notes, utm_source, utm_medium, utm_campaign, utm_content, entered_pipeline_at, scheduled_at, last_activity_at, next_activity_at, closed_at, created_at, updated_at").order("created_at", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
           if (c.pipelineId) q = q.eq("pipeline_id", c.pipelineId);
-          const stageId = url.searchParams.get("stage_id");
+          const stageId = c.url.searchParams.get("stage_id");
           if (stageId) q = q.eq("stage_id", stageId);
-          const ownerId = url.searchParams.get("owner_id");
+          const ownerId = c.url.searchParams.get("owner_id");
           if (ownerId) q = q.eq("owner_staff_id", ownerId);
           if (c.dateFrom) q = q.gte("created_at", c.dateFrom);
           if (c.dateTo) q = q.lte("created_at", c.dateTo);
+          const search = c.url.searchParams.get("search");
+          if (search) q = q.or(`name.ilike.%${search}%,company.ilike.%${search}%,phone.ilike.%${search}%,email.ilike.%${search}%`);
           const { data, error } = await q;
           if (error) throw error;
           return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
@@ -189,20 +189,66 @@ serve(async (req) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
           const { data, error } = await c.supabase.from("crm_leads").select("*").eq("id", c.id).single();
           if (error) throw error;
-          return json({ data });
+          // Get tags
+          const { data: tags } = await c.supabase.from("crm_lead_tags").select("tag_id, crm_tags(id, name, color)").eq("lead_id", c.id);
+          return json({ data: { ...data, tags: (tags || []).map((t: any) => t.crm_tags) } });
         },
         create: async (c) => {
-          const { name, phone, email, company, pipeline_id, stage_id, owner_staff_id, sdr_staff_id, closer_staff_id, opportunity_value, segment, main_pain, urgency, notes, origin } = c.body;
-          if (!name) return json({ error: "Campo 'name' obrigatório" }, 400);
-          const { data, error } = await c.supabase.from("crm_leads").insert({ name, phone, email, company, pipeline_id, stage_id, owner_staff_id, sdr_staff_id, closer_staff_id, opportunity_value, segment, main_pain, urgency, notes, origin, entered_pipeline_at: new Date().toISOString() }).select().single();
+          const b = c.body;
+          if (!b.name) return json({ error: "Campo 'name' obrigatório" }, 400);
+          const insertData: any = {
+            name: b.name, phone: b.phone, email: b.email, company: b.company, trade_name: b.trade_name,
+            cpf: b.cpf, document: b.document, rg: b.rg, role: b.role,
+            city: b.city, state: b.state, address: b.address, address_number: b.address_number,
+            address_complement: b.address_complement, address_neighborhood: b.address_neighborhood, zipcode: b.zipcode,
+            marital_status: b.marital_status, legal_representative_name: b.legal_representative_name,
+            employee_count: b.employee_count, estimated_revenue: b.estimated_revenue,
+            pipeline_id: b.pipeline_id, stage_id: b.stage_id, plan_id: b.plan_id, product_id: b.product_id,
+            owner_staff_id: b.owner_staff_id, sdr_staff_id: b.sdr_staff_id, closer_staff_id: b.closer_staff_id,
+            scheduled_by_staff_id: b.scheduled_by_staff_id,
+            opportunity_value: b.opportunity_value, probability: b.probability,
+            segment: b.segment, main_pain: b.main_pain, urgency: b.urgency, fit_score: b.fit_score,
+            payment_method: b.payment_method, installments: b.installments, due_day: b.due_day,
+            team: b.team, notes: b.notes, origin: b.origin, origin_id: b.origin_id,
+            utm_source: b.utm_source, utm_medium: b.utm_medium, utm_campaign: b.utm_campaign, utm_content: b.utm_content,
+            entered_pipeline_at: new Date().toISOString(),
+          };
+          const { data, error } = await c.supabase.from("crm_leads").insert(insertData).select().single();
           if (error) throw error;
+          // Add tags if provided
+          if (b.tag_ids && Array.isArray(b.tag_ids) && b.tag_ids.length > 0) {
+            await c.supabase.from("crm_lead_tags").insert(b.tag_ids.map((tid: string) => ({ lead_id: data.id, tag_id: tid })));
+          }
           return json({ data }, 201);
         },
         update: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
-          const { data, error } = await c.supabase.from("crm_leads").update({ ...c.body, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
+          const { tag_ids, ...rest } = c.body;
+          const { data, error } = await c.supabase.from("crm_leads").update({ ...rest, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
           if (error) throw error;
+          // Update tags if provided
+          if (tag_ids && Array.isArray(tag_ids)) {
+            await c.supabase.from("crm_lead_tags").delete().eq("lead_id", c.id);
+            if (tag_ids.length > 0) {
+              await c.supabase.from("crm_lead_tags").insert(tag_ids.map((tid: string) => ({ lead_id: c.id, tag_id: tid })));
+            }
+          }
           return json({ data });
+        },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          // Cascade delete related data
+          const tables = [
+            "crm_lead_tags", "crm_activities", "crm_lead_stage_history", "crm_meeting_events",
+            "crm_lead_form_responses", "crm_lead_checklist_items", "crm_lead_custom_fields",
+            "crm_conversations", "crm_lead_contracts",
+          ];
+          for (const table of tables) {
+            await c.supabase.from(table).delete().eq("lead_id", c.id);
+          }
+          const { error } = await c.supabase.from("crm_leads").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true });
         },
         move_stage: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
@@ -211,6 +257,117 @@ serve(async (req) => {
           const { data, error } = await c.supabase.from("crm_leads").update({ stage_id, updated_at: new Date().toISOString() }).eq("id", c.id).select().single();
           if (error) throw error;
           return json({ data });
+        },
+        win: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: lead } = await c.supabase.from("crm_leads").select("id, pipeline_id, name, phone, email, company, opportunity_value").eq("id", c.id).single();
+          if (!lead) return json({ error: "Lead não encontrado" }, 404);
+          // Find won stage
+          const { data: wonStage } = await c.supabase.from("crm_stages").select("id, name").eq("pipeline_id", lead.pipeline_id).eq("final_type", "won").limit(1).maybeSingle();
+          if (!wonStage) return json({ error: "Etapa 'won' não encontrada no pipeline" }, 400);
+          const now = new Date().toISOString();
+          const finalValue = c.body.opportunity_value ?? c.body.paid_value ?? lead.opportunity_value;
+          const updateData: any = { stage_id: wonStage.id, closed_at: now, updated_at: now };
+          if (finalValue !== undefined && finalValue !== null) updateData.opportunity_value = finalValue;
+          if (c.body.closer_staff_id) updateData.closer_staff_id = c.body.closer_staff_id;
+          if (c.body.notes) updateData.notes = c.body.notes;
+          if (c.body.payment_method) updateData.payment_method = c.body.payment_method;
+          if (c.body.installments) updateData.installments = c.body.installments;
+          if (c.body.due_day) updateData.due_day = c.body.due_day;
+          const { error: updateError } = await c.supabase.from("crm_leads").update(updateData).eq("id", c.id);
+          if (updateError) throw updateError;
+
+          // Create financial record if paid_value provided
+          let invoiceId: string | null = null;
+          if (c.body.paid_value && c.body.paid_value > 0) {
+            const amountCents = Math.round(c.body.paid_value * 100);
+            const description = c.body.description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
+            const today = now.split('T')[0];
+            const { data: invoice, error: invErr } = await c.supabase.from("company_invoices").insert({
+              amount_cents: amountCents, paid_amount_cents: amountCents,
+              description, due_date: today, paid_at: now, status: "paid",
+              company_id: c.body.company_id || null,
+              custom_receiver_name: !c.body.company_id ? (lead.company || lead.name || null) : null,
+              payment_method: c.body.payment_method || "pix",
+              bank_id: c.body.bank_id || null,
+              notes: `Lead: ${lead.name || ''} | Criado via API`,
+            }).select("id").single();
+            if (!invErr && invoice) {
+              invoiceId = invoice.id;
+              if (c.body.bank_id) {
+                await c.supabase.rpc("increment_bank_balance" as any, { p_bank_id: c.body.bank_id, p_amount: amountCents });
+                await c.supabase.from("financial_bank_transactions").insert({
+                  bank_id: c.body.bank_id, type: "credit", amount_cents: amountCents,
+                  description, reference_type: "invoice", reference_id: invoiceId,
+                } as any);
+              }
+            }
+          }
+          return json({ success: true, lead_id: c.id, status: "won", stage: wonStage.name, invoice_id: invoiceId });
+        },
+        lose: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data: lead } = await c.supabase.from("crm_leads").select("id, pipeline_id").eq("id", c.id).single();
+          if (!lead) return json({ error: "Lead não encontrado" }, 404);
+          const { data: lostStage } = await c.supabase.from("crm_stages").select("id, name").eq("pipeline_id", lead.pipeline_id).eq("final_type", "lost").limit(1).maybeSingle();
+          if (!lostStage) return json({ error: "Etapa 'lost' não encontrada no pipeline" }, 400);
+          const now = new Date().toISOString();
+          const updateData: any = { stage_id: lostStage.id, closed_at: now, lost_at: now, updated_at: now };
+          if (c.body.loss_reason_id) updateData.loss_reason_id = c.body.loss_reason_id;
+          if (c.body.notes) updateData.notes = c.body.notes;
+          const { error } = await c.supabase.from("crm_leads").update(updateData).eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true, lead_id: c.id, status: "lost", stage: lostStage.name });
+        },
+        add_note: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { content, author_name } = c.body;
+          if (!content) return json({ error: "Campo 'content' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("crm_activities").insert({
+            lead_id: c.id, type: "note",
+            title: `Nota de ${author_name || 'API'}`,
+            description: content,
+            responsible_staff_id: c.body.staff_id || null,
+            status: "completed", completed_at: new Date().toISOString(),
+          }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+      },
+
+      // ===== CRM TAGS =====
+      tags: {
+        list: async (c) => {
+          const { data, error } = await c.supabase.from("crm_tags").select("id, name, color, is_active, created_at").order("name");
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
+        create: async (c) => {
+          const { name, color } = c.body;
+          if (!name) return json({ error: "Campo 'name' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("crm_tags").insert({ name, color: color || null }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        add_to_lead: async (c) => {
+          const { lead_id, tag_id } = c.body;
+          if (!lead_id || !tag_id) return json({ error: "Campos 'lead_id' e 'tag_id' obrigatórios" }, 400);
+          const { data, error } = await c.supabase.from("crm_lead_tags").insert({ lead_id, tag_id }).select().single();
+          if (error) throw error;
+          return json({ data }, 201);
+        },
+        remove_from_lead: async (c) => {
+          const { lead_id, tag_id } = c.body;
+          if (!lead_id || !tag_id) return json({ error: "Campos 'lead_id' e 'tag_id' obrigatórios" }, 400);
+          const { error } = await c.supabase.from("crm_lead_tags").delete().eq("lead_id", lead_id).eq("tag_id", tag_id);
+          if (error) throw error;
+          return json({ success: true });
+        },
+        lead_tags: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' (lead_id) obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("crm_lead_tags").select("tag_id, crm_tags(id, name, color)").eq("lead_id", c.id);
+          if (error) throw error;
+          return json({ data: (data || []).map((t: any) => t.crm_tags) });
         },
       },
 
@@ -222,7 +379,7 @@ serve(async (req) => {
           return json({ data: data || [] });
         },
         stages: async (c) => {
-          let q = c.supabase.from("crm_stages").select("id, pipeline_id, name, sort_order, color, is_active, stage_type, created_at").order("sort_order");
+          let q = c.supabase.from("crm_stages").select("id, pipeline_id, name, sort_order, color, is_active, stage_type, final_type, created_at").order("sort_order");
           if (c.pipelineId) q = q.eq("pipeline_id", c.pipelineId);
           const { data, error } = await q;
           if (error) throw error;
@@ -238,7 +395,7 @@ serve(async (req) => {
           if (c.status) q = q.eq("status", c.status);
           if (c.dateFrom) q = q.gte("scheduled_at", c.dateFrom);
           if (c.dateTo) q = q.lte("scheduled_at", c.dateTo);
-          const staffId = url.searchParams.get("staff_id");
+          const staffId = c.url.searchParams.get("staff_id");
           if (staffId) q = q.eq("responsible_staff_id", staffId);
           const { data, error } = await q;
           if (error) throw error;
@@ -265,6 +422,12 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data });
         },
+        delete: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { error } = await c.supabase.from("crm_activities").delete().eq("id", c.id);
+          if (error) throw error;
+          return json({ success: true });
+        },
       },
 
       // ===== MEETINGS =====
@@ -272,11 +435,11 @@ serve(async (req) => {
         list: async (c) => {
           let q = c.supabase.from("crm_meeting_events").select("id, lead_id, pipeline_id, event_type, credited_staff_id, triggered_by_staff_id, stage_id, event_date, created_at").order("event_date", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
           if (c.pipelineId) q = q.eq("pipeline_id", c.pipelineId);
-          const eventType = url.searchParams.get("event_type");
+          const eventType = c.url.searchParams.get("event_type");
           if (eventType) q = q.eq("event_type", eventType);
           if (c.dateFrom) q = q.gte("event_date", c.dateFrom);
           if (c.dateTo) q = q.lte("event_date", c.dateTo);
-          const staffId = url.searchParams.get("staff_id");
+          const staffId = c.url.searchParams.get("staff_id");
           if (staffId) q = q.eq("credited_staff_id", staffId);
           const { data, error } = await q;
           if (error) throw error;
@@ -291,14 +454,12 @@ serve(async (req) => {
         },
         finalize: async (c) => {
           if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
-          const { event_type } = c.body; // realized, no_show, out_of_icp
+          const { event_type } = c.body;
           if (!event_type || !["realized", "no_show", "out_of_icp"].includes(event_type)) {
             return json({ error: "Campo 'event_type' obrigatório (realized, no_show, out_of_icp)" }, 400);
           }
-          // Get original meeting to copy context
           const { data: original } = await c.supabase.from("crm_meeting_events").select("*").eq("id", c.id).single();
           if (!original) return json({ error: "Reunião não encontrada" }, 404);
-          // Insert finalization event
           const { data, error } = await c.supabase.from("crm_meeting_events").insert({
             lead_id: original.lead_id, pipeline_id: original.pipeline_id, event_type,
             credited_staff_id: original.credited_staff_id, triggered_by_staff_id: c.body.triggered_by_staff_id || original.triggered_by_staff_id,
@@ -349,9 +510,9 @@ serve(async (req) => {
           if (c.companyId) q = q.eq("company_id", c.companyId);
           if (c.dateFrom) q = q.gte("entry_date", c.dateFrom);
           if (c.dateTo) q = q.lte("entry_date", c.dateTo);
-          const kpiId = url.searchParams.get("kpi_id");
+          const kpiId = c.url.searchParams.get("kpi_id");
           if (kpiId) q = q.eq("kpi_id", kpiId);
-          const spId = url.searchParams.get("salesperson_id");
+          const spId = c.url.searchParams.get("salesperson_id");
           if (spId) q = q.eq("salesperson_id", spId);
           const { data, error } = await q;
           if (error) throw error;
@@ -401,9 +562,10 @@ serve(async (req) => {
               projects: { actions: ["list", "get"], description: "Visualizar projetos" },
               tasks: { actions: ["list", "get", "create", "update", "delete"], description: "Gerenciar tarefas" },
               staff: { actions: ["list"], description: "Listar colaboradores" },
-              leads: { actions: ["list", "get", "create", "update", "move_stage"], description: "Gerenciar leads do CRM" },
+              leads: { actions: ["list", "get", "create", "update", "delete", "move_stage", "win", "lose", "add_note"], description: "CRM completo: todos os campos, ganho/perda, notas, tags" },
+              tags: { actions: ["list", "create", "add_to_lead", "remove_from_lead", "lead_tags"], description: "Tags do CRM" },
               pipelines: { actions: ["list", "stages"], description: "Pipelines e etapas" },
-              activities: { actions: ["list", "create", "update", "complete"], description: "Atividades do CRM" },
+              activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
               kpis: { actions: ["list", "entries", "create_entry"], description: "KPIs e lançamentos" },
