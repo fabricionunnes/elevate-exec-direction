@@ -620,7 +620,7 @@ export default function AllRecurringChargesPage() {
 
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
-  const selectablePaginatedInvoices = paginatedInvoices.filter(inv => inv.source_table === "company_invoices");
+  const selectablePaginatedInvoices = paginatedInvoices;
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -1664,8 +1664,16 @@ export default function AllRecurringChargesPage() {
                             if (!confirm(`Excluir ${ids.length} fatura(s)?`)) return;
                             setIsBulkSending(true);
                             try {
-                              const { error } = await supabase.from("company_invoices").delete().in("id", ids);
-                              if (error) throw error;
+                              const legacyIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "company_invoices").map(inv => inv.id);
+                              const centralIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "financial_receivables").map(inv => inv.id);
+                              if (legacyIds.length > 0) {
+                                const { error } = await supabase.from("company_invoices").delete().in("id", legacyIds);
+                                if (error) throw error;
+                              }
+                              if (centralIds.length > 0) {
+                                const { error } = await supabase.from("financial_receivables").delete().in("id", centralIds);
+                                if (error) throw error;
+                              }
                               toast.success(`${ids.length} fatura(s) excluída(s)`);
                               setSelectedInvoiceIds(new Set());
                               await loadData();
@@ -1731,9 +1739,7 @@ export default function AllRecurringChargesPage() {
                               <TableCell>
                                 <Checkbox
                                   checked={selectedInvoiceIds.has(inv.id)}
-                                  disabled={inv.source_table !== "company_invoices"}
                                   onCheckedChange={(checked) => {
-                                    if (inv.source_table !== "company_invoices") return;
                                     const next = new Set(selectedInvoiceIds);
                                     if (checked) { next.add(inv.id); } else { next.delete(inv.id); }
                                     setSelectedInvoiceIds(next);
@@ -1828,12 +1834,13 @@ export default function AllRecurringChargesPage() {
                                       ) : null}
                                     </>
                                   )}
-                                  {inv.source_table === "company_invoices" && !inv.recurring_charge_id && inv.status !== "paid" && (
+                                  {!inv.recurring_charge_id && inv.status !== "paid" && (
                                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
                                       onClick={async () => {
                                         if (!confirm(`Excluir fatura avulsa "${inv.description}"?`)) return;
                                         try {
-                                          const { error } = await supabase.from("company_invoices").delete().eq("id", inv.id);
+                                          const table = inv.source_table === "financial_receivables" ? "financial_receivables" : "company_invoices";
+                                          const { error } = await supabase.from(table).delete().eq("id", inv.id);
                                           if (error) throw error;
                                           toast.success("Fatura excluída!");
                                           await loadData();
