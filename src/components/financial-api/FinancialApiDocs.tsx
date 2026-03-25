@@ -219,7 +219,7 @@ const endpoints = [
 }`,
   },
   {
-    name: "Empresas (Financeiro)",
+    name: "Empresas",
     endpoint: "companies",
     icon: Building2,
     method: "GET",
@@ -240,6 +240,254 @@ const endpoints = [
       "contact_email": "financeiro@abc.com",
       "cnpj": "12.345.678/0001-00"
     }
+  ]
+}`,
+  },
+  {
+    name: "Fornecedores",
+    endpoint: "suppliers",
+    icon: Truck,
+    method: "GET",
+    description: "Lista todos os fornecedores cadastrados.",
+    params: [
+      { name: "status", desc: "active, inactive", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=suppliers`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Fornecedor XYZ",
+      "cnpj": "12.345.678/0001-00",
+      "email": "contato@fornecedor.com",
+      "phone": "11999999999",
+      "contact_name": "João",
+      "is_active": true
+    }
+  ]
+}`,
+  },
+  {
+    name: "Categorias",
+    endpoint: "categories",
+    icon: Tag,
+    method: "GET",
+    description: "Lista todas as categorias financeiras (receita e despesa) com classificação DRE e DFC.",
+    params: [],
+    example: `GET ${API_URL}?endpoint=categories`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Consultoria",
+      "type": "receita",
+      "group_name": "Operacional",
+      "dre_line": "receita_bruta",
+      "dfc_section": "operacional",
+      "is_active": true
+    }
+  ]
+}`,
+  },
+  {
+    name: "Centros de Custo",
+    endpoint: "cost_centers",
+    icon: Target,
+    method: "GET",
+    description: "Lista todos os centros de custo.",
+    params: [],
+    example: `GET ${API_URL}?endpoint=cost_centers`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Marketing",
+      "description": "Despesas de marketing",
+      "is_active": true
+    }
+  ]
+}`,
+  },
+  {
+    name: "Contratos",
+    endpoint: "contracts",
+    icon: FileText,
+    method: "GET",
+    description: "Lista contratos financeiros com empresas.",
+    params: [
+      { name: "status", desc: "active, inactive, cancelled", required: false },
+      { name: "company_id", desc: "UUID da empresa", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=contracts&status=active`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "company_id": "uuid",
+      "contract_name": "Consultoria Empresarial",
+      "contract_type": "recurring",
+      "billing_cycle": "monthly",
+      "contract_value": 5000.00,
+      "start_date": "2025-01-01",
+      "status": "active"
+    }
+  ]
+}`,
+  },
+  {
+    name: "Links de Pagamento",
+    endpoint: "payment_links",
+    icon: Link2,
+    method: "GET",
+    description: "Lista links de pagamento gerados.",
+    params: [
+      { name: "company_id", desc: "UUID da empresa", required: false },
+      { name: "limit", desc: "Máx. registros (padrão 500)", required: false },
+      { name: "offset", desc: "Paginação (padrão 0)", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=payment_links`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "description": "Mensalidade Jan/2026",
+      "amount": 5000.00,
+      "payment_method": "credit_card",
+      "url": "https://checkout.example.com/...",
+      "provider": "pagarme"
+    }
+  ]
+}`,
+  },
+  {
+    name: "Régua de Cobranças",
+    endpoint: "billing_rules",
+    icon: Bell,
+    method: "GET",
+    description: "Lista as regras de notificação de cobrança configuradas.",
+    params: [],
+    example: `GET ${API_URL}?endpoint=billing_rules`,
+    response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "name": "Lembrete 3 dias antes",
+      "trigger_type": "before",
+      "days_offset": 3,
+      "is_active": true,
+      "include_payment_link": true
+    }
+  ]
+}`,
+  },
+  {
+    name: "Clientes Inadimplentes",
+    endpoint: "overdue_clients",
+    icon: AlertTriangle,
+    method: "GET",
+    description: "Lista clientes com faturas em atraso, agrupados por empresa, com total em aberto e detalhes.",
+    params: [],
+    example: `GET ${API_URL}?endpoint=overdue_clients`,
+    response: `{
+  "data": [
+    {
+      "company_id": "uuid",
+      "company_name": "Empresa ABC",
+      "contact_email": "email@empresa.com",
+      "contact_phone": "11999999999",
+      "cnpj": "12.345.678/0001-00",
+      "total_overdue": 15000.00,
+      "invoices_count": 3,
+      "oldest_due_date": "2025-12-15",
+      "invoices": [
+        { "id": "uuid", "description": "Mensalidade Dez/2025", "amount": 5000.00, "due_date": "2025-12-15" }
+      ]
+    }
+  ],
+  "total_clients": 5,
+  "total_overdue": 75000.00
+}`,
+  },
+  {
+    name: "Relatório de Inadimplência",
+    endpoint: "delinquency_report",
+    icon: BarChart3,
+    method: "GET",
+    description: "Relatório consolidado de inadimplência com aging (1-30, 31-60, 61-90, 90+ dias).",
+    params: [],
+    example: `GET ${API_URL}?endpoint=delinquency_report`,
+    response: `{
+  "total_due_invoices": 200,
+  "total_overdue_invoices": 25,
+  "total_paid_on_time": 160,
+  "total_paid_late": 15,
+  "delinquency_rate": "12.5%",
+  "total_overdue_amount": 125000.00,
+  "aging_breakdown": {
+    "1-30": 50000.00,
+    "31-60": 35000.00,
+    "61-90": 25000.00,
+    "90+": 15000.00
+  }
+}`,
+  },
+  {
+    name: "Fluxo de Caixa",
+    endpoint: "cashflow",
+    icon: TrendingUp,
+    method: "GET",
+    description: "Projeção de fluxo de caixa com receitas e despesas agrupadas por mês.",
+    params: [
+      { name: "date_from", desc: "Data início (YYYY-MM-DD, padrão: início do mês)", required: false },
+      { name: "date_to", desc: "Data fim (YYYY-MM-DD, padrão: +3 meses)", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=cashflow&date_from=2026-01-01&date_to=2026-06-30`,
+    response: `{
+  "current_balance": 150000.00,
+  "period": { "from": "2026-01-01", "to": "2026-06-30" },
+  "projection": [
+    {
+      "month": "2026-01",
+      "expected_income": 85000.00,
+      "expected_expense": 45000.00,
+      "net": 40000.00,
+      "projected_balance": 190000.00,
+      "already_received": 82000.00,
+      "already_paid": 42000.00
+    }
+  ]
+}`,
+  },
+  {
+    name: "DRE",
+    endpoint: "dre",
+    icon: FileText,
+    method: "GET",
+    description: "Demonstrativo de Resultado do Exercício com receitas, despesas, lucro e margem por mês e categoria.",
+    params: [
+      { name: "date_from", desc: "Ano de referência (YYYY-01-01, padrão: ano atual)", required: false },
+    ],
+    example: `GET ${API_URL}?endpoint=dre&date_from=2026-01-01`,
+    response: `{
+  "year": 2026,
+  "realized": {
+    "revenue": 450000.00,
+    "expenses": 280000.00,
+    "profit": 170000.00,
+    "margin": "37.8%"
+  },
+  "expected": {
+    "revenue": 600000.00,
+    "expenses": 350000.00,
+    "profit": 250000.00
+  },
+  "expenses_by_category": {
+    "Salários": 120000.00,
+    "Marketing": 45000.00,
+    "Infraestrutura": 30000.00
+  },
+  "monthly": [
+    { "month": "2026-01", "revenue": 75000.00, "expenses": 42000.00, "profit": 33000.00 }
   ]
 }`,
   },
