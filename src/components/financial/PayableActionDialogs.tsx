@@ -242,6 +242,7 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
             )}
           </div>
         </div>
+        </ScrollArea>
         <DialogFooter>
           <Button variant="outline" onClick={() => onOpenChange(false)}>Cancelar</Button>
           <Button onClick={handleSave} disabled={saving || paidAmount <= 0 || bankId === "none"}>
