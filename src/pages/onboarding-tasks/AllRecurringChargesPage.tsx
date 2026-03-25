@@ -1836,12 +1836,13 @@ export default function AllRecurringChargesPage() {
                                       ) : null}
                                     </>
                                   )}
-                                  {inv.source_table === "company_invoices" && !inv.recurring_charge_id && inv.status !== "paid" && (
+                                  {!inv.recurring_charge_id && inv.status !== "paid" && (
                                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
                                       onClick={async () => {
                                         if (!confirm(`Excluir fatura avulsa "${inv.description}"?`)) return;
                                         try {
-                                          const { error } = await supabase.from("company_invoices").delete().eq("id", inv.id);
+                                          const table = inv.source_table === "financial_receivables" ? "financial_receivables" : "company_invoices";
+                                          const { error } = await supabase.from(table).delete().eq("id", inv.id);
                                           if (error) throw error;
                                           toast.success("Fatura excluída!");
                                           await loadData();
