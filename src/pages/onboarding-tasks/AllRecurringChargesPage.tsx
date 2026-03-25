@@ -114,7 +114,7 @@ interface FinancialEntry {
 
 interface Invoice {
   id: string;
-  company_id: string;
+  company_id: string | null;
   description: string;
   amount_cents: number;
   due_date: string;
@@ -130,8 +130,17 @@ interface Invoice {
   pagarme_charge_id: string | null;
   payment_link_url: string | null;
   created_at: string;
+  source_table: "company_invoices" | "financial_receivables";
   company_name?: string;
   company_phone?: string;
+  custom_receiver_name?: string | null;
+  category_id?: string | null;
+  cost_center_id?: string | null;
+  notes?: string | null;
+  bank_id?: string | null;
+  conta_azul_id?: string | null;
+  payment_fee_cents?: number | null;
+  discount_cents?: number | null;
 }
 
 const DASHBOARD_CHILDREN = [
@@ -407,11 +416,12 @@ export default function AllRecurringChargesPage() {
 
   const loadData = async () => {
     try {
-      const [chargesRes, companiesRes, payablesRes, invoicesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
+      const [chargesRes, companiesRes, payablesRes, invoicesRes, financialReceivablesRes, banksRes, catRes, ccRes, staffRes, projectsRes] = await Promise.all([
         supabase.from("company_recurring_charges").select("*").order("created_at", { ascending: false }),
         supabase.from("onboarding_companies").select("id, name, status, consultant_id, cs_id, contract_start_date, contract_end_date, contract_value, segment, is_simulator, phone").order("name"),
         fetchAllRows("financial_payables", "due_date"),
         fetchAllRows("company_invoices", "due_date"),
+        fetchAllRows("financial_receivables", "due_date"),
         supabase.from("financial_banks").select("*").eq("is_active", true).order("name"),
         supabase.from("staff_financial_categories").select("*").eq("is_active", true).order("sort_order"),
         supabase.from("staff_financial_cost_centers").select("*").eq("is_active", true).order("sort_order"),
@@ -430,7 +440,51 @@ export default function AllRecurringChargesPage() {
       setFullCompanies(allCompanies);
       setStaffList(staffRes.data || []);
       setPayables((payablesRes.data as any) || []);
-      setInvoices(((invoicesRes.data as any[]) || []).map((inv: any) => ({ ...inv, company_name: companiesMap.get(inv.company_id) || inv.custom_receiver_name || "Empresa desconhecida", company_phone: companiesPhoneMap.get(inv.company_id) || null })));
+      const legacyInvoices: Invoice[] = ((invoicesRes.data as any[]) || []).map((inv: any) => ({
+        ...inv,
+        source_table: "company_invoices",
+        company_name: companiesMap.get(inv.company_id) || inv.custom_receiver_name || "Empresa desconhecida",
+        company_phone: companiesPhoneMap.get(inv.company_id) || null,
+      }));
+      const centralReceivables: Invoice[] = ((financialReceivablesRes.data as any[]) || []).map((rec: any) => {
+        const amountCents = Math.round(Number(rec.amount || 0) * 100);
+        const interestCents = Math.round(Number(rec.interest_amount || 0) * 100);
+        const lateFeeCents = Math.round(Number(rec.late_fee_amount || 0) * 100);
+        const discountCents = Math.round(Number(rec.discount_amount || 0) * 100);
+        const feeCents = Math.round(Number(rec.fee_amount || 0) * 100);
+
+        return {
+          id: rec.id,
+          company_id: rec.company_id || null,
+          description: rec.description,
+          amount_cents: amountCents,
+          due_date: rec.due_date,
+          status: rec.status,
+          paid_at: rec.paid_date || null,
+          paid_amount_cents: rec.paid_amount != null ? Math.round(Number(rec.paid_amount) * 100) : null,
+          installment_number: 1,
+          total_installments: 1,
+          late_fee_cents: lateFeeCents,
+          interest_cents: interestCents,
+          total_with_fees_cents: Math.max(amountCents + interestCents + lateFeeCents - discountCents - feeCents, 0),
+          recurring_charge_id: null,
+          pagarme_charge_id: null,
+          payment_link_url: rec.payment_link || null,
+          created_at: rec.created_at,
+          source_table: "financial_receivables",
+          company_name: companiesMap.get(rec.company_id) || rec.custom_receiver_name || "Empresa desconhecida",
+          company_phone: companiesPhoneMap.get(rec.company_id) || null,
+          custom_receiver_name: rec.custom_receiver_name || null,
+          category_id: rec.category_id || null,
+          cost_center_id: null,
+          notes: rec.notes || null,
+          bank_id: rec.bank_account_id || null,
+          conta_azul_id: rec.conta_azul_id || null,
+          payment_fee_cents: feeCents,
+          discount_cents: discountCents,
+        };
+      });
+      setInvoices([...legacyInvoices, ...centralReceivables]);
       setBanks((banksRes.data as any) || []);
       setStaffCategories((catRes.data as any) || []);
       setStaffCostCenters((ccRes.data as any) || []);
@@ -566,6 +620,7 @@ export default function AllRecurringChargesPage() {
 
   const totalPages = Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE);
   const paginatedInvoices = sortedInvoices.slice((currentPage - 1) * ITEMS_PER_PAGE, currentPage * ITEMS_PER_PAGE);
+  const selectablePaginatedInvoices = paginatedInvoices.filter(inv => inv.source_table === "company_invoices");
 
   const filteredPayables = useMemo(() => {
     return payables.filter(p => {
@@ -1635,22 +1690,23 @@ export default function AllRecurringChargesPage() {
                         <TableRow>
                           <TableHead className="w-10">
                             <Checkbox
-                              checked={paginatedInvoices.length > 0 && paginatedInvoices.every(inv => selectedInvoiceIds.has(inv.id))}
+                              checked={selectablePaginatedInvoices.length > 0 && selectablePaginatedInvoices.every(inv => selectedInvoiceIds.has(inv.id))}
                               onCheckedChange={(checked) => {
                                 if (checked) {
                                   setSelectedInvoiceIds(prev => {
                                     const next = new Set(prev);
-                                    paginatedInvoices.forEach(inv => next.add(inv.id));
+                                    selectablePaginatedInvoices.forEach(inv => next.add(inv.id));
                                     return next;
                                   });
                                 } else {
                                   setSelectedInvoiceIds(prev => {
                                     const next = new Set(prev);
-                                    paginatedInvoices.forEach(inv => next.delete(inv.id));
+                                    selectablePaginatedInvoices.forEach(inv => next.delete(inv.id));
                                     return next;
                                   });
                                 }
                               }}
+                              disabled={selectablePaginatedInvoices.length === 0}
                             />
                           </TableHead>
                           <TableHead className="cursor-pointer select-none hover:bg-muted/80" onClick={() => toggleRecSort("company")}><div className="flex items-center">Empresa<SortIcon column="company" activeCol={recSortCol} /></div></TableHead>
@@ -1675,7 +1731,9 @@ export default function AllRecurringChargesPage() {
                               <TableCell>
                                 <Checkbox
                                   checked={selectedInvoiceIds.has(inv.id)}
+                                  disabled={inv.source_table !== "company_invoices"}
                                   onCheckedChange={(checked) => {
+                                    if (inv.source_table !== "company_invoices") return;
                                     const next = new Set(selectedInvoiceIds);
                                     if (checked) { next.add(inv.id); } else { next.delete(inv.id); }
                                     setSelectedInvoiceIds(next);
@@ -1755,13 +1813,13 @@ export default function AllRecurringChargesPage() {
                                   )}
                                   {hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_confirm) && (
                                     <>
-                                      {inv.status !== "paid" && inv.status !== "cancelled" ? (
+                                      {inv.source_table === "company_invoices" && inv.status !== "paid" && inv.status !== "cancelled" ? (
                                         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-emerald-600 hover:text-emerald-700 hover:bg-emerald-50" disabled={isProcessing}
                                           onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "confirm", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments}) - ${formatCurrencyCents(displayAmount)}` })}>
                                           {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5" />}
                                           Baixa
                                         </Button>
-                                      ) : hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && inv.status === "paid" ? (
+                                      ) : inv.source_table === "company_invoices" && hasPerm(FINANCIAL_PERMISSION_KEYS.fin_receivables_revert) && inv.status === "paid" ? (
                                         <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
                                           onClick={() => setConfirmDialog({ open: true, invoiceId: inv.id, action: "revert", description: `${inv.company_name} - ${inv.description} (${inv.installment_number}/${inv.total_installments})` })}>
                                           {isProcessing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Undo2 className="h-3.5 w-3.5" />}
@@ -1770,7 +1828,7 @@ export default function AllRecurringChargesPage() {
                                       ) : null}
                                     </>
                                   )}
-                                  {!inv.recurring_charge_id && inv.status !== "paid" && (
+                                  {inv.source_table === "company_invoices" && !inv.recurring_charge_id && inv.status !== "paid" && (
                                     <Button variant="ghost" size="sm" className="h-7 text-xs gap-1 text-destructive hover:text-destructive hover:bg-destructive/10" disabled={isProcessing}
                                       onClick={async () => {
                                         if (!confirm(`Excluir fatura avulsa "${inv.description}"?`)) return;
