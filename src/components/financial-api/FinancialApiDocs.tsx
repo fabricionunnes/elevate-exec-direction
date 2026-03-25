@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark, Plus, Trash2, Key, Eye, EyeOff, Loader2 } from "lucide-react";
+import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark, Plus, Trash2, Key, Eye, EyeOff, Loader2, Users, Truck, Tag, Target, FileText, Link2, Bell, AlertTriangle, BarChart3, TrendingUp } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { supabase } from "@/integrations/supabase/client";
