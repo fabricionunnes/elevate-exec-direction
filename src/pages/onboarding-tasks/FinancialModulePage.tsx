@@ -98,7 +98,8 @@ export default function FinancialModulePage() {
     return ALL_TABS.filter(tab => {
       const permKey = TAB_PERMISSION_MAP[tab.id];
       if (permKey === null) return true; // always visible
-      if (permKey === "master_only") return false; // master only tabs
+      if (permKey === "master_only") return false;
+      if (permKey === "admin_master_only") return false;
       return hasFinancialPermission(permKey);
     });
   }, [isMaster, hasFinancialPermission]);
