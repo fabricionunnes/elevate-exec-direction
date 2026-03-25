@@ -232,6 +232,9 @@ export default function FinancialModulePage() {
           <TabsContent value="nfse" className="mt-0">
             <NfsePanel />
           </TabsContent>
+          <TabsContent value="api" className="mt-0">
+            <FinancialApiDocs />
+          </TabsContent>
         </Tabs>
       </main>
     </div>
