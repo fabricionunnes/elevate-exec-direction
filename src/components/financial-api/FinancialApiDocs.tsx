@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark } from "lucide-react";
+import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark, Plus, Trash2, Key, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-api`;
 
