@@ -757,6 +757,7 @@ export function ConsultantOneOnOnePanel() {
           .from("onboarding_projects")
           .select(`
             id,
+            company_id,
             created_at,
             onboarding_companies(name, contract_start_date),
             client_health_scores(total_score)
