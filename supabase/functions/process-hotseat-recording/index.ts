@@ -88,7 +88,21 @@ Deno.serve(async (req) => {
     const { data: hotseatResponses } = await supabase.from("hotseat_responses").select("company_name, respondent_name, subjects, description").in("status", ["scheduled", "pending"]);
     const companiesContext = hotseatResponses?.map(r => ({ name: r.company_name, respondent: r.respondent_name, subjects: r.subjects })) || [];
 
-    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "system", content: `Analise transcrições de Hotseat. Empresas agendadas: ${JSON.stringify(companiesContext)}` }, { role: "user", content: `Analise e retorne JSON com general_summary, key_insights, companies (name, challenges, recommendations, action_items), next_steps:\n\n${transcriptText}` }], temperature: 0.5 }) });
+    const systemPrompt = `Você é um analista de consultoria empresarial brasileiro. TODAS as suas respostas devem ser em PORTUGUÊS DO BRASIL (pt-BR). Nunca responda em inglês.
+
+Você vai analisar a transcrição de uma sessão de Hotseat (reunião de consultoria).
+
+REGRA CRÍTICA: Inclua na seção "companies" APENAS as empresas que foram REALMENTE discutidas na transcrição. NÃO inclua empresas que estavam agendadas mas não apareceram ou não foram mencionadas na conversa. Analise o conteúdo real da transcrição para identificar quais empresas participaram.
+
+Empresas que estavam agendadas (use apenas como referência para identificar nomes, mas só inclua se realmente aparecerem na transcrição): ${JSON.stringify(companiesContext)}
+
+Retorne um JSON com:
+- general_summary (string, em português): resumo geral da sessão
+- key_insights (array de strings, em português): insights principais
+- companies (array de objetos, SOMENTE empresas que realmente participaram): cada objeto com name, challenges (array), recommendations (array), action_items (array) — tudo em português
+- next_steps (array de strings, em português): próximos passos`;
+
+    const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", { method: "POST", headers: { Authorization: `Bearer ${LOVABLE_API_KEY}`, "Content-Type": "application/json" }, body: JSON.stringify({ model: "google/gemini-2.5-flash", messages: [{ role: "system", content: systemPrompt }, { role: "user", content: `Analise a transcrição abaixo e retorne o JSON conforme instruído. Lembre-se: responda SOMENTE em português e inclua APENAS empresas que realmente participaram:\n\n${transcriptText}` }], temperature: 0.3 }) });
     
     if (!aiResponse.ok) { await supabase.from("hotseat_recordings").update({ status: "completed", error_message: "Erro ao gerar resumo" }).eq("id", recordingId); return new Response(JSON.stringify({ success: true, warning: "Resumo não gerado" }), { headers: { ...corsHeaders, "Content-Type": "application/json" } }); }
 
