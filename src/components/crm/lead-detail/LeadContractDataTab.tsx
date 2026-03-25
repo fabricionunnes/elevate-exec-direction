@@ -96,11 +96,17 @@ export const LeadContractDataTab = ({ leadId, onUpdate }: LeadContractDataTabPro
   const [formToken, setFormToken] = useState<string | null>(null);
   const [generatingLink, setGeneratingLink] = useState(false);
   const debounceRef = useRef<NodeJS.Timeout | null>(null);
+  const pendingUpdatesRef = useRef<Partial<ContractData>>({});
 
   useEffect(() => {
     loadData();
     return () => {
       if (debounceRef.current) clearTimeout(debounceRef.current);
+      // Flush any pending updates on unmount
+      if (Object.keys(pendingUpdatesRef.current).length > 0) {
+        saveField(pendingUpdatesRef.current);
+        pendingUpdatesRef.current = {};
+      }
     };
   }, [leadId]);
 
