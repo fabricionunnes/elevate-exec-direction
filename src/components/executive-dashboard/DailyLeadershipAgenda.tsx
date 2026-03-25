@@ -75,6 +75,7 @@ interface PositiveHighlight {
 
 interface NewCompany {
   id: string;
+  company_id?: string;
   company_name: string;
   days_since_start: number;
   health_score: number;
@@ -310,6 +311,7 @@ export function DailyLeadershipAgenda() {
         .from("onboarding_projects")
         .select(`
           id,
+          company_id,
           created_at,
           consultant_id,
           onboarding_companies(name, contract_start_date),
@@ -366,6 +368,7 @@ export function DailyLeadershipAgenda() {
           
           return {
             id: p.id,
+            company_id: p.company_id,
             company_name: p.onboarding_companies?.name || "Empresa",
             days_since_start: daysSince,
             health_score: p.client_health_scores?.total_score || 50,
