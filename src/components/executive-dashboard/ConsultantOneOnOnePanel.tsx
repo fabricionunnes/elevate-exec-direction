@@ -82,6 +82,7 @@ interface ConsultantMetrics {
 
 interface NewCompany {
   id: string;
+  company_id?: string;
   company_name: string;
   days_since_start: number;
   health_score: number;
