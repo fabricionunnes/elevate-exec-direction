@@ -166,7 +166,7 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-md">
+      <DialogContent className="max-w-md max-h-[85vh] flex flex-col">
         <DialogHeader>
           <DialogTitle>Registrar Pagamento</DialogTitle>
           <DialogDescription>
@@ -178,6 +178,7 @@ export function PayablePaymentDialog({ open, onOpenChange, payable, banks, onSuc
             )}
           </DialogDescription>
         </DialogHeader>
+        <ScrollArea className="flex-1 overflow-y-auto max-h-[55vh] pr-1">
         <div className="space-y-4 py-2">
           {/* Payment history */}
           {hasHistory && (
