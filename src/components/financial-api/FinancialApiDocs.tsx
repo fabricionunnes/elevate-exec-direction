@@ -1,10 +1,13 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
-import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark } from "lucide-react";
+import { Copy, Check, Code2, FileJson, Database, DollarSign, Building2, RefreshCw, CreditCard, Landmark, Plus, Trash2, Key, Eye, EyeOff, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { supabase } from "@/integrations/supabase/client";
+import { Input } from "@/components/ui/input";
+import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 
 const API_URL = `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/financial-api`;
 
@@ -242,6 +245,127 @@ const endpoints = [
   },
 ];
 
+function ApiKeyManager() {
+  const [keys, setKeys] = useState<any[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [newKeyName, setNewKeyName] = useState("");
+  const [creating, setCreating] = useState(false);
+  const [visibleKeys, setVisibleKeys] = useState<Set<string>>(new Set());
+
+  const fetchKeys = async () => {
+    const { data } = await supabase.from("api_keys").select("*").order("created_at", { ascending: false });
+    setKeys(data || []);
+    setLoading(false);
+  };
+
+  useEffect(() => { fetchKeys(); }, []);
+
+  const createKey = async () => {
+    if (!newKeyName.trim()) { toast.error("Informe um nome para a chave"); return; }
+    setCreating(true);
+    const { error } = await supabase.from("api_keys").insert({ name: newKeyName.trim() } as any);
+    if (error) { toast.error("Erro ao criar chave"); console.error(error); }
+    else { toast.success("Chave criada!"); setNewKeyName(""); await fetchKeys(); }
+    setCreating(false);
+  };
+
+  const deleteKey = async (id: string) => {
+    const { error } = await supabase.from("api_keys").delete().eq("id", id);
+    if (error) toast.error("Erro ao excluir");
+    else { toast.success("Chave excluída"); await fetchKeys(); }
+  };
+
+  const toggleVisibility = (id: string) => {
+    setVisibleKeys(prev => {
+      const next = new Set(prev);
+      if (next.has(id)) next.delete(id); else next.add(id);
+      return next;
+    });
+  };
+
+  if (loading) return <div className="flex justify-center py-4"><Loader2 className="h-5 w-5 animate-spin" /></div>;
+
+  return (
+    <div className="space-y-4">
+      <div className="flex gap-2">
+        <Input
+          placeholder="Nome da chave (ex: Integração ERP)"
+          value={newKeyName}
+          onChange={(e) => setNewKeyName(e.target.value)}
+          className="max-w-xs"
+        />
+        <Button onClick={createKey} disabled={creating} size="sm" className="gap-1.5">
+          <Plus className="h-3.5 w-3.5" />
+          Criar Chave
+        </Button>
+      </div>
+
+      {keys.length === 0 ? (
+        <p className="text-sm text-muted-foreground">Nenhuma chave API criada ainda.</p>
+      ) : (
+        <div className="border rounded-lg overflow-hidden">
+          <table className="w-full text-sm">
+            <thead className="bg-muted">
+              <tr>
+                <th className="text-left px-3 py-2 font-medium">Nome</th>
+                <th className="text-left px-3 py-2 font-medium">Chave</th>
+                <th className="text-left px-3 py-2 font-medium">Status</th>
+                <th className="text-left px-3 py-2 font-medium">Criada em</th>
+                <th className="text-right px-3 py-2 font-medium">Ações</th>
+              </tr>
+            </thead>
+            <tbody>
+              {keys.map((k) => (
+                <tr key={k.id} className="border-t">
+                  <td className="px-3 py-2 font-medium">{k.name}</td>
+                  <td className="px-3 py-2 font-mono text-xs">
+                    <div className="flex items-center gap-1.5">
+                      <span>{visibleKeys.has(k.id) ? k.key : `${k.key?.slice(0, 8)}${"•".repeat(20)}`}</span>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => toggleVisibility(k.id)}>
+                        {visibleKeys.has(k.id) ? <EyeOff className="h-3 w-3" /> : <Eye className="h-3 w-3" />}
+                      </Button>
+                      <Button variant="ghost" size="icon" className="h-6 w-6" onClick={() => { navigator.clipboard.writeText(k.key); toast.success("Chave copiada!"); }}>
+                        <Copy className="h-3 w-3" />
+                      </Button>
+                    </div>
+                  </td>
+                  <td className="px-3 py-2">
+                    <Badge variant={k.is_active ? "default" : "secondary"} className="text-[10px]">
+                      {k.is_active ? "Ativa" : "Inativa"}
+                    </Badge>
+                  </td>
+                  <td className="px-3 py-2 text-muted-foreground text-xs">
+                    {new Date(k.created_at).toLocaleDateString("pt-BR")}
+                  </td>
+                  <td className="px-3 py-2 text-right">
+                    <AlertDialog>
+                      <AlertDialogTrigger asChild>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive">
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </AlertDialogTrigger>
+                      <AlertDialogContent>
+                        <AlertDialogHeader>
+                          <AlertDialogTitle>Excluir chave "{k.name}"?</AlertDialogTitle>
+                          <AlertDialogDescription>Integrações usando esta chave deixarão de funcionar imediatamente.</AlertDialogDescription>
+                        </AlertDialogHeader>
+                        <AlertDialogFooter>
+                          <AlertDialogCancel>Cancelar</AlertDialogCancel>
+                          <AlertDialogAction onClick={() => deleteKey(k.id)} className="bg-destructive text-destructive-foreground">Excluir</AlertDialogAction>
+                        </AlertDialogFooter>
+                      </AlertDialogContent>
+                    </AlertDialog>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        </div>
+      )}
+    </div>
+  );
+}
+
 export function FinancialApiDocs() {
   return (
     <div className="space-y-6">
@@ -256,6 +380,19 @@ export function FinancialApiDocs() {
           </p>
         </div>
       </div>
+
+      {/* API Keys Management */}
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <Key className="h-4 w-4" />
+            Chaves de API
+          </CardTitle>
+        </CardHeader>
+        <CardContent>
+          <ApiKeyManager />
+        </CardContent>
+      </Card>
 
       {/* Auth */}
       <Card>
