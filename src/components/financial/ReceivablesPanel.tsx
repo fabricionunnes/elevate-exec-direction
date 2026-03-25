@@ -453,9 +453,6 @@ export function ReceivablesPanel() {
   // Using PeriodNavigator's getDateRangeForPeriod instead of local function
 
   const filteredReceivables = receivables.filter((r) => {
-    // Only show recurring receivables (from clients without end date and monthly payment)
-    if (!r.is_recurring) return false;
-    
     // Only show receivables from January 2025 onwards
     if (r.due_date < minDate) return false;
     
