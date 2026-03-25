@@ -65,7 +65,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   "bank-statement": "fin_bank_statement",
   "general-statement": null, // always visible
   "nfse": null, // always visible
-  "api": "master_only", // master only
+  "api": "admin_master_only", // admin and master only
 };
 
 const ALL_TABS = [
