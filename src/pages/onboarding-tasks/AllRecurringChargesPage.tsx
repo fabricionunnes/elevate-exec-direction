@@ -1664,8 +1664,16 @@ export default function AllRecurringChargesPage() {
                             if (!confirm(`Excluir ${ids.length} fatura(s)?`)) return;
                             setIsBulkSending(true);
                             try {
-                              const { error } = await supabase.from("company_invoices").delete().in("id", ids);
-                              if (error) throw error;
+                              const legacyIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "company_invoices").map(inv => inv.id);
+                              const centralIds = invoices.filter(inv => ids.includes(inv.id) && inv.source_table === "financial_receivables").map(inv => inv.id);
+                              if (legacyIds.length > 0) {
+                                const { error } = await supabase.from("company_invoices").delete().in("id", legacyIds);
+                                if (error) throw error;
+                              }
+                              if (centralIds.length > 0) {
+                                const { error } = await supabase.from("financial_receivables").delete().in("id", centralIds);
+                                if (error) throw error;
+                              }
                               toast.success(`${ids.length} fatura(s) excluída(s)`);
                               setSelectedInvoiceIds(new Set());
                               await loadData();
