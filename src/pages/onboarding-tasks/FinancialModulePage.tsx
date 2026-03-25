@@ -65,7 +65,7 @@ const TAB_PERMISSION_MAP: Record<string, string | null> = {
   "bank-statement": "fin_bank_statement",
   "general-statement": null, // always visible
   "nfse": null, // always visible
-  "api": "master_only", // master only
+  "api": "admin_master_only", // admin and master only
 };
 
 const ALL_TABS = [
@@ -91,14 +91,21 @@ const ALL_TABS = [
 
 export default function FinancialModulePage() {
   const navigate = useNavigate();
-  const { loading, hasFinancialAccess, isMaster, hasFinancialPermission } = useFinancialPermissions();
+  const { loading, hasFinancialAccess, isMaster, hasFinancialPermission, userRole } = useFinancialPermissions();
   
   const visibleTabs = useMemo(() => {
-    if (isMaster) return ALL_TABS;
+    if (isMaster || (userRole === "admin")) {
+      return ALL_TABS.filter(tab => {
+        const permKey = TAB_PERMISSION_MAP[tab.id];
+        if (permKey === "master_only") return isMaster;
+        return true;
+      });
+    }
     return ALL_TABS.filter(tab => {
       const permKey = TAB_PERMISSION_MAP[tab.id];
       if (permKey === null) return true; // always visible
-      if (permKey === "master_only") return false; // master only tabs
+      if (permKey === "master_only") return false;
+      if (permKey === "admin_master_only") return false;
       return hasFinancialPermission(permKey);
     });
   }, [isMaster, hasFinancialPermission]);

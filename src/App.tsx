@@ -132,6 +132,7 @@ const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/Onboar
 const KPIEntryPage = lazy(() => import("./pages/onboarding-tasks/KPIEntryPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
 const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/FinancialModulePage"));
+const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
 const WhatsAppAdminPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppAdminPage"));
 const ClientDisparadorPage = lazy(() => import("./pages/disparador/ClientDisparadorPage"));
@@ -359,6 +360,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<FinancialModulePage />} />
+              <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<AllRecurringChargesPage />} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
