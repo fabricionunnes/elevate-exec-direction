@@ -2498,7 +2498,19 @@ const OnboardingTasksPage = () => {
               </Button>
             )}
 
-            {/* Cancelamentos & Retenção - Admin/CS only, menu principal separado */}
+            {/* API Docs button - visible for admin and master only */}
+            {isAdmin && (
+              <Button 
+                variant="outline" 
+                size="sm" 
+                onClick={() => navigate("/onboarding-tasks/api-docs")}
+                className="gap-2"
+              >
+                <Code2 className="h-4 w-4" />
+                API
+              </Button>
+            )}
+
             {(isAdmin || isCS) && (
               <Button 
                 variant="outline" 
