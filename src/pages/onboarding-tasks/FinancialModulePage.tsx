@@ -20,7 +20,8 @@ import {
   Truck,
   MessageSquare,
   Headphones,
-  FileCheck
+  FileCheck,
+  Code2
 } from "lucide-react";
 import { useFinancialPermissions } from "@/hooks/useFinancialPermissions";
 
