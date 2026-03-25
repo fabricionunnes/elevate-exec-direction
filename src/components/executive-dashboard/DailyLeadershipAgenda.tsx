@@ -311,6 +311,7 @@ export function DailyLeadershipAgenda() {
         .from("onboarding_projects")
         .select(`
           id,
+          company_id,
           created_at,
           consultant_id,
           onboarding_companies(name, contract_start_date),
