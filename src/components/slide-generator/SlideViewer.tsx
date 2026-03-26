@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import QRCodeLib from "qrcode";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
-  Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check
+  Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check,
+  Share2, Link, Smartphone, QrCode
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SlideRenderer } from "./SlideRenderer";
 import { SlidePresenterMode } from "./SlidePresenterMode";
 import { SlidePDFExport } from "./SlidePDFExport";
