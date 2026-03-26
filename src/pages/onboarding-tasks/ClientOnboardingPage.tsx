@@ -374,6 +374,7 @@ const ClientOnboardingPage = () => {
         commercial_director: "Diretor Comercial IA",
         other_services: "Outros Serviços",
         crm_comercial: "CRM Comercial",
+        b2b_prospection: "Prospecção B2B",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
