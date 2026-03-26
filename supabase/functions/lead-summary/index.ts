@@ -57,6 +57,15 @@ serve(async (req) => {
       .eq("lead_id", leadId)
       .order("event_date", { ascending: false });
 
+    // Fetch transcriptions for context
+    const { data: transcriptions } = await supabase
+      .from("crm_transcriptions")
+      .select("title, transcription_text, summary, ai_analysis, created_at")
+      .eq("lead_id", leadId)
+      .not("transcription_text", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
     // Fetch all stages from same pipeline for journey
     let pipelineStages: any[] = [];
     if (lead.pipeline_id) {
