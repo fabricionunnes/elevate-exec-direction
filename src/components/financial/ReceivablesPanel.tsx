@@ -100,7 +100,7 @@ export function ReceivablesPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
   const [periodOffset, setPeriodOffset] = useState(0);
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
