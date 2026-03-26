@@ -4,7 +4,7 @@ import { Download, Loader2 } from "lucide-react";
 import { toast } from "sonner";
 import html2canvas from "html2canvas";
 import jsPDF from "jspdf";
-import type { PresentationSlide, SlideContent } from "./types";
+import type { PresentationSlide, SlideContent, SlideMediaItem } from "./types";
 
 // UNV Brand colors
 const UNV_COLORS = {

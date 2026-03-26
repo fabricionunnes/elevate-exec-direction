@@ -49,6 +49,16 @@ export interface PresentationVersion {
   created_at: string;
 }
 
+export interface SlideMediaItem {
+  id: string;
+  type: 'image' | 'video';
+  url: string;
+  x: number; // percentage 0-100
+  y: number; // percentage 0-100
+  width: number; // percentage 0-100
+  height: number; // percentage 0-100
+}
+
 export interface SlideContent {
   bullets?: string[];
   text?: string;
@@ -57,6 +67,7 @@ export interface SlideContent {
   highlight?: string;
   metric_value?: string;
   metric_label?: string;
+  media_items?: SlideMediaItem[];
 }
 
 export interface PresentationSlide {

@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { PresentationSlide, SlideContent } from "./types";
+import type { PresentationSlide, SlideContent, SlideMediaItem } from "./types";
 import { 
   MessageSquare, 
   Lightbulb, 
@@ -317,6 +317,31 @@ export function PresentationSlidePreview({
     </div>
   );
 
+  // Render media overlay
+  const renderMediaItems = () => {
+    const items = content.media_items;
+    if (!items || items.length === 0) return null;
+
+    return items.map((item: SlideMediaItem) => (
+      <div
+        key={item.id}
+        className="absolute overflow-hidden rounded"
+        style={{
+          left: `${item.x}%`,
+          top: `${item.y}%`,
+          width: `${item.width}%`,
+          height: `${item.height}%`,
+        }}
+      >
+        {item.type === "image" ? (
+          <img src={item.url} alt="" className="w-full h-full object-cover" draggable={false} />
+        ) : (
+          <video src={item.url} className="w-full h-full object-cover" muted loop autoPlay playsInline />
+        )}
+      </div>
+    ));
+  };
+
   return (
     <div
       onClick={onClick}
@@ -342,6 +367,9 @@ export function PresentationSlidePreview({
         ? renderInteractiveSlide()
         : renderContentSlide()
       }
+
+      {/* Media overlay */}
+      {renderMediaItems()}
     </div>
   );
 }
