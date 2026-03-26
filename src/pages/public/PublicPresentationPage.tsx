@@ -30,6 +30,10 @@ export default function PublicPresentationPage() {
   const containerRef = useRef<HTMLDivElement>(null);
   const touchRef = useRef(0);
 
+  // Fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
+
   // Remote control
   const [remoteCode, setRemoteCode] = useState<string | null>(null);
   const [remoteQr, setRemoteQr] = useState<string | null>(null);
