@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, Loader2, Smartphone, Share2, QrCode } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Smartphone, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SlideRenderer } from "@/components/slide-generator/SlideRenderer";
 import QRCodeLib from "qrcode";
@@ -29,6 +29,10 @@ export default function PublicPresentationPage() {
   const [scale, setScale] = useState(0.5);
   const containerRef = useRef<HTMLDivElement>(null);
   const touchRef = useRef(0);
+
+  // Fullscreen
+  const [isFullscreen, setIsFullscreen] = useState(false);
+  const fullscreenRef = useRef<HTMLDivElement>(null);
 
   // Remote control
   const [remoteCode, setRemoteCode] = useState<string | null>(null);
@@ -89,14 +93,30 @@ export default function PublicPresentationPage() {
   const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, slides.length - 1)), [slides.length]);
   const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      fullscreenRef.current?.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
       if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
+      if (e.key === "Escape" && isFullscreen) { /* browser handles exit */ }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, toggleFullscreen, isFullscreen]);
 
   // Start remote control
   const startRemote = async () => {
@@ -177,6 +197,7 @@ export default function PublicPresentationPage() {
 
   return (
     <div
+      ref={fullscreenRef}
       className="min-h-screen bg-[#0A1931] flex flex-col select-none"
       onTouchStart={(e) => { touchRef.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => {
@@ -185,21 +206,31 @@ export default function PublicPresentationPage() {
         if (dx > 50) goPrev();
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-black/30">
-        <h1 className="text-white/80 text-xs font-medium truncate flex-1">{title}</h1>
-        <div className="flex items-center gap-1.5 ml-2">
-          <span className="text-white/50 text-xs">{currentIndex + 1}/{slides.length}</span>
-          <button
-            onClick={startRemote}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
-            title="Controle Remoto"
-          >
-            <Smartphone className="h-3 w-3" />
-            <span className="hidden sm:inline">Remoto</span>
-          </button>
+      {/* Header - hidden in fullscreen */}
+      {!isFullscreen && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-black/30">
+          <h1 className="text-white/80 text-xs font-medium truncate flex-1">{title}</h1>
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-white/50 text-xs">{currentIndex + 1}/{slides.length}</span>
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
+              title="Tela Cheia (F)"
+            >
+              <Maximize className="h-3 w-3" />
+              <span className="hidden sm:inline">Tela Cheia</span>
+            </button>
+            <button
+              onClick={startRemote}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
+              title="Controle Remoto"
+            >
+              <Smartphone className="h-3 w-3" />
+              <span className="hidden sm:inline">Remoto</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Remote control overlay */}
       {showRemote && remoteQr && remoteCode && (
@@ -228,6 +259,24 @@ export default function PublicPresentationPage() {
         </div>
       )}
 
+      {/* Fullscreen exit button */}
+      {isFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-3 right-3 z-50 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white/60 hover:text-white transition-all opacity-0 hover:opacity-100 focus:opacity-100"
+          title="Sair da Tela Cheia (Esc)"
+        >
+          <Minimize className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* Fullscreen slide counter */}
+      {isFullscreen && (
+        <div className="absolute top-3 left-3 z-50 text-white/30 text-xs opacity-0 hover:opacity-100 transition-opacity">
+          {currentIndex + 1}/{slides.length}
+        </div>
+      )}
+
       {/* Slide */}
       <div
         ref={containerRef}
@@ -238,7 +287,7 @@ export default function PublicPresentationPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12"
+            className={`absolute left-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12 ${isFullscreen ? 'opacity-0 hover:opacity-100 transition-opacity' : ''}`}
             onClick={(e) => { e.stopPropagation(); goPrev(); }}
           >
             <ChevronLeft className="h-6 w-6" />
@@ -248,7 +297,7 @@ export default function PublicPresentationPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12"
+            className={`absolute right-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12 ${isFullscreen ? 'opacity-0 hover:opacity-100 transition-opacity' : ''}`}
             onClick={(e) => { e.stopPropagation(); goNext(); }}
           >
             <ChevronRight className="h-6 w-6" />
@@ -256,19 +305,21 @@ export default function PublicPresentationPage() {
         )}
 
         {currentSlide && (
-          <div className="rounded-lg overflow-hidden shadow-2xl">
+          <div className={isFullscreen ? '' : 'rounded-lg overflow-hidden shadow-2xl'}>
             <SlideRenderer slide={currentSlide} scale={scale} />
           </div>
         )}
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-white/10">
-        <div
-          className="h-full bg-[#C81E1E] transition-all duration-300"
-          style={{ width: `${((currentIndex + 1) / slides.length) * 100}%` }}
-        />
-      </div>
+      {/* Progress bar - hidden in fullscreen */}
+      {!isFullscreen && (
+        <div className="h-1 bg-white/10">
+          <div
+            className="h-full bg-[#C81E1E] transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / slides.length) * 100}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
