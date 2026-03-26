@@ -697,6 +697,24 @@ export function NfsePanel() {
                     </div>
                   </div>
 
+                  {/* Alerta de CEP ausente */}
+                  {form.companyId && !form.tomadorPostalCode?.replace(/\D/g, "") && (
+                    <Alert variant="destructive" className="border-yellow-500/30 bg-yellow-500/10 text-yellow-700">
+                      <AlertTriangle className="h-4 w-4 !text-yellow-600" />
+                      <AlertDescription className="flex items-center gap-1 text-sm">
+                        Esta empresa não possui CEP cadastrado.{" "}
+                        <a
+                          href={`/onboarding-tasks/companies/${form.companyId}`}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="underline font-medium text-primary hover:text-primary/80"
+                        >
+                          Clique aqui para cadastrar o endereço
+                        </a>
+                      </AlertDescription>
+                    </Alert>
+                  )}
+
                   {/* Endereço do Tomador */}
                   <div className="grid grid-cols-3 gap-3">
                     <div>
