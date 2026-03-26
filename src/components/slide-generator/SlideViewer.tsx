@@ -574,7 +574,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slide-remote/${remoteSessionCode}`;
+                      const url = `https://elevate-exec-direction.lovable.app/#/slide-remote/${remoteSessionCode}`;
                       navigator.clipboard.writeText(url);
                       toast.success("Link do controle remoto copiado!");
                     }}
