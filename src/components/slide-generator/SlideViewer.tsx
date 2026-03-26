@@ -105,8 +105,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       ]);
       if (presRes.error) throw presRes.error;
       if (slidesRes.error) throw slidesRes.error;
-      setPresentation(presRes.data as unknown as PresentationData);
+      const presData = presRes.data as any;
+      setPresentation(presData as unknown as PresentationData);
       setSlides((slidesRes.data as unknown as SlideItem[]) || []);
+      setShareToken(presData.public_share_token || null);
+      setIsPublic(presData.is_public || false);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar apresentação");
