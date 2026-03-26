@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Copy, Check, ExternalLink, Plus, FileText, Trash2 } from "lucide-react";
+import { Copy, Check, ExternalLink, Plus, FileText, Trash2, QrCode, Download } from "lucide-react";
+import QRCodeLib from "qrcode";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PipelineFormQuestionsManager } from "./PipelineFormQuestionsManager";
 
@@ -96,11 +98,31 @@ export const PipelineFormsManager = () => {
   };
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
   const copyUrl = (token: string, formId: string) => {
     navigator.clipboard.writeText(getFormUrl(token));
     setCopiedId(formId);
     toast.success("Link copiado!");
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const generateQrCode = async (token: string) => {
+    try {
+      const url = getFormUrl(token);
+      const dataUrl = await QRCodeLib.toDataURL(url, { width: 512, margin: 2 });
+      setQrDataUrl(dataUrl);
+    } catch {
+      toast.error("Erro ao gerar QR Code");
+    }
+  };
+
+  const downloadQrCode = (pipelineName: string) => {
+    if (!qrDataUrl) return;
+    const link = document.createElement("a");
+    link.download = `qrcode-${pipelineName.toLowerCase().replace(/\s+/g, "-")}.png`;
+    link.href = qrDataUrl;
+    link.click();
   };
 
   const pipelinesWithoutForm = pipelines.filter(
@@ -215,6 +237,25 @@ export const PipelineFormsManager = () => {
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => generateQrCode(form.form_token)} title="QR Code">
+                      <QrCode className="h-3 w-3" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-xs">
+                    <DialogHeader>
+                      <DialogTitle className="text-sm">QR Code - {getPipelineName(form.pipeline_id)}</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center gap-4 py-4">
+                      {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-64 h-64 rounded-lg border" />}
+                      <Button size="sm" className="gap-2" onClick={() => downloadQrCode(getPipelineName(form.pipeline_id))}>
+                        <Download className="h-4 w-4" />
+                        Baixar QR Code
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
