@@ -358,7 +358,11 @@ const CRMCallSummaryPage = () => {
             ) : (
               <>
                 {transcriptions.map((t) => (
-                  <Card key={t.id} className="hover:border-primary/30 transition-colors">
+                  <Card
+                    key={t.id}
+                    className="hover:border-primary/30 transition-colors cursor-pointer"
+                    onClick={() => setSelectedTranscription(t)}
+                  >
                     <CardContent className="pt-4 pb-3 space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -385,12 +389,8 @@ const CRMCallSummaryPage = () => {
                         </div>
                       </div>
 
-                      {/* Show AI analysis for analysis tab or summary for others */}
-                      {tab === "analysis" && t.ai_analysis ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                          <ReactMarkdown>{t.ai_analysis}</ReactMarkdown>
-                        </div>
-                      ) : t.summary ? (
+                      {/* Preview text */}
+                      {t.summary ? (
                         <p className="text-xs text-muted-foreground line-clamp-2">{t.summary}</p>
                       ) : t.transcription_text ? (
                         <p className="text-xs text-muted-foreground line-clamp-2">{t.transcription_text.slice(0, 200)}...</p>
