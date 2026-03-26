@@ -25,10 +25,12 @@ interface TranscriptionRow {
   ai_analysis: string | null;
   summary: string | null;
   source: string;
+  source_meeting_url: string | null;
   duration_seconds: number | null;
   created_at: string;
   recorded_at: string | null;
   created_by: string | null;
+  speakers: { name?: string; id?: string }[];
   lead?: { id: string; name: string; company: string | null } | null;
   staff_name?: string;
 }
