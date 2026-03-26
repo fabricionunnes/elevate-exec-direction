@@ -25,57 +25,75 @@ Deno.serve(async (req) => {
       throw new Error("LOVABLE_API_KEY não configurada");
     }
 
-    const systemPrompt = `Você é um especialista em vendas B2B e consultoria empresarial. Sua tarefa é analisar transcrições de reuniões comerciais e gerar um briefing executivo completo e estruturado.
+    const systemPrompt = `Você é um analista sênior de vendas B2B especializado em gerar briefings executivos a partir de transcrições de reuniões comerciais.
 
-O briefing deve ser objetivo, profissional e conter as seguintes seções:
+Sua missão é transformar transcrições brutas em documentos claros, acionáveis e bem formatados em Markdown.
 
-## RESUMO EXECUTIVO
-- Síntese do que foi discutido em 2-3 frases
+REGRAS DE FORMATAÇÃO:
+- Use títulos com ## para seções principais
+- Use **negrito** para termos-chave e nomes de pessoas/empresas
+- Use listas com • (bullet) para itens, nunca parágrafos longos
+- Use > blockquote para citações diretas relevantes do cliente
+- Separe seções com uma linha em branco
+- Seja direto e objetivo — sem enrolação
+- Cada bullet deve conter UMA informação clara
+- Se uma informação não foi mencionada, OMITA a seção (não escreva "Não mencionado")
 
-## CONTEXTO DO CLIENTE
-- Situação atual da empresa
-- Principais desafios identificados
-- Motivações para buscar a solução
+ESTRUTURA DO BRIEFING:
 
-## NECESSIDADES IDENTIFICADAS
-- Liste as principais necessidades e dores mencionadas
-- Priorize por urgência/importância
+## 📋 Resumo Executivo
+Síntese de 2-3 frases do encontro: quem participou, objetivo e resultado principal.
 
-## EXPECTATIVAS DO CLIENTE
-- O que o cliente espera alcançar
-- Prazos mencionados
-- Métricas de sucesso desejadas
+## 🏢 Perfil do Cliente
+• Segmento de atuação
+• Porte / número de colaboradores
+• Principais produtos/serviços
+• Momento atual da empresa
 
-## OBJEÇÕES E PREOCUPAÇÕES
-- Objeções levantadas durante a conversa
-- Preocupações sobre implementação, preço, tempo, etc.
+## 🎯 Necessidades e Dores
+• Liste cada dor/necessidade em um bullet separado
+• Priorize por urgência (mais urgente primeiro)
+• Inclua o contexto que motivou cada dor
 
-## PRÓXIMOS PASSOS
-- Ações acordadas
-- Compromissos assumidos
-- Próximas reuniões ou follow-ups
+## 💡 Solução Apresentada
+• O que foi proposto durante a reunião
+• Funcionalidades ou serviços destacados
+• Como a solução endereça cada dor listada
 
-## PONTOS DE ATENÇÃO
-- Informações importantes para o fechamento
-- Stakeholders mencionados
-- Concorrência ou alternativas consideradas
+## ⚠️ Objeções e Preocupações
+• Cada objeção em um bullet separado
+• Inclua como foi (ou não) contornada
 
-Seja conciso mas completo. Use bullet points. Se alguma informação não estiver presente na transcrição, indique "Não mencionado".`;
+## 💰 Informações Comerciais
+• Orçamento mencionado ou faixa de investimento
+• Prazo de decisão
+• Decisores e influenciadores envolvidos
+• Concorrentes ou alternativas consideradas
 
-    const userPrompt = `Analise a seguinte transcrição de reunião comercial e gere um briefing completo:
+## ✅ Próximos Passos
+• Ações específicas com responsável e prazo (se mencionado)
+• Follow-ups acordados
+• Materiais ou propostas a enviar
+
+## 🔑 Insights Estratégicos
+• Gatilhos emocionais ou racionais identificados
+• Nível de interesse/urgência percebido (Alto/Médio/Baixo)
+• Recomendação para abordagem no próximo contato`;
+
+    const userPrompt = `Gere o briefing executivo da seguinte reunião comercial:
 
 ${companyName ? `**Empresa:** ${companyName}` : ""}
-${leadName ? `**Contato:** ${leadName}` : ""}
+${leadName ? `**Contato principal:** ${leadName}` : ""}
 
 ---
 
-**TRANSCRIÇÃO:**
+**TRANSCRIÇÃO COMPLETA:**
 
 ${transcription}
 
 ---
 
-Gere o briefing seguindo a estrutura solicitada.`;
+Gere o briefing seguindo rigorosamente a estrutura e formatação solicitadas. Seja preciso e extraia o máximo de informações úteis.`;
 
     const response = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
       method: "POST",
@@ -84,13 +102,13 @@ Gere o briefing seguindo a estrutura solicitada.`;
         "Content-Type": "application/json",
       },
       body: JSON.stringify({
-        model: "google/gemini-3-flash-preview",
+        model: "google/gemini-2.5-flash",
         messages: [
           { role: "system", content: systemPrompt },
           { role: "user", content: userPrompt },
         ],
-        temperature: 0.3,
-        max_tokens: 2000,
+        temperature: 0.25,
+        max_tokens: 4000,
       }),
     });
 

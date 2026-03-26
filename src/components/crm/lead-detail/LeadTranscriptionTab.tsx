@@ -5,12 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight, Mic, List } from "lucide-react";
+import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight, Mic, List, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useCrmTranscriptions } from "@/hooks/useCrmTranscriptions";
 import { TranscriptionsList } from "@/components/crm/transcriptions/TranscriptionsList";
 import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeTranscription";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
+import ReactMarkdown from "react-markdown";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
@@ -32,6 +33,7 @@ export const LeadTranscriptionTab = ({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("list");
+  const [isEditing, setIsEditing] = useState(false);
 
   const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions({
     leadId,
@@ -258,11 +260,26 @@ export const LeadTranscriptionTab = ({
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
-                  <Textarea
-                    value={generatedBriefing}
-                    onChange={(e) => setGeneratedBriefing(e.target.value)}
-                    className="min-h-[250px] resize-none"
-                  />
+                  {isEditing ? (
+                    <Textarea
+                      value={generatedBriefing}
+                      onChange={(e) => setGeneratedBriefing(e.target.value)}
+                      className="min-h-[300px] resize-none font-mono text-sm"
+                    />
+                  ) : (
+                    <div className="prose prose-sm dark:prose-invert max-w-none bg-background rounded-lg p-4 border">
+                      <ReactMarkdown>{generatedBriefing}</ReactMarkdown>
+                    </div>
+                  )}
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    onClick={() => setIsEditing(!isEditing)}
+                    className="h-7 text-xs"
+                  >
+                    <Pencil className="h-3 w-3 mr-1" />
+                    {isEditing ? "Visualizar" : "Editar"}
+                  </Button>
                 </div>
 
                 <Button
