@@ -11,7 +11,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { leadId, type } = await req.json(); // type: "overview" | "guide"
+    const { leadId, type, transcriptionId } = await req.json(); // type: "overview" | "guide" | "followup" | "analysis"
     if (!leadId || !type) throw new Error("leadId and type are required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
@@ -283,6 +283,112 @@ Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
 
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
+    } else if (type === "analysis") {
+      // Fetch transcriptions for this lead
+      let transcriptionText = "";
+      let transcriptionTitle = "";
+      
+      if (transcriptionId) {
+        const { data: t } = await supabase
+          .from("crm_transcriptions")
+          .select("title, transcription_text")
+          .eq("id", transcriptionId)
+          .single();
+        transcriptionText = t?.transcription_text || "";
+        transcriptionTitle = t?.title || "";
+      } else {
+        // Get the most recent transcription
+        const { data: ts } = await supabase
+          .from("crm_transcriptions")
+          .select("title, transcription_text")
+          .eq("lead_id", leadId)
+          .not("transcription_text", "is", null)
+          .order("created_at", { ascending: false })
+          .limit(1);
+        if (ts && ts.length > 0) {
+          transcriptionText = ts[0].transcription_text || "";
+          transcriptionTitle = ts[0].title || "";
+        }
+      }
+
+      if (!transcriptionText) {
+        return new Response(JSON.stringify({
+          ai: { no_transcription: true },
+          lead: {
+            id: lead.id, name: lead.name, company: lead.company, segment: lead.segment,
+            city: lead.city, state: lead.state, phone: lead.phone, email: lead.email,
+            role: lead.role, employee_count: lead.employee_count, main_pain: lead.main_pain,
+            notes: lead.notes, origin: lead.origin_rel?.name || lead.origin,
+            current_stage: lead.stage?.name, stage_color: lead.stage?.color,
+            pipeline: lead.pipeline?.name, owner: lead.owner?.name,
+            tags: (lead.tags || []).map((t: any) => ({ name: t.tag?.name, color: t.tag?.color })),
+            created_at: lead.created_at, last_activity_at: lead.last_activity_at,
+            days_in_funnel: daysInFunnel, opportunity_value: lead.opportunity_value,
+            probability: lead.probability, trade_name: lead.trade_name,
+          },
+          transcription_title: transcriptionTitle,
+        }), { headers: { ...corsHeaders, "Content-Type": "application/json" } });
+      }
+
+      systemPrompt = `Você é um diretor comercial experiente que analisa transcrições de reuniões de vendas. Avalie com rigor e honestidade, dando notas justas. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
+      userPrompt = `Analise a transcrição da reunião abaixo e avalie a performance do vendedor em cada uma das 12 fases do roteiro de vendas.
+
+Para cada fase, dê:
+- Uma nota de 0 a 10 (0 = não aplicou / péssimo, 10 = execução perfeita)
+- Feedback específico do que foi feito bem ou mal
+- Pontos de melhoria concretos
+
+Gere um JSON com a seguinte estrutura:
+{
+  "overall_score": número de 0 a 10 (média ponderada),
+  "overall_feedback": "feedback geral da reunião em 3-5 linhas",
+  "strengths": ["3-5 pontos fortes identificados na reunião"],
+  "critical_improvements": ["3-5 melhorias críticas e urgentes"],
+  "phases": [
+    {
+      "phase_number": 1,
+      "phase_name": "Rapport",
+      "score": número de 0 a 10,
+      "applied": boolean (se a fase foi aplicada na reunião),
+      "feedback": "feedback detalhado sobre a execução desta fase",
+      "good_moments": ["momentos em que o vendedor acertou nesta fase"],
+      "improvements": ["pontos específicos de melhoria"],
+      "suggested_script": "como deveria ter sido feito (script ideal para este lead)"
+    }
+  ],
+  "missed_opportunities": ["oportunidades perdidas durante a reunião"],
+  "client_signals": {
+    "buying_signals": ["sinais de compra identificados na transcrição"],
+    "objection_signals": ["sinais de objeção ou resistência"],
+    "interest_level": "high" | "medium" | "low",
+    "emotional_triggers": ["gatilhos emocionais identificados"]
+  },
+  "next_meeting_recommendations": "recomendações para a próxima reunião com base nesta análise"
+}
+
+As 12 fases do roteiro:
+Fase 1 - Rapport (peso 1): Conexão genuína, espelhamento, correspondência de comportamento, ponto em comum
+Fase 2 - Expectativas (peso 1): Alinhar formato, assumir controle, analogia do médico
+Fase 3 - Tomadores de Decisão (peso 1.5): Identificar decisor, Assassino Silencioso
+Fase 4 - A Razão / A Dor (peso 2): Fazer declarar o motivo e a dor específica
+Fase 5 - Cavar (peso 2): Aprofundar dor com emoção, usar "então"/"parece que", nunca PORQUE
+Fase 6 - Tentou (peso 1): Descobrir tentativas anteriores frustradas
+Fase 7 - Situação Atual e Desejada (peso 1.5): Onde está e onde quer chegar em 12 meses
+Fase 8 - Porquê (peso 1.5): Motivação emocional profunda (AMOR ou STATUS)
+Fase 9 - Admissão (peso 1.5): Fazer admitir que precisa de ajuda
+Fase 10 - Compromisso (peso 1): Confirmar urgência, "quando quer resolver?"
+Fase 11 - Fechamento Personalizado (peso 2): Pitch usando palavras do prospect
+Fase 12 - Preço (peso 1.5): NUNCA falar preço sem ser solicitado, calar após falar valor
+
+Dados do lead:
+${JSON.stringify(leadContext, null, 2)}
+
+Título da transcrição: ${transcriptionTitle}
+
+Transcrição da reunião:
+${transcriptionText.substring(0, 15000)}
+
+IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Seja rigoroso nas notas.`;
     }
 
     const aiResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {

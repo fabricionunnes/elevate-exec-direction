@@ -1,10 +1,11 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, BookOpen, Target } from "lucide-react";
+import { Eye, BookOpen, Target, BarChart3 } from "lucide-react";
 import { useLeadSummary, SummaryTabType } from "./useLeadSummary";
 import { LeadSummaryOverview } from "./LeadSummaryOverview";
 import { LeadSummaryGuide } from "./LeadSummaryGuide";
 import { LeadSummaryFollowUp } from "./LeadSummaryFollowUp";
+import { LeadSummaryAnalysis } from "./LeadSummaryAnalysis";
 
 interface LeadSummaryTabProps {
   leadId: string;
@@ -20,6 +21,7 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
     if (subTab === "overview") summary.fetchOverview();
     if (subTab === "guide") summary.fetchGuide();
     if (subTab === "followup") summary.fetchFollowup();
+    // Analysis is triggered manually via button, not on tab load
   }, [subTab]);
 
   return (
@@ -33,11 +35,15 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             </TabsTrigger>
             <TabsTrigger value="guide" className="gap-1.5 text-xs">
               <BookOpen className="h-3.5 w-3.5" />
-              Guia de Atendimento
+              Guia
             </TabsTrigger>
             <TabsTrigger value="followup" className="gap-1.5 text-xs">
               <Target className="h-3.5 w-3.5" />
               Follow Up
+            </TabsTrigger>
+            <TabsTrigger value="analysis" className="gap-1.5 text-xs">
+              <BarChart3 className="h-3.5 w-3.5" />
+              Análise
             </TabsTrigger>
           </TabsList>
         </div>
@@ -63,6 +69,15 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             data={summary.followupData}
             loading={summary.loadingFollowup}
             onRegenerate={() => summary.fetchFollowup(true)}
+          />
+        </TabsContent>
+
+        <TabsContent value="analysis" className="flex-1 mt-0 overflow-auto">
+          <LeadSummaryAnalysis
+            data={summary.analysisData}
+            loading={summary.loadingAnalysis}
+            leadId={leadId}
+            onRegenerate={(transcriptionId) => summary.fetchAnalysis(true, transcriptionId)}
           />
         </TabsContent>
       </Tabs>

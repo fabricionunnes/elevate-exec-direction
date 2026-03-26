@@ -57,15 +57,17 @@ export interface LeadSummaryData {
   _generated_at?: string; // timestamp of when this summary was generated
 }
 
-export type SummaryTabType = "overview" | "guide" | "followup";
+export type SummaryTabType = "overview" | "guide" | "followup" | "analysis";
 
 export function useLeadSummary(leadId: string) {
   const [overviewData, setOverviewData] = useState<LeadSummaryData | null>(null);
   const [guideData, setGuideData] = useState<LeadSummaryData | null>(null);
   const [followupData, setFollowupData] = useState<LeadSummaryData | null>(null);
+  const [analysisData, setAnalysisData] = useState<LeadSummaryData | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [loadingFollowup, setLoadingFollowup] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const lastKnownUpdatedAt = useRef<string | null>(null);
   const activeTab = useRef<SummaryTabType | null>(null);
 
@@ -73,17 +75,17 @@ export function useLeadSummary(leadId: string) {
     activeTab.current = tab;
   }, []);
 
-  const fetchSummary = useCallback(async (type: SummaryTabType, force = false) => {
-    const dataMap = { overview: overviewData, guide: guideData, followup: followupData };
+  const fetchSummary = useCallback(async (type: SummaryTabType, force = false, extra?: Record<string, any>) => {
+    const dataMap = { overview: overviewData, guide: guideData, followup: followupData, analysis: analysisData };
     const current = dataMap[type];
     if (current && !force) return;
 
-    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : setLoadingFollowup;
-    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : setFollowupData;
+    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : type === "followup" ? setLoadingFollowup : setLoadingAnalysis;
+    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : type === "followup" ? setFollowupData : setAnalysisData;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
-        body: { leadId, type },
+        body: { leadId, type, ...extra },
       });
       if (error) throw error;
       const enrichedData = { ...data, _generated_at: new Date().toISOString() };
@@ -95,14 +97,14 @@ export function useLeadSummary(leadId: string) {
     } finally {
       setLoading(false);
     }
-  }, [leadId, overviewData, guideData, followupData]);
+  }, [leadId, overviewData, guideData, followupData, analysisData]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {
     // Check for changes every 30 seconds when data is loaded
     const interval = setInterval(async () => {
       // Only check if we have data loaded
-      if (!overviewData && !guideData && !followupData) return;
+      if (!overviewData && !guideData && !followupData && !analysisData) return;
 
       try {
         const { data: lead } = await supabase
@@ -129,6 +131,7 @@ export function useLeadSummary(leadId: string) {
           setOverviewData(null);
           setGuideData(null);
           setFollowupData(null);
+          setAnalysisData(null);
 
           // Auto-regenerate the active tab
           const tab = activeTab.current;
@@ -144,18 +147,21 @@ export function useLeadSummary(leadId: string) {
     }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
-  }, [leadId, overviewData, guideData, followupData, fetchSummary]);
+  }, [leadId, overviewData, guideData, followupData, analysisData, fetchSummary]);
 
   return {
     overviewData,
     guideData,
     followupData,
+    analysisData,
     loadingOverview,
     loadingGuide,
     loadingFollowup,
+    loadingAnalysis,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
     fetchFollowup: (force?: boolean) => fetchSummary("followup", force),
+    fetchAnalysis: (force?: boolean, transcriptionId?: string) => fetchSummary("analysis", force, transcriptionId ? { transcriptionId } : undefined),
   };
 }
