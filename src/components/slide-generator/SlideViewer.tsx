@@ -728,12 +728,19 @@ export function SlideViewer({ presentationId, onBack }: Props) {
               )}
             </div>
 
-            {currentSlide?.speaker_notes && (
-              <div className="border-t bg-muted/30 px-4 py-3">
-                <p className="text-xs font-medium text-muted-foreground mb-1">Notas do Apresentador</p>
-                <p className="text-sm">{currentSlide.speaker_notes}</p>
-              </div>
-            )}
+            <div className="border-t bg-muted/30 px-4 py-3">
+              <p className="text-xs font-medium text-muted-foreground mb-1">Notas do Apresentador</p>
+              {editing ? (
+                <textarea
+                  className="w-full text-sm bg-background border rounded-md p-2 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring"
+                  value={currentSlide?.speaker_notes || ""}
+                  onChange={(e) => currentSlide && handleSlideUpdate(currentSlide.id, { speaker_notes: e.target.value || null })}
+                  placeholder="Adicione suas anotações aqui..."
+                />
+              ) : (
+                <p className="text-sm text-muted-foreground">{currentSlide?.speaker_notes || <span className="italic text-muted-foreground/60">Sem anotações — clique em Editar para adicionar</span>}</p>
+              )}
+            </div>
           </div>
         </div>
       )}
