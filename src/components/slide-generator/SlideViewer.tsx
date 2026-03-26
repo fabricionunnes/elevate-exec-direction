@@ -263,8 +263,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
           .eq("id", presentationId);
         setIsPublic(true);
       }
-      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
-      const url = `${baseUrl}#/slides/${token}`;
+      const publishedUrl = "https://elevate-exec-direction.lovable.app";
+      const url = `${publishedUrl}/#/slides/${token}`;
       navigator.clipboard.writeText(url);
       toast.success("Link copiado!");
 
@@ -293,8 +293,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       if (error) throw error;
 
       setRemoteSessionCode(code);
-      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
-      const url = `${baseUrl}#/slide-remote/${code}`;
+      const publishedUrl = "https://elevate-exec-direction.lovable.app";
+      const url = `${publishedUrl}/#/slide-remote/${code}`;
       const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
       setRemoteQrUrl(qr);
       setShowShareDialog(true);
@@ -516,14 +516,14 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                 <div className="flex gap-2">
                   <Input
                     readOnly
-                    value={`${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`}
+                    value={`https://elevate-exec-direction.lovable.app/#/slides/${shareToken}`}
                     className="text-xs"
                   />
                   <Button
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`;
+                      const url = `https://elevate-exec-direction.lovable.app/#/slides/${shareToken}`;
                       navigator.clipboard.writeText(url);
                       toast.success("Link copiado!");
                     }}
@@ -574,7 +574,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slide-remote/${remoteSessionCode}`;
+                      const url = `https://elevate-exec-direction.lovable.app/#/slide-remote/${remoteSessionCode}`;
                       navigator.clipboard.writeText(url);
                       toast.success("Link do controle remoto copiado!");
                     }}
