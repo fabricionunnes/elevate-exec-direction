@@ -767,7 +767,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       isUploading: true,
     };
 
-    updateContent("_mediaItems", [...mediaItems, tempItem]);
+    updateContent("_mediaItems", [...mediaItemsRef.current, tempItem]);
     setSelectedMedia(tempId);
     toast.info("Enviando arquivo...");
 
@@ -783,7 +783,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
       if (uploadErr) {
         console.error("Upload error:", uploadErr);
-        updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+        updateContent("_mediaItems", mediaItemsRef.current.filter((media) => media.id !== tempId));
         URL.revokeObjectURL(previewUrl);
         toast.error(`Erro no upload: ${uploadErr.message}`);
         return;
@@ -801,11 +801,11 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       toast.success("Mídia adicionada!");
     } catch (err: any) {
       console.error("Media upload failed:", err);
-      updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+      updateContent("_mediaItems", mediaItemsRef.current.filter((media) => media.id !== tempId));
       URL.revokeObjectURL(previewUrl);
       toast.error(`Erro ao enviar arquivo: ${err?.message || "erro desconhecido"}`);
     }
-  }, [mediaItems, replaceMediaItem, updateContent]);
+  }, [replaceMediaItem, updateContent]);
 
   const updateMediaItem = useCallback((id: string, updates: Partial<typeof mediaItems[0]>) => {
     updateContent("_mediaItems", mediaItems.map(m => m.id === id ? { ...m, ...updates } : m));
