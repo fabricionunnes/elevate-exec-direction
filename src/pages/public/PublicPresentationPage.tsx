@@ -1,7 +1,7 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { useParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
-import { ChevronLeft, ChevronRight, Loader2, Smartphone, Share2, QrCode } from "lucide-react";
+import { ChevronLeft, ChevronRight, Loader2, Smartphone, Maximize, Minimize } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { SlideRenderer } from "@/components/slide-generator/SlideRenderer";
 import QRCodeLib from "qrcode";
