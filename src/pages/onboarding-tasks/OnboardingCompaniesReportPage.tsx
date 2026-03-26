@@ -21,7 +21,6 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { SearchableSelect } from "@/components/ui/searchable-select";
-} from "@/components/ui/select";
 import {
   Dialog,
   DialogContent,
