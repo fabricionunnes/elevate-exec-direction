@@ -64,6 +64,7 @@ function EditableText({
   tag = "span",
   placeholder = "Clique para editar...",
   onFontSizeChange,
+  onRemove,
 }: { 
   value: string; 
   onChange: (val: string) => void; 
@@ -72,6 +73,7 @@ function EditableText({
   tag?: string;
   placeholder?: string;
   onFontSizeChange?: (newSize: number) => void;
+  onRemove?: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
   const isFocused = useRef(false);
@@ -93,7 +95,6 @@ function EditableText({
         onChange(newText);
       }
     }
-    // Delay hiding controls so button clicks register
     setTimeout(() => setShowControls(false), 200);
   }, [value, onChange]);
 
@@ -122,7 +123,7 @@ function EditableText({
 
   return (
     <div style={{ position: "relative", display: "inline-block" }}>
-      {showControls && onFontSizeChange && (
+      {showControls && (
         <div
           style={{
             position: "absolute",
@@ -138,23 +139,36 @@ function EditableText({
           }}
           onMouseDown={(e) => e.preventDefault()}
         >
-          <button
-            onMouseDown={(e) => { e.preventDefault(); changeFontSize(-2); }}
-            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
-            title="Diminuir fonte"
-          >
-            <Minus size={14} />
-          </button>
-          <span style={{ color: "#fff", fontSize: 12, minWidth: 28, textAlign: "center", userSelect: "none" }}>
-            {currentFontSize}
-          </span>
-          <button
-            onMouseDown={(e) => { e.preventDefault(); changeFontSize(2); }}
-            style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
-            title="Aumentar fonte"
-          >
-            <Plus size={14} />
-          </button>
+          {onFontSizeChange && (
+            <>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); changeFontSize(-2); }}
+                style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+                title="Diminuir fonte"
+              >
+                <Minus size={14} />
+              </button>
+              <span style={{ color: "#fff", fontSize: 12, minWidth: 28, textAlign: "center", userSelect: "none" }}>
+                {currentFontSize}
+              </span>
+              <button
+                onMouseDown={(e) => { e.preventDefault(); changeFontSize(2); }}
+                style={{ color: "#fff", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2 }}
+                title="Aumentar fonte"
+              >
+                <Plus size={14} />
+              </button>
+            </>
+          )}
+          {onRemove && (
+            <button
+              onMouseDown={(e) => { e.preventDefault(); e.stopPropagation(); onRemove(); }}
+              style={{ color: "#ff4444", border: "none", background: "transparent", cursor: "pointer", display: "flex", alignItems: "center", padding: 2, marginLeft: 4 }}
+              title="Remover elemento"
+            >
+              <Trash2 size={14} />
+            </button>
+          )}
         </div>
       )}
       <div
