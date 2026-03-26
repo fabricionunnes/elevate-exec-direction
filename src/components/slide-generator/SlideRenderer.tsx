@@ -1079,12 +1079,12 @@ function DraggableMedia({
   onUpdate,
   onRemove,
 }: {
-  item: { id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number };
+  item: { id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number; isUploading?: boolean };
   scale: number;
   editable?: boolean;
   selected: boolean;
   onSelect: () => void;
-  onUpdate: (updates: Partial<{ x: number; y: number; width: number; height: number }>) => void;
+  onUpdate: (updates: Partial<{ x: number; y: number; width: number; height: number; isUploading?: boolean }>) => void;
   onRemove: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
@@ -1093,7 +1093,7 @@ function DraggableMedia({
   const startRef = useRef({ x: 0, y: 0, itemX: 0, itemY: 0, itemW: 0, itemH: 0 });
 
   const handleMouseDown = (e: React.MouseEvent) => {
-    if (!editable) return;
+    if (!editable || item.isUploading) return;
     e.preventDefault();
     e.stopPropagation();
     onSelect();
@@ -1119,6 +1119,7 @@ function DraggableMedia({
   };
 
   const handleResizeDown = (e: React.MouseEvent) => {
+    if (item.isUploading) return;
     e.preventDefault();
     e.stopPropagation();
     resizing.current = true;
@@ -1154,16 +1155,17 @@ function DraggableMedia({
         width: item.width * scale,
         height: item.height * scale,
         zIndex: 10,
-        cursor: editable ? "move" : "default",
+        cursor: editable && !item.isUploading ? "move" : "default",
         outline: selected && editable ? `${2 * scale}px solid #C81E1E` : "none",
         borderRadius: 4 * scale,
         overflow: "hidden",
+        background: "rgba(10,25,49,0.08)",
       }}
     >
       {item.type === "image" ? (
         <img
           src={item.url}
-          alt=""
+          alt="Mídia do slide"
           draggable={false}
           style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
         />
@@ -1174,8 +1176,8 @@ function DraggableMedia({
           loop
           autoPlay
           playsInline
-          preload="metadata"
-          controls
+          preload="auto"
+          controls={!editable && !item.isUploading}
           onLoadedData={() => console.log("Video rendered:", item.url)}
           onError={(event) => console.error("Video render error:", item.url, event.currentTarget.error)}
           style={{
@@ -1183,15 +1185,34 @@ function DraggableMedia({
             height: "100%",
             objectFit: "contain",
             background: "#111827",
-            pointerEvents: editable ? "none" : "auto"
+            display: "block",
+            pointerEvents: editable ? "none" : "auto",
           }}
         />
       )}
 
+      {item.isUploading && (
+        <div
+          style={{
+            position: "absolute",
+            inset: 0,
+            display: "flex",
+            alignItems: "center",
+            justifyContent: "center",
+            background: "rgba(10,25,49,0.45)",
+            color: "#fff",
+            fontSize: 18 * scale,
+            fontWeight: 700,
+            letterSpacing: 0.4,
+          }}
+        >
+          Enviando mídia...
+        </div>
+      )}
+
       {/* Controls when selected */}
-      {selected && editable && (
+      {selected && editable && !item.isUploading && (
         <>
-          {/* Remove button */}
           <button
             onMouseDown={(e) => e.stopPropagation()}
             onClick={(e) => { e.stopPropagation(); onRemove(); }}
@@ -1215,7 +1236,6 @@ function DraggableMedia({
             <X size={12 * scale} />
           </button>
 
-          {/* Move handle */}
           <div style={{
             position: "absolute",
             top: -12 * scale,
@@ -1229,7 +1249,6 @@ function DraggableMedia({
             <Move size={10 * scale} color="#fff" />
           </div>
 
-          {/* Resize handle */}
           <div
             onMouseDown={handleResizeDown}
             style={{
