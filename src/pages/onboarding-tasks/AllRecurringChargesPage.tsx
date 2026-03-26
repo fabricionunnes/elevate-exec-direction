@@ -1463,13 +1463,15 @@ export default function AllRecurringChargesPage() {
                       <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                       <Input placeholder="Buscar..." value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} className="pl-9" />
                     </div>
-                    <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-                      <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todas as Empresas</SelectItem>
-                        {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={selectedCompany}
+                      onValueChange={setSelectedCompany}
+                      options={[
+                        { value: "all", label: "Todas as Empresas" },
+                        ...companies.map(c => ({ value: c.id, label: c.name })),
+                      ]}
+                      placeholder="Empresa"
+                    />
                     <Select value={selectedStatus} onValueChange={setSelectedStatus}>
                       <SelectTrigger><SelectValue placeholder="Status" /></SelectTrigger>
                       <SelectContent>
@@ -1480,13 +1482,15 @@ export default function AllRecurringChargesPage() {
                         <SelectItem value="cancelled">Cancelado</SelectItem>
                       </SelectContent>
                     </Select>
-                    <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-                      <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os Consultores</SelectItem>
-                        {consultants.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={selectedConsultant}
+                      onValueChange={setSelectedConsultant}
+                      options={[
+                        { value: "all", label: "Todos os Consultores" },
+                        ...consultants.map(s => ({ value: s.id, label: s.name })),
+                      ]}
+                      placeholder="Consultor"
+                    />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5 mt-3">
                     <Select value={receivablePeriod} onValueChange={(v) => { setReceivablePeriod(v); applyPeriodPreset(v, setDateFrom, setDateTo); }}>
