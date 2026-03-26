@@ -57,7 +57,7 @@ export interface LeadSummaryData {
   _generated_at?: string; // timestamp of when this summary was generated
 }
 
-export type SummaryTabType = "overview" | "guide" | "followup";
+export type SummaryTabType = "overview" | "guide" | "followup" | "analysis";
 
 export function useLeadSummary(leadId: string) {
   const [overviewData, setOverviewData] = useState<LeadSummaryData | null>(null);
