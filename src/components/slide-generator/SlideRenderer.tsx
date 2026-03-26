@@ -251,65 +251,6 @@ function EditableBullets({
             onFontSizeChange={onFontSizeChange}
           />
         ))}
-            {bulletStyle === "number" && (
-              <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
-                {i + 1}
-              </div>
-            )}
-            {bulletStyle === "check" && (
-              <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
-            )}
-            <EditableText
-              value={bullet}
-              onChange={(val) => handleBulletChange(i, val)}
-              editable={editable}
-              style={{ fontSize, lineHeight: 1.4, color: colors.text, flex: 1 }}
-              onFontSizeChange={onFontSizeChange}
-            />
-            {editable && (
-              <div
-                style={{
-                  display: "flex",
-                  gap: 2,
-                  alignItems: "center",
-                  opacity: 0,
-                  transition: "opacity 0.2s",
-                  position: "absolute",
-                  right: -80,
-                  top: 0,
-                }}
-                className="group-hover:!opacity-100"
-              >
-                {i > 0 && (
-                  <button
-                    onClick={() => moveBullet(i, -1)}
-                    style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
-                    title="Mover para cima"
-                  >
-                    <ArrowRight size={14} style={{ transform: "rotate(-90deg)" }} />
-                  </button>
-                )}
-                {i < bullets.length - 1 && (
-                  <button
-                    onClick={() => moveBullet(i, 1)}
-                    style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
-                    title="Mover para baixo"
-                  >
-                    <ArrowRight size={14} style={{ transform: "rotate(90deg)" }} />
-                  </button>
-                )}
-                <button
-                  onClick={() => removeBullet(i)}
-                  style={{ background: "rgba(200,30,30,0.9)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
-                  title="Remover tópico"
-                >
-                  <Trash2 size={14} />
-                </button>
-              </div>
-            )}
-          </div>
-        );
-      })}
       {editable && (
         <button
           onClick={addBullet}
