@@ -93,14 +93,30 @@ export default function PublicPresentationPage() {
   const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, slides.length - 1)), [slides.length]);
   const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
 
+  const toggleFullscreen = useCallback(() => {
+    if (!document.fullscreenElement) {
+      fullscreenRef.current?.requestFullscreen?.();
+    } else {
+      document.exitFullscreen?.();
+    }
+  }, []);
+
+  useEffect(() => {
+    const onFsChange = () => setIsFullscreen(!!document.fullscreenElement);
+    document.addEventListener("fullscreenchange", onFsChange);
+    return () => document.removeEventListener("fullscreenchange", onFsChange);
+  }, []);
+
   useEffect(() => {
     const handler = (e: KeyboardEvent) => {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
       if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
+      if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
+      if (e.key === "Escape" && isFullscreen) { /* browser handles exit */ }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev]);
+  }, [goNext, goPrev, toggleFullscreen, isFullscreen]);
 
   // Start remote control
   const startRemote = async () => {
