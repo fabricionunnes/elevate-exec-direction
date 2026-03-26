@@ -1088,9 +1088,18 @@ function DraggableMedia({
   onRemove: () => void;
 }) {
   const ref = useRef<HTMLDivElement>(null);
+  const videoRef = useRef<HTMLVideoElement>(null);
   const dragging = useRef(false);
   const resizing = useRef(false);
   const startRef = useRef({ x: 0, y: 0, itemX: 0, itemY: 0, itemW: 0, itemH: 0 });
+
+  // Auto-play video when component mounts (slide becomes visible)
+  useEffect(() => {
+    if (item.type === "video" && videoRef.current) {
+      videoRef.current.currentTime = 0;
+      videoRef.current.play().catch(() => {});
+    }
+  }, [item.type, item.url]);
 
   const startDrag = (clientX: number, clientY: number) => {
     if (!editable || item.isUploading) return;
