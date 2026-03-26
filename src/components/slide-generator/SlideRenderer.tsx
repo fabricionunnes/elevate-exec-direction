@@ -1012,17 +1012,9 @@ function DraggableMedia({
           loop
           autoPlay
           playsInline
-          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+          controls={!editable}
+          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: editable ? "none" : "auto" }}
         />
-      )}
-
-      {/* Play icon for video */}
-      {item.type === "video" && !editable && (
-        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.15)" }}>
-          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: "50%", padding: 8, display: "flex" }}>
-            <Play size={20} color="#0A1931" style={{ fill: "#0A1931" }} />
-          </div>
-        </div>
       )}
 
       {/* Controls when selected */}
