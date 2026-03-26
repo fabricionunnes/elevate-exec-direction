@@ -171,7 +171,7 @@ Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
 
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
-    } else {
+    } else if (type === "guide") {
       systemPrompt = `Você é um coach de vendas especialista no roteiro de 12 fases de uma ligação comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
       userPrompt = `Com base no histórico completo do lead abaixo, gere um guia de atendimento personalizado em JSON:
 {
@@ -211,6 +211,73 @@ Fase 9 - Admissão: fazer admitir que precisa de ajuda
 Fase 10 - Compromisso: confirmar urgência
 Fase 11 - Fechamento Personalizado: pitch usando palavras do prospect
 Fase 12 - Preço: NUNCA falar o preço sem ser solicitado
+
+Dados do lead:
+${JSON.stringify(leadContext, null, 2)}
+
+IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
+    } else if (type === "followup") {
+      systemPrompt = `Você é um estrategista comercial especialista em follow-up e fechamento de vendas. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
+      userPrompt = `Com base no histórico completo do lead abaixo, analise todas as notas, atividades e reuniões para gerar um plano completo de follow-up. Identifique se o cliente mencionou alguma data específica para fechar/decidir.
+
+Gere um JSON com a seguinte estrutura:
+{
+  "closing_date": {
+    "detected": boolean,
+    "date": "data mencionada pelo cliente no formato YYYY-MM-DD ou null",
+    "source": "de onde foi extraída essa informação (nota, reunião, atividade) ou null",
+    "days_remaining": número de dias até a data ou null,
+    "confidence": "high" | "medium" | "low",
+    "context": "frase ou contexto exato onde o cliente mencionou a data ou null"
+  },
+  "lead_status_summary": "Resumo em 2-3 linhas do estado atual do lead em relação ao fechamento",
+  "urgency_level": "critical" | "high" | "medium" | "low",
+  "urgency_reason": "motivo da urgência",
+  "followup_timeline": [
+    {
+      "day_label": "Dia X após reunião" ou "Hoje" ou data específica,
+      "action": "ação a ser realizada",
+      "channel": "whatsapp" | "ligação" | "email" | "presencial",
+      "objective": "objetivo desta ação",
+      "script": "script completo pronto para usar, personalizado com dados reais do lead (nome, empresa, dor)",
+      "tips": ["dicas para esta abordagem"],
+      "is_past_due": boolean,
+      "priority": "high" | "medium" | "low"
+    }
+  ],
+  "post_closing_date_plan": [
+    {
+      "day_label": "Dia X após data de fechamento",
+      "action": "ação caso o cliente não tenha fechado na data prevista",
+      "channel": "whatsapp" | "ligação" | "email",
+      "script": "script personalizado para reengajar após data prevista",
+      "tone": "empático" | "direto" | "urgente"
+    }
+  ],
+  "objection_scripts": [
+    {
+      "objection": "objeção identificada ou comum para este perfil",
+      "response_script": "script de resposta",
+      "technique": "nome da técnica usada"
+    }
+  ],
+  "golden_rules": ["5-7 regras de ouro para o follow-up deste lead específico"],
+  "next_immediate_action": {
+    "action": "próxima ação imediata recomendada",
+    "when": "quando fazer",
+    "script": "script pronto para usar",
+    "channel": "canal recomendado"
+  }
+}
+
+REGRAS:
+- Gere pelo menos 6-8 touchpoints no timeline de follow-up
+- Se identificou data de fechamento, crie ações antes E depois dessa data
+- Scripts devem usar nome real do cliente, empresa, dor e dados específicos
+- Inclua scripts para WhatsApp (curtos e diretos) e ligação (mais detalhados)
+- Se já passaram muitos dias sem contato, indique urgência
+- Se o lead está frio, sugira abordagens de reaquecimento
+- Sempre termine com um próximo passo claro
 
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}

@@ -57,27 +57,29 @@ export interface LeadSummaryData {
   _generated_at?: string; // timestamp of when this summary was generated
 }
 
+export type SummaryTabType = "overview" | "guide" | "followup";
+
 export function useLeadSummary(leadId: string) {
   const [overviewData, setOverviewData] = useState<LeadSummaryData | null>(null);
   const [guideData, setGuideData] = useState<LeadSummaryData | null>(null);
+  const [followupData, setFollowupData] = useState<LeadSummaryData | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingGuide, setLoadingGuide] = useState(false);
+  const [loadingFollowup, setLoadingFollowup] = useState(false);
   const lastKnownUpdatedAt = useRef<string | null>(null);
-  const activeTab = useRef<"overview" | "guide" | null>(null);
+  const activeTab = useRef<SummaryTabType | null>(null);
 
-  // Track which tab is active for auto-refresh
-  const setActiveTab = useCallback((tab: "overview" | "guide") => {
+  const setActiveTab = useCallback((tab: SummaryTabType) => {
     activeTab.current = tab;
   }, []);
 
-  const fetchSummary = useCallback(async (type: "overview" | "guide", force = false) => {
-    const isOverview = type === "overview";
-    const current = isOverview ? overviewData : guideData;
+  const fetchSummary = useCallback(async (type: SummaryTabType, force = false) => {
+    const dataMap = { overview: overviewData, guide: guideData, followup: followupData };
+    const current = dataMap[type];
     if (current && !force) return;
 
-    const setLoading = isOverview ? setLoadingOverview : setLoadingGuide;
-    const setData = isOverview ? setOverviewData : setGuideData;
-
+    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : setLoadingFollowup;
+    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : setFollowupData;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
@@ -88,18 +90,19 @@ export function useLeadSummary(leadId: string) {
       setData(enrichedData);
     } catch (err: any) {
       console.error(`Error fetching ${type} summary:`, err);
-      toast.error(`Erro ao gerar ${isOverview ? "visão geral" : "guia de atendimento"}`);
+      const labels: Record<string, string> = { overview: "visão geral", guide: "guia de atendimento", followup: "follow up" };
+      toast.error(`Erro ao gerar ${labels[type]}`);
     } finally {
       setLoading(false);
     }
-  }, [leadId, overviewData, guideData]);
+  }, [leadId, overviewData, guideData, followupData]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {
     // Check for changes every 30 seconds when data is loaded
     const interval = setInterval(async () => {
       // Only check if we have data loaded
-      if (!overviewData && !guideData) return;
+      if (!overviewData && !guideData && !followupData) return;
 
       try {
         const { data: lead } = await supabase
@@ -123,9 +126,9 @@ export function useLeadSummary(leadId: string) {
         if (currentTimestamp !== lastKnownUpdatedAt.current) {
           lastKnownUpdatedAt.current = currentTimestamp;
           
-          // Invalidate both caches
           setOverviewData(null);
           setGuideData(null);
+          setFollowupData(null);
 
           // Auto-regenerate the active tab
           const tab = activeTab.current;
@@ -141,15 +144,18 @@ export function useLeadSummary(leadId: string) {
     }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
-  }, [leadId, overviewData, guideData, fetchSummary]);
+  }, [leadId, overviewData, guideData, followupData, fetchSummary]);
 
   return {
     overviewData,
     guideData,
+    followupData,
     loadingOverview,
     loadingGuide,
+    loadingFollowup,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
+    fetchFollowup: (force?: boolean) => fetchSummary("followup", force),
   };
 }
