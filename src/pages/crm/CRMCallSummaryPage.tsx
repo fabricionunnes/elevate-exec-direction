@@ -439,7 +439,7 @@ const CRMCallSummaryPage = () => {
 
       {/* Detail Dialog — uses exact same LeadSummaryTab as inside the Lead card */}
       <Dialog open={!!selectedTranscription} onOpenChange={() => setSelectedTranscription(null)}>
-        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+        <DialogContent className="max-w-4xl w-[92vw] h-[90vh] grid-rows-[auto,minmax(0,1fr)] overflow-hidden p-0">
           <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
@@ -451,7 +451,7 @@ const CRMCallSummaryPage = () => {
             </DialogDescription>
           </DialogHeader>
           {selectedTranscription?.lead?.id && (
-            <div className="flex-1 overflow-auto">
+            <div className="min-h-0 overflow-y-auto px-0 pb-0">
               <LeadSummaryTab
                 leadId={selectedTranscription.lead.id}
                 leadName={selectedTranscription.lead.name}
