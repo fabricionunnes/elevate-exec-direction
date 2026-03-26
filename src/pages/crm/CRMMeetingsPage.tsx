@@ -700,6 +700,30 @@ const CRMMeetingsPage = () => {
               </div>
 
               <div>
+                <label className="text-sm font-medium">URL da Gravação</label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={recordingUrl}
+                      onChange={(e) => setRecordingUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      className="pl-10"
+                    />
+                  </div>
+                  {recordingUrl && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => window.open(recordingUrl, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium">Briefing</label>
                 <Textarea
                   value={briefing}
