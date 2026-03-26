@@ -597,7 +597,7 @@ const CRMMeetingsPage = () => {
                   )}
                   <div
                     className="flex items-center gap-3 min-w-0 flex-1"
-                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); }}
+                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); setRecordingUrl((meeting as any).recording_url || ""); }}
                   >
                     <div className={cn(
                       "rounded-full p-2 shrink-0",
