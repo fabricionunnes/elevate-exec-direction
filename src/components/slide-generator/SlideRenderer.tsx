@@ -707,6 +707,8 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   // Media items overlay
   const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number; isUploading?: boolean }> = content._mediaItems || [];
+  const mediaItemsRef = useRef(mediaItems);
+  mediaItemsRef.current = mediaItems;
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
