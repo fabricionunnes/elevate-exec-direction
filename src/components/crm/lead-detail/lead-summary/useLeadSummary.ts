@@ -143,15 +143,18 @@ export function useLeadSummary(leadId: string) {
     }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
-  }, [leadId, overviewData, guideData, fetchSummary]);
+  }, [leadId, overviewData, guideData, followupData, fetchSummary]);
 
   return {
     overviewData,
     guideData,
+    followupData,
     loadingOverview,
     loadingGuide,
+    loadingFollowup,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
+    fetchFollowup: (force?: boolean) => fetchSummary("followup", force),
   };
 }
