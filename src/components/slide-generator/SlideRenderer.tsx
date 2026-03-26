@@ -589,6 +589,12 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   // Extra text blocks overlay
   const extraTexts: Array<{ id: string; text: string; x: number; y: number; fontSize: number }> = content._extraTexts || [];
 
+  // Media items overlay
+  const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number }> = content._mediaItems || [];
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   const addExtraText = () => {
     const newBlock = {
       id: Date.now().toString(),
@@ -608,9 +614,84 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
     updateContent("_extraTexts", extraTexts.filter(t => t.id !== id));
   };
 
+  // Media functions
+  const uploadMediaFile = useCallback(async (file: File) => {
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isImage && !isVideo) {
+      toast.error("Formato não suportado. Use imagem ou vídeo.");
+      return;
+    }
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `slides/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("slide-media").upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data: { publicUrl } } = supabase.storage.from("slide-media").getPublicUrl(path);
+
+      const newItem = {
+        id: Date.now().toString(),
+        type: isVideo ? "video" as const : "image" as const,
+        url: publicUrl,
+        x: 100,
+        y: 100,
+        width: 400,
+        height: 300,
+      };
+      updateContent("_mediaItems", [...mediaItems, newItem]);
+      toast.success("Mídia adicionada!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar arquivo");
+    }
+  }, [mediaItems, updateContent]);
+
+  const updateMediaItem = useCallback((id: string, updates: Partial<typeof mediaItems[0]>) => {
+    updateContent("_mediaItems", mediaItems.map(m => m.id === id ? { ...m, ...updates } : m));
+  }, [mediaItems, updateContent]);
+
+  const removeMediaItem = useCallback((id: string) => {
+    updateContent("_mediaItems", mediaItems.filter(m => m.id !== id));
+    setSelectedMedia(null);
+  }, [mediaItems, updateContent]);
+
+  // Paste handler
+  useEffect(() => {
+    if (!editable) return;
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/") || item.type.startsWith("video/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) await uploadMediaFile(file);
+          return;
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [editable, uploadMediaFile]);
+
   return (
-    <div style={wrapperStyle}>
+    <div style={wrapperStyle} ref={wrapperRef} onClick={() => setSelectedMedia(null)}>
       {renderSlide()}
+
+      {/* Media items overlay */}
+      {mediaItems.map((item) => (
+        <DraggableMedia
+          key={item.id}
+          item={item}
+          scale={scale}
+          editable={editable}
+          selected={selectedMedia === item.id}
+          onSelect={() => setSelectedMedia(item.id)}
+          onUpdate={(updates) => updateMediaItem(item.id, updates)}
+          onRemove={() => removeMediaItem(item.id)}
+        />
+      ))}
+
       {/* Extra text blocks overlay */}
       {extraTexts.map((block) => (
         <DraggableTextBlock
@@ -623,31 +704,69 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           onRemove={() => removeExtraText(block.id)}
         />
       ))}
-      {/* Add text button */}
+
+      {/* Edit controls */}
       {editable && (
-        <button
-          onClick={addExtraText}
+        <div
           style={{
             position: "absolute",
             bottom: 8,
             right: 8,
             display: "flex",
-            alignItems: "center",
             gap: 4,
-            background: "rgba(10,25,49,0.85)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            padding: "6px 10px",
-            fontSize: 12,
-            cursor: "pointer",
             zIndex: 20,
           }}
-          title="Adicionar texto"
         >
-          <Type size={14} />
-          <span>Adicionar texto</span>
-        </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(10,25,49,0.85)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+            title="Adicionar imagem/vídeo (ou cole com Ctrl+V)"
+          >
+            <ImagePlus size={14} />
+            <span>Mídia</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadMediaFile(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); addExtraText(); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(10,25,49,0.85)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+            title="Adicionar texto"
+          >
+            <Type size={14} />
+            <span>Texto</span>
+          </button>
+        </div>
       )}
     </div>
   );
