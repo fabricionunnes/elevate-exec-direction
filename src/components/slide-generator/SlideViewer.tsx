@@ -244,7 +244,114 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     }
   };
 
-  if (loading) {
+  // Generate public share link
+  const generateShareLink = async () => {
+    try {
+      let token = shareToken;
+      if (!token) {
+        token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        await supabase
+          .from("slide_presentations")
+          .update({ public_share_token: token, is_public: true } as any)
+          .eq("id", presentationId);
+        setShareToken(token);
+        setIsPublic(true);
+      } else if (!isPublic) {
+        await supabase
+          .from("slide_presentations")
+          .update({ is_public: true } as any)
+          .eq("id", presentationId);
+        setIsPublic(true);
+      }
+      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
+      const url = `${baseUrl}#/slides/${token}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Link copiado!");
+
+      const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
+      setShareQrUrl(qr);
+      setShowShareDialog(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar link");
+    }
+  };
+
+  // Start remote control session
+  const startRemoteSession = async () => {
+    try {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase.from("slide_remote_sessions").insert({
+        presentation_id: presentationId,
+        session_code: code,
+        current_slide: currentIndex,
+        created_by: user?.id,
+      } as any);
+
+      if (error) throw error;
+
+      setRemoteSessionCode(code);
+      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
+      const url = `${baseUrl}#/slide-remote/${code}`;
+      const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
+      setRemoteQrUrl(qr);
+      setShowShareDialog(true);
+      toast.success("Sessão de controle remoto criada!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao criar sessão remota");
+    }
+  };
+
+  // Listen for remote control commands
+  useEffect(() => {
+    if (!remoteSessionCode) return;
+    const channel = supabase
+      .channel(`presenter-${remoteSessionCode}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "slide_remote_sessions",
+          filter: `session_code=eq.${remoteSessionCode}`,
+        },
+        (payload: any) => {
+          if (payload.new.current_slide !== undefined) {
+            setCurrentIndex(payload.new.current_slide);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [remoteSessionCode]);
+
+  // Update remote session when slide changes locally (presenter side)
+  useEffect(() => {
+    if (!remoteSessionCode) return;
+    supabase
+      .from("slide_remote_sessions")
+      .update({ current_slide: currentIndex, updated_at: new Date().toISOString() } as any)
+      .eq("session_code", remoteSessionCode)
+      .then();
+  }, [currentIndex, remoteSessionCode]);
+
+  // Stop remote session on unmount
+  useEffect(() => {
+    return () => {
+      if (remoteSessionCode) {
+        supabase
+          .from("slide_remote_sessions")
+          .update({ is_active: false } as any)
+          .eq("session_code", remoteSessionCode)
+          .then();
+      }
+    };
+  }, [remoteSessionCode]);
+
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
