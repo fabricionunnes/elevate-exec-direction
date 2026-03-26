@@ -2101,6 +2101,10 @@ const OnboardingTasksPage = () => {
                       Vagas (RH)
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/b2b-prospection")}>
+                    <Target className="h-4 w-4 mr-2" />
+                    Prospecção B2B
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/slide-generator")}>
                     <Presentation className="h-4 w-4 mr-2" />
                     Gerador de Slides
