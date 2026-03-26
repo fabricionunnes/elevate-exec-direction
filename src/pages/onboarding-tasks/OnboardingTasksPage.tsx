@@ -2729,6 +2729,11 @@ const OnboardingTasksPage = () => {
                         Central de Automações
                       </DropdownMenuItem>
 
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/b2b-prospection")}>
+                        <Target className="h-4 w-4 mr-2" />
+                        Prospecção B2B
+                      </DropdownMenuItem>
+
                       {/* UNV Academy & Tools */}
                       <DropdownMenuSeparator />
                       <DropdownMenuItem onClick={() => navigate("/pdi")}>

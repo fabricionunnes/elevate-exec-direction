@@ -260,6 +260,11 @@ export const CLIENT_MENU_STRUCTURE = [
     group: "Tráfego",
   },
   {
+    key: CLIENT_MENU_KEYS.prospeccao_b2b,
+    label: "Prospecção B2B",
+    group: "Integrações",
+  },
+  {
     key: CLIENT_MENU_KEYS.crm_comercial,
     label: "CRM Comercial (Menu)",
     group: "CRM Comercial",
