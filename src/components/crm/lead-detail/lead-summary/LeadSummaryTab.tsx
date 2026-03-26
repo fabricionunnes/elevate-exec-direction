@@ -1,9 +1,10 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, BookOpen } from "lucide-react";
-import { useLeadSummary } from "./useLeadSummary";
+import { Eye, BookOpen, Target } from "lucide-react";
+import { useLeadSummary, SummaryTabType } from "./useLeadSummary";
 import { LeadSummaryOverview } from "./LeadSummaryOverview";
 import { LeadSummaryGuide } from "./LeadSummaryGuide";
+import { LeadSummaryFollowUp } from "./LeadSummaryFollowUp";
 
 interface LeadSummaryTabProps {
   leadId: string;
@@ -15,9 +16,10 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
   const summary = useLeadSummary(leadId);
 
   useEffect(() => {
-    summary.setActiveTab(subTab as "overview" | "guide");
+    summary.setActiveTab(subTab as SummaryTabType);
     if (subTab === "overview") summary.fetchOverview();
     if (subTab === "guide") summary.fetchGuide();
+    if (subTab === "followup") summary.fetchFollowup();
   }, [subTab]);
 
   return (
@@ -32,6 +34,10 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             <TabsTrigger value="guide" className="gap-1.5 text-xs">
               <BookOpen className="h-3.5 w-3.5" />
               Guia de Atendimento
+            </TabsTrigger>
+            <TabsTrigger value="followup" className="gap-1.5 text-xs">
+              <Target className="h-3.5 w-3.5" />
+              Follow Up
             </TabsTrigger>
           </TabsList>
         </div>
@@ -49,6 +55,14 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             data={summary.guideData}
             loading={summary.loadingGuide}
             onRegenerate={() => summary.fetchGuide(true)}
+          />
+        </TabsContent>
+
+        <TabsContent value="followup" className="flex-1 mt-0 overflow-auto">
+          <LeadSummaryFollowUp
+            data={summary.followupData}
+            loading={summary.loadingFollowup}
+            onRegenerate={() => summary.fetchFollowup(true)}
           />
         </TabsContent>
       </Tabs>
