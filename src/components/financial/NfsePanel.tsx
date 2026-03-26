@@ -309,6 +309,12 @@ export function NfsePanel() {
       return;
     }
 
+    const cleanCep = (form.tomadorPostalCode || "").replace(/\D/g, "");
+    if (!cleanCep || cleanCep.length !== 8) {
+      toast.error("CEP do tomador é obrigatório para emissão de NFS-e.");
+      return;
+    }
+
     if (selectedInvoiceId && selectedInvoiceId !== "none" && !invoiceId) {
       toast.error("A fatura selecionada é inválida. Selecione novamente.");
       return;
