@@ -733,11 +733,12 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   };
 
   const replaceMediaItem = useCallback((id: string, nextItem: Partial<typeof mediaItems[0]>) => {
+    const current = mediaItemsRef.current;
     updateContent(
       "_mediaItems",
-      mediaItems.map((media) => (media.id === id ? { ...media, ...nextItem } : media))
+      current.map((media) => (media.id === id ? { ...media, ...nextItem } : media))
     );
-  }, [mediaItems, updateContent]);
+  }, [updateContent]);
 
   // Media functions
   const uploadMediaFile = useCallback(async (file: File) => {
