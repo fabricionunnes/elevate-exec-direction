@@ -516,7 +516,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                 <div className="flex gap-2">
                   <Input
                     readOnly
-                    value={`${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`}
+                    value={`https://elevate-exec-direction.lovable.app/#/slides/${shareToken}`}
                     className="text-xs"
                   />
                   <Button
