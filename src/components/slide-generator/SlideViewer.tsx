@@ -3,9 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCodeLib from "qrcode";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
   Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check,
-  Share2, Link, Smartphone, QrCode
+  Share2, Link, Smartphone, QrCode, GripVertical
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
@@ -295,6 +311,39 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       toast.success("Slide duplicado");
     } catch (err) {
       toast.error("Erro ao duplicar");
+    }
+  };
+
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      handleReorderSlides(active.id as string, over.id as string);
+    }
+  };
+
+  const handleReorderSlides = async (activeId: string, overId: string) => {
+    const oldIndex = slides.findIndex((s) => s.id === activeId);
+    const newIndex = slides.findIndex((s) => s.id === overId);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(slides, oldIndex, newIndex);
+    setSlides(reordered);
+
+    try {
+      await Promise.all(
+        reordered.map((s, i) =>
+          supabase.from("slide_items").update({ sort_order: i, slide_number: i + 1 } as any).eq("id", s.id)
+        )
+      );
+      toast.success("Ordem atualizada");
+    } catch {
+      toast.error("Erro ao reordenar");
+      loadData();
     }
   };
 
@@ -644,60 +693,26 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       </Dialog>
 
       {editing ? (
-        /* Edit Mode - Full slide list */
+        /* Edit Mode - Full slide list with drag-and-drop reorder */
         <div className="flex-1 overflow-auto">
-          <div className="max-w-6xl mx-auto py-6 px-4 space-y-8">
-            {slides.map((slide, i) => (
-              <div key={slide.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground bg-muted rounded-full w-7 h-7 flex items-center justify-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      {slide.slide_type}
-                    </span>
-                    {pendingChanges[slide.id] && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
-                        editado
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicateSlide(slide)}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSlide(slide.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
-                  <SlideRenderer
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={slides.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="max-w-6xl mx-auto py-6 px-4 space-y-8">
+                {slides.map((slide, i) => (
+                  <SortableSlideItem
+                    key={slide.id}
                     slide={slide}
-                    scale={Math.min((typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1100) : 1100) / 1920, 0.58)}
-                    editable
+                    index={i}
+                    pendingChanges={pendingChanges}
+                    canDelete={canDelete}
+                    onDuplicate={() => handleDuplicateSlide(slide)}
+                    onDelete={() => handleDeleteSlide(slide.id)}
                     onUpdate={(update) => handleSlideUpdate(slide.id, update)}
                   />
-                </div>
-                {/* Speaker Notes Editor */}
-                <div className="bg-muted/30 border border-border/50 rounded-lg p-3 mt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Edit3 className="h-3 w-3" />
-                    Notas do Apresentador
-                  </p>
-                  <textarea
-                    className="w-full text-sm bg-background border border-border rounded-md p-2.5 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
-                    value={slide.speaker_notes || ""}
-                    onChange={(e) => handleSlideUpdate(slide.id, { speaker_notes: e.target.value || null })}
-                    placeholder="Adicione suas anotações para este slide..."
-                  />
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : showGrid ? (
         /* Grid View */
@@ -809,6 +824,99 @@ export function SlideViewer({ presentationId, onBack }: Props) {
           </div>
         </div>
       )}
+    </div>
+  );
+}
+
+// Sortable slide item for edit mode reordering
+function SortableSlideItem({
+  slide,
+  index,
+  pendingChanges,
+  canDelete,
+  onDuplicate,
+  onDelete,
+  onUpdate,
+}: {
+  slide: SlideItem;
+  index: number;
+  pendingChanges: Record<string, any>;
+  canDelete: boolean;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onUpdate: (update: Partial<SlideItem>) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: slide.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted text-muted-foreground touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="text-xs font-bold text-muted-foreground bg-muted rounded-full w-7 h-7 flex items-center justify-center">
+            {index + 1}
+          </span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            {slide.slide_type}
+          </span>
+          {pendingChanges[slide.id] && (
+            <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
+              editado
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDuplicate}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          {canDelete && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
+        <SlideRenderer
+          slide={slide}
+          scale={Math.min((typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1100) : 1100) / 1920, 0.58)}
+          editable
+          onUpdate={(update) => onUpdate(update)}
+        />
+      </div>
+      {/* Speaker Notes Editor */}
+      <div className="bg-muted/30 border border-border/50 rounded-lg p-3 mt-2">
+        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+          <Edit3 className="h-3 w-3" />
+          Notas do Apresentador
+        </p>
+        <textarea
+          className="w-full text-sm bg-background border border-border rounded-md p-2.5 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+          value={slide.speaker_notes || ""}
+          onChange={(e) => onUpdate({ speaker_notes: e.target.value || null })}
+          placeholder="Adicione suas anotações para este slide..."
+        />
+      </div>
     </div>
   );
 }
