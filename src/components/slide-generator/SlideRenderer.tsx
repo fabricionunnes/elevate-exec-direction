@@ -738,12 +738,34 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       toast.error("Formato não suportado. Use imagem ou vídeo.");
       return;
     }
+    
+    // Check file size (20MB limit)
+    if (file.size > 20 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo 20MB.");
+      return;
+    }
+
+    toast.info("Enviando arquivo...");
+    
     try {
       const ext = file.name.split(".").pop() || "png";
       const path = `slides/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
-      const { error: uploadErr } = await supabase.storage.from("slide-media").upload(path, file);
-      if (uploadErr) throw uploadErr;
+      console.log("Uploading media:", path, file.type, file.size);
+      
+      const { error: uploadErr, data: uploadData } = await supabase.storage.from("slide-media").upload(path, file, {
+        contentType: file.type,
+        upsert: false,
+      });
+      
+      if (uploadErr) {
+        console.error("Upload error:", uploadErr);
+        toast.error(`Erro no upload: ${uploadErr.message}`);
+        return;
+      }
+      
+      console.log("Upload success:", uploadData);
       const { data: { publicUrl } } = supabase.storage.from("slide-media").getPublicUrl(path);
+      console.log("Public URL:", publicUrl);
 
       const newItem = {
         id: Date.now().toString(),
@@ -751,14 +773,14 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
         url: publicUrl,
         x: 100,
         y: 100,
-        width: 400,
-        height: 300,
+        width: isVideo ? 640 : 400,
+        height: isVideo ? 360 : 300,
       };
       updateContent("_mediaItems", [...mediaItems, newItem]);
       toast.success("Mídia adicionada!");
-    } catch (err) {
-      console.error(err);
-      toast.error("Erro ao enviar arquivo");
+    } catch (err: any) {
+      console.error("Media upload failed:", err);
+      toast.error(`Erro ao enviar arquivo: ${err?.message || "erro desconhecido"}`);
     }
   }, [mediaItems, updateContent]);
 
