@@ -3,9 +3,25 @@ import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 import QRCodeLib from "qrcode";
 import {
+  DndContext,
+  closestCenter,
+  KeyboardSensor,
+  PointerSensor,
+  useSensor,
+  useSensors,
+} from "@dnd-kit/core";
+import {
+  arrayMove,
+  SortableContext,
+  sortableKeyboardCoordinates,
+  verticalListSortingStrategy,
+  useSortable,
+} from "@dnd-kit/sortable";
+import { CSS } from "@dnd-kit/utilities";
+import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
   Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check,
-  Share2, Link, Smartphone, QrCode
+  Share2, Link, Smartphone, QrCode, GripVertical
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
