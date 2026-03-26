@@ -188,6 +188,82 @@ function EditableText({
   );
 }
 
+// Individual bullet item with hover controls
+function BulletItem({
+  index, bullet, total, isVisible, bulletStyle, colors, fontSize, editable,
+  onChange, onRemove, onMove, onFontSizeChange,
+}: {
+  index: number; bullet: string; total: number; isVisible: boolean;
+  bulletStyle: "dot" | "number" | "check"; colors: any; fontSize: number;
+  editable?: boolean; onChange: (val: string) => void; onRemove: () => void;
+  onMove: (dir: -1 | 1) => void; onFontSizeChange?: (s: number) => void;
+}) {
+  const [hovered, setHovered] = useState(false);
+
+  return (
+    <div
+      style={{
+        display: "flex", alignItems: "flex-start",
+        gap: bulletStyle === "dot" ? 16 : 12,
+        opacity: isVisible ? 1 : 0,
+        transform: isVisible ? "translateY(0)" : "translateY(20px)",
+        transition: "opacity 0.5s ease, transform 0.5s ease",
+        position: "relative",
+      }}
+      onMouseEnter={() => setHovered(true)}
+      onMouseLeave={() => setHovered(false)}
+    >
+      {bulletStyle === "dot" && (
+        <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
+      )}
+      {bulletStyle === "number" && (
+        <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
+          {index + 1}
+        </div>
+      )}
+      {bulletStyle === "check" && (
+        <CheckCircle size={22} color={colors.accent} style={{ flexShrink: 0, marginTop: 2 }} />
+      )}
+      <EditableText
+        value={bullet}
+        onChange={onChange}
+        editable={editable}
+        style={{ fontSize, lineHeight: 1.4, color: colors.text, flex: 1 }}
+        onFontSizeChange={onFontSizeChange}
+      />
+      {editable && hovered && (
+        <div style={{ display: "flex", gap: 2, alignItems: "center", position: "absolute", right: -80, top: 0 }}>
+          {index > 0 && (
+            <button
+              onClick={() => onMove(-1)}
+              style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+              title="Mover para cima"
+            >
+              <ArrowRight size={14} style={{ transform: "rotate(-90deg)" }} />
+            </button>
+          )}
+          {index < total - 1 && (
+            <button
+              onClick={() => onMove(1)}
+              style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+              title="Mover para baixo"
+            >
+              <ArrowRight size={14} style={{ transform: "rotate(90deg)" }} />
+            </button>
+          )}
+          <button
+            onClick={onRemove}
+            style={{ background: "rgba(200,30,30,0.9)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+            title="Remover tópico"
+          >
+            <Trash2 size={14} />
+          </button>
+        </div>
+      )}
+    </div>
+  );
+}
+
 // Editable bullet list
 function EditableBullets({
   bullets,
