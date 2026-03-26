@@ -706,7 +706,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   const extraTexts: Array<{ id: string; text: string; x: number; y: number; fontSize: number }> = content._extraTexts || [];
 
   // Media items overlay
-  const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number }> = content._mediaItems || [];
+  const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number; isUploading?: boolean }> = content._mediaItems || [];
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -730,6 +730,13 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
     updateContent("_extraTexts", extraTexts.filter(t => t.id !== id));
   };
 
+  const replaceMediaItem = useCallback((id: string, nextItem: Partial<typeof mediaItems[0]>) => {
+    updateContent(
+      "_mediaItems",
+      mediaItems.map((media) => (media.id === id ? { ...media, ...nextItem } : media))
+    );
+  }, [mediaItems, updateContent]);
+
   // Media functions
   const uploadMediaFile = useCallback(async (file: File) => {
     const isVideo = file.type.startsWith("video/");
@@ -738,57 +745,74 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       toast.error("Formato não suportado. Use imagem ou vídeo.");
       return;
     }
-    
-    // Check file size (1GB limit)
+
     if (file.size > 1024 * 1024 * 1024) {
       toast.error("Arquivo muito grande. Máximo 1GB.");
       return;
     }
 
+    const tempId = Date.now().toString();
+    const previewUrl = URL.createObjectURL(file);
+    const tempItem = {
+      id: tempId,
+      type: isVideo ? "video" as const : "image" as const,
+      url: previewUrl,
+      x: 100,
+      y: 100,
+      width: isVideo ? 640 : 400,
+      height: isVideo ? 360 : 300,
+      isUploading: true,
+    };
+
+    updateContent("_mediaItems", [...mediaItems, tempItem]);
+    setSelectedMedia(tempId);
     toast.info("Enviando arquivo...");
-    
+
     try {
-      const ext = file.name.split(".").pop() || "png";
+      const ext = file.name.split(".").pop() || (isVideo ? "mp4" : "png");
       const path = `slides/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
       console.log("Uploading media:", path, file.type, file.size);
-      
+
       const { error: uploadErr, data: uploadData } = await supabase.storage.from("slide-media").upload(path, file, {
         contentType: file.type,
         upsert: false,
       });
-      
+
       if (uploadErr) {
         console.error("Upload error:", uploadErr);
+        updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+        URL.revokeObjectURL(previewUrl);
         toast.error(`Erro no upload: ${uploadErr.message}`);
         return;
       }
-      
+
       console.log("Upload success:", uploadData);
       const { data: { publicUrl } } = supabase.storage.from("slide-media").getPublicUrl(path);
       console.log("Public URL:", publicUrl);
 
-      const newItem = {
-        id: Date.now().toString(),
-        type: isVideo ? "video" as const : "image" as const,
+      replaceMediaItem(tempId, {
         url: publicUrl,
-        x: 100,
-        y: 100,
-        width: isVideo ? 640 : 400,
-        height: isVideo ? 360 : 300,
-      };
-      updateContent("_mediaItems", [...mediaItems, newItem]);
+        isUploading: false,
+      });
+      URL.revokeObjectURL(previewUrl);
       toast.success("Mídia adicionada!");
     } catch (err: any) {
       console.error("Media upload failed:", err);
+      updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+      URL.revokeObjectURL(previewUrl);
       toast.error(`Erro ao enviar arquivo: ${err?.message || "erro desconhecido"}`);
     }
-  }, [mediaItems, updateContent]);
+  }, [mediaItems, replaceMediaItem, updateContent]);
 
   const updateMediaItem = useCallback((id: string, updates: Partial<typeof mediaItems[0]>) => {
     updateContent("_mediaItems", mediaItems.map(m => m.id === id ? { ...m, ...updates } : m));
   }, [mediaItems, updateContent]);
 
   const removeMediaItem = useCallback((id: string) => {
+    const itemToRemove = mediaItems.find((media) => media.id === id);
+    if (itemToRemove?.url?.startsWith("blob:")) {
+      URL.revokeObjectURL(itemToRemove.url);
+    }
     updateContent("_mediaItems", mediaItems.filter(m => m.id !== id));
     setSelectedMedia(null);
   }, [mediaItems, updateContent]);
