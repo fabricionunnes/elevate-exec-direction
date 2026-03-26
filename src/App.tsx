@@ -383,6 +383,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/slide-generator" element={<SlideGeneratorPage />} />
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
+              <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
