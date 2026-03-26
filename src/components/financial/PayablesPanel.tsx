@@ -823,19 +823,20 @@ export function PayablesPanel() {
               onPeriodChange={(v) => { setPeriodFilter(v); setCurrentPage(0); }}
               onOffsetChange={(o) => { setPeriodOffset(o); setCurrentPage(0); }}
             />
-            <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendentes</SelectItem>
-                <SelectItem value="partial">Pago Parcial</SelectItem>
-                <SelectItem value="overdue">Atrasados</SelectItem>
-                <SelectItem value="paid">Pagos</SelectItem>
-                <SelectItem value="cancelled">Cancelados</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={[
+                { value: "pending", label: "Pendentes" },
+                { value: "partial", label: "Pago Parcial" },
+                { value: "overdue", label: "Atrasados" },
+                { value: "paid", label: "Pagos" },
+                { value: "cancelled", label: "Cancelados" },
+              ]}
+              selected={statusFilter}
+              onChange={(v) => { setStatusFilter(v); setCurrentPage(0); }}
+              placeholder="Status"
+              allLabel="Todos"
+              className="w-[180px]"
+            />
           </div>
         </CardContent>
       </Card>

@@ -740,19 +740,20 @@ export function ReceivablesPanel() {
               onPeriodChange={setPeriodFilter}
               onOffsetChange={setPeriodOffset}
             />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendentes</SelectItem>
-                <SelectItem value="partial">Parciais</SelectItem>
-                <SelectItem value="overdue">Atrasados</SelectItem>
-                <SelectItem value="paid">Pagos</SelectItem>
-                <SelectItem value="cancelled">Cancelados</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={[
+                { value: "pending", label: "Pendentes" },
+                { value: "partial", label: "Parciais" },
+                { value: "overdue", label: "Atrasados" },
+                { value: "paid", label: "Pagos" },
+                { value: "cancelled", label: "Cancelados" },
+              ]}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="Status"
+              allLabel="Todos"
+              className="w-[180px]"
+            />
           </div>
         </CardContent>
       </Card>
