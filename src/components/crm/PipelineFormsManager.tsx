@@ -98,11 +98,31 @@ export const PipelineFormsManager = () => {
   };
 
   const [copiedId, setCopiedId] = useState<string | null>(null);
+  const [qrDataUrl, setQrDataUrl] = useState<string | null>(null);
+
   const copyUrl = (token: string, formId: string) => {
     navigator.clipboard.writeText(getFormUrl(token));
     setCopiedId(formId);
     toast.success("Link copiado!");
     setTimeout(() => setCopiedId(null), 2000);
+  };
+
+  const generateQrCode = async (token: string) => {
+    try {
+      const url = getFormUrl(token);
+      const dataUrl = await QRCodeLib.toDataURL(url, { width: 512, margin: 2 });
+      setQrDataUrl(dataUrl);
+    } catch {
+      toast.error("Erro ao gerar QR Code");
+    }
+  };
+
+  const downloadQrCode = (pipelineName: string) => {
+    if (!qrDataUrl) return;
+    const link = document.createElement("a");
+    link.download = `qrcode-${pipelineName.toLowerCase().replace(/\s+/g, "-")}.png`;
+    link.href = qrDataUrl;
+    link.click();
   };
 
   const pipelinesWithoutForm = pipelines.filter(
