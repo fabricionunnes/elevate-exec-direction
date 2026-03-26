@@ -57,8 +57,10 @@ import {
   ScrollText,
   FolderOpen,
   History,
+  Sparkles,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
+import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
