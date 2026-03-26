@@ -899,18 +899,16 @@ const OnboardingResultsPage = () => {
                   {currentStaff.role !== "consultant" && (
                     <div className="flex flex-col gap-1.5">
                       <Label className="text-xs text-muted-foreground">Consultor/CS</Label>
-                      <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                        <SelectTrigger className="w-[180px]">
-                          <Users className="h-4 w-4 mr-2" />
-                          <SelectValue placeholder="Todos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {consultants.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={filterConsultant}
+                        onValueChange={setFilterConsultant}
+                        options={[
+                          { value: "all", label: "Todos" },
+                          ...consultants.map(c => ({ value: c.id, label: c.name })),
+                        ]}
+                        placeholder="Todos"
+                        className="w-[180px]"
+                      />
                     </div>
                   )}
 
