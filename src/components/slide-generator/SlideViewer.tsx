@@ -263,8 +263,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
           .eq("id", presentationId);
         setIsPublic(true);
       }
-      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
-      const url = `${baseUrl}#/slides/${token}`;
+      const publishedUrl = "https://elevate-exec-direction.lovable.app";
+      const url = `${publishedUrl}/#/slides/${token}`;
       navigator.clipboard.writeText(url);
       toast.success("Link copiado!");
 
