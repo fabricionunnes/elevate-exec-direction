@@ -380,34 +380,30 @@ export const ResultsGlobalDialog = ({ open, onOpenChange }: ResultsGlobalDialogP
         <div className="flex flex-wrap gap-3 py-3 border-b">
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">Empresa</Label>
-            <Select value={selectedCompany} onValueChange={setSelectedCompany}>
-              <SelectTrigger className="w-[180px] h-8">
-                <Building2 className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Todas" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todas as empresas</SelectItem>
-                {companies.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={selectedCompany}
+              onValueChange={setSelectedCompany}
+              options={[
+                { value: "all", label: "Todas as empresas" },
+                ...companies.map(c => ({ value: c.id, label: c.name })),
+              ]}
+              placeholder="Todas"
+              className="w-[180px]"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
             <Label className="text-xs text-muted-foreground">Consultor/CS</Label>
-            <Select value={selectedConsultant} onValueChange={setSelectedConsultant}>
-              <SelectTrigger className="w-[180px] h-8">
-                <Users className="h-3 w-3 mr-1" />
-                <SelectValue placeholder="Todos" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                {consultants.map(c => (
-                  <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+            <SearchableSelect
+              value={selectedConsultant}
+              onValueChange={setSelectedConsultant}
+              options={[
+                { value: "all", label: "Todos" },
+                ...consultants.map(c => ({ value: c.id, label: c.name })),
+              ]}
+              placeholder="Todos"
+              className="w-[180px]"
+            />
           </div>
 
           <div className="flex flex-col gap-1">
