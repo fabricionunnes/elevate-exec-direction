@@ -259,6 +259,24 @@ export default function PublicPresentationPage() {
         </div>
       )}
 
+      {/* Fullscreen exit button */}
+      {isFullscreen && (
+        <button
+          onClick={toggleFullscreen}
+          className="absolute top-3 right-3 z-50 p-2 rounded-full bg-black/40 hover:bg-black/60 text-white/60 hover:text-white transition-all opacity-0 hover:opacity-100 focus:opacity-100"
+          title="Sair da Tela Cheia (Esc)"
+        >
+          <Minimize className="h-4 w-4" />
+        </button>
+      )}
+
+      {/* Fullscreen slide counter */}
+      {isFullscreen && (
+        <div className="absolute top-3 left-3 z-50 text-white/30 text-xs opacity-0 hover:opacity-100 transition-opacity">
+          {currentIndex + 1}/{slides.length}
+        </div>
+      )}
+
       {/* Slide */}
       <div
         ref={containerRef}
@@ -269,7 +287,7 @@ export default function PublicPresentationPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute left-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12"
+            className={`absolute left-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12 ${isFullscreen ? 'opacity-0 hover:opacity-100 transition-opacity' : ''}`}
             onClick={(e) => { e.stopPropagation(); goPrev(); }}
           >
             <ChevronLeft className="h-6 w-6" />
@@ -279,7 +297,7 @@ export default function PublicPresentationPage() {
           <Button
             variant="ghost"
             size="icon"
-            className="absolute right-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12"
+            className={`absolute right-2 z-10 text-white/40 hover:text-white hover:bg-white/10 h-12 w-12 ${isFullscreen ? 'opacity-0 hover:opacity-100 transition-opacity' : ''}`}
             onClick={(e) => { e.stopPropagation(); goNext(); }}
           >
             <ChevronRight className="h-6 w-6" />
@@ -287,19 +305,21 @@ export default function PublicPresentationPage() {
         )}
 
         {currentSlide && (
-          <div className="rounded-lg overflow-hidden shadow-2xl">
+          <div className={isFullscreen ? '' : 'rounded-lg overflow-hidden shadow-2xl'}>
             <SlideRenderer slide={currentSlide} scale={scale} />
           </div>
         )}
       </div>
 
-      {/* Progress bar */}
-      <div className="h-1 bg-white/10">
-        <div
-          className="h-full bg-[#C81E1E] transition-all duration-300"
-          style={{ width: `${((currentIndex + 1) / slides.length) * 100}%` }}
-        />
-      </div>
+      {/* Progress bar - hidden in fullscreen */}
+      {!isFullscreen && (
+        <div className="h-1 bg-white/10">
+          <div
+            className="h-full bg-[#C81E1E] transition-all duration-300"
+            style={{ width: `${((currentIndex + 1) / slides.length) * 100}%` }}
+          />
+        </div>
+      )}
     </div>
   );
 }
