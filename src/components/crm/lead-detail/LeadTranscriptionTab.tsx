@@ -33,6 +33,7 @@ export const LeadTranscriptionTab = ({
   const [isSaving, setIsSaving] = useState(false);
   const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("list");
+  const [isEditing, setIsEditing] = useState(false);
 
   const { transcriptions, loading, refetch, deleteTranscription } = useCrmTranscriptions({
     leadId,
