@@ -1148,6 +1148,7 @@ function DraggableMedia({
       ref={ref}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       style={{
         position: "absolute",
         left: item.x * scale,
