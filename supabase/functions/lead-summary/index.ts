@@ -11,7 +11,7 @@ serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
   try {
-    const { leadId, type } = await req.json(); // type: "overview" | "guide"
+    const { leadId, type, transcriptionId } = await req.json(); // type: "overview" | "guide" | "followup" | "analysis"
     if (!leadId || !type) throw new Error("leadId and type are required");
 
     const LOVABLE_API_KEY = Deno.env.get("LOVABLE_API_KEY");
