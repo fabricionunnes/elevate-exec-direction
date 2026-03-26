@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users,
-  Plus, Minus, Trash2, Type, GripVertical
+  Plus, Minus, Trash2, Type, GripVertical, ImagePlus, X, Move, Play
 } from "lucide-react";
 import unvLogo from "@/assets/unv-logo-slides.png";
 
