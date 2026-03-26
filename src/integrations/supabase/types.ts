@@ -1802,6 +1802,190 @@ export type Database = {
         }
         Relationships: []
       }
+      b2b_lead_notes: {
+        Row: {
+          content: string
+          created_at: string
+          id: string
+          lead_id: string
+          user_id: string
+        }
+        Insert: {
+          content: string
+          created_at?: string
+          id?: string
+          lead_id: string
+          user_id: string
+        }
+        Update: {
+          content?: string
+          created_at?: string
+          id?: string
+          lead_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_lead_notes_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "b2b_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      b2b_leads: {
+        Row: {
+          address: string | null
+          city: string | null
+          created_at: string
+          google_rating: number | null
+          id: string
+          list_id: string | null
+          name: string
+          phone: string | null
+          place_id: string | null
+          segment: string | null
+          state: string | null
+          status: string
+          updated_at: string
+          user_id: string
+          website: string | null
+        }
+        Insert: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          google_rating?: number | null
+          id?: string
+          list_id?: string | null
+          name: string
+          phone?: string | null
+          place_id?: string | null
+          segment?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          user_id: string
+          website?: string | null
+        }
+        Update: {
+          address?: string | null
+          city?: string | null
+          created_at?: string
+          google_rating?: number | null
+          id?: string
+          list_id?: string | null
+          name?: string
+          phone?: string | null
+          place_id?: string | null
+          segment?: string | null
+          state?: string | null
+          status?: string
+          updated_at?: string
+          user_id?: string
+          website?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "b2b_leads_list_id_fkey"
+            columns: ["list_id"]
+            isOneToOne: false
+            referencedRelation: "b2b_saved_lists"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      b2b_saved_lists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          lead_count: number | null
+          name: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_count?: number | null
+          name: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_count?: number | null
+          name?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
+      b2b_search_history: {
+        Row: {
+          city: string | null
+          country: string | null
+          created_at: string
+          id: string
+          niches: string[]
+          results_count: number | null
+          state: string | null
+          user_id: string
+        }
+        Insert: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          niches?: string[]
+          results_count?: number | null
+          state?: string | null
+          user_id: string
+        }
+        Update: {
+          city?: string | null
+          country?: string | null
+          created_at?: string
+          id?: string
+          niches?: string[]
+          results_count?: number | null
+          state?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
+      b2b_search_logs: {
+        Row: {
+          created_at: string
+          filters: Json | null
+          id: string
+          results_count: number | null
+          search_query: string | null
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_query?: string | null
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          filters?: Json | null
+          id?: string
+          results_count?: number | null
+          search_query?: string | null
+          user_id?: string
+        }
+        Relationships: []
+      }
       billing_notification_logs: {
         Row: {
           company_id: string
