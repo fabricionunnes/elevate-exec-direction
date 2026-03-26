@@ -344,7 +344,7 @@ export default function PublicPresentationPage() {
 
         {currentSlide && (
           <div className={isFullscreen ? '' : 'rounded-lg overflow-hidden shadow-2xl'}>
-            <SlideRenderer slide={currentSlide} scale={scale} />
+            <SlideRenderer slide={currentSlide} scale={scale} visibleBullets={visibleBullets} />
           </div>
         )}
       </div>
