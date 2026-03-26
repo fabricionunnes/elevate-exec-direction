@@ -8,6 +8,7 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { SlideCreationForm } from "@/components/slide-generator/SlideCreationForm";
 import { SlideViewer } from "@/components/slide-generator/SlideViewer";
 import { SlideTemplateLibrary } from "@/components/slide-generator/SlideTemplateLibrary";
