@@ -1,8 +1,10 @@
 import { useState, useRef, useCallback, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { toast } from "sonner";
 import { 
   Target, Lightbulb, BookOpen, HelpCircle, Award, CheckCircle, 
   ArrowRight, Zap, Star, MessageCircle, BarChart3, Users,
-  Plus, Minus, Trash2, Type, GripVertical
+  Plus, Minus, Trash2, Type, GripVertical, ImagePlus, X, Move, Play
 } from "lucide-react";
 import unvLogo from "@/assets/unv-logo-slides.png";
 
@@ -587,6 +589,12 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   // Extra text blocks overlay
   const extraTexts: Array<{ id: string; text: string; x: number; y: number; fontSize: number }> = content._extraTexts || [];
 
+  // Media items overlay
+  const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number }> = content._mediaItems || [];
+  const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const wrapperRef = useRef<HTMLDivElement>(null);
+
   const addExtraText = () => {
     const newBlock = {
       id: Date.now().toString(),
@@ -606,9 +614,84 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
     updateContent("_extraTexts", extraTexts.filter(t => t.id !== id));
   };
 
+  // Media functions
+  const uploadMediaFile = useCallback(async (file: File) => {
+    const isVideo = file.type.startsWith("video/");
+    const isImage = file.type.startsWith("image/");
+    if (!isImage && !isVideo) {
+      toast.error("Formato não suportado. Use imagem ou vídeo.");
+      return;
+    }
+    try {
+      const ext = file.name.split(".").pop() || "png";
+      const path = `slides/${Date.now()}_${Math.random().toString(36).slice(2, 8)}.${ext}`;
+      const { error: uploadErr } = await supabase.storage.from("slide-media").upload(path, file);
+      if (uploadErr) throw uploadErr;
+      const { data: { publicUrl } } = supabase.storage.from("slide-media").getPublicUrl(path);
+
+      const newItem = {
+        id: Date.now().toString(),
+        type: isVideo ? "video" as const : "image" as const,
+        url: publicUrl,
+        x: 100,
+        y: 100,
+        width: 400,
+        height: 300,
+      };
+      updateContent("_mediaItems", [...mediaItems, newItem]);
+      toast.success("Mídia adicionada!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao enviar arquivo");
+    }
+  }, [mediaItems, updateContent]);
+
+  const updateMediaItem = useCallback((id: string, updates: Partial<typeof mediaItems[0]>) => {
+    updateContent("_mediaItems", mediaItems.map(m => m.id === id ? { ...m, ...updates } : m));
+  }, [mediaItems, updateContent]);
+
+  const removeMediaItem = useCallback((id: string) => {
+    updateContent("_mediaItems", mediaItems.filter(m => m.id !== id));
+    setSelectedMedia(null);
+  }, [mediaItems, updateContent]);
+
+  // Paste handler
+  useEffect(() => {
+    if (!editable) return;
+    const handlePaste = async (e: ClipboardEvent) => {
+      const items = e.clipboardData?.items;
+      if (!items) return;
+      for (const item of Array.from(items)) {
+        if (item.type.startsWith("image/") || item.type.startsWith("video/")) {
+          e.preventDefault();
+          const file = item.getAsFile();
+          if (file) await uploadMediaFile(file);
+          return;
+        }
+      }
+    };
+    document.addEventListener("paste", handlePaste);
+    return () => document.removeEventListener("paste", handlePaste);
+  }, [editable, uploadMediaFile]);
+
   return (
-    <div style={wrapperStyle}>
+    <div style={wrapperStyle} ref={wrapperRef} onClick={() => setSelectedMedia(null)}>
       {renderSlide()}
+
+      {/* Media items overlay */}
+      {mediaItems.map((item) => (
+        <DraggableMedia
+          key={item.id}
+          item={item}
+          scale={scale}
+          editable={editable}
+          selected={selectedMedia === item.id}
+          onSelect={() => setSelectedMedia(item.id)}
+          onUpdate={(updates) => updateMediaItem(item.id, updates)}
+          onRemove={() => removeMediaItem(item.id)}
+        />
+      ))}
+
       {/* Extra text blocks overlay */}
       {extraTexts.map((block) => (
         <DraggableTextBlock
@@ -621,31 +704,69 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
           onRemove={() => removeExtraText(block.id)}
         />
       ))}
-      {/* Add text button */}
+
+      {/* Edit controls */}
       {editable && (
-        <button
-          onClick={addExtraText}
+        <div
           style={{
             position: "absolute",
             bottom: 8,
             right: 8,
             display: "flex",
-            alignItems: "center",
             gap: 4,
-            background: "rgba(10,25,49,0.85)",
-            color: "#fff",
-            border: "none",
-            borderRadius: 6,
-            padding: "6px 10px",
-            fontSize: 12,
-            cursor: "pointer",
             zIndex: 20,
           }}
-          title="Adicionar texto"
         >
-          <Type size={14} />
-          <span>Adicionar texto</span>
-        </button>
+          <button
+            onClick={(e) => { e.stopPropagation(); fileInputRef.current?.click(); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(10,25,49,0.85)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+            title="Adicionar imagem/vídeo (ou cole com Ctrl+V)"
+          >
+            <ImagePlus size={14} />
+            <span>Mídia</span>
+          </button>
+          <input
+            ref={fileInputRef}
+            type="file"
+            accept="image/*,video/*"
+            style={{ display: "none" }}
+            onChange={(e) => {
+              const file = e.target.files?.[0];
+              if (file) uploadMediaFile(file);
+              e.target.value = "";
+            }}
+          />
+          <button
+            onClick={(e) => { e.stopPropagation(); addExtraText(); }}
+            style={{
+              display: "flex",
+              alignItems: "center",
+              gap: 4,
+              background: "rgba(10,25,49,0.85)",
+              color: "#fff",
+              border: "none",
+              borderRadius: 6,
+              padding: "6px 10px",
+              fontSize: 12,
+              cursor: "pointer",
+            }}
+            title="Adicionar texto"
+          >
+            <Type size={14} />
+            <span>Texto</span>
+          </button>
+        </div>
       )}
     </div>
   );
@@ -782,6 +903,186 @@ function DraggableTextBlock({
           whiteSpace: "pre-wrap",
         }}
       />
+    </div>
+  );
+}
+
+// Draggable media item component
+function DraggableMedia({
+  item,
+  scale,
+  editable,
+  selected,
+  onSelect,
+  onUpdate,
+  onRemove,
+}: {
+  item: { id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number };
+  scale: number;
+  editable?: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<{ x: number; y: number; width: number; height: number }>) => void;
+  onRemove: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const resizing = useRef(false);
+  const startRef = useRef({ x: 0, y: 0, itemX: 0, itemY: 0, itemW: 0, itemH: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect();
+    dragging.current = true;
+    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      const dx = (ev.clientX - startRef.current.x) / scale;
+      const dy = (ev.clientY - startRef.current.y) / scale;
+      onUpdate({
+        x: Math.max(0, Math.round(startRef.current.itemX + dx)),
+        y: Math.max(0, Math.round(startRef.current.itemY + dy)),
+      });
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const handleResizeDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizing.current = true;
+    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizing.current) return;
+      const dx = (ev.clientX - startRef.current.x) / scale;
+      const dy = (ev.clientY - startRef.current.y) / scale;
+      onUpdate({
+        width: Math.max(50, Math.round(startRef.current.itemW + dx)),
+        height: Math.max(50, Math.round(startRef.current.itemH + dy)),
+      });
+    };
+    const onUp = () => {
+      resizing.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onMouseDown={handleMouseDown}
+      style={{
+        position: "absolute",
+        left: item.x * scale,
+        top: item.y * scale,
+        width: item.width * scale,
+        height: item.height * scale,
+        zIndex: 10,
+        cursor: editable ? "move" : "default",
+        outline: selected && editable ? `${2 * scale}px solid #C81E1E` : "none",
+        borderRadius: 4 * scale,
+        overflow: "hidden",
+      }}
+    >
+      {item.type === "image" ? (
+        <img
+          src={item.url}
+          alt=""
+          draggable={false}
+          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+        />
+      ) : (
+        <video
+          src={item.url}
+          muted
+          loop
+          autoPlay
+          playsInline
+          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+        />
+      )}
+
+      {/* Play icon for video */}
+      {item.type === "video" && !editable && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.15)" }}>
+          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: "50%", padding: 8, display: "flex" }}>
+            <Play size={20} color="#0A1931" style={{ fill: "#0A1931" }} />
+          </div>
+        </div>
+      )}
+
+      {/* Controls when selected */}
+      {selected && editable && (
+        <>
+          {/* Remove button */}
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            style={{
+              position: "absolute",
+              top: -8 * scale,
+              right: -8 * scale,
+              width: 20 * scale,
+              height: 20 * scale,
+              borderRadius: "50%",
+              background: "#DC2626",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 50,
+            }}
+          >
+            <X size={12 * scale} />
+          </button>
+
+          {/* Move handle */}
+          <div style={{
+            position: "absolute",
+            top: -12 * scale,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#C81E1E",
+            borderRadius: 999,
+            padding: 2 * scale,
+            display: "flex",
+          }}>
+            <Move size={10 * scale} color="#fff" />
+          </div>
+
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleResizeDown}
+            style={{
+              position: "absolute",
+              bottom: -4 * scale,
+              right: -4 * scale,
+              width: 14 * scale,
+              height: 14 * scale,
+              background: "#C81E1E",
+              borderRadius: 2 * scale,
+              cursor: "se-resize",
+              zIndex: 50,
+            }}
+          />
+        </>
+      )}
     </div>
   );
 }
