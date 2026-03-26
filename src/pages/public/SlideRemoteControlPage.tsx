@@ -197,11 +197,11 @@ export default function SlideRemoteControlPage() {
       {/* Speaker notes - PROMINENT, right after header */}
       {showNotes && (
         <div className="px-4 pt-2 pb-1">
-          <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-5 max-h-[40vh] overflow-y-auto">
+        <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-6 max-h-[55vh] overflow-y-auto">
             {speakerNotes ? (
-              <p className="text-white/90 text-base leading-relaxed whitespace-pre-wrap font-medium">{speakerNotes}</p>
+              <p className="text-white text-xl leading-relaxed whitespace-pre-wrap font-semibold">{speakerNotes}</p>
             ) : (
-              <p className="text-white/30 text-sm italic text-center">Sem anotações para este slide</p>
+              <p className="text-white/30 text-lg italic text-center">Sem anotações para este slide</p>
             )}
           </div>
         </div>
