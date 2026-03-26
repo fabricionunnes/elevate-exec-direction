@@ -89,9 +89,48 @@ export default function PublicPresentationPage() {
     return () => window.removeEventListener("resize", update);
   }, [loading]);
 
-  // Keyboard nav
-  const goNext = useCallback(() => setCurrentIndex((i) => Math.min(i + 1, slides.length - 1)), [slides.length]);
-  const goPrev = useCallback(() => setCurrentIndex((i) => Math.max(i - 1, 0)), []);
+  // Step-by-step bullet animation
+  const [visibleBullets, setVisibleBullets] = useState(0);
+
+  const getBulletCount = useCallback((slide: SlideItem) => {
+    const content = slide?.content || {};
+    if (content.bullets?.length) return content.bullets.length;
+    if (content.framework_steps?.length) return content.framework_steps.length;
+    return 0;
+  }, []);
+
+  // Reset visible bullets when slide changes
+  useEffect(() => {
+    setVisibleBullets(0);
+  }, [currentIndex]);
+
+  const goNext = useCallback(() => {
+    const current = slides[currentIndex];
+    const totalBullets = getBulletCount(current);
+    if (totalBullets > 0 && visibleBullets < totalBullets) {
+      setVisibleBullets((v) => v + 1);
+    } else {
+      if (currentIndex < slides.length - 1) {
+        setCurrentIndex((i) => i + 1);
+      }
+    }
+  }, [slides, currentIndex, visibleBullets, getBulletCount]);
+
+  const goPrev = useCallback(() => {
+    const current = slides[currentIndex];
+    const totalBullets = getBulletCount(current);
+    if (visibleBullets > 0) {
+      setVisibleBullets((v) => v - 1);
+    } else {
+      if (currentIndex > 0) {
+        setCurrentIndex((i) => i - 1);
+        // Show all bullets of previous slide
+        const prevSlide = slides[currentIndex - 1];
+        const prevBullets = getBulletCount(prevSlide);
+        setTimeout(() => setVisibleBullets(prevBullets), 50);
+      }
+    }
+  }, [slides, currentIndex, visibleBullets, getBulletCount]);
 
   const toggleFullscreen = useCallback(() => {
     if (!document.fullscreenElement) {
@@ -112,11 +151,10 @@ export default function PublicPresentationPage() {
       if (e.key === "ArrowRight" || e.key === " ") { e.preventDefault(); goNext(); }
       if (e.key === "ArrowLeft") { e.preventDefault(); goPrev(); }
       if (e.key === "f" || e.key === "F") { e.preventDefault(); toggleFullscreen(); }
-      if (e.key === "Escape" && isFullscreen) { /* browser handles exit */ }
     };
     window.addEventListener("keydown", handler);
     return () => window.removeEventListener("keydown", handler);
-  }, [goNext, goPrev, toggleFullscreen, isFullscreen]);
+  }, [goNext, goPrev, toggleFullscreen]);
 
   // Start remote control
   const startRemote = async () => {
