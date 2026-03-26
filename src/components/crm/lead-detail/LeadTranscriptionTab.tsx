@@ -267,7 +267,7 @@ export const LeadTranscriptionTab = ({
                       className="min-h-[300px] resize-none font-mono text-sm"
                     />
                   ) : (
-                    <div className="prose prose-sm dark:prose-invert max-w-none bg-background rounded-lg p-4 border">
+                    <div className="prose prose-sm dark:prose-invert max-w-none bg-background rounded-lg p-5 border [&>h2]:mt-6 [&>h2]:mb-3 [&>ul]:mb-4 [&>p]:mb-3 [&>blockquote]:mb-4 [&>ul>li]:mb-1.5">
                       <ReactMarkdown>{generatedBriefing}</ReactMarkdown>
                     </div>
                   )}
