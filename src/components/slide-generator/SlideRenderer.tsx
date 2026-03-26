@@ -1180,7 +1180,7 @@ function DraggableMedia({
           style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
         />
       ) : (
-        <video
+        ref={videoRef}
           src={item.url}
           muted={!!editable}
           loop
