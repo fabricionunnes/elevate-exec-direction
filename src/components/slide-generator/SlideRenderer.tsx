@@ -214,6 +214,22 @@ function EditableBullets({
     onChange(updated);
   };
 
+  const removeBullet = (index: number) => {
+    onChange(bullets.filter((_, i) => i !== index));
+  };
+
+  const moveBullet = (index: number, direction: -1 | 1) => {
+    const newIndex = index + direction;
+    if (newIndex < 0 || newIndex >= bullets.length) return;
+    const updated = [...bullets];
+    [updated[index], updated[newIndex]] = [updated[newIndex], updated[index]];
+    onChange(updated);
+  };
+
+  const addBullet = () => {
+    onChange([...bullets, "Novo tópico"]);
+  };
+
   const showAll = visibleCount === undefined || visibleCount < 0;
 
   return (
@@ -230,7 +246,9 @@ function EditableBullets({
               opacity: isVisible ? 1 : 0,
               transform: isVisible ? "translateY(0)" : "translateY(20px)",
               transition: "opacity 0.5s ease, transform 0.5s ease",
+              position: "relative",
             }}
+            className="group"
           >
             {bulletStyle === "dot" && (
               <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
@@ -247,12 +265,77 @@ function EditableBullets({
               value={bullet}
               onChange={(val) => handleBulletChange(i, val)}
               editable={editable}
-              style={{ fontSize, lineHeight: 1.4, color: colors.text }}
+              style={{ fontSize, lineHeight: 1.4, color: colors.text, flex: 1 }}
               onFontSizeChange={onFontSizeChange}
             />
+            {editable && (
+              <div
+                style={{
+                  display: "flex",
+                  gap: 2,
+                  alignItems: "center",
+                  opacity: 0,
+                  transition: "opacity 0.2s",
+                  position: "absolute",
+                  right: -80,
+                  top: 0,
+                }}
+                className="group-hover:!opacity-100"
+              >
+                {i > 0 && (
+                  <button
+                    onClick={() => moveBullet(i, -1)}
+                    style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+                    title="Mover para cima"
+                  >
+                    <ArrowRight size={14} style={{ transform: "rotate(-90deg)" }} />
+                  </button>
+                )}
+                {i < bullets.length - 1 && (
+                  <button
+                    onClick={() => moveBullet(i, 1)}
+                    style={{ background: "rgba(10,25,49,0.8)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+                    title="Mover para baixo"
+                  >
+                    <ArrowRight size={14} style={{ transform: "rotate(90deg)" }} />
+                  </button>
+                )}
+                <button
+                  onClick={() => removeBullet(i)}
+                  style={{ background: "rgba(200,30,30,0.9)", border: "none", borderRadius: 4, padding: 4, cursor: "pointer", display: "flex", color: "#fff" }}
+                  title="Remover tópico"
+                >
+                  <Trash2 size={14} />
+                </button>
+              </div>
+            )}
           </div>
         );
       })}
+      {editable && (
+        <button
+          onClick={addBullet}
+          style={{
+            display: "flex",
+            alignItems: "center",
+            gap: 8,
+            background: "none",
+            border: "2px dashed rgba(0,0,0,0.15)",
+            borderRadius: 8,
+            padding: "12px 16px",
+            cursor: "pointer",
+            color: colors.accent,
+            fontSize: 16,
+            fontWeight: 600,
+            opacity: 0.6,
+            transition: "opacity 0.2s",
+          }}
+          onMouseEnter={(e) => (e.currentTarget.style.opacity = "1")}
+          onMouseLeave={(e) => (e.currentTarget.style.opacity = "0.6")}
+        >
+          <Plus size={16} /> Adicionar tópico
+        </button>
+      )}
     </div>
   );
 }
