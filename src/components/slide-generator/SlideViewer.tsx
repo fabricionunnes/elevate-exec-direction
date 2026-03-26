@@ -523,7 +523,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     variant="outline"
                     size="sm"
                     onClick={() => {
-                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`;
+                      const url = `https://elevate-exec-direction.lovable.app/#/slides/${shareToken}`;
                       navigator.clipboard.writeText(url);
                       toast.success("Link copiado!");
                     }}
