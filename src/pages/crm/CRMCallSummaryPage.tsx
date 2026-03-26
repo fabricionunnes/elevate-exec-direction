@@ -50,6 +50,7 @@ const CRMCallSummaryPage = () => {
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
   const [selectedTranscription, setSelectedTranscription] = useState<TranscriptionRow | null>(null);
+  const [copied, setCopied] = useState(false);
   const [activeTab, setActiveTab] = useState("all");
   const [closers, setClosers] = useState<CloserOption[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string>("all");
