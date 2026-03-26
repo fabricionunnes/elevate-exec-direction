@@ -72,6 +72,9 @@ const getNavTabs = (role: string | null) => {
   if (role === "master" || role === "head_comercial") {
     tabs.push({ title: "Head Comercial", href: "/crm/head" });
   }
+  if (role === "master" || role === "admin" || role === "head_comercial") {
+    tabs.push({ title: "Resumo Calls", href: "/crm/call-summary" });
+  }
   return tabs;
 };
 
