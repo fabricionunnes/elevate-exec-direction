@@ -8,7 +8,9 @@ import { Label } from "@/components/ui/label";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { toast } from "sonner";
-import { Copy, Check, ExternalLink, Plus, FileText, Trash2 } from "lucide-react";
+import { Copy, Check, ExternalLink, Plus, FileText, Trash2, QrCode, Download } from "lucide-react";
+import QRCodeLib from "qrcode";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { PipelineFormQuestionsManager } from "./PipelineFormQuestionsManager";
 
