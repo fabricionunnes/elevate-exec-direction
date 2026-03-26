@@ -1252,12 +1252,13 @@ function DraggableMedia({
 
           <div
             onMouseDown={handleResizeDown}
+            onTouchStart={handleResizeTouchStart}
             style={{
               position: "absolute",
               bottom: -4 * scale,
               right: -4 * scale,
-              width: 14 * scale,
-              height: 14 * scale,
+              width: 18 * scale,
+              height: 18 * scale,
               background: "#C81E1E",
               borderRadius: 2 * scale,
               cursor: "se-resize",
