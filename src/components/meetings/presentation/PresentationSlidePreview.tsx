@@ -1,5 +1,5 @@
 import { cn } from "@/lib/utils";
-import type { PresentationSlide, SlideContent } from "./types";
+import type { PresentationSlide, SlideContent, SlideMediaItem } from "./types";
 import { 
   MessageSquare, 
   Lightbulb, 
