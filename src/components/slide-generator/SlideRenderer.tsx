@@ -1150,8 +1150,17 @@ function DraggableMedia({
           loop
           autoPlay
           playsInline
-          controls={!editable}
-          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: editable ? "none" : "auto" }}
+          preload="metadata"
+          controls
+          onLoadedData={() => console.log("Video rendered:", item.url)}
+          onError={(event) => console.error("Video render error:", item.url, event.currentTarget.error)}
+          style={{
+            width: "100%",
+            height: "100%",
+            objectFit: "contain",
+            background: "#111827",
+            pointerEvents: editable ? "none" : "auto"
+          }}
         />
       )}
 

@@ -153,6 +153,35 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     return () => window.removeEventListener("resize", updateScale);
   }, [showGrid, editing, presenterMode]);
 
+  const persistSlideContentImmediately = useCallback(async (slideId: string, content: any) => {
+    const { error } = await supabase
+      .from("slide_items")
+      .update({ content } as any)
+      .eq("id", slideId);
+
+    if (error) {
+      console.error("Failed to persist slide media:", error);
+      toast.error("O vídeo foi enviado, mas não consegui salvar no slide.");
+      return;
+    }
+
+    setPendingChanges((prev) => {
+      const current = prev[slideId];
+      if (!current) return prev;
+
+      const next = { ...prev };
+      const { content: _ignored, ...rest } = current;
+
+      if (Object.keys(rest).length === 0) {
+        delete next[slideId];
+      } else {
+        next[slideId] = rest;
+      }
+
+      return next;
+    });
+  }, []);
+
   const handleSlideUpdate = (slideId: string, update: { title?: string; subtitle?: string; content?: any; speaker_notes?: string | null }) => {
     // Update local state immediately
     setSlides(prev => prev.map(s => {
@@ -165,6 +194,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
         speaker_notes: update.speaker_notes !== undefined ? update.speaker_notes : s.speaker_notes,
       };
     }));
+
     // Track pending changes
     setPendingChanges(prev => ({
       ...prev,
@@ -176,6 +206,10 @@ export function SlideViewer({ presentationId, onBack }: Props) {
         ...(update.speaker_notes !== undefined && { speaker_notes: update.speaker_notes }),
       },
     }));
+
+    if (update.content && Array.isArray(update.content._mediaItems)) {
+      void persistSlideContentImmediately(slideId, update.content);
+    }
   };
 
   const handleSaveAll = async () => {
