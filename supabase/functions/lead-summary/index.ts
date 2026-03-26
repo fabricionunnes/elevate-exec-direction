@@ -189,20 +189,24 @@ ${JSON.stringify(leadContext, null, 2)}
 IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
     } else if (type === "guide") {
       systemPrompt = `Você é um coach de vendas especialista no roteiro de 12 fases de uma ligação comercial. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
-      userPrompt = `Com base no histórico completo do lead abaixo, gere um guia de atendimento personalizado em JSON:
+      userPrompt = `Com base no histórico completo do lead abaixo, gere um guia de atendimento personalizado em JSON.
+
+IMPORTANTE: O array "recommended_phases" DEVE conter EXATAMENTE as 12 fases, sempre. Cada fase deve ter insights e scripts personalizados com base nos dados do lead. Para fases já concluídas, marque is_completed como true e ainda assim forneça insights úteis. Para fases futuras, gere scripts e dicas baseados no que sabemos do cliente para que o closer esteja preparado.
+
+Estrutura do JSON:
 {
   "current_phase": número de 1 a 12,
   "current_phase_name": "nome da fase",
   "briefing_alerts": ["lista de 3-5 alertas pré-reunião baseados no histórico"],
   "recommended_phases": [
     {
-      "phase_number": número,
+      "phase_number": número (de 1 a 12, TODAS as fases),
       "phase_name": "nome",
       "objective": "objetivo da fase",
-      "ai_insights": ["insights personalizados da IA baseados nos dados do lead"],
-      "suggested_scripts": ["scripts sugeridos usando dados reais do lead"],
-      "tips": ["dicas específicas para este lead"],
-      "is_completed": boolean (baseado no histórico)
+      "ai_insights": ["insights personalizados da IA baseados nos dados do lead - o que já sabemos, o que falta descobrir"],
+      "suggested_scripts": ["scripts sugeridos usando dados reais do lead (nome, empresa, segmento, dor)"],
+      "tips": ["dicas específicas para este lead nesta fase"],
+      "is_completed": boolean (baseado no histórico - true se já foi abordado em reuniões anteriores)
     }
   ],
   "dont_do": ["lista de 3-5 coisas que NÃO fazer neste atendimento, baseado no histórico"],
@@ -214,7 +218,7 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
   }
 }
 
-Roteiro de referência (12 fases):
+Roteiro de referência (12 fases — GERE TODAS):
 Fase 1 - Rapport: criar conexão genuína, espelhamento, correspondência de comportamento
 Fase 2 - Expectativas: alinhar formato da ligação, assumir controle, analogia do médico
 Fase 3 - Tomadores de decisão: identificar quem fecha, atenção ao Assassino Silencioso
@@ -231,7 +235,7 @@ Fase 12 - Preço: NUNCA falar o preço sem ser solicitado
 Dados do lead:
 ${JSON.stringify(leadContext, null, 2)}
 
-IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown.`;
+IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. O array recommended_phases DEVE ter exatamente 12 itens.`;
     } else if (type === "followup") {
       systemPrompt = `Você é um estrategista comercial especialista em follow-up e fechamento de vendas. Responda APENAS em JSON válido, sem markdown, sem code blocks.`;
       userPrompt = `Com base no histórico completo do lead abaixo, analise todas as notas, atividades e reuniões para gerar um plano completo de follow-up. Identifique se o cliente mencionou alguma data específica para fechar/decidir.
