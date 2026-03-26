@@ -707,6 +707,8 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
   // Media items overlay
   const mediaItems: Array<{ id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number; isUploading?: boolean }> = content._mediaItems || [];
+  const mediaItemsRef = useRef(mediaItems);
+  mediaItemsRef.current = mediaItems;
   const [selectedMedia, setSelectedMedia] = useState<string | null>(null);
   const fileInputRef = useRef<HTMLInputElement>(null);
   const wrapperRef = useRef<HTMLDivElement>(null);
@@ -731,11 +733,12 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   };
 
   const replaceMediaItem = useCallback((id: string, nextItem: Partial<typeof mediaItems[0]>) => {
+    const current = mediaItemsRef.current;
     updateContent(
       "_mediaItems",
-      mediaItems.map((media) => (media.id === id ? { ...media, ...nextItem } : media))
+      current.map((media) => (media.id === id ? { ...media, ...nextItem } : media))
     );
-  }, [mediaItems, updateContent]);
+  }, [updateContent]);
 
   // Media functions
   const uploadMediaFile = useCallback(async (file: File) => {
@@ -764,7 +767,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       isUploading: true,
     };
 
-    updateContent("_mediaItems", [...mediaItems, tempItem]);
+    updateContent("_mediaItems", [...mediaItemsRef.current, tempItem]);
     setSelectedMedia(tempId);
     toast.info("Enviando arquivo...");
 
@@ -780,7 +783,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
 
       if (uploadErr) {
         console.error("Upload error:", uploadErr);
-        updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+        updateContent("_mediaItems", mediaItemsRef.current.filter((media) => media.id !== tempId));
         URL.revokeObjectURL(previewUrl);
         toast.error(`Erro no upload: ${uploadErr.message}`);
         return;
@@ -798,24 +801,25 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       toast.success("Mídia adicionada!");
     } catch (err: any) {
       console.error("Media upload failed:", err);
-      updateContent("_mediaItems", mediaItems.filter((media) => media.id !== tempId));
+      updateContent("_mediaItems", mediaItemsRef.current.filter((media) => media.id !== tempId));
       URL.revokeObjectURL(previewUrl);
       toast.error(`Erro ao enviar arquivo: ${err?.message || "erro desconhecido"}`);
     }
-  }, [mediaItems, replaceMediaItem, updateContent]);
+  }, [replaceMediaItem, updateContent]);
 
   const updateMediaItem = useCallback((id: string, updates: Partial<typeof mediaItems[0]>) => {
     updateContent("_mediaItems", mediaItems.map(m => m.id === id ? { ...m, ...updates } : m));
   }, [mediaItems, updateContent]);
 
   const removeMediaItem = useCallback((id: string) => {
-    const itemToRemove = mediaItems.find((media) => media.id === id);
+    const current = mediaItemsRef.current;
+    const itemToRemove = current.find((media) => media.id === id);
     if (itemToRemove?.url?.startsWith("blob:")) {
       URL.revokeObjectURL(itemToRemove.url);
     }
-    updateContent("_mediaItems", mediaItems.filter(m => m.id !== id));
+    updateContent("_mediaItems", current.filter(m => m.id !== id));
     setSelectedMedia(null);
-  }, [mediaItems, updateContent]);
+  }, [updateContent]);
 
   // Paste handler
   useEffect(() => {
