@@ -195,21 +195,24 @@ export default function PublicPresentationPage() {
           if (payload.new.current_slide !== undefined) {
             setCurrentIndex(payload.new.current_slide);
           }
+          if (payload.new.current_step !== undefined) {
+            setVisibleBullets(payload.new.current_step);
+          }
         }
       )
       .subscribe();
     return () => { supabase.removeChannel(channel); };
   }, [remoteCode]);
 
-  // Sync remote session when slide changes
+  // Sync remote session when slide/step changes
   useEffect(() => {
     if (!remoteCode) return;
     supabase
       .from("slide_remote_sessions")
-      .update({ current_slide: currentIndex, updated_at: new Date().toISOString() } as any)
+      .update({ current_slide: currentIndex, current_step: visibleBullets, updated_at: new Date().toISOString() } as any)
       .eq("session_code", remoteCode)
       .then();
-  }, [currentIndex, remoteCode]);
+  }, [currentIndex, visibleBullets, remoteCode]);
 
   if (loading) {
     return (

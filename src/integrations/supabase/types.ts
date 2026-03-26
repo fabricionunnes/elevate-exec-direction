@@ -25419,6 +25419,7 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           current_slide: number | null
+          current_step: number | null
           id: string
           is_active: boolean | null
           presentation_id: string
@@ -25429,6 +25430,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           current_slide?: number | null
+          current_step?: number | null
           id?: string
           is_active?: boolean | null
           presentation_id: string
@@ -25439,6 +25441,7 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           current_slide?: number | null
+          current_step?: number | null
           id?: string
           is_active?: boolean | null
           presentation_id?: string
