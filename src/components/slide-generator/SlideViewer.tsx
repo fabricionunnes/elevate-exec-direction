@@ -314,6 +314,39 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     }
   };
 
+  const sensors = useSensors(
+    useSensor(PointerSensor, { activationConstraint: { distance: 8 } }),
+    useSensor(KeyboardSensor, { coordinateGetter: sortableKeyboardCoordinates })
+  );
+
+  const handleDragEnd = (event: any) => {
+    const { active, over } = event;
+    if (active && over && active.id !== over.id) {
+      handleReorderSlides(active.id as string, over.id as string);
+    }
+  };
+
+  const handleReorderSlides = async (activeId: string, overId: string) => {
+    const oldIndex = slides.findIndex((s) => s.id === activeId);
+    const newIndex = slides.findIndex((s) => s.id === overId);
+    if (oldIndex === -1 || newIndex === -1 || oldIndex === newIndex) return;
+
+    const reordered = arrayMove(slides, oldIndex, newIndex);
+    setSlides(reordered);
+
+    try {
+      await Promise.all(
+        reordered.map((s, i) =>
+          supabase.from("slide_items").update({ sort_order: i, slide_number: i + 1 } as any).eq("id", s.id)
+        )
+      );
+      toast.success("Ordem atualizada");
+    } catch {
+      toast.error("Erro ao reordenar");
+      loadData();
+    }
+  };
+
   // Generate public share link
   const generateShareLink = async () => {
     try {
