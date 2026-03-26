@@ -147,18 +147,21 @@ export function useLeadSummary(leadId: string) {
     }, 30000); // Poll every 30 seconds
 
     return () => clearInterval(interval);
-  }, [leadId, overviewData, guideData, followupData, fetchSummary]);
+  }, [leadId, overviewData, guideData, followupData, analysisData, fetchSummary]);
 
   return {
     overviewData,
     guideData,
     followupData,
+    analysisData,
     loadingOverview,
     loadingGuide,
     loadingFollowup,
+    loadingAnalysis,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
     fetchFollowup: (force?: boolean) => fetchSummary("followup", force),
+    fetchAnalysis: (force?: boolean, transcriptionId?: string) => fetchSummary("analysis", force, transcriptionId ? { transcriptionId } : undefined),
   };
 }
