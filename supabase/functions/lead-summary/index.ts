@@ -57,6 +57,15 @@ serve(async (req) => {
       .eq("lead_id", leadId)
       .order("event_date", { ascending: false });
 
+    // Fetch transcriptions for context
+    const { data: transcriptions } = await supabase
+      .from("crm_transcriptions")
+      .select("title, transcription_text, summary, ai_analysis, created_at")
+      .eq("lead_id", leadId)
+      .not("transcription_text", "is", null)
+      .order("created_at", { ascending: false })
+      .limit(5);
+
     // Fetch all stages from same pipeline for journey
     let pipelineStages: any[] = [];
     if (lead.pipeline_id) {
@@ -139,6 +148,13 @@ serve(async (req) => {
         credited_to: m.credited?.name,
       })),
       last_activity: lead.last_activity_at,
+      transcriptions: (transcriptions || []).map((t: any) => ({
+        title: t.title,
+        summary: t.summary,
+        ai_analysis: t.ai_analysis,
+        content: (t.transcription_text || "").substring(0, 3000),
+        date: t.created_at,
+      })),
     };
 
     let systemPrompt = "";
