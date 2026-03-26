@@ -90,7 +90,8 @@ const CRMCallSummaryPage = () => {
         .from("crm_transcriptions")
         .select(`
           id, title, transcription_text, ai_analysis, summary, source,
-          duration_seconds, created_at, recorded_at, created_by,
+          source_meeting_url, duration_seconds, created_at, recorded_at,
+          created_by, speakers,
           lead:crm_leads(id, name, company)
         `)
         .order("created_at", { ascending: false })
