@@ -49,6 +49,27 @@ export const LeadTranscriptionTab = ({
 
     setIsGenerating(true);
     try {
+      // 1. Save the transcription to crm_transcriptions
+      const { data: savedTranscription, error: saveError } = await supabase
+        .from("crm_transcriptions")
+        .insert({
+          lead_id: leadId,
+          title: `Transcrição - ${leadName || "Reunião"}`,
+          transcription_text: transcription.trim(),
+          source: "manual",
+        })
+        .select("id")
+        .single();
+
+      if (saveError) {
+        console.error("Error saving transcription:", saveError);
+        // Continue even if save fails - still generate briefing
+      } else {
+        // Refresh the transcriptions list
+        refetch();
+      }
+
+      // 2. Generate briefing from AI
       const { data, error } = await supabase.functions.invoke("generate-crm-briefing", {
         body: {
           transcription: transcription.trim(),
@@ -61,7 +82,19 @@ export const LeadTranscriptionTab = ({
 
       if (data?.briefing) {
         setGeneratedBriefing(data.briefing);
-        toast.success("Briefing gerado com sucesso!");
+
+        // 3. Update the saved transcription with the AI analysis
+        if (savedTranscription?.id) {
+          await supabase
+            .from("crm_transcriptions")
+            .update({
+              ai_analysis: data.briefing,
+              summary: data.briefing.substring(0, 500),
+            })
+            .eq("id", savedTranscription.id);
+        }
+
+        toast.success("Transcrição salva e briefing gerado!");
       } else {
         throw new Error("Briefing não retornado");
       }
