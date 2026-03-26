@@ -64,6 +64,12 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [slideViewScale, setSlideViewScale] = useState(0.45);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
+  const [remoteSessionCode, setRemoteSessionCode] = useState<string | null>(null);
+  const [remoteQrUrl, setRemoteQrUrl] = useState<string | null>(null);
+  const [shareQrUrl, setShareQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserRole = async () => {
