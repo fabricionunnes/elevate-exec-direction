@@ -58,6 +58,7 @@ const CRMMeetingsPage = () => {
   // Dialog state
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingActivity | null>(null);
   const [briefing, setBriefing] = useState("");
+  const [recordingUrl, setRecordingUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Selection state for bulk actions
