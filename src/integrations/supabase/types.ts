@@ -25360,7 +25360,9 @@ export type Database = {
           description: string | null
           duration_minutes: number | null
           id: string
+          is_public: boolean | null
           is_template: boolean | null
+          public_share_token: string | null
           slide_count: number | null
           staff_id: string | null
           status: string | null
@@ -25378,7 +25380,9 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          is_public?: boolean | null
           is_template?: boolean | null
+          public_share_token?: string | null
           slide_count?: number | null
           staff_id?: string | null
           status?: string | null
@@ -25396,7 +25400,9 @@ export type Database = {
           description?: string | null
           duration_minutes?: number | null
           id?: string
+          is_public?: boolean | null
           is_template?: boolean | null
+          public_share_token?: string | null
           slide_count?: number | null
           staff_id?: string | null
           status?: string | null
@@ -25407,6 +25413,47 @@ export type Database = {
           updated_at?: string | null
         }
         Relationships: []
+      }
+      slide_remote_sessions: {
+        Row: {
+          created_at: string | null
+          created_by: string | null
+          current_slide: number | null
+          id: string
+          is_active: boolean | null
+          presentation_id: string
+          session_code: string
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          created_by?: string | null
+          current_slide?: number | null
+          id?: string
+          is_active?: boolean | null
+          presentation_id: string
+          session_code: string
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          created_by?: string | null
+          current_slide?: number | null
+          id?: string
+          is_active?: boolean | null
+          presentation_id?: string
+          session_code?: string
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "slide_remote_sessions_presentation_id_fkey"
+            columns: ["presentation_id"]
+            isOneToOne: false
+            referencedRelation: "slide_presentations"
+            referencedColumns: ["id"]
+          },
+        ]
       }
       social_ads_briefing: {
         Row: {

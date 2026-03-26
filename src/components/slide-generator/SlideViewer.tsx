@@ -1,12 +1,20 @@
 import { useState, useEffect, useCallback, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
+import QRCodeLib from "qrcode";
 import {
   ArrowLeft, ChevronLeft, ChevronRight, Play, Download, Grid3X3,
-  Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check
+  Edit3, Trash2, Copy, Plus, Loader2, Save, X, Pencil, Check,
+  Share2, Link, Smartphone, QrCode
 } from "lucide-react";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import { SlideRenderer } from "./SlideRenderer";
 import { SlidePresenterMode } from "./SlidePresenterMode";
 import { SlidePDFExport } from "./SlidePDFExport";
@@ -56,6 +64,12 @@ export function SlideViewer({ presentationId, onBack }: Props) {
   const [slideViewScale, setSlideViewScale] = useState(0.45);
   const [currentUserId, setCurrentUserId] = useState<string | null>(null);
   const [isAdmin, setIsAdmin] = useState(false);
+  const [showShareDialog, setShowShareDialog] = useState(false);
+  const [shareToken, setShareToken] = useState<string | null>(null);
+  const [isPublic, setIsPublic] = useState(false);
+  const [remoteSessionCode, setRemoteSessionCode] = useState<string | null>(null);
+  const [remoteQrUrl, setRemoteQrUrl] = useState<string | null>(null);
+  const [shareQrUrl, setShareQrUrl] = useState<string | null>(null);
 
   useEffect(() => {
     const fetchUserRole = async () => {
@@ -91,8 +105,11 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       ]);
       if (presRes.error) throw presRes.error;
       if (slidesRes.error) throw slidesRes.error;
-      setPresentation(presRes.data as unknown as PresentationData);
+      const presData = presRes.data as any;
+      setPresentation(presData as unknown as PresentationData);
       setSlides((slidesRes.data as unknown as SlideItem[]) || []);
+      setShareToken(presData.public_share_token || null);
+      setIsPublic(presData.is_public || false);
     } catch (err) {
       console.error(err);
       toast.error("Erro ao carregar apresentação");
@@ -227,6 +244,114 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     }
   };
 
+  // Generate public share link
+  const generateShareLink = async () => {
+    try {
+      let token = shareToken;
+      if (!token) {
+        token = crypto.randomUUID().replace(/-/g, "").slice(0, 16);
+        await supabase
+          .from("slide_presentations")
+          .update({ public_share_token: token, is_public: true } as any)
+          .eq("id", presentationId);
+        setShareToken(token);
+        setIsPublic(true);
+      } else if (!isPublic) {
+        await supabase
+          .from("slide_presentations")
+          .update({ is_public: true } as any)
+          .eq("id", presentationId);
+        setIsPublic(true);
+      }
+      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
+      const url = `${baseUrl}#/slides/${token}`;
+      navigator.clipboard.writeText(url);
+      toast.success("Link copiado!");
+
+      const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
+      setShareQrUrl(qr);
+      setShowShareDialog(true);
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao gerar link");
+    }
+  };
+
+  // Start remote control session
+  const startRemoteSession = async () => {
+    try {
+      const code = Math.random().toString(36).substring(2, 8).toUpperCase();
+      const { data: { user } } = await supabase.auth.getUser();
+
+      const { error } = await supabase.from("slide_remote_sessions").insert({
+        presentation_id: presentationId,
+        session_code: code,
+        current_slide: currentIndex,
+        created_by: user?.id,
+      } as any);
+
+      if (error) throw error;
+
+      setRemoteSessionCode(code);
+      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
+      const url = `${baseUrl}#/slide-remote/${code}`;
+      const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
+      setRemoteQrUrl(qr);
+      setShowShareDialog(true);
+      toast.success("Sessão de controle remoto criada!");
+    } catch (err) {
+      console.error(err);
+      toast.error("Erro ao criar sessão remota");
+    }
+  };
+
+  // Listen for remote control commands
+  useEffect(() => {
+    if (!remoteSessionCode) return;
+    const channel = supabase
+      .channel(`presenter-${remoteSessionCode}`)
+      .on(
+        "postgres_changes",
+        {
+          event: "UPDATE",
+          schema: "public",
+          table: "slide_remote_sessions",
+          filter: `session_code=eq.${remoteSessionCode}`,
+        },
+        (payload: any) => {
+          if (payload.new.current_slide !== undefined) {
+            setCurrentIndex(payload.new.current_slide);
+          }
+        }
+      )
+      .subscribe();
+
+    return () => { supabase.removeChannel(channel); };
+  }, [remoteSessionCode]);
+
+  // Update remote session when slide changes locally (presenter side)
+  useEffect(() => {
+    if (!remoteSessionCode) return;
+    supabase
+      .from("slide_remote_sessions")
+      .update({ current_slide: currentIndex, updated_at: new Date().toISOString() } as any)
+      .eq("session_code", remoteSessionCode)
+      .then();
+  }, [currentIndex, remoteSessionCode]);
+
+  // Stop remote session on unmount
+  useEffect(() => {
+    return () => {
+      if (remoteSessionCode) {
+        supabase
+          .from("slide_remote_sessions")
+          .update({ is_active: false } as any)
+          .eq("session_code", remoteSessionCode)
+          .then();
+      }
+    };
+  }, [remoteSessionCode]);
+
   if (loading) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center">
@@ -355,10 +480,114 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">PDF</span>
               </Button>
+              <Button variant="ghost" size="sm" onClick={generateShareLink} className="gap-1.5">
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Compartilhar</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={startRemoteSession} className="gap-1.5">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Controle Remoto</span>
+              </Button>
             </>
           )}
         </div>
       </div>
+
+      {/* Share / Remote Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {remoteSessionCode ? (
+                <><Smartphone className="h-5 w-5" /> Controle Remoto</>
+              ) : (
+                <><Share2 className="h-5 w-5" /> Compartilhar Apresentação</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Public link */}
+            {shareToken && shareQrUrl && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Qualquer pessoa com o link pode visualizar a apresentação.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={`${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`}
+                    className="text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success("Link copiado!");
+                    }}
+                  >
+                    <Link className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <img src={shareQrUrl} alt="QR Code" className="w-48 h-48 rounded-lg border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.download = "apresentacao-qrcode.png";
+                      a.href = shareQrUrl;
+                      a.click();
+                    }}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Baixar QR Code
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Remote control */}
+            {remoteSessionCode && remoteQrUrl && (
+              <div className="space-y-3">
+                {shareToken && <div className="border-t pt-4" />}
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Controle pelo Celular</p>
+                    <p className="text-xs text-muted-foreground">
+                      Escaneie o QR Code no celular para controlar os slides remotamente.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="inline-block bg-muted rounded-lg px-4 py-2 mb-3">
+                    <span className="text-2xl font-mono font-bold tracking-widest">{remoteSessionCode}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <img src={remoteQrUrl} alt="QR Code Remoto" className="w-48 h-48 rounded-lg border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slide-remote/${remoteSessionCode}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success("Link do controle remoto copiado!");
+                    }}
+                  >
+                    <Link className="h-4 w-4 mr-2" />
+                    Copiar Link
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {editing ? (
         /* Edit Mode - Full slide list */
