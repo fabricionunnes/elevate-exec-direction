@@ -838,17 +838,16 @@ export function NfsePanel() {
       {/* Filter */}
       <div className="flex gap-3 items-center">
         <Label>Filtrar por empresa:</Label>
-        <Select value={selectedCompanyFilter} onValueChange={setSelectedCompanyFilter}>
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as empresas</SelectItem>
-            {onboardingCompanies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={selectedCompanyFilter}
+          onValueChange={setSelectedCompanyFilter}
+          options={[
+            { value: "all", label: "Todas as empresas" },
+            ...onboardingCompanies.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Empresa"
+          className="w-64"
+        />
       </div>
 
       {/* Records list */}
