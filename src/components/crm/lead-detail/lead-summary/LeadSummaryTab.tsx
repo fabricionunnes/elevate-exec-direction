@@ -15,6 +15,7 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
   const summary = useLeadSummary(leadId);
 
   useEffect(() => {
+    summary.setActiveTab(subTab as "overview" | "guide");
     if (subTab === "overview") summary.fetchOverview();
     if (subTab === "guide") summary.fetchGuide();
   }, [subTab]);
