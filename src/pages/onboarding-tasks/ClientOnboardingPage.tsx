@@ -1251,6 +1251,21 @@ const ClientOnboardingPage = () => {
               />
             </motion.div>
           )}
+
+          {activeView === "b2b_prospection" && (
+            <motion.div
+              key="b2b_prospection"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <div className="py-4">
+                <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+                  <B2BProspectionEmbed />
+                </Suspense>
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
