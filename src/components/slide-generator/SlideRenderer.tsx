@@ -1173,7 +1173,7 @@ function DraggableMedia({
       ) : (
         <video
           src={item.url}
-          muted
+          muted={!!editable}
           loop
           autoPlay
           playsInline
