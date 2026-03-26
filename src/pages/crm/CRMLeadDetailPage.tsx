@@ -1133,6 +1133,10 @@ export const CRMLeadDetailPage = () => {
           </TabsList>
         </div>
 
+        <TabsContent value="summary" className="flex-1 mt-0 overflow-hidden">
+          <LeadSummaryTab leadId={lead.id} leadName={lead.name} />
+        </TabsContent>
+
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
           <LeadActivitiesTab
             leadId={lead.id}
