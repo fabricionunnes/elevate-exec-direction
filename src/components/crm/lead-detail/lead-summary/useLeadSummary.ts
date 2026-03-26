@@ -63,9 +63,11 @@ export function useLeadSummary(leadId: string) {
   const [overviewData, setOverviewData] = useState<LeadSummaryData | null>(null);
   const [guideData, setGuideData] = useState<LeadSummaryData | null>(null);
   const [followupData, setFollowupData] = useState<LeadSummaryData | null>(null);
+  const [analysisData, setAnalysisData] = useState<LeadSummaryData | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [loadingFollowup, setLoadingFollowup] = useState(false);
+  const [loadingAnalysis, setLoadingAnalysis] = useState(false);
   const lastKnownUpdatedAt = useRef<string | null>(null);
   const activeTab = useRef<SummaryTabType | null>(null);
 
