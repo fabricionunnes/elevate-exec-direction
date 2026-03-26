@@ -812,13 +812,14 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
   }, [mediaItems, updateContent]);
 
   const removeMediaItem = useCallback((id: string) => {
-    const itemToRemove = mediaItems.find((media) => media.id === id);
+    const current = mediaItemsRef.current;
+    const itemToRemove = current.find((media) => media.id === id);
     if (itemToRemove?.url?.startsWith("blob:")) {
       URL.revokeObjectURL(itemToRemove.url);
     }
-    updateContent("_mediaItems", mediaItems.filter(m => m.id !== id));
+    updateContent("_mediaItems", current.filter(m => m.id !== id));
     setSelectedMedia(null);
-  }, [mediaItems, updateContent]);
+  }, [updateContent]);
 
   // Paste handler
   useEffect(() => {
