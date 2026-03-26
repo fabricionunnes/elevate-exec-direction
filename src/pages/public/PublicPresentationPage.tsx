@@ -197,6 +197,7 @@ export default function PublicPresentationPage() {
 
   return (
     <div
+      ref={fullscreenRef}
       className="min-h-screen bg-[#0A1931] flex flex-col select-none"
       onTouchStart={(e) => { touchRef.current = e.touches[0].clientX; }}
       onTouchEnd={(e) => {
@@ -205,21 +206,31 @@ export default function PublicPresentationPage() {
         if (dx > 50) goPrev();
       }}
     >
-      {/* Header */}
-      <div className="flex items-center justify-between px-3 py-1.5 bg-black/30">
-        <h1 className="text-white/80 text-xs font-medium truncate flex-1">{title}</h1>
-        <div className="flex items-center gap-1.5 ml-2">
-          <span className="text-white/50 text-xs">{currentIndex + 1}/{slides.length}</span>
-          <button
-            onClick={startRemote}
-            className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
-            title="Controle Remoto"
-          >
-            <Smartphone className="h-3 w-3" />
-            <span className="hidden sm:inline">Remoto</span>
-          </button>
+      {/* Header - hidden in fullscreen */}
+      {!isFullscreen && (
+        <div className="flex items-center justify-between px-3 py-1.5 bg-black/30">
+          <h1 className="text-white/80 text-xs font-medium truncate flex-1">{title}</h1>
+          <div className="flex items-center gap-1.5 ml-2">
+            <span className="text-white/50 text-xs">{currentIndex + 1}/{slides.length}</span>
+            <button
+              onClick={toggleFullscreen}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
+              title="Tela Cheia (F)"
+            >
+              <Maximize className="h-3 w-3" />
+              <span className="hidden sm:inline">Tela Cheia</span>
+            </button>
+            <button
+              onClick={startRemote}
+              className="flex items-center gap-1 px-2 py-1 rounded bg-white/10 hover:bg-white/20 text-white/70 hover:text-white text-[10px] transition-colors"
+              title="Controle Remoto"
+            >
+              <Smartphone className="h-3 w-3" />
+              <span className="hidden sm:inline">Remoto</span>
+            </button>
+          </div>
         </div>
-      </div>
+      )}
 
       {/* Remote control overlay */}
       {showRemote && remoteQr && remoteCode && (
