@@ -85,7 +85,7 @@ export function useLeadSummary(leadId: string) {
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
-        body: { leadId, type },
+        body: { leadId, type, ...extra },
       });
       if (error) throw error;
       const enrichedData = { ...data, _generated_at: new Date().toISOString() };
