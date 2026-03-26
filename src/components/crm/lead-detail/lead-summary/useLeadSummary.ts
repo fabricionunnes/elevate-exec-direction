@@ -57,27 +57,29 @@ export interface LeadSummaryData {
   _generated_at?: string; // timestamp of when this summary was generated
 }
 
+export type SummaryTabType = "overview" | "guide" | "followup";
+
 export function useLeadSummary(leadId: string) {
   const [overviewData, setOverviewData] = useState<LeadSummaryData | null>(null);
   const [guideData, setGuideData] = useState<LeadSummaryData | null>(null);
+  const [followupData, setFollowupData] = useState<LeadSummaryData | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingGuide, setLoadingGuide] = useState(false);
+  const [loadingFollowup, setLoadingFollowup] = useState(false);
   const lastKnownUpdatedAt = useRef<string | null>(null);
-  const activeTab = useRef<"overview" | "guide" | null>(null);
+  const activeTab = useRef<SummaryTabType | null>(null);
 
-  // Track which tab is active for auto-refresh
-  const setActiveTab = useCallback((tab: "overview" | "guide") => {
+  const setActiveTab = useCallback((tab: SummaryTabType) => {
     activeTab.current = tab;
   }, []);
 
-  const fetchSummary = useCallback(async (type: "overview" | "guide", force = false) => {
-    const isOverview = type === "overview";
-    const current = isOverview ? overviewData : guideData;
+  const fetchSummary = useCallback(async (type: SummaryTabType, force = false) => {
+    const dataMap = { overview: overviewData, guide: guideData, followup: followupData };
+    const current = dataMap[type];
     if (current && !force) return;
 
-    const setLoading = isOverview ? setLoadingOverview : setLoadingGuide;
-    const setData = isOverview ? setOverviewData : setGuideData;
-
+    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : setLoadingFollowup;
+    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : setFollowupData;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
