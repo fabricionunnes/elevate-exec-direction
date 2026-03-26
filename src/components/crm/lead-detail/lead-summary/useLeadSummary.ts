@@ -131,6 +131,7 @@ export function useLeadSummary(leadId: string) {
           setOverviewData(null);
           setGuideData(null);
           setFollowupData(null);
+          setAnalysisData(null);
 
           // Auto-regenerate the active tab
           const tab = activeTab.current;
