@@ -757,10 +757,10 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       id: tempId,
       type: isVideo ? "video" as const : "image" as const,
       url: previewUrl,
-      x: 100,
-      y: 100,
-      width: isVideo ? 640 : 400,
-      height: isVideo ? 360 : 300,
+      x: 50,
+      y: 50,
+      width: isVideo ? 280 : 200,
+      height: isVideo ? 160 : 150,
       isUploading: true,
     };
 
