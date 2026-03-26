@@ -2101,6 +2101,10 @@ const OnboardingTasksPage = () => {
                       Vagas (RH)
                     </DropdownMenuItem>
                   )}
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/b2b-prospection")}>
+                    <Target className="h-4 w-4 mr-2" />
+                    Prospecção B2B
+                  </DropdownMenuItem>
                   <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/slide-generator")}>
                     <Presentation className="h-4 w-4 mr-2" />
                     Gerador de Slides
@@ -2727,6 +2731,11 @@ const OnboardingTasksPage = () => {
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/automations")}>
                         <Zap className="h-4 w-4 mr-2" />
                         Central de Automações
+                      </DropdownMenuItem>
+
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/b2b-prospection")}>
+                        <Target className="h-4 w-4 mr-2" />
+                        Prospecção B2B
                       </DropdownMenuItem>
 
                       {/* UNV Academy & Tools */}

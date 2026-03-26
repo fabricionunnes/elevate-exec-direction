@@ -164,4 +164,5 @@ export const VIEW_TO_MENU_KEY: Record<string, ClientMenuKey> = {
   commercial_actions: CLIENT_MENU_KEYS.acoes_comerciais,
   meta_ads: CLIENT_MENU_KEYS.meta_ads,
   crm_comercial: CLIENT_MENU_KEYS.crm_comercial,
+  b2b_prospection: CLIENT_MENU_KEYS.prospeccao_b2b,
 };
