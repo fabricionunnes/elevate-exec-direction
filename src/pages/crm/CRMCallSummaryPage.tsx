@@ -439,175 +439,128 @@ const CRMCallSummaryPage = () => {
         ))}
       </Tabs>
 
-      {/* Detail Dialog */}
-      <Dialog open={!!selectedTranscription} onOpenChange={(open) => !open && setSelectedTranscription(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh] p-0 gap-0">
-          {selectedTranscription && (
-            <>
-              <DialogHeader className="p-5 pb-3 border-b">
-                <div className="flex items-start justify-between gap-3">
-                  <div className="flex-1 min-w-0">
-                    <DialogTitle className="text-base font-semibold truncate">
-                      {selectedTranscription.title}
-                    </DialogTitle>
-                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
-                      <span className="flex items-center gap-1">
-                        <Users className="h-3 w-3" />
-                        {selectedTranscription.staff_name}
-                      </span>
-                      <span>{format(new Date(selectedTranscription.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
-                      {selectedTranscription.duration_seconds && (
-                        <span>{formatDuration(selectedTranscription.duration_seconds)}</span>
-                      )}
-                      <Badge variant="secondary" className="text-[10px]">{selectedTranscription.source}</Badge>
-                      {selectedTranscription.ai_analysis && (
-                        <Badge variant="outline" className="text-[10px] text-primary border-primary/30">IA</Badge>
-                      )}
-                    </div>
-                    {selectedTranscription.lead && (
-                      <Button
-                        variant="link"
-                        size="sm"
-                        className="h-auto p-0 mt-1 text-xs text-primary gap-1"
-                        onClick={() => {
-                          setSelectedTranscription(null);
-                          navigate(`/crm/leads/${selectedTranscription.lead!.id}`);
-                        }}
-                      >
-                        <ExternalLink className="h-3 w-3" />
-                        Ver lead: {selectedTranscription.lead.name}
-                        {selectedTranscription.lead.company && ` (${selectedTranscription.lead.company})`}
-                      </Button>
-                    )}
-                  </div>
+      {/* Detail Dialog — same format as TranscriptionsList inside the Lead */}
+      <Dialog open={!!selectedTranscription} onOpenChange={() => setSelectedTranscription(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh]">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              <FileText className="h-5 w-5" />
+              {selectedTranscription?.title}
+            </DialogTitle>
+            <DialogDescription className="flex items-center gap-3 flex-wrap">
+              {selectedTranscription?.recorded_at && (
+                <span>
+                  {format(new Date(selectedTranscription.recorded_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
+              )}
+              {!selectedTranscription?.recorded_at && selectedTranscription?.created_at && (
+                <span>
+                  {format(new Date(selectedTranscription.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+                </span>
+              )}
+              {selectedTranscription?.duration_seconds && (
+                <span>• Duração: {formatDuration(selectedTranscription.duration_seconds)}</span>
+              )}
+              {selectedTranscription?.staff_name && (
+                <span>• Closer: {selectedTranscription.staff_name}</span>
+              )}
+            </DialogDescription>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Lead link */}
+            {selectedTranscription?.lead && (
+              <div className="flex items-center gap-2">
+                <Link
+                  to={`/crm/leads/${selectedTranscription.lead.id}`}
+                  onClick={() => setSelectedTranscription(null)}
+                >
+                  <Badge variant="outline" className="cursor-pointer hover:bg-muted">
+                    {selectedTranscription.lead.name}
+                    {selectedTranscription.lead.company && ` • ${selectedTranscription.lead.company}`}
+                  </Badge>
+                </Link>
+                {selectedTranscription.source_meeting_url && (
+                  <a
+                    href={selectedTranscription.source_meeting_url}
+                    target="_blank"
+                    rel="noopener noreferrer"
+                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
+                  >
+                    <ExternalLink className="h-3 w-3" />
+                    Ver reunião
+                  </a>
+                )}
+              </div>
+            )}
+
+            {/* Summary */}
+            {selectedTranscription?.summary && (
+              <div>
+                <h4 className="font-medium mb-1">Resumo</h4>
+                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
+                  {selectedTranscription.summary}
+                </p>
+              </div>
+            )}
+
+            {/* Speakers */}
+            {selectedTranscription?.speakers && selectedTranscription.speakers.length > 0 && (
+              <div>
+                <h4 className="font-medium mb-1">Participantes</h4>
+                <div className="flex flex-wrap gap-1">
+                  {selectedTranscription.speakers.map((speaker, idx) => (
+                    <Badge key={idx} variant="secondary">
+                      {speaker.name || `Participante ${idx + 1}`}
+                    </Badge>
+                  ))}
                 </div>
-              </DialogHeader>
+              </div>
+            )}
 
-              <ScrollArea className="max-h-[calc(85vh-120px)]">
-                <div className="p-5">
-                  <Tabs defaultValue="overview" className="space-y-3">
-                    <TabsList className="h-auto flex-wrap gap-1">
-                      <TabsTrigger value="overview" className="gap-1.5 text-xs">
-                        <BarChart3 className="h-3.5 w-3.5" />
-                        Visão Geral
-                      </TabsTrigger>
-                      <TabsTrigger value="guide" className="gap-1.5 text-xs">
-                        <BookOpen className="h-3.5 w-3.5" />
-                        Guia
-                      </TabsTrigger>
-                      <TabsTrigger value="followup" className="gap-1.5 text-xs">
-                        <RefreshCcw className="h-3.5 w-3.5" />
-                        Follow Up
-                      </TabsTrigger>
-                      <TabsTrigger value="analysis" className="gap-1.5 text-xs">
-                        <FileText className="h-3.5 w-3.5" />
-                        Análise
-                      </TabsTrigger>
-                    </TabsList>
-
-                    {/* Visão Geral */}
-                    <TabsContent value="overview" className="space-y-4 mt-2">
-                      <div className="grid grid-cols-3 gap-3">
-                        <Card>
-                          <CardContent className="pt-3 pb-2 text-center">
-                            <p className="text-lg font-bold text-primary">{selectedTranscription.source}</p>
-                            <p className="text-[10px] text-muted-foreground">Origem</p>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-3 pb-2 text-center">
-                            <p className="text-lg font-bold text-primary">{formatDuration(selectedTranscription.duration_seconds)}</p>
-                            <p className="text-[10px] text-muted-foreground">Duração</p>
-                          </CardContent>
-                        </Card>
-                        <Card>
-                          <CardContent className="pt-3 pb-2 text-center">
-                            <p className="text-lg font-bold text-primary">{selectedTranscription.ai_analysis ? "Sim" : "Não"}</p>
-                            <p className="text-[10px] text-muted-foreground">Análise IA</p>
-                          </CardContent>
-                        </Card>
-                      </div>
-                      {selectedTranscription.summary && (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase">Resumo</h4>
-                          <p className="text-sm">{selectedTranscription.summary}</p>
-                        </div>
-                      )}
-                      {selectedTranscription.transcription_text && (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase">Transcrição Completa</h4>
-                          <div className="bg-muted/30 rounded-lg p-4 border text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto">
-                            {selectedTranscription.transcription_text}
-                          </div>
-                        </div>
-                      )}
-                    </TabsContent>
-
-                    {/* Guia */}
-                    <TabsContent value="guide" className="space-y-3 mt-2">
-                      {selectedTranscription.ai_analysis ? (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Guia da Call</h4>
-                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
-                          </div>
-                        </div>
-                      ) : (
-                        <Card>
-                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                            Nenhum guia disponível para esta call.
-                          </CardContent>
-                        </Card>
-                      )}
-                    </TabsContent>
-
-                    {/* Follow Up */}
-                    <TabsContent value="followup" className="space-y-3 mt-2">
-                      {selectedTranscription.ai_analysis ? (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Pontos de Follow Up</h4>
-                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
-                          </div>
-                        </div>
-                      ) : selectedTranscription.transcription_text ? (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Conteúdo da Call</h4>
-                          <div className="bg-muted/30 rounded-lg p-4 border text-sm whitespace-pre-wrap">
-                            {selectedTranscription.transcription_text}
-                          </div>
-                        </div>
-                      ) : (
-                        <Card>
-                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                            Nenhum follow up disponível.
-                          </CardContent>
-                        </Card>
-                      )}
-                    </TabsContent>
-
-                    {/* Análise */}
-                    <TabsContent value="analysis" className="space-y-3 mt-2">
-                      {selectedTranscription.ai_analysis ? (
-                        <div>
-                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Análise Completa da Call</h4>
-                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
-                          </div>
-                        </div>
-                      ) : (
-                        <Card>
-                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
-                            Nenhuma análise IA disponível para esta call.
-                          </CardContent>
-                        </Card>
-                      )}
-                    </TabsContent>
-                  </Tabs>
+            {/* Transcription text */}
+            <div>
+              <div className="flex items-center justify-between mb-1">
+                <h4 className="font-medium">Transcrição</h4>
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={async () => {
+                    if (selectedTranscription?.transcription_text) {
+                      await navigator.clipboard.writeText(selectedTranscription.transcription_text);
+                      setCopied(true);
+                      toast.success("Transcrição copiada!");
+                      setTimeout(() => setCopied(false), 2000);
+                    }
+                  }}
+                >
+                  {copied ? (
+                    <Check className="h-4 w-4 text-green-500" />
+                  ) : (
+                    <Copy className="h-4 w-4" />
+                  )}
+                </Button>
+              </div>
+              <ScrollArea className="h-[300px] border rounded-md p-4">
+                <div className="text-sm whitespace-pre-wrap font-mono">
+                  {selectedTranscription?.transcription_text || "Transcrição não disponível"}
                 </div>
               </ScrollArea>
-            </>
-          )}
+            </div>
+
+            {/* AI Analysis */}
+            {selectedTranscription?.ai_analysis && (
+              <div>
+                <h4 className="font-medium mb-1 flex items-center gap-1.5">
+                  <Sparkles className="h-4 w-4 text-primary" />
+                  Análise IA / Briefing
+                </h4>
+                <div className="prose prose-sm dark:prose-invert max-w-none bg-primary/5 border-primary/20 border p-4 rounded-md [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
+                  <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
+                </div>
+              </div>
+            )}
+          </div>
         </DialogContent>
       </Dialog>
     </div>
