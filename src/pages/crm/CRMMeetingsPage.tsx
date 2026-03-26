@@ -287,7 +287,8 @@ const CRMMeetingsPage = () => {
           status: "no_show",
           completed_at: new Date().toISOString(),
           description: briefing || selectedMeeting.description || "Cliente não compareceu",
-        })
+          recording_url: recordingUrl.trim() || null,
+        } as any)
         .eq("id", selectedMeeting.id);
       if (error) throw error;
 
