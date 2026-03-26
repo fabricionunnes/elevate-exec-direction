@@ -1,23 +1,21 @@
 import { useState, useEffect, useCallback } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { useCRMContext } from "./CRMLayout";
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
+import { Card, CardContent } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
-import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search, ExternalLink, Eye, Clock, User, Copy, Check, Sparkles, Trash2 } from "lucide-react";
+import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
-import ReactMarkdown from "react-markdown";
-import { toast } from "sonner";
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
+import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
 
 interface TranscriptionRow {
   id: string;
