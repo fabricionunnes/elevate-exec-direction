@@ -153,10 +153,28 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     return () => window.removeEventListener("resize", updateScale);
   }, [showGrid, editing, presenterMode]);
 
+  const hasTemporaryMediaUrls = useCallback((content: any) => {
+    return Array.isArray(content?._mediaItems)
+      && content._mediaItems.some((item: any) => typeof item?.url === "string" && item.url.startsWith("blob:"));
+  }, []);
+
+  const sanitizeSlideContentForPersistence = useCallback((content: any) => {
+    if (!Array.isArray(content?._mediaItems)) return content;
+
+    return {
+      ...content,
+      _mediaItems: content._mediaItems
+        .filter((item: any) => typeof item?.url === "string" && !item.url.startsWith("blob:"))
+        .map(({ isUploading, ...item }: any) => item),
+    };
+  }, []);
+
   const persistSlideContentImmediately = useCallback(async (slideId: string, content: any) => {
+    if (hasTemporaryMediaUrls(content)) return;
+
     const { error } = await supabase
       .from("slide_items")
-      .update({ content } as any)
+      .update({ content: sanitizeSlideContentForPersistence(content) } as any)
       .eq("id", slideId);
 
     if (error) {
@@ -180,7 +198,7 @@ export function SlideViewer({ presentationId, onBack }: Props) {
 
       return next;
     });
-  }, []);
+  }, [hasTemporaryMediaUrls, sanitizeSlideContentForPersistence]);
 
   const handleSlideUpdate = (slideId: string, update: { title?: string; subtitle?: string; content?: any; speaker_notes?: string | null }) => {
     // Update local state immediately
