@@ -186,7 +186,7 @@ export default function SlideRemoteControlPage() {
       }}
     >
       {/* Header */}
-      <div className="px-4 pt-6 pb-3 text-center">
+      <div className="px-4 pt-6 pb-2 text-center">
         <div className="flex items-center justify-center gap-2 mb-1">
           <Smartphone className="h-4 w-4 text-[#C81E1E]" />
           <span className="text-[10px] font-bold text-[#C81E1E] uppercase tracking-widest">Controle Remoto</span>
@@ -194,14 +194,27 @@ export default function SlideRemoteControlPage() {
         <h1 className="text-white text-sm font-semibold truncate">{presentationTitle}</h1>
       </div>
 
-      {/* Slide info */}
-      <div className="px-4 flex-1 flex flex-col items-center justify-center gap-4">
+      {/* Speaker notes - PROMINENT, right after header */}
+      {showNotes && (
+        <div className="px-4 pt-2 pb-1">
+          <div className="bg-white/[0.07] border border-white/10 rounded-2xl p-5 max-h-[40vh] overflow-y-auto">
+            {speakerNotes ? (
+              <p className="text-white/90 text-base leading-relaxed whitespace-pre-wrap font-medium">{speakerNotes}</p>
+            ) : (
+              <p className="text-white/30 text-sm italic text-center">Sem anotações para este slide</p>
+            )}
+          </div>
+        </div>
+      )}
+
+      {/* Slide info & controls */}
+      <div className="px-4 flex-1 flex flex-col items-center justify-center gap-3">
         {/* Slide number & title */}
         <div className="text-center">
-          <div className="text-6xl font-black text-white/90">{currentSlide + 1}</div>
-          <div className="text-white/40 text-sm mt-1">de {slideCount}</div>
+          <div className="text-5xl font-black text-white/90">{currentSlide + 1}</div>
+          <div className="text-white/40 text-sm mt-0.5">de {slideCount}</div>
           {currentSlideData?.title && (
-            <p className="text-white/60 text-xs mt-2 max-w-[250px] truncate">{currentSlideData.title}</p>
+            <p className="text-white/60 text-xs mt-1.5 max-w-[250px] truncate">{currentSlideData.title}</p>
           )}
         </div>
 
@@ -252,11 +265,11 @@ export default function SlideRemoteControlPage() {
         </div>
       </div>
 
-      {/* Speaker notes toggle */}
+      {/* Toggle notes button */}
       <div className="px-4 pb-2">
         <button
           onClick={() => setShowNotes(!showNotes)}
-          className={`w-full flex items-center justify-center gap-2 py-2 rounded-lg text-xs font-medium transition-colors ${
+          className={`w-full flex items-center justify-center gap-2 py-2.5 rounded-lg text-xs font-medium transition-colors ${
             showNotes ? "bg-white/10 text-white/70" : "bg-white/5 text-white/40"
           }`}
         >
@@ -264,19 +277,6 @@ export default function SlideRemoteControlPage() {
           {showNotes ? "Ocultar anotações" : "Ver anotações"}
         </button>
       </div>
-
-      {/* Speaker notes */}
-      {showNotes && (
-        <div className="px-4 pb-6">
-          <div className="bg-white/5 border border-white/10 rounded-xl p-4 max-h-40 overflow-y-auto">
-            {speakerNotes ? (
-              <p className="text-white/70 text-xs leading-relaxed whitespace-pre-wrap">{speakerNotes}</p>
-            ) : (
-              <p className="text-white/30 text-xs italic text-center">Sem anotações para este slide</p>
-            )}
-          </div>
-        </div>
-      )}
 
       {/* Swipe hint */}
       <div className="text-center pb-4">
