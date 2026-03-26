@@ -757,10 +757,10 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       id: tempId,
       type: isVideo ? "video" as const : "image" as const,
       url: previewUrl,
-      x: 100,
-      y: 100,
-      width: isVideo ? 640 : 400,
-      height: isVideo ? 360 : 300,
+      x: 50,
+      y: 50,
+      width: isVideo ? 280 : 200,
+      height: isVideo ? 160 : 150,
       isUploading: true,
     };
 
@@ -1092,62 +1092,63 @@ function DraggableMedia({
   const resizing = useRef(false);
   const startRef = useRef({ x: 0, y: 0, itemX: 0, itemY: 0, itemW: 0, itemH: 0 });
 
-  const handleMouseDown = (e: React.MouseEvent) => {
+  const startDrag = (clientX: number, clientY: number) => {
     if (!editable || item.isUploading) return;
-    e.preventDefault();
-    e.stopPropagation();
     onSelect();
     dragging.current = true;
-    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
-
-    const onMove = (ev: MouseEvent) => {
+    startRef.current = { x: clientX, y: clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+    const onMove = (cx: number, cy: number) => {
       if (!dragging.current) return;
-      const dx = (ev.clientX - startRef.current.x) / scale;
-      const dy = (ev.clientY - startRef.current.y) / scale;
       onUpdate({
-        x: Math.max(0, Math.round(startRef.current.itemX + dx)),
-        y: Math.max(0, Math.round(startRef.current.itemY + dy)),
+        x: Math.max(0, Math.round(startRef.current.itemX + (cx - startRef.current.x) / scale)),
+        y: Math.max(0, Math.round(startRef.current.itemY + (cy - startRef.current.y) / scale)),
       });
     };
     const onUp = () => {
       dragging.current = false;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", onUp);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    const mm = (ev: MouseEvent) => onMove(ev.clientX, ev.clientY);
+    const tm = (ev: TouchEvent) => { ev.preventDefault(); onMove(ev.touches[0].clientX, ev.touches[0].clientY); };
+    window.addEventListener("mousemove", mm); window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", tm, { passive: false }); window.addEventListener("touchend", onUp);
   };
 
-  const handleResizeDown = (e: React.MouseEvent) => {
-    if (item.isUploading) return;
-    e.preventDefault();
-    e.stopPropagation();
-    resizing.current = true;
-    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+  const handleMouseDown = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); startDrag(e.clientX, e.clientY); };
+  const handleTouchStart = (e: React.TouchEvent) => { e.stopPropagation(); startDrag(e.touches[0].clientX, e.touches[0].clientY); };
 
-    const onMove = (ev: MouseEvent) => {
+  const startResize = (clientX: number, clientY: number) => {
+    if (item.isUploading) return;
+    resizing.current = true;
+    startRef.current = { x: clientX, y: clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+    const onMove = (cx: number, cy: number) => {
       if (!resizing.current) return;
-      const dx = (ev.clientX - startRef.current.x) / scale;
-      const dy = (ev.clientY - startRef.current.y) / scale;
       onUpdate({
-        width: Math.max(50, Math.round(startRef.current.itemW + dx)),
-        height: Math.max(50, Math.round(startRef.current.itemH + dy)),
+        width: Math.max(50, Math.round(startRef.current.itemW + (cx - startRef.current.x) / scale)),
+        height: Math.max(50, Math.round(startRef.current.itemH + (cy - startRef.current.y) / scale)),
       });
     };
     const onUp = () => {
       resizing.current = false;
-      window.removeEventListener("mousemove", onMove);
-      window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("mousemove", mm); window.removeEventListener("mouseup", onUp);
+      window.removeEventListener("touchmove", tm); window.removeEventListener("touchend", onUp);
     };
-    window.addEventListener("mousemove", onMove);
-    window.addEventListener("mouseup", onUp);
+    const mm = (ev: MouseEvent) => onMove(ev.clientX, ev.clientY);
+    const tm = (ev: TouchEvent) => { ev.preventDefault(); onMove(ev.touches[0].clientX, ev.touches[0].clientY); };
+    window.addEventListener("mousemove", mm); window.addEventListener("mouseup", onUp);
+    window.addEventListener("touchmove", tm, { passive: false }); window.addEventListener("touchend", onUp);
   };
+
+  const handleResizeDown = (e: React.MouseEvent) => { e.preventDefault(); e.stopPropagation(); startResize(e.clientX, e.clientY); };
+  const handleResizeTouchStart = (e: React.TouchEvent) => { e.stopPropagation(); startResize(e.touches[0].clientX, e.touches[0].clientY); };
 
   return (
     <div
       ref={ref}
       onClick={(e) => { e.stopPropagation(); onSelect(); }}
       onMouseDown={handleMouseDown}
+      onTouchStart={handleTouchStart}
       style={{
         position: "absolute",
         left: item.x * scale,
@@ -1172,7 +1173,7 @@ function DraggableMedia({
       ) : (
         <video
           src={item.url}
-          muted
+          muted={!!editable}
           loop
           autoPlay
           playsInline
@@ -1251,12 +1252,13 @@ function DraggableMedia({
 
           <div
             onMouseDown={handleResizeDown}
+            onTouchStart={handleResizeTouchStart}
             style={{
               position: "absolute",
               bottom: -4 * scale,
               right: -4 * scale,
-              width: 14 * scale,
-              height: 14 * scale,
+              width: 18 * scale,
+              height: 18 * scale,
               background: "#C81E1E",
               borderRadius: 2 * scale,
               cursor: "se-resize",
