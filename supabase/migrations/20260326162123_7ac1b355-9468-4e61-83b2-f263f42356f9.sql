@@ -1,0 +1,1 @@
+ALTER TABLE public.crm_activities ADD COLUMN recording_url TEXT DEFAULT NULL;
