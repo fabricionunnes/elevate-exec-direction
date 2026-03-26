@@ -438,128 +438,32 @@ const CRMCallSummaryPage = () => {
         ))}
       </Tabs>
 
-      {/* Detail Dialog — same format as TranscriptionsList inside the Lead */}
+      {/* Detail Dialog — uses exact same LeadSummaryTab as inside the Lead card */}
       <Dialog open={!!selectedTranscription} onOpenChange={() => setSelectedTranscription(null)}>
-        <DialogContent className="max-w-3xl max-h-[85vh]">
-          <DialogHeader>
+        <DialogContent className="max-w-4xl max-h-[90vh] p-0 overflow-hidden">
+          <DialogHeader className="px-6 pt-6 pb-2">
             <DialogTitle className="flex items-center gap-2">
               <FileText className="h-5 w-5" />
-              {selectedTranscription?.title}
+              {selectedTranscription?.lead?.name || selectedTranscription?.title}
             </DialogTitle>
-            <DialogDescription className="flex items-center gap-3 flex-wrap">
-              {selectedTranscription?.recorded_at && (
-                <span>
-                  {format(new Date(selectedTranscription.recorded_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                </span>
-              )}
-              {!selectedTranscription?.recorded_at && selectedTranscription?.created_at && (
-                <span>
-                  {format(new Date(selectedTranscription.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
-                </span>
-              )}
-              {selectedTranscription?.duration_seconds && (
-                <span>• Duração: {formatDuration(selectedTranscription.duration_seconds)}</span>
-              )}
-              {selectedTranscription?.staff_name && (
-                <span>• Closer: {selectedTranscription.staff_name}</span>
-              )}
+            <DialogDescription>
+              {selectedTranscription?.created_at && format(new Date(selectedTranscription.created_at), "dd 'de' MMMM 'de' yyyy 'às' HH:mm", { locale: ptBR })}
+              {selectedTranscription?.staff_name && ` • Closer: ${selectedTranscription.staff_name}`}
             </DialogDescription>
           </DialogHeader>
-
-          <div className="space-y-4">
-            {/* Lead link */}
-            {selectedTranscription?.lead && (
-              <div className="flex items-center gap-2">
-                <Link
-                  to={`/crm/leads/${selectedTranscription.lead.id}`}
-                  onClick={() => setSelectedTranscription(null)}
-                >
-                  <Badge variant="outline" className="cursor-pointer hover:bg-muted">
-                    {selectedTranscription.lead.name}
-                    {selectedTranscription.lead.company && ` • ${selectedTranscription.lead.company}`}
-                  </Badge>
-                </Link>
-                {selectedTranscription.source_meeting_url && (
-                  <a
-                    href={selectedTranscription.source_meeting_url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="inline-flex items-center gap-1 text-xs text-primary hover:underline"
-                  >
-                    <ExternalLink className="h-3 w-3" />
-                    Ver reunião
-                  </a>
-                )}
-              </div>
-            )}
-
-            {/* Summary */}
-            {selectedTranscription?.summary && (
-              <div>
-                <h4 className="font-medium mb-1">Resumo</h4>
-                <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md">
-                  {selectedTranscription.summary}
-                </p>
-              </div>
-            )}
-
-            {/* Speakers */}
-            {selectedTranscription?.speakers && selectedTranscription.speakers.length > 0 && (
-              <div>
-                <h4 className="font-medium mb-1">Participantes</h4>
-                <div className="flex flex-wrap gap-1">
-                  {selectedTranscription.speakers.map((speaker, idx) => (
-                    <Badge key={idx} variant="secondary">
-                      {speaker.name || `Participante ${idx + 1}`}
-                    </Badge>
-                  ))}
-                </div>
-              </div>
-            )}
-
-            {/* Transcription text */}
-            <div>
-              <div className="flex items-center justify-between mb-1">
-                <h4 className="font-medium">Transcrição</h4>
-                <Button
-                  variant="ghost"
-                  size="sm"
-                  onClick={async () => {
-                    if (selectedTranscription?.transcription_text) {
-                      await navigator.clipboard.writeText(selectedTranscription.transcription_text);
-                      setCopied(true);
-                      toast.success("Transcrição copiada!");
-                      setTimeout(() => setCopied(false), 2000);
-                    }
-                  }}
-                >
-                  {copied ? (
-                    <Check className="h-4 w-4 text-green-500" />
-                  ) : (
-                    <Copy className="h-4 w-4" />
-                  )}
-                </Button>
-              </div>
-              <ScrollArea className="h-[300px] border rounded-md p-4">
-                <div className="text-sm whitespace-pre-wrap font-mono">
-                  {selectedTranscription?.transcription_text || "Transcrição não disponível"}
-                </div>
-              </ScrollArea>
+          {selectedTranscription?.lead?.id && (
+            <div className="flex-1 overflow-auto">
+              <LeadSummaryTab
+                leadId={selectedTranscription.lead.id}
+                leadName={selectedTranscription.lead.name}
+              />
             </div>
-
-            {/* AI Analysis */}
-            {selectedTranscription?.ai_analysis && (
-              <div>
-                <h4 className="font-medium mb-1 flex items-center gap-1.5">
-                  <Sparkles className="h-4 w-4 text-primary" />
-                  Análise IA / Briefing
-                </h4>
-                <div className="prose prose-sm dark:prose-invert max-w-none bg-primary/5 border-primary/20 border p-4 rounded-md [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                  <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
-                </div>
-              </div>
-            )}
-          </div>
+          )}
+          {!selectedTranscription?.lead?.id && (
+            <div className="p-6 text-center text-muted-foreground text-sm">
+              Este registro não está vinculado a um lead. Não é possível exibir o resumo.
+            </div>
+          )}
         </DialogContent>
       </Dialog>
     </div>
