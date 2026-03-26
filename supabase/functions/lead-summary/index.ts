@@ -148,6 +148,13 @@ serve(async (req) => {
         credited_to: m.credited?.name,
       })),
       last_activity: lead.last_activity_at,
+      transcriptions: (transcriptions || []).map((t: any) => ({
+        title: t.title,
+        summary: t.summary,
+        ai_analysis: t.ai_analysis,
+        content: (t.transcription_text || "").substring(0, 3000),
+        date: t.created_at,
+      })),
     };
 
     let systemPrompt = "";
