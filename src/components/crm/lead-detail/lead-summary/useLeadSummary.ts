@@ -104,7 +104,7 @@ export function useLeadSummary(leadId: string) {
     // Check for changes every 30 seconds when data is loaded
     const interval = setInterval(async () => {
       // Only check if we have data loaded
-      if (!overviewData && !guideData && !followupData) return;
+      if (!overviewData && !guideData && !followupData && !analysisData) return;
 
       try {
         const { data: lead } = await supabase
