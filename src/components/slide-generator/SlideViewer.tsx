@@ -480,10 +480,114 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                 <Download className="h-4 w-4" />
                 <span className="hidden sm:inline">PDF</span>
               </Button>
+              <Button variant="ghost" size="sm" onClick={generateShareLink} className="gap-1.5">
+                <Share2 className="h-4 w-4" />
+                <span className="hidden sm:inline">Compartilhar</span>
+              </Button>
+              <Button variant="ghost" size="sm" onClick={startRemoteSession} className="gap-1.5">
+                <Smartphone className="h-4 w-4" />
+                <span className="hidden sm:inline">Controle Remoto</span>
+              </Button>
             </>
           )}
         </div>
       </div>
+
+      {/* Share / Remote Dialog */}
+      <Dialog open={showShareDialog} onOpenChange={setShowShareDialog}>
+        <DialogContent className="max-w-md">
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2">
+              {remoteSessionCode ? (
+                <><Smartphone className="h-5 w-5" /> Controle Remoto</>
+              ) : (
+                <><Share2 className="h-5 w-5" /> Compartilhar Apresentação</>
+              )}
+            </DialogTitle>
+          </DialogHeader>
+
+          <div className="space-y-4">
+            {/* Public link */}
+            {shareToken && shareQrUrl && (
+              <div className="space-y-3">
+                <p className="text-sm text-muted-foreground">
+                  Qualquer pessoa com o link pode visualizar a apresentação.
+                </p>
+                <div className="flex gap-2">
+                  <Input
+                    readOnly
+                    value={`${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`}
+                    className="text-xs"
+                  />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slides/${shareToken}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success("Link copiado!");
+                    }}
+                  >
+                    <Link className="h-4 w-4" />
+                  </Button>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <img src={shareQrUrl} alt="QR Code" className="w-48 h-48 rounded-lg border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const a = document.createElement("a");
+                      a.download = "apresentacao-qrcode.png";
+                      a.href = shareQrUrl;
+                      a.click();
+                    }}
+                  >
+                    <QrCode className="h-4 w-4 mr-2" />
+                    Baixar QR Code
+                  </Button>
+                </div>
+              </div>
+            )}
+
+            {/* Remote control */}
+            {remoteSessionCode && remoteQrUrl && (
+              <div className="space-y-3">
+                {shareToken && <div className="border-t pt-4" />}
+                <div className="flex items-center gap-2">
+                  <Smartphone className="h-5 w-5 text-primary" />
+                  <div>
+                    <p className="text-sm font-medium">Controle pelo Celular</p>
+                    <p className="text-xs text-muted-foreground">
+                      Escaneie o QR Code no celular para controlar os slides remotamente.
+                    </p>
+                  </div>
+                </div>
+                <div className="text-center">
+                  <div className="inline-block bg-muted rounded-lg px-4 py-2 mb-3">
+                    <span className="text-2xl font-mono font-bold tracking-widest">{remoteSessionCode}</span>
+                  </div>
+                </div>
+                <div className="flex flex-col items-center gap-2">
+                  <img src={remoteQrUrl} alt="QR Code Remoto" className="w-48 h-48 rounded-lg border" />
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={() => {
+                      const url = `${window.location.origin}${window.location.pathname.replace(/#.*/, "")}#/slide-remote/${remoteSessionCode}`;
+                      navigator.clipboard.writeText(url);
+                      toast.success("Link do controle remoto copiado!");
+                    }}
+                  >
+                    <Link className="h-4 w-4 mr-2" />
+                    Copiar Link
+                  </Button>
+                </div>
+              </div>
+            )}
+          </div>
+        </DialogContent>
+      </Dialog>
 
       {editing ? (
         /* Edit Mode - Full slide list */
