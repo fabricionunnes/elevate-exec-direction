@@ -404,17 +404,16 @@ export default function SegmentsAnalysisPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Consultor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Consultores</SelectItem>
-            {consultants.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filterConsultant}
+          onValueChange={setFilterConsultant}
+          options={[
+            { value: "all", label: "Todos os Consultores" },
+            ...consultants.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Consultor"
+          className="w-[200px]"
+        />
       </div>
 
       {/* KPI Cards */}

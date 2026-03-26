@@ -320,17 +320,16 @@ export default function SlideGeneratorPage() {
               className="pl-9"
             />
           </div>
-          <Select value={selectedStaffId} onValueChange={setSelectedStaffId}>
-            <SelectTrigger className="w-full sm:w-[220px]">
-              <SelectValue placeholder="Filtrar por consultor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os consultores</SelectItem>
-              {staffOptions.map((s) => (
-                <SelectItem key={s.user_id} value={s.user_id}>{s.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={selectedStaffId}
+            onValueChange={setSelectedStaffId}
+            options={[
+              { value: "all", label: "Todos os consultores" },
+              ...staffOptions.map(s => ({ value: s.user_id, label: s.name })),
+            ]}
+            placeholder="Filtrar por consultor"
+            className="w-full sm:w-[220px]"
+          />
         </div>
 
         {/* Library */}
