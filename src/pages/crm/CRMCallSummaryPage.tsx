@@ -151,6 +151,7 @@ const CRMCallSummaryPage = () => {
 
       setTranscriptions(rows.map(r => ({
         ...r,
+        speakers: Array.isArray(r.speakers) ? r.speakers : [],
         staff_name: r.created_by ? staffMap[r.created_by] || "Desconhecido" : "Sem autor",
       })) as TranscriptionRow[]);
     } catch (err) {
