@@ -7,13 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search, X, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { useNavigate } from "react-router-dom";
 
 interface TranscriptionRow {
   id: string;
@@ -39,10 +42,12 @@ const PAGE_SIZE = 10;
 
 const CRMCallSummaryPage = () => {
   const { staffRole, isAdmin } = useCRMContext();
+  const navigate = useNavigate();
   const [transcriptions, setTranscriptions] = useState<TranscriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
+  const [selectedTranscription, setSelectedTranscription] = useState<TranscriptionRow | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [closers, setClosers] = useState<CloserOption[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string>("all");
@@ -353,7 +358,11 @@ const CRMCallSummaryPage = () => {
             ) : (
               <>
                 {transcriptions.map((t) => (
-                  <Card key={t.id} className="hover:border-primary/30 transition-colors">
+                  <Card
+                    key={t.id}
+                    className="hover:border-primary/30 transition-colors cursor-pointer"
+                    onClick={() => setSelectedTranscription(t)}
+                  >
                     <CardContent className="pt-4 pb-3 space-y-2">
                       <div className="flex flex-col sm:flex-row sm:items-start justify-between gap-2">
                         <div className="flex-1 min-w-0">
@@ -380,12 +389,8 @@ const CRMCallSummaryPage = () => {
                         </div>
                       </div>
 
-                      {/* Show AI analysis for analysis tab or summary for others */}
-                      {tab === "analysis" && t.ai_analysis ? (
-                        <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
-                          <ReactMarkdown>{t.ai_analysis}</ReactMarkdown>
-                        </div>
-                      ) : t.summary ? (
+                      {/* Preview text */}
+                      {t.summary ? (
                         <p className="text-xs text-muted-foreground line-clamp-2">{t.summary}</p>
                       ) : t.transcription_text ? (
                         <p className="text-xs text-muted-foreground line-clamp-2">{t.transcription_text.slice(0, 200)}...</p>
@@ -428,6 +433,178 @@ const CRMCallSummaryPage = () => {
           </TabsContent>
         ))}
       </Tabs>
+
+      {/* Detail Dialog */}
+      <Dialog open={!!selectedTranscription} onOpenChange={(open) => !open && setSelectedTranscription(null)}>
+        <DialogContent className="max-w-3xl max-h-[85vh] p-0 gap-0">
+          {selectedTranscription && (
+            <>
+              <DialogHeader className="p-5 pb-3 border-b">
+                <div className="flex items-start justify-between gap-3">
+                  <div className="flex-1 min-w-0">
+                    <DialogTitle className="text-base font-semibold truncate">
+                      {selectedTranscription.title}
+                    </DialogTitle>
+                    <div className="flex items-center gap-3 mt-1 text-xs text-muted-foreground flex-wrap">
+                      <span className="flex items-center gap-1">
+                        <Users className="h-3 w-3" />
+                        {selectedTranscription.staff_name}
+                      </span>
+                      <span>{format(new Date(selectedTranscription.created_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}</span>
+                      {selectedTranscription.duration_seconds && (
+                        <span>{formatDuration(selectedTranscription.duration_seconds)}</span>
+                      )}
+                      <Badge variant="secondary" className="text-[10px]">{selectedTranscription.source}</Badge>
+                      {selectedTranscription.ai_analysis && (
+                        <Badge variant="outline" className="text-[10px] text-primary border-primary/30">IA</Badge>
+                      )}
+                    </div>
+                    {selectedTranscription.lead && (
+                      <Button
+                        variant="link"
+                        size="sm"
+                        className="h-auto p-0 mt-1 text-xs text-primary gap-1"
+                        onClick={() => {
+                          setSelectedTranscription(null);
+                          navigate(`/crm/leads/${selectedTranscription.lead!.id}`);
+                        }}
+                      >
+                        <ExternalLink className="h-3 w-3" />
+                        Ver lead: {selectedTranscription.lead.name}
+                        {selectedTranscription.lead.company && ` (${selectedTranscription.lead.company})`}
+                      </Button>
+                    )}
+                  </div>
+                </div>
+              </DialogHeader>
+
+              <ScrollArea className="max-h-[calc(85vh-120px)]">
+                <div className="p-5">
+                  <Tabs defaultValue="overview" className="space-y-3">
+                    <TabsList className="h-auto flex-wrap gap-1">
+                      <TabsTrigger value="overview" className="gap-1.5 text-xs">
+                        <BarChart3 className="h-3.5 w-3.5" />
+                        Visão Geral
+                      </TabsTrigger>
+                      <TabsTrigger value="guide" className="gap-1.5 text-xs">
+                        <BookOpen className="h-3.5 w-3.5" />
+                        Guia
+                      </TabsTrigger>
+                      <TabsTrigger value="followup" className="gap-1.5 text-xs">
+                        <RefreshCcw className="h-3.5 w-3.5" />
+                        Follow Up
+                      </TabsTrigger>
+                      <TabsTrigger value="analysis" className="gap-1.5 text-xs">
+                        <FileText className="h-3.5 w-3.5" />
+                        Análise
+                      </TabsTrigger>
+                    </TabsList>
+
+                    {/* Visão Geral */}
+                    <TabsContent value="overview" className="space-y-4 mt-2">
+                      <div className="grid grid-cols-3 gap-3">
+                        <Card>
+                          <CardContent className="pt-3 pb-2 text-center">
+                            <p className="text-lg font-bold text-primary">{selectedTranscription.source}</p>
+                            <p className="text-[10px] text-muted-foreground">Origem</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-3 pb-2 text-center">
+                            <p className="text-lg font-bold text-primary">{formatDuration(selectedTranscription.duration_seconds)}</p>
+                            <p className="text-[10px] text-muted-foreground">Duração</p>
+                          </CardContent>
+                        </Card>
+                        <Card>
+                          <CardContent className="pt-3 pb-2 text-center">
+                            <p className="text-lg font-bold text-primary">{selectedTranscription.ai_analysis ? "Sim" : "Não"}</p>
+                            <p className="text-[10px] text-muted-foreground">Análise IA</p>
+                          </CardContent>
+                        </Card>
+                      </div>
+                      {selectedTranscription.summary && (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase">Resumo</h4>
+                          <p className="text-sm">{selectedTranscription.summary}</p>
+                        </div>
+                      )}
+                      {selectedTranscription.transcription_text && (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-1.5 text-muted-foreground uppercase">Transcrição Completa</h4>
+                          <div className="bg-muted/30 rounded-lg p-4 border text-sm whitespace-pre-wrap max-h-[300px] overflow-y-auto">
+                            {selectedTranscription.transcription_text}
+                          </div>
+                        </div>
+                      )}
+                    </TabsContent>
+
+                    {/* Guia */}
+                    <TabsContent value="guide" className="space-y-3 mt-2">
+                      {selectedTranscription.ai_analysis ? (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Guia da Call</h4>
+                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
+                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
+                          </div>
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                            Nenhum guia disponível para esta call.
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
+
+                    {/* Follow Up */}
+                    <TabsContent value="followup" className="space-y-3 mt-2">
+                      {selectedTranscription.ai_analysis ? (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Pontos de Follow Up</h4>
+                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
+                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
+                          </div>
+                        </div>
+                      ) : selectedTranscription.transcription_text ? (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Conteúdo da Call</h4>
+                          <div className="bg-muted/30 rounded-lg p-4 border text-sm whitespace-pre-wrap">
+                            {selectedTranscription.transcription_text}
+                          </div>
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                            Nenhum follow up disponível.
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
+
+                    {/* Análise */}
+                    <TabsContent value="analysis" className="space-y-3 mt-2">
+                      {selectedTranscription.ai_analysis ? (
+                        <div>
+                          <h4 className="text-xs font-semibold mb-2 text-muted-foreground uppercase">Análise Completa da Call</h4>
+                          <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-4 border [&>h2]:mt-5 [&>h2]:mb-2 [&>ul]:mb-3 [&>p]:mb-2.5 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
+                            <ReactMarkdown>{selectedTranscription.ai_analysis}</ReactMarkdown>
+                          </div>
+                        </div>
+                      ) : (
+                        <Card>
+                          <CardContent className="py-8 text-center text-muted-foreground text-sm">
+                            Nenhuma análise IA disponível para esta call.
+                          </CardContent>
+                        </Card>
+                      )}
+                    </TabsContent>
+                  </Tabs>
+                </div>
+              </ScrollArea>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
