@@ -198,6 +198,7 @@ export function useLeadSummary(leadId: string) {
     loadingGuide,
     loadingFollowup,
     loadingAnalysis,
+    initialLoadDone,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
