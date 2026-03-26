@@ -906,3 +906,183 @@ function DraggableTextBlock({
     </div>
   );
 }
+
+// Draggable media item component
+function DraggableMedia({
+  item,
+  scale,
+  editable,
+  selected,
+  onSelect,
+  onUpdate,
+  onRemove,
+}: {
+  item: { id: string; type: "image" | "video"; url: string; x: number; y: number; width: number; height: number };
+  scale: number;
+  editable?: boolean;
+  selected: boolean;
+  onSelect: () => void;
+  onUpdate: (updates: Partial<{ x: number; y: number; width: number; height: number }>) => void;
+  onRemove: () => void;
+}) {
+  const ref = useRef<HTMLDivElement>(null);
+  const dragging = useRef(false);
+  const resizing = useRef(false);
+  const startRef = useRef({ x: 0, y: 0, itemX: 0, itemY: 0, itemW: 0, itemH: 0 });
+
+  const handleMouseDown = (e: React.MouseEvent) => {
+    if (!editable) return;
+    e.preventDefault();
+    e.stopPropagation();
+    onSelect();
+    dragging.current = true;
+    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!dragging.current) return;
+      const dx = (ev.clientX - startRef.current.x) / scale;
+      const dy = (ev.clientY - startRef.current.y) / scale;
+      onUpdate({
+        x: Math.max(0, Math.round(startRef.current.itemX + dx)),
+        y: Math.max(0, Math.round(startRef.current.itemY + dy)),
+      });
+    };
+    const onUp = () => {
+      dragging.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  const handleResizeDown = (e: React.MouseEvent) => {
+    e.preventDefault();
+    e.stopPropagation();
+    resizing.current = true;
+    startRef.current = { x: e.clientX, y: e.clientY, itemX: item.x, itemY: item.y, itemW: item.width, itemH: item.height };
+
+    const onMove = (ev: MouseEvent) => {
+      if (!resizing.current) return;
+      const dx = (ev.clientX - startRef.current.x) / scale;
+      const dy = (ev.clientY - startRef.current.y) / scale;
+      onUpdate({
+        width: Math.max(50, Math.round(startRef.current.itemW + dx)),
+        height: Math.max(50, Math.round(startRef.current.itemH + dy)),
+      });
+    };
+    const onUp = () => {
+      resizing.current = false;
+      window.removeEventListener("mousemove", onMove);
+      window.removeEventListener("mouseup", onUp);
+    };
+    window.addEventListener("mousemove", onMove);
+    window.addEventListener("mouseup", onUp);
+  };
+
+  return (
+    <div
+      ref={ref}
+      onClick={(e) => { e.stopPropagation(); onSelect(); }}
+      onMouseDown={handleMouseDown}
+      style={{
+        position: "absolute",
+        left: item.x * scale,
+        top: item.y * scale,
+        width: item.width * scale,
+        height: item.height * scale,
+        zIndex: 10,
+        cursor: editable ? "move" : "default",
+        outline: selected && editable ? `${2 * scale}px solid #C81E1E` : "none",
+        borderRadius: 4 * scale,
+        overflow: "hidden",
+      }}
+    >
+      {item.type === "image" ? (
+        <img
+          src={item.url}
+          alt=""
+          draggable={false}
+          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none", userSelect: "none" }}
+        />
+      ) : (
+        <video
+          src={item.url}
+          muted
+          loop
+          autoPlay
+          playsInline
+          style={{ width: "100%", height: "100%", objectFit: "cover", pointerEvents: "none" }}
+        />
+      )}
+
+      {/* Play icon for video */}
+      {item.type === "video" && !editable && (
+        <div style={{ position: "absolute", inset: 0, display: "flex", alignItems: "center", justifyContent: "center", background: "rgba(0,0,0,0.15)" }}>
+          <div style={{ background: "rgba(255,255,255,0.9)", borderRadius: "50%", padding: 8, display: "flex" }}>
+            <Play size={20} color="#0A1931" style={{ fill: "#0A1931" }} />
+          </div>
+        </div>
+      )}
+
+      {/* Controls when selected */}
+      {selected && editable && (
+        <>
+          {/* Remove button */}
+          <button
+            onMouseDown={(e) => e.stopPropagation()}
+            onClick={(e) => { e.stopPropagation(); onRemove(); }}
+            style={{
+              position: "absolute",
+              top: -8 * scale,
+              right: -8 * scale,
+              width: 20 * scale,
+              height: 20 * scale,
+              borderRadius: "50%",
+              background: "#DC2626",
+              color: "#fff",
+              border: "none",
+              cursor: "pointer",
+              display: "flex",
+              alignItems: "center",
+              justifyContent: "center",
+              zIndex: 50,
+            }}
+          >
+            <X size={12 * scale} />
+          </button>
+
+          {/* Move handle */}
+          <div style={{
+            position: "absolute",
+            top: -12 * scale,
+            left: "50%",
+            transform: "translateX(-50%)",
+            background: "#C81E1E",
+            borderRadius: 999,
+            padding: 2 * scale,
+            display: "flex",
+          }}>
+            <Move size={10 * scale} color="#fff" />
+          </div>
+
+          {/* Resize handle */}
+          <div
+            onMouseDown={handleResizeDown}
+            style={{
+              position: "absolute",
+              bottom: -4 * scale,
+              right: -4 * scale,
+              width: 14 * scale,
+              height: 14 * scale,
+              background: "#C81E1E",
+              borderRadius: 2 * scale,
+              cursor: "se-resize",
+              zIndex: 50,
+            }}
+          />
+        </>
+      )}
+    </div>
+  );
+}
