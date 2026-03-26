@@ -693,60 +693,26 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       </Dialog>
 
       {editing ? (
-        /* Edit Mode - Full slide list */
+        /* Edit Mode - Full slide list with drag-and-drop reorder */
         <div className="flex-1 overflow-auto">
-          <div className="max-w-6xl mx-auto py-6 px-4 space-y-8">
-            {slides.map((slide, i) => (
-              <div key={slide.id} className="space-y-2">
-                <div className="flex items-center justify-between">
-                  <div className="flex items-center gap-2">
-                    <span className="text-xs font-bold text-muted-foreground bg-muted rounded-full w-7 h-7 flex items-center justify-center">
-                      {i + 1}
-                    </span>
-                    <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
-                      {slide.slide_type}
-                    </span>
-                    {pendingChanges[slide.id] && (
-                      <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
-                        editado
-                      </span>
-                    )}
-                  </div>
-                  <div className="flex gap-1">
-                    <Button variant="ghost" size="icon" className="h-7 w-7" onClick={() => handleDuplicateSlide(slide)}>
-                      <Copy className="h-3.5 w-3.5" />
-                    </Button>
-                    {canDelete && (
-                      <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteSlide(slide.id)}>
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </Button>
-                    )}
-                  </div>
-                </div>
-                <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
-                  <SlideRenderer
+          <DndContext sensors={sensors} collisionDetection={closestCenter} onDragEnd={handleDragEnd}>
+            <SortableContext items={slides.map((s) => s.id)} strategy={verticalListSortingStrategy}>
+              <div className="max-w-6xl mx-auto py-6 px-4 space-y-8">
+                {slides.map((slide, i) => (
+                  <SortableSlideItem
+                    key={slide.id}
                     slide={slide}
-                    scale={Math.min((typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1100) : 1100) / 1920, 0.58)}
-                    editable
+                    index={i}
+                    pendingChanges={pendingChanges}
+                    canDelete={canDelete}
+                    onDuplicate={() => handleDuplicateSlide(slide)}
+                    onDelete={() => handleDeleteSlide(slide.id)}
                     onUpdate={(update) => handleSlideUpdate(slide.id, update)}
                   />
-                </div>
-                {/* Speaker Notes Editor */}
-                <div className="bg-muted/30 border border-border/50 rounded-lg p-3 mt-2">
-                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
-                    <Edit3 className="h-3 w-3" />
-                    Notas do Apresentador
-                  </p>
-                  <textarea
-                    className="w-full text-sm bg-background border border-border rounded-md p-2.5 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
-                    value={slide.speaker_notes || ""}
-                    onChange={(e) => handleSlideUpdate(slide.id, { speaker_notes: e.target.value || null })}
-                    placeholder="Adicione suas anotações para este slide..."
-                  />
-                </div>
+                ))}
               </div>
-            ))}
-          </div>
+            </SortableContext>
+          </DndContext>
         </div>
       ) : showGrid ? (
         /* Grid View */
