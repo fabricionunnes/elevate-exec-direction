@@ -5,12 +5,13 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight, Mic, List } from "lucide-react";
+import { Loader2, Sparkles, FileText, Copy, Check, ArrowRight, Mic, List, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { useCrmTranscriptions } from "@/hooks/useCrmTranscriptions";
 import { TranscriptionsList } from "@/components/crm/transcriptions/TranscriptionsList";
 import { RealtimeTranscription } from "@/components/crm/transcriptions/RealtimeTranscription";
 import { useCRMContext } from "@/pages/crm/CRMLayout";
+import ReactMarkdown from "react-markdown";
 
 interface LeadTranscriptionTabProps {
   leadId: string;
