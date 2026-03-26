@@ -125,9 +125,9 @@ export function useLeadSummary(leadId: string) {
         if (currentTimestamp !== lastKnownUpdatedAt.current) {
           lastKnownUpdatedAt.current = currentTimestamp;
           
-          // Invalidate both caches
           setOverviewData(null);
           setGuideData(null);
+          setFollowupData(null);
 
           // Auto-regenerate the active tab
           const tab = activeTab.current;
