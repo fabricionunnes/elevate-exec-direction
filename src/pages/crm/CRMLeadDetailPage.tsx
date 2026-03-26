@@ -1109,6 +1109,7 @@ export const CRMLeadDetailPage = () => {
         <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
           <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
             {[
+              { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
