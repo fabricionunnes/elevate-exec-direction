@@ -1,4 +1,4 @@
-import { useState, useCallback } from "react";
+import { useState, useCallback, useRef, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { toast } from "sonner";
 
@@ -54,6 +54,7 @@ export interface LeadSummaryData {
     responsible: string | null;
     created_at: string;
   }[];
+  _generated_at?: string; // timestamp of when this summary was generated
 }
 
 export function useLeadSummary(leadId: string) {
@@ -61,6 +62,13 @@ export function useLeadSummary(leadId: string) {
   const [guideData, setGuideData] = useState<LeadSummaryData | null>(null);
   const [loadingOverview, setLoadingOverview] = useState(false);
   const [loadingGuide, setLoadingGuide] = useState(false);
+  const lastKnownUpdatedAt = useRef<string | null>(null);
+  const activeTab = useRef<"overview" | "guide" | null>(null);
+
+  // Track which tab is active for auto-refresh
+  const setActiveTab = useCallback((tab: "overview" | "guide") => {
+    activeTab.current = tab;
+  }, []);
 
   const fetchSummary = useCallback(async (type: "overview" | "guide", force = false) => {
     const isOverview = type === "overview";
@@ -76,7 +84,8 @@ export function useLeadSummary(leadId: string) {
         body: { leadId, type },
       });
       if (error) throw error;
-      setData(data);
+      const enrichedData = { ...data, _generated_at: new Date().toISOString() };
+      setData(enrichedData);
     } catch (err: any) {
       console.error(`Error fetching ${type} summary:`, err);
       toast.error(`Erro ao gerar ${isOverview ? "visão geral" : "guia de atendimento"}`);
@@ -85,11 +94,61 @@ export function useLeadSummary(leadId: string) {
     }
   }, [leadId, overviewData, guideData]);
 
+  // Auto-refresh: listen to lead changes via realtime or polling
+  useEffect(() => {
+    // Check for changes every 30 seconds when data is loaded
+    const interval = setInterval(async () => {
+      // Only check if we have data loaded
+      if (!overviewData && !guideData) return;
+
+      try {
+        const { data: lead } = await supabase
+          .from("crm_leads")
+          .select("updated_at, last_activity_at")
+          .eq("id", leadId)
+          .single();
+
+        if (!lead) return;
+
+        const currentTimestamp = lead.updated_at || lead.last_activity_at;
+        if (!currentTimestamp) return;
+
+        // If first check, just store the timestamp
+        if (!lastKnownUpdatedAt.current) {
+          lastKnownUpdatedAt.current = currentTimestamp;
+          return;
+        }
+
+        // If timestamp changed, invalidate cached data
+        if (currentTimestamp !== lastKnownUpdatedAt.current) {
+          lastKnownUpdatedAt.current = currentTimestamp;
+          
+          // Invalidate both caches
+          setOverviewData(null);
+          setGuideData(null);
+
+          // Auto-regenerate the active tab
+          const tab = activeTab.current;
+          if (tab) {
+            toast.info("Dados do lead atualizados. Regenerando resumo...");
+            // Small delay to let state clear
+            setTimeout(() => fetchSummary(tab, true), 300);
+          }
+        }
+      } catch {
+        // Silently ignore polling errors
+      }
+    }, 30000); // Poll every 30 seconds
+
+    return () => clearInterval(interval);
+  }, [leadId, overviewData, guideData, fetchSummary]);
+
   return {
     overviewData,
     guideData,
     loadingOverview,
     loadingGuide,
+    setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
   };
