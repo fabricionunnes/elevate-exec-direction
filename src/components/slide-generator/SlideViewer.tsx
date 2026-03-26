@@ -827,3 +827,96 @@ export function SlideViewer({ presentationId, onBack }: Props) {
     </div>
   );
 }
+
+// Sortable slide item for edit mode reordering
+function SortableSlideItem({
+  slide,
+  index,
+  pendingChanges,
+  canDelete,
+  onDuplicate,
+  onDelete,
+  onUpdate,
+}: {
+  slide: SlideItem;
+  index: number;
+  pendingChanges: Record<string, any>;
+  canDelete: boolean;
+  onDuplicate: () => void;
+  onDelete: () => void;
+  onUpdate: (update: Partial<SlideItem>) => void;
+}) {
+  const {
+    attributes,
+    listeners,
+    setNodeRef,
+    transform,
+    transition,
+    isDragging,
+  } = useSortable({ id: slide.id });
+
+  const style = {
+    transform: CSS.Transform.toString(transform),
+    transition,
+    opacity: isDragging ? 0.5 : 1,
+    zIndex: isDragging ? 50 : undefined,
+  };
+
+  return (
+    <div ref={setNodeRef} style={style} className="space-y-2">
+      <div className="flex items-center justify-between">
+        <div className="flex items-center gap-2">
+          <button
+            className="cursor-grab active:cursor-grabbing p-1 rounded hover:bg-muted text-muted-foreground touch-none"
+            {...attributes}
+            {...listeners}
+          >
+            <GripVertical className="h-4 w-4" />
+          </button>
+          <span className="text-xs font-bold text-muted-foreground bg-muted rounded-full w-7 h-7 flex items-center justify-center">
+            {index + 1}
+          </span>
+          <span className="text-xs text-muted-foreground uppercase tracking-wider font-medium">
+            {slide.slide_type}
+          </span>
+          {pendingChanges[slide.id] && (
+            <span className="text-[10px] bg-amber-100 text-amber-700 dark:bg-amber-900/30 dark:text-amber-400 px-1.5 py-0.5 rounded font-medium">
+              editado
+            </span>
+          )}
+        </div>
+        <div className="flex gap-1">
+          <Button variant="ghost" size="icon" className="h-7 w-7" onClick={onDuplicate}>
+            <Copy className="h-3.5 w-3.5" />
+          </Button>
+          {canDelete && (
+            <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={onDelete}>
+              <Trash2 className="h-3.5 w-3.5" />
+            </Button>
+          )}
+        </div>
+      </div>
+      <div className="rounded-xl overflow-hidden shadow-lg border border-border/50 cursor-text">
+        <SlideRenderer
+          slide={slide}
+          scale={Math.min((typeof window !== "undefined" ? Math.min(window.innerWidth - 80, 1100) : 1100) / 1920, 0.58)}
+          editable
+          onUpdate={(update) => onUpdate(update)}
+        />
+      </div>
+      {/* Speaker Notes Editor */}
+      <div className="bg-muted/30 border border-border/50 rounded-lg p-3 mt-2">
+        <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+          <Edit3 className="h-3 w-3" />
+          Notas do Apresentador
+        </p>
+        <textarea
+          className="w-full text-sm bg-background border border-border rounded-md p-2.5 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+          value={slide.speaker_notes || ""}
+          onChange={(e) => onUpdate({ speaker_notes: e.target.value || null })}
+          placeholder="Adicione suas anotações para este slide..."
+        />
+      </div>
+    </div>
+  );
+}
