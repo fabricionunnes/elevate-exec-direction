@@ -664,6 +664,19 @@ export function SlideViewer({ presentationId, onBack }: Props) {
                     onUpdate={(update) => handleSlideUpdate(slide.id, update)}
                   />
                 </div>
+                {/* Speaker Notes Editor */}
+                <div className="bg-muted/30 border border-border/50 rounded-lg p-3 mt-2">
+                  <p className="text-xs font-medium text-muted-foreground mb-1.5 flex items-center gap-1.5">
+                    <Edit3 className="h-3 w-3" />
+                    Notas do Apresentador
+                  </p>
+                  <textarea
+                    className="w-full text-sm bg-background border border-border rounded-md p-2.5 min-h-[60px] resize-y focus:outline-none focus:ring-2 focus:ring-ring placeholder:text-muted-foreground/50"
+                    value={slide.speaker_notes || ""}
+                    onChange={(e) => handleSlideUpdate(slide.id, { speaker_notes: e.target.value || null })}
+                    placeholder="Adicione suas anotações para este slide..."
+                  />
+                </div>
               </div>
             ))}
           </div>
