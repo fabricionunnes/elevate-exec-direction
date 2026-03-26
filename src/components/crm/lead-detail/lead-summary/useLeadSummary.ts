@@ -115,6 +115,9 @@ export function useLeadSummary(leadId: string) {
   }, [leadId, setDataForType]);
 
   const fetchSummary = useCallback(async (type: SummaryTabType, force = false, extra?: Record<string, any>) => {
+    // Wait for saved data to load before deciding to fetch from AI
+    if (!initialLoadDone && !force) return;
+    
     const dataMap = { overview: overviewData, guide: guideData, followup: followupData, analysis: analysisData };
     const current = dataMap[type];
     if (current && !force) return;
@@ -134,7 +137,7 @@ export function useLeadSummary(leadId: string) {
     } finally {
       setLoadingForType(type, false);
     }
-  }, [leadId, overviewData, guideData, followupData, analysisData, setDataForType, setLoadingForType]);
+  }, [leadId, initialLoadDone, overviewData, guideData, followupData, analysisData, setDataForType, setLoadingForType]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {
@@ -195,6 +198,7 @@ export function useLeadSummary(leadId: string) {
     loadingGuide,
     loadingFollowup,
     loadingAnalysis,
+    initialLoadDone,
     setActiveTab,
     fetchOverview: (force?: boolean) => fetchSummary("overview", force),
     fetchGuide: (force?: boolean) => fetchSummary("guide", force),
