@@ -213,7 +213,8 @@ const CRMMeetingsPage = () => {
           status: "completed",
           completed_at: new Date().toISOString(),
           description: briefing || selectedMeeting.description,
-        })
+          recording_url: recordingUrl.trim() || null,
+        } as any)
         .eq("id", selectedMeeting.id);
       if (error) throw error;
 
