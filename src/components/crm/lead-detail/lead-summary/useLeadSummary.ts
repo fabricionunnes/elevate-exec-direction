@@ -94,7 +94,7 @@ export function useLeadSummary(leadId: string) {
     } finally {
       setLoading(false);
     }
-  }, [leadId, overviewData, guideData]);
+  }, [leadId, overviewData, guideData, followupData]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {
