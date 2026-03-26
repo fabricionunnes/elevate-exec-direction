@@ -36,6 +36,7 @@ import {
   Filter as FunnelIcon,
   Instagram,
   BrainCircuit,
+  Target,
 } from "lucide-react";
 import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
