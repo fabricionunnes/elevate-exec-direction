@@ -170,22 +170,25 @@ export const ProjectMenuPermissionsDialog = ({
                   {groupName}
                 </h4>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  {menus.map((menu) => (
-                    <label
-                      key={menu.key}
-                      className={`flex items-center gap-3 p-3 rounded-lg border cursor-pointer transition-colors ${
-                        enabledMenus.has(menu.key)
-                          ? "bg-primary/5 border-primary/30"
-                          : "bg-background hover:bg-muted/50 opacity-60"
-                      }`}
-                    >
-                      <Checkbox
-                        checked={enabledMenus.has(menu.key)}
-                        onCheckedChange={() => handleToggle(menu.key)}
-                      />
-                      <span className="font-medium text-sm">{menu.label}</span>
-                    </label>
-                  ))}
+                  {menus.map((menu) => {
+                    const isEnabled = enabledMenus.has(menu.key);
+
+                    return (
+                      <button
+                        key={menu.key}
+                        type="button"
+                        onClick={() => handleToggle(menu.key)}
+                        className={`flex w-full items-center gap-3 rounded-lg border p-3 text-left transition-colors ${
+                          isEnabled
+                            ? "bg-primary/5 border-primary/30"
+                            : "bg-background hover:bg-muted/50 opacity-60"
+                        }`}
+                      >
+                        <Checkbox checked={isEnabled} className="pointer-events-none" />
+                        <span className="font-medium text-sm">{menu.label}</span>
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
             ))}
