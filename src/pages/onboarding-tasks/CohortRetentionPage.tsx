@@ -3,6 +3,7 @@ import { useNavigate } from 'react-router-dom';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   ArrowLeft, 
@@ -324,17 +325,16 @@ export default function CohortRetentionPage() {
         </Select>
         {/* Hide consultant filter for consultants - they only see their own data */}
         {!isConsultant && (
-          <Select value={consultantFilter} onValueChange={setConsultantFilter}>
-            <SelectTrigger className="w-[200px]">
-              <SelectValue placeholder="Filtrar por consultor" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="all">Todos os consultores</SelectItem>
-              {consultants.map(c => (
-                <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-              ))}
-            </SelectContent>
-          </Select>
+          <SearchableSelect
+            value={consultantFilter}
+            onValueChange={setConsultantFilter}
+            options={[
+              { value: "all", label: "Todos os consultores" },
+              ...consultants.map(c => ({ value: c.id, label: c.name })),
+            ]}
+            placeholder="Filtrar por consultor"
+            className="w-[200px]"
+          />
         )}
       </div>
 

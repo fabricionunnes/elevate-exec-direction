@@ -4,6 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -898,35 +899,31 @@ const OnboardingResultsPage = () => {
                   {currentStaff.role !== "consultant" && (
                     <div className="flex flex-col gap-1.5">
                       <Label className="text-xs text-muted-foreground">Consultor/CS</Label>
-                      <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                        <SelectTrigger className="w-[180px]">
-                          <Users className="h-4 w-4 mr-2" />
-                          <SelectValue placeholder="Todos" />
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="all">Todos</SelectItem>
-                          {consultants.map(c => (
-                            <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
+                      <SearchableSelect
+                        value={filterConsultant}
+                        onValueChange={setFilterConsultant}
+                        options={[
+                          { value: "all", label: "Todos" },
+                          ...consultants.map(c => ({ value: c.id, label: c.name })),
+                        ]}
+                        placeholder="Todos"
+                        className="w-[180px]"
+                      />
                     </div>
                   )}
 
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs text-muted-foreground">Serviço</Label>
-                    <Select value={filterService} onValueChange={setFilterService}>
-                      <SelectTrigger className="w-[180px]">
-                        <Package className="h-4 w-4 mr-2" />
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os serviços</SelectItem>
-                        {services.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={filterService}
+                      onValueChange={setFilterService}
+                      options={[
+                        { value: "all", label: "Todos os serviços" },
+                        ...services.map(s => ({ value: s.id, label: s.name })),
+                      ]}
+                      placeholder="Todos"
+                      className="w-[180px]"
+                    />
                   </div>
 
                   <div className="flex flex-col gap-1.5">

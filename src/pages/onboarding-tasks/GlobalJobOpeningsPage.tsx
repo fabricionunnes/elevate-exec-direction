@@ -34,6 +34,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   Table,
   TableBody,
@@ -679,30 +680,27 @@ const GlobalJobOpeningsPage = () => {
                 />
               </div>
 
-              <Select value={filterCompany} onValueChange={setFilterCompany}>
-                <SelectTrigger className="w-[180px]">
-                  <Building2 className="h-4 w-4 mr-2" />
-                  <SelectValue placeholder="Empresa" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas empresas{filterConsultant !== "all" ? ` (${filteredCompanies.length})` : ""}</SelectItem>
-                  {filteredCompanies.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={filterCompany}
+                onValueChange={setFilterCompany}
+                options={[
+                  { value: "all", label: `Todas empresas${filterConsultant !== "all" ? ` (${filteredCompanies.length})` : ""}` },
+                  ...filteredCompanies.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                placeholder="Empresa"
+                className="w-[180px]"
+              />
 
-              <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Consultor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos consultores</SelectItem>
-                  {consultants.map((c) => (
-                    <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={filterConsultant}
+                onValueChange={setFilterConsultant}
+                options={[
+                  { value: "all", label: "Todos consultores" },
+                  ...consultants.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                placeholder="Consultor"
+                className="w-[180px]"
+              />
 
               <Select value={filterRH} onValueChange={setFilterRH}>
                 <SelectTrigger className="w-[180px]">

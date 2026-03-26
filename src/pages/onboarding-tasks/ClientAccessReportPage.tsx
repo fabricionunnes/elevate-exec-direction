@@ -18,6 +18,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import {
   ArrowLeft,
   Clock,
@@ -609,19 +610,16 @@ const ClientAccessReportPage = () => {
                 />
               </div>
               
-              <Select value={consultantFilter} onValueChange={setConsultantFilter}>
-                <SelectTrigger className="w-[180px]">
-                  <SelectValue placeholder="Consultor" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todos Consultores</SelectItem>
-                  {consultants.map(c => (
-                    <SelectItem key={c.id} value={c.id}>
-                      {c.name}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={consultantFilter}
+                onValueChange={setConsultantFilter}
+                options={[
+                  { value: "all", label: "Todos Consultores" },
+                  ...consultants.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                placeholder="Consultor"
+                className="w-[180px]"
+              />
               
               <Select value={companyFilter} onValueChange={setCompanyFilter}>
                 <SelectTrigger className="w-[200px]">

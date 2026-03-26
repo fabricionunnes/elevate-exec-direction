@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import { Card, CardContent } from '@/components/ui/card';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { SearchableSelect } from '@/components/ui/searchable-select';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { 
   Users, 
@@ -195,17 +196,16 @@ export default function CohortRetentionContent() {
             ))}
           </SelectContent>
         </Select>
-        <Select value={consultantFilter} onValueChange={setConsultantFilter}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Filtrar por consultor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os consultores</SelectItem>
-            {consultants.map(c => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={consultantFilter}
+          onValueChange={setConsultantFilter}
+          options={[
+            { value: "all", label: "Todos os consultores" },
+            ...consultants.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Filtrar por consultor"
+          className="w-[200px]"
+        />
       </div>
 
       {/* Main Content */}

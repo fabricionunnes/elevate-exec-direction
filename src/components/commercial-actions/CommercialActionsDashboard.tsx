@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Target, TrendingUp, AlertTriangle, CheckCircle2, Clock, BarChart3, ListTodo, Users, Building2, CalendarDays } from "lucide-react";
 import { ACTION_STATUSES, ACTION_CATEGORIES, type CommercialAction } from "./types";
@@ -201,20 +202,26 @@ export const CommercialActionsDashboard = () => {
             {ACTION_STATUSES.map(s => <SelectItem key={s.value} value={s.value}>{s.label}</SelectItem>)}
           </SelectContent>
         </Select>
-        <Select value={consultantFilter} onValueChange={setConsultantFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Consultor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {consultants.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
-        <Select value={companyFilter} onValueChange={setCompanyFilter}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Empresa" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas</SelectItem>
-            {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={consultantFilter}
+          onValueChange={setConsultantFilter}
+          options={[
+            { value: "all", label: "Todos" },
+            ...consultants.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Consultor"
+          className="w-[180px]"
+        />
+        <SearchableSelect
+          value={companyFilter}
+          onValueChange={setCompanyFilter}
+          options={[
+            { value: "all", label: "Todas" },
+            ...companies.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Empresa"
+          className="w-[180px]"
+        />
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

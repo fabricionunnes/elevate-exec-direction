@@ -7,6 +7,7 @@ import { Badge } from "@/components/ui/badge";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { SegmentSelect } from "@/components/ui/segment-select";
 import { toast } from "sonner";
@@ -403,17 +404,16 @@ export default function SegmentsAnalysisPage() {
           </SelectContent>
         </Select>
 
-        <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-          <SelectTrigger className="w-[200px]">
-            <SelectValue placeholder="Consultor" />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos os Consultores</SelectItem>
-            {consultants.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filterConsultant}
+          onValueChange={setFilterConsultant}
+          options={[
+            { value: "all", label: "Todos os Consultores" },
+            ...consultants.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Consultor"
+          className="w-[200px]"
+        />
       </div>
 
       {/* KPI Cards */}

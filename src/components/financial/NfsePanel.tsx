@@ -8,6 +8,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle, AlertDialogTrigger } from "@/components/ui/alert-dialog";
 import { CurrencyInput } from "@/components/ui/currency-input";
@@ -837,17 +838,16 @@ export function NfsePanel() {
       {/* Filter */}
       <div className="flex gap-3 items-center">
         <Label>Filtrar por empresa:</Label>
-        <Select value={selectedCompanyFilter} onValueChange={setSelectedCompanyFilter}>
-          <SelectTrigger className="w-64">
-            <SelectValue />
-          </SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todas as empresas</SelectItem>
-            {onboardingCompanies.map((c) => (
-              <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>
-            ))}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={selectedCompanyFilter}
+          onValueChange={setSelectedCompanyFilter}
+          options={[
+            { value: "all", label: "Todas as empresas" },
+            ...onboardingCompanies.map(c => ({ value: c.id, label: c.name })),
+          ]}
+          placeholder="Empresa"
+          className="w-64"
+        />
       </div>
 
       {/* Records list */}
