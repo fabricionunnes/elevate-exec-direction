@@ -517,6 +517,21 @@ IMPORTANTE: Responda APENAS o JSON, sem nenhum texto adicional, sem markdown. Se
       })),
     };
 
+    // Save summary to database (upsert)
+    try {
+      await supabase
+        .from("crm_lead_summaries")
+        .upsert({
+          lead_id: leadId,
+          summary_type: type,
+          summary_data: responseData,
+          generated_at: new Date().toISOString(),
+          updated_at: new Date().toISOString(),
+        }, { onConflict: "lead_id,summary_type" });
+    } catch (saveErr) {
+      console.error("Save summary error (non-critical):", saveErr);
+    }
+
     // Log access
     try {
       const authHeader = req.headers.get("authorization");

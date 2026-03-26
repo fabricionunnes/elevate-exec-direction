@@ -68,6 +68,7 @@ export function useLeadSummary(leadId: string) {
   const [loadingGuide, setLoadingGuide] = useState(false);
   const [loadingFollowup, setLoadingFollowup] = useState(false);
   const [loadingAnalysis, setLoadingAnalysis] = useState(false);
+  const [initialLoadDone, setInitialLoadDone] = useState(false);
   const lastKnownUpdatedAt = useRef<string | null>(null);
   const activeTab = useRef<SummaryTabType | null>(null);
 
@@ -75,29 +76,65 @@ export function useLeadSummary(leadId: string) {
     activeTab.current = tab;
   }, []);
 
+  const setDataForType = useCallback((type: SummaryTabType, data: LeadSummaryData | null) => {
+    const setters: Record<SummaryTabType, (d: LeadSummaryData | null) => void> = {
+      overview: setOverviewData, guide: setGuideData, followup: setFollowupData, analysis: setAnalysisData,
+    };
+    setters[type](data);
+  }, []);
+
+  const setLoadingForType = useCallback((type: SummaryTabType, loading: boolean) => {
+    const setters: Record<SummaryTabType, (l: boolean) => void> = {
+      overview: setLoadingOverview, guide: setLoadingGuide, followup: setLoadingFollowup, analysis: setLoadingAnalysis,
+    };
+    setters[type](loading);
+  }, []);
+
+  // Load saved summaries from database on mount
+  useEffect(() => {
+    const loadSaved = async () => {
+      try {
+        const { data: saved } = await supabase
+          .from("crm_lead_summaries")
+          .select("summary_type, summary_data, generated_at")
+          .eq("lead_id", leadId);
+
+        if (saved && saved.length > 0) {
+          for (const row of saved) {
+            const enriched = { ...row.summary_data as any, _generated_at: row.generated_at };
+            setDataForType(row.summary_type as SummaryTabType, enriched);
+          }
+        }
+      } catch (err) {
+        console.error("Error loading saved summaries:", err);
+      } finally {
+        setInitialLoadDone(true);
+      }
+    };
+    loadSaved();
+  }, [leadId, setDataForType]);
+
   const fetchSummary = useCallback(async (type: SummaryTabType, force = false, extra?: Record<string, any>) => {
     const dataMap = { overview: overviewData, guide: guideData, followup: followupData, analysis: analysisData };
     const current = dataMap[type];
     if (current && !force) return;
 
-    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : type === "followup" ? setLoadingFollowup : setLoadingAnalysis;
-    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : type === "followup" ? setFollowupData : setAnalysisData;
-    setLoading(true);
+    setLoadingForType(type, true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
         body: { leadId, type, ...extra },
       });
       if (error) throw error;
       const enrichedData = { ...data, _generated_at: new Date().toISOString() };
-      setData(enrichedData);
+      setDataForType(type, enrichedData);
     } catch (err: any) {
       console.error(`Error fetching ${type} summary:`, err);
-      const labels: Record<string, string> = { overview: "visão geral", guide: "guia de atendimento", followup: "follow up" };
+      const labels: Record<string, string> = { overview: "visão geral", guide: "guia de atendimento", followup: "follow up", analysis: "análise" };
       toast.error(`Erro ao gerar ${labels[type]}`);
     } finally {
-      setLoading(false);
+      setLoadingForType(type, false);
     }
-  }, [leadId, overviewData, guideData, followupData, analysisData]);
+  }, [leadId, overviewData, guideData, followupData, analysisData, setDataForType, setLoadingForType]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {

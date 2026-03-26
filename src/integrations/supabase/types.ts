@@ -12424,6 +12424,44 @@ export type Database = {
         }
         Relationships: []
       }
+      crm_lead_summaries: {
+        Row: {
+          created_at: string
+          generated_at: string
+          id: string
+          lead_id: string
+          summary_data: Json
+          summary_type: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          lead_id: string
+          summary_data: Json
+          summary_type: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          generated_at?: string
+          id?: string
+          lead_id?: string
+          summary_data?: Json
+          summary_type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_lead_summaries_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_lead_tags: {
         Row: {
           created_at: string
