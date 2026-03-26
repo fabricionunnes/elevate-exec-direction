@@ -595,6 +595,7 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
             editable={editable}
             style={{ fontSize: fs("content_subtitle", 20), letterSpacing: 3, textTransform: "uppercase", color: colors.accent, marginBottom: 14, fontWeight: 600 }}
             onFontSizeChange={(s) => setFontSize("content_subtitle", s)}
+            onRemove={editable ? () => updateSubtitle("") : undefined}
           />
         )}
         <EditableText
