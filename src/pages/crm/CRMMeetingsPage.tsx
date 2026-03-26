@@ -30,6 +30,7 @@ interface MeetingActivity {
   created_at: string;
   lead_id: string | null;
   responsible_staff_id: string | null;
+  recording_url: string | null;
   lead?: { id: string; name: string; stage_id: string | null } | null;
   responsible_staff?: { id: string; name: string } | null;
 }
