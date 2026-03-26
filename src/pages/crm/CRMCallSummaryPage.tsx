@@ -7,13 +7,16 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
-import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Loader2, Phone, FileText, ChevronLeft, ChevronRight, Calendar, Users, BarChart3, BookOpen, RefreshCcw, Search, X, ExternalLink } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from "react-markdown";
+import { useNavigate } from "react-router-dom";
 
 interface TranscriptionRow {
   id: string;
