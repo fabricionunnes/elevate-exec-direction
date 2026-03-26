@@ -739,9 +739,9 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
       return;
     }
     
-    // Check file size (100MB limit)
-    if (file.size > 100 * 1024 * 1024) {
-      toast.error("Arquivo muito grande. Máximo 100MB.");
+    // Check file size (1GB limit)
+    if (file.size > 1024 * 1024 * 1024) {
+      toast.error("Arquivo muito grande. Máximo 1GB.");
       return;
     }
 
