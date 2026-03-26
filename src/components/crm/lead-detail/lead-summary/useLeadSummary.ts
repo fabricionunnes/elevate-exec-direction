@@ -115,6 +115,9 @@ export function useLeadSummary(leadId: string) {
   }, [leadId, setDataForType]);
 
   const fetchSummary = useCallback(async (type: SummaryTabType, force = false, extra?: Record<string, any>) => {
+    // Wait for saved data to load before deciding to fetch from AI
+    if (!initialLoadDone && !force) return;
+    
     const dataMap = { overview: overviewData, guide: guideData, followup: followupData, analysis: analysisData };
     const current = dataMap[type];
     if (current && !force) return;
