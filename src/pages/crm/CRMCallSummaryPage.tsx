@@ -42,10 +42,12 @@ const PAGE_SIZE = 10;
 
 const CRMCallSummaryPage = () => {
   const { staffRole, isAdmin } = useCRMContext();
+  const navigate = useNavigate();
   const [transcriptions, setTranscriptions] = useState<TranscriptionRow[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCount, setTotalCount] = useState(0);
   const [page, setPage] = useState(0);
+  const [selectedTranscription, setSelectedTranscription] = useState<TranscriptionRow | null>(null);
   const [activeTab, setActiveTab] = useState("all");
   const [closers, setClosers] = useState<CloserOption[]>([]);
   const [selectedCloser, setSelectedCloser] = useState<string>("all");
