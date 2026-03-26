@@ -293,8 +293,8 @@ export function SlideViewer({ presentationId, onBack }: Props) {
       if (error) throw error;
 
       setRemoteSessionCode(code);
-      const baseUrl = window.location.origin + window.location.pathname.replace(/#.*/, "");
-      const url = `${baseUrl}#/slide-remote/${code}`;
+      const publishedUrl = "https://elevate-exec-direction.lovable.app";
+      const url = `${publishedUrl}/#/slide-remote/${code}`;
       const qr = await QRCodeLib.toDataURL(url, { width: 400, margin: 2 });
       setRemoteQrUrl(qr);
       setShowShareDialog(true);
