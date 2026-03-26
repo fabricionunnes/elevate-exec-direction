@@ -90,7 +90,8 @@ export function useLeadSummary(leadId: string) {
       setData(enrichedData);
     } catch (err: any) {
       console.error(`Error fetching ${type} summary:`, err);
-      toast.error(`Erro ao gerar ${isOverview ? "visão geral" : "guia de atendimento"}`);
+      const labels: Record<string, string> = { overview: "visão geral", guide: "guia de atendimento", followup: "follow up" };
+      toast.error(`Erro ao gerar ${labels[type]}`);
     } finally {
       setLoading(false);
     }
