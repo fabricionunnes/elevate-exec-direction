@@ -266,7 +266,29 @@ function formatWonMessage(lead: any, paymentMethodName: string | null, briefingT
   if (briefingText) {
     lines.push("");
     lines.push("📝 *BRIEFING*");
-    lines.push(briefingText);
+    // Convert markdown to WhatsApp format
+    const whatsappBriefing = briefingText
+      // Convert ## headers to bold with emoji
+      .replace(/^## 📋(.+)/gm, "\n*📋$1*")
+      .replace(/^## 🏢(.+)/gm, "\n*🏢$1*")
+      .replace(/^## 🎯(.+)/gm, "\n*🎯$1*")
+      .replace(/^## 💡(.+)/gm, "\n*💡$1*")
+      .replace(/^## ⚠️(.+)/gm, "\n*⚠️$1*")
+      .replace(/^## 💰(.+)/gm, "\n*💰$1*")
+      .replace(/^## ✅(.+)/gm, "\n*✅$1*")
+      .replace(/^## 🔑(.+)/gm, "\n*🔑$1*")
+      .replace(/^## (.+)/gm, "\n*$1*")
+      // Convert **bold** to *bold* (WhatsApp format)
+      .replace(/\*\*(.+?)\*\*/g, "*$1*")
+      // Convert bullet points
+      .replace(/^- /gm, "• ")
+      .replace(/^• /gm, "• ")
+      // Convert > blockquotes
+      .replace(/^> (.+)/gm, "  _\"$1\"_")
+      // Clean up extra blank lines
+      .replace(/\n{3,}/g, "\n\n")
+      .trim();
+    lines.push(whatsappBriefing);
   }
 
   return lines.join("\n");

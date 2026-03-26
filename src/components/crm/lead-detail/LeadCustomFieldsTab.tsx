@@ -1,4 +1,5 @@
 import { useState, useEffect, useCallback, useRef } from "react";
+import ReactMarkdown from "react-markdown";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -19,7 +20,7 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { ChevronDown, Settings, EyeOff, Flag, Instagram, ExternalLink } from "lucide-react";
+import { ChevronDown, Settings, EyeOff, Flag, Instagram, ExternalLink, Pencil } from "lucide-react";
 import { toast } from "sonner";
 import { cn } from "@/lib/utils";
 import { ManageCustomFieldsDialog } from "./ManageCustomFieldsDialog";
@@ -161,6 +162,60 @@ const TextareaFieldWrapper = ({
       className="min-h-[80px] resize-none"
       disabled={isSaving}
     />
+  );
+};
+
+// Briefing field with Markdown rendering and edit toggle
+const BriefingMarkdownField = ({
+  field,
+  value,
+  onSave,
+  isSaving,
+}: {
+  field: CustomField;
+  value: string;
+  onSave: (field: CustomField, value: string) => void;
+  isSaving: boolean;
+}) => {
+  const [isEditing, setIsEditing] = useState(false);
+
+  if (isEditing) {
+    return (
+      <div className="space-y-1">
+        <TextareaFieldWrapper
+          field={field}
+          value={value}
+          onSave={onSave}
+          isSaving={isSaving}
+        />
+        <Button
+          variant="ghost"
+          size="sm"
+          onClick={() => setIsEditing(false)}
+          className="h-6 text-xs text-muted-foreground"
+        >
+          <Pencil className="h-3 w-3 mr-1" />
+          Visualizar
+        </Button>
+      </div>
+    );
+  }
+
+  return (
+    <div className="space-y-1">
+      <div className="prose prose-sm dark:prose-invert max-w-none bg-muted/30 rounded-lg p-3 border text-sm [&>h2]:mt-4 [&>h2]:mb-2 [&>h2]:text-sm [&>ul]:mb-3 [&>p]:mb-2 [&>blockquote]:mb-3 [&>ul>li]:mb-1">
+        <ReactMarkdown>{value}</ReactMarkdown>
+      </div>
+      <Button
+        variant="ghost"
+        size="sm"
+        onClick={() => setIsEditing(true)}
+        className="h-6 text-xs text-muted-foreground"
+      >
+        <Pencil className="h-3 w-3 mr-1" />
+        Editar
+      </Button>
+    </div>
   );
 };
 
@@ -654,6 +709,17 @@ export const LeadCustomFieldsTab = ({
 
     switch (field.field_type) {
       case "textarea":
+        // Special rendering for briefing field - show Markdown
+        if (field.field_name === "briefing" && value && !isSaving) {
+          return (
+            <BriefingMarkdownField
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+            />
+          );
+        }
         return (
           <TextareaFieldWrapper
             field={field}
