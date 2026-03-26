@@ -67,6 +67,7 @@ export const CLIENT_MENU_KEYS = {
   contrato_rotina: "contrato_rotina",
   acoes_comerciais: "acoes_comerciais",
   meta_ads: "meta_ads",
+  prospeccao_b2b: "prospeccao_b2b",
   // CRM Comercial - menu principal + sub-permissões
   crm_comercial: "crm_comercial",
   crm_comercial_dashboard: "crm_comercial_dashboard",
