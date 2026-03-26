@@ -22,7 +22,7 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
     if (subTab === "guide") summary.fetchGuide();
     if (subTab === "followup") summary.fetchFollowup();
     // Analysis is triggered manually via button, not on tab load
-  }, [subTab]);
+  }, [subTab, summary.initialLoadDone]);
 
   return (
     <div className="h-full flex flex-col overflow-hidden">

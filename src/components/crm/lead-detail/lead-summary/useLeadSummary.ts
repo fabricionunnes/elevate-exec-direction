@@ -137,7 +137,7 @@ export function useLeadSummary(leadId: string) {
     } finally {
       setLoadingForType(type, false);
     }
-  }, [leadId, overviewData, guideData, followupData, analysisData, setDataForType, setLoadingForType]);
+  }, [leadId, initialLoadDone, overviewData, guideData, followupData, analysisData, setDataForType, setLoadingForType]);
 
   // Auto-refresh: listen to lead changes via realtime or polling
   useEffect(() => {
