@@ -1,4 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
+import { MultiSelectFilter } from "@/components/ui/multi-select-filter";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -100,7 +101,7 @@ export function ReceivablesPanel() {
   const [companies, setCompanies] = useState<Company[]>([]);
   const [categories, setCategories] = useState<Category[]>([]);
   const [searchTerm, setSearchTerm] = useState("");
-  const [statusFilter, setStatusFilter] = useState("all");
+  const [statusFilter, setStatusFilter] = useState<string[]>([]);
   const [periodFilter, setPeriodFilter] = useState<import("./PeriodNavigator").PeriodType>("this_month");
   const [periodOffset, setPeriodOffset] = useState(0);
   const [monthFilter, setMonthFilter] = useState(format(new Date(), "yyyy-MM"));
@@ -460,7 +461,7 @@ export function ReceivablesPanel() {
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status);
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
@@ -740,19 +741,20 @@ export function ReceivablesPanel() {
               onPeriodChange={setPeriodFilter}
               onOffsetChange={setPeriodOffset}
             />
-            <Select value={statusFilter} onValueChange={setStatusFilter}>
-              <SelectTrigger className="w-[180px]">
-                <SelectValue placeholder="Status" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="all">Todos</SelectItem>
-                <SelectItem value="pending">Pendentes</SelectItem>
-                <SelectItem value="partial">Parciais</SelectItem>
-                <SelectItem value="overdue">Atrasados</SelectItem>
-                <SelectItem value="paid">Pagos</SelectItem>
-                <SelectItem value="cancelled">Cancelados</SelectItem>
-              </SelectContent>
-            </Select>
+            <MultiSelectFilter
+              options={[
+                { value: "pending", label: "Pendentes" },
+                { value: "partial", label: "Parciais" },
+                { value: "overdue", label: "Atrasados" },
+                { value: "paid", label: "Pagos" },
+                { value: "cancelled", label: "Cancelados" },
+              ]}
+              selected={statusFilter}
+              onChange={setStatusFilter}
+              placeholder="Status"
+              allLabel="Todos"
+              className="w-[180px]"
+            />
           </div>
         </CardContent>
       </Card>
