@@ -234,25 +234,23 @@ function EditableBullets({
 
   return (
     <div style={{ display: "flex", flexDirection: "column", gap: bulletStyle === "dot" ? 24 : 20 }}>
-      {bullets.map((bullet, i) => {
-        const isVisible = showAll || i < visibleCount;
-        return (
-          <div
+      {bullets.map((bullet, i) => (
+          <BulletItem
             key={i}
-            style={{
-              display: "flex",
-              alignItems: "flex-start",
-              gap: bulletStyle === "dot" ? 16 : 12,
-              opacity: isVisible ? 1 : 0,
-              transform: isVisible ? "translateY(0)" : "translateY(20px)",
-              transition: "opacity 0.5s ease, transform 0.5s ease",
-              position: "relative",
-            }}
-            className="group"
-          >
-            {bulletStyle === "dot" && (
-              <div style={{ width: 8, height: 8, borderRadius: "50%", background: colors.accent, marginTop: 10, flexShrink: 0 }} />
-            )}
+            index={i}
+            bullet={bullet}
+            total={bullets.length}
+            isVisible={showAll || i < (visibleCount ?? bullets.length)}
+            bulletStyle={bulletStyle}
+            colors={colors}
+            fontSize={fontSize}
+            editable={editable}
+            onChange={(val) => handleBulletChange(i, val)}
+            onRemove={() => removeBullet(i)}
+            onMove={(dir) => moveBullet(i, dir)}
+            onFontSizeChange={onFontSizeChange}
+          />
+        ))}
             {bulletStyle === "number" && (
               <div style={{ width: 40, height: 40, borderRadius: "50%", background: colors.accent, color: "#fff", display: "flex", alignItems: "center", justifyContent: "center", fontWeight: 700, fontSize: 18, flexShrink: 0 }}>
                 {i + 1}
