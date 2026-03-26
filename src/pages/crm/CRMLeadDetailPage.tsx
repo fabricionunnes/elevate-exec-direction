@@ -57,8 +57,10 @@ import {
   ScrollText,
   FolderOpen,
   History,
+  Sparkles,
 } from "lucide-react";
 import { AddLeadNoteDialog } from "@/components/crm/lead-detail/AddLeadNoteDialog";
+import { LeadSummaryTab } from "@/components/crm/lead-detail/lead-summary/LeadSummaryTab";
 import { DropdownMenuSeparator } from "@/components/ui/dropdown-menu";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -1107,6 +1109,7 @@ export const CRMLeadDetailPage = () => {
         <div className="overflow-x-auto border-b border-border px-4 sm:px-6">
           <TabsList className="h-auto p-0 bg-transparent rounded-none inline-flex w-auto min-w-full">
             {[
+              { value: "summary", label: "Resumo", icon: Sparkles, color: "text-purple-500" },
               { value: "activities", label: "Atividades", icon: Activity, color: "text-blue-500" },
               { value: "contact", label: "Contato", icon: User, color: "text-violet-500" },
               { value: "company", label: "Empresa", icon: Building2, color: "text-emerald-500" },
@@ -1129,6 +1132,10 @@ export const CRMLeadDetailPage = () => {
             ))}
           </TabsList>
         </div>
+
+        <TabsContent value="summary" className="flex-1 mt-0 overflow-hidden">
+          <LeadSummaryTab leadId={lead.id} leadName={lead.name} />
+        </TabsContent>
 
         <TabsContent value="activities" className="flex-1 mt-0 overflow-hidden">
           <LeadActivitiesTab
