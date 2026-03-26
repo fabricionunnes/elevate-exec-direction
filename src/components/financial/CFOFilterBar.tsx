@@ -80,25 +80,27 @@ export function CFOFilterBar({ filters, onChange, staff, companies }: Props) {
         )}
       </div>
 
-      <Select value={filters.consultantId} onValueChange={(v) => onChange({ ...filters, consultantId: v })}>
-        <SelectTrigger className="w-full sm:w-[180px] h-9">
-          <SelectValue placeholder="Consultor" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todos os consultores</SelectItem>
-          {consultants.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={filters.consultantId}
+        onValueChange={(v) => onChange({ ...filters, consultantId: v })}
+        options={[
+          { value: "all", label: "Todos os consultores" },
+          ...consultants.map(s => ({ value: s.id, label: s.name })),
+        ]}
+        placeholder="Consultor"
+        className="w-full sm:w-[180px]"
+      />
 
-      <Select value={filters.companyId} onValueChange={(v) => onChange({ ...filters, companyId: v })}>
-        <SelectTrigger className="w-full sm:w-[180px] h-9">
-          <SelectValue placeholder="Empresa" />
-        </SelectTrigger>
-        <SelectContent>
-          <SelectItem value="all">Todas as empresas</SelectItem>
-          {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-        </SelectContent>
-      </Select>
+      <SearchableSelect
+        value={filters.companyId}
+        onValueChange={(v) => onChange({ ...filters, companyId: v })}
+        options={[
+          { value: "all", label: "Todas as empresas" },
+          ...companies.map(c => ({ value: c.id, label: c.name })),
+        ]}
+        placeholder="Empresa"
+        className="w-full sm:w-[180px]"
+      />
     </div>
   );
 }

@@ -578,21 +578,25 @@ export default function FinancialOverdueTab({
                 <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                 <Input placeholder="Buscar empresa ou descrição..." value={search} onChange={(e) => { setSearch(e.target.value); setCurrentPage(1); }} className="pl-9" />
               </div>
-              <Select value={selectedCompany} onValueChange={(v) => { setSelectedCompany(v); setCurrentPage(1); }}>
-                <SelectTrigger><SelectValue placeholder="Empresa" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="all">Todas as Empresas</SelectItem>
-                  {companies.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                </SelectContent>
-              </Select>
+              <SearchableSelect
+                value={selectedCompany}
+                onValueChange={(v) => { setSelectedCompany(v); setCurrentPage(1); }}
+                options={[
+                  { value: "all", label: "Todas as Empresas" },
+                  ...companies.map(c => ({ value: c.id, label: c.name })),
+                ]}
+                placeholder="Empresa"
+              />
               {consultants.length > 0 && (
-                <Select value={selectedConsultant} onValueChange={(v) => { setSelectedConsultant(v); setCurrentPage(1); }}>
-                  <SelectTrigger><SelectValue placeholder="Consultor" /></SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="all">Todos os Consultores</SelectItem>
-                    {consultants.map(c => <SelectItem key={c.id} value={c.id}>{c.name}</SelectItem>)}
-                  </SelectContent>
-                </Select>
+                <SearchableSelect
+                  value={selectedConsultant}
+                  onValueChange={(v) => { setSelectedConsultant(v); setCurrentPage(1); }}
+                  options={[
+                    { value: "all", label: "Todos os Consultores" },
+                    ...consultants.map(c => ({ value: c.id, label: c.name })),
+                  ]}
+                  placeholder="Consultor"
+                />
               )}
               <div className="flex items-center gap-2">
                 {selectedMonthFilter === "all" ? (

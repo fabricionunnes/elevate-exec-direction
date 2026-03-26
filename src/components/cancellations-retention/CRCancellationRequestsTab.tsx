@@ -64,13 +64,16 @@ export function CRCancellationRequestsTab({ projects, staff, filters, onFilterCh
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input placeholder="Buscar..." value={search} onChange={e => setSearch(e.target.value)} className="pl-9" />
         </div>
-        <Select value={filters.consultant} onValueChange={v => onFilterChange("consultant", v)}>
-          <SelectTrigger className="w-[180px]"><SelectValue placeholder="Consultor" /></SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">Todos</SelectItem>
-            {staff.map(s => <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>)}
-          </SelectContent>
-        </Select>
+        <SearchableSelect
+          value={filters.consultant}
+          onValueChange={v => onFilterChange("consultant", v)}
+          options={[
+            { value: "all", label: "Todos" },
+            ...staff.map(s => ({ value: s.id, label: s.name })),
+          ]}
+          placeholder="Consultor"
+          className="w-[180px]"
+        />
         <Select value={filters.reason} onValueChange={v => onFilterChange("reason", v)}>
           <SelectTrigger className="w-[180px]"><SelectValue placeholder="Motivo" /></SelectTrigger>
           <SelectContent>

@@ -715,19 +715,16 @@ export default function OnboardingCompaniesReportPage() {
                   </div>
                 </div>
                 <div className="w-full sm:w-48">
-                  <Select value={filterConsultant} onValueChange={setFilterConsultant}>
-                    <SelectTrigger>
-                      <SelectValue placeholder="Consultor" />
-                    </SelectTrigger>
-                    <SelectContent>
-                      <SelectItem value="all">Todos os consultores</SelectItem>
-                      {staff.map((s) => (
-                        <SelectItem key={s.id} value={s.id}>
-                          {s.name}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
+                  <SearchableSelect
+                    value={filterConsultant}
+                    onValueChange={setFilterConsultant}
+                    options={[
+                      { value: "all", label: "Todos os consultores" },
+                      ...staff.map(s => ({ value: s.id, label: s.name })),
+                    ]}
+                    placeholder="Consultor"
+                    className="w-full"
+                  />
                 </div>
                 <div className="w-full sm:w-40">
                   <Select value={filterStatus} onValueChange={setFilterStatus}>

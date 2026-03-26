@@ -914,18 +914,16 @@ const OnboardingResultsPage = () => {
 
                   <div className="flex flex-col gap-1.5">
                     <Label className="text-xs text-muted-foreground">Serviço</Label>
-                    <Select value={filterService} onValueChange={setFilterService}>
-                      <SelectTrigger className="w-[180px]">
-                        <Package className="h-4 w-4 mr-2" />
-                        <SelectValue placeholder="Todos" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="all">Todos os serviços</SelectItem>
-                        {services.map(s => (
-                          <SelectItem key={s.id} value={s.id}>{s.name}</SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
+                    <SearchableSelect
+                      value={filterService}
+                      onValueChange={setFilterService}
+                      options={[
+                        { value: "all", label: "Todos os serviços" },
+                        ...services.map(s => ({ value: s.id, label: s.name })),
+                      ]}
+                      placeholder="Todos"
+                      className="w-[180px]"
+                    />
                   </div>
 
                   <div className="flex flex-col gap-1.5">
