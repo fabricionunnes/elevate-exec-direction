@@ -11,7 +11,8 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
-import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX, X } from "lucide-react";
+import { Input } from "@/components/ui/input";
+import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX, X, Link2 } from "lucide-react";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -29,6 +30,7 @@ interface MeetingActivity {
   created_at: string;
   lead_id: string | null;
   responsible_staff_id: string | null;
+  recording_url: string | null;
   lead?: { id: string; name: string; stage_id: string | null } | null;
   responsible_staff?: { id: string; name: string } | null;
 }
@@ -57,6 +59,7 @@ const CRMMeetingsPage = () => {
   // Dialog state
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingActivity | null>(null);
   const [briefing, setBriefing] = useState("");
+  const [recordingUrl, setRecordingUrl] = useState("");
   const [saving, setSaving] = useState(false);
 
   // Selection state for bulk actions
@@ -91,6 +94,7 @@ const CRMMeetingsPage = () => {
         .from("crm_activities")
         .select(`
           id, title, description, type, status, scheduled_at, completed_at, created_at,
+          lead_id, responsible_staff_id, recording_url,
           lead_id, responsible_staff_id,
           lead:crm_leads!crm_activities_lead_id_fkey(id, name, stage_id),
           responsible_staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(id, name)
@@ -209,7 +213,8 @@ const CRMMeetingsPage = () => {
           status: "completed",
           completed_at: new Date().toISOString(),
           description: briefing || selectedMeeting.description,
-        })
+          recording_url: recordingUrl.trim() || null,
+        } as any)
         .eq("id", selectedMeeting.id);
       if (error) throw error;
 
@@ -282,7 +287,8 @@ const CRMMeetingsPage = () => {
           status: "no_show",
           completed_at: new Date().toISOString(),
           description: briefing || selectedMeeting.description || "Cliente não compareceu",
-        })
+          recording_url: recordingUrl.trim() || null,
+        } as any)
         .eq("id", selectedMeeting.id);
       if (error) throw error;
 
@@ -593,7 +599,7 @@ const CRMMeetingsPage = () => {
                   )}
                   <div
                     className="flex items-center gap-3 min-w-0 flex-1"
-                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); }}
+                    onClick={() => { setSelectedMeeting(meeting); setBriefing(meeting.description || ""); setRecordingUrl((meeting as any).recording_url || ""); }}
                   >
                     <div className={cn(
                       "rounded-full p-2 shrink-0",
@@ -696,6 +702,30 @@ const CRMMeetingsPage = () => {
               </div>
 
               <div>
+                <label className="text-sm font-medium">URL da Gravação</label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+                    <Input
+                      value={recordingUrl}
+                      onChange={(e) => setRecordingUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      className="pl-10"
+                    />
+                  </div>
+                  {recordingUrl && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => window.open(recordingUrl, "_blank")}
+                    >
+                      <ExternalLink className="h-4 w-4" />
+                    </Button>
+                  )}
+                </div>
+              </div>
+
+              <div>
                 <label className="text-sm font-medium">Briefing</label>
                 <Textarea
                   value={briefing}
@@ -726,6 +756,28 @@ const CRMMeetingsPage = () => {
                   >
                     <Trash2 className="h-3.5 w-3.5 mr-1" />
                     Excluir
+                  </Button>
+                )}
+
+                {(selectedMeeting.status === "completed" || selectedMeeting.status === "no_show") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        await supabase
+                          .from("crm_activities")
+                          .update({ recording_url: recordingUrl.trim() || null } as any)
+                          .eq("id", selectedMeeting.id);
+                        toast.success("Link da gravação salvo!");
+                      } catch { toast.error("Erro ao salvar"); }
+                      finally { setSaving(false); }
+                    }}
+                  >
+                    <Link2 className="h-3.5 w-3.5 mr-1" />
+                    Salvar Gravação
                   </Button>
                 )}
 

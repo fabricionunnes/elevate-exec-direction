@@ -11612,6 +11612,7 @@ export type Database = {
           meeting_link: string | null
           notes: string | null
           notified_at: string | null
+          recording_url: string | null
           responsible_staff_id: string | null
           scheduled_at: string | null
           status: string | null
@@ -11632,6 +11633,7 @@ export type Database = {
           meeting_link?: string | null
           notes?: string | null
           notified_at?: string | null
+          recording_url?: string | null
           responsible_staff_id?: string | null
           scheduled_at?: string | null
           status?: string | null
@@ -11652,6 +11654,7 @@ export type Database = {
           meeting_link?: string | null
           notes?: string | null
           notified_at?: string | null
+          recording_url?: string | null
           responsible_staff_id?: string | null
           scheduled_at?: string | null
           status?: string | null
