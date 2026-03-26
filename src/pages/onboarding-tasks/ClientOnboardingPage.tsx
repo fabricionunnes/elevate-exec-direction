@@ -71,6 +71,7 @@ import { SalesFunnelPanel } from "@/components/sales-funnel/SalesFunnelPanel";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
 import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
+import { B2BProspectionEmbed } from "@/components/b2b-prospection/B2BProspectionEmbed";
 import {
   DropdownMenu,
   DropdownMenuContent,
