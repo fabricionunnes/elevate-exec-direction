@@ -75,13 +75,13 @@ export function useLeadSummary(leadId: string) {
     activeTab.current = tab;
   }, []);
 
-  const fetchSummary = useCallback(async (type: SummaryTabType, force = false) => {
-    const dataMap = { overview: overviewData, guide: guideData, followup: followupData };
+  const fetchSummary = useCallback(async (type: SummaryTabType, force = false, extra?: Record<string, any>) => {
+    const dataMap = { overview: overviewData, guide: guideData, followup: followupData, analysis: analysisData };
     const current = dataMap[type];
     if (current && !force) return;
 
-    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : setLoadingFollowup;
-    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : setFollowupData;
+    const setLoading = type === "overview" ? setLoadingOverview : type === "guide" ? setLoadingGuide : type === "followup" ? setLoadingFollowup : setLoadingAnalysis;
+    const setData = type === "overview" ? setOverviewData : type === "guide" ? setGuideData : type === "followup" ? setFollowupData : setAnalysisData;
     setLoading(true);
     try {
       const { data, error } = await supabase.functions.invoke("lead-summary", {
