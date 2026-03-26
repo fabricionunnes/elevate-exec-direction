@@ -152,12 +152,48 @@ Deno.serve(async (req) => {
       .maybeSingle();
 
     const originName = form.origin_name || 'Formulário Público';
-    const { data: origin } = await supabase
+    
+    // Try to find matching origin: first by pipeline_id (most reliable), then by name similarity
+    let origin: { id: string } | null = null;
+    
+    // 1. Best match: origin linked to the same pipeline
+    const { data: pipelineOrigin } = await supabase
       .from('crm_origins')
       .select('id')
-      .ilike('name', `%${originName}%`)
+      .eq('pipeline_id', form.pipeline_id)
+      .eq('is_active', true)
       .limit(1)
       .maybeSingle();
+    
+    if (pipelineOrigin) {
+      origin = pipelineOrigin;
+    } else {
+      // 2. Fallback: match by name (try exact, then partial)
+      const { data: exactOrigin } = await supabase
+        .from('crm_origins')
+        .select('id')
+        .ilike('name', originName)
+        .limit(1)
+        .maybeSingle();
+      
+      if (exactOrigin) {
+        origin = exactOrigin;
+      } else {
+        // 3. Try matching origin name contained in originName or vice-versa
+        const { data: allOrigins } = await supabase
+          .from('crm_origins')
+          .select('id, name')
+          .eq('is_active', true);
+        
+        if (allOrigins) {
+          const matched = allOrigins.find((o: { id: string; name: string }) => 
+            originName.toLowerCase().includes(o.name.toLowerCase()) || 
+            o.name.toLowerCase().includes(originName.toLowerCase())
+          );
+          if (matched) origin = { id: matched.id };
+        }
+      }
+    }
 
     const notesParts: string[] = [];
     if (desafio) notesParts.push(`Desafio: ${desafio}`);
