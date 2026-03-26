@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Search, Target, TrendingUp, AlertTriangle, CheckCircle2, Clock, BarChart3, ListTodo, Users, Building2, CalendarDays } from "lucide-react";
 import { ACTION_STATUSES, ACTION_CATEGORIES, type CommercialAction } from "./types";
