@@ -237,6 +237,25 @@ export const PipelineFormsManager = () => {
                     <ExternalLink className="h-3 w-3" />
                   </a>
                 </Button>
+                <Dialog>
+                  <DialogTrigger asChild>
+                    <Button variant="outline" size="icon" className="h-8 w-8 flex-shrink-0" onClick={() => generateQrCode(form.form_token)} title="QR Code">
+                      <QrCode className="h-3 w-3" />
+                    </Button>
+                  </DialogTrigger>
+                  <DialogContent className="max-w-xs">
+                    <DialogHeader>
+                      <DialogTitle className="text-sm">QR Code - {getPipelineName(form.pipeline_id)}</DialogTitle>
+                    </DialogHeader>
+                    <div className="flex flex-col items-center gap-4 py-4">
+                      {qrDataUrl && <img src={qrDataUrl} alt="QR Code" className="w-64 h-64 rounded-lg border" />}
+                      <Button size="sm" className="gap-2" onClick={() => downloadQrCode(getPipelineName(form.pipeline_id))}>
+                        <Download className="h-4 w-4" />
+                        Baixar QR Code
+                      </Button>
+                    </div>
+                  </DialogContent>
+                </Dialog>
               </div>
             </div>
 
