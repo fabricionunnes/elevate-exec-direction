@@ -759,6 +759,28 @@ const CRMMeetingsPage = () => {
                   </Button>
                 )}
 
+                {(selectedMeeting.status === "completed" || selectedMeeting.status === "no_show") && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    disabled={saving}
+                    onClick={async () => {
+                      setSaving(true);
+                      try {
+                        await supabase
+                          .from("crm_activities")
+                          .update({ recording_url: recordingUrl.trim() || null } as any)
+                          .eq("id", selectedMeeting.id);
+                        toast.success("Link da gravação salvo!");
+                      } catch { toast.error("Erro ao salvar"); }
+                      finally { setSaving(false); }
+                    }}
+                  >
+                    <Link2 className="h-3.5 w-3.5 mr-1" />
+                    Salvar Gravação
+                  </Button>
+                )}
+
                 {selectedMeeting.status !== "completed" && selectedMeeting.status !== "no_show" && (
                   <>
                     <Button
