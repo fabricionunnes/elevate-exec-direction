@@ -521,6 +521,9 @@ export function SlideRenderer({ slide, scale, editable, onUpdate, visibleBullets
                     }}
                     editable={editable}
                     style={{ fontSize: 28, fontWeight: 600, color: colors.text }}
+                    onRemove={editable ? () => {
+                      updateContent("framework_steps", content.framework_steps.filter((_: string, idx: number) => idx !== i));
+                    } : undefined}
                   />
                 </div>
               );
