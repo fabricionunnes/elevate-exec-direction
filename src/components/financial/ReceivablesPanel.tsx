@@ -460,7 +460,7 @@ export function ReceivablesPanel() {
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status);
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
