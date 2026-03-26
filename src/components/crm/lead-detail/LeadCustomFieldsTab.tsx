@@ -655,6 +655,17 @@ export const LeadCustomFieldsTab = ({
 
     switch (field.field_type) {
       case "textarea":
+        // Special rendering for briefing field - show Markdown
+        if (field.field_name === "briefing" && value && !isSaving) {
+          return (
+            <BriefingMarkdownField
+              field={field}
+              value={value}
+              onSave={handleFieldChange}
+              isSaving={isSaving}
+            />
+          );
+        }
         return (
           <TextareaFieldWrapper
             field={field}
