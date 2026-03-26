@@ -689,6 +689,96 @@ export function NfsePanel() {
                     </div>
                   </div>
 
+                  {/* Endereço do Tomador */}
+                  <div className="grid grid-cols-3 gap-3">
+                    <div>
+                      <Label>CEP *</Label>
+                      <Input
+                        value={form.tomadorPostalCode}
+                        onChange={(e) => {
+                          const raw = e.target.value.replace(/\D/g, "");
+                          let masked = raw;
+                          if (raw.length > 5) masked = raw.slice(0, 5) + "-" + raw.slice(5, 8);
+                          setForm({ ...form, tomadorPostalCode: masked });
+                          if (raw.length === 8) {
+                            fetch(`https://viacep.com.br/ws/${raw}/json/`)
+                              .then(r => r.json())
+                              .then(d => {
+                                if (!d.erro) {
+                                  setForm(prev => ({
+                                    ...prev,
+                                    tomadorPostalCode: masked,
+                                    tomadorStreet: d.logradouro || prev.tomadorStreet,
+                                    tomadorNeighborhood: d.bairro || prev.tomadorNeighborhood,
+                                    tomadorCity: d.localidade || prev.tomadorCity,
+                                    tomadorState: d.uf || prev.tomadorState,
+                                  }));
+                                }
+                              })
+                              .catch(() => {});
+                          }
+                        }}
+                        placeholder="00000-000"
+                        maxLength={9}
+                      />
+                    </div>
+                    <div>
+                      <Label>Cidade</Label>
+                      <Input
+                        value={form.tomadorCity}
+                        onChange={(e) => setForm({ ...form, tomadorCity: e.target.value })}
+                        placeholder="Cidade"
+                      />
+                    </div>
+                    <div>
+                      <Label>UF</Label>
+                      <Input
+                        value={form.tomadorState}
+                        onChange={(e) => setForm({ ...form, tomadorState: e.target.value })}
+                        placeholder="SP"
+                        maxLength={2}
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-4 gap-3">
+                    <div className="col-span-3">
+                      <Label>Endereço</Label>
+                      <Input
+                        value={form.tomadorStreet}
+                        onChange={(e) => setForm({ ...form, tomadorStreet: e.target.value })}
+                        placeholder="Rua, Avenida..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Número</Label>
+                      <Input
+                        value={form.tomadorNumber}
+                        onChange={(e) => setForm({ ...form, tomadorNumber: e.target.value })}
+                        placeholder="Nº"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="grid grid-cols-2 gap-3">
+                    <div>
+                      <Label>Complemento</Label>
+                      <Input
+                        value={form.tomadorComplement}
+                        onChange={(e) => setForm({ ...form, tomadorComplement: e.target.value })}
+                        placeholder="Sala, Andar..."
+                      />
+                    </div>
+                    <div>
+                      <Label>Bairro</Label>
+                      <Input
+                        value={form.tomadorNeighborhood}
+                        onChange={(e) => setForm({ ...form, tomadorNeighborhood: e.target.value })}
+                        placeholder="Bairro"
+                      />
+                    </div>
+                  </div>
+
                   <div className="grid grid-cols-3 gap-4">
                     <div>
                       <Label>Código do Serviço Municipal</Label>
