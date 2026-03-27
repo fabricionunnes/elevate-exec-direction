@@ -15,6 +15,7 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
+  avatar_url?: string | null;
 }
 
 interface RoomAccessManagerProps {
