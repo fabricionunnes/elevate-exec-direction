@@ -12,7 +12,7 @@ interface Comment {
   id: string;
   content: string;
   created_at: string;
-  user: { id: string; name: string; role: string };
+  user: { id: string; name: string; role: string; avatar_url?: string | null };
 }
 
 interface TaskCommentsProps {
