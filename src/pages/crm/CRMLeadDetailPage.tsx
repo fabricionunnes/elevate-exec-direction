@@ -916,6 +916,7 @@ export const CRMLeadDetailPage = () => {
               leadId={lead.id}
               currentOwnerId={lead.owner_staff_id}
               currentOwnerName={lead.owner?.name}
+              currentOwnerAvatarUrl={lead.owner?.avatar_url}
               onOwnerChange={loadLead}
             />
             <DropdownMenu>
