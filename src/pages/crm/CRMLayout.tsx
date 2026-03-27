@@ -122,6 +122,7 @@ export const CRMLayout = () => {
           setStaffRole(staff.role);
           setStaffName(staff.name);
           setStaffId(staff.id);
+          setStaffAvatarUrl(staff.avatar_url);
           setIsLoading(false);
           return;
         }
