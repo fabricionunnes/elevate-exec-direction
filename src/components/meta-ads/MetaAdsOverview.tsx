@@ -12,7 +12,17 @@ interface MetaAdsOverviewProps {
   syncing: boolean;
 }
 
-const COLORS = ["hsl(var(--primary))", "#3b82f6", "#10b981", "#f59e0b", "#ef4444", "#8b5cf6", "#ec4899", "#06b6d4"];
+const COLORS = ["#0A1931", "#B4121B", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#ef4444", "#14b8a6"];
+const GRADIENT_COLORS = [
+  { start: "#0A1931", end: "#1e40af" },
+  { start: "#B4121B", end: "#ef4444" },
+  { start: "#059669", end: "#10b981" },
+  { start: "#d97706", end: "#f59e0b" },
+  { start: "#7c3aed", end: "#8b5cf6" },
+  { start: "#db2777", end: "#ec4899" },
+  { start: "#0891b2", end: "#06b6d4" },
+  { start: "#dc2626", end: "#f87171" },
+];
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 const formatNumber = (v: number) => new Intl.NumberFormat("pt-BR").format(v);
