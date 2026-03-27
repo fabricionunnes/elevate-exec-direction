@@ -351,20 +351,24 @@ export async function generateMetaAdsPdf(
   let y = 56;
   y = drawSectionTitle(doc, y, "Visão Geral");
 
-  const kpis = [
-    { label: "Investimento", value: formatCurrency(totals.spend) },
-    { label: "Impressões", value: formatNumber(totals.impressions) },
-    { label: "Alcance", value: formatNumber(totals.reach) },
-    { label: "Cliques", value: formatNumber(totals.clicks) },
-    { label: "CTR", value: formatPercent(avgCTR) },
-    { label: "CPC", value: formatCurrency(avgCPC) },
-    { label: "CPM", value: formatCurrency(avgCPM) },
-    { label: "ROAS", value: roas.toFixed(2) + "x" },
-    { label: "Conversas", value: formatNumber(totals.messaging_conversations_started) },
-    { label: "Custo/Conversa", value: formatCurrency(costPerConv) },
-    { label: "Frequência", value: avgFrequency.toFixed(2) },
-    { label: "Leads", value: formatNumber(totals.leads) },
+  const isVis = (key: string) => !visibleMetrics || visibleMetrics.has(key);
+
+  const allKpis = [
+    { key: "spend", label: "Investimento", value: formatCurrency(totals.spend) },
+    { key: "impressions", label: "Impressões", value: formatNumber(totals.impressions) },
+    { key: "reach", label: "Alcance", value: formatNumber(totals.reach) },
+    { key: "clicks", label: "Cliques", value: formatNumber(totals.clicks) },
+    { key: "ctr", label: "CTR", value: formatPercent(avgCTR) },
+    { key: "cpc", label: "CPC", value: formatCurrency(avgCPC) },
+    { key: "cpm", label: "CPM", value: formatCurrency(avgCPM) },
+    { key: "roas", label: "ROAS", value: roas.toFixed(2) + "x" },
+    { key: "conversations", label: "Conversas", value: formatNumber(totals.messaging_conversations_started) },
+    { key: "cost_per_conversation", label: "Custo/Conversa", value: formatCurrency(costPerConv) },
+    { key: "frequency", label: "Frequência", value: avgFrequency.toFixed(2) },
+    { key: "leads", label: "Leads", value: formatNumber(totals.leads) },
   ];
+
+  const kpis = allKpis.filter(k => isVis(k.key));
 
   const cardW = (pageW - 28 - 12 - 9) / 4;
   kpis.forEach((kpi, i) => {
