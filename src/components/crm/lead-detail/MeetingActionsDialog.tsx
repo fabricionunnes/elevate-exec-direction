@@ -26,7 +26,7 @@ import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, Ext
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { getEmbedUrl, isDirectVideo } from "./meetingUtils";
+import { getEmbedUrl, isDirectVideo, isGoogleDrive, getGoogleDriveViewUrl } from "./meetingUtils";
 
 interface MeetingActivity {
   id: string;
