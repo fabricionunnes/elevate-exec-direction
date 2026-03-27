@@ -332,6 +332,9 @@ function MonthSelector({ value, onChange }: { value: Date; onChange: (d: Date) =
 // ─── Main Page ──────────────────────────────────────────────────────────
 export default function GlobalGamificationPage() {
   const navigate = useNavigate();
+  const [showSettings, setShowSettings] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [sendingNow, setSendingNow] = useState(false);
   const {
     loading,
     participants,
@@ -348,6 +351,52 @@ export default function GlobalGamificationPage() {
     setSelectedMonth,
     refetch,
   } = useGlobalGamification();
+
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const blob = await generateRankingPDF(participants, companies, selectedMonth, stats);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ranking-gamificacao-${format(selectedMonth, "yyyy-MM")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF baixado!");
+    } catch (e: any) {
+      toast.error("Erro ao gerar PDF");
+      console.error(e);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleSendNow = async () => {
+    setSendingNow(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Não autenticado"); return; }
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gamification-daily-report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      );
+      const result = await resp.json();
+      if (result.error) throw new Error(result.error);
+      toast.success("Relatório enviado para o grupo!");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao enviar");
+    } finally {
+      setSendingNow(false);
+    }
+  };
 
   if (loading) {
     return (
