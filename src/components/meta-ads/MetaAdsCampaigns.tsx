@@ -4,8 +4,9 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Loader2 } from "lucide-react";
 import { motion } from "framer-motion";
+import type { MetricKey } from "./useMetricVisibility";
 
-interface Props { projectId: string; dateStart: string; dateStop: string; }
+interface Props { projectId: string; dateStart: string; dateStop: string; visibleMetrics: Set<MetricKey>; }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
 const formatNumber = (v: number) => new Intl.NumberFormat("pt-BR").format(v);
@@ -17,7 +18,7 @@ const statusColors: Record<string, string> = {
   ARCHIVED: "bg-muted text-muted-foreground",
 };
 
-export const MetaAdsCampaigns = ({ projectId, dateStart, dateStop }: Props) => {
+export const MetaAdsCampaigns = ({ projectId, dateStart, dateStop, visibleMetrics }: Props) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -36,6 +37,23 @@ export const MetaAdsCampaigns = ({ projectId, dateStart, dateStop }: Props) => {
   if (loading) return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
   if (campaigns.length === 0) return <Card><CardContent className="py-8 text-center text-muted-foreground">Nenhuma campanha encontrada</CardContent></Card>;
 
+  const allMetrics: { key: MetricKey; label: string; getValue: (c: any) => string }[] = [
+    { key: "spend", label: "Investimento", getValue: (c) => formatCurrency(Number(c.spend)) },
+    { key: "impressions", label: "Impressões", getValue: (c) => formatNumber(Number(c.impressions)) },
+    { key: "reach", label: "Alcance", getValue: (c) => formatNumber(Number(c.reach)) },
+    { key: "clicks", label: "Cliques", getValue: (c) => formatNumber(Number(c.clicks)) },
+    { key: "ctr", label: "CTR", getValue: (c) => `${Number(c.ctr).toFixed(2)}%` },
+    { key: "cpc", label: "CPC", getValue: (c) => formatCurrency(Number(c.cpc)) },
+    { key: "cpm", label: "CPM", getValue: (c) => formatCurrency(Number(c.cpm)) },
+    { key: "roas", label: "ROAS", getValue: (c) => `${Number(c.roas).toFixed(2)}x` },
+    { key: "conversations", label: "Conversas", getValue: (c) => formatNumber(Number(c.messaging_conversations_started || 0)) },
+    { key: "cost_per_conversation", label: "Custo/Conversa", getValue: (c) => formatCurrency(Number(c.cost_per_messaging_conversation || 0)) },
+    { key: "frequency", label: "Frequência", getValue: (c) => Number(c.frequency || 0).toFixed(2) },
+    { key: "leads", label: "Leads", getValue: (c) => formatNumber(Number(c.leads || 0)) },
+  ];
+
+  const metrics = allMetrics.filter(m => visibleMetrics.has(m.key));
+
   return (
     <div className="space-y-3 mt-4">
       {campaigns.map((c, i) => (
@@ -51,15 +69,10 @@ export const MetaAdsCampaigns = ({ projectId, dateStart, dateStop }: Props) => {
                 </div>
                 {c.objective && <span className="text-xs text-muted-foreground">{c.objective}</span>}
               </div>
-              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-8 gap-3">
-                <Metric label="Investimento" value={formatCurrency(Number(c.spend))} />
-                <Metric label="Impressões" value={formatNumber(Number(c.impressions))} />
-                <Metric label="Alcance" value={formatNumber(Number(c.reach))} />
-                <Metric label="Cliques" value={formatNumber(Number(c.clicks))} />
-                <Metric label="CTR" value={`${Number(c.ctr).toFixed(2)}%`} />
-                <Metric label="CPC" value={formatCurrency(Number(c.cpc))} />
-                <Metric label="CPM" value={formatCurrency(Number(c.cpm))} />
-                <Metric label="ROAS" value={`${Number(c.roas).toFixed(2)}x`} />
+              <div className="grid grid-cols-2 sm:grid-cols-4 lg:grid-cols-6 gap-3">
+                {metrics.map(m => (
+                  <Metric key={m.key} label={m.label} value={m.getValue(c)} />
+                ))}
               </div>
             </CardContent>
           </Card>
