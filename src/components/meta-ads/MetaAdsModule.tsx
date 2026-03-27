@@ -11,7 +11,9 @@ import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
 import { MetaAdsComparison } from "./MetaAdsComparison";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
+import { MetaAdsMetricSettings } from "./MetaAdsMetricSettings";
 import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
+import { useMetricVisibility } from "./useMetricVisibility";
 
 interface MetaAdsModuleProps {
   projectId: string;
