@@ -105,6 +105,7 @@ export const MetaAdsComparison = ({ projectId, dateStart, dateStop }: MetaAdsCom
     { label: "Custo por Conversa", currentVal: current.costPerConv, compVal: comparison.costPerConv, format: formatCurrency, invertColor: true },
     { label: "Frequência", currentVal: current.avgFrequency, compVal: comparison.avgFrequency, format: (v) => v.toFixed(2) },
     { label: "Conversões", currentVal: current.conversions, compVal: comparison.conversions, format: formatNumber },
+    { label: "Leads", currentVal: current.leads, compVal: comparison.leads, format: formatNumber },
   ];
 
   const getDelta = (cur: number, comp: number) => comp === 0 ? (cur > 0 ? 100 : 0) : ((cur - comp) / comp) * 100;
