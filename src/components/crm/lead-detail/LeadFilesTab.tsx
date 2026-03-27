@@ -236,17 +236,15 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
 
         <div>
           <input
+            ref={fileInputRef}
             type="file"
-            id="file-upload"
             className="hidden"
             multiple
             onChange={handleFileUpload}
           />
-          <Button asChild disabled={uploading}>
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <CloudUpload className="h-4 w-4 mr-2" />
-              {uploading ? "Enviando..." : "Novo arquivo"}
-            </label>
+          <Button onClick={() => fileInputRef.current?.click()} disabled={uploading}>
+            <CloudUpload className="h-4 w-4 mr-2" />
+            {uploading ? "Enviando..." : "Novo arquivo"}
           </Button>
         </div>
       </div>
