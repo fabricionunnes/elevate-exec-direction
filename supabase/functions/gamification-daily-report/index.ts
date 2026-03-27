@@ -36,8 +36,33 @@ Deno.serve(async (req) => {
       });
     }
 
-    if (!config.instance_id || !config.group_jid) {
-      return new Response(JSON.stringify({ error: "Missing instance or group config" }), {
+    if (!config.instance_id) {
+      return new Response(JSON.stringify({ error: "Missing instance config" }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // Parse group JIDs - supports new multi-group format and legacy single group
+    let groupJids: string[] = [];
+    if (config.group_jids) {
+      try {
+        const parsed = JSON.parse(config.group_jids);
+        if (Array.isArray(parsed)) {
+          groupJids = parsed.map((g: any) => typeof g === "string" ? g : g.id).filter(Boolean);
+        }
+      } catch {
+        // Not JSON, treat as single JID
+        groupJids = [config.group_jids];
+      }
+    }
+    // Legacy fallback
+    if (groupJids.length === 0 && config.group_jid) {
+      groupJids = [config.group_jid];
+    }
+
+    if (groupJids.length === 0) {
+      return new Response(JSON.stringify({ error: "No groups configured" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -48,14 +73,12 @@ Deno.serve(async (req) => {
     const startOfMonth = new Date(now.getFullYear(), now.getMonth(), 1).toISOString().split("T")[0];
     const endOfMonth = new Date(now.getFullYear(), now.getMonth() + 1, 0).toISOString().split("T")[0];
 
-    // Get KPI entries for this month
     const { data: kpiEntries } = await supabase
       .from("kpi_entries")
       .select("*, kpi_definition:kpi_definitions(*)")
       .gte("entry_date", startOfMonth)
       .lte("entry_date", endOfMonth);
 
-    // Get salespeople and companies
     const { data: salespeople } = await supabase
       .from("company_salespeople")
       .select("id, name, company_id, is_active")
@@ -65,27 +88,18 @@ Deno.serve(async (req) => {
       .from("onboarding_companies")
       .select("id, name, segment");
 
-    const { data: projects } = await supabase
-      .from("onboarding_projects")
-      .select("id, company_id");
-
-    // Get staff user IDs to exclude
     const { data: staffMembers } = await supabase
       .from("onboarding_staff")
       .select("user_id");
     const staffUserIds = new Set((staffMembers || []).map((s: any) => s.user_id).filter(Boolean));
 
-    // Get monthly goals
     const { data: monthlyGoals } = await supabase
       .from("kpi_monthly_goals")
       .select("*")
       .eq("month", startOfMonth);
 
-    // Build company map
     const companyMap = new Map((companies || []).map((c: any) => [c.id, c]));
-    const projectCompanyMap = new Map((projects || []).map((p: any) => [p.id, p.company_id]));
 
-    // Find main KPI definitions (is_main = true)
     const mainKpiDefs = (kpiEntries || [])
       .filter((e: any) => e.kpi_definition?.is_main)
       .map((e: any) => e.kpi_definition);
@@ -93,13 +107,11 @@ Deno.serve(async (req) => {
     const mainKpiIds = new Set(mainKpiDefs.map((d: any) => d.id));
     const mainEntries = (kpiEntries || []).filter((e: any) => mainKpiIds.has(e.kpi_definition_id));
 
-    // Group entries by salesperson
     type ParticipantData = {
       salesperson_id: string;
       salesperson_name: string;
       company_id: string;
       company_name: string;
-      segment: string;
       total_achieved: number;
       total_target: number;
     };
@@ -109,8 +121,6 @@ Deno.serve(async (req) => {
     for (const entry of mainEntries) {
       const sp = (salespeople || []).find((s: any) => s.id === entry.salesperson_id);
       if (!sp) continue;
-
-      // Exclude staff
       if (staffUserIds.has(sp.id)) continue;
 
       const companyId = sp.company_id;
@@ -123,7 +133,6 @@ Deno.serve(async (req) => {
           salesperson_name: sp.name,
           company_id: companyId,
           company_name: company.name,
-          segment: company.segment || "",
           total_achieved: 0,
           total_target: 0,
         });
@@ -132,7 +141,6 @@ Deno.serve(async (req) => {
       const data = spMap.get(sp.id)!;
       data.total_achieved += Number(entry.value) || 0;
 
-      // Find target: monthly goal > base target
       const monthlyGoal = (monthlyGoals || []).find(
         (g: any) => g.kpi_definition_id === entry.kpi_definition_id && g.salesperson_id === sp.id
       );
@@ -146,7 +154,6 @@ Deno.serve(async (req) => {
       }
     }
 
-    // Build ranking
     const participants = Array.from(spMap.values())
       .filter((p) => p.total_target > 0)
       .map((p) => ({
@@ -192,27 +199,43 @@ Deno.serve(async (req) => {
 
     const message = lines.join("\n");
 
-    // 4. Send via evolution-api
+    // 4. Send to ALL configured groups
     const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
-    const sendResp = await fetch(`${supabaseUrl}/functions/v1/evolution-api?action=sendGroupText`, {
-      method: "POST",
-      headers: {
-        "Content-Type": "application/json",
-        Authorization: `Bearer ${serviceKey}`,
-        apikey: anonKey,
-      },
-      body: JSON.stringify({
-        instanceId: config.instance_id,
-        groupId: config.group_jid,
-        message,
-      }),
-    });
+    const results: { groupId: string; success: boolean; error?: string }[] = [];
 
-    const sendResult = await sendResp.json();
-    console.log("[gamification-daily-report] Send result:", JSON.stringify(sendResult).substring(0, 500));
+    for (const groupId of groupJids) {
+      try {
+        const sendResp = await fetch(`${supabaseUrl}/functions/v1/evolution-api?action=sendGroupText`, {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${serviceKey}`,
+            apikey: anonKey,
+          },
+          body: JSON.stringify({
+            instanceId: config.instance_id,
+            groupId,
+            message,
+          }),
+        });
+
+        const sendResult = await sendResp.json();
+        console.log(`[gamification-daily-report] Sent to ${groupId}:`, JSON.stringify(sendResult).substring(0, 300));
+        results.push({ groupId, success: sendResp.ok });
+      } catch (err) {
+        console.error(`[gamification-daily-report] Error sending to ${groupId}:`, err);
+        results.push({ groupId, success: false, error: String(err) });
+      }
+    }
 
     return new Response(
-      JSON.stringify({ success: true, participants_count: participants.length, message_sent: true }),
+      JSON.stringify({
+        success: true,
+        participants_count: participants.length,
+        groups_sent: results.filter((r) => r.success).length,
+        groups_total: groupJids.length,
+        results,
+      }),
       { headers: { ...corsHeaders, "Content-Type": "application/json" } }
     );
   } catch (error) {
