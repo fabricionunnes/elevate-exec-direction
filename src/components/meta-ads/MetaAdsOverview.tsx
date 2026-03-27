@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3 } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 
@@ -59,12 +59,17 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
     spend: acc.spend + Number(c.spend || 0),
     conversions: acc.conversions + Number(c.conversions || 0),
     conversion_value: acc.conversion_value + Number(c.conversion_value || 0),
-  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0 });
+    messaging_conversations_started: acc.messaging_conversations_started + Number((c as any).messaging_conversations_started || 0),
+    frequency_sum: acc.frequency_sum + Number((c as any).frequency || 0),
+    frequency_count: acc.frequency_count + (Number((c as any).frequency || 0) > 0 ? 1 : 0),
+  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0, messaging_conversations_started: 0, frequency_sum: 0, frequency_count: 0 });
 
   const avgCTR = totals.impressions > 0 ? (totals.clicks / totals.impressions * 100) : 0;
   const avgCPC = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
   const avgCPM = totals.impressions > 0 ? (totals.spend / totals.impressions * 1000) : 0;
   const roas = totals.spend > 0 ? totals.conversion_value / totals.spend : 0;
+  const avgFrequency = totals.frequency_count > 0 ? totals.frequency_sum / totals.frequency_count : 0;
+  const costPerConversation = totals.messaging_conversations_started > 0 ? totals.spend / totals.messaging_conversations_started : 0;
 
   const kpis = [
     { label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, color: "text-red-500" },
@@ -75,6 +80,9 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
     { label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, color: "text-cyan-500" },
     { label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, color: "text-pink-500" },
     { label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, color: "text-emerald-500" },
+    { label: "Conversas Iniciadas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, color: "text-indigo-500" },
+    { label: "Custo por Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, color: "text-orange-500" },
+    { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, color: "text-teal-500" },
   ];
 
   // Chart data: spend by campaign
