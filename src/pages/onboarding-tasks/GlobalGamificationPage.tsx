@@ -16,7 +16,6 @@ import { GamificationReportSettingsDialog } from "@/components/gamification/Gami
 import { generateRankingPDF, generateRankingText } from "@/components/gamification/useGamificationReport";
 import { toast } from "sonner";
 import { supabase } from "@/integrations/supabase/client";
-import { ptBR } from "date-fns/locale";
 
 // ─── Stats Cards ────────────────────────────────────────────────────────
 function StatsCards({ stats }: { stats: { total: number; avgPercent: number; activeCompanies: number; above100: number } }) {
