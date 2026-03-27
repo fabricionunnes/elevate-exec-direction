@@ -119,7 +119,7 @@ export const CRMReportsPage = () => {
           .select(`
             *,
             stage:crm_stages(name, color, is_final, final_type),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name, avatar_url),
             loss_reason:crm_loss_reasons(name)
           `)
           .gte("created_at", start.toISOString())
