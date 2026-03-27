@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, LineChart, Line } from "recharts";
 
@@ -60,9 +60,10 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
     conversions: acc.conversions + Number(c.conversions || 0),
     conversion_value: acc.conversion_value + Number(c.conversion_value || 0),
     messaging_conversations_started: acc.messaging_conversations_started + Number((c as any).messaging_conversations_started || 0),
+    leads: acc.leads + Number((c as any).leads || 0),
     frequency_sum: acc.frequency_sum + Number((c as any).frequency || 0),
     frequency_count: acc.frequency_count + (Number((c as any).frequency || 0) > 0 ? 1 : 0),
-  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0, messaging_conversations_started: 0, frequency_sum: 0, frequency_count: 0 });
+  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0, messaging_conversations_started: 0, leads: 0, frequency_sum: 0, frequency_count: 0 });
 
   const avgCTR = totals.impressions > 0 ? (totals.clicks / totals.impressions * 100) : 0;
   const avgCPC = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
@@ -83,6 +84,7 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
     { label: "Conversas Iniciadas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, color: "text-indigo-500" },
     { label: "Custo por Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, color: "text-orange-500" },
     { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, color: "text-teal-500" },
+    { label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, color: "text-lime-600" },
   ];
 
   // Chart data: spend by campaign

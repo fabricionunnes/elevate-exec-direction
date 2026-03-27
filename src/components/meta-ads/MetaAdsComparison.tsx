@@ -26,9 +26,10 @@ function calcTotals(campaigns: any[]) {
     conversions: acc.conversions + Number(c.conversions || 0),
     conversion_value: acc.conversion_value + Number(c.conversion_value || 0),
     messaging_conversations_started: acc.messaging_conversations_started + Number((c as any).messaging_conversations_started || 0),
+    leads: acc.leads + Number((c as any).leads || 0),
     frequency_sum: acc.frequency_sum + Number(c.frequency || 0),
     frequency_count: acc.frequency_count + (Number(c.frequency || 0) > 0 ? 1 : 0),
-  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0, messaging_conversations_started: 0, frequency_sum: 0, frequency_count: 0 });
+  }), { impressions: 0, reach: 0, clicks: 0, spend: 0, conversions: 0, conversion_value: 0, messaging_conversations_started: 0, leads: 0, frequency_sum: 0, frequency_count: 0 });
 
   const avgCTR = t.impressions > 0 ? (t.clicks / t.impressions * 100) : 0;
   const avgCPC = t.clicks > 0 ? t.spend / t.clicks : 0;
@@ -104,6 +105,7 @@ export const MetaAdsComparison = ({ projectId, dateStart, dateStop }: MetaAdsCom
     { label: "Custo por Conversa", currentVal: current.costPerConv, compVal: comparison.costPerConv, format: formatCurrency, invertColor: true },
     { label: "Frequência", currentVal: current.avgFrequency, compVal: comparison.avgFrequency, format: (v) => v.toFixed(2) },
     { label: "Conversões", currentVal: current.conversions, compVal: comparison.conversions, format: formatNumber },
+    { label: "Leads", currentVal: current.leads, compVal: comparison.leads, format: formatNumber },
   ];
 
   const getDelta = (cur: number, comp: number) => comp === 0 ? (cur > 0 ? 100 : 0) : ((cur - comp) / comp) * 100;

@@ -1,0 +1,1 @@
+ALTER TABLE public.meta_ads_campaigns ADD COLUMN IF NOT EXISTS leads integer DEFAULT 0;

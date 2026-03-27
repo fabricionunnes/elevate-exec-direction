@@ -188,6 +188,7 @@ Deno.serve(async (req) => {
         const conversions = (ins.actions || []).find((a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "purchase")?.value || 0;
         const convValue = (ins.action_values || []).find((a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "purchase")?.value || 0;
         const msgConversationsStarted = (ins.actions || []).find((a: any) => a.action_type === "onsite_conversion.messaging_conversation_started_7d")?.value || 0;
+        const leadCount = (ins.actions || []).find((a: any) => a.action_type === "lead" || a.action_type === "onsite_conversion.lead_grouped" || a.action_type === "offsite_conversion.fb_pixel_lead")?.value || 0;
         const costPerMsgConv = Number(msgConversationsStarted) > 0 ? Number(ins.spend || 0) / Number(msgConversationsStarted) : 0;
         return {
           project_id,
@@ -210,6 +211,7 @@ Deno.serve(async (req) => {
           frequency: Number(ins.frequency || 0),
           messaging_conversations_started: Number(msgConversationsStarted),
           cost_per_messaging_conversation: costPerMsgConv,
+          leads: Number(leadCount),
           date_start: start,
           date_stop: end,
           synced_at: new Date().toISOString(),
