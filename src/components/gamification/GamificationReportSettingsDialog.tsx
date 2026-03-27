@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Search, X, CheckSquare } from "lucide-react";
+import { Loader2, Search, X, CheckSquare, SendHorizonal } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -33,6 +33,8 @@ interface GroupItem {
 export function GamificationReportSettingsDialog({ open, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testGroupId, setTestGroupId] = useState<string>("");
 
   const [enabled, setEnabled] = useState(false);
   const [instanceId, setInstanceId] = useState<string>("");
@@ -324,12 +326,63 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
           </div>
         )}
 
-        <DialogFooter>
-          <Button variant="outline" onClick={onClose}>Cancelar</Button>
-          <Button onClick={handleSave} disabled={saving}>
-            {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
-            Salvar
-          </Button>
+        <DialogFooter className="flex-col sm:flex-row gap-2">
+          <div className="flex items-center gap-2 flex-1">
+            <Select value={testGroupId} onValueChange={setTestGroupId}>
+              <SelectTrigger className="h-9 text-xs flex-1">
+                <SelectValue placeholder="Grupo para teste..." />
+              </SelectTrigger>
+              <SelectContent>
+                {groups.map((g) => (
+                  <SelectItem key={g.id} value={g.id} className="text-xs">
+                    {g.subject}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            <Button
+              variant="secondary"
+              size="sm"
+              className="gap-1 shrink-0"
+              disabled={!testGroupId || !instanceId || testSending}
+              onClick={async () => {
+                setTestSending(true);
+                try {
+                  const { data: { session } } = await supabase.auth.getSession();
+                  if (!session) { toast.error("Não autenticado"); return; }
+                  const resp = await fetch(
+                    `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gamification-daily-report`,
+                    {
+                      method: "POST",
+                      headers: {
+                        "Content-Type": "application/json",
+                        Authorization: `Bearer ${session.access_token}`,
+                        apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+                      },
+                      body: JSON.stringify({ testGroupId, testInstanceId: instanceId }),
+                    }
+                  );
+                  const result = await resp.json();
+                  if (result.error) throw new Error(result.error);
+                  toast.success("Teste enviado com sucesso!");
+                } catch (e: any) {
+                  toast.error(e.message || "Erro ao enviar teste");
+                } finally {
+                  setTestSending(false);
+                }
+              }}
+            >
+              {testSending ? <Loader2 className="h-3 w-3 animate-spin" /> : <SendHorizonal className="h-3 w-3" />}
+              Testar
+            </Button>
+          </div>
+          <div className="flex gap-2">
+            <Button variant="outline" onClick={onClose}>Cancelar</Button>
+            <Button onClick={handleSave} disabled={saving}>
+              {saving && <Loader2 className="h-4 w-4 animate-spin mr-2" />}
+              Salvar
+            </Button>
+          </div>
         </DialogFooter>
       </DialogContent>
     </Dialog>
