@@ -25,6 +25,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const { visibleMetrics, toggle, isVisible } = useMetricVisibility();
   const [dateStart, setDateStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
