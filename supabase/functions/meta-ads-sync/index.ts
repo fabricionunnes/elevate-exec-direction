@@ -10,6 +10,7 @@ const FACEBOOK_APP_SECRET = Deno.env.get("FACEBOOK_APP_SECRET");
 const SUPABASE_URL = Deno.env.get("SUPABASE_URL");
 const SUPABASE_SERVICE_ROLE_KEY = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
 const GRAPH_API = "https://graph.facebook.com/v21.0";
+const META_ADS_STABLE_REDIRECT_URI = "https://elevate-exec-direction.lovable.app/meta-ads-callback";
 
 async function fetchWithTimeout(url: string, timeout = 30000) {
   const controller = new AbortController();
@@ -41,14 +42,18 @@ Deno.serve(async (req) => {
 
     // ──── GET AUTH URL ────
     if (action === "auth_url") {
+      const effectiveRedirectUri = typeof redirect_uri === "string" && redirect_uri.trim()
+        ? redirect_uri.trim()
+        : META_ADS_STABLE_REDIRECT_URI;
+
       const scopes = "ads_read,ads_management,business_management";
       const state = btoa(JSON.stringify({
         project_id,
         flow: "meta_ads",
-        redirect_uri,
+        redirect_uri: effectiveRedirectUri,
         return_origin,
       }));
-      const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(redirect_uri)}&scope=${scopes}&state=${encodeURIComponent(state)}&response_type=code`;
+      const url = `https://www.facebook.com/v21.0/dialog/oauth?client_id=${FACEBOOK_APP_ID}&redirect_uri=${encodeURIComponent(effectiveRedirectUri)}&scope=${scopes}&state=${encodeURIComponent(state)}&response_type=code`;
       
       return new Response(JSON.stringify({ url }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
