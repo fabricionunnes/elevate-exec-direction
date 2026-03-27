@@ -92,23 +92,25 @@ export const MetaAdsComparison = ({ projectId, dateStart, dateStop, visibleMetri
 
   const fmtDateBR = (d: string) => new Date(d + "T12:00:00").toLocaleDateString("pt-BR");
 
-  type MetricDef = { label: string; currentVal: number; compVal: number; format: (v: number) => string; invertColor?: boolean };
+  type MetricDef = { key: MetricKey; label: string; currentVal: number; compVal: number; format: (v: number) => string; invertColor?: boolean };
 
-  const metrics: MetricDef[] = [
-    { label: "Investimento", currentVal: current.spend, compVal: comparison.spend, format: formatCurrency, invertColor: true },
-    { label: "Impressões", currentVal: current.impressions, compVal: comparison.impressions, format: formatNumber },
-    { label: "Alcance", currentVal: current.reach, compVal: comparison.reach, format: formatNumber },
-    { label: "Cliques", currentVal: current.clicks, compVal: comparison.clicks, format: formatNumber },
-    { label: "CTR", currentVal: current.avgCTR, compVal: comparison.avgCTR, format: formatPercent },
-    { label: "CPC", currentVal: current.avgCPC, compVal: comparison.avgCPC, format: formatCurrency, invertColor: true },
-    { label: "CPM", currentVal: current.avgCPM, compVal: comparison.avgCPM, format: formatCurrency, invertColor: true },
-    { label: "ROAS", currentVal: current.roas, compVal: comparison.roas, format: (v) => v.toFixed(2) + "x" },
-    { label: "Conversas Iniciadas", currentVal: current.messaging_conversations_started, compVal: comparison.messaging_conversations_started, format: formatNumber },
-    { label: "Custo por Conversa", currentVal: current.costPerConv, compVal: comparison.costPerConv, format: formatCurrency, invertColor: true },
-    { label: "Frequência", currentVal: current.avgFrequency, compVal: comparison.avgFrequency, format: (v) => v.toFixed(2) },
-    { label: "Conversões", currentVal: current.conversions, compVal: comparison.conversions, format: formatNumber },
-    { label: "Leads", currentVal: current.leads, compVal: comparison.leads, format: formatNumber },
+  const allMetrics: MetricDef[] = [
+    { key: "spend", label: "Investimento", currentVal: current.spend, compVal: comparison.spend, format: formatCurrency, invertColor: true },
+    { key: "impressions", label: "Impressões", currentVal: current.impressions, compVal: comparison.impressions, format: formatNumber },
+    { key: "reach", label: "Alcance", currentVal: current.reach, compVal: comparison.reach, format: formatNumber },
+    { key: "clicks", label: "Cliques", currentVal: current.clicks, compVal: comparison.clicks, format: formatNumber },
+    { key: "ctr", label: "CTR", currentVal: current.avgCTR, compVal: comparison.avgCTR, format: formatPercent },
+    { key: "cpc", label: "CPC", currentVal: current.avgCPC, compVal: comparison.avgCPC, format: formatCurrency, invertColor: true },
+    { key: "cpm", label: "CPM", currentVal: current.avgCPM, compVal: comparison.avgCPM, format: formatCurrency, invertColor: true },
+    { key: "roas", label: "ROAS", currentVal: current.roas, compVal: comparison.roas, format: (v) => v.toFixed(2) + "x" },
+    { key: "conversations", label: "Conversas", currentVal: current.messaging_conversations_started, compVal: comparison.messaging_conversations_started, format: formatNumber },
+    { key: "cost_per_conversation", label: "Custo/Conversa", currentVal: current.costPerConv, compVal: comparison.costPerConv, format: formatCurrency, invertColor: true },
+    { key: "frequency", label: "Frequência", currentVal: current.avgFrequency, compVal: comparison.avgFrequency, format: (v) => v.toFixed(2) },
+    { key: "conversions", label: "Conversões", currentVal: current.conversions, compVal: comparison.conversions, format: formatNumber },
+    { key: "leads", label: "Leads", currentVal: current.leads, compVal: comparison.leads, format: formatNumber },
   ];
+
+  const metrics = allMetrics.filter(m => visibleMetrics.has(m.key));
 
   const getDelta = (cur: number, comp: number) => comp === 0 ? (cur > 0 ? 100 : 0) : ((cur - comp) / comp) * 100;
 
