@@ -771,7 +771,7 @@ const CRMMeetingsPage = () => {
                         .update({ recording_url: recordingUrl.trim() || null } as any)
                         .eq("id", selectedMeeting.id);
                       toast.success("Link da gravação salvo!");
-                      await loadMeetings();
+                      await fetchMeetings();
                     } catch { toast.error("Erro ao salvar"); }
                     finally { setSaving(false); }
                   }}
