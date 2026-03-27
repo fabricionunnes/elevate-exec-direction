@@ -15,14 +15,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Parse body for test mode
+    // Parse body for test/manual mode
     let testGroupId: string | null = null;
     let testInstanceId: string | null = null;
+    let isManualSend = false;
+    let isCronCall = false;
     try {
       const body = await req.json();
       testGroupId = body?.testGroupId || null;
       testInstanceId = body?.testInstanceId || null;
-    } catch { /* no body */ }
+      isManualSend = body?.manual === true;
+      isCronCall = body?.cron === true;
+    } catch { /* no body - treat as cron */ isCronCall = true; }
 
     const isTestMode = !!testGroupId;
 
@@ -41,11 +45,45 @@ Deno.serve(async (req) => {
     const config: Record<string, string | null> = {};
     configRows.forEach((r: any) => { config[r.setting_key] = r.setting_value; });
 
-    // Skip enabled check in test mode
-    if (!isTestMode && config.enabled !== "true") {
+    // Skip enabled check in test/manual mode
+    if (!isTestMode && !isManualSend && config.enabled !== "true") {
       return new Response(JSON.stringify({ message: "Disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
+    }
+
+    // For cron calls, check if current time matches configured send_time (BRT = UTC-3)
+    if (isCronCall && !isTestMode && !isManualSend) {
+      const sendTime = config.send_time || "08:00";
+      const [configHour, configMin] = sendTime.split(":").map(Number);
+      
+      // Convert configured BRT time to UTC for comparison
+      const now = new Date();
+      const currentUtcHour = now.getUTCHours();
+      const currentUtcMin = now.getUTCMinutes();
+      
+      // BRT is UTC-3, so configured 19:00 BRT = 22:00 UTC
+      let expectedUtcHour = configHour + 3;
+      if (expectedUtcHour >= 24) expectedUtcHour -= 24;
+      
+      // Allow 30 min window (since cron runs every 30 min)
+      const currentTotalMin = currentUtcHour * 60 + currentUtcMin;
+      const expectedTotalMin = expectedUtcHour * 60 + configMin;
+      const diff = Math.abs(currentTotalMin - expectedTotalMin);
+      
+      if (diff > 29 && diff < (24 * 60 - 29)) {
+        return new Response(JSON.stringify({ message: "Not time yet", currentUTC: `${currentUtcHour}:${currentUtcMin}`, expectedUTC: `${expectedUtcHour}:${configMin}` }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      
+      // Skip weekends
+      const dayOfWeek = now.getUTCDay();
+      if (dayOfWeek === 0 || dayOfWeek === 6) {
+        return new Response(JSON.stringify({ message: "Weekend, skipping" }), {
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
     }
 
     const instanceId = testInstanceId || config.instance_id;
