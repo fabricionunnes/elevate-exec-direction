@@ -238,6 +238,7 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
             type="file"
             id="file-upload"
             className="hidden"
+            multiple
             onChange={handleFileUpload}
           />
           <Button asChild disabled={uploading}>
