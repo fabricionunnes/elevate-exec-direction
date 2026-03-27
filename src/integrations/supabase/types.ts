@@ -20907,6 +20907,7 @@ export type Database = {
           frequency: number | null
           id: string
           impressions: number | null
+          leads: number | null
           lifetime_budget: number | null
           messaging_conversations_started: number | null
           objective: string | null
@@ -20933,6 +20934,7 @@ export type Database = {
           frequency?: number | null
           id?: string
           impressions?: number | null
+          leads?: number | null
           lifetime_budget?: number | null
           messaging_conversations_started?: number | null
           objective?: string | null
@@ -20959,6 +20961,7 @@ export type Database = {
           frequency?: number | null
           id?: string
           impressions?: number | null
+          leads?: number | null
           lifetime_budget?: number | null
           messaging_conversations_started?: number | null
           objective?: string | null
