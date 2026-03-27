@@ -15,14 +15,18 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
-    // Parse body for test mode
+    // Parse body for test/manual mode
     let testGroupId: string | null = null;
     let testInstanceId: string | null = null;
+    let isManualSend = false;
+    let isCronCall = false;
     try {
       const body = await req.json();
       testGroupId = body?.testGroupId || null;
       testInstanceId = body?.testInstanceId || null;
-    } catch { /* no body */ }
+      isManualSend = body?.manual === true;
+      isCronCall = body?.cron === true;
+    } catch { /* no body - treat as cron */ isCronCall = true; }
 
     const isTestMode = !!testGroupId;
 
