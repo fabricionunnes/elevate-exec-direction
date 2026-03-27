@@ -276,8 +276,8 @@ export default function CRMHeadComercialPage() {
               closer_staff_id, owner_staff_id, last_activity_at, phone, notes, scheduled_at,
               head_status, head_closing_date,
               stage:crm_stages!crm_leads_stage_id_fkey(name, sort_order, is_final, final_type),
-              closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
-              owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name)
+              closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name, avatar_url),
+              owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url)
             `)
             .is("closed_at", null),
 

@@ -263,7 +263,7 @@ export const CRMPipelinePage = () => {
           .select(`
             *,
             origin:crm_origins(name),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
           `)
           .eq("pipeline_id", selectedPipeline)

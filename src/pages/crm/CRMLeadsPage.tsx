@@ -90,7 +90,7 @@ export const CRMLeadsPage = () => {
             *,
             stage:crm_stages(name, color, is_final, final_type),
             pipeline:crm_pipelines(name),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
           `)
           .order("created_at", { ascending: false })

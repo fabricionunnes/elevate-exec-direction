@@ -131,8 +131,8 @@ export const CRMReportsPage = () => {
           .select(`
             *,
             stage:crm_stages(name, color, is_final, final_type),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name),
-            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(id, name)
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(id, name, avatar_url),
+            closer:onboarding_staff!crm_leads_closer_staff_id_fkey(id, name, avatar_url)
           `)
           .not("closed_at", "is", null)
           .gte("closed_at", start.toISOString())
