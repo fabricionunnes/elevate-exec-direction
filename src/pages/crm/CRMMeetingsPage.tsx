@@ -97,7 +97,7 @@ const CRMMeetingsPage = () => {
           lead_id, responsible_staff_id, recording_url,
           lead_id, responsible_staff_id,
           lead:crm_leads!crm_activities_lead_id_fkey(id, name, stage_id),
-          responsible_staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(id, name)
+          responsible_staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(id, name, avatar_url)
         `)
         .eq("type", "meeting")
         .order("scheduled_at", { ascending: false });
