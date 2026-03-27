@@ -22,7 +22,7 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock } from "lucide-react";
+import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, ExternalLink, PlayCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
@@ -36,6 +36,7 @@ interface MeetingActivity {
   google_calendar_user_id: string | null;
   lead_id: string;
   status: string | null;
+  recording_url?: string | null;
 }
 
 interface HistoryEntry {
@@ -68,12 +69,19 @@ export function MeetingActionsDialog({
   const [cancelReason, setCancelReason] = useState("");
   const [history, setHistory] = useState<HistoryEntry[]>([]);
   const [loadingHistory, setLoadingHistory] = useState(false);
+  const [recordingUrl, setRecordingUrl] = useState(activity.recording_url || "");
+  const [savingRecording, setSavingRecording] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({
     date: activity.scheduled_at ? format(new Date(activity.scheduled_at), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     startTime: activity.scheduled_at ? format(new Date(activity.scheduled_at), "HH:mm") : "09:00",
     endTime: "10:00",
     reason: "",
   });
+
+  // Sync recording URL when activity changes
+  useEffect(() => {
+    setRecordingUrl(activity.recording_url || "");
+  }, [activity]);
 
   const loadHistory = async () => {
     setLoadingHistory(true);
@@ -232,6 +240,21 @@ export function MeetingActionsDialog({
     if (open) loadHistory();
   }, [open]);
 
+  const handleSaveRecording = async () => {
+    setSavingRecording(true);
+    try {
+      await supabase
+        .from("crm_activities")
+        .update({ recording_url: recordingUrl.trim() || null } as any)
+        .eq("id", activity.id);
+      toast.success("Link da gravação salvo!");
+    } catch {
+      toast.error("Erro ao salvar link");
+    } finally {
+      setSavingRecording(false);
+    }
+  };
+
   const actionLabels: Record<string, { label: string; color: string; icon: typeof Calendar }> = {
     scheduled: { label: "Agendada", color: "bg-emerald-500/15 text-emerald-400 border-emerald-500/30", icon: Calendar },
     cancelled: { label: "Cancelada", color: "bg-rose-500/15 text-rose-400 border-rose-500/30", icon: XCircle },
@@ -265,6 +288,48 @@ export function MeetingActionsDialog({
                     Link da reunião
                   </a>
                 )}
+                {recordingUrl && (
+                  <a href={recordingUrl} target="_blank" rel="noopener" className="text-xs text-emerald-600 underline flex items-center gap-1">
+                    <PlayCircle className="h-3 w-3" /> Assistir gravação
+                  </a>
+                )}
+              </div>
+
+              {/* Recording URL */}
+              <div className="space-y-2">
+                <Label className="text-xs font-medium flex items-center gap-1">
+                  <PlayCircle className="h-3.5 w-3.5" /> URL da Gravação
+                </Label>
+                <div className="flex items-center gap-2">
+                  <div className="relative flex-1">
+                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      value={recordingUrl}
+                      onChange={(e) => setRecordingUrl(e.target.value)}
+                      placeholder="https://drive.google.com/..."
+                      className="pl-9 h-8 text-xs"
+                    />
+                  </div>
+                  {recordingUrl && (
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      className="h-8 w-8 shrink-0"
+                      onClick={() => window.open(recordingUrl, "_blank")}
+                    >
+                      <ExternalLink className="h-3.5 w-3.5" />
+                    </Button>
+                  )}
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    className="h-8 text-xs shrink-0"
+                    disabled={savingRecording || !recordingUrl.trim()}
+                    onClick={handleSaveRecording}
+                  >
+                    {savingRecording ? <Loader2 className="h-3 w-3 animate-spin" /> : "Salvar"}
+                  </Button>
+                </div>
               </div>
 
               {/* Action Buttons */}

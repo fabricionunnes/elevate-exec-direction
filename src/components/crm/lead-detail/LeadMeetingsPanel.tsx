@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Clock, Video, RefreshCw, XCircle, Loader2, History, User } from "lucide-react";
+import { Calendar, Clock, Video, RefreshCw, XCircle, Loader2, History, User, ExternalLink, PlayCircle } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -23,6 +23,7 @@ interface MeetingActivity {
   responsible_staff_id: string | null;
   responsible?: { name: string } | null;
   created_at: string;
+  recording_url?: string | null;
 }
 
 interface LeadMeetingsPanelProps {
@@ -40,7 +41,7 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
     try {
       const { data, error } = await supabase
         .from("crm_activities")
-        .select("id, title, description, scheduled_at, completed_at, status, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, responsible_staff_id, created_at, responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)")
+        .select("id, title, description, scheduled_at, completed_at, status, meeting_link, google_calendar_event_id, google_calendar_user_id, lead_id, responsible_staff_id, created_at, recording_url, responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)")
         .eq("lead_id", leadId)
         .eq("type", "meeting")
         .order("scheduled_at", { ascending: false });
@@ -157,6 +158,17 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
                           className="text-xs text-primary underline flex items-center gap-1 mt-1"
                         >
                           <Video className="h-3 w-3" /> Link da reunião
+                        </a>
+                      )}
+
+                      {(meeting as any).recording_url && (
+                        <a
+                          href={(meeting as any).recording_url}
+                          target="_blank"
+                          rel="noopener"
+                          className="text-xs text-emerald-600 underline flex items-center gap-1 mt-1"
+                        >
+                          <PlayCircle className="h-3 w-3" /> Assistir gravação
                         </a>
                       )}
                     </div>
