@@ -187,6 +187,8 @@ Deno.serve(async (req) => {
         const ins = c.insights?.data?.[0] || {};
         const conversions = (ins.actions || []).find((a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "purchase")?.value || 0;
         const convValue = (ins.action_values || []).find((a: any) => a.action_type === "offsite_conversion.fb_pixel_purchase" || a.action_type === "purchase")?.value || 0;
+        const msgConversationsStarted = (ins.actions || []).find((a: any) => a.action_type === "onsite_conversion.messaging_conversation_started_7d")?.value || 0;
+        const costPerMsgConv = Number(msgConversationsStarted) > 0 ? Number(ins.spend || 0) / Number(msgConversationsStarted) : 0;
         return {
           project_id,
           campaign_id: c.id,
@@ -206,6 +208,8 @@ Deno.serve(async (req) => {
           conversion_value: Number(convValue),
           roas: Number(ins.spend) > 0 ? Number(convValue) / Number(ins.spend) : 0,
           frequency: Number(ins.frequency || 0),
+          messaging_conversations_started: Number(msgConversationsStarted),
+          cost_per_messaging_conversation: costPerMsgConv,
           date_start: start,
           date_stop: end,
           synced_at: new Date().toISOString(),
