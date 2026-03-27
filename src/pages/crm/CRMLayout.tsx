@@ -322,6 +322,7 @@ export const CRMLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
                   <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                    {staffAvatarUrl && <AvatarImage src={staffAvatarUrl} alt={staffName || ""} />}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                       {initials}
                     </AvatarFallback>
