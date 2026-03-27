@@ -312,11 +312,9 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
             <AlertTriangle className="h-12 w-12 text-orange-400" />
           </div>
           <h3 className="text-lg font-medium mb-2">Nenhum arquivo encontrado</h3>
-          <Button variant="link" asChild className="text-primary">
-            <label htmlFor="file-upload" className="cursor-pointer">
-              <CloudUpload className="h-4 w-4 mr-2" />
-              Novo arquivo
-            </label>
+          <Button variant="link" className="text-primary" onClick={() => fileInputRef.current?.click()}>
+            <CloudUpload className="h-4 w-4 mr-2" />
+            Novo arquivo
           </Button>
         </div>
       )}
