@@ -228,7 +228,7 @@ Deno.serve(async (req) => {
             apikey: anonKey,
           },
           body: JSON.stringify({
-            instanceId: config.instance_id,
+            instanceId,
             groupId,
             message,
           }),
