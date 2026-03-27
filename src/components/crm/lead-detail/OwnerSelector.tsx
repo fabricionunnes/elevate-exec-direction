@@ -116,6 +116,7 @@ export function OwnerSelector({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-2 hover:bg-muted/50 rounded-full p-1 transition-colors cursor-pointer">
           <Avatar className="h-7 w-7">
+            {currentOwnerAvatarUrl && <AvatarImage src={currentOwnerAvatarUrl} alt={currentOwnerName || ""} />}
             <AvatarFallback className="text-xs bg-primary/10 text-primary">
               {getInitials(currentOwnerName)}
             </AvatarFallback>
