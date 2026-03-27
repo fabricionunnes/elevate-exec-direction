@@ -106,7 +106,7 @@ export const CRMLayout = () => {
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, role, name")
+          .select("id, role, name, avatar_url")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
