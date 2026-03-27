@@ -512,6 +512,7 @@ export const CRMActivitiesPage = () => {
                   <TableCell>
                     {activity.responsible && (
                       <Avatar className="h-6 w-6">
+                        {activity.responsible.avatar_url && <AvatarImage src={activity.responsible.avatar_url} alt={activity.responsible.name} />}
                         <AvatarFallback className="text-[10px]">
                           {activity.responsible.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
