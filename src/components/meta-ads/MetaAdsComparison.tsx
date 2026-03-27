@@ -6,11 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Loader2, TrendingUp, TrendingDown, Minus, ArrowRightLeft } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, Legend } from "recharts";
+import type { MetricKey } from "./useMetricVisibility";
 
 interface MetaAdsComparisonProps {
   projectId: string;
   dateStart: string;
   dateStop: string;
+  visibleMetrics: Set<MetricKey>;
 }
 
 const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "currency", currency: "BRL" }).format(v);
