@@ -26,7 +26,7 @@ import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, Ext
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
-import { getEmbedUrl, isDirectVideo } from "./meetingUtils";
+import { getEmbedUrl, isDirectVideo, isGoogleDrive, getGoogleDriveViewUrl } from "./meetingUtils";
 
 interface MeetingActivity {
   id: string;
@@ -303,7 +303,7 @@ export function MeetingActionsDialog({
                   </Button>
                 )}
                 {showPlayer && recordingUrl && (
-                  <div className="rounded-lg overflow-hidden border border-border bg-black">
+                  <div className="rounded-lg overflow-hidden border border-border">
                     {isDirectVideo(recordingUrl) ? (
                       <video src={recordingUrl} controls className="w-full aspect-video" />
                     ) : getEmbedUrl(recordingUrl) ? (
@@ -313,6 +313,21 @@ export function MeetingActionsDialog({
                         allow="autoplay; encrypted-media"
                         allowFullScreen
                       />
+                    ) : isGoogleDrive(recordingUrl) ? (
+                      <div className="flex flex-col items-center justify-center py-8 bg-muted/30 gap-3">
+                        <PlayCircle className="h-8 w-8 text-muted-foreground" />
+                        <p className="text-xs text-muted-foreground text-center px-4">
+                          Arquivos do Google Drive não podem ser reproduzidos embutidos por restrições de privacidade.
+                        </p>
+                        <a
+                          href={getGoogleDriveViewUrl(recordingUrl)}
+                          target="_blank"
+                          rel="noopener"
+                          className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                        >
+                          <ExternalLink className="h-3.5 w-3.5" /> Abrir no Google Drive
+                        </a>
+                      </div>
                     ) : (
                       <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-xs gap-2">
                         <p>Formato não suportado para player embutido</p>
