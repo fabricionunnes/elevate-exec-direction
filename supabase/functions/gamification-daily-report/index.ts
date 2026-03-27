@@ -15,6 +15,17 @@ Deno.serve(async (req) => {
     const serviceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, serviceKey);
 
+    // Parse body for test mode
+    let testGroupId: string | null = null;
+    let testInstanceId: string | null = null;
+    try {
+      const body = await req.json();
+      testGroupId = body?.testGroupId || null;
+      testInstanceId = body?.testInstanceId || null;
+    } catch { /* no body */ }
+
+    const isTestMode = !!testGroupId;
+
     // 1. Load config
     const { data: configRows } = await supabase
       .from("gamification_report_config")
@@ -30,35 +41,39 @@ Deno.serve(async (req) => {
     const config: Record<string, string | null> = {};
     configRows.forEach((r: any) => { config[r.setting_key] = r.setting_value; });
 
-    if (config.enabled !== "true") {
+    // Skip enabled check in test mode
+    if (!isTestMode && config.enabled !== "true") {
       return new Response(JSON.stringify({ message: "Disabled" }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    if (!config.instance_id) {
+    const instanceId = testInstanceId || config.instance_id;
+    if (!instanceId) {
       return new Response(JSON.stringify({ error: "Missing instance config" }), {
         status: 400,
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
 
-    // Parse group JIDs - supports new multi-group format and legacy single group
+    // In test mode, send only to the test group
     let groupJids: string[] = [];
-    if (config.group_jids) {
-      try {
-        const parsed = JSON.parse(config.group_jids);
-        if (Array.isArray(parsed)) {
-          groupJids = parsed.map((g: any) => typeof g === "string" ? g : g.id).filter(Boolean);
+    if (isTestMode) {
+      groupJids = [testGroupId!];
+    } else {
+      if (config.group_jids) {
+        try {
+          const parsed = JSON.parse(config.group_jids);
+          if (Array.isArray(parsed)) {
+            groupJids = parsed.map((g: any) => typeof g === "string" ? g : g.id).filter(Boolean);
+          }
+        } catch {
+          groupJids = [config.group_jids];
         }
-      } catch {
-        // Not JSON, treat as single JID
-        groupJids = [config.group_jids];
       }
-    }
-    // Legacy fallback
-    if (groupJids.length === 0 && config.group_jid) {
-      groupJids = [config.group_jid];
+      if (groupJids.length === 0 && config.group_jid) {
+        groupJids = [config.group_jid];
+      }
     }
 
     if (groupJids.length === 0) {
