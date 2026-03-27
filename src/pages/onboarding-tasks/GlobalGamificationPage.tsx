@@ -561,6 +561,8 @@ export default function GlobalGamificationPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <GamificationReportSettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }
