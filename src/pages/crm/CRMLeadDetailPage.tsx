@@ -116,7 +116,7 @@ interface Lead {
   updated_at: string;
   stage?: { name: string; color: string; is_final: boolean; final_type: string | null };
   pipeline?: { name: string };
-  owner?: { name: string };
+  owner?: { name: string; avatar_url?: string | null };
   origin_rel?: { name: string; group?: { name: string } | null };
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
