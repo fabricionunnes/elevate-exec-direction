@@ -24,6 +24,7 @@ interface OwnerSelectorProps {
   leadId: string;
   currentOwnerId: string | null;
   currentOwnerName?: string | null;
+  currentOwnerAvatarUrl?: string | null;
   onOwnerChange?: () => void;
 }
 
