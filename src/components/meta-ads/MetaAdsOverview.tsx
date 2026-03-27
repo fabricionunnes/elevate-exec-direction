@@ -4,12 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, AreaChart, Area } from "recharts";
+import type { MetricKey } from "./useMetricVisibility";
 
 interface MetaAdsOverviewProps {
   projectId: string;
   dateStart: string;
   dateStop: string;
   syncing: boolean;
+  visibleMetrics: Set<MetricKey>;
 }
 
 const COLORS = ["#0A1931", "#B4121B", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#ef4444", "#14b8a6"];
