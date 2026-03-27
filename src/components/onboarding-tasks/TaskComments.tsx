@@ -143,6 +143,7 @@ export const TaskComments = ({ taskId, projectId }: TaskCommentsProps) => {
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
               <Avatar className="h-8 w-8">
+                {comment.user?.avatar_url && <AvatarImage src={comment.user.avatar_url} alt={comment.user?.name} />}
                 <AvatarFallback className="text-xs">
                   {getInitials(comment.user?.name || "?")}
                 </AvatarFallback>

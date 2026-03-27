@@ -205,6 +205,7 @@ export const KanbanLeadCard = ({
           leadId={lead.id}
           currentOwnerId={lead.owner_staff_id}
           currentOwnerName={lead.owner?.name}
+          currentOwnerAvatarUrl={lead.owner?.avatar_url}
           onOwnerChange={onRefresh}
         />
         <LeadCardNotes
