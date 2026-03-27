@@ -84,6 +84,7 @@ export const CRMLayout = () => {
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
