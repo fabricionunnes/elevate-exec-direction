@@ -22,10 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, ExternalLink, PlayCircle } from "lucide-react";
+import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, ExternalLink, PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { getEmbedUrl, isDirectVideo } from "./meetingUtils";
 
 interface MeetingActivity {
   id: string;
@@ -71,6 +72,7 @@ export function MeetingActionsDialog({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState(activity.recording_url || "");
   const [savingRecording, setSavingRecording] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({
     date: activity.scheduled_at ? format(new Date(activity.scheduled_at), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     startTime: activity.scheduled_at ? format(new Date(activity.scheduled_at), "HH:mm") : "09:00",
@@ -289,9 +291,37 @@ export function MeetingActionsDialog({
                   </a>
                 )}
                 {recordingUrl && (
-                  <a href={recordingUrl} target="_blank" rel="noopener" className="text-xs text-emerald-600 underline flex items-center gap-1">
-                    <PlayCircle className="h-3 w-3" /> Assistir gravação
-                  </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1 text-emerald-600 px-1 w-fit"
+                    onClick={() => setShowPlayer(!showPlayer)}
+                  >
+                    <PlayCircle className="h-3 w-3" />
+                    {showPlayer ? "Fechar player" : "Assistir gravação"}
+                    {showPlayer ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                )}
+                {showPlayer && recordingUrl && (
+                  <div className="rounded-lg overflow-hidden border border-border bg-black">
+                    {isDirectVideo(recordingUrl) ? (
+                      <video src={recordingUrl} controls className="w-full aspect-video" />
+                    ) : getEmbedUrl(recordingUrl) ? (
+                      <iframe
+                        src={getEmbedUrl(recordingUrl)!}
+                        className="w-full aspect-video"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-xs gap-2">
+                        <p>Formato não suportado para player embutido</p>
+                        <a href={recordingUrl} target="_blank" rel="noopener" className="text-primary underline flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Abrir em nova aba
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 

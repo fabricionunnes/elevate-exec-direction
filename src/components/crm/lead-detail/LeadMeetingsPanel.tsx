@@ -3,11 +3,12 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Calendar, Clock, Video, RefreshCw, XCircle, Loader2, History, User, ExternalLink, PlayCircle } from "lucide-react";
+import { Calendar, Clock, Video, RefreshCw, XCircle, Loader2, History, User, ExternalLink, PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
 import { MeetingActionsDialog } from "./MeetingActionsDialog";
+import { getEmbedUrl, isDirectVideo } from "./meetingUtils";
 
 interface MeetingActivity {
   id: string;
@@ -35,6 +36,7 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
   const [meetings, setMeetings] = useState<MeetingActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingActivity | null>(null);
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const loadMeetings = useCallback(async () => {
     setLoading(true);
@@ -161,15 +163,45 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
                         </a>
                       )}
 
-                      {(meeting as any).recording_url && (
-                        <a
-                          href={(meeting as any).recording_url}
-                          target="_blank"
-                          rel="noopener"
-                          className="text-xs text-emerald-600 underline flex items-center gap-1 mt-1"
-                        >
-                          <PlayCircle className="h-3 w-3" /> Assistir gravação
-                        </a>
+                      {meeting.recording_url && (
+                        <div className="mt-2">
+                          <Button
+                            variant="ghost"
+                            size="sm"
+                            className="h-6 text-xs gap-1 text-emerald-600 px-1"
+                            onClick={() => setExpandedPlayer(expandedPlayer === meeting.id ? null : meeting.id)}
+                          >
+                            <PlayCircle className="h-3 w-3" />
+                            {expandedPlayer === meeting.id ? "Fechar player" : "Assistir gravação"}
+                            {expandedPlayer === meeting.id ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                          </Button>
+                          
+                          {expandedPlayer === meeting.id && (
+                            <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
+                              {isDirectVideo(meeting.recording_url) ? (
+                                <video
+                                  src={meeting.recording_url}
+                                  controls
+                                  className="w-full aspect-video"
+                                />
+                              ) : getEmbedUrl(meeting.recording_url) ? (
+                                <iframe
+                                  src={getEmbedUrl(meeting.recording_url)!}
+                                  className="w-full aspect-video"
+                                  allow="autoplay; encrypted-media"
+                                  allowFullScreen
+                                />
+                              ) : (
+                                <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-xs gap-2">
+                                  <p>Formato não suportado para player embutido</p>
+                                  <a href={meeting.recording_url} target="_blank" rel="noopener" className="text-primary underline flex items-center gap-1">
+                                    <ExternalLink className="h-3 w-3" /> Abrir em nova aba
+                                  </a>
+                                </div>
+                              )}
+                            </div>
+                          )}
+                        </div>
                       )}
                     </div>
 
