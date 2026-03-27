@@ -8,8 +8,10 @@ import { Label } from "@/components/ui/label";
 import { Switch } from "@/components/ui/switch";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Search } from "lucide-react";
+import { Loader2, Search, X, CheckSquare } from "lucide-react";
 
 interface Props {
   open: boolean;
@@ -34,7 +36,7 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
 
   const [enabled, setEnabled] = useState(false);
   const [instanceId, setInstanceId] = useState<string>("");
-  const [groupJid, setGroupJid] = useState<string>("");
+  const [selectedGroups, setSelectedGroups] = useState<GroupItem[]>([]);
   const [sendTime, setSendTime] = useState("08:00");
 
   const [instances, setInstances] = useState<WhatsAppInstance[]>([]);
@@ -58,7 +60,23 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
       data.forEach((row) => {
         if (row.setting_key === "enabled") setEnabled(row.setting_value === "true");
         if (row.setting_key === "instance_id") setInstanceId(row.setting_value || "");
-        if (row.setting_key === "group_jid") setGroupJid(row.setting_value || "");
+        if (row.setting_key === "group_jids") {
+          try {
+            const parsed = JSON.parse(row.setting_value || "[]");
+            setSelectedGroups(Array.isArray(parsed) ? parsed : []);
+          } catch {
+            // Legacy single group_jid migration
+            if (row.setting_value) {
+              setSelectedGroups([{ id: row.setting_value, subject: row.setting_value }]);
+            }
+          }
+        }
+        // Legacy fallback
+        if (row.setting_key === "group_jid" && row.setting_value) {
+          setSelectedGroups((prev) =>
+            prev.length === 0 ? [{ id: row.setting_value!, subject: row.setting_value! }] : prev
+          );
+        }
         if (row.setting_key === "send_time") setSendTime(row.setting_value || "08:00");
       });
     }
@@ -116,20 +134,57 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
     }
   }, [instanceId]);
 
+  const toggleGroup = (group: GroupItem) => {
+    setSelectedGroups((prev) => {
+      const exists = prev.some((g) => g.id === group.id);
+      if (exists) return prev.filter((g) => g.id !== group.id);
+      return [...prev, group];
+    });
+  };
+
+  const selectAllFiltered = () => {
+    setSelectedGroups((prev) => {
+      const existingIds = new Set(prev.map((g) => g.id));
+      const newOnes = filteredGroups.filter((g) => !existingIds.has(g.id));
+      return [...prev, ...newOnes];
+    });
+  };
+
+  const deselectAllFiltered = () => {
+    const filteredIds = new Set(filteredGroups.map((g) => g.id));
+    setSelectedGroups((prev) => prev.filter((g) => !filteredIds.has(g.id)));
+  };
+
+  const removeGroup = (groupId: string) => {
+    setSelectedGroups((prev) => prev.filter((g) => g.id !== groupId));
+  };
+
   const handleSave = async () => {
     setSaving(true);
+
+    // Upsert group_jids key
+    const groupJidsValue = JSON.stringify(selectedGroups);
+
     const updates = [
       { key: "enabled", value: enabled ? "true" : "false" },
       { key: "instance_id", value: instanceId || null },
-      { key: "group_jid", value: groupJid || null },
+      { key: "group_jids", value: groupJidsValue },
       { key: "send_time", value: sendTime },
     ];
 
     for (const u of updates) {
-      await supabase
+      // Try update first, then insert if not exists
+      const { data } = await supabase
         .from("gamification_report_config")
         .update({ setting_value: u.value, updated_at: new Date().toISOString() })
-        .eq("setting_key", u.key);
+        .eq("setting_key", u.key)
+        .select();
+
+      if (!data || data.length === 0) {
+        await supabase
+          .from("gamification_report_config")
+          .insert({ setting_key: u.key, setting_value: u.value });
+      }
     }
     toast.success("Configurações salvas!");
     setSaving(false);
@@ -140,13 +195,17 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
     g.subject.toLowerCase().includes(groupSearch.toLowerCase())
   );
 
+  const allFilteredSelected = filteredGroups.length > 0 && filteredGroups.every((g) =>
+    selectedGroups.some((sg) => sg.id === g.id)
+  );
+
   return (
     <Dialog open={open} onOpenChange={(v) => !v && onClose()}>
-      <DialogContent className="sm:max-w-md">
+      <DialogContent className="sm:max-w-lg max-h-[90vh] overflow-y-auto">
         <DialogHeader>
           <DialogTitle>Relatório Diário - WhatsApp</DialogTitle>
           <DialogDescription>
-            Configure o envio automático do ranking para um grupo do WhatsApp
+            Configure o envio automático do ranking para grupos do WhatsApp
           </DialogDescription>
         </DialogHeader>
 
@@ -177,35 +236,70 @@ export function GamificationReportSettingsDialog({ open, onClose }: Props) {
               </Select>
             </div>
 
+            {/* Selected groups badges */}
+            {selectedGroups.length > 0 && (
+              <div className="space-y-2">
+                <Label>Grupos selecionados ({selectedGroups.length})</Label>
+                <div className="flex flex-wrap gap-1.5 p-2 border rounded-md bg-muted/30 max-h-24 overflow-y-auto">
+                  {selectedGroups.map((g) => (
+                    <Badge
+                      key={g.id}
+                      variant="secondary"
+                      className="gap-1 text-xs cursor-pointer hover:bg-destructive/20"
+                      onClick={() => removeGroup(g.id)}
+                    >
+                      {g.subject.length > 25 ? g.subject.substring(0, 25) + "..." : g.subject}
+                      <X className="h-3 w-3" />
+                    </Badge>
+                  ))}
+                </div>
+              </div>
+            )}
+
             <div className="space-y-2">
-              <Label>Grupo do WhatsApp</Label>
+              <Label>Grupos do WhatsApp</Label>
               {loadingGroups ? (
                 <div className="flex items-center gap-2 text-sm text-muted-foreground py-2">
                   <Loader2 className="h-4 w-4 animate-spin" /> Carregando grupos...
                 </div>
               ) : groups.length > 0 ? (
                 <>
-                  <div className="relative">
-                    <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      placeholder="Buscar grupo..."
-                      value={groupSearch}
-                      onChange={(e) => setGroupSearch(e.target.value)}
-                      className="pl-8"
-                    />
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Search className="absolute left-2 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input
+                        placeholder="Buscar grupo..."
+                        value={groupSearch}
+                        onChange={(e) => setGroupSearch(e.target.value)}
+                        className="pl-8"
+                      />
+                    </div>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="shrink-0 gap-1 text-xs"
+                      onClick={allFilteredSelected ? deselectAllFiltered : selectAllFiltered}
+                    >
+                      <CheckSquare className="h-3 w-3" />
+                      {allFilteredSelected ? "Desmarcar" : "Todos"}
+                    </Button>
                   </div>
                   <div className="max-h-48 overflow-y-auto border rounded-md">
-                    {filteredGroups.map((g) => (
-                      <button
-                        key={g.id}
-                        onClick={() => setGroupJid(g.id)}
-                        className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors ${
-                          groupJid === g.id ? "bg-primary/10 font-medium" : ""
-                        }`}
-                      >
-                        {g.subject}
-                      </button>
-                    ))}
+                    {filteredGroups.map((g) => {
+                      const isSelected = selectedGroups.some((sg) => sg.id === g.id);
+                      return (
+                        <button
+                          key={g.id}
+                          onClick={() => toggleGroup(g)}
+                          className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center gap-2 ${
+                            isSelected ? "bg-primary/10" : ""
+                          }`}
+                        >
+                          <Checkbox checked={isSelected} className="pointer-events-none" />
+                          <span className={isSelected ? "font-medium" : ""}>{g.subject}</span>
+                        </button>
+                      );
+                    })}
                     {filteredGroups.length === 0 && (
                       <p className="text-xs text-muted-foreground text-center py-3">Nenhum grupo encontrado</p>
                     )}
