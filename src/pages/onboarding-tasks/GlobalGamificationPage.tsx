@@ -473,6 +473,17 @@ export default function GlobalGamificationPage() {
               <RefreshCw className="h-3 w-3" />
               Atualizar
             </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading} className="gap-1">
+              <Download className="h-3 w-3" />
+              {downloading ? "Gerando..." : "PDF"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSendNow} disabled={sendingNow} className="gap-1">
+              <Send className="h-3 w-3" />
+              {sendingNow ? "Enviando..." : "Enviar"}
+            </Button>
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4" />
+            </Button>
           </div>
         </div>
 
