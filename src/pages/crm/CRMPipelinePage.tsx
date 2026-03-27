@@ -65,7 +65,7 @@ interface Lead {
   notes: string | null;
   created_at: string;
   origin?: { name: string } | null;
-  owner?: { name: string } | null;
+  owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
