@@ -6,9 +6,11 @@ export function isLovablePreviewHost(hostname = window.location.hostname) {
 }
 
 export function getMetaAdsRedirectUri() {
-  const callbackOrigin = isLovablePreviewHost()
-    ? META_ADS_PREFERRED_CALLBACK_ORIGIN
-    : window.location.origin;
+  const hostname = window.location.hostname;
+
+  const callbackOrigin = hostname === "localhost"
+    ? window.location.origin
+    : META_ADS_PREFERRED_CALLBACK_ORIGIN;
 
   return `${callbackOrigin}/meta-ads-callback`;
 }
