@@ -351,7 +351,7 @@ export function MeetingActionsDialog({
                     <Input
                       value={recordingUrl}
                       onChange={(e) => setRecordingUrl(e.target.value)}
-                      placeholder="https://drive.google.com/..."
+                      placeholder="https://youtube.com/watch?v=... ou https://youtu.be/..."
                       className="pl-9 h-8 text-xs"
                     />
                   </div>
