@@ -20897,6 +20897,7 @@ export type Database = {
           clicks: number | null
           conversion_value: number | null
           conversions: number | null
+          cost_per_messaging_conversation: number | null
           cpc: number | null
           cpm: number | null
           ctr: number | null
@@ -20907,6 +20908,7 @@ export type Database = {
           id: string
           impressions: number | null
           lifetime_budget: number | null
+          messaging_conversations_started: number | null
           objective: string | null
           project_id: string
           reach: number | null
@@ -20921,6 +20923,7 @@ export type Database = {
           clicks?: number | null
           conversion_value?: number | null
           conversions?: number | null
+          cost_per_messaging_conversation?: number | null
           cpc?: number | null
           cpm?: number | null
           ctr?: number | null
@@ -20931,6 +20934,7 @@ export type Database = {
           id?: string
           impressions?: number | null
           lifetime_budget?: number | null
+          messaging_conversations_started?: number | null
           objective?: string | null
           project_id: string
           reach?: number | null
@@ -20945,6 +20949,7 @@ export type Database = {
           clicks?: number | null
           conversion_value?: number | null
           conversions?: number | null
+          cost_per_messaging_conversation?: number | null
           cpc?: number | null
           cpm?: number | null
           ctr?: number | null
@@ -20955,6 +20960,7 @@ export type Database = {
           id?: string
           impressions?: number | null
           lifetime_budget?: number | null
+          messaging_conversations_started?: number | null
           objective?: string | null
           project_id?: string
           reach?: number | null
