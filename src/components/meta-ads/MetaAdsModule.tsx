@@ -75,7 +75,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      await generateMetaAdsPdf(projectId, dateStart, dateStop, account?.ad_account_name || account?.ad_account_id || "");
+      await generateMetaAdsPdf(projectId, dateStart, dateStop, account?.ad_account_name || account?.ad_account_id || "", visibleMetrics);
       toast.success("PDF gerado com sucesso!");
     } catch (e: any) {
       toast.error("Erro ao gerar PDF: " + (e.message || ""));
