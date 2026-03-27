@@ -175,21 +175,36 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
   return (
     <div className="space-y-6 mt-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {kpis.map((kpi, i) => (
           <motion.div
             key={kpi.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
+            initial={{ opacity: 0, y: 20, rotateX: -10 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
+            style={{ perspective: 800 }}
           >
-            <Card className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+            <Card className={`overflow-hidden relative group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${kpi.shadow} border-0`}
+              style={{
+                background: "linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%)",
+                boxShadow: "6px 6px 12px hsl(var(--muted) / 0.5), -2px -2px 8px hsl(var(--background))",
+              }}
+            >
+              {/* Top gradient accent */}
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
+              {/* Decorative glow */}
+              <div className={`absolute -top-8 -right-8 w-20 h-20 rounded-full bg-gradient-to-br ${kpi.gradient} opacity-10 blur-xl group-hover:opacity-20 transition-opacity`} />
+              
+              <CardContent className="p-4 relative z-10">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{kpi.label}</span>
+                  <div className={`p-2 rounded-xl ${kpi.iconBg} shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                    <kpi.icon className="h-3.5 w-3.5 text-white" />
+                  </div>
                 </div>
-                <p className="text-xl font-bold">{kpi.value}</p>
+                <p className="text-2xl font-extrabold tracking-tight text-foreground">{kpi.value}</p>
+                {/* Bottom shine effect */}
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${kpi.gradient} opacity-0 group-hover:opacity-40 transition-opacity`} />
               </CardContent>
             </Card>
           </motion.div>
