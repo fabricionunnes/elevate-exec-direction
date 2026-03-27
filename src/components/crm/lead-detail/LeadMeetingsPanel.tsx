@@ -177,7 +177,7 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
                           </Button>
                           
                           {expandedPlayer === meeting.id && (
-                            <div className="mt-2 rounded-lg overflow-hidden border border-border bg-black">
+                            <div className="mt-2 rounded-lg overflow-hidden border border-border">
                               {isDirectVideo(meeting.recording_url) ? (
                                 <video
                                   src={meeting.recording_url}
@@ -191,6 +191,21 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
                                   allow="autoplay; encrypted-media"
                                   allowFullScreen
                                 />
+                              ) : isGoogleDrive(meeting.recording_url) ? (
+                                <div className="flex flex-col items-center justify-center py-8 bg-muted/30 gap-3">
+                                  <Video className="h-8 w-8 text-muted-foreground" />
+                                  <p className="text-xs text-muted-foreground text-center px-4">
+                                    Arquivos do Google Drive não podem ser reproduzidos embutidos por restrições de privacidade.
+                                  </p>
+                                  <a
+                                    href={getGoogleDriveViewUrl(meeting.recording_url!)}
+                                    target="_blank"
+                                    rel="noopener"
+                                    className="inline-flex items-center gap-1.5 text-xs font-medium text-primary hover:underline"
+                                  >
+                                    <ExternalLink className="h-3.5 w-3.5" /> Abrir no Google Drive
+                                  </a>
+                                </div>
                               ) : (
                                 <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-xs gap-2">
                                   <p>Formato não suportado para player embutido</p>
