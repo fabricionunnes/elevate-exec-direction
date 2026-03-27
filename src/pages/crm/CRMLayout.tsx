@@ -148,6 +148,7 @@ export const CRMLayout = () => {
         setStaffRole(staff.role);
         setStaffName(staff.name);
         setStaffId(staff.id);
+        setStaffAvatarUrl(staff.avatar_url);
       } catch (error) {
         console.error("[CRM] Error checking access:", error);
         navigate("/onboarding-tasks/login");
