@@ -294,7 +294,8 @@ export async function generateMetaAdsPdf(
   projectId: string,
   dateStart: string,
   dateStop: string,
-  accountName: string
+  accountName: string,
+  visibleMetrics?: Set<string>
 ) {
   // Load logo and data in parallel
   const [logoBase64, campaignsRes, adsetsRes, adsRes] = await Promise.all([
