@@ -167,6 +167,9 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
         <TabsContent value="creatives">
           <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
         </TabsContent>
+        <TabsContent value="comparison">
+          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+        </TabsContent>
       </Tabs>
     </div>
   );
