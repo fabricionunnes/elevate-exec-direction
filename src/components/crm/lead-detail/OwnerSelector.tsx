@@ -32,6 +32,7 @@ export function OwnerSelector({
   leadId,
   currentOwnerId,
   currentOwnerName,
+  currentOwnerAvatarUrl,
   onOwnerChange,
 }: OwnerSelectorProps) {
   const [open, setOpen] = useState(false);
