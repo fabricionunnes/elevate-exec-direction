@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image } from "lucide-react";
+import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image, FileDown } from "lucide-react";
 import { MetaAdsConnect } from "./MetaAdsConnect";
 import { MetaAdsOverview } from "./MetaAdsOverview";
 import { MetaAdsCampaigns } from "./MetaAdsCampaigns";
