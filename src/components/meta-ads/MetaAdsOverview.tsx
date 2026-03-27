@@ -30,7 +30,7 @@ const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "c
 const formatNumber = (v: number) => new Intl.NumberFormat("pt-BR").format(v);
 const formatPercent = (v: number) => `${v.toFixed(2)}%`;
 
-export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: MetaAdsOverviewProps) => {
+export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visibleMetrics }: MetaAdsOverviewProps) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
