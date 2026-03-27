@@ -211,9 +211,11 @@ export const CRMDashboardPage = () => {
           }));
         setMeetingEventDetails(eventDetails);
 
-        // Use meeting events for meeting counts (prefer over activities)
-        const meScheduled = filteredMeetingEvents.filter(e => e.event_type === "scheduled").length;
-        const meRealized = filteredMeetingEvents.filter(e => e.event_type === "realized").length;
+        // Use meeting events for meeting counts (deduplicate by lead_id to avoid double-counting dual-credit events)
+        const uniqueScheduledLeads = new Set(filteredMeetingEvents.filter(e => e.event_type === "scheduled").map(e => e.lead_id));
+        const uniqueRealizedLeads = new Set(filteredMeetingEvents.filter(e => e.event_type === "realized").map(e => e.lead_id));
+        const meScheduled = uniqueScheduledLeads.size;
+        const meRealized = uniqueRealizedLeads.size;
 
         let filteredActivities = activitiesData || [];
         if (selectedPipeline !== "all") {
