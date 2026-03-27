@@ -83,18 +83,18 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
   const costPerConversation = totals.messaging_conversations_started > 0 ? totals.spend / totals.messaging_conversations_started : 0;
 
   const kpis = [
-    { label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, color: "text-red-500" },
-    { label: "Impressões", value: formatNumber(totals.impressions), icon: Eye, color: "text-blue-500" },
-    { label: "Alcance", value: formatNumber(totals.reach), icon: Users, color: "text-green-500" },
-    { label: "Cliques", value: formatNumber(totals.clicks), icon: MousePointerClick, color: "text-amber-500" },
-    { label: "CTR", value: formatPercent(avgCTR), icon: TrendingUp, color: "text-purple-500" },
-    { label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, color: "text-cyan-500" },
-    { label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, color: "text-pink-500" },
-    { label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, color: "text-emerald-500" },
-    { label: "Conversas Iniciadas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, color: "text-indigo-500" },
-    { label: "Custo por Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, color: "text-orange-500" },
-    { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, color: "text-teal-500" },
-    { label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, color: "text-lime-600" },
+    { label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, gradient: "from-red-500 to-rose-600", iconBg: "bg-gradient-to-br from-red-500 to-rose-700", shadow: "shadow-red-500/20" },
+    { label: "Impressões", value: formatNumber(totals.impressions), icon: Eye, gradient: "from-blue-500 to-indigo-600", iconBg: "bg-gradient-to-br from-blue-500 to-indigo-700", shadow: "shadow-blue-500/20" },
+    { label: "Alcance", value: formatNumber(totals.reach), icon: Users, gradient: "from-emerald-500 to-green-600", iconBg: "bg-gradient-to-br from-emerald-500 to-green-700", shadow: "shadow-emerald-500/20" },
+    { label: "Cliques", value: formatNumber(totals.clicks), icon: MousePointerClick, gradient: "from-amber-500 to-orange-600", iconBg: "bg-gradient-to-br from-amber-500 to-orange-700", shadow: "shadow-amber-500/20" },
+    { label: "CTR", value: formatPercent(avgCTR), icon: TrendingUp, gradient: "from-purple-500 to-violet-600", iconBg: "bg-gradient-to-br from-purple-500 to-violet-700", shadow: "shadow-purple-500/20" },
+    { label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, gradient: "from-cyan-500 to-blue-600", iconBg: "bg-gradient-to-br from-cyan-500 to-blue-700", shadow: "shadow-cyan-500/20" },
+    { label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, gradient: "from-pink-500 to-rose-600", iconBg: "bg-gradient-to-br from-pink-500 to-rose-700", shadow: "shadow-pink-500/20" },
+    { label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, gradient: "from-emerald-500 to-teal-600", iconBg: "bg-gradient-to-br from-emerald-500 to-teal-700", shadow: "shadow-emerald-500/20" },
+    { label: "Conversas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, gradient: "from-indigo-500 to-blue-600", iconBg: "bg-gradient-to-br from-indigo-500 to-blue-700", shadow: "shadow-indigo-500/20" },
+    { label: "Custo/Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, gradient: "from-orange-500 to-red-600", iconBg: "bg-gradient-to-br from-orange-500 to-red-700", shadow: "shadow-orange-500/20" },
+    { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, gradient: "from-teal-500 to-cyan-600", iconBg: "bg-gradient-to-br from-teal-500 to-cyan-700", shadow: "shadow-teal-500/20" },
+    { label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, gradient: "from-lime-500 to-green-600", iconBg: "bg-gradient-to-br from-lime-500 to-green-700", shadow: "shadow-lime-500/20" },
   ];
 
   // Chart data: spend by campaign
@@ -175,21 +175,36 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
   return (
     <div className="space-y-6 mt-4">
       {/* KPI Cards */}
-      <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+      <div className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3">
         {kpis.map((kpi, i) => (
           <motion.div
             key={kpi.label}
-            initial={{ opacity: 0, y: 20 }}
-            animate={{ opacity: 1, y: 0 }}
-            transition={{ delay: i * 0.05 }}
+            initial={{ opacity: 0, y: 20, rotateX: -10 }}
+            animate={{ opacity: 1, y: 0, rotateX: 0 }}
+            transition={{ delay: i * 0.05, type: "spring", stiffness: 200 }}
+            style={{ perspective: 800 }}
           >
-            <Card className="overflow-hidden">
-              <CardContent className="p-4">
-                <div className="flex items-center justify-between mb-2">
-                  <span className="text-xs text-muted-foreground font-medium">{kpi.label}</span>
-                  <kpi.icon className={`h-4 w-4 ${kpi.color}`} />
+            <Card className={`overflow-hidden relative group hover:-translate-y-1 hover:shadow-xl transition-all duration-300 ${kpi.shadow} border-0`}
+              style={{
+                background: "linear-gradient(145deg, hsl(var(--card)) 0%, hsl(var(--muted)) 100%)",
+                boxShadow: "6px 6px 12px hsl(var(--muted) / 0.5), -2px -2px 8px hsl(var(--background))",
+              }}
+            >
+              {/* Top gradient accent */}
+              <div className={`absolute top-0 left-0 right-0 h-1 bg-gradient-to-r ${kpi.gradient}`} />
+              {/* Decorative glow */}
+              <div className={`absolute -top-8 -right-8 w-20 h-20 rounded-full bg-gradient-to-br ${kpi.gradient} opacity-10 blur-xl group-hover:opacity-20 transition-opacity`} />
+              
+              <CardContent className="p-4 relative z-10">
+                <div className="flex items-start justify-between mb-3">
+                  <span className="text-[11px] text-muted-foreground font-medium uppercase tracking-wider">{kpi.label}</span>
+                  <div className={`p-2 rounded-xl ${kpi.iconBg} shadow-lg transform group-hover:scale-110 group-hover:rotate-3 transition-all duration-300`}>
+                    <kpi.icon className="h-3.5 w-3.5 text-white" />
+                  </div>
                 </div>
-                <p className="text-xl font-bold">{kpi.value}</p>
+                <p className="text-2xl font-extrabold tracking-tight text-foreground">{kpi.value}</p>
+                {/* Bottom shine effect */}
+                <div className={`absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r ${kpi.gradient} opacity-0 group-hover:opacity-40 transition-opacity`} />
               </CardContent>
             </Card>
           </motion.div>
