@@ -36,6 +36,7 @@ export function LeadMeetingsPanel({ leadId, leadName }: LeadMeetingsPanelProps) 
   const [meetings, setMeetings] = useState<MeetingActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedMeeting, setSelectedMeeting] = useState<MeetingActivity | null>(null);
+  const [expandedPlayer, setExpandedPlayer] = useState<string | null>(null);
 
   const loadMeetings = useCallback(async () => {
     setLoading(true);
