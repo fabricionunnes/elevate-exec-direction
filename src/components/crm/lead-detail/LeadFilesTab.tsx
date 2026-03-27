@@ -85,6 +85,8 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
     const selectedFiles = event.target.files;
     if (!selectedFiles || selectedFiles.length === 0) return;
 
+    const filesToUpload = Array.from(selectedFiles);
+
     // Reset input immediately so user can select again
     event.target.value = "";
 
@@ -101,7 +103,7 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
       let successCount = 0;
       let errorCount = 0;
 
-      for (const file of Array.from(selectedFiles)) {
+      for (const file of filesToUpload) {
         try {
           // Upload to storage
           const fileExt = file.name.split('.').pop();
