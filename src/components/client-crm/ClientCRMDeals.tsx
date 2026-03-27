@@ -180,13 +180,14 @@ export const ClientCRMDeals = ({
       {/* Header */}
       <div className="flex items-center justify-between gap-3 flex-wrap">
         <div className="flex items-center gap-2 flex-wrap">
-          <h3 className="font-semibold text-lg">Pipeline</h3>
-          {pipelines.length > 1 && (
-            <Select value={activePipelineId || ""} onValueChange={setActivePipelineId}>
-              <SelectTrigger className="h-8 w-[180px] text-sm"><SelectValue /></SelectTrigger>
-              <SelectContent>{pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}</SelectContent>
-            </Select>
-          )}
+           <h3 className="font-semibold text-lg">Pipeline</h3>
+           <Select value={activePipelineId || ""} onValueChange={setActivePipelineId}>
+             <SelectTrigger className="h-8 w-[200px] text-sm"><SelectValue /></SelectTrigger>
+             <SelectContent>
+               <SelectItem value="all">Todos os funis</SelectItem>
+               {pipelines.map(p => <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>)}
+             </SelectContent>
+           </Select>
         </div>
         <div className="flex items-center gap-2">
           <div className="relative">

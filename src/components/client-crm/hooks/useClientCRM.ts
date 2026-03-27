@@ -133,6 +133,25 @@ export function useClientCRM(projectId: string) {
   }, [projectId, activePipelineId]);
 
   const fetchPipelineData = async (pipelineId: string) => {
+    if (pipelineId === "all") {
+      // Fetch stages and deals from ALL pipelines
+      const [stagesRes, dealsRes] = await Promise.all([
+        supabase
+          .from("client_crm_stages")
+          .select("*, pipeline:client_crm_pipelines(name)")
+          .in("pipeline_id", pipelines.map(p => p.id))
+          .order("sort_order"),
+        supabase
+          .from("client_crm_deals")
+          .select("*, contact:client_crm_contacts(id, name, phone, email, company), stage:client_crm_stages(id, name, color)")
+          .eq("project_id", projectId)
+          .order("created_at", { ascending: false }),
+      ]);
+      setStages((stagesRes.data || []) as ClientStage[]);
+      setDeals((dealsRes.data || []) as unknown as ClientDeal[]);
+      return;
+    }
+
     const [stagesRes, dealsRes] = await Promise.all([
       supabase
         .from("client_crm_stages")
