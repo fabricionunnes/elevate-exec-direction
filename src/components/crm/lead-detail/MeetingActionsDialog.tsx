@@ -291,9 +291,37 @@ export function MeetingActionsDialog({
                   </a>
                 )}
                 {recordingUrl && (
-                  <a href={recordingUrl} target="_blank" rel="noopener" className="text-xs text-emerald-600 underline flex items-center gap-1">
-                    <PlayCircle className="h-3 w-3" /> Assistir gravação
-                  </a>
+                  <Button
+                    variant="ghost"
+                    size="sm"
+                    className="h-6 text-xs gap-1 text-emerald-600 px-1 w-fit"
+                    onClick={() => setShowPlayer(!showPlayer)}
+                  >
+                    <PlayCircle className="h-3 w-3" />
+                    {showPlayer ? "Fechar player" : "Assistir gravação"}
+                    {showPlayer ? <ChevronUp className="h-3 w-3" /> : <ChevronDown className="h-3 w-3" />}
+                  </Button>
+                )}
+                {showPlayer && recordingUrl && (
+                  <div className="rounded-lg overflow-hidden border border-border bg-black">
+                    {isDirectVideo(recordingUrl) ? (
+                      <video src={recordingUrl} controls className="w-full aspect-video" />
+                    ) : getEmbedUrl(recordingUrl) ? (
+                      <iframe
+                        src={getEmbedUrl(recordingUrl)!}
+                        className="w-full aspect-video"
+                        allow="autoplay; encrypted-media"
+                        allowFullScreen
+                      />
+                    ) : (
+                      <div className="flex flex-col items-center justify-center py-6 text-muted-foreground text-xs gap-2">
+                        <p>Formato não suportado para player embutido</p>
+                        <a href={recordingUrl} target="_blank" rel="noopener" className="text-primary underline flex items-center gap-1">
+                          <ExternalLink className="h-3 w-3" /> Abrir em nova aba
+                        </a>
+                      </div>
+                    )}
+                  </div>
                 )}
               </div>
 
