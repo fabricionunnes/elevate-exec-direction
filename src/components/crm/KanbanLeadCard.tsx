@@ -27,7 +27,7 @@ interface Lead {
   last_activity_at: string | null;
   urgency: string | null;
   origin?: { name: string } | null;
-  owner?: { name: string } | null;
+  owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
@@ -205,6 +205,7 @@ export const KanbanLeadCard = ({
           leadId={lead.id}
           currentOwnerId={lead.owner_staff_id}
           currentOwnerName={lead.owner?.name}
+          currentOwnerAvatarUrl={lead.owner?.avatar_url}
           onOwnerChange={onRefresh}
         />
         <LeadCardNotes

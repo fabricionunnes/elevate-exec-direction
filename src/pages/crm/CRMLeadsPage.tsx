@@ -34,7 +34,7 @@ interface Lead {
   pipeline_id: string | null;
   stage: { name: string; color: string; is_final: boolean; final_type: string | null } | null;
   pipeline: { name: string } | null;
-  owner: { name: string } | null;
+  owner: { name: string; avatar_url?: string | null } | null;
   opportunity_value: number | null;
   probability: number | null;
   last_activity_at: string | null;
@@ -90,7 +90,7 @@ export const CRMLeadsPage = () => {
             *,
             stage:crm_stages(name, color, is_final, final_type),
             pipeline:crm_pipelines(name),
-            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+            owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
           `)
           .order("created_at", { ascending: false })

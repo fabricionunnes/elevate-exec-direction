@@ -3,7 +3,7 @@ import { Outlet, useNavigate, useLocation, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { cn } from "@/lib/utils";
 import { Button } from "@/components/ui/button";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -84,6 +84,7 @@ export const CRMLayout = () => {
   const [staffRole, setStaffRole] = useState<string | null>(null);
   const [staffName, setStaffName] = useState<string | null>(null);
   const [staffId, setStaffId] = useState<string | null>(null);
+  const [staffAvatarUrl, setStaffAvatarUrl] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
@@ -105,7 +106,7 @@ export const CRMLayout = () => {
 
         const { data: staff, error: staffError } = await supabase
           .from("onboarding_staff")
-          .select("id, role, name")
+          .select("id, role, name, avatar_url")
           .eq("user_id", user.id)
           .eq("is_active", true)
           .maybeSingle();
@@ -121,6 +122,7 @@ export const CRMLayout = () => {
           setStaffRole(staff.role);
           setStaffName(staff.name);
           setStaffId(staff.id);
+          setStaffAvatarUrl(staff.avatar_url);
           setIsLoading(false);
           return;
         }
@@ -146,6 +148,7 @@ export const CRMLayout = () => {
         setStaffRole(staff.role);
         setStaffName(staff.name);
         setStaffId(staff.id);
+        setStaffAvatarUrl(staff.avatar_url);
       } catch (error) {
         console.error("[CRM] Error checking access:", error);
         navigate("/onboarding-tasks/login");
@@ -320,6 +323,7 @@ export const CRMLayout = () => {
               <DropdownMenuTrigger asChild>
                 <Button variant="ghost" size="icon" className="rounded-full h-8 w-8 sm:h-9 sm:w-9">
                   <Avatar className="h-7 w-7 sm:h-8 sm:w-8">
+                    {staffAvatarUrl && <AvatarImage src={staffAvatarUrl} alt={staffName || ""} />}
                     <AvatarFallback className="bg-primary/10 text-primary text-xs sm:text-sm">
                       {initials}
                     </AvatarFallback>

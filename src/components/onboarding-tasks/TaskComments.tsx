@@ -2,7 +2,7 @@ import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Textarea } from "@/components/ui/textarea";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { toast } from "sonner";
 import { Send, Trash2 } from "lucide-react";
 import { format } from "date-fns";
@@ -12,7 +12,7 @@ interface Comment {
   id: string;
   content: string;
   created_at: string;
-  user: { id: string; name: string; role: string };
+  user: { id: string; name: string; role: string; avatar_url?: string | null };
 }
 
 interface TaskCommentsProps {
@@ -52,7 +52,7 @@ export const TaskComments = ({ taskId, projectId }: TaskCommentsProps) => {
     try {
       const { data, error } = await supabase
         .from("onboarding_task_comments")
-        .select(`*, user:onboarding_users(id, name, role)`)
+        .select(`*, user:onboarding_users(id, name, role, avatar_url)`)
         .eq("task_id", taskId)
         .order("created_at", { ascending: true });
 
@@ -143,6 +143,7 @@ export const TaskComments = ({ taskId, projectId }: TaskCommentsProps) => {
           {comments.map((comment) => (
             <div key={comment.id} className="flex gap-3">
               <Avatar className="h-8 w-8">
+                {comment.user?.avatar_url && <AvatarImage src={comment.user.avatar_url} alt={comment.user?.name} />}
                 <AvatarFallback className="text-xs">
                   {getInitials(comment.user?.name || "?")}
                 </AvatarFallback>

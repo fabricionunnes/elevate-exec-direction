@@ -46,7 +46,7 @@ export const CommercialActionsCompanyTab = ({ projectId, staffList, consultantSt
   const fetchActions = async () => {
     const { data } = await supabase
       .from("commercial_actions")
-      .select("*, responsible_staff:onboarding_staff!commercial_actions_responsible_staff_id_fkey(id, name)")
+      .select("*, responsible_staff:onboarding_staff!commercial_actions_responsible_staff_id_fkey(id, name, avatar_url)")
       .eq("project_id", projectId)
       .order("month").order("week").order("created_at");
     setActions((data as any[]) || []);

@@ -30,7 +30,7 @@ export const CommercialActionsCalendarTab = ({ projectId, companySegment, consul
   const fetchActions = async () => {
     const { data } = await supabase
       .from("commercial_actions")
-      .select("*, responsible_staff:onboarding_staff!commercial_actions_responsible_staff_id_fkey(id, name)")
+      .select("*, responsible_staff:onboarding_staff!commercial_actions_responsible_staff_id_fkey(id, name, avatar_url)")
       .eq("project_id", projectId)
       .eq("year", selectedYear)
       .order("month").order("week").order("created_at");

@@ -5,7 +5,7 @@ import {
   SheetTitle,
 } from "@/components/ui/sheet";
 import { Badge } from "@/components/ui/badge";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Separator } from "@/components/ui/separator";
 import {
   CheckCircle2,
@@ -27,8 +27,8 @@ interface OnboardingTask {
   completed_at: string | null;
   status: "pending" | "in_progress" | "completed" | "inactive";
   observations: string | null;
-  assignee?: { id: string; name: string; role: string };
-  responsible_staff?: { id: string; name: string } | null;
+  assignee?: { id: string; name: string; role: string; avatar_url?: string | null };
+  responsible_staff?: { id: string; name: string; avatar_url?: string | null } | null;
 }
 
 interface ClientTaskDetailSheetProps {
@@ -172,6 +172,9 @@ export const ClientTaskDetailSheet = ({ task, open, onOpenChange }: ClientTaskDe
               </h4>
               <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
                 <Avatar className="h-10 w-10">
+                  {(task.responsible_staff?.avatar_url || task.assignee?.avatar_url) && (
+                    <AvatarImage src={task.responsible_staff?.avatar_url || task.assignee?.avatar_url || undefined} alt={responsibleName} />
+                  )}
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {getInitials(responsibleName)}
                   </AvatarFallback>

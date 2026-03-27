@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Badge } from "@/components/ui/badge";
 import { Switch } from "@/components/ui/switch";
 import { Label } from "@/components/ui/label";
@@ -15,6 +15,7 @@ interface StaffMember {
   name: string;
   email: string;
   role: string;
+  avatar_url?: string | null;
 }
 
 interface RoomAccessManagerProps {
@@ -213,6 +214,7 @@ export const RoomAccessManager = ({
                         disabled={isCurrentUser}
                       />
                       <Avatar className="h-8 w-8">
+                        {staff.avatar_url && <AvatarImage src={staff.avatar_url} alt={staff.name} />}
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
                           {getStaffInitials(staff.name)}
                         </AvatarFallback>

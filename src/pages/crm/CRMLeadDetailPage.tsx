@@ -116,7 +116,7 @@ interface Lead {
   updated_at: string;
   stage?: { name: string; color: string; is_final: boolean; final_type: string | null };
   pipeline?: { name: string };
-  owner?: { name: string };
+  owner?: { name: string; avatar_url?: string | null };
   origin_rel?: { name: string; group?: { name: string } | null };
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
@@ -186,7 +186,7 @@ export const CRMLeadDetailPage = () => {
           *,
           stage:crm_stages(name, color, is_final, final_type),
           pipeline:crm_pipelines(name),
-          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
+          owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
           origin_rel:crm_origins(name, group:crm_origin_groups(name)),
           tags:crm_lead_tags(tag:crm_tags(id, name, color))
         `)
@@ -916,6 +916,7 @@ export const CRMLeadDetailPage = () => {
               leadId={lead.id}
               currentOwnerId={lead.owner_staff_id}
               currentOwnerName={lead.owner?.name}
+              currentOwnerAvatarUrl={lead.owner?.avatar_url}
               onOwnerChange={loadLead}
             />
             <DropdownMenu>

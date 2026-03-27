@@ -24,6 +24,7 @@ interface OwnerSelectorProps {
   leadId: string;
   currentOwnerId: string | null;
   currentOwnerName?: string | null;
+  currentOwnerAvatarUrl?: string | null;
   onOwnerChange?: () => void;
 }
 
@@ -31,6 +32,7 @@ export function OwnerSelector({
   leadId,
   currentOwnerId,
   currentOwnerName,
+  currentOwnerAvatarUrl,
   onOwnerChange,
 }: OwnerSelectorProps) {
   const [open, setOpen] = useState(false);
@@ -114,6 +116,7 @@ export function OwnerSelector({
       <PopoverTrigger asChild>
         <button className="flex items-center gap-2 hover:bg-muted/50 rounded-full p-1 transition-colors cursor-pointer">
           <Avatar className="h-7 w-7">
+            {currentOwnerAvatarUrl && <AvatarImage src={currentOwnerAvatarUrl} alt={currentOwnerName || ""} />}
             <AvatarFallback className="text-xs bg-primary/10 text-primary">
               {getInitials(currentOwnerName)}
             </AvatarFallback>

@@ -492,8 +492,8 @@ const OnboardingProjectPage = () => {
         .from("onboarding_tasks")
         .select(`
           *,
-          assignee:onboarding_users(id, name, role),
-          responsible_staff:onboarding_staff(id, name)
+          assignee:onboarding_users(id, name, role, avatar_url),
+          responsible_staff:onboarding_staff(id, name, avatar_url)
         `)
         .eq("project_id", projectId)
         .neq("status", "inactive")

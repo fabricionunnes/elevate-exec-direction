@@ -4,7 +4,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
-import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
   Select,
@@ -63,7 +63,7 @@ interface Activity {
     stage?: { name: string } | null;
     tags?: { tag: { id: string; name: string; color: string } }[];
   } | null;
-  responsible?: { name: string } | null;
+  responsible?: { name: string; avatar_url?: string | null } | null;
   created_at: string;
 }
 
@@ -99,7 +99,7 @@ export const CRMActivitiesPage = () => {
             stage:crm_stages(name),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
           ),
-          responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)
+          responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name, avatar_url)
         `)
         .order("scheduled_at", { ascending: true });
 
@@ -512,6 +512,7 @@ export const CRMActivitiesPage = () => {
                   <TableCell>
                     {activity.responsible && (
                       <Avatar className="h-6 w-6">
+                        {activity.responsible.avatar_url && <AvatarImage src={activity.responsible.avatar_url} alt={activity.responsible.name} />}
                         <AvatarFallback className="text-[10px]">
                           {activity.responsible.name.slice(0, 2).toUpperCase()}
                         </AvatarFallback>
