@@ -68,6 +68,8 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
   const avgCPC = totals.clicks > 0 ? totals.spend / totals.clicks : 0;
   const avgCPM = totals.impressions > 0 ? (totals.spend / totals.impressions * 1000) : 0;
   const roas = totals.spend > 0 ? totals.conversion_value / totals.spend : 0;
+  const avgFrequency = totals.frequency_count > 0 ? totals.frequency_sum / totals.frequency_count : 0;
+  const costPerConversation = totals.messaging_conversations_started > 0 ? totals.spend / totals.messaging_conversations_started : 0;
 
   const kpis = [
     { label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, color: "text-red-500" },
