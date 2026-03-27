@@ -99,7 +99,7 @@ export const CRMActivitiesPage = () => {
             stage:crm_stages(name),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
           ),
-          responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name)
+          responsible:onboarding_staff!crm_activities_responsible_staff_id_fkey(name, avatar_url)
         `)
         .order("scheduled_at", { ascending: true });
 
