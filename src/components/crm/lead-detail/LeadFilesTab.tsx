@@ -81,8 +81,11 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
   };
 
   const handleFileUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
+    const selectedFiles = event.target.files;
+    if (!selectedFiles || selectedFiles.length === 0) return;
+
+    // Reset input immediately so user can select again
+    event.target.value = "";
 
     setUploading(true);
     try {
@@ -94,46 +97,60 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
         .eq("user_id", user?.id)
         .single();
 
-      // Upload to storage
-      const fileExt = file.name.split('.').pop();
-      const fileName = `${leadId}/${Date.now()}.${fileExt}`;
-      
-      const { error: uploadError } = await supabase.storage
-        .from("crm-files")
-        .upload(fileName, file);
+      let successCount = 0;
+      let errorCount = 0;
 
-      if (uploadError) {
-        // If bucket doesn't exist, show a friendly error
-        if (uploadError.message.includes("Bucket not found")) {
-          toast.error("Storage não configurado. Entre em contato com o administrador.");
-          return;
+      for (const file of Array.from(selectedFiles)) {
+        try {
+          // Upload to storage
+          const fileExt = file.name.split('.').pop();
+          const fileName = `${leadId}/${Date.now()}_${Math.random().toString(36).substring(7)}.${fileExt}`;
+          
+          const { error: uploadError } = await supabase.storage
+            .from("crm-files")
+            .upload(fileName, file);
+
+          if (uploadError) {
+            if (uploadError.message.includes("Bucket not found")) {
+              toast.error("Storage não configurado. Entre em contato com o administrador.");
+              return;
+            }
+            throw uploadError;
+          }
+
+          const { data: { publicUrl } } = supabase.storage
+            .from("crm-files")
+            .getPublicUrl(fileName);
+
+          const { error: insertError } = await supabase
+            .from("crm_lead_files")
+            .insert({
+              lead_id: leadId,
+              file_name: file.name,
+              file_url: publicUrl,
+              file_type: file.type,
+              file_size: file.size,
+              uploaded_by: staff?.id,
+            });
+
+          if (insertError) throw insertError;
+          successCount++;
+        } catch (err) {
+          console.error("Error uploading file:", file.name, err);
+          errorCount++;
         }
-        throw uploadError;
       }
 
-      const { data: { publicUrl } } = supabase.storage
-        .from("crm-files")
-        .getPublicUrl(fileName);
-
-      // Save file record
-      const { error: insertError } = await supabase
-        .from("crm_lead_files")
-        .insert({
-          lead_id: leadId,
-          file_name: file.name,
-          file_url: publicUrl,
-          file_type: file.type,
-          file_size: file.size,
-          uploaded_by: staff?.id,
-        });
-
-      if (insertError) throw insertError;
-
-      toast.success("Arquivo enviado com sucesso");
+      if (successCount > 0) {
+        toast.success(`${successCount} arquivo(s) enviado(s) com sucesso`);
+      }
+      if (errorCount > 0) {
+        toast.error(`${errorCount} arquivo(s) com erro no envio`);
+      }
       loadFiles();
     } catch (error) {
-      console.error("Error uploading file:", error);
-      toast.error("Erro ao enviar arquivo");
+      console.error("Error uploading files:", error);
+      toast.error("Erro ao enviar arquivos");
     } finally {
       setUploading(false);
     }
@@ -221,6 +238,7 @@ export const LeadFilesTab = ({ leadId }: LeadFilesTabProps) => {
             type="file"
             id="file-upload"
             className="hidden"
+            multiple
             onChange={handleFileUpload}
           />
           <Button asChild disabled={uploading}>
