@@ -111,7 +111,7 @@ export function DashboardDetailDialog({
               })}
             </div>
           )}
-        </ScrollArea>
+        </div>
       </DialogContent>
     </Dialog>
   );
