@@ -60,7 +60,7 @@ export function DashboardDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6 max-h-[60vh]">
+        <ScrollArea className="flex-1 px-6 pb-6 min-h-0" style={{ maxHeight: 'calc(85vh - 120px)' }}>
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
               Nenhum item encontrado.
