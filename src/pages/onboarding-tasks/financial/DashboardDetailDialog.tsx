@@ -47,7 +47,7 @@ export function DashboardDetailDialog({
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0">
+      <DialogContent className="max-w-2xl max-h-[85vh] flex flex-col p-0 overflow-hidden">
         <DialogHeader className="px-6 pt-6 pb-0">
           <DialogTitle className="text-lg">{title}</DialogTitle>
           <div className="flex items-center gap-3 mt-2">
@@ -60,7 +60,7 @@ export function DashboardDetailDialog({
           </div>
         </DialogHeader>
 
-        <ScrollArea className="flex-1 px-6 pb-6 max-h-[60vh]">
+        <ScrollArea className="flex-1 px-6 pb-6 min-h-0" style={{ maxHeight: 'calc(85vh - 120px)' }}>
           {items.length === 0 ? (
             <div className="text-center py-12 text-muted-foreground text-sm">
               Nenhum item encontrado.
