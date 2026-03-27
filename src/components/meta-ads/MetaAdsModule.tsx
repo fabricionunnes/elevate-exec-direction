@@ -3,12 +3,13 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image, FileDown } from "lucide-react";
+import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image, FileDown, ArrowRightLeft } from "lucide-react";
 import { MetaAdsConnect } from "./MetaAdsConnect";
 import { MetaAdsOverview } from "./MetaAdsOverview";
 import { MetaAdsCampaigns } from "./MetaAdsCampaigns";
 import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
+import { MetaAdsComparison } from "./MetaAdsComparison";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
 import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
 
@@ -148,6 +149,10 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
             <Image className="h-3.5 w-3.5" />
             Criativos
           </TabsTrigger>
+          <TabsTrigger value="comparison" className="gap-1.5">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Comparativo
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
@@ -161,6 +166,9 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
         </TabsContent>
         <TabsContent value="creatives">
           <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+        </TabsContent>
+        <TabsContent value="comparison">
+          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
         </TabsContent>
       </Tabs>
     </div>
