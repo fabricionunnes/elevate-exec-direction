@@ -172,6 +172,9 @@ export const ClientTaskDetailSheet = ({ task, open, onOpenChange }: ClientTaskDe
               </h4>
               <div className="flex items-center gap-3 p-3 bg-muted/30 rounded-xl">
                 <Avatar className="h-10 w-10">
+                  {(task.responsible_staff?.avatar_url || task.assignee?.avatar_url) && (
+                    <AvatarImage src={task.responsible_staff?.avatar_url || task.assignee?.avatar_url || undefined} alt={responsibleName} />
+                  )}
                   <AvatarFallback className="bg-primary/10 text-primary font-semibold">
                     {getInitials(responsibleName)}
                   </AvatarFallback>

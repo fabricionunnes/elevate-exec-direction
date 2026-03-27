@@ -214,6 +214,7 @@ export const RoomAccessManager = ({
                         disabled={isCurrentUser}
                       />
                       <Avatar className="h-8 w-8">
+                        {staff.avatar_url && <AvatarImage src={staff.avatar_url} alt={staff.name} />}
                         <AvatarFallback className="text-xs bg-primary/10 text-primary">
                           {getStaffInitials(staff.name)}
                         </AvatarFallback>
