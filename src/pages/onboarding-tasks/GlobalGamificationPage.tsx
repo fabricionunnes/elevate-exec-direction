@@ -12,6 +12,11 @@ import { useGlobalGamification, type GlobalParticipant, type LeagueEntry, type C
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GamificationReportSettingsDialog } from "@/components/gamification/GamificationReportSettingsDialog";
+import { generateRankingPDF, generateRankingText } from "@/components/gamification/useGamificationReport";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
+import { ptBR } from "date-fns/locale";
 
 // ─── Stats Cards ────────────────────────────────────────────────────────
 function StatsCards({ stats }: { stats: { total: number; avgPercent: number; activeCompanies: number; above100: number } }) {
