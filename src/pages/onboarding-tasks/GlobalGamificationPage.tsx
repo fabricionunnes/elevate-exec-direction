@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Target, Percent, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Target, Percent, ChevronLeft, ChevronRight, Download, Settings, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
