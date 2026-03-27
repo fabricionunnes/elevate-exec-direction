@@ -116,6 +116,10 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
             {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Sincronizar
           </Button>
+          <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={downloading} className="gap-1.5">
+            {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+            Baixar PDF
+          </Button>
           {isStaff && (
             <Button size="sm" variant="ghost" onClick={handleDisconnect} className="gap-1.5 text-destructive">
               <Unlink className="h-3.5 w-3.5" />
