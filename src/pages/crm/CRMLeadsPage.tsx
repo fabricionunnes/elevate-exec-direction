@@ -34,7 +34,7 @@ interface Lead {
   pipeline_id: string | null;
   stage: { name: string; color: string; is_final: boolean; final_type: string | null } | null;
   pipeline: { name: string } | null;
-  owner: { name: string } | null;
+  owner: { name: string; avatar_url?: string | null } | null;
   opportunity_value: number | null;
   probability: number | null;
   last_activity_at: string | null;
