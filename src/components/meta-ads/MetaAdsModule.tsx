@@ -3,13 +3,14 @@ import { supabase } from "@/integrations/supabase/client";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Button } from "@/components/ui/button";
 import { toast } from "sonner";
-import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image } from "lucide-react";
+import { Loader2, RefreshCw, Unlink, BarChart3, Layers, Megaphone, Image, FileDown } from "lucide-react";
 import { MetaAdsConnect } from "./MetaAdsConnect";
 import { MetaAdsOverview } from "./MetaAdsOverview";
 import { MetaAdsCampaigns } from "./MetaAdsCampaigns";
 import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
+import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
 
 interface MetaAdsModuleProps {
   projectId: string;
@@ -20,6 +21,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
   const [account, setAccount] = useState<any>(null);
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
+  const [downloading, setDownloading] = useState(false);
   const [dateStart, setDateStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -66,6 +68,18 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
     }
   };
 
+  const handleDownloadPdf = async () => {
+    setDownloading(true);
+    try {
+      await generateMetaAdsPdf(projectId, dateStart, dateStop, account?.ad_account_name || account?.ad_account_id || "");
+      toast.success("PDF gerado com sucesso!");
+    } catch (e: any) {
+      toast.error("Erro ao gerar PDF: " + (e.message || ""));
+    } finally {
+      setDownloading(false);
+    }
+  };
+
   if (loading) {
     return (
       <div className="flex items-center justify-center py-20">
@@ -101,6 +115,10 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
           <Button size="sm" onClick={handleSync} disabled={syncing} className="gap-1.5">
             {syncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <RefreshCw className="h-3.5 w-3.5" />}
             Sincronizar
+          </Button>
+          <Button size="sm" variant="outline" onClick={handleDownloadPdf} disabled={downloading} className="gap-1.5">
+            {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
+            Baixar PDF
           </Button>
           {isStaff && (
             <Button size="sm" variant="ghost" onClick={handleDisconnect} className="gap-1.5 text-destructive">
