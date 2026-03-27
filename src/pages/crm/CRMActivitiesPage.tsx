@@ -63,7 +63,7 @@ interface Activity {
     stage?: { name: string } | null;
     tags?: { tag: { id: string; name: string; color: string } }[];
   } | null;
-  responsible?: { name: string } | null;
+  responsible?: { name: string; avatar_url?: string | null } | null;
   created_at: string;
 }
 
