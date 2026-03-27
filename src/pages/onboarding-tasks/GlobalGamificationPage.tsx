@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Target, Percent, ChevronLeft, ChevronRight } from "lucide-react";
+import { ArrowLeft, Trophy, Users, Building2, Medal, Gamepad2, TrendingUp, Crown, Star, Zap, Filter, RefreshCw, Target, Percent, ChevronLeft, ChevronRight, Download, Settings, Send } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
@@ -12,6 +12,10 @@ import { useGlobalGamification, type GlobalParticipant, type LeagueEntry, type C
 import { motion, AnimatePresence } from "framer-motion";
 import { format, addMonths, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
+import { GamificationReportSettingsDialog } from "@/components/gamification/GamificationReportSettingsDialog";
+import { generateRankingPDF, generateRankingText } from "@/components/gamification/useGamificationReport";
+import { toast } from "sonner";
+import { supabase } from "@/integrations/supabase/client";
 
 // ─── Stats Cards ────────────────────────────────────────────────────────
 function StatsCards({ stats }: { stats: { total: number; avgPercent: number; activeCompanies: number; above100: number } }) {
@@ -328,6 +332,9 @@ function MonthSelector({ value, onChange }: { value: Date; onChange: (d: Date) =
 // ─── Main Page ──────────────────────────────────────────────────────────
 export default function GlobalGamificationPage() {
   const navigate = useNavigate();
+  const [showSettings, setShowSettings] = useState(false);
+  const [downloading, setDownloading] = useState(false);
+  const [sendingNow, setSendingNow] = useState(false);
   const {
     loading,
     participants,
@@ -344,6 +351,52 @@ export default function GlobalGamificationPage() {
     setSelectedMonth,
     refetch,
   } = useGlobalGamification();
+
+  const handleDownloadPDF = async () => {
+    setDownloading(true);
+    try {
+      const blob = await generateRankingPDF(participants, companies, selectedMonth, stats);
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement("a");
+      a.href = url;
+      a.download = `ranking-gamificacao-${format(selectedMonth, "yyyy-MM")}.pdf`;
+      a.click();
+      URL.revokeObjectURL(url);
+      toast.success("PDF baixado!");
+    } catch (e: any) {
+      toast.error("Erro ao gerar PDF");
+      console.error(e);
+    } finally {
+      setDownloading(false);
+    }
+  };
+
+  const handleSendNow = async () => {
+    setSendingNow(true);
+    try {
+      const { data: { session } } = await supabase.auth.getSession();
+      if (!session) { toast.error("Não autenticado"); return; }
+
+      const resp = await fetch(
+        `${import.meta.env.VITE_SUPABASE_URL}/functions/v1/gamification-daily-report`,
+        {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+            Authorization: `Bearer ${session.access_token}`,
+            apikey: import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY,
+          },
+        }
+      );
+      const result = await resp.json();
+      if (result.error) throw new Error(result.error);
+      toast.success("Relatório enviado para o grupo!");
+    } catch (e: any) {
+      toast.error(e.message || "Erro ao enviar");
+    } finally {
+      setSendingNow(false);
+    }
+  };
 
   if (loading) {
     return (
@@ -419,6 +472,17 @@ export default function GlobalGamificationPage() {
             <Button variant="outline" size="sm" onClick={refetch} className="gap-1">
               <RefreshCw className="h-3 w-3" />
               Atualizar
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={downloading} className="gap-1">
+              <Download className="h-3 w-3" />
+              {downloading ? "Gerando..." : "PDF"}
+            </Button>
+            <Button variant="outline" size="sm" onClick={handleSendNow} disabled={sendingNow} className="gap-1">
+              <Send className="h-3 w-3" />
+              {sendingNow ? "Enviando..." : "Enviar"}
+            </Button>
+            <Button variant="outline" size="icon" className="h-9 w-9" onClick={() => setShowSettings(true)}>
+              <Settings className="h-4 w-4" />
             </Button>
           </div>
         </div>
@@ -497,6 +561,8 @@ export default function GlobalGamificationPage() {
           </TabsContent>
         </Tabs>
       </div>
+
+      <GamificationReportSettingsDialog open={showSettings} onClose={() => setShowSettings(false)} />
     </div>
   );
 }
