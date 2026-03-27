@@ -252,29 +252,22 @@ Deno.serve(async (req) => {
 
     const message = lines.join("\n");
 
-    // 4. Send to ALL configured groups
-    const anonKey = Deno.env.get("SUPABASE_ANON_KEY")!;
+    // 4. Send to ALL configured groups using supabase.functions.invoke (handles auth automatically)
     const results: { groupId: string; success: boolean; error?: string }[] = [];
 
     for (const groupId of groupJids) {
       try {
-        const sendResp = await fetch(`${supabaseUrl}/functions/v1/evolution-api?action=sendGroupText`, {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-            Authorization: `Bearer ${serviceKey}`,
-            apikey: anonKey,
-          },
-          body: JSON.stringify({
+        const { data: sendResult, error: sendError } = await supabase.functions.invoke('evolution-api', {
+          body: {
+            action: 'sendGroupText',
             instanceId,
             groupId,
             message,
-          }),
+          },
         });
 
-        const sendResult = await sendResp.json();
-        console.log(`[gamification-daily-report] Sent to ${groupId}:`, JSON.stringify(sendResult).substring(0, 300));
-        results.push({ groupId, success: sendResp.ok });
+        console.log(`[gamification-daily-report] Sent to ${groupId}:`, JSON.stringify(sendResult || sendError).substring(0, 300));
+        results.push({ groupId, success: !sendError });
       } catch (err) {
         console.error(`[gamification-daily-report] Error sending to ${groupId}:`, err);
         results.push({ groupId, success: false, error: String(err) });
