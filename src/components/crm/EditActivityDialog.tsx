@@ -79,7 +79,7 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
           type: formData.type,
           title: formData.title,
           description: formData.description || null,
-          scheduled_at: formData.scheduled_at || null,
+          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null,
         })
         .eq("id", activity.id);
 

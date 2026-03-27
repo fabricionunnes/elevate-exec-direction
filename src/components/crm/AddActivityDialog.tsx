@@ -63,7 +63,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
           type: formData.type,
           title: formData.title,
           description: formData.description || null,
-          scheduled_at: formData.scheduled_at || null,
+          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null,
           responsible_staff_id: staff?.id,
           status: "pending",
         });
