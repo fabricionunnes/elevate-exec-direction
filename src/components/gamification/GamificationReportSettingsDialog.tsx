@@ -11,7 +11,7 @@ import { Input } from "@/components/ui/input";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Badge } from "@/components/ui/badge";
 import { toast } from "sonner";
-import { Loader2, Search, X, CheckSquare } from "lucide-react";
+import { Loader2, Search, X, CheckSquare, SendHorizonal } from "lucide-react";
 
 interface Props {
   open: boolean;
