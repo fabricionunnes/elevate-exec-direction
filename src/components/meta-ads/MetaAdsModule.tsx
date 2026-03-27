@@ -9,6 +9,7 @@ import { MetaAdsOverview } from "./MetaAdsOverview";
 import { MetaAdsCampaigns } from "./MetaAdsCampaigns";
 import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
+import { MetaAdsComparison } from "./MetaAdsComparison";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
 import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
 
