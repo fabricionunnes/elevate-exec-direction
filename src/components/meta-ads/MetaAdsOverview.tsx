@@ -80,6 +80,9 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
     { label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, color: "text-cyan-500" },
     { label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, color: "text-pink-500" },
     { label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, color: "text-emerald-500" },
+    { label: "Conversas Iniciadas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, color: "text-indigo-500" },
+    { label: "Custo por Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, color: "text-orange-500" },
+    { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, color: "text-teal-500" },
   ];
 
   // Chart data: spend by campaign
