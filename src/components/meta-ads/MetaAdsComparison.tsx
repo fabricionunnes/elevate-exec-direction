@@ -55,7 +55,7 @@ function getPreviousPeriod(dateStart: string, dateStop: string) {
   };
 }
 
-export const MetaAdsComparison = ({ projectId, dateStart, dateStop }: MetaAdsComparisonProps) => {
+export const MetaAdsComparison = ({ projectId, dateStart, dateStop, visibleMetrics }: MetaAdsComparisonProps) => {
   const prev = getPreviousPeriod(dateStart, dateStop);
   const [compStart, setCompStart] = useState(prev.start);
   const [compStop, setCompStop] = useState(prev.stop);
