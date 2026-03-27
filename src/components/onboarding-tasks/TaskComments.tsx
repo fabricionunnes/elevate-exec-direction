@@ -52,7 +52,7 @@ export const TaskComments = ({ taskId, projectId }: TaskCommentsProps) => {
     try {
       const { data, error } = await supabase
         .from("onboarding_task_comments")
-        .select(`*, user:onboarding_users(id, name, role)`)
+        .select(`*, user:onboarding_users(id, name, role, avatar_url)`)
         .eq("task_id", taskId)
         .order("created_at", { ascending: true });
 
