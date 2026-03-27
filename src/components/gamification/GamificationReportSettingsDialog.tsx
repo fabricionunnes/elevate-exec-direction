@@ -33,6 +33,8 @@ interface GroupItem {
 export function GamificationReportSettingsDialog({ open, onClose }: Props) {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
+  const [testSending, setTestSending] = useState(false);
+  const [testGroupId, setTestGroupId] = useState<string>("");
 
   const [enabled, setEnabled] = useState(false);
   const [instanceId, setInstanceId] = useState<string>("");
