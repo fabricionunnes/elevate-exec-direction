@@ -160,19 +160,19 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
         </TabsList>
 
         <TabsContent value="overview">
-          <MetaAdsOverview projectId={projectId} dateStart={dateStart} dateStop={dateStop} syncing={syncing} />
+          <MetaAdsOverview projectId={projectId} dateStart={dateStart} dateStop={dateStop} syncing={syncing} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="campaigns">
-          <MetaAdsCampaigns projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsCampaigns projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="adsets">
-          <MetaAdsAdsets projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsAdsets projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="creatives">
-          <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="comparison">
-          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
       </Tabs>
     </div>
