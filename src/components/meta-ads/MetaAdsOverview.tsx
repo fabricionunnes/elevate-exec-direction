@@ -4,12 +4,14 @@ import { Card, CardContent } from "@/components/ui/card";
 import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle, UserPlus } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, AreaChart, Area } from "recharts";
+import type { MetricKey } from "./useMetricVisibility";
 
 interface MetaAdsOverviewProps {
   projectId: string;
   dateStart: string;
   dateStop: string;
   syncing: boolean;
+  visibleMetrics: Set<MetricKey>;
 }
 
 const COLORS = ["#0A1931", "#B4121B", "#3b82f6", "#10b981", "#f59e0b", "#8b5cf6", "#ec4899", "#06b6d4", "#ef4444", "#14b8a6"];
@@ -28,7 +30,7 @@ const formatCurrency = (v: number) => new Intl.NumberFormat("pt-BR", { style: "c
 const formatNumber = (v: number) => new Intl.NumberFormat("pt-BR").format(v);
 const formatPercent = (v: number) => `${v.toFixed(2)}%`;
 
-export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: MetaAdsOverviewProps) => {
+export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visibleMetrics }: MetaAdsOverviewProps) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -82,20 +84,22 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing }: Met
   const avgFrequency = totals.frequency_count > 0 ? totals.frequency_sum / totals.frequency_count : 0;
   const costPerConversation = totals.messaging_conversations_started > 0 ? totals.spend / totals.messaging_conversations_started : 0;
 
-  const kpis = [
-    { label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, gradient: "from-red-500 to-rose-600", iconBg: "bg-gradient-to-br from-red-500 to-rose-700", shadow: "shadow-red-500/20" },
-    { label: "Impressões", value: formatNumber(totals.impressions), icon: Eye, gradient: "from-blue-500 to-indigo-600", iconBg: "bg-gradient-to-br from-blue-500 to-indigo-700", shadow: "shadow-blue-500/20" },
-    { label: "Alcance", value: formatNumber(totals.reach), icon: Users, gradient: "from-emerald-500 to-green-600", iconBg: "bg-gradient-to-br from-emerald-500 to-green-700", shadow: "shadow-emerald-500/20" },
-    { label: "Cliques", value: formatNumber(totals.clicks), icon: MousePointerClick, gradient: "from-amber-500 to-orange-600", iconBg: "bg-gradient-to-br from-amber-500 to-orange-700", shadow: "shadow-amber-500/20" },
-    { label: "CTR", value: formatPercent(avgCTR), icon: TrendingUp, gradient: "from-purple-500 to-violet-600", iconBg: "bg-gradient-to-br from-purple-500 to-violet-700", shadow: "shadow-purple-500/20" },
-    { label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, gradient: "from-cyan-500 to-blue-600", iconBg: "bg-gradient-to-br from-cyan-500 to-blue-700", shadow: "shadow-cyan-500/20" },
-    { label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, gradient: "from-pink-500 to-rose-600", iconBg: "bg-gradient-to-br from-pink-500 to-rose-700", shadow: "shadow-pink-500/20" },
-    { label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, gradient: "from-emerald-500 to-teal-600", iconBg: "bg-gradient-to-br from-emerald-500 to-teal-700", shadow: "shadow-emerald-500/20" },
-    { label: "Conversas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, gradient: "from-indigo-500 to-blue-600", iconBg: "bg-gradient-to-br from-indigo-500 to-blue-700", shadow: "shadow-indigo-500/20" },
-    { label: "Custo/Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, gradient: "from-orange-500 to-red-600", iconBg: "bg-gradient-to-br from-orange-500 to-red-700", shadow: "shadow-orange-500/20" },
-    { label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, gradient: "from-teal-500 to-cyan-600", iconBg: "bg-gradient-to-br from-teal-500 to-cyan-700", shadow: "shadow-teal-500/20" },
-    { label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, gradient: "from-lime-500 to-green-600", iconBg: "bg-gradient-to-br from-lime-500 to-green-700", shadow: "shadow-lime-500/20" },
+  const allKpis = [
+    { key: "spend" as MetricKey, label: "Investimento", value: formatCurrency(totals.spend), icon: DollarSign, gradient: "from-red-500 to-rose-600", iconBg: "bg-gradient-to-br from-red-500 to-rose-700", shadow: "shadow-red-500/20" },
+    { key: "impressions" as MetricKey, label: "Impressões", value: formatNumber(totals.impressions), icon: Eye, gradient: "from-blue-500 to-indigo-600", iconBg: "bg-gradient-to-br from-blue-500 to-indigo-700", shadow: "shadow-blue-500/20" },
+    { key: "reach" as MetricKey, label: "Alcance", value: formatNumber(totals.reach), icon: Users, gradient: "from-emerald-500 to-green-600", iconBg: "bg-gradient-to-br from-emerald-500 to-green-700", shadow: "shadow-emerald-500/20" },
+    { key: "clicks" as MetricKey, label: "Cliques", value: formatNumber(totals.clicks), icon: MousePointerClick, gradient: "from-amber-500 to-orange-600", iconBg: "bg-gradient-to-br from-amber-500 to-orange-700", shadow: "shadow-amber-500/20" },
+    { key: "ctr" as MetricKey, label: "CTR", value: formatPercent(avgCTR), icon: TrendingUp, gradient: "from-purple-500 to-violet-600", iconBg: "bg-gradient-to-br from-purple-500 to-violet-700", shadow: "shadow-purple-500/20" },
+    { key: "cpc" as MetricKey, label: "CPC", value: formatCurrency(avgCPC), icon: DollarSign, gradient: "from-cyan-500 to-blue-600", iconBg: "bg-gradient-to-br from-cyan-500 to-blue-700", shadow: "shadow-cyan-500/20" },
+    { key: "cpm" as MetricKey, label: "CPM", value: formatCurrency(avgCPM), icon: BarChart3, gradient: "from-pink-500 to-rose-600", iconBg: "bg-gradient-to-br from-pink-500 to-rose-700", shadow: "shadow-pink-500/20" },
+    { key: "roas" as MetricKey, label: "ROAS", value: roas.toFixed(2) + "x", icon: Target, gradient: "from-emerald-500 to-teal-600", iconBg: "bg-gradient-to-br from-emerald-500 to-teal-700", shadow: "shadow-emerald-500/20" },
+    { key: "conversations" as MetricKey, label: "Conversas", value: formatNumber(totals.messaging_conversations_started), icon: MessageCircle, gradient: "from-indigo-500 to-blue-600", iconBg: "bg-gradient-to-br from-indigo-500 to-blue-700", shadow: "shadow-indigo-500/20" },
+    { key: "cost_per_conversation" as MetricKey, label: "Custo/Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, gradient: "from-orange-500 to-red-600", iconBg: "bg-gradient-to-br from-orange-500 to-red-700", shadow: "shadow-orange-500/20" },
+    { key: "frequency" as MetricKey, label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, gradient: "from-teal-500 to-cyan-600", iconBg: "bg-gradient-to-br from-teal-500 to-cyan-700", shadow: "shadow-teal-500/20" },
+    { key: "leads" as MetricKey, label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, gradient: "from-lime-500 to-green-600", iconBg: "bg-gradient-to-br from-lime-500 to-green-700", shadow: "shadow-lime-500/20" },
   ];
+
+  const kpis = allKpis.filter(k => visibleMetrics.has(k.key));
 
   // Chart data: spend by campaign
   const spendByCampaign = campaigns

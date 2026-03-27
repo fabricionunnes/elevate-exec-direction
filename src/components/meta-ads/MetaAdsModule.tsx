@@ -11,7 +11,9 @@ import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
 import { MetaAdsComparison } from "./MetaAdsComparison";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
+import { MetaAdsMetricSettings } from "./MetaAdsMetricSettings";
 import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
+import { useMetricVisibility } from "./useMetricVisibility";
 
 interface MetaAdsModuleProps {
   projectId: string;
@@ -23,6 +25,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
   const [loading, setLoading] = useState(true);
   const [syncing, setSyncing] = useState(false);
   const [downloading, setDownloading] = useState(false);
+  const { visibleMetrics, toggle, isVisible } = useMetricVisibility();
   const [dateStart, setDateStart] = useState(() => {
     const d = new Date();
     d.setDate(d.getDate() - 30);
@@ -72,7 +75,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
   const handleDownloadPdf = async () => {
     setDownloading(true);
     try {
-      await generateMetaAdsPdf(projectId, dateStart, dateStop, account?.ad_account_name || account?.ad_account_id || "");
+      await generateMetaAdsPdf(projectId, dateStart, dateStop, account?.ad_account_name || account?.ad_account_id || "", visibleMetrics);
       toast.success("PDF gerado com sucesso!");
     } catch (e: any) {
       toast.error("Erro ao gerar PDF: " + (e.message || ""));
@@ -121,6 +124,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
             Baixar PDF
           </Button>
+          <MetaAdsMetricSettings visibleMetrics={visibleMetrics} onToggle={toggle} />
           {isStaff && (
             <Button size="sm" variant="ghost" onClick={handleDisconnect} className="gap-1.5 text-destructive">
               <Unlink className="h-3.5 w-3.5" />
@@ -156,19 +160,19 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
         </TabsList>
 
         <TabsContent value="overview">
-          <MetaAdsOverview projectId={projectId} dateStart={dateStart} dateStop={dateStop} syncing={syncing} />
+          <MetaAdsOverview projectId={projectId} dateStart={dateStart} dateStop={dateStop} syncing={syncing} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="campaigns">
-          <MetaAdsCampaigns projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsCampaigns projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="adsets">
-          <MetaAdsAdsets projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsAdsets projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="creatives">
-          <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsCreatives projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
         <TabsContent value="comparison">
-          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} />
+          <MetaAdsComparison projectId={projectId} dateStart={dateStart} dateStop={dateStop} visibleMetrics={visibleMetrics} />
         </TabsContent>
       </Tabs>
     </div>
