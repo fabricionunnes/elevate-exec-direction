@@ -27,8 +27,8 @@ interface OnboardingTask {
   completed_at: string | null;
   status: "pending" | "in_progress" | "completed" | "inactive";
   observations: string | null;
-  assignee?: { id: string; name: string; role: string };
-  responsible_staff?: { id: string; name: string } | null;
+  assignee?: { id: string; name: string; role: string; avatar_url?: string | null };
+  responsible_staff?: { id: string; name: string; avatar_url?: string | null } | null;
 }
 
 interface ClientTaskDetailSheetProps {
