@@ -124,6 +124,7 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
             {downloading ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <FileDown className="h-3.5 w-3.5" />}
             Baixar PDF
           </Button>
+          <MetaAdsMetricSettings visibleMetrics={visibleMetrics} onToggle={toggle} />
           {isStaff && (
             <Button size="sm" variant="ghost" onClick={handleDisconnect} className="gap-1.5 text-destructive">
               <Unlink className="h-3.5 w-3.5" />
