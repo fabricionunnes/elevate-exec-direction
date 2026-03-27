@@ -10,6 +10,7 @@ import { MetaAdsCampaigns } from "./MetaAdsCampaigns";
 import { MetaAdsAdsets } from "./MetaAdsAdsets";
 import { MetaAdsCreatives } from "./MetaAdsCreatives";
 import { MetaAdsDateFilter } from "./MetaAdsDateFilter";
+import { generateMetaAdsPdf } from "./MetaAdsPdfReport";
 
 interface MetaAdsModuleProps {
   projectId: string;
