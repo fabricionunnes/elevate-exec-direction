@@ -149,6 +149,10 @@ export const MetaAdsModule = ({ projectId, isStaff = false }: MetaAdsModuleProps
             <Image className="h-3.5 w-3.5" />
             Criativos
           </TabsTrigger>
+          <TabsTrigger value="comparison" className="gap-1.5">
+            <ArrowRightLeft className="h-3.5 w-3.5" />
+            Comparativo
+          </TabsTrigger>
         </TabsList>
 
         <TabsContent value="overview">
