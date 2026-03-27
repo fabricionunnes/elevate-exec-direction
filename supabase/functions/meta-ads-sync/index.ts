@@ -211,6 +211,7 @@ Deno.serve(async (req) => {
           frequency: Number(ins.frequency || 0),
           messaging_conversations_started: Number(msgConversationsStarted),
           cost_per_messaging_conversation: costPerMsgConv,
+          leads: Number(leadCount),
           date_start: start,
           date_stop: end,
           synced_at: new Date().toISOString(),
