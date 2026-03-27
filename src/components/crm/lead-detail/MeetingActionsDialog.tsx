@@ -72,6 +72,7 @@ export function MeetingActionsDialog({
   const [loadingHistory, setLoadingHistory] = useState(false);
   const [recordingUrl, setRecordingUrl] = useState(activity.recording_url || "");
   const [savingRecording, setSavingRecording] = useState(false);
+  const [showPlayer, setShowPlayer] = useState(false);
   const [rescheduleData, setRescheduleData] = useState({
     date: activity.scheduled_at ? format(new Date(activity.scheduled_at), "yyyy-MM-dd") : format(new Date(), "yyyy-MM-dd"),
     startTime: activity.scheduled_at ? format(new Date(activity.scheduled_at), "HH:mm") : "09:00",
