@@ -22,10 +22,11 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { toast } from "sonner";
-import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, ExternalLink, PlayCircle } from "lucide-react";
+import { Loader2, Calendar, XCircle, RefreshCw, History, User, Clock, Link2, ExternalLink, PlayCircle, ChevronDown, ChevronUp } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Badge } from "@/components/ui/badge";
+import { getEmbedUrl, isDirectVideo } from "./meetingUtils";
 
 interface MeetingActivity {
   id: string;
