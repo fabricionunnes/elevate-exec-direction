@@ -166,7 +166,7 @@ export function useClientCRM(projectId: string) {
         .order("sort_order"),
       supabase
         .from("client_crm_deals")
-        .select("*, contact:client_crm_contacts(id, name, phone, email, company), stage:client_crm_stages(id, name, color)")
+        .select("*, contact:client_crm_contacts(id, name, phone, email, company), stage:client_crm_stages(id, name, color), owner:onboarding_users!client_crm_deals_owner_id_fkey(id, name)")
         .eq("project_id", projectId)
         .eq("pipeline_id", pipelineId)
         .order("created_at", { ascending: false }),
