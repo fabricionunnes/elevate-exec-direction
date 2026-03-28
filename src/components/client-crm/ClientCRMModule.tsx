@@ -168,8 +168,8 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
 
         <TabsContent value="atividades">
           <ClientCRMActivities
-            activities={crm.activities}
-            deals={crm.deals}
+            activities={filteredActivities}
+            deals={filteredDeals}
             contacts={crm.contacts}
             onCreateActivity={crm.createActivity}
             onCompleteActivity={crm.completeActivity}
