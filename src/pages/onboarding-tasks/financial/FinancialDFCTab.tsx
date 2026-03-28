@@ -51,8 +51,8 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
 
     // Inflows
     const monthInvoices = invoices.filter(i => {
-      if (!i.due_date?.startsWith(selectedMonth)) return false;
-      return isPaid ? i.status === "paid" : true;
+      if (isPaid) return i.status === "paid" && i.paid_at?.startsWith(selectedMonth);
+      return i.due_date?.startsWith(selectedMonth);
     });
     const recebimentos = monthInvoices.reduce((s: number, i: any) => 
       s + (isPaid ? (i.paid_amount_cents || i.amount_cents) : i.amount_cents), 0) / 100;

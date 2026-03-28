@@ -66,8 +66,8 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency, fo
   const monthLabel = format(selectedDate, "MMMM yyyy", { locale: ptBR }).replace(/^./, c => c.toUpperCase());
 
   const dreData = useMemo(() => {
-    // 1. Receita bruta from invoices paid in the month
-    const monthInvoices = invoices.filter(i => i.due_date?.startsWith(selectedMonth) && i.status === "paid");
+    // 1. Receita bruta from invoices with paid_at in the month
+    const monthInvoices = invoices.filter(i => i.status === "paid" && i.paid_at?.startsWith(selectedMonth));
     const receitaBrutaInvoices = monthInvoices.reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0) / 100;
 
     // 2. Manual entries by category
