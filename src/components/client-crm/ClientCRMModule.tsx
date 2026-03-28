@@ -134,13 +134,13 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
 
         <TabsContent value="negocios">
           <ClientCRMDeals
-            deals={crm.deals}
+            deals={filteredDeals}
             stages={crm.stages}
             contacts={crm.contacts}
             pipelines={crm.pipelines}
             activePipelineId={crm.activePipelineId}
             setActivePipelineId={(id) => { crm.setActivePipelineId(id); crm.fetchAll(); }}
-            activities={crm.activities}
+            activities={filteredActivities}
             projectId={projectId}
             onCreateDeal={crm.createDeal}
             onUpdateDeal={crm.updateDeal}
