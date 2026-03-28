@@ -1,6 +1,7 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Loader2 } from "lucide-react";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
 import { CLIENT_MENU_KEYS, OnboardingUser } from "@/types/onboarding";
@@ -29,6 +30,7 @@ export const ClientCRMModule = ({ projectId, currentUser }: ClientCRMModuleProps
   const { hasPermission } = useClientPermissions(projectId);
   const { isMaster } = useStaffPermissions();
   const crm = useClientCRM(projectId);
+  const [selectedOwnerId, setSelectedOwnerId] = useState<string>("all");
 
   const tabs = [
     { key: CLIENT_MENU_KEYS.crm_comercial_dashboard, id: "dashboard", label: "Dashboard", icon: BarChart3 },
