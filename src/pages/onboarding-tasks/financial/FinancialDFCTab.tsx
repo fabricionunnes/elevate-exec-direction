@@ -66,8 +66,8 @@ export default function FinancialDFCTab({ invoices, payables, banks, formatCurre
 
     // Outflows by section
     const monthPayablesFiltered = payables.filter((p: any) => {
-      const matches = p.due_date?.startsWith(selectedMonth) || p.reference_month === selectedMonth;
-      return matches && (isPaid ? p.status === "paid" : true);
+      if (isPaid) return p.status === "paid" && p.paid_date?.startsWith(selectedMonth);
+      return p.due_date?.startsWith(selectedMonth) || p.reference_month === selectedMonth;
     });
     const pagamentos = monthPayablesFiltered.reduce((s: number, p: any) => 
       s + (isPaid ? (p.paid_amount || p.amount || 0) : (p.amount || 0)), 0);

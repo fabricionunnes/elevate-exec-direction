@@ -128,15 +128,17 @@ export default function FinancialDashboardTab({ invoices, payables, banks, charg
 
   const summary = useMemo(() => {
     // Receita Recebida: filtra por paid_at no mês (não por due_date)
-    const paidInMonth = invoices.filter(i => i.status === "paid" && (i.paid_at?.startsWith(monthStr)));
+    const paidInMonth = invoices.filter(i => i.status === "paid" && i.paid_at?.startsWith(monthStr));
     const receitaRecebida = paidInMonth.reduce((s: number, i: any) => s + (i.paid_amount_cents || i.amount_cents), 0);
     const receitaPendente = monthInvoices.filter(i => i.status === "pending" || i.status === "overdue").reduce((s: number, i: any) => s + i.amount_cents, 0);
-    const despesaPaga = monthPayables.filter((p: any) => p.status === "paid").reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0) * 100, 0);
+    // Despesa Paga: filtra por paid_date no mês (não por due_date)
+    const paidPayablesInMonth = payables.filter((p: any) => p.status === "paid" && p.paid_date?.startsWith(monthStr));
+    const despesaPaga = paidPayablesInMonth.reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0) * 100, 0);
     const despesaPendente = monthPayables.filter((p: any) => p.status !== "paid" && p.status !== "cancelled").reduce((s: number, p: any) => s + (p.amount || 0) * 100, 0);
     const totalBancos = banks.reduce((s: number, b: any) => s + (b.current_balance_cents || 0), 0);
     const resultado = receitaRecebida - despesaPaga;
     return { receitaRecebida, receitaPendente, despesaPaga, despesaPendente, totalBancos, resultado };
-  }, [invoices, monthInvoices, monthPayables, banks, monthStr]);
+  }, [invoices, payables, monthInvoices, monthPayables, banks, monthStr]);
 
   const inadimplencia = useMemo(() => {
     const overdue = monthInvoices.filter(i => i.status !== "paid" && i.status !== "cancelled" && i.due_date < todayStr);
