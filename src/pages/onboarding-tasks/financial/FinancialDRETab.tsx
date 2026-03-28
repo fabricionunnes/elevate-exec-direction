@@ -82,10 +82,8 @@ export default function FinancialDRETab({ invoices, payables, formatCurrency, fo
       }
     });
 
-    // 3. Payables from existing table
-    const monthPayables = payables.filter((p: any) => 
-      (p.due_date?.startsWith(selectedMonth) || p.reference_month === selectedMonth) && p.status === "paid"
-    );
+    // 3. Payables: filtra por paid_date no mês
+    const monthPayables = payables.filter((p: any) => p.status === "paid" && p.paid_date?.startsWith(selectedMonth));
     const totalPayables = monthPayables.reduce((s: number, p: any) => s + (p.paid_amount || p.amount || 0), 0);
 
     // Build DRE lines
