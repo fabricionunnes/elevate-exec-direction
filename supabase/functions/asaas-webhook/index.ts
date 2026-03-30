@@ -323,26 +323,9 @@ Deno.serve(async (req) => {
 
 async function creditAsaasBank(supabase: any, amountCents: number, description: string, invoiceId: string, recurringChargeId?: string | null) {
   try {
-    const feeCents = 199; // R$ 1,99
-    const netAmount = amountCents - feeCents;
-    if (netAmount <= 0) return;
-
-    // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
-    const { data: existingTx } = await supabase
-      .from("financial_bank_transactions")
-      .select("id")
-      .eq("reference_id", invoiceId)
-      .eq("reference_type", "invoice")
-      .eq("type", "credit")
-      .limit(1);
-
-    if (existingTx?.length) {
-      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId} (may be manual), skipping duplicate`);
-      return;
-    }
-
     // Determine which bank to credit based on the Asaas account used
     let bankId: string | null = null;
+    let isSocialAccount = false;
 
     if (recurringChargeId) {
       // Look up which Asaas account this recurring charge uses
@@ -360,9 +343,10 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
           .single();
 
         if (account?.name) {
+          isSocialAccount = account.name.toLowerCase().includes("social");
           // Map Asaas account name to bank name
           // "UNV" -> "Asaas", "UN Social" -> "Asaas UNV Social"
-          const bankSearchName = account.name.toLowerCase().includes("social") ? "Asaas UNV Social" : "Asaas";
+          const bankSearchName = isSocialAccount ? "Asaas UNV Social" : "Asaas";
           const { data: banks } = await supabase
             .from("financial_banks")
             .select("id")
@@ -394,6 +378,32 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bankId = banks[0].id;
     }
 
+    // Dynamic fee: R$ 0.99 for UNV Social, R$ 1.99 for default UNV
+    const feeCents = isSocialAccount ? 99 : 199;
+    const feeLabel = isSocialAccount ? "R$0,99" : "R$1,99";
+    const netAmount = amountCents - feeCents;
+    if (netAmount <= 0) return;
+
+    // Deduplication: check if ANY credit already exists for this invoice (manual or Asaas)
+    const { data: existingTx } = await supabase
+      .from("financial_bank_transactions")
+      .select("id")
+      .eq("reference_id", invoiceId)
+      .eq("reference_type", "invoice")
+      .eq("type", "credit")
+      .limit(1);
+
+    if (existingTx?.length) {
+      console.log(`[Asaas Webhook] Bank credit already exists for invoice ${invoiceId} (may be manual), skipping duplicate`);
+      return;
+    }
+
+    // Update invoice with correct fee
+    await supabase
+      .from("company_invoices")
+      .update({ payment_fee_cents: feeCents })
+      .eq("id", invoiceId);
+
     // Increment bank balance
     await supabase.rpc("increment_bank_balance", { p_bank_id: bankId, p_amount: netAmount });
 
@@ -402,12 +412,12 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
       bank_id: bankId,
       type: "credit",
       amount_cents: netAmount,
-      description: `Recebimento Asaas: ${description} (taxa R$1,99 deduzida)`,
+      description: `Recebimento Asaas: ${description} (taxa ${feeLabel} deduzida)`,
       reference_type: "invoice",
       reference_id: invoiceId,
     });
 
-    console.log(`[Asaas Webhook] Credited bank ${bankId}: ${netAmount} cents (invoice ${invoiceId})`);
+    console.log(`[Asaas Webhook] Credited bank ${bankId}: ${netAmount} cents, fee: ${feeCents} cents (invoice ${invoiceId})`);
   } catch (err) {
     console.error("[Asaas Webhook] Error crediting bank:", err);
   }
