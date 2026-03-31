@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  Phone, 
   Mail, 
   Building2, 
   MessageSquare 
 } from "lucide-react";
+import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
