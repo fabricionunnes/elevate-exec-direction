@@ -2,11 +2,11 @@ import { Link } from "react-router-dom";
 import { Badge } from "@/components/ui/badge";
 import { Checkbox } from "@/components/ui/checkbox";
 import { 
-  Phone, 
   Mail, 
   Building2, 
   MessageSquare 
 } from "lucide-react";
+import { TwilioCallButton } from "@/components/crm/TwilioCallButton";
 import { formatDistanceToNow } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -215,9 +215,13 @@ export const KanbanLeadCard = ({
         
         <div className="flex items-center gap-0.5 ml-auto">
           {lead.phone && (
-            <div className="p-1 rounded-md hover:bg-muted transition-colors">
-              <Phone className="h-3 w-3 text-muted-foreground" />
-            </div>
+            <TwilioCallButton
+              leadId={lead.id}
+              leadName={lead.name}
+              leadPhone={lead.phone}
+              variant="icon"
+              onCallStarted={onRefresh}
+            />
           )}
           {lead.phone && (
             <button
