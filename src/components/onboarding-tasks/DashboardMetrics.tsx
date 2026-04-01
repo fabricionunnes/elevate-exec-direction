@@ -665,23 +665,6 @@ const DashboardMetrics = ({
       return new Date(dateOnly + "T12:00:00");
     };
 
-    // Use nonSimulatorAllProjects to include closed/completed projects but exclude simulators
-    // Also exclude projects from companies marked as 'nao_renovado' (they appear in the "Não Renovadas" card instead)
-    const closedInPeriod = nonSimulatorAllProjects.filter(p => {
-      if (p.status !== "closed") return false;
-      if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
-      const companyId = getProjectCompanyId(p);
-      if (companyId && notRenewedCompanyIds.has(companyId)) return false;
-      return true;
-    }).length;
-
-    const signaledInPeriod = nonSimulatorAllProjects.filter(
-      p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
-    ).length;
-
-    const totalActiveStart = projectMetrics.activeProjects + closedInPeriod + signaledInPeriod;
-    const churnRate = totalActiveStart > 0 ? Math.round((closedInPeriod / totalActiveStart) * 100) : 0;
-
     // Count unique companies with closed projects in the period, excluding 'nao_renovado'
     const closedCompanyIds = new Set(
       nonSimulatorAllProjects
@@ -696,6 +679,24 @@ const DashboardMetrics = ({
         .filter(Boolean) as string[]
     );
     const closedCompaniesInPeriod = closedCompanyIds.size;
+
+    // Count closed projects for display
+    const closedInPeriod = nonSimulatorAllProjects.filter(p => {
+      if (p.status !== "closed") return false;
+      if (!isWithinInterval(getClosedDate(p), { start: dateRange.start, end: dateRange.end })) return false;
+      const companyId = getProjectCompanyId(p);
+      if (companyId && notRenewedCompanyIds.has(companyId)) return false;
+      return true;
+    }).length;
+
+    const signaledInPeriod = nonSimulatorAllProjects.filter(
+      p => (p.status === "cancellation_signaled" || p.status === "notice_period") && isWithinInterval(new Date(p.updated_at), { start: dateRange.start, end: dateRange.end })
+    ).length;
+
+    // Churn rate uses unique COMPANIES, not project count
+    const activeCompanies = projectMetrics.activeProjects; // already company-based from card
+    const totalActiveStart = activeCompanies + closedCompaniesInPeriod;
+    const churnRate = totalActiveStart > 0 ? Math.round((closedCompaniesInPeriod / totalActiveStart) * 100) : 0;
 
     return { closedInPeriod, signaledInPeriod, churnRate, closedCompaniesInPeriod };
   }, [nonSimulatorAllProjects, dateRange, projectMetrics, notRenewedCompanyIds]);
