@@ -160,6 +160,7 @@ const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerP
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
+const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
