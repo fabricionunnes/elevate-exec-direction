@@ -91,6 +91,33 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       return { success: false, error: "Lead não encontrado" };
     }
 
+    // 2.0 Load SDR who scheduled the meeting (triggered_by_staff_id from crm_meeting_events)
+    let schedulerSdrName: string | null = null;
+    try {
+      const { data: meetingEvent } = await supabase
+        .from("crm_meeting_events")
+        .select("triggered_by_staff_id")
+        .eq("lead_id", leadId)
+        .eq("event_type", "scheduled")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (meetingEvent?.triggered_by_staff_id) {
+        const { data: sdrStaff } = await supabase
+          .from("onboarding_staff")
+          .select("name")
+          .eq("id", meetingEvent.triggered_by_staff_id)
+          .single();
+        
+        if (sdrStaff?.name) {
+          schedulerSdrName = sdrStaff.name;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch scheduler SDR:", e);
+    }
+
     // 2.1 Load payment method name if payment_method is an ID
     let paymentMethodName = lead.payment_method;
     if (lead.payment_method) {
@@ -131,7 +158,7 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
     }
 
     // 3. Format the message
-    const message = formatWonMessage(lead, paymentMethodName, briefingText);
+    const message = formatWonMessage(lead, paymentMethodName, briefingText, schedulerSdrName);
 
     // 4. Send message via evolution-api
     const { data: response, error: sendError } = await supabase.functions.invoke("evolution-api", {
@@ -198,11 +225,12 @@ function formatCNPJ(document: string | null): string {
   return document;
 }
 
-function formatWonMessage(lead: any, paymentMethodName: string | null, briefingText: string | null): string {
+function formatWonMessage(lead: any, paymentMethodName: string | null, briefingText: string | null, schedulerSdrName: string | null): string {
   const closedAt = lead.closed_at ? new Date(lead.closed_at) : new Date();
   const formattedDate = format(closedAt, "dd/MM/yyyy", { locale: ptBR });
 
-  const sdrName = lead.sdr?.name || "Não informado";
+  // Use the SDR who scheduled the meeting, falling back to the lead's assigned SDR
+  const sdrName = schedulerSdrName || lead.sdr?.name || "Não informado";
   const closerName = lead.closer?.name || "Não informado";
   const serviceName = lead.product?.name || "Não informado";
   const planName = lead.plan?.name || "Não informado";
