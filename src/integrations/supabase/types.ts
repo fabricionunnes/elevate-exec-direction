@@ -29800,6 +29800,7 @@ export type Database = {
         Args: { p_board_id: string }
         Returns: undefined
       }
+      execute_readonly_query: { Args: { query_text: string }; Returns: Json }
       get_ads_credits_balance: {
         Args: { p_profile_id: string }
         Returns: number
