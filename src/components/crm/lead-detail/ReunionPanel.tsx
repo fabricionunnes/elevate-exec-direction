@@ -226,6 +226,11 @@ export function ReunionPanel({
       let newEventId = meeting.google_calendar_event_id;
       let newMeetLink = meeting.meeting_link;
 
+      // Build description with lead link
+      const baseUrl = getPublicBaseUrl();
+      const leadCardUrl = `${baseUrl}/#/crm/leads/${leadId}`;
+      const eventDescription = `📋 Link do lead no CRM: ${leadCardUrl}`;
+
       if (closerChanged) {
         // Delete from old calendar
         if (meeting.google_calendar_event_id) {
@@ -245,6 +250,7 @@ export function ReunionPanel({
               target_user_id: newUserId,
               attendees: leadEmail ? [leadEmail] : [],
               createMeetLink: true,
+              description: eventDescription,
             },
           });
           if (createData?.eventId) newEventId = createData.eventId;
@@ -253,7 +259,7 @@ export function ReunionPanel({
       } else if (meeting.google_calendar_event_id) {
         try {
           await supabase.functions.invoke("google-calendar?action=update-event", {
-            body: { eventId: meeting.google_calendar_event_id, title: meeting.title, startDateTime: newStart, endDateTime: newEnd, target_user_id: oldUserId },
+            body: { eventId: meeting.google_calendar_event_id, title: meeting.title, startDateTime: newStart, endDateTime: newEnd, target_user_id: oldUserId, description: eventDescription },
           });
         } catch (err) { console.error(err); }
       }
