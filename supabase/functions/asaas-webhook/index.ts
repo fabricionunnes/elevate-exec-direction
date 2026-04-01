@@ -626,6 +626,7 @@ async function handleServicePurchasePermissions(supabase: any, subscriptionId: s
               .eq("menu_key", key);
           }
         }
+      }
     }
   } catch (err) {
     console.error("[Asaas Webhook] Error handling service purchase permissions:", err);
