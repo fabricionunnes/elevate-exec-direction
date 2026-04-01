@@ -386,6 +386,7 @@ const OnboardingTasksPage = () => {
         onboarding_company_id: p.onboarding_company_id,
         company_id: p.company_id,
         churn_date: p.churn_date,
+        churn_reason: p.churn_reason || null,
       })));
 
       // Sort companies: new companies (last 30 days) first, then by contract_start_date desc
