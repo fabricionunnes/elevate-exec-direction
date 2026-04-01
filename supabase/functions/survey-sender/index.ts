@@ -440,7 +440,7 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
     .from("csat_surveys")
     .select(`
       id, access_token, status, meeting_id, project_id, created_at,
-      onboarding_meeting_notes!inner(id, subject, meeting_title, meeting_date, is_finalized)
+      onboarding_meeting_notes!inner(id, subject, meeting_title, meeting_date, is_finalized, is_no_show)
     `)
     .eq("status", "pending")
     .not("meeting_id", "is", null);
@@ -452,6 +452,13 @@ async function processCSAT(supabase: any, _isManual: boolean, isTest: boolean = 
   for (const survey of surveys) {
     const meeting = (survey as any).onboarding_meeting_notes;
     if (!meeting?.is_finalized) continue;
+    // Skip no-show meetings — they should not receive CSAT surveys
+    if (meeting?.is_no_show) {
+      console.log(`Skipping CSAT for meeting ${survey.meeting_id}: no-show`);
+      // Mark survey as expired so it's not retried
+      await supabase.from("csat_surveys").update({ status: "expired" }).eq("id", survey.id);
+      continue;
+    }
 
     const { data: project } = await supabase
       .from("onboarding_projects")
