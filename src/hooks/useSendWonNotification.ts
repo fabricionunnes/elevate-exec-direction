@@ -91,6 +91,33 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       return { success: false, error: "Lead não encontrado" };
     }
 
+    // 2.0 Load SDR who scheduled the meeting (triggered_by_staff_id from crm_meeting_events)
+    let schedulerSdrName: string | null = null;
+    try {
+      const { data: meetingEvent } = await supabase
+        .from("crm_meeting_events")
+        .select("triggered_by_staff_id")
+        .eq("lead_id", leadId)
+        .eq("event_type", "scheduled")
+        .order("created_at", { ascending: false })
+        .limit(1)
+        .maybeSingle();
+
+      if (meetingEvent?.triggered_by_staff_id) {
+        const { data: sdrStaff } = await supabase
+          .from("onboarding_staff")
+          .select("name")
+          .eq("id", meetingEvent.triggered_by_staff_id)
+          .single();
+        
+        if (sdrStaff?.name) {
+          schedulerSdrName = sdrStaff.name;
+        }
+      }
+    } catch (e) {
+      console.warn("Could not fetch scheduler SDR:", e);
+    }
+
     // 2.1 Load payment method name if payment_method is an ID
     let paymentMethodName = lead.payment_method;
     if (lead.payment_method) {
