@@ -76,6 +76,7 @@ interface Project {
   // Some records use company_id instead of onboarding_company_id
   company_id?: string | null;
   churn_date?: string | null;
+  churn_reason?: string | null;
 }
 
 interface Company {
@@ -601,9 +602,27 @@ const DashboardMetrics = ({
 
     // Not renewed (auto) = company had project closed/completed in period + no renewal in period
     // This captures real non-renewals even when renewal_status is not manually updated.
+    // BUT: if the project has a churn_reason, it's a real cancellation → count as churn, NOT as "não renovada"
+    const closedProjectsInPeriod = nonSimulatorAllProjects
+      .filter(p => p.status === "closed" && isWithinInterval(getProjectClosedDate(p), { start, end }));
+
     const closedCompanyIdsInPeriod = new Set(
-      nonSimulatorAllProjects
-        .filter(p => p.status === "closed" && isWithinInterval(getProjectClosedDate(p), { start, end }))
+      closedProjectsInPeriod
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
+
+    // Companies whose ALL closed projects in the period have a churn_reason are real cancellations, not non-renewals
+    const companiesWithChurnReason = new Set(
+      closedProjectsInPeriod
+        .filter(p => p.churn_reason)
+        .map(getProjectCompanyId)
+        .filter(Boolean) as string[]
+    );
+    // Only consider as "not renewed" if the company has at least one closed project WITHOUT churn_reason
+    const companiesWithoutChurnReason = new Set(
+      closedProjectsInPeriod
+        .filter(p => !p.churn_reason)
         .map(getProjectCompanyId)
         .filter(Boolean) as string[]
     );
@@ -613,7 +632,11 @@ const DashboardMetrics = ({
       if (c.payment_method === "monthly") return false;
 
       const explicitlyNotRenewed = c.renewal_status === "nao_renovado";
-      const autoNotRenewed = closedCompanyIdsInPeriod.has(c.id) && !renewedCompanyIds.has(c.id);
+      // Auto not-renewed: closed in period, no renewal, AND has at least one project without churn_reason
+      // If ALL closed projects have churn_reason, it's a cancellation, not a non-renewal
+      const isInClosedSet = closedCompanyIdsInPeriod.has(c.id);
+      const hasOnlyChurnReasons = companiesWithChurnReason.has(c.id) && !companiesWithoutChurnReason.has(c.id);
+      const autoNotRenewed = isInClosedSet && !renewedCompanyIds.has(c.id) && !hasOnlyChurnReasons;
 
       return explicitlyNotRenewed || autoNotRenewed;
     });

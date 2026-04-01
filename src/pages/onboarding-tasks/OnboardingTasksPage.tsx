@@ -132,7 +132,7 @@ const OnboardingTasksPage = () => {
     end: endOfMonth(new Date()),
   }));
   const [allTasks, setAllTasks] = useState<{ id: string; status: string; due_date: string | null; project_id: string; responsible_staff_id: string | null; completed_at: string | null }[]>([]);
-  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null }[]>([]);
+  const [allProjects, setAllProjects] = useState<{ id: string; product_id: string; product_name: string; status: string; created_at: string; updated_at: string; consultant_id: string | null; reactivated_at: string | null; onboarding_company_id: string | null; company_id: string | null; churn_date: string | null; churn_reason: string | null }[]>([]);
   const [npsResponses, setNpsResponses] = useState<{ project_id: string; score: number }[]>([]);
   // Full NPS responses for DashboardMetrics (eliminates duplicate query)
   const [fullNpsResponses, setFullNpsResponses] = useState<{ id: string; project_id: string; score: number; feedback: string | null; what_can_improve: string | null; would_recommend_why: string | null; respondent_name: string | null; respondent_email: string | null; created_at: string }[]>([]);
@@ -386,6 +386,7 @@ const OnboardingTasksPage = () => {
         onboarding_company_id: p.onboarding_company_id,
         company_id: p.company_id,
         churn_date: p.churn_date,
+        churn_reason: p.churn_reason || null,
       })));
 
       // Sort companies: new companies (last 30 days) first, then by contract_start_date desc
@@ -718,6 +719,7 @@ const OnboardingTasksPage = () => {
         onboarding_company_id: p.onboarding_company_id,
         company_id: p.company_id,
         churn_date: p.churn_date,
+        churn_reason: p.churn_reason || null,
       })));
 
       setCompanies(companiesWithProjects);
