@@ -508,6 +508,7 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
         });
       }
     }
+  }
 }
 
 async function handleServicePurchasePermissions(supabase: any, subscriptionId: string | null, paymentId: string, newStatus: string, paymentValueCents: number = 0, dueDate?: string) {
