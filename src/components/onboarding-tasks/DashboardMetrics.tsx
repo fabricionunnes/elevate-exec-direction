@@ -76,6 +76,7 @@ interface Project {
   // Some records use company_id instead of onboarding_company_id
   company_id?: string | null;
   churn_date?: string | null;
+  churn_reason?: string | null;
 }
 
 interface Company {
