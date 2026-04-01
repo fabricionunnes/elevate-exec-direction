@@ -141,12 +141,13 @@ export function useGlobalGamification() {
         .gte("entry_date", monthStart)
         .lte("entry_date", monthEnd);
 
-      // 5. Get targets for the selected month
+      // 5. Get targets for the selected month - ordered by level_order to pick base target
       const { data: targetsData } = await supabase
         .from("kpi_monthly_targets")
-        .select("salesperson_id, kpi_id, target_value, company_id, unit_id, sector_id, team_id")
+        .select("salesperson_id, kpi_id, target_value, company_id, unit_id, sector_id, team_id, level_order")
         .in("kpi_id", kpiIds)
-        .eq("month_year", monthYear);
+        .eq("month_year", monthYear)
+        .order("level_order", { ascending: true });
 
       // Build entries map: salesperson_id -> kpi_id -> total value
       const entriesMap = new Map<string, Map<string, number>>();
@@ -156,9 +157,14 @@ export function useGlobalGamification() {
         kpiMap.set(e.kpi_id, (kpiMap.get(e.kpi_id) || 0) + (e.value || 0));
       });
 
-      // Build targets lookup
+      // Build targets lookup — only keep the base/lowest level_order per unique scope
       const targetsMap = new Map<string, any[]>();
+      const seenScopes = new Set<string>();
       (targetsData || []).forEach((t: any) => {
+        const scopeKey = `${t.company_id}_${t.kpi_id}_${t.salesperson_id || ''}_${t.team_id || ''}_${t.sector_id || ''}_${t.unit_id || ''}`;
+        if (seenScopes.has(scopeKey)) return; // skip higher level_order duplicates
+        seenScopes.add(scopeKey);
+
         const key = `${t.company_id}_${t.kpi_id}`;
         if (!targetsMap.has(key)) targetsMap.set(key, []);
         targetsMap.get(key)!.push(t);
