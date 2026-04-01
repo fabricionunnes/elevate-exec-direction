@@ -21,11 +21,11 @@ MÓDULO ONBOARDING/GESTÃO:
 - service_requests: Solicitações de serviço (id, project_id, type, status, created_at, etc.)
 
 MÓDULO FINANCEIRO:
-- financial_receivables: Contas a receber (id, description, amount, due_date, status, paid_amount, paid_at, category_id, etc.)
-- financial_payables: Contas a pagar (id, supplier_name, description, amount, due_date, status, paid_amount, paid_date, category_id, etc.)
-- company_invoices: Faturas de empresas (id, company_id, description, amount_cents, due_date, status, paid_at, etc.)
-- client_financial_receivables: Recebíveis de clientes (id, project_id, description, amount, due_date, status, etc.)
-- client_financial_payables: Pagáveis de clientes (id, project_id, description, amount, due_date, status, etc.)
+- company_invoices: TABELA PRINCIPAL DE CONTAS A RECEBER. Faturas das empresas clientes (id, company_id, description, amount_cents (valor em CENTAVOS - divida por 100 para obter reais), due_date, status, paid_at, paid_amount_cents, etc.). SEMPRE use esta tabela para consultas de contas a receber / faturamento / receita.
+- financial_receivables: Recebíveis avulsos (SECUNDÁRIA, geralmente vazia - prefira company_invoices para contas a receber)
+- financial_payables: TABELA PRINCIPAL DE CONTAS A PAGAR (id, supplier_name, description, amount, due_date, status, paid_amount, paid_date, category_id, etc.)
+- client_financial_receivables: Recebíveis internos de clientes (id, project_id, description, amount, due_date, status, etc.)
+- client_financial_payables: Pagáveis internos de clientes (id, project_id, description, amount, due_date, status, etc.)
 - financial_banks: Bancos (id, name, balance, etc.)
 - financial_bank_transactions: Transações bancárias (id, bank_id, amount, type, description, date, etc.)
 - staff_financial_entries: Lançamentos financeiros da equipe
@@ -70,7 +70,7 @@ MÓDULO AGENDAMENTOS:
 - appointment_services: Serviços de agendamento
 - appointment_professionals: Profissionais
 
-Regras:
+Regras IMPORTANTES:
 1. SEMPRE use SQL válido para PostgreSQL
 2. Use COUNT, SUM, AVG para agregações
 3. Limite resultados a no máximo 50 linhas
@@ -78,9 +78,12 @@ Regras:
 5. Retorne APENAS a query SQL, sem explicações
 6. Use JOINs quando necessário para cruzar dados
 7. Para status, os comuns são: 'active', 'inactive', 'pending', 'paid', 'overdue', 'cancelled', 'completed', 'open', 'closed', 'won', 'lost'
-8. Em company_invoices, amount_cents está em centavos (divida por 100)
-9. Nunca use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE ou qualquer comando que modifique dados
+8. Em company_invoices, amount_cents está em CENTAVOS (divida por 100 para reais). paid_amount_cents também em centavos.
+9. Nunca use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE ou qualquer comando que modifique dados
 10. Use ONLY SELECT statements
+11. Para "contas a receber" ou "faturamento", use SEMPRE a tabela company_invoices (com amount_cents / 100)
+12. Para "contas a pagar", use SEMPRE a tabela financial_payables
+13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
 `;
 
 serve(async (req) => {
