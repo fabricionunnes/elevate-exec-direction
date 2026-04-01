@@ -26,13 +26,11 @@ export default function MasterAIConsultPage() {
   const [messages, setMessages] = useState<Message[]>([]);
   const [input, setInput] = useState("");
   const [isLoading, setIsLoading] = useState(false);
-  const scrollRef = useRef<HTMLDivElement>(null);
+  const messagesEndRef = useRef<HTMLDivElement>(null);
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   useEffect(() => {
-    if (scrollRef.current) {
-      scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
-    }
+    messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
   }, [messages]);
 
   const sendMessage = async (text: string) => {
@@ -182,7 +180,7 @@ export default function MasterAIConsultPage() {
 
       {/* Chat Area */}
       <div className="flex-1 overflow-hidden">
-        <ScrollArea className="h-[calc(100vh-140px)]" ref={scrollRef}>
+        <ScrollArea className="h-[calc(100vh-140px)]">
           <div className="max-w-4xl mx-auto p-4 space-y-4">
             {messages.length === 0 ? (
               <div className="flex flex-col items-center justify-center py-16 space-y-6">
@@ -251,6 +249,7 @@ export default function MasterAIConsultPage() {
                 </div>
               </div>
             )}
+            <div ref={messagesEndRef} />
           </div>
         </ScrollArea>
       </div>
