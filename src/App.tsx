@@ -456,6 +456,7 @@ const AppShell = () => {
               <Route path="head" element={<CRMHeadComercialPage />} />
               <Route path="call-summary" element={<CRMCallSummaryPage />} />
               <Route path="api" element={<CRMApiPage />} />
+              <Route path="forecast" element={<CRMForecastPage />} />
             </Route>
             
             {/* UNV Social - Content Pipeline */}
