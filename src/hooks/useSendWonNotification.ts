@@ -225,11 +225,12 @@ function formatCNPJ(document: string | null): string {
   return document;
 }
 
-function formatWonMessage(lead: any, paymentMethodName: string | null, briefingText: string | null): string {
+function formatWonMessage(lead: any, paymentMethodName: string | null, briefingText: string | null, schedulerSdrName: string | null): string {
   const closedAt = lead.closed_at ? new Date(lead.closed_at) : new Date();
   const formattedDate = format(closedAt, "dd/MM/yyyy", { locale: ptBR });
 
-  const sdrName = lead.sdr?.name || "Não informado";
+  // Use the SDR who scheduled the meeting, falling back to the lead's assigned SDR
+  const sdrName = schedulerSdrName || lead.sdr?.name || "Não informado";
   const closerName = lead.closer?.name || "Não informado";
   const serviceName = lead.product?.name || "Não informado";
   const planName = lead.plan?.name || "Não informado";
