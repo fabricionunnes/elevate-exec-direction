@@ -2552,6 +2552,10 @@ const OnboardingTasksPage = () => {
                   {/* CEO Panel - First item for CEO */}
                   {currentUserEmail === "fabricio@universidadevendas.com.br" && (
                     <>
+                      <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/master-ai")}>
+                        <Sparkles className="h-4 w-4 mr-2" />
+                        IA
+                      </DropdownMenuItem>
                       <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/ceo")}>
                         <Crown className="h-4 w-4 mr-2" />
                         Painel do CEO
