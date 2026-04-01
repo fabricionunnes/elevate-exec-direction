@@ -205,6 +205,11 @@ export function useSendLeadContract() {
           is_recurring: false,
           start_date: new Date().toISOString().slice(0, 10),
           due_date: lead.due_day ? new Date(new Date().getFullYear(), new Date().getMonth(), lead.due_day).toISOString().slice(0, 10) : null,
+          // PF/Legal representative data
+          legal_rep_name: lead.legal_representative_name || null,
+          legal_rep_cpf: lead.cpf || null,
+          legal_rep_rg: lead.rg || null,
+          legal_rep_marital_status: lead.marital_status || null,
         };
 
         const { data: newContract, error: insertError } = await supabase
