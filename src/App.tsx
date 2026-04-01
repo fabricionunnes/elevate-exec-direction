@@ -160,6 +160,7 @@ const TaskManagerPage = lazy(() => import("./pages/onboarding-tasks/TaskManagerP
 const AutomationsPage = lazy(() => import("./pages/onboarding-tasks/AutomationsPage"));
 const B2BProspectionPage = lazy(() => import("./pages/onboarding-tasks/B2BProspectionPage"));
 const ConsultoriasAdminPage = lazy(() => import("./pages/onboarding-tasks/ConsultoriasAdminPage"));
+const MasterAIConsultPage = lazy(() => import("./pages/onboarding-tasks/MasterAIConsultPage"));
 
 // Assessments
 const LegacyDiscRedirect = lazy(() => import("./pages/assessments/LegacyDiscRedirect"));
@@ -385,6 +386,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/task-manager" element={<TaskManagerPage />} />
               <Route path="/onboarding-tasks/automations" element={<AutomationsPage />} />
               <Route path="/onboarding-tasks/b2b-prospection" element={<B2BProspectionPage />} />
+              <Route path="/onboarding-tasks/master-ai" element={<MasterAIConsultPage />} />
               <Route path="/onboarding-tasks/:projectId" element={<OnboardingProjectPage />} />
               <Route path="/onboarding-tasks/commercial-actions" element={<CommercialActionsDashboardPage />} />
               <Route path="/onboarding-tasks/:projectId/health-score" element={<HealthScorePage />} />
