@@ -719,6 +719,7 @@ const OnboardingTasksPage = () => {
         onboarding_company_id: p.onboarding_company_id,
         company_id: p.company_id,
         churn_date: p.churn_date,
+        churn_reason: p.churn_reason || null,
       })));
 
       setCompanies(companiesWithProjects);
