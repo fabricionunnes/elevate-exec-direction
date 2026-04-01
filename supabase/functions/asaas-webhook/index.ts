@@ -708,8 +708,9 @@ async function activatePendingProjects(supabase: any, paymentId: string) {
     console.error("[Asaas Webhook] Error activating pending projects:", err);
   }
 }
+
+async function handleServicePurchasePermissionsEnd() {} // removed duplicate
   } catch (err) {
     console.error("[Asaas Webhook] Error handling service purchase permissions:", err);
   }
-}
 }
