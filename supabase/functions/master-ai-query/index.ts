@@ -184,8 +184,10 @@ serve(async (req) => {
     const sqlJson = await sqlResponse.json();
     let sqlQuery = sqlJson.choices?.[0]?.message?.content?.trim() || "";
     
-    // Clean up SQL (remove markdown code blocks if any)
+    // Clean up SQL (remove markdown code blocks, trailing semicolons, etc.)
     sqlQuery = sqlQuery.replace(/```sql\n?/gi, "").replace(/```\n?/g, "").trim();
+    // Remove trailing semicolons - they cause syntax errors inside the RPC wrapper
+    sqlQuery = sqlQuery.replace(/;\s*$/, "").trim();
 
     // Security: only allow SELECT
     const upperSql = sqlQuery.toUpperCase().trim();
