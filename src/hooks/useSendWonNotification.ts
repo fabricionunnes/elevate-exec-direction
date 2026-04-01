@@ -158,7 +158,7 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
     }
 
     // 3. Format the message
-    const message = formatWonMessage(lead, paymentMethodName, briefingText);
+    const message = formatWonMessage(lead, paymentMethodName, briefingText, schedulerSdrName);
 
     // 4. Send message via evolution-api
     const { data: response, error: sendError } = await supabase.functions.invoke("evolution-api", {
