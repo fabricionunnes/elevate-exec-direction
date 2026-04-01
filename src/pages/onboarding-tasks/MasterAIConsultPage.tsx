@@ -250,6 +250,7 @@ export default function MasterAIConsultPage() {
               </div>
             )}
             <div ref={messagesEndRef} />
+          </div>
         </ScrollArea>
       </div>
 
