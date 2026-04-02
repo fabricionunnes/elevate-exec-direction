@@ -8,7 +8,6 @@ const corsHeaders = {
 
 const MASTER_EMAIL = "fabricio@universidadevendas.com.br";
 
-// Map of available data sources and how to query them
 const DATA_SOURCES = `
 Você tem acesso a um banco de dados PostgreSQL com as seguintes tabelas e seus propósitos:
 
@@ -39,7 +38,7 @@ MÓDULO CRM COMERCIAL:
 
 REGRAS PARA FORECAST NO CRM COMERCIAL:
 1. Buscar os stages com: SELECT id FROM crm_stages WHERE name ILIKE '%forecast%'
-2. Buscar os leads com stage_id IN (esses ids)
+2. Buscar os leads com stage_id IN (esses ids) e closed_at IS NULL
 3. Para valor do forecast, somar crm_leads.opportunity_value
 4. Para quantidade, usar COUNT(*) desses leads
 5. NÃO inclua leads de outras etapas abertas se o nome da etapa não contiver "forecast"
@@ -69,13 +68,7 @@ REGRAS PARA CÁLCULO DE % DE META ATINGIDA:
 2. Buscar a meta do mês na tabela kpi_monthly_targets com level_order = 1 (meta base)
 3. Somar os valores realizados em kpi_entries para o período
 4. Calcular: (SUM(kpi_entries.value) / kpi_monthly_targets.target_value) * 100
-5. Exemplo de query para % de meta:
-   SELECT ROUND((SUM(ke.value) / NULLIF(kmt.target_value, 0)) * 100, 1) as percentual
-   FROM kpi_entries ke
-   JOIN company_kpis ck ON ck.id = ke.kpi_id
-   JOIN kpi_monthly_targets kmt ON kmt.kpi_id = ck.id AND kmt.company_id = ke.company_id AND kmt.month_year = 'YYYY-MM'
-   WHERE ke.company_id = '...' AND ck.is_main_goal = true AND kmt.level_order = 1
-   AND ke.entry_date >= 'YYYY-MM-01' AND ke.entry_date <= 'YYYY-MM-último_dia'
+5. Se não houver target mensal, usar fallback para company_kpis.target_value respeitando a periodicidade
 
 MÓDULO ACADEMY:
 - academy_tracks: Trilhas da academia
@@ -113,10 +106,230 @@ Regras IMPORTANTES:
 12. Para "contas a pagar", use SEMPRE a tabela financial_payables
 13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
 14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
-15. Para calcular % de meta atingida, SIGA AS REGRAS DO MÓDULO KPIs acima (use kpi_monthly_targets com level_order=1 e JOIN com company_kpis onde is_main_goal=true)
+15. Para calcular % de meta atingida, SIGA AS REGRAS DO MÓDULO KPIs acima
 16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
 17. Para "faturamento" no contexto de CONTAS/FATURAS, use company_invoices. Para "faturamento" no contexto de METAS/KPIs, use kpi_entries + company_kpis (is_main_goal=true)
 `;
+
+const normalizeText = (value: string) =>
+  value
+    .normalize("NFD")
+    .replace(/[\u0300-\u036f]/g, "")
+    .toLowerCase()
+    .trim();
+
+const getMonthRange = (monthYear: string) => {
+  const [year, month] = monthYear.split("-").map(Number);
+  const start = new Date(Date.UTC(year, month - 1, 1));
+  const end = new Date(Date.UTC(year, month, 0));
+  const fmt = (d: Date) => d.toISOString().slice(0, 10);
+  return { startDate: fmt(start), endDate: fmt(end) };
+};
+
+const parseMonthYearFromQuestion = (question: string) => {
+  const normalized = normalizeText(question);
+  const today = new Date();
+  const monthNames: Record<string, string> = {
+    janeiro: "01",
+    fevereiro: "02",
+    marco: "03",
+    abril: "04",
+    maio: "05",
+    junho: "06",
+    julho: "07",
+    agosto: "08",
+    setembro: "09",
+    outubro: "10",
+    novembro: "11",
+    dezembro: "12",
+  };
+
+  const explicit = normalized.match(/(janeiro|fevereiro|marco|abril|maio|junho|julho|agosto|setembro|outubro|novembro|dezembro)\s+de\s+(20\d{2})/);
+  if (explicit) return `${explicit[2]}-${monthNames[explicit[1]]}`;
+
+  const iso = normalized.match(/(20\d{2})-(0[1-9]|1[0-2])/);
+  if (iso) return `${iso[1]}-${iso[2]}`;
+
+  if (normalized.includes("mes passado") || normalized.includes("mês passado")) {
+    const d = new Date(Date.UTC(today.getUTCFullYear(), today.getUTCMonth() - 1, 1));
+    return `${d.getUTCFullYear()}-${String(d.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
+  if (normalized.includes("mes atual") || normalized.includes("mês atual") || normalized.includes("esse mes") || normalized.includes("esse mês")) {
+    return `${today.getUTCFullYear()}-${String(today.getUTCMonth() + 1).padStart(2, "0")}`;
+  }
+
+  return null;
+};
+
+const extractCompanyHint = (question: string) => {
+  const cleaned = question.replace(/[?!.]/g, " ").replace(/\s+/g, " ").trim();
+  const patterns = [
+    /empresa\s+(.+?)\s+(?:atingiu|bateu|teve|tem|no|na|em)\b/i,
+    /que\s+a\s+empresa\s+(.+?)\s+(?:atingiu|bateu|teve|tem|no|na|em)\b/i,
+    /a\s+empresa\s+(.+?)\s+(?:atingiu|bateu|teve|tem|no|na|em)\b/i,
+  ];
+  for (const pattern of patterns) {
+    const match = cleaned.match(pattern);
+    if (match?.[1]) return match[1].trim();
+  }
+  return null;
+};
+
+async function findCompanyByQuestion(supabase: ReturnType<typeof createClient>, question: string) {
+  const hint = extractCompanyHint(question);
+  if (!hint) return null;
+
+  const { data, error } = await supabase
+    .from("onboarding_companies")
+    .select("id, name")
+    .ilike("name", `%${hint}%`)
+    .limit(5);
+
+  if (error || !data || data.length === 0) return null;
+  return data.sort((a, b) => a.name.length - b.name.length)[0];
+}
+
+async function handleForecastQuery(supabase: ReturnType<typeof createClient>) {
+  const { data: stages, error: stagesError } = await supabase
+    .from("crm_stages")
+    .select("id, name")
+    .ilike("name", "%forecast%");
+
+  if (stagesError) throw new Error(stagesError.message);
+  if (!stages || stages.length === 0) {
+    return {
+      sqlQuery: "-- deterministic forecast query",
+      resultData: { total_leads: 0, total_value: 0, sample: [], stages: [] },
+      queryErrorMessage: null,
+    };
+  }
+
+  const stageIds = stages.map((stage) => stage.id);
+  const { data: leads, error: leadsError } = await supabase
+    .from("crm_leads")
+    .select("id, name, company, opportunity_value, stage_id, closed_at")
+    .in("stage_id", stageIds)
+    .is("closed_at", null);
+
+  if (leadsError) throw new Error(leadsError.message);
+
+  const totalValue = (leads || []).reduce((sum, lead) => sum + Number(lead.opportunity_value || 0), 0);
+  const sample = (leads || []).slice(0, 10).map((lead) => ({
+    nome: lead.name,
+    empresa: lead.company,
+    valor: Number(lead.opportunity_value || 0),
+    stage_id: lead.stage_id,
+  }));
+
+  return {
+    sqlQuery: "DETERMINISTIC_FORECAST_QUERY",
+    resultData: {
+      total_leads: leads?.length || 0,
+      total_value: totalValue,
+      stages: stages.map((stage) => stage.name),
+      sample,
+    },
+    queryErrorMessage: null,
+  };
+}
+
+async function handleMetaPercentageQuery(supabase: ReturnType<typeof createClient>, question: string) {
+  const company = await findCompanyByQuestion(supabase, question);
+  const monthYear = parseMonthYearFromQuestion(question);
+
+  if (!company || !monthYear) {
+    return null;
+  }
+
+  const { startDate, endDate } = getMonthRange(monthYear);
+
+  const { data: kpis, error: kpisError } = await supabase
+    .from("company_kpis")
+    .select("id, name, kpi_type, periodicity, target_value, is_main_goal")
+    .eq("company_id", company.id)
+    .eq("is_active", true)
+    .order("sort_order", { ascending: true });
+
+  if (kpisError) throw new Error(kpisError.message);
+  if (!kpis || kpis.length === 0) {
+    return {
+      sqlQuery: "DETERMINISTIC_META_QUERY",
+      resultData: { company_name: company.name, month_year: monthYear, found: false, reason: "no_kpis" },
+      queryErrorMessage: null,
+    };
+  }
+
+  const targetKpis = kpis.filter((kpi) => kpi.is_main_goal) || [];
+  const effectiveKpis = targetKpis.length > 0 ? targetKpis : kpis.filter((kpi) => kpi.kpi_type === "monetary");
+  if (effectiveKpis.length === 0) {
+    return {
+      sqlQuery: "DETERMINISTIC_META_QUERY",
+      resultData: { company_name: company.name, month_year: monthYear, found: false, reason: "no_target_kpi" },
+      queryErrorMessage: null,
+    };
+  }
+
+  const kpiIds = effectiveKpis.map((kpi) => kpi.id);
+
+  const [{ data: monthlyTargets, error: targetsError }, { data: entries, error: entriesError }] = await Promise.all([
+    supabase
+      .from("kpi_monthly_targets")
+      .select("kpi_id, target_value, level_order, unit_id, team_id, sector_id, salesperson_id")
+      .eq("company_id", company.id)
+      .eq("month_year", monthYear)
+      .in("kpi_id", kpiIds),
+    supabase
+      .from("kpi_entries")
+      .select("kpi_id, value, entry_date")
+      .eq("company_id", company.id)
+      .gte("entry_date", startDate)
+      .lte("entry_date", endDate)
+      .in("kpi_id", kpiIds),
+  ]);
+
+  if (targetsError) throw new Error(targetsError.message);
+  if (entriesError) throw new Error(entriesError.message);
+
+  let totalMonthlyTarget = 0;
+  for (const kpi of effectiveKpis) {
+    const scopedTargets = (monthlyTargets || []).filter((target) =>
+      target.kpi_id === kpi.id &&
+      target.unit_id === null &&
+      target.team_id === null &&
+      target.sector_id === null &&
+      target.salesperson_id === null
+    );
+    const baseTarget = scopedTargets.find((target) => target.level_order === 1) || scopedTargets[0];
+    if (baseTarget) {
+      totalMonthlyTarget += Number(baseTarget.target_value || 0);
+      continue;
+    }
+
+    const [year, month] = monthYear.split("-").map(Number);
+    const daysInMonth = new Date(year, month, 0).getDate();
+    if (kpi.periodicity === "daily") totalMonthlyTarget += Number(kpi.target_value || 0) * daysInMonth;
+    else if (kpi.periodicity === "weekly") totalMonthlyTarget += Number(kpi.target_value || 0) * Math.ceil(daysInMonth / 7);
+    else totalMonthlyTarget += Number(kpi.target_value || 0);
+  }
+
+  const totalRealized = (entries || []).reduce((sum, entry) => sum + Number(entry.value || 0), 0);
+  const percentage = totalMonthlyTarget > 0 ? (totalRealized / totalMonthlyTarget) * 100 : 0;
+
+  return {
+    sqlQuery: "DETERMINISTIC_META_QUERY",
+    resultData: {
+      found: true,
+      company_name: company.name,
+      month_year: monthYear,
+      target_value: totalMonthlyTarget,
+      realized_value: totalRealized,
+      percentage,
+      kpis: effectiveKpis.map((kpi) => ({ id: kpi.id, name: kpi.name })),
+    },
+    queryErrorMessage: null,
+  };
+}
 
 serve(async (req) => {
   if (req.method === "OPTIONS") {
@@ -135,7 +348,6 @@ serve(async (req) => {
       });
     }
 
-    // Verify master user
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
@@ -146,11 +358,9 @@ serve(async (req) => {
 
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
     const token = authHeader.replace("Bearer ", "");
-    
-    // Use the anon client to get user
     const anonClient = createClient(supabaseUrl, Deno.env.get("SUPABASE_ANON_KEY")!);
     const { data: { user }, error: authError } = await anonClient.auth.getUser(token);
-    
+
     if (authError || !user) {
       return new Response(JSON.stringify({ error: "Não autorizado" }), {
         status: 401,
@@ -158,7 +368,6 @@ serve(async (req) => {
       });
     }
 
-    // Check if master
     const { data: staffData } = await supabase
       .from("onboarding_staff")
       .select("email, role")
@@ -175,85 +384,92 @@ serve(async (req) => {
 
     const { messages } = await req.json();
     const userQuestion = messages[messages.length - 1]?.content || "";
+    const normalizedQuestion = normalizeText(userQuestion);
 
-    // Step 1: Ask AI to generate SQL query
-    const sqlResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
-      method: "POST",
-      headers: {
-        Authorization: `Bearer ${lovableApiKey}`,
-        "Content-Type": "application/json",
-      },
-      body: JSON.stringify({
-        model: "google/gemini-2.5-flash",
-        messages: [
-          {
-            role: "system",
-            content: `Você é um assistente SQL expert. A data de HOJE é ${new Date().toISOString().split('T')[0]}. Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem \`\`\`.\n\nIMPORTANTE: Quando o usuário perguntar sobre "contas a receber", considere TODOS os status (pending, paid, overdue, partial) a menos que ele especifique um status. Quando perguntar "quanto tenho a receber", inclua todos os registros do período independente do status.\n\n${DATA_SOURCES}`,
-          },
-          {
-            role: "user",
-            content: userQuestion,
-          },
-        ],
-      }),
-    });
-
-    if (!sqlResponse.ok) {
-      const errText = await sqlResponse.text();
-      console.error("AI SQL generation error:", sqlResponse.status, errText);
-      if (sqlResponse.status === 429) {
-        return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }), {
-          status: 429,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      if (sqlResponse.status === 402) {
-        return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), {
-          status: 402,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
-      }
-      throw new Error("Erro ao gerar SQL");
-    }
-
-    const sqlJson = await sqlResponse.json();
-    let sqlQuery = sqlJson.choices?.[0]?.message?.content?.trim() || "";
-    
-    // Clean up SQL (remove markdown code blocks, trailing semicolons, etc.)
-    sqlQuery = sqlQuery.replace(/```sql\n?/gi, "").replace(/```\n?/g, "").trim();
-    // Remove trailing semicolons - they cause syntax errors inside the RPC wrapper
-    sqlQuery = sqlQuery.replace(/;\s*$/, "").trim();
-
-    // Security: only allow SELECT
-    const upperSql = sqlQuery.toUpperCase().trim();
-    if (!upperSql.startsWith("SELECT") || 
-        /\b(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE)\b/i.test(sqlQuery)) {
-      return new Response(JSON.stringify({ 
-        error: "A consulta gerada não é segura. Apenas consultas SELECT são permitidas.",
-        sql: sqlQuery 
-      }), {
-        status: 400,
-        headers: { ...corsHeaders, "Content-Type": "application/json" },
-      });
-    }
-
-    // Step 2: Execute SQL query
-    const { data: queryResult, error: queryError } = await supabase.rpc("execute_readonly_query", {
-      query_text: sqlQuery,
-    });
-
-    let resultData: any;
+    let sqlQuery = "";
+    let resultData: any = null;
     let queryErrorMessage: string | null = null;
 
-    if (queryError) {
-      console.error("Query execution error:", queryError);
-      queryErrorMessage = queryError.message;
-      resultData = null;
-    } else {
-      resultData = queryResult;
+    if (normalizedQuestion.includes("forecast")) {
+      const deterministic = await handleForecastQuery(supabase);
+      sqlQuery = deterministic.sqlQuery;
+      resultData = deterministic.resultData;
+      queryErrorMessage = deterministic.queryErrorMessage;
+    } else if (
+      (normalizedQuestion.includes("percentual") || normalizedQuestion.includes("%")) &&
+      normalizedQuestion.includes("meta")
+    ) {
+      const deterministic = await handleMetaPercentageQuery(supabase, userQuestion);
+      if (deterministic) {
+        sqlQuery = deterministic.sqlQuery;
+        resultData = deterministic.resultData;
+        queryErrorMessage = deterministic.queryErrorMessage;
+      }
     }
 
-    // Step 3: Ask AI to interpret results with streaming
+    if (!sqlQuery) {
+      const sqlResponse = await fetch("https://ai.gateway.lovable.dev/v1/chat/completions", {
+        method: "POST",
+        headers: {
+          Authorization: `Bearer ${lovableApiKey}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "google/gemini-2.5-flash",
+          messages: [
+            {
+              role: "system",
+              content: `Você é um assistente SQL expert. A data de HOJE é ${new Date().toISOString().split('T')[0]}. Dado o esquema do banco de dados abaixo, gere UMA query SQL SELECT para responder a pergunta do usuário. Retorne APENAS o SQL puro, sem markdown, sem explicação, sem \`\`\`.
+
+IMPORTANTE: Quando o usuário perguntar sobre "contas a receber", considere TODOS os status (pending, paid, overdue, partial) a menos que ele especifique um status. Quando perguntar "quanto tenho a receber", inclua todos os registros do período independente do status.
+
+${DATA_SOURCES}`,
+            },
+            { role: "user", content: userQuestion },
+          ],
+        }),
+      });
+
+      if (!sqlResponse.ok) {
+        const errText = await sqlResponse.text();
+        console.error("AI SQL generation error:", sqlResponse.status, errText);
+        if (sqlResponse.status === 429) {
+          return new Response(JSON.stringify({ error: "Limite de requisições excedido. Tente novamente em alguns segundos." }), {
+            status: 429,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        if (sqlResponse.status === 402) {
+          return new Response(JSON.stringify({ error: "Créditos de IA esgotados." }), {
+            status: 402,
+            headers: { ...corsHeaders, "Content-Type": "application/json" },
+          });
+        }
+        throw new Error("Erro ao gerar SQL");
+      }
+
+      const sqlJson = await sqlResponse.json();
+      sqlQuery = sqlJson.choices?.[0]?.message?.content?.trim() || "";
+      sqlQuery = sqlQuery.replace(/```sql\n?/gi, "").replace(/```\n?/g, "").trim();
+      sqlQuery = sqlQuery.replace(/;\s*$/, "").trim();
+
+      const upperSql = sqlQuery.toUpperCase().trim();
+      if (!upperSql.startsWith("SELECT") || /\b(DELETE|UPDATE|INSERT|DROP|ALTER|TRUNCATE|CREATE|GRANT|REVOKE|EXECUTE)\b/i.test(sqlQuery)) {
+        return new Response(JSON.stringify({ error: "A consulta gerada não é segura. Apenas consultas SELECT são permitidas.", sql: sqlQuery }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+
+      const { data: queryResult, error: queryError } = await supabase.rpc("execute_readonly_query", { query_text: sqlQuery });
+      if (queryError) {
+        console.error("Query execution error:", queryError);
+        queryErrorMessage = queryError.message;
+      } else {
+        resultData = queryResult;
+      }
+    }
+
     const interpretMessages = [
       {
         role: "system" as const,
@@ -261,23 +477,19 @@ serve(async (req) => {
 
 REGRAS DE FORMATAÇÃO:
 1. NUNCA use tabelas markdown com mais de 3 colunas — use listas compactas
-2. Exemplo de lista: - **Empresa X** — R$ 2.000,00 — Vence: 10/04 — Pending
-3. Use títulos (##, ###) para organizar seções
-4. Destaque totais em **negrito**
-5. Formate valores em R$ com separador de milhar (ponto) e decimal (vírgula)
-6. Para >10 registros, agrupe por categoria/status/data
-7. Comece com um RESUMO rápido dos totais
-8. Use emojis com moderação (📊 💰 ⚠️ ✅)
-9. Se houve erro na query, explique o que aconteceu de forma simples e sugira reformular a pergunta — NÃO invente dados e NÃO fale em "equipe técnica"`,
+2. Para forecast, informe primeiro quantidade e valor total
+3. Para percentual de meta, informe realizado, meta e percentual final
+4. Use títulos (##, ###) quando ajudar
+5. Destaque totais em **negrito**
+6. Formate valores em R$ com separador de milhar (ponto) e decimal (vírgula)
+7. Se houve erro, explique de forma simples sem inventar dados`,
       },
       ...messages.slice(0, -1),
-      {
-        role: "user" as const,
-        content: userQuestion,
-      },
+      { role: "user" as const, content: userQuestion },
       {
         role: "assistant" as const,
-        content: `Executei a seguinte consulta no banco de dados:\n\`\`\`sql\n${sqlQuery}\n\`\`\`\n\n${queryErrorMessage ? `Erro na consulta: ${queryErrorMessage}` : `Resultado:\n${JSON.stringify(resultData, null, 2)}`}`,
+        content: `Executei a seguinte consulta no banco de dados:\n\
+\`\`\`sql\n${sqlQuery}\n\`\`\`\n\n${queryErrorMessage ? `Erro na consulta: ${queryErrorMessage}` : `Resultado:\n${JSON.stringify(resultData, null, 2)}`}`,
       },
       {
         role: "user" as const,
@@ -307,7 +519,6 @@ REGRAS DE FORMATAÇÃO:
     return new Response(interpretResponse.body, {
       headers: { ...corsHeaders, "Content-Type": "text/event-stream" },
     });
-
   } catch (e) {
     console.error("master-ai-query error:", e);
     return new Response(JSON.stringify({ error: e instanceof Error ? e.message : "Erro desconhecido" }), {
