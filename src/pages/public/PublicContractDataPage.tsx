@@ -374,7 +374,7 @@ const PublicContractDataPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>RG</Label>
+                  <Label>RG <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.rg}
                     onChange={(e) => handleChange("rg", e.target.value)}
