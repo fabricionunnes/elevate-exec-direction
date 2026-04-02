@@ -354,7 +354,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Estado Civil</Label>
+                  <Label>Estado Civil <span className="text-destructive">*</span></Label>
                   <Select
                     value={data.marital_status || "none"}
                     onValueChange={(v) => handleChange("marital_status", v === "none" ? "" : v)}
