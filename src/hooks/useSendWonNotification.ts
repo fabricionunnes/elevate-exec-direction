@@ -80,6 +80,7 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       .select(`
         *,
         closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
+        owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name),
         sdr:onboarding_staff!crm_leads_sdr_staff_id_fkey(name),
         product:onboarding_services!crm_leads_product_id_fkey(name),
         plan:crm_plans!crm_leads_plan_id_fkey(name)
@@ -247,7 +248,7 @@ function formatWonMessage(lead: any, paymentMethodName: string | null, briefingT
 
   // Use the SDR who scheduled the meeting, falling back to the lead's assigned SDR
   const sdrName = schedulerSdrName || lead.scheduler?.name || lead.sdr?.name || "Não informado";
-  const closerName = lead.closer?.name || "Não informado";
+  const closerName = lead.closer?.name || lead.owner?.name || "Não informado";
   const serviceName = lead.product?.name || "Não informado";
   const planName = lead.plan?.name || "Não informado";
 
