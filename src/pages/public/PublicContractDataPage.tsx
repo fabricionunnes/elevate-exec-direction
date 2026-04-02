@@ -305,7 +305,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>E-mail</Label>
+                  <Label>E-mail <span className="text-destructive">*</span></Label>
                   <Input
                     type="email"
                     value={data.email}
