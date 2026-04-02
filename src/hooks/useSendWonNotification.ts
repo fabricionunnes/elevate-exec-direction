@@ -82,8 +82,7 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
         closer:onboarding_staff!crm_leads_closer_staff_id_fkey(name),
         sdr:onboarding_staff!crm_leads_sdr_staff_id_fkey(name),
         product:onboarding_services!crm_leads_product_id_fkey(name),
-        plan:crm_plans!crm_leads_plan_id_fkey(name),
-        scheduler:onboarding_staff!crm_leads_scheduled_by_staff_id_fkey(name)
+        plan:crm_plans!crm_leads_plan_id_fkey(name)
       `)
       .eq("id", leadId)
       .single();
