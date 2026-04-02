@@ -118,6 +118,22 @@ export async function sendWonLeadNotification(leadId: string): Promise<{ success
       console.warn("Could not fetch scheduler SDR:", e);
     }
 
+    // 2.0b Fallback: check scheduled_by_staff_id on the lead itself
+    if (!schedulerSdrName && lead.scheduled_by_staff_id) {
+      try {
+        const { data: schedulerStaff } = await supabase
+          .from("onboarding_staff")
+          .select("name")
+          .eq("id", lead.scheduled_by_staff_id)
+          .single();
+        if (schedulerStaff?.name) {
+          schedulerSdrName = schedulerStaff.name;
+        }
+      } catch (e) {
+        console.warn("Could not fetch scheduled_by_staff:", e);
+      }
+    }
+
     // 2.1 Load payment method name if payment_method is an ID
     let paymentMethodName = lead.payment_method;
     if (lead.payment_method) {
