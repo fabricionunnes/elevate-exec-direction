@@ -105,8 +105,9 @@ Regras IMPORTANTES:
 12. Para "contas a pagar", use SEMPRE a tabela financial_payables
 13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
 14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
-15. Para calcular % de meta atingida: SUM(kpi_entries.value) / NULLIF(kpi_monthly_targets.target_value, 0) * 100
+15. Para calcular % de meta atingida, SIGA AS REGRAS DO MÓDULO KPIs acima (use kpi_monthly_targets com level_order=1 e JOIN com company_kpis onde is_main_goal=true)
 16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
+17. Para "faturamento" no contexto de CONTAS/FATURAS, use company_invoices. Para "faturamento" no contexto de METAS/KPIs, use kpi_entries + company_kpis (is_main_goal=true)
 `;
 
 serve(async (req) => {
