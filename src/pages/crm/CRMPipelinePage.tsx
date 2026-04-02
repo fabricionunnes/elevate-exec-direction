@@ -436,12 +436,21 @@ export const CRMPipelinePage = () => {
       const isWonStage = targetStage?.final_type === "won";
 
       // Atualizar lead com closed_at se for etapa final
-      const updateData: { stage_id: string; closed_at?: string } = {
+      const updateData: { stage_id: string; closed_at?: string; closer_staff_id?: string } = {
         stage_id: stageMoveDialog.targetStageId,
       };
       
       if (isWonStage) {
         updateData.closed_at = new Date().toISOString();
+        // Set closer as the lead's current owner (the person responsible)
+        const { data: leadData } = await supabase
+          .from("crm_leads")
+          .select("owner_staff_id, closer_staff_id")
+          .eq("id", stageMoveDialog.leadId)
+          .single();
+        if (leadData && !leadData.closer_staff_id) {
+          updateData.closer_staff_id = leadData.owner_staff_id || staffId;
+        }
       }
 
       const { error } = await supabase
