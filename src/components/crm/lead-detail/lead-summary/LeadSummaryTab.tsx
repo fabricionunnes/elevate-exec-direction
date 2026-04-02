@@ -1,11 +1,12 @@
 import { useState, useEffect } from "react";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Eye, BookOpen, Target, BarChart3 } from "lucide-react";
+import { Eye, BookOpen, Target, BarChart3, MessageSquare } from "lucide-react";
 import { useLeadSummary, SummaryTabType } from "./useLeadSummary";
 import { LeadSummaryOverview } from "./LeadSummaryOverview";
 import { LeadSummaryGuide } from "./LeadSummaryGuide";
 import { LeadSummaryFollowUp } from "./LeadSummaryFollowUp";
 import { LeadSummaryAnalysis } from "./LeadSummaryAnalysis";
+import { LeadSummaryAIChat } from "./LeadSummaryAIChat";
 
 interface LeadSummaryTabProps {
   leadId: string;
@@ -45,6 +46,10 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
               <BarChart3 className="h-3.5 w-3.5" />
               Análise
             </TabsTrigger>
+            <TabsTrigger value="ai-chat" className="gap-1.5 text-xs">
+              <MessageSquare className="h-3.5 w-3.5" />
+              IA
+            </TabsTrigger>
           </TabsList>
         </div>
 
@@ -79,6 +84,10 @@ export const LeadSummaryTab = ({ leadId, leadName }: LeadSummaryTabProps) => {
             leadId={leadId}
             onRegenerate={(transcriptionId) => summary.fetchAnalysis(true, transcriptionId)}
           />
+        </TabsContent>
+
+        <TabsContent value="ai-chat" className="flex-1 mt-0 overflow-hidden">
+          <LeadSummaryAIChat leadId={leadId} leadName={leadName} />
         </TabsContent>
       </Tabs>
     </div>
