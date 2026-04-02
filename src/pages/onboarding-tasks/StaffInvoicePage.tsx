@@ -854,6 +854,7 @@ const StaffInvoicePage = () => {
                           })}
                         </TableBody>
                       </Table>
+                      </div>
                     </ScrollArea>
                   )}
                 </CardContent>
