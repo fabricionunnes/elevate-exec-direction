@@ -156,9 +156,28 @@ const PublicContractDataPage = () => {
   const handleSubmit = async () => {
     if (!leadId) return;
 
-    // Basic validation
-    if (!data.company.trim()) {
-      toast.error("Razão Social é obrigatória");
+    // Validate all required fields
+    const requiredFields: { key: keyof ContractData; label: string }[] = [
+      { key: "company", label: "Razão Social" },
+      { key: "trade_name", label: "Nome Fantasia" },
+      { key: "document", label: "CNPJ" },
+      { key: "email", label: "E-mail" },
+      { key: "phone", label: "Telefone" },
+      { key: "zipcode", label: "CEP" },
+      { key: "city", label: "Cidade" },
+      { key: "state", label: "UF" },
+      { key: "address", label: "Endereço" },
+      { key: "address_number", label: "Número" },
+      { key: "address_neighborhood", label: "Bairro" },
+      { key: "legal_representative_name", label: "Nome do Representante Legal" },
+      { key: "marital_status", label: "Estado Civil" },
+      { key: "rg", label: "RG" },
+      { key: "cpf", label: "CPF" },
+    ];
+
+    const missing = requiredFields.filter(f => !data[f.key]?.trim());
+    if (missing.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missing.map(f => f.label).join(", ")}`);
       return;
     }
 
