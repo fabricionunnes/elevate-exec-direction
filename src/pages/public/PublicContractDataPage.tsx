@@ -285,7 +285,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Nome Fantasia</Label>
+                  <Label>Nome Fantasia <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.trade_name}
                     onChange={(e) => handleChange("trade_name", e.target.value)}
