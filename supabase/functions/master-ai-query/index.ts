@@ -46,8 +46,14 @@ MÓDULO CANCELAMENTOS:
 - retention_attempts: Tentativas de retenção
 
 MÓDULO KPIs:
-- kpi_entries: Entradas de KPIs (id, project_id, kpi_key, value, month, year, etc.)
-- kpi_goals: Metas de KPIs (id, project_id, kpi_key, target_value, month, year, etc.)
+- company_kpis: Definições de KPIs por empresa (id, company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal, team_id, salesperson_id, unit_id, sector_id)
+- kpi_entries: Lançamentos/valores realizados de KPIs (id, company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id)
+- kpi_monthly_targets: Metas mensais de KPIs (id, kpi_id, company_id, month_year (formato 'YYYY-MM'), target_value, level_name, level_order, unit_id, salesperson_id, team_id, sector_id). A meta base é level_order = 1. Use esta tabela para consultas de metas.
+- kpi_target_levels: Níveis de meta por KPI
+- kpi_salespeople: Relação KPI-vendedores
+- kpi_sectors: Relação KPI-setores
+- kpi_teams: Relação KPI-equipes
+- kpi_units: Relação KPI-unidades
 
 MÓDULO ACADEMY:
 - academy_tracks: Trilhas da academia
@@ -84,6 +90,9 @@ Regras IMPORTANTES:
 11. Para "contas a receber" ou "faturamento", use SEMPRE a tabela company_invoices (com amount_cents / 100)
 12. Para "contas a pagar", use SEMPRE a tabela financial_payables
 13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
+14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
+15. Para calcular % de meta atingida: SUM(kpi_entries.value) / NULLIF(kpi_monthly_targets.target_value, 0) * 100
+16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
 `;
 
 serve(async (req) => {
