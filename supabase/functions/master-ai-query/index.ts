@@ -47,14 +47,27 @@ MÓDULO CANCELAMENTOS:
 - retention_attempts: Tentativas de retenção
 
 MÓDULO KPIs:
-- company_kpis: Definições de KPIs por empresa (id, company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal, team_id, salesperson_id, unit_id, sector_id)
-- kpi_entries: Lançamentos/valores realizados de KPIs (id, company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id)
-- kpi_monthly_targets: Metas mensais de KPIs (id, kpi_id, company_id, month_year (formato 'YYYY-MM'), target_value, level_name, level_order, unit_id, salesperson_id, team_id, sector_id). A meta base é level_order = 1. Use esta tabela para consultas de metas.
+- company_kpis: Definições de KPIs por empresa (id, company_id, name, kpi_type ('monetary','numeric','percentage'), periodicity, target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal (true = meta principal/faturamento), team_id, salesperson_id, unit_id, sector_id)
+- kpi_entries: Lançamentos/valores realizados de KPIs (id, company_id, salesperson_id, kpi_id, entry_date (tipo DATE), value, observations, unit_id, team_id, sector_id). Para calcular o realizado de um mês, filtre por entry_date >= 'YYYY-MM-01' AND entry_date <= 'YYYY-MM-último_dia'.
+- kpi_monthly_targets: Metas mensais de KPIs (id, kpi_id, company_id, month_year (formato 'YYYY-MM'), target_value, level_name, level_order, unit_id, salesperson_id, team_id, sector_id). A meta base/principal é level_order = 1. Use esta tabela para consultas de metas.
 - kpi_target_levels: Níveis de meta por KPI
 - kpi_salespeople: Relação KPI-vendedores
 - kpi_sectors: Relação KPI-setores
 - kpi_teams: Relação KPI-equipes
 - kpi_units: Relação KPI-unidades
+
+REGRAS PARA CÁLCULO DE % DE META ATINGIDA:
+1. Buscar o KPI principal (is_main_goal = true) na tabela company_kpis
+2. Buscar a meta do mês na tabela kpi_monthly_targets com level_order = 1 (meta base)
+3. Somar os valores realizados em kpi_entries para o período
+4. Calcular: (SUM(kpi_entries.value) / kpi_monthly_targets.target_value) * 100
+5. Exemplo de query para % de meta:
+   SELECT ROUND((SUM(ke.value) / NULLIF(kmt.target_value, 0)) * 100, 1) as percentual
+   FROM kpi_entries ke
+   JOIN company_kpis ck ON ck.id = ke.kpi_id
+   JOIN kpi_monthly_targets kmt ON kmt.kpi_id = ck.id AND kmt.company_id = ke.company_id AND kmt.month_year = 'YYYY-MM'
+   WHERE ke.company_id = '...' AND ck.is_main_goal = true AND kmt.level_order = 1
+   AND ke.entry_date >= 'YYYY-MM-01' AND ke.entry_date <= 'YYYY-MM-último_dia'
 
 MÓDULO ACADEMY:
 - academy_tracks: Trilhas da academia
@@ -92,8 +105,9 @@ Regras IMPORTANTES:
 12. Para "contas a pagar", use SEMPRE a tabela financial_payables
 13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
 14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
-15. Para calcular % de meta atingida: SUM(kpi_entries.value) / NULLIF(kpi_monthly_targets.target_value, 0) * 100
+15. Para calcular % de meta atingida, SIGA AS REGRAS DO MÓDULO KPIs acima (use kpi_monthly_targets com level_order=1 e JOIN com company_kpis onde is_main_goal=true)
 16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
+17. Para "faturamento" no contexto de CONTAS/FATURAS, use company_invoices. Para "faturamento" no contexto de METAS/KPIs, use kpi_entries + company_kpis (is_main_goal=true)
 `;
 
 serve(async (req) => {
