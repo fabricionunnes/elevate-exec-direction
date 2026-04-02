@@ -33,9 +33,17 @@ MÓDULO FINANCEIRO:
 MÓDULO CRM COMERCIAL:
 - crm_leads: Leads comerciais (id, name, phone, email, company, role, city, state, origin, owner_staff_id, team, pipeline_id, stage_id, opportunity_value, probability, entered_pipeline_at, last_activity_at, next_activity_at, closed_at, loss_reason_id, segment, notes, sdr_staff_id, closer_staff_id, created_at, etc.). IMPORTANTE: NÃO TEM coluna "status". O status do lead é determinado pelo stage_id vinculado à tabela crm_stages.
 - crm_pipelines: Pipelines de venda (id, name, description, is_default, is_active, etc.)
-- crm_stages: Etapas dos pipelines (id, pipeline_id, name, sort_order, is_final, final_type, color). Para leads "ganhos" use is_final=true AND final_type='won'. Para "perdidos" use is_final=true AND final_type='lost'. Leads em forecast são os que NÃO estão em etapa final (is_final=false).
+- crm_stages: Etapas dos pipelines (id, pipeline_id, name, sort_order, is_final, final_type, color). Para leads "ganhos" use is_final=true AND final_type='won'. Para "perdidos" use is_final=true AND final_type='lost'. MUITO IMPORTANTE: no CRM Comercial, "forecast" significa SOMENTE leads cujo stage_id pertence a etapas da tabela crm_stages com name ILIKE '%forecast%'. NÃO use "todas as etapas não finais" como forecast.
 - crm_activities: Atividades do CRM (id, lead_id, type, title, description, scheduled_at, completed_at, status, responsible_staff_id, notes, meeting_link, recording_url, etc.)
 - crm_origins: Origens de leads (id, name, pipeline_id, icon, color, sort_order, is_active)
+
+REGRAS PARA FORECAST NO CRM COMERCIAL:
+1. Buscar os stages com: SELECT id FROM crm_stages WHERE name ILIKE '%forecast%'
+2. Buscar os leads com stage_id IN (esses ids)
+3. Para valor do forecast, somar crm_leads.opportunity_value
+4. Para quantidade, usar COUNT(*) desses leads
+5. NÃO inclua leads de outras etapas abertas se o nome da etapa não contiver "forecast"
+6. Se a pergunta for "forecast hoje", entenda como o snapshot atual do CRM hoje, não por data de criação, a menos que o usuário peça explicitamente um filtro por data
 
 MÓDULO RH/RECRUTAMENTO:
 - job_openings: Vagas em aberto (id, project_id, title, status, department, location, etc.)
