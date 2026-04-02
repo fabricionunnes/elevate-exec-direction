@@ -346,7 +346,7 @@ const PublicContractDataPage = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome do Representante Legal</Label>
+                  <Label>Nome do Representante Legal <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.legal_representative_name}
                     onChange={(e) => handleChange("legal_representative_name", e.target.value)}
