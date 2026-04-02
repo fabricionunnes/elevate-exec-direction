@@ -382,7 +382,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>CPF</Label>
+                  <Label>CPF <span className="text-destructive">*</span></Label>
                   <Input
                     value={formatCpfMask(data.cpf)}
                     onChange={(e) => handleChange("cpf", e.target.value.replace(/\D/g, "").slice(0, 11))}
