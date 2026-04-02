@@ -788,7 +788,8 @@ const StaffInvoicePage = () => {
                     <p className="text-center text-muted-foreground py-8">Nenhuma nota fiscal encontrada</p>
                   ) : (
                     <ScrollArea className="max-h-[600px]">
-                      <Table>
+                      <div className="overflow-x-auto">
+                      <Table className="min-w-[1100px]">
                         <TableHeader>
                           <TableRow>
                             <TableHead>Usuário</TableHead>
