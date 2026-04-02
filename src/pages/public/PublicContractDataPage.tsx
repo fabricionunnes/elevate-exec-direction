@@ -277,7 +277,7 @@ const PublicContractDataPage = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Razão Social <span className="text-red-500">*</span></Label>
+                  <Label>Razão Social <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.company}
                     onChange={(e) => handleChange("company", e.target.value)}
