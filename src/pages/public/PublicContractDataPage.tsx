@@ -314,7 +314,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Telefone</Label>
+                  <Label>Telefone <span className="text-destructive">*</span></Label>
                   <PhoneInput
                     value={data.phone}
                     onChange={(v) => handleChange("phone", v)}
