@@ -12,7 +12,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogFooter } from "@/components/ui/dialog";
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from "@/components/ui/alert-dialog";
-import { ScrollArea } from "@/components/ui/scroll-area";
 import { toast } from "sonner";
 import { ArrowLeft, Upload, FileText, DollarSign, History, Settings, Download, Search, Eye, Pencil, Trash2 } from "lucide-react";
 
@@ -787,8 +786,7 @@ const StaffInvoicePage = () => {
                   {allInvoices.length === 0 ? (
                     <p className="text-center text-muted-foreground py-8">Nenhuma nota fiscal encontrada</p>
                   ) : (
-                    <ScrollArea className="max-h-[600px]">
-                      <div className="overflow-x-auto">
+                    <div className="max-h-[600px] overflow-auto rounded-md border">
                       <Table className="min-w-[1100px]">
                         <TableHeader>
                           <TableRow>
@@ -854,8 +852,7 @@ const StaffInvoicePage = () => {
                           })}
                         </TableBody>
                       </Table>
-                      </div>
-                    </ScrollArea>
+                    </div>
                   )}
                 </CardContent>
               </Card>
