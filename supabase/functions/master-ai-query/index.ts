@@ -31,10 +31,11 @@ MÓDULO FINANCEIRO:
 - staff_financial_entries: Lançamentos financeiros da equipe
 
 MÓDULO CRM COMERCIAL:
-- crm_leads: Leads comerciais (id, name, phone, email, company, stage_id, pipeline_id, owner_staff_id, opportunity_value, status, created_at, closed_at, loss_reason_id, etc.)
-- crm_pipelines: Pipelines de venda (id, name, etc.)
-- crm_pipeline_stages: Etapas dos pipelines (id, pipeline_id, name, sort_order, etc.)
-- crm_activities: Atividades do CRM (id, lead_id, type, description, staff_id, etc.)
+- crm_leads: Leads comerciais (id, name, phone, email, company, role, city, state, origin, owner_staff_id, team, pipeline_id, stage_id, opportunity_value, probability, entered_pipeline_at, last_activity_at, next_activity_at, closed_at, loss_reason_id, segment, notes, sdr_staff_id, closer_staff_id, created_at, etc.). IMPORTANTE: NÃO TEM coluna "status". O status do lead é determinado pelo stage_id vinculado à tabela crm_stages.
+- crm_pipelines: Pipelines de venda (id, name, description, is_default, is_active, etc.)
+- crm_stages: Etapas dos pipelines (id, pipeline_id, name, sort_order, is_final, final_type, color). Para leads "ganhos" use is_final=true AND final_type='won'. Para "perdidos" use is_final=true AND final_type='lost'. Leads em forecast são os que NÃO estão em etapa final (is_final=false).
+- crm_activities: Atividades do CRM (id, lead_id, type, title, description, scheduled_at, completed_at, status, responsible_staff_id, notes, meeting_link, recording_url, etc.)
+- crm_origins: Origens de leads (id, name, pipeline_id, icon, color, sort_order, is_active)
 
 MÓDULO RH/RECRUTAMENTO:
 - job_openings: Vagas em aberto (id, project_id, title, status, department, location, etc.)
