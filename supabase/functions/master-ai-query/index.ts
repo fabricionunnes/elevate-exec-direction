@@ -9,106 +9,104 @@ const corsHeaders = {
 const MASTER_EMAIL = "fabricio@universidadevendas.com.br";
 
 const DATA_SOURCES = `
-Você tem acesso a um banco de dados PostgreSQL com as seguintes tabelas e seus propósitos:
+Você tem acesso a um banco de dados PostgreSQL. Abaixo estão as tabelas com TODAS as colunas EXATAS (use APENAS estes nomes):
 
-MÓDULO ONBOARDING/GESTÃO:
-- onboarding_companies: Empresas clientes (id, name, segment, status, consultant_id, cs_id, created_at, etc.)
-- onboarding_projects: Projetos de cada empresa (id, company_id, name, status, start_date, end_date, etc.)
-- onboarding_users: Usuários de projetos/clientes (id, project_id, full_name, email, role, etc.)
-- onboarding_staff: Equipe interna (id, full_name, email, role, is_active, etc.)
-- onboarding_tasks: Tarefas de projetos (id, project_id, title, status, responsible_id, due_date, etc.)
-- service_requests: Solicitações de serviço (id, project_id, type, status, created_at, etc.)
+=== MÓDULO ONBOARDING/GESTÃO ===
 
-MÓDULO FINANCEIRO:
-- company_invoices: TABELA PRINCIPAL DE CONTAS A RECEBER. Faturas das empresas clientes (id, company_id, description, amount_cents (valor em CENTAVOS - divida por 100 para obter reais), due_date, status, paid_at, paid_amount_cents, etc.). SEMPRE use esta tabela para consultas de contas a receber / faturamento / receita.
-- financial_receivables: Recebíveis avulsos (SECUNDÁRIA, geralmente vazia - prefira company_invoices para contas a receber)
-- financial_payables: TABELA PRINCIPAL DE CONTAS A PAGAR (id, supplier_name, description, amount, due_date, status, paid_amount, paid_date, category_id, etc.)
-- client_financial_receivables: Recebíveis internos de clientes (id, project_id, description, amount, due_date, status, etc.)
-- client_financial_payables: Pagáveis internos de clientes (id, project_id, description, amount, due_date, status, etc.)
-- financial_banks: Bancos (id, name, balance, etc.)
-- financial_bank_transactions: Transações bancárias (id, bank_id, amount, type, description, date, etc.)
-- staff_financial_entries: Lançamentos financeiros da equipe
+onboarding_companies (Empresas clientes):
+  id, name, cnpj, segment, website, phone, email, address, cs_id (uuid → onboarding_staff.id), consultant_id (uuid → onboarding_staff.id), kickoff_date, contract_start_date, contract_end_date, contract_value, billing_day, status, notes, created_at, updated_at, owner_name, owner_cpf, goal_not_required (boolean), is_billing_blocked, tenant_id
 
-MÓDULO CRM COMERCIAL:
-- crm_leads: Leads comerciais (id, name, phone, email, company, role, city, state, origin, owner_staff_id, team, pipeline_id, stage_id, opportunity_value, probability, entered_pipeline_at, last_activity_at, next_activity_at, closed_at, loss_reason_id, segment, notes, sdr_staff_id, closer_staff_id, created_at, etc.). IMPORTANTE: NÃO TEM coluna "status". O status do lead é determinado pelo stage_id vinculado à tabela crm_stages.
-- crm_pipelines: Pipelines de venda (id, name, description, is_default, is_active, etc.)
-- crm_stages: Etapas dos pipelines (id, pipeline_id, name, sort_order, is_final, final_type, color). Para leads "ganhos" use is_final=true AND final_type='won'. Para "perdidos" use is_final=true AND final_type='lost'. MUITO IMPORTANTE: no CRM Comercial, "forecast" significa SOMENTE leads cujo stage_id pertence a etapas da tabela crm_stages com name ILIKE '%forecast%'. NÃO use "todas as etapas não finais" como forecast.
-- crm_activities: Atividades do CRM (id, lead_id, type, title, description, scheduled_at, completed_at, status, responsible_staff_id, notes, meeting_link, recording_url, etc.)
-- crm_origins: Origens de leads (id, name, pipeline_id, icon, color, sort_order, is_active)
+onboarding_staff (Equipe interna - consultores, CS, etc.):
+  id, user_id, name (TEXT - nome do staff), email, role, phone, is_active, created_at, updated_at, avatar_url
+  IMPORTANTE: A coluna do nome é "name", NÃO "full_name" nem "nome_completo"
 
-REGRAS PARA FORECAST NO CRM COMERCIAL:
-1. Buscar os stages com: SELECT id FROM crm_stages WHERE name ILIKE '%forecast%'
-2. Buscar os leads com stage_id IN (esses ids) e closed_at IS NULL
-3. Para valor do forecast, somar crm_leads.opportunity_value
-4. Para quantidade, usar COUNT(*) desses leads
-5. NÃO inclua leads de outras etapas abertas se o nome da etapa não contiver "forecast"
-6. Se a pergunta for "forecast hoje", entenda como o snapshot atual do CRM hoje, não por data de criação, a menos que o usuário peça explicitamente um filtro por data
+onboarding_projects (Projetos de cada empresa):
+  id, company_id (→ onboarding_companies.id), product_id, product_name, status, created_at, updated_at, onboarding_company_id, churn_risk, consultant_id (→ onboarding_staff.id), cs_id (→ onboarding_staff.id), crm_lead_id, tenant_id
 
-MÓDULO RH/RECRUTAMENTO:
-- job_openings: Vagas em aberto (id, project_id, title, status, department, location, etc.)
-- candidates: Candidatos (id, job_opening_id, full_name, email, current_stage, status, etc.)
-- candidate_resumes: Currículos dos candidatos
+onboarding_tasks (Tarefas de projetos):
+  id, project_id (→ onboarding_projects.id), title, description, due_date, completed_at, status (enum: 'pending','in_progress','completed','cancelled'), assignee_id, responsible_staff_id (→ onboarding_staff.id), start_date, priority, estimated_hours, actual_hours, tags, is_internal, sort_order, created_at
 
-MÓDULO CANCELAMENTOS:
-- onboarding_cancellations: Solicitações de cancelamento (id, company_id, project_id, reason, status, requested_at, etc.)
-- retention_attempts: Tentativas de retenção
+onboarding_users (Usuários de clientes):
+  id, project_id (→ onboarding_projects.id), user_id, name, email, temp_password, role, password_changed, salesperson_id, created_at
 
-MÓDULO KPIs:
-- company_kpis: Definições de KPIs por empresa (id, company_id, name, kpi_type ('monetary','numeric','percentage'), periodicity, target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal (true = meta principal/faturamento), team_id, salesperson_id, unit_id, sector_id)
-- kpi_entries: Lançamentos/valores realizados de KPIs (id, company_id, salesperson_id, kpi_id, entry_date (tipo DATE), value, observations, unit_id, team_id, sector_id). Para calcular o realizado de um mês, filtre por entry_date >= 'YYYY-MM-01' AND entry_date <= 'YYYY-MM-último_dia'.
-- kpi_monthly_targets: Metas mensais de KPIs (id, kpi_id, company_id, month_year (formato 'YYYY-MM'), target_value, level_name, level_order, unit_id, salesperson_id, team_id, sector_id). A meta base/principal é level_order = 1. Use esta tabela para consultas de metas.
-- kpi_target_levels: Níveis de meta por KPI
-- kpi_salespeople: Relação KPI-vendedores
-- kpi_sectors: Relação KPI-setores
-- kpi_teams: Relação KPI-equipes
-- kpi_units: Relação KPI-unidades
+service_requests (Solicitações de serviço):
+  id, project_id (→ onboarding_projects.id), service_catalog_id, menu_key, requested_by, status, admin_notes, created_at
 
-REGRAS PARA CÁLCULO DE % DE META ATINGIDA:
-1. Buscar o KPI principal (is_main_goal = true) na tabela company_kpis
-2. Buscar a meta do mês na tabela kpi_monthly_targets com level_order = 1 (meta base)
-3. Somar os valores realizados em kpi_entries para o período
-4. Calcular: (SUM(kpi_entries.value) / kpi_monthly_targets.target_value) * 100
-5. Se não houver target mensal, usar fallback para company_kpis.target_value respeitando a periodicidade
+=== MÓDULO FINANCEIRO ===
 
-MÓDULO ACADEMY:
-- academy_tracks: Trilhas da academia
-- academy_lessons: Aulas
-- academy_progress: Progresso dos alunos
-- academy_quizzes: Quizzes
-- academy_quiz_attempts: Tentativas de quiz
+company_invoices (TABELA PRINCIPAL DE CONTAS A RECEBER):
+  id, company_id (→ onboarding_companies.id), description, amount_cents (INTEGER em CENTAVOS - divida por 100 para reais), due_date, status ('pending','paid','overdue','partial','cancelled'), paid_at, paid_amount_cents, payment_method, bank_id, category_id, cost_center_id, installment_number, total_installments, notes, created_at
+  SEMPRE use amount_cents/100 para valores em reais
 
-MÓDULO SOCIAL/MARKETING:
-- social_content_cards: Cards de conteúdo social
-- social_content_boards: Boards de conteúdo
+financial_payables (TABELA PRINCIPAL DE CONTAS A PAGAR):
+  id, supplier_name, category_id, description, amount (NUMERIC já em reais), due_date, paid_date, paid_amount, status, is_recurring, recurrence_type, payment_method, bank_id, cost_center_id, cost_type, installment_number, total_installments, notes, created_at
 
-MÓDULO WHATSAPP:
-- whatsapp_instances: Instâncias de WhatsApp
-- whatsapp_message_log: Log de mensagens
+financial_banks (Bancos/contas bancárias):
+  id, name, bank_code, agency, account_number, initial_balance_cents, current_balance_cents, is_active, created_at
 
-MÓDULO AGENDAMENTOS:
-- appointments: Agendamentos
-- appointment_clients: Clientes de agendamento
-- appointment_services: Serviços de agendamento
-- appointment_professionals: Profissionais
+financial_bank_transactions (Extrato bancário):
+  id, bank_id (→ financial_banks.id), type ('credit','debit'), amount_cents (BIGINT em centavos), description, reference_type, reference_id, created_at
 
-Regras IMPORTANTES:
-1. SEMPRE use SQL válido para PostgreSQL
-2. Use COUNT, SUM, AVG para agregações
-3. Limite resultados a no máximo 50 linhas
-4. Para valores monetários, formate em BRL (R$)
-5. Retorne APENAS a query SQL, sem explicações
-6. Use JOINs quando necessário para cruzar dados
-7. Para status, os comuns são: 'active', 'inactive', 'pending', 'paid', 'overdue', 'cancelled', 'completed', 'open', 'closed', 'won', 'lost'
-8. Em company_invoices, amount_cents está em CENTAVOS (divida por 100 para reais). paid_amount_cents também em centavos.
-9. Nunca use DELETE, UPDATE, INSERT, DROP, ALTER, TRUNCATE, CREATE, GRANT, REVOKE ou qualquer comando que modifique dados
-10. Use ONLY SELECT statements
-11. Para "contas a receber" ou "faturamento", use SEMPRE a tabela company_invoices (com amount_cents / 100)
-12. Para "contas a pagar", use SEMPRE a tabela financial_payables
-13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
-14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
-15. Para calcular % de meta atingida, SIGA AS REGRAS DO MÓDULO KPIs acima
-16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
-17. Para "faturamento" no contexto de CONTAS/FATURAS, use company_invoices. Para "faturamento" no contexto de METAS/KPIs, use kpi_entries + company_kpis (is_main_goal=true)
+=== MÓDULO CRM COMERCIAL ===
+
+crm_leads (Leads/negócios):
+  id, name, phone, email, company, role, city, state, origin (text), owner_staff_id (→ onboarding_staff.id), team, pipeline_id (→ crm_pipelines.id), stage_id (→ crm_stages.id), opportunity_value, probability, entered_pipeline_at, last_activity_at, next_activity_at, closed_at, loss_reason_id, segment, notes, sdr_staff_id (→ onboarding_staff.id), closer_staff_id (→ onboarding_staff.id), created_by, created_at, origin_id (→ crm_origins.id), head_status, head_closing_date
+  IMPORTANTE: NÃO TEM coluna "status". O status é determinado pelo stage_id → crm_stages
+
+crm_pipelines: id, name, description, is_default, is_active, created_by, created_at
+
+crm_stages (Etapas dos pipelines):
+  id, pipeline_id (→ crm_pipelines.id), name, sort_order, is_final, final_type ('won','lost'), color, created_at
+  Leads ganhos: is_final=true AND final_type='won'
+  Leads perdidos: is_final=true AND final_type='lost'
+  Forecast: name ILIKE '%forecast%'
+
+crm_activities (Atividades/reuniões):
+  id, lead_id (→ crm_leads.id), type, title, description, scheduled_at, completed_at, status, responsible_staff_id (→ onboarding_staff.id), notes, meeting_link, recording_url, created_at
+
+crm_origins: id, name, group_id, pipeline_id, icon, color, sort_order, is_active, created_at
+
+=== MÓDULO RH/RECRUTAMENTO ===
+
+job_openings (Vagas):
+  id, project_id, company_id, title, area, job_type, description, requirements, seniority, contract_model, status, salary_range, location, is_remote, created_by, created_at, closed_at, target_date, sla_days, responsible_rh_id, consultant_id
+
+candidates (Candidatos):
+  id, project_id, job_opening_id (→ job_openings.id), full_name, email, phone, cpf, linkedin_url, source, current_stage, status, notes, created_at, ai_summary, ai_match_score
+
+=== MÓDULO CANCELAMENTOS ===
+
+onboarding_cancellations: NÃO EXISTE COMO TABELA SEPARADA. Os cancelamentos são gerenciados via onboarding_projects (campos: churn_risk, churn_reason, churn_notes, churn_date, cancellation_signal_reason, cancellation_signal_notes, cancellation_signal_date)
+
+retention_attempts: id, project_id, company_id, staff_id, attempt_date, strategy, notes, result, created_at
+
+=== MÓDULO KPIs ===
+
+company_kpis (Definições de KPIs):
+  id, company_id (→ onboarding_companies.id), name, kpi_type ('monetary','numeric','percentage'), periodicity ('daily','weekly','monthly'), target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal (true = meta principal), team_id, salesperson_id, unit_id, sector_id
+
+kpi_entries (Lançamentos/valores realizados):
+  id, company_id, salesperson_id, kpi_id (→ company_kpis.id), entry_date (DATE), value, observations, unit_id, team_id, sector_id
+
+kpi_monthly_targets (Metas mensais):
+  id, kpi_id (→ company_kpis.id), company_id, month_year (VARCHAR formato 'YYYY-MM'), target_value, level_name, level_order (1 = meta base), unit_id, salesperson_id, team_id, sector_id
+
+=== RELAÇÕES IMPORTANTES ===
+- "Consultor" de uma empresa: onboarding_companies.consultant_id → onboarding_staff.id (coluna name)
+- "CS" de uma empresa: onboarding_companies.cs_id → onboarding_staff.id (coluna name)
+- "Empresas do consultor X": JOIN onboarding_companies oc ON oc.consultant_id = os.id JOIN onboarding_staff os ON os.name ILIKE '%X%'
+- Para saber dados de empresa por nome: onboarding_companies.name ILIKE '%nome%'
+- Para cruzar projeto com empresa: onboarding_projects.company_id = onboarding_companies.id OU onboarding_projects.onboarding_company_id = onboarding_companies.id
+
+=== REGRAS SQL ===
+1. Use APENAS colunas listadas acima - NUNCA invente colunas
+2. APENAS SELECT statements
+3. Limite a 50 linhas
+4. amount_cents / 100 para converter centavos em reais
+5. Para mês atual: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
+6. NUNCA use tabelas que não existam (ex: kpi_goals, crm_pipeline_stages)
+7. Para buscar por nome de pessoa/empresa, use ILIKE '%nome%'
+8. Retorne APENAS o SQL puro, sem markdown, sem explicação
 `;
 
 const normalizeText = (value: string) =>
