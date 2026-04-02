@@ -296,7 +296,7 @@ const PublicContractDataPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>CNPJ</Label>
+                  <Label>CNPJ <span className="text-destructive">*</span></Label>
                   <Input
                     value={formatCnpjMask(data.document)}
                     onChange={(e) => handleChange("document", e.target.value.replace(/\D/g, "").slice(0, 14))}
