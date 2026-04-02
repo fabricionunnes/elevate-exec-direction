@@ -156,9 +156,28 @@ const PublicContractDataPage = () => {
   const handleSubmit = async () => {
     if (!leadId) return;
 
-    // Basic validation
-    if (!data.company.trim()) {
-      toast.error("Razão Social é obrigatória");
+    // Validate all required fields
+    const requiredFields: { key: keyof ContractData; label: string }[] = [
+      { key: "company", label: "Razão Social" },
+      { key: "trade_name", label: "Nome Fantasia" },
+      { key: "document", label: "CNPJ" },
+      { key: "email", label: "E-mail" },
+      { key: "phone", label: "Telefone" },
+      { key: "zipcode", label: "CEP" },
+      { key: "city", label: "Cidade" },
+      { key: "state", label: "UF" },
+      { key: "address", label: "Endereço" },
+      { key: "address_number", label: "Número" },
+      { key: "address_neighborhood", label: "Bairro" },
+      { key: "legal_representative_name", label: "Nome do Representante Legal" },
+      { key: "marital_status", label: "Estado Civil" },
+      { key: "rg", label: "RG" },
+      { key: "cpf", label: "CPF" },
+    ];
+
+    const missing = requiredFields.filter(f => !data[f.key]?.trim());
+    if (missing.length > 0) {
+      toast.error(`Preencha os campos obrigatórios: ${missing.map(f => f.label).join(", ")}`);
       return;
     }
 
@@ -258,7 +277,7 @@ const PublicContractDataPage = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Razão Social <span className="text-red-500">*</span></Label>
+                  <Label>Razão Social <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.company}
                     onChange={(e) => handleChange("company", e.target.value)}
@@ -266,7 +285,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Nome Fantasia</Label>
+                  <Label>Nome Fantasia <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.trade_name}
                     onChange={(e) => handleChange("trade_name", e.target.value)}
@@ -277,7 +296,7 @@ const PublicContractDataPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                 <div className="space-y-2">
-                  <Label>CNPJ</Label>
+                  <Label>CNPJ <span className="text-destructive">*</span></Label>
                   <Input
                     value={formatCnpjMask(data.document)}
                     onChange={(e) => handleChange("document", e.target.value.replace(/\D/g, "").slice(0, 14))}
@@ -286,7 +305,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>E-mail</Label>
+                  <Label>E-mail <span className="text-destructive">*</span></Label>
                   <Input
                     type="email"
                     value={data.email}
@@ -295,7 +314,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Telefone</Label>
+                  <Label>Telefone <span className="text-destructive">*</span></Label>
                   <PhoneInput
                     value={data.phone}
                     onChange={(v) => handleChange("phone", v)}
@@ -327,7 +346,7 @@ const PublicContractDataPage = () => {
               
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>Nome do Representante Legal</Label>
+                  <Label>Nome do Representante Legal <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.legal_representative_name}
                     onChange={(e) => handleChange("legal_representative_name", e.target.value)}
@@ -335,7 +354,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>Estado Civil</Label>
+                  <Label>Estado Civil <span className="text-destructive">*</span></Label>
                   <Select
                     value={data.marital_status || "none"}
                     onValueChange={(v) => handleChange("marital_status", v === "none" ? "" : v)}
@@ -355,7 +374,7 @@ const PublicContractDataPage = () => {
 
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label>RG</Label>
+                  <Label>RG <span className="text-destructive">*</span></Label>
                   <Input
                     value={data.rg}
                     onChange={(e) => handleChange("rg", e.target.value)}
@@ -363,7 +382,7 @@ const PublicContractDataPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>CPF</Label>
+                  <Label>CPF <span className="text-destructive">*</span></Label>
                   <Input
                     value={formatCpfMask(data.cpf)}
                     onChange={(e) => handleChange("cpf", e.target.value.replace(/\D/g, "").slice(0, 11))}
