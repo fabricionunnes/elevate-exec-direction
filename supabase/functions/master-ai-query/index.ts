@@ -46,8 +46,14 @@ MÓDULO CANCELAMENTOS:
 - retention_attempts: Tentativas de retenção
 
 MÓDULO KPIs:
-- kpi_entries: Entradas de KPIs (id, project_id, kpi_key, value, month, year, etc.)
-- kpi_goals: Metas de KPIs (id, project_id, kpi_key, target_value, month, year, etc.)
+- company_kpis: Definições de KPIs por empresa (id, company_id, name, kpi_type, periodicity, target_value, is_individual, is_required, is_active, sort_order, scope, is_main_goal, team_id, salesperson_id, unit_id, sector_id)
+- kpi_entries: Lançamentos/valores realizados de KPIs (id, company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id)
+- kpi_monthly_targets: Metas mensais de KPIs (id, kpi_id, company_id, month_year (formato 'YYYY-MM'), target_value, level_name, level_order, unit_id, salesperson_id, team_id, sector_id). A meta base é level_order = 1. Use esta tabela para consultas de metas.
+- kpi_target_levels: Níveis de meta por KPI
+- kpi_salespeople: Relação KPI-vendedores
+- kpi_sectors: Relação KPI-setores
+- kpi_teams: Relação KPI-equipes
+- kpi_units: Relação KPI-unidades
 
 MÓDULO ACADEMY:
 - academy_tracks: Trilhas da academia
@@ -84,6 +90,9 @@ Regras IMPORTANTES:
 11. Para "contas a receber" ou "faturamento", use SEMPRE a tabela company_invoices (com amount_cents / 100)
 12. Para "contas a pagar", use SEMPRE a tabela financial_payables
 13. Para filtrar pelo mês atual, use: due_date >= date_trunc('month', CURRENT_DATE) AND due_date < date_trunc('month', CURRENT_DATE) + interval '1 month'
+14. NUNCA use a tabela "kpi_goals" - ela NÃO EXISTE. Use "kpi_monthly_targets" para metas e "kpi_entries" para valores realizados.
+15. Para calcular % de meta atingida: SUM(kpi_entries.value) / NULLIF(kpi_monthly_targets.target_value, 0) * 100
+16. Para buscar empresa por nome, use ILIKE '%nome%' na tabela onboarding_companies
 `;
 
 serve(async (req) => {
@@ -225,18 +234,18 @@ serve(async (req) => {
     const interpretMessages = [
       {
         role: "system" as const,
-        content: `Você é um assistente executivo de negócios da Universidade de Vendas. Responda sempre em português brasileiro de forma clara, profissional e objetiva.
+        content: `Você é o assistente executivo direto do Fabrício, CEO da Universidade de Vendas. Responda de forma DIRETA, objetiva e informal-profissional. NUNCA use "Prezado(a) Cliente" ou linguagem formal de atendimento. Fale como um braço-direito que entrega dados rápidos.
 
-REGRAS DE FORMATAÇÃO (MUITO IMPORTANTE):
-1. NUNCA use tabelas markdown com mais de 3 colunas. Tabelas largas ficam ilegíveis.
-2. Para listar muitos registros, use LISTAS com bullets (•) ou numeradas, agrupando informações de forma compacta. Exemplo:
-   - **Empresa X** — R$ 2.000,00 — Vence: 10/04 — Status: Pending
-3. Use seções com títulos (##, ###) para organizar a resposta
-4. Destaque totais e números importantes em **negrito**
-5. Formate valores monetários em R$ (reais brasileiros) com separador de milhar (ponto) e decimal (vírgula)
-6. Se houver muitos registros (>10), agrupe por categoria, status ou data
-7. Sempre inclua um RESUMO no início com os totais principais
-8. Use emojis com moderação para facilitar a leitura (📊 💰 ⚠️ ✅)`,
+REGRAS DE FORMATAÇÃO:
+1. NUNCA use tabelas markdown com mais de 3 colunas — use listas compactas
+2. Exemplo de lista: - **Empresa X** — R$ 2.000,00 — Vence: 10/04 — Pending
+3. Use títulos (##, ###) para organizar seções
+4. Destaque totais em **negrito**
+5. Formate valores em R$ com separador de milhar (ponto) e decimal (vírgula)
+6. Para >10 registros, agrupe por categoria/status/data
+7. Comece com um RESUMO rápido dos totais
+8. Use emojis com moderação (📊 💰 ⚠️ ✅)
+9. Se houve erro na query, explique o que aconteceu de forma simples e sugira reformular a pergunta — NÃO invente dados e NÃO fale em "equipe técnica"`,
       },
       ...messages.slice(0, -1),
       {
