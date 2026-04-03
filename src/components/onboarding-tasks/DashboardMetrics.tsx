@@ -832,21 +832,33 @@ const DashboardMetrics = ({
   const npsMetrics = useMemo(() => {
     const filteredProjectIds = new Set(nonSimulatorProjects.map(p => p.id));
     const totalFilteredProjects = filteredProjectIds.size;
-    const filteredResponses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
-    const totalResponses = filteredResponses.length;
-    const projectsWithResponse = new Set(filteredResponses.map(r => r.project_id));
+    
+    // Filter NPS responses: only active projects
+    const allFilteredResponses = npsResponses.filter(r => filteredProjectIds.has(r.project_id));
+    
+    // For the average, use only last 2 months responses
+    const twoMonthsAgo = new Date();
+    twoMonthsAgo.setMonth(twoMonthsAgo.getMonth() - 2);
+    const recentResponses = allFilteredResponses.filter(r => new Date(r.created_at) >= twoMonthsAgo);
+    
+    const projectsWithResponse = new Set(allFilteredResponses.map(r => r.project_id));
     const respondedCount = projectsWithResponse.size;
     const notRespondedCount = totalFilteredProjects - respondedCount;
     const responseRate = totalFilteredProjects > 0 ? Math.round((respondedCount / totalFilteredProjects) * 100) : 0;
-    if (totalResponses === 0) return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalResponses: 0, respondedCount: 0, notRespondedCount: totalFilteredProjects, responseRate: 0, totalProjects: totalFilteredProjects };
-    const averageNps = Math.round((filteredResponses.reduce((sum, r) => sum + r.score, 0) / totalResponses) * 10) / 10;
-    const promoters = filteredResponses.filter(r => r.score >= 9).length;
-    const detractors = filteredResponses.filter(r => r.score <= 6).length;
-    const neutrals = filteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
+    
+    if (allFilteredResponses.length === 0) return { averageNps: null, promoters: 0, detractors: 0, neutrals: 0, totalResponses: 0, respondedCount: 0, notRespondedCount: totalFilteredProjects, responseRate: 0, totalProjects: totalFilteredProjects };
+    
+    // Average uses only recent (last 2 months) responses for accuracy
+    const averageNps = recentResponses.length > 0
+      ? Math.round((recentResponses.reduce((sum, r) => sum + r.score, 0) / recentResponses.length) * 10) / 10
+      : null;
+    const promoters = allFilteredResponses.filter(r => r.score >= 9).length;
+    const detractors = allFilteredResponses.filter(r => r.score <= 6).length;
+    const neutrals = allFilteredResponses.filter(r => r.score >= 7 && r.score <= 8).length;
     // List of projects without NPS responses
     const notRespondedProjects = nonSimulatorProjects.filter(p => !projectsWithResponse.has(p.id));
     
-    return { averageNps, promoters, detractors, neutrals, totalResponses, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects, notRespondedProjects };
+    return { averageNps, promoters, detractors, neutrals, totalResponses: allFilteredResponses.length, respondedCount, notRespondedCount, responseRate, totalProjects: totalFilteredProjects, notRespondedProjects };
   }, [nonSimulatorProjects, npsResponses]);
 
   const healthMetrics = useMemo(() => {
