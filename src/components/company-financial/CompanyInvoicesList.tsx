@@ -881,6 +881,36 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   </div>
                 );
               })}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <span className="text-xs text-muted-foreground">
+                    Página {safePage} de {totalPages}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage(safePage - 1)}
+                    >
+                      <ChevronLeft className="h-3 w-3 mr-1" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage(safePage + 1)}
+                    >
+                      Próxima
+                      <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
