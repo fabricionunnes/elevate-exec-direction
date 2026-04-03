@@ -30,7 +30,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2, Pencil } from "lucide-react";
+import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2, Pencil, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -81,6 +88,9 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [editingDueDateId, setEditingDueDateId] = useState<string | null>(null);
   const [updatingDueDate, setUpdatingDueDate] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [form, setForm] = useState({
     description: "",
     amount: 0,
@@ -369,6 +379,26 @@ export function CompanyInvoicesList({ companyId }: Props) {
     }
   };
 
+  // Sort: unpaid first (overdue, pending, partial), then paid; within each group by due_date desc
+  const statusOrder: Record<string, number> = { overdue: 0, pending: 1, partial: 2, cancelled: 3, paid: 4 };
+  const filteredInvoices = statusFilter === "all"
+    ? invoices
+    : invoices.filter(i => {
+        if (statusFilter === "pending") return i.status === "pending" || i.status === "partial";
+        return i.status === statusFilter;
+      });
+
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    const orderA = statusOrder[a.status] ?? 3;
+    const orderB = statusOrder[b.status] ?? 3;
+    if (orderA !== orderB) return orderA - orderB;
+    return b.due_date.localeCompare(a.due_date);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedInvoices = sortedInvoices.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
   const handleCreateManual = async () => {
     if (!form.description || !form.amount || !form.dueDate) {
       toast.error("Preencha todos os campos");
@@ -547,6 +577,25 @@ export function CompanyInvoicesList({ companyId }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Status filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectValue placeholder="Filtrar por status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos ({invoices.length})</SelectItem>
+                    <SelectItem value="pending">Pendentes ({invoices.filter(i => i.status === "pending" || i.status === "partial").length})</SelectItem>
+                    <SelectItem value="overdue">Vencidas ({invoices.filter(i => i.status === "overdue").length})</SelectItem>
+                    <SelectItem value="paid">Pagas ({invoices.filter(i => i.status === "paid").length})</SelectItem>
+                    <SelectItem value="cancelled">Canceladas ({invoices.filter(i => i.status === "cancelled").length})</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {sortedInvoices.length} resultado(s)
+                </span>
+              </div>
               {/* Bulk actions bar */}
               {selectableInvoices.length > 0 && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
@@ -585,7 +634,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   )}
                 </div>
               )}
-              {invoices.map((inv) => {
+              {paginatedInvoices.map((inv) => {
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
                 const isPartial = inv.status === "partial";
@@ -832,6 +881,36 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   </div>
                 );
               })}
+              {/* Pagination */}
+              {totalPages > 1 && (
+                <div className="flex items-center justify-between pt-3 border-t">
+                  <span className="text-xs text-muted-foreground">
+                    Página {safePage} de {totalPages}
+                  </span>
+                  <div className="flex items-center gap-1">
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      disabled={safePage <= 1}
+                      onClick={() => setCurrentPage(safePage - 1)}
+                    >
+                      <ChevronLeft className="h-3 w-3 mr-1" />
+                      Anterior
+                    </Button>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      className="h-7 text-xs px-2"
+                      disabled={safePage >= totalPages}
+                      onClick={() => setCurrentPage(safePage + 1)}
+                    >
+                      Próxima
+                      <ChevronRight className="h-3 w-3 ml-1" />
+                    </Button>
+                  </div>
+                </div>
+              )}
             </div>
           )}
         </CardContent>
