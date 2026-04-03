@@ -30,7 +30,14 @@ import {
   AlertDialogTitle,
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
-import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2, Pencil } from "lucide-react";
+import { Loader2, Receipt, Calendar, CheckCircle2, AlertTriangle, Clock, XCircle, RefreshCw, Copy, ExternalLink, Plus, Undo2, Trash2, Pencil, ChevronLeft, ChevronRight, Filter } from "lucide-react";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
