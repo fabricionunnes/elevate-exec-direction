@@ -379,7 +379,25 @@ export function CompanyInvoicesList({ companyId }: Props) {
     }
   };
 
-  const handleCreateManual = async () => {
+  // Sort: unpaid first (overdue, pending, partial), then paid; within each group by due_date desc
+  const statusOrder: Record<string, number> = { overdue: 0, pending: 1, partial: 2, cancelled: 3, paid: 4 };
+  const filteredInvoices = statusFilter === "all"
+    ? invoices
+    : invoices.filter(i => {
+        if (statusFilter === "pending") return i.status === "pending" || i.status === "partial";
+        return i.status === statusFilter;
+      });
+
+  const sortedInvoices = [...filteredInvoices].sort((a, b) => {
+    const orderA = statusOrder[a.status] ?? 3;
+    const orderB = statusOrder[b.status] ?? 3;
+    if (orderA !== orderB) return orderA - orderB;
+    return b.due_date.localeCompare(a.due_date);
+  });
+
+  const totalPages = Math.max(1, Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE));
+  const safePage = Math.min(currentPage, totalPages);
+  const paginatedInvoices = sortedInvoices.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
     if (!form.description || !form.amount || !form.dueDate) {
       toast.error("Preencha todos os campos");
       return;
