@@ -577,6 +577,25 @@ export function CompanyInvoicesList({ companyId }: Props) {
             </div>
           ) : (
             <div className="space-y-3">
+              {/* Status filter */}
+              <div className="flex items-center gap-2">
+                <Filter className="h-4 w-4 text-muted-foreground" />
+                <Select value={statusFilter} onValueChange={(v) => { setStatusFilter(v); setCurrentPage(1); }}>
+                  <SelectTrigger className="w-[180px] h-8 text-xs">
+                    <SelectValue placeholder="Filtrar por status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">Todos ({invoices.length})</SelectItem>
+                    <SelectItem value="pending">Pendentes ({invoices.filter(i => i.status === "pending" || i.status === "partial").length})</SelectItem>
+                    <SelectItem value="overdue">Vencidas ({invoices.filter(i => i.status === "overdue").length})</SelectItem>
+                    <SelectItem value="paid">Pagas ({invoices.filter(i => i.status === "paid").length})</SelectItem>
+                    <SelectItem value="cancelled">Canceladas ({invoices.filter(i => i.status === "cancelled").length})</SelectItem>
+                  </SelectContent>
+                </Select>
+                <span className="text-xs text-muted-foreground ml-auto">
+                  {sortedInvoices.length} resultado(s)
+                </span>
+              </div>
               {/* Bulk actions bar */}
               {selectableInvoices.length > 0 && (
                 <div className="flex items-center gap-3 p-3 rounded-lg border bg-muted/30">
