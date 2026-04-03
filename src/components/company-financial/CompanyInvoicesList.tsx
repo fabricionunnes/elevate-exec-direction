@@ -634,7 +634,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
                   )}
                 </div>
               )}
-              {invoices.map((inv) => {
+              {paginatedInvoices.map((inv) => {
                 const isOverdue = inv.status === "overdue";
                 const isPaid = inv.status === "paid";
                 const isPartial = inv.status === "partial";
