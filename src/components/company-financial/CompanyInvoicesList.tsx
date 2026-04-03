@@ -88,6 +88,9 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const [deleting, setDeleting] = useState(false);
   const [editingDueDateId, setEditingDueDateId] = useState<string | null>(null);
   const [updatingDueDate, setUpdatingDueDate] = useState(false);
+  const [statusFilter, setStatusFilter] = useState<string>("all");
+  const [currentPage, setCurrentPage] = useState(1);
+  const ITEMS_PER_PAGE = 10;
   const [form, setForm] = useState({
     description: "",
     amount: 0,
