@@ -398,6 +398,8 @@ export function CompanyInvoicesList({ companyId }: Props) {
   const totalPages = Math.max(1, Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE));
   const safePage = Math.min(currentPage, totalPages);
   const paginatedInvoices = sortedInvoices.slice((safePage - 1) * ITEMS_PER_PAGE, safePage * ITEMS_PER_PAGE);
+
+  const handleCreateManual = async () => {
     if (!form.description || !form.amount || !form.dueDate) {
       toast.error("Preencha todos os campos");
       return;
