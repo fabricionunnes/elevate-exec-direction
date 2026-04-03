@@ -66,23 +66,43 @@ export function CEOBusinessHealth() {
           });
         }
 
-        // Fetch CSAT separately
+        // Fetch NPS from actual NPS responses - last 2 months, active projects only
+        const twoMonthsAgoNPS = new Date();
+        twoMonthsAgoNPS.setMonth(twoMonthsAgoNPS.getMonth() - 2);
+
+        const { data: activeProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .eq("status", "active");
+        const activeProjectIds = activeProjects?.map(p => p.id) || [];
+
+        const { data: npsData } = await supabase
+          .from("onboarding_nps_responses")
+          .select("score, project_id")
+          .gte("created_at", twoMonthsAgoNPS.toISOString());
+
+        const filteredNps = (npsData || []).filter(r => activeProjectIds.includes(r.project_id));
+
+        // Fetch CSAT separately - also last 2 months
         const { data: csatData } = await supabase
           .from("csat_responses")
-          .select("score")
-          .order("created_at", { ascending: false })
-          .limit(50);
+          .select("score, project_id")
+          .gte("created_at", twoMonthsAgoNPS.toISOString());
 
-        if (csatData && csatData.length > 0) {
-          const avgNPS = (csatData.reduce((sum, n) => sum + n.score, 0) / csatData.length) * 10;
-          const avgCSAT = (csatData.reduce((sum, c) => sum + c.score, 0) / csatData.length) * 20;
-          
-          setMetrics(prev => prev ? {
-            ...prev,
-            avgCSAT: Math.round(avgCSAT),
-            avgNPS: Math.round(avgNPS),
-          } : prev);
-        }
+        const filteredCsat = (csatData || []).filter(r => activeProjectIds.includes(r.project_id));
+
+        const avgNPSVal = filteredNps.length > 0
+          ? filteredNps.reduce((sum, n) => sum + n.score, 0) / filteredNps.length
+          : 0;
+        const avgCSATVal = filteredCsat.length > 0
+          ? (filteredCsat.reduce((sum, c) => sum + c.score, 0) / filteredCsat.length) * 20
+          : 0;
+
+        setMetrics(prev => prev ? {
+          ...prev,
+          avgCSAT: Math.round(avgCSATVal),
+          avgNPS: Math.round(avgNPSVal * 10) / 10,
+        } : prev);
       } catch (error) {
         console.error("Error fetching health metrics:", error);
       } finally {

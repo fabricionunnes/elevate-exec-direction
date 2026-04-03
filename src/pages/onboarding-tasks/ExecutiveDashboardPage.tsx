@@ -206,14 +206,16 @@ export default function ExecutiveDashboardPage() {
         ? totalScore / projectsWithScores.length 
         : 0;
 
-      // Fetch NPS data - filter by active project IDs (same as DashboardMetrics)
+      // Fetch NPS data - filter by active project IDs and last 2 months
       const activeProjectIds = projects?.map(p => p.id) || [];
+      const twoMonthsAgo = subMonths(new Date(), 2).toISOString();
       
       const { data: npsData } = await supabase
         .from("onboarding_nps_responses")
-        .select("score, project_id");
+        .select("score, project_id")
+        .gte("created_at", twoMonthsAgo);
 
-      // Filter NPS responses to only include active projects (same as DashboardMetrics)
+      // Filter NPS responses to only include active projects
       const filteredNpsResponses = (npsData || []).filter(r => activeProjectIds.includes(r.project_id));
       
       const avgNPS = filteredNpsResponses.length > 0

@@ -96,15 +96,26 @@ export function CEOBigNumbers() {
         const atRiskCount = healthScores?.filter(h => h.risk_level === "critical" || h.risk_level === "high").length || 0;
         const churnRate = clientCount > 0 ? ((atRiskCount / clientCount) * 100).toFixed(1) : "0";
 
-        // Use CSAT for NPS approximation
-        const { data: csatData } = await supabase
-          .from("csat_responses")
-          .select("score")
-          .order("created_at", { ascending: false })
-          .limit(100);
+        // NPS from actual NPS responses - last 2 months, active companies only
+        const activeCompanyIds = companies?.map(c => c.id) || [];
+        const twoMonthsAgoNPS = new Date();
+        twoMonthsAgoNPS.setMonth(twoMonthsAgoNPS.getMonth() - 2);
 
-        const avgNPS = csatData && csatData.length > 0 
-          ? ((csatData.reduce((sum, n) => sum + n.score, 0) / csatData.length) * 10).toFixed(0)
+        // Get active project IDs for active companies
+        const { data: activeProjects } = await supabase
+          .from("onboarding_projects")
+          .select("id")
+          .eq("status", "active");
+        const activeProjectIds = activeProjects?.map(p => p.id) || [];
+
+        const { data: npsData } = await supabase
+          .from("onboarding_nps_responses")
+          .select("score, project_id")
+          .gte("created_at", twoMonthsAgoNPS.toISOString());
+
+        const filteredNps = (npsData || []).filter(r => activeProjectIds.includes(r.project_id));
+        const avgNPS = filteredNps.length > 0 
+          ? ((filteredNps.reduce((sum, n) => sum + n.score, 0) / filteredNps.length)).toFixed(1)
           : "N/A";
 
         // Format currency
