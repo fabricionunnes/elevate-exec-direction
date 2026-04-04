@@ -476,7 +476,12 @@ export function PayablesPanel() {
     }).format(value);
   };
 
-  const getStatusBadge = (status: string) => {
+  const getStatusBadge = (status: string, dueDate?: string) => {
+    const today = format(new Date(), "yyyy-MM-dd");
+    const isOverduePartial = status === "partial" && dueDate && dueDate < today;
+    if (isOverduePartial) {
+      return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Vencido (Parcial)</Badge>;
+    }
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
@@ -485,7 +490,7 @@ export function PayablesPanel() {
       case "pending":
         return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
       case "overdue":
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
+        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Vencido</Badge>;
       case "cancelled":
         return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" /> Cancelado</Badge>;
       default:
@@ -828,7 +833,7 @@ export function PayablesPanel() {
               options={[
                 { value: "pending", label: "Pendentes" },
                 { value: "partial", label: "Pago Parcial" },
-                { value: "overdue", label: "Atrasados" },
+                { value: "overdue", label: "Vencidos" },
                 { value: "paid", label: "Pagos" },
                 { value: "cancelled", label: "Cancelados" },
               ]}
@@ -906,7 +911,7 @@ export function PayablesPanel() {
                     <TableCell className="text-right font-medium">
                       {formatCurrency(payable.amount)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(payable.status)}</TableCell>
+                    <TableCell>{getStatusBadge(payable.status, payable.due_date)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
