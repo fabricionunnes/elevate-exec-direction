@@ -385,6 +385,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
     ? invoices
     : invoices.filter(i => {
         if (statusFilter === "pending") return i.status === "pending" || i.status === "partial";
+        if (statusFilter === "overdue") return i.status === "overdue" || (i.status === "partial" && i.due_date < new Date().toISOString().slice(0, 10));
         return i.status === statusFilter;
       });
 

@@ -407,7 +407,8 @@ export function ClientReceivablesPanel({ projectId, canEdit }: Props) {
     const matchesSearch =
       r.client_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || r.status === statusFilter;
+    const matchesStatus = statusFilter === "all" || r.status === statusFilter ||
+      (statusFilter === "overdue" && r.status === "partial" && r.due_date < new Date().toISOString().slice(0, 10));
     return matchesSearch && matchesStatus;
   });
 
