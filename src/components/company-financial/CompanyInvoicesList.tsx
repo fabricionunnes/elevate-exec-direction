@@ -392,7 +392,7 @@ export function CompanyInvoicesList({ companyId }: Props) {
     const orderA = statusOrder[a.status] ?? 3;
     const orderB = statusOrder[b.status] ?? 3;
     if (orderA !== orderB) return orderA - orderB;
-    return b.due_date.localeCompare(a.due_date);
+    return a.due_date.localeCompare(b.due_date);
   });
 
   const totalPages = Math.max(1, Math.ceil(sortedInvoices.length / ITEMS_PER_PAGE));
