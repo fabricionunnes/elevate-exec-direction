@@ -911,7 +911,7 @@ export function PayablesPanel() {
                     <TableCell className="text-right font-medium">
                       {formatCurrency(payable.amount)}
                     </TableCell>
-                    <TableCell>{getStatusBadge(payable.status)}</TableCell>
+                    <TableCell>{getStatusBadge(payable.status, payable.due_date)}</TableCell>
                     <TableCell>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild>
