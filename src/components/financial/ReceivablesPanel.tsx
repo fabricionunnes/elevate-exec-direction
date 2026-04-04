@@ -412,6 +412,10 @@ export function ReceivablesPanel() {
     const isDueToday = dueDate === todayStr && status === "pending";
     const isPastDue = dueDate && dueDate < todayStr && status === "pending";
 
+    const isOverduePartial = status === "partial" && dueDate && dueDate < todayStr;
+    if (isOverduePartial) {
+      return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Vencido (Parcial)</Badge>;
+    }
     switch (status) {
       case "paid":
         return <Badge className="bg-emerald-500/10 text-emerald-600 border-emerald-500/20"><CheckCircle2 className="h-3 w-3 mr-1" /> Pago</Badge>;
@@ -419,14 +423,14 @@ export function ReceivablesPanel() {
         return <Badge className="bg-orange-500/10 text-orange-600 border-orange-500/20"><Clock className="h-3 w-3 mr-1" /> Parcial</Badge>;
       case "pending":
         if (isPastDue) {
-          return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
+          return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Vencido</Badge>;
         }
         if (isDueToday) {
           return <Badge className="bg-amber-500/10 text-amber-600 border-amber-500/20"><Clock className="h-3 w-3 mr-1" /> Vence Hoje</Badge>;
         }
         return <Badge className="bg-blue-500/10 text-blue-600 border-blue-500/20"><Clock className="h-3 w-3 mr-1" /> Pendente</Badge>;
       case "overdue":
-        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Atrasado</Badge>;
+        return <Badge className="bg-red-500/10 text-red-600 border-red-500/20"><AlertTriangle className="h-3 w-3 mr-1" /> Vencido</Badge>;
       case "cancelled":
         return <Badge className="bg-gray-500/10 text-gray-600 border-gray-500/20"><XCircle className="h-3 w-3 mr-1" /> Cancelado</Badge>;
       default:
