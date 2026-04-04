@@ -470,8 +470,7 @@ export function ClientPayablesPanel({ projectId, canEdit }: Props) {
     const matchesSearch =
       p.supplier_name.toLowerCase().includes(searchTerm.toLowerCase()) ||
       p.description?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter === "all" || p.status === statusFilter ||
-      (statusFilter === "overdue" && p.status === "partial" && p.due_date < new Date().toISOString().slice(0, 10));
+    const matchesStatus = statusFilter === "all" || p.status === statusFilter;
     return matchesSearch && matchesStatus;
   });
 
