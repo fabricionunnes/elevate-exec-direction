@@ -833,7 +833,7 @@ export function PayablesPanel() {
               options={[
                 { value: "pending", label: "Pendentes" },
                 { value: "partial", label: "Pago Parcial" },
-                { value: "overdue", label: "Atrasados" },
+                { value: "overdue", label: "Vencidos" },
                 { value: "paid", label: "Pagos" },
                 { value: "cancelled", label: "Cancelados" },
               ]}
