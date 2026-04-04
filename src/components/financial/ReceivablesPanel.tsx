@@ -461,7 +461,8 @@ export function ReceivablesPanel() {
       r.description.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.company?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
       r.custom_receiver_name?.toLowerCase().includes(searchTerm.toLowerCase());
-    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status);
+    const matchesStatus = statusFilter.length === 0 || statusFilter.includes(r.status) ||
+      (statusFilter.includes("overdue") && r.status === "partial" && r.due_date < format(new Date(), "yyyy-MM-dd"));
     
     // Period filter
     const { start, end } = getDateRangeForPeriod(periodFilter, periodOffset);
