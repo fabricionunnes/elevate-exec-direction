@@ -159,7 +159,7 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
                 <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.25em] text-red-400/80 font-semibold border border-red-500/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-                  Vagas limitadas · Análise gratuita
+                  Análise exclusiva para empresários que têm times de vendas e querem ter vendedores de alta performance
                 </span>
               </motion.div>
 
@@ -169,14 +169,20 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.05] tracking-tight"
               >
-                Seu time de vendas{" "}
-                <span className="relative inline-block">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">
-                    não bate metas?
-                  </span>
-                  <span className="absolute -bottom-1 left-0 w-full h-[3px] bg-gradient-to-r from-red-500 to-transparent rounded-full" />
-                </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">
+                  Análise Individual
+                </span>{" "}
+                Gratuita
               </motion.h1>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.25 }}
+                className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200"
+              >
+                Quer um time de vendas que bate metas todos os meses? Descubra como as melhores empresas fazem isso!
+              </motion.h2>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
@@ -184,8 +190,19 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-base sm:text-lg lg:text-xl text-neutral-400 leading-relaxed max-w-xl"
               >
-                Agende uma <strong className="text-white">análise individual gratuita</strong> com a
-                equipe do Fabrício Nunnes e descubra o que está travando o crescimento da sua empresa.
+                Seus vendedores estão perdidos e você não sabe mais o que fazer para{" "}
+                <strong className="text-white">aumentar as vendas?</strong>
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+                className="text-base sm:text-lg text-neutral-400 leading-relaxed max-w-xl"
+              >
+                Agende uma <strong className="text-white">reunião gratuita</strong> com minha equipe. Vamos olhar juntos para sua empresa,{" "}
+                <strong className="text-white">identificar o que está travando seu crescimento</strong> e criar um{" "}
+                <strong className="text-white">plano para você vender mais ainda este mês!</strong>
               </motion.p>
 
               <motion.div
@@ -199,13 +216,13 @@ const SessaoEstrategicaPage = () => {
                   className="group relative bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.15)] hover:shadow-[0_0_60px_rgba(220,38,38,0.25)] transition-all duration-500 w-full sm:w-auto overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    QUERO MINHA ANÁLISE GRATUITA
+                    QUERO AUMENTAR MINHAS VENDAS
                     <ArrowDown className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
                   </span>
                 </Button>
                 <span className="text-xs text-neutral-500 sm:pt-4">
-                  <span className="line-through">R$ 297</span>{" "}
-                  <span className="text-red-400 font-semibold">Grátis</span>
+                  De <span className="line-through">R$ 297,00</span>{" "}
+                  <span className="text-red-400 font-semibold">por R$ 0,00</span>
                 </span>
               </motion.div>
             </div>
