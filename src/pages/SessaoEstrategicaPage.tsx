@@ -227,7 +227,7 @@ const SessaoEstrategicaPage = () => {
               >
                 <Button
                   onClick={openPopup}
-                  className="group bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all duration-300 w-full sm:w-auto"
+                  className="group bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm md:text-base px-6 sm:px-8 py-5 sm:py-6 rounded-xl shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all duration-300 w-full sm:w-auto"
                 >
                   <span className="flex items-center gap-2">
                     QUERO AUMENTAR MINHAS VENDAS
