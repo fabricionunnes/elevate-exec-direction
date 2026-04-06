@@ -63,6 +63,9 @@ const PublicPipelineForm = () => {
   const handleFormComplete = () => {
     if (form?.redirect_url) {
       window.location.href = form.redirect_url;
+    } else if (prefilledLeadId) {
+      // If came from sessao-estrategica popup, go to thank you page
+      window.location.hash = "/sessao-estrategica/obrigado";
     } else {
       setSubmitted(true);
     }
