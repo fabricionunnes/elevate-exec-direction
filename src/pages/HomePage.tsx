@@ -643,8 +643,14 @@ export default function HomePage() {
             Aplique agora para um diagnóstico gratuito e descubra como podemos acelerar suas vendas.
           </p>
           <div className="flex flex-col sm:flex-row gap-4 justify-center">
-            <Link to="/diagnostico">
+            <Link to="/sessao-estrategica">
               <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base">
+                Agendar Sessão Estratégica
+                <ArrowRight className="ml-2 h-5 w-5" />
+              </Button>
+            </Link>
+            <Link to="/diagnostico">
+              <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-primary hover:bg-primary/10">
                 Quero Aplicar Agora
                 <ArrowRight className="ml-2 h-5 w-5" />
               </Button>
