@@ -85,8 +85,12 @@ Deno.serve(async (req) => {
     }
 
     // Format message values
-    const amountPaid = (invoice.paid_amount_cents || invoice.amount_cents) / 100;
-    const amountFormatted = amountPaid.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    // For customer message: show original invoice amount (what the customer paid)
+    // For internal message: show net amount received (after fees)
+    const customerAmount = invoice.amount_cents / 100;
+    const customerAmountFormatted = customerAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const netAmount = (invoice.paid_amount_cents || invoice.amount_cents) / 100;
+    const netAmountFormatted = netAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const dueFormatted = invoice.due_date ? invoice.due_date.split("-").reverse().join("/") : "";
     const paidAtFormatted = invoice.paid_at
       ? new Date(invoice.paid_at).toLocaleDateString("pt-BR")
@@ -106,7 +110,7 @@ Deno.serve(async (req) => {
 
       if (finInstance?.api_url && finInstance?.api_key) {
         const bankInfo = bankName ? `\n🏦 *Banco:* ${bankName}` : "";
-        const internalMsg = `💰 *Pagamento Recebido!*\n\n🏢 *Empresa:* ${companyName || "N/A"}\n📄 *Descrição:* ${invoice.description || "Mensalidade"}\n💵 *Valor:* ${amountFormatted}${bankInfo}\n📅 *Pago em:* ${paidAtFormatted}`;
+        const internalMsg = `💰 *Pagamento Recebido!*\n\n🏢 *Empresa:* ${companyName || "N/A"}\n📄 *Descrição:* ${invoice.description || "Mensalidade"}\n💵 *Valor líquido:* ${netAmountFormatted}${bankInfo}\n📅 *Pago em:* ${paidAtFormatted}`;
 
         const intResponse = await fetch(
           `${finInstance.api_url}/message/sendText/${finInstance.instance_name}`,
@@ -150,7 +154,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (whatsappInstance?.api_url && whatsappInstance?.api_key) {
-        const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
+        const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${customerAmountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
 
         const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
 
@@ -193,7 +197,7 @@ Deno.serve(async (req) => {
 
       if (staffIds.size > 0) {
         const title = `💰 Pagamento confirmado: ${companyName}`;
-        const notifMessage = `Pagamento de ${amountFormatted} confirmado - ${invoice.description || "Mensalidade"} para ${companyName}.`;
+        const notifMessage = `Pagamento de ${netAmountFormatted} confirmado - ${invoice.description || "Mensalidade"} para ${companyName}.`;
 
         const notifications = Array.from(staffIds).map(staffId => ({
           staff_id: staffId,
