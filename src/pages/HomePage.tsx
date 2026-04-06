@@ -230,17 +230,23 @@ export default function HomePage() {
               ))}
             </ul>
 
-             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
+             <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
               <Link to="/sessao-estrategica" className="w-full sm:w-auto">
-                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
-                  Agendar Sessão Estratégica
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2">
+                  <Target className="h-4 w-4" />
+                  Sessão Estratégica
                 </Button>
               </Link>
-              <Link to="/diagnostico" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-primary hover:bg-primary/10">
-                  Aplicar para Diagnóstico
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              <Link to="/trafego-pago" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                  <Megaphone className="h-4 w-4" />
+                  Tráfego Pago
+                </Button>
+              </Link>
+              <Link to="/social-media" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
+                  <Share2 className="h-4 w-4" />
+                  Social Media
                 </Button>
               </Link>
             </div>
