@@ -71,6 +71,8 @@ const CSATSurveyPage = lazy(() => import("./pages/CSATSurveyPage"));
 const PublicPipelineForm = lazy(() => import("./pages/PublicPipelineForm"));
 const SessaoEstrategicaPage = lazy(() => import("./pages/SessaoEstrategicaPage"));
 const SessaoEstrategicaObrigadoPage = lazy(() => import("./pages/SessaoEstrategicaObrigadoPage"));
+const TrafegoPagoPage = lazy(() => import("./pages/TrafegoPagoPage"));
+const SocialMediaPage = lazy(() => import("./pages/SocialMediaPage"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
