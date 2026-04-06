@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award, Megaphone, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import {
@@ -230,17 +230,23 @@ export default function HomePage() {
               ))}
             </ul>
 
-             <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
+             <div className="flex flex-col sm:flex-row flex-wrap gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
               <Link to="/sessao-estrategica" className="w-full sm:w-auto">
-                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
-                  Agendar Sessão Estratégica
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2">
+                  <Target className="h-4 w-4" />
+                  Sessão Estratégica
                 </Button>
               </Link>
-              <Link to="/diagnostico" className="w-full sm:w-auto">
-                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-primary hover:bg-primary/10">
-                  Aplicar para Diagnóstico
-                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+              <Link to="/trafego-pago" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                  <Megaphone className="h-4 w-4" />
+                  Tráfego Pago
+                </Button>
+              </Link>
+              <Link to="/social-media" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
+                  <Share2 className="h-4 w-4" />
+                  Social Media
                 </Button>
               </Link>
             </div>
@@ -642,17 +648,23 @@ export default function HomePage() {
           <p className="text-body text-sm sm:text-base md:text-lg max-w-2xl mx-auto mb-8 sm:mb-10">
             Aplique agora para um diagnóstico gratuito e descubra como podemos acelerar suas vendas.
           </p>
-          <div className="flex flex-col sm:flex-row gap-4 justify-center">
+          <div className="flex flex-col sm:flex-row flex-wrap gap-4 justify-center">
             <Link to="/sessao-estrategica">
-              <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base">
-                Agendar Sessão Estratégica
-                <ArrowRight className="ml-2 h-5 w-5" />
+              <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2">
+                <Target className="h-5 w-5" />
+                Sessão Estratégica
               </Button>
             </Link>
-            <Link to="/diagnostico">
-              <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-primary hover:bg-primary/10">
-                Quero Aplicar Agora
-                <ArrowRight className="ml-2 h-5 w-5" />
+            <Link to="/trafego-pago">
+              <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10">
+                <Megaphone className="h-5 w-5" />
+                Tráfego Pago
+              </Button>
+            </Link>
+            <Link to="/social-media">
+              <Button variant="outline" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10">
+                <Share2 className="h-5 w-5" />
+                Social Media
               </Button>
             </Link>
           </div>
