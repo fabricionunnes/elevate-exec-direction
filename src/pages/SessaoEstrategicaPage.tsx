@@ -193,7 +193,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.25 }}
-                className="text-lg sm:text-xl lg:text-2xl font-semibold leading-snug text-blue-100/90"
+                className="text-base sm:text-lg lg:text-2xl font-semibold leading-snug text-blue-100/90"
               >
                 Quer um time de vendas que bate metas todos os meses? Descubra como as melhores empresas fazem isso!
               </motion.h2>
