@@ -156,6 +156,12 @@ const SessaoEstrategicaPage = () => {
       <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden">
         {/* Navy diagonal background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0c1b3a] via-[#0f2247] to-[#162d5a]" />
+        {/* Watermark text */}
+        <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
+          <span className="text-[18rem] sm:text-[24rem] lg:text-[30rem] font-black text-white/[0.03] leading-none tracking-tighter whitespace-nowrap">
+            UNV
+          </span>
+        </div>
         {/* Subtle red accent glow */}
         <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-400/[0.05] rounded-full blur-[120px] pointer-events-none" />
