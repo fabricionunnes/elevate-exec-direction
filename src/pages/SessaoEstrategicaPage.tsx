@@ -130,10 +130,7 @@ const SessaoEstrategicaPage = () => {
     return () => { noscript.remove(); };
   }, []);
 
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
+  // Removed scrollToForm - using popup instead
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim() || !telefone || !email.trim()) return;
