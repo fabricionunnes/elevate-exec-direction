@@ -171,17 +171,61 @@ export function ConvertLeadToCompanyDialog({
         .maybeSingle();
 
       if (!existingProject) {
-        const { error: projectError } = await supabase
+        const productId = service.slug || service.id;
+        const { data: newProject, error: projectError } = await supabase
           .from("onboarding_projects")
           .insert({
-            product_id: service.slug || service.id,
+            product_id: productId,
             product_name: service.name,
             onboarding_company_id: companyId,
             status: "pending",
             crm_lead_id: lead.id,
-          } as any);
+          } as any)
+          .select("id")
+          .single();
 
-        if (projectError) throw new Error("Erro ao criar projeto");
+        if (projectError || !newProject) throw new Error("Erro ao criar projeto");
+
+        // Create tasks from templates (same logic as CreateProjectDialog)
+        const { data: templates } = await supabase
+          .from("onboarding_task_templates")
+          .select("id, title, description, priority, sort_order, default_days_offset, duration_days, phase, recurrence, phase_order, is_internal")
+          .eq("product_id", productId)
+          .order("phase_order", { ascending: true })
+          .order("sort_order", { ascending: true });
+
+        if (templates && templates.length > 0) {
+          const today = new Date();
+          const tasksToInsert = templates.map((tpl: any, idx: number) => {
+            let dueDate: string | null = null;
+            const offset = (tpl.default_days_offset ?? 0) + (tpl.duration_days ?? 0);
+            if (offset > 0) {
+              const due = new Date(today);
+              due.setDate(due.getDate() + offset);
+              dueDate = due.toISOString().split("T")[0];
+            }
+            return {
+              project_id: newProject.id,
+              template_id: tpl.id,
+              title: tpl.title,
+              description: tpl.description,
+              priority: tpl.priority || "medium",
+              status: "pending" as const,
+              due_date: dueDate,
+              sort_order: tpl.sort_order ?? idx,
+              tags: tpl.phase ? [tpl.phase] : null,
+              recurrence: tpl.recurrence ?? null,
+              is_internal: tpl.is_internal ?? false,
+            };
+          });
+
+          const { error: insertError } = await supabase.from("onboarding_tasks").insert(tasksToInsert);
+          if (insertError) {
+            console.error("Erro ao criar tarefas do template:", insertError);
+          } else {
+            console.log(`${templates.length} tarefas criadas a partir dos templates`);
+          }
+        }
       }
 
       await supabase.from("crm_lead_history").insert({
