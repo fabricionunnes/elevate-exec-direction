@@ -32,9 +32,9 @@ const painPoints = [
 ];
 
 const stats = [
-  { value: "R$ 1BI+", label: "em vendas geradas" },
-  { value: "20+", label: "anos de experiência" },
-  { value: "500+", label: "empresas atendidas" },
+  { display: "+1 Bilhão", label: "em vendas realizadas" },
+  { display: "+20", label: "anos de experiência" },
+  { display: "+500", label: "empresas atendidas" },
 ];
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
