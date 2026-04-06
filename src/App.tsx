@@ -348,6 +348,8 @@ const AppShell = () => {
             {/* Sessão Estratégica */}
             <Route path="/sessao-estrategica" element={<SessaoEstrategicaPage />} />
             <Route path="/sessao-estrategica/obrigado" element={<SessaoEstrategicaObrigadoPage />} />
+            <Route path="/trafego-pago" element={<TrafegoPagoPage />} />
+            <Route path="/social-media" element={<SocialMediaPage />} />
             
             {/* Public Pipeline Form */}
             <Route path="/form/:token" element={<PublicPipelineForm />} />
