@@ -228,7 +228,7 @@ const SessaoEstrategicaPage = () => {
                 className="flex flex-col sm:flex-row items-start gap-4"
               >
                 <Button
-                  onClick={scrollToForm}
+                  onClick={openPopup}
                   className="group relative bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.15)] hover:shadow-[0_0_60px_rgba(220,38,38,0.25)] transition-all duration-500 w-full sm:w-auto overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
