@@ -231,8 +231,14 @@ export default function HomePage() {
             </ul>
 
              <div className="flex flex-col sm:flex-row gap-3 sm:gap-4 opacity-0 animate-fade-up delay-400">
-              <Link to="/diagnostico" className="w-full sm:w-auto">
+              <Link to="/sessao-estrategica" className="w-full sm:w-auto">
                 <Button variant="hero" size="lg" className="w-full sm:w-auto text-sm sm:text-base">
+                  Agendar Sessão Estratégica
+                  <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
+                </Button>
+              </Link>
+              <Link to="/diagnostico" className="w-full sm:w-auto">
+                <Button variant="outline" size="lg" className="w-full sm:w-auto text-sm sm:text-base border-primary/30 text-primary hover:bg-primary/10">
                   Aplicar para Diagnóstico
                   <ArrowRight className="ml-2 h-4 w-4 sm:h-5 sm:w-5" />
                 </Button>
