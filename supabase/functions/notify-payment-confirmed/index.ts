@@ -154,7 +154,7 @@ Deno.serve(async (req) => {
         .maybeSingle();
 
       if (whatsappInstance?.api_url && whatsappInstance?.api_key) {
-        const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n💰 *Valor:* ${customerAmountFormatted}\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
+        const message = `✅ *Pagamento Confirmado!*\n\nOlá ${companyName}! 👋\n\nConfirmamos o recebimento do seu pagamento:\n\n📄 *${invoice.description || "Mensalidade"}*\n📅 *Vencimento:* ${dueFormatted}\n🗓️ *Pago em:* ${paidAtFormatted}\n\nObrigado pelo pagamento! ✨`;
 
         const formattedPhone = customerPhone.startsWith("55") ? customerPhone : `55${customerPhone}`;
 
