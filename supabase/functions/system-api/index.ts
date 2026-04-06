@@ -301,12 +301,28 @@ serve(async (req) => {
           const { error: updateError } = await c.supabase.from("crm_leads").update(updateData).eq("id", c.id);
           if (updateError) throw updateError;
 
-          // Create financial record if paid_value provided
+          // Create financial record if paid_value provided (with dedup check)
           let invoiceId: string | null = null;
           if (c.body.paid_value && c.body.paid_value > 0) {
             const amountCents = Math.round(c.body.paid_value * 100);
             const description = c.body.description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
             const today = now.split('T')[0];
+
+            // Dedup: check if an invoice was already created for this lead win in the last 5 minutes
+            const fiveMinAgo = new Date(Date.now() - 5 * 60 * 1000).toISOString();
+            const { data: existingInv } = await c.supabase.from("company_invoices")
+              .select("id")
+              .eq("amount_cents", amountCents)
+              .eq("description", description)
+              .eq("status", "paid")
+              .gte("created_at", fiveMinAgo)
+              .limit(1);
+
+            if (existingInv && existingInv.length > 0) {
+              invoiceId = existingInv[0].id;
+              return json({ success: true, lead_id: c.id, status: "won", stage: wonStage.name, invoice_id: invoiceId, deduplicated: true });
+            }
+
             const { data: invoice, error: invErr } = await c.supabase.from("company_invoices").insert({
               amount_cents: amountCents, paid_amount_cents: amountCents,
               description, due_date: today, paid_at: now, status: "paid",
