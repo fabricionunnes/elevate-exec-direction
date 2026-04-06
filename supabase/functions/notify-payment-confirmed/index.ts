@@ -197,7 +197,7 @@ Deno.serve(async (req) => {
 
       if (staffIds.size > 0) {
         const title = `💰 Pagamento confirmado: ${companyName}`;
-        const notifMessage = `Pagamento de ${amountFormatted} confirmado - ${invoice.description || "Mensalidade"} para ${companyName}.`;
+        const notifMessage = `Pagamento de ${netAmountFormatted} confirmado - ${invoice.description || "Mensalidade"} para ${companyName}.`;
 
         const notifications = Array.from(staffIds).map(staffId => ({
           staff_id: staffId,
