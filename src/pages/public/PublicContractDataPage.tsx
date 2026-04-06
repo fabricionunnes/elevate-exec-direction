@@ -207,6 +207,44 @@ const PublicContractDataPage = () => {
 
       if (err) throw err;
 
+      // Propagate data to linked company (if exists)
+      try {
+        const { data: project } = await supabase
+          .from("onboarding_projects")
+          .select("onboarding_company_id")
+          .eq("crm_lead_id", leadId)
+          .maybeSingle();
+
+        if (project?.onboarding_company_id) {
+          const fullAddress = [data.address, data.address_number, data.address_complement]
+            .filter(Boolean)
+            .join(", ");
+
+          await supabase
+            .from("onboarding_companies")
+            .update({
+              cnpj: data.document || null,
+              name: data.company || undefined,
+              address: fullAddress || null,
+              address_number: data.address_number || null,
+              address_complement: data.address_complement || null,
+              address_neighborhood: data.address_neighborhood || null,
+              address_zipcode: data.zipcode || null,
+              address_city: data.city || null,
+              address_state: data.state || null,
+              phone: data.phone || null,
+              email: data.email || null,
+              owner_name: data.legal_representative_name || null,
+              owner_cpf: data.cpf || null,
+              owner_rg: data.rg || null,
+              owner_marital_status: data.marital_status || null,
+            } as any)
+            .eq("id", project.onboarding_company_id);
+        }
+      } catch (companyErr) {
+        console.error("Error updating company data:", companyErr);
+      }
+
       setSubmitted(true);
       toast.success("Dados enviados com sucesso!");
     } catch (err) {
