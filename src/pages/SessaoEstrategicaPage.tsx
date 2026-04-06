@@ -401,7 +401,7 @@ const SessaoEstrategicaPage = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
             {testimonialVideos.map((videoId, i) => (
               <AnimatedSection key={videoId}>
-                <div className="aspect-[9/16] rounded-2xl overflow-hidden border border-white/10 bg-white/5 shadow-lg">
+                <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-white/5 shadow-lg">
                   <iframe
                     src={`https://www.youtube.com/embed/${videoId}`}
                     title={`Depoimento ${i + 1}`}
