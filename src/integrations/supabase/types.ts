@@ -29770,6 +29770,10 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      bulk_merge_phone_duplicates: {
+        Args: { p_batch_size?: number; p_offset?: number }
+        Returns: Json
+      }
       calculate_ad_quality_score: { Args: { p_ad_id: string }; Returns: number }
       can_add_circle_participant: {
         Args: { check_conversation_id: string; check_profile_id: string }
