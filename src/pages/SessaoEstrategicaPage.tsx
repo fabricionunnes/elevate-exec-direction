@@ -212,7 +212,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.35 }}
-                className="text-base sm:text-lg text-blue-200/60 leading-relaxed max-w-xl"
+                className="text-sm sm:text-base lg:text-lg text-blue-200/60 leading-relaxed max-w-xl"
               >
                 Agende uma <strong className="text-white">reunião gratuita</strong> com minha equipe. Vamos olhar juntos para sua empresa,{" "}
                 <strong className="text-white">identificar o que está travando seu crescimento</strong> e criar um{" "}
