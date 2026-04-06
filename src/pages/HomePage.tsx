@@ -1,5 +1,5 @@
 import { Link } from "react-router-dom";
-import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award } from "lucide-react";
+import { ArrowRight, CheckCircle, MessageCircle, Sparkles, Quote, Star, Users, Target, Trophy, TrendingUp, Building2, Award, Megaphone, Share2 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Layout } from "@/components/layout/Layout";
 import {
