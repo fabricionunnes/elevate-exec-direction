@@ -1,4 +1,6 @@
-import { Sparkles } from "lucide-react";
+import { Link } from "react-router-dom";
+import { Sparkles, Megaphone, Share2, Target } from "lucide-react";
+import { Button } from "@/components/ui/button";
 
 const ShowcaseHero = () => {
   return (
@@ -18,10 +20,31 @@ const ShowcaseHero = () => {
             </span>
           </h1>
           
-          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed">
+          <p className="text-xl text-muted-foreground max-w-2xl mx-auto leading-relaxed mb-10">
             Gestão comercial completa: KPIs, CRM, vendas, financeiro, RH, suporte e muito mais — 
             tudo em um único lugar, com inteligência artificial integrada.
           </p>
+
+          <div className="flex flex-col sm:flex-row items-center justify-center gap-3">
+            <Link to="/sessao-estrategica">
+              <Button size="lg" className="gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-6">
+                <Target className="w-4 h-4" />
+                Sessão Estratégica
+              </Button>
+            </Link>
+            <Link to="/trafego-pago">
+              <Button size="lg" variant="outline" className="gap-2 border-blue-500/30 text-blue-400 hover:bg-blue-500/10 font-semibold px-6">
+                <Megaphone className="w-4 h-4" />
+                Tráfego Pago
+              </Button>
+            </Link>
+            <Link to="/social-media">
+              <Button size="lg" variant="outline" className="gap-2 border-purple-500/30 text-purple-400 hover:bg-purple-500/10 font-semibold px-6">
+                <Share2 className="w-4 h-4" />
+                Social Media
+              </Button>
+            </Link>
+          </div>
         </div>
       </div>
     </section>
