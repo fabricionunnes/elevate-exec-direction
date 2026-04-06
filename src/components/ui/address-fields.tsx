@@ -74,7 +74,7 @@ export function AddressFields({ value, onChange }: Props) {
       {/* CEP */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label>CEP</Label>
+          <Label>CEP <span className="text-destructive">*</span></Label>
           <div className="relative">
             <Input
               value={value.address_zipcode}
@@ -88,7 +88,7 @@ export function AddressFields({ value, onChange }: Props) {
           </div>
         </div>
         <div className="space-y-2">
-          <Label>Cidade</Label>
+          <Label>Cidade <span className="text-destructive">*</span></Label>
           <Input
             value={value.address_city}
             onChange={(e) => update("address_city", e.target.value)}
@@ -96,7 +96,7 @@ export function AddressFields({ value, onChange }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label>UF</Label>
+          <Label>UF <span className="text-destructive">*</span></Label>
           <Select value={value.address_state} onValueChange={(v) => update("address_state", v)}>
             <SelectTrigger>
               <SelectValue placeholder="UF" />
@@ -113,7 +113,7 @@ export function AddressFields({ value, onChange }: Props) {
       {/* Endereço + Número */}
       <div className="grid grid-cols-4 gap-4">
         <div className="col-span-3 space-y-2">
-          <Label>Endereço</Label>
+          <Label>Endereço <span className="text-destructive">*</span></Label>
           <Input
             value={value.address}
             onChange={(e) => update("address", e.target.value)}
@@ -121,7 +121,7 @@ export function AddressFields({ value, onChange }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label>Número</Label>
+          <Label>Número <span className="text-destructive">*</span></Label>
           <Input
             value={value.address_number}
             onChange={(e) => update("address_number", e.target.value)}
@@ -141,7 +141,7 @@ export function AddressFields({ value, onChange }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label>Bairro</Label>
+          <Label>Bairro <span className="text-destructive">*</span></Label>
           <Input
             value={value.address_neighborhood}
             onChange={(e) => update("address_neighborhood", e.target.value)}
