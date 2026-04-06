@@ -271,6 +271,10 @@ Deno.serve(async (req) => {
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
         utm_content: utm_content || null,
+        fbclid: fbclid || null,
+        ad_name: ad_name || null,
+        adset_name: adset_name || null,
+        campaign_name: campaign_name || null,
       })
       .select('id')
       .single();
