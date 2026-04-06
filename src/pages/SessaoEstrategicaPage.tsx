@@ -287,7 +287,7 @@ const SessaoEstrategicaPage = () => {
             {stats.map((stat, i) => (
               <AnimatedSection key={i}>
                 <div className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                  <CountUp target={stat.value} suffix={stat.value.includes("+") ? "+" : ""} />
+                  {stat.display}
                 </div>
                 <p className="text-[11px] sm:text-sm text-neutral-500 mt-1 uppercase tracking-wider">{stat.label}</p>
               </AnimatedSection>
