@@ -53,39 +53,6 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
-function CountUp({ target, suffix = "" }: { target: string; suffix?: string }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-  const numMatch = target.match(/[\d.]+/);
-  const num = numMatch ? parseFloat(numMatch[0]) : 0;
-  const prefix = target.replace(/[\d.]+.*/, "");
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    const duration = 1500;
-    const steps = 40;
-    const increment = num / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= num) {
-        setCount(num);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [isInView, num]);
-
-  return (
-    <span ref={ref}>
-      {prefix}{isInView ? (num >= 100 ? count.toLocaleString("pt-BR") : count) : 0}{suffix}
-    </span>
-  );
-}
-
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
   const [showPopup, setShowPopup] = useState(false);
