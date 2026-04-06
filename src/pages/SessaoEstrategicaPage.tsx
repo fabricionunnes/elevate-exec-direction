@@ -23,12 +23,12 @@ import fabricioMentor from "@/assets/fabricio-mentor.png";
 const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
 
 const painPoints = [
-  { icon: Target, title: "Metas de vendas", desc: "O time não bate as metas todos os meses" },
-  { icon: TrendingUp, title: "Escalar vendas", desc: "Sem processo comercial estruturado" },
-  { icon: Users, title: "Time desmotivado", desc: "Vendedores sem direção e sem resultados" },
-  { icon: BarChart3, title: "Leads que não convertem", desc: "Marketing investe, vendas não fecham" },
-  { icon: Zap, title: "Faturamento estagnado", desc: "Precisa acelerar ainda este mês" },
-  { icon: Award, title: "Alta performance", desc: "Quer vendedores que realmente entregam" },
+  { icon: Target, title: "Têm um time de vendas", desc: "Mas ele não bate as metas todos os meses de forma consistente" },
+  { icon: TrendingUp, title: "Querem escalar o faturamento", desc: "Mas não possuem um processo comercial estruturado para isso" },
+  { icon: Users, title: "Sentem que o time está desmotivado", desc: "Vendedores sem direção, sem treinamento e sem resultados" },
+  { icon: BarChart3, title: "Investem em marketing", desc: "Mas os leads chegam e as vendas não fecham como deveriam" },
+  { icon: Zap, title: "Precisam de resultados rápidos", desc: "Precisam acelerar o faturamento ainda este mês" },
+  { icon: Award, title: "Querem vendedores de alta performance", desc: "Que realmente entregam resultados e fazem a empresa crescer" },
 ];
 
 const stats = [
