@@ -172,7 +172,7 @@ const SessaoEstrategicaPage = () => {
               <div className="relative">
                 <div className="absolute -inset-8 bg-gradient-to-b from-red-600/10 to-transparent rounded-full blur-3xl" />
                 <img
-                  src={fabricioHero}
+                  src={fabricioMentor}
                   alt="Fabricio"
                   className="relative z-10 max-h-[500px] object-contain rounded-2xl"
                 />
