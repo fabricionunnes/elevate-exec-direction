@@ -357,15 +357,40 @@ const SessaoEstrategicaPage = () => {
         </div>
       </section>
 
-      {/* ── Final CTA ── */}
-      {/* ── Resultados ── */}
+      {/* ── Depoimentos ── */}
       <section className="py-20 sm:py-28 px-5 sm:px-8 border-t border-neutral-800/40">
-        <AnimatedSection className="max-w-2xl mx-auto text-center space-y-6">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
-            Resultados de quem já é{" "}
-            <span className="text-red-400">nosso cliente</span>
-          </h2>
-        </AnimatedSection>
+        <div className="max-w-6xl mx-auto">
+          <AnimatedSection className="text-center mb-14 sm:mb-20">
+            <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+              Resultados de quem já é{" "}
+              <span className="text-red-400">nosso cliente</span>
+            </h2>
+          </AnimatedSection>
+
+          <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-4 sm:gap-6">
+            {[
+              "Mw24mKQ30LI",
+              "WjlTR6qDhlA",
+              "pOUL5pil2kk",
+              "r2XWLQlig30",
+              "66pAUJmga0Q",
+              "pVdibOvP7E0",
+            ].map((videoId, i) => (
+              <AnimatedSection key={videoId}>
+                <div className="aspect-[9/16] rounded-2xl overflow-hidden border border-neutral-800/40 bg-neutral-900/30">
+                  <iframe
+                    src={`https://www.youtube.com/embed/${videoId}`}
+                    title={`Depoimento ${i + 1}`}
+                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+                    allowFullScreen
+                    className="w-full h-full"
+                    loading="lazy"
+                  />
+                </div>
+              </AnimatedSection>
+            ))}
+          </div>
+        </div>
       </section>
 
       {/* ── Final CTA ── */}
