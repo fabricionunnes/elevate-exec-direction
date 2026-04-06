@@ -152,29 +152,29 @@ const SessaoEstrategicaPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden selection:bg-red-500/20">
+    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden selection:bg-red-500/20 -mt-16 md:-mt-20">
       {/* ── Hero ── */}
       <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden">
         {/* Navy diagonal background */}
         <div className="absolute inset-0 bg-gradient-to-br from-[#0c1b3a] via-[#0f2247] to-[#162d5a]" />
         {/* Watermark text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-          <img src={unvWatermark} alt="" className="w-[500px] sm:w-[700px] lg:w-[900px] opacity-[0.04]" />
+          <img src={unvWatermark} alt="" className="w-[300px] sm:w-[500px] lg:w-[900px] opacity-[0.04]" />
         </div>
         {/* Subtle red accent glow */}
         <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-400/[0.05] rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-5 sm:px-8 lg:px-12">
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             {/* Left copy */}
-            <div className="space-y-6 lg:space-y-7 pt-16 lg:pt-0">
+            <div className="space-y-5 sm:space-y-6 lg:space-y-7 pt-24 sm:pt-20 lg:pt-0 pb-16 sm:pb-12 lg:pb-0">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
-                <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.2em] text-red-300 font-semibold bg-white/[0.08] border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-red-300 font-semibold bg-white/[0.08] border border-white/10 rounded-full px-3 sm:px-4 py-1.5 backdrop-blur-sm leading-snug">
                   Análise exclusiva para empresários que têm times de vendas
                 </span>
               </motion.div>
@@ -183,7 +183,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.05] tracking-tight text-white"
+                 className="text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.1] tracking-tight text-white"
               >
                 Análise Individual{" "}
                 <span className="text-red-400">Gratuita</span>
@@ -193,7 +193,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.25 }}
-                className="text-lg sm:text-xl lg:text-2xl font-semibold leading-snug text-blue-100/90"
+                className="text-base sm:text-lg lg:text-2xl font-semibold leading-snug text-blue-100/90"
               >
                 Quer um time de vendas que bate metas todos os meses? Descubra como as melhores empresas fazem isso!
               </motion.h2>
@@ -202,7 +202,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-base sm:text-lg text-blue-200/60 leading-relaxed max-w-xl"
+                 className="text-sm sm:text-base lg:text-lg text-blue-200/60 leading-relaxed max-w-xl"
               >
                 Seus vendedores estão perdidos e você não sabe mais o que fazer para{" "}
                 <strong className="text-white">aumentar as vendas?</strong>
@@ -212,7 +212,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.35 }}
-                className="text-base sm:text-lg text-blue-200/60 leading-relaxed max-w-xl"
+                className="text-sm sm:text-base lg:text-lg text-blue-200/60 leading-relaxed max-w-xl"
               >
                 Agende uma <strong className="text-white">reunião gratuita</strong> com minha equipe. Vamos olhar juntos para sua empresa,{" "}
                 <strong className="text-white">identificar o que está travando seu crescimento</strong> e criar um{" "}
@@ -227,7 +227,7 @@ const SessaoEstrategicaPage = () => {
               >
                 <Button
                   onClick={openPopup}
-                  className="group bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all duration-300 w-full sm:w-auto"
+                  className="group bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm md:text-base px-6 sm:px-8 py-5 sm:py-6 rounded-xl shadow-lg shadow-red-600/20 hover:shadow-xl hover:shadow-red-600/30 transition-all duration-300 w-full sm:w-auto"
                 >
                   <span className="flex items-center gap-2">
                     QUERO AUMENTAR MINHAS VENDAS
