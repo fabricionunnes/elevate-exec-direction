@@ -57,16 +57,24 @@ export default function ExecutiveDashboardContent() {
 
       const activeProjects = projectsData?.length || 0;
 
-      // Fetch health scores
-      const { data: healthData } = await supabase
-        .from("client_health_scores")
-        .select("total_score, risk_level");
+      // Fetch health scores only for active projects
+      const activeProjectIds = projectsData?.map(p => p.id) || [];
+      
+      let avgHealthScore = 0;
+      let criticalCount = 0;
+      
+      if (activeProjectIds.length > 0) {
+        const { data: healthData } = await supabase
+          .from("client_health_scores")
+          .select("total_score, risk_level")
+          .in("project_id", activeProjectIds);
 
-      const avgHealthScore = healthData && healthData.length > 0
-        ? Math.round(healthData.reduce((sum, h) => sum + (h.total_score || 0), 0) / healthData.length)
-        : 0;
+        avgHealthScore = healthData && healthData.length > 0
+          ? Math.round(healthData.reduce((sum, h) => sum + (h.total_score || 0), 0) / healthData.length)
+          : 0;
 
-      const criticalCount = healthData?.filter(h => h.risk_level === "critical" || h.risk_level === "high").length || 0;
+        criticalCount = healthData?.filter(h => h.risk_level === "critical" || h.risk_level === "high").length || 0;
+      }
 
       setMetrics({
         totalProjects: activeProjects,
