@@ -284,12 +284,9 @@ const SessaoEstrategicaPage = () => {
       <section className="py-20 sm:py-28 px-5 sm:px-8">
         <div className="max-w-6xl mx-auto">
           <AnimatedSection className="text-center mb-14 sm:mb-20">
-            <p className="text-xs uppercase tracking-[0.2em] text-red-400/70 font-medium mb-3">
-              Você se identifica?
-            </p>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold max-w-2xl mx-auto leading-tight">
-              A análise é para empresários que vivem{" "}
-              <span className="text-red-400">esses desafios</span>
+              A análise estratégica é para{" "}
+              <span className="text-red-400">empresários que:</span>
             </h2>
           </AnimatedSection>
 
