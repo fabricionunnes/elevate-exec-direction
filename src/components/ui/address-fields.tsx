@@ -113,7 +113,7 @@ export function AddressFields({ value, onChange }: Props) {
       {/* Endereço + Número */}
       <div className="grid grid-cols-4 gap-4">
         <div className="col-span-3 space-y-2">
-          <Label>Endereço</Label>
+          <Label>Endereço <span className="text-destructive">*</span></Label>
           <Input
             value={value.address}
             onChange={(e) => update("address", e.target.value)}
