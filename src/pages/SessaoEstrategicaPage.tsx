@@ -441,7 +441,7 @@ const SessaoEstrategicaPage = () => {
                   Enviando...
                 </>
               ) : (
-                "QUERO MINHA ANÁLISE GRATUITA"
+                "QUERO AUMENTAR MINHAS VENDAS"
               )}
             </Button>
 
