@@ -121,7 +121,7 @@ export function AddressFields({ value, onChange }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label>Número</Label>
+          <Label>Número <span className="text-destructive">*</span></Label>
           <Input
             value={value.address_number}
             onChange={(e) => update("address_number", e.target.value)}
