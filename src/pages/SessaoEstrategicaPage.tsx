@@ -88,12 +88,14 @@ function CountUp({ target, suffix = "" }: { target: string; suffix?: string }) {
 
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
+  const [showPopup, setShowPopup] = useState(false);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLDivElement>(null);
+
+  const openPopup = () => setShowPopup(true);
 
   // Meta Pixel
   useEffect(() => {
