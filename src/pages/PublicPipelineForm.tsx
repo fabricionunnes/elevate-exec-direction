@@ -48,7 +48,7 @@ const PublicPipelineForm = () => {
   const [loading, setLoading] = useState(true);
   const [submittingStep1, setSubmittingStep1] = useState(false);
   const [submittingStep2, setSubmittingStep2] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(prefilledLeadId ? 2 : 1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const prefilledLeadId = searchParams.get("lead_id");
