@@ -84,6 +84,54 @@ Deno.serve(async (req) => {
         }
       }
 
+      // ── Move lead to "Triagem" stage (second stage) ──
+      const { data: leadData } = await supabase
+        .from('crm_leads')
+        .select('pipeline_id')
+        .eq('id', lead_id)
+        .single();
+
+      if (leadData) {
+        const { data: triagemStage } = await supabase
+          .from('crm_stages')
+          .select('id')
+          .eq('pipeline_id', leadData.pipeline_id)
+          .order('sort_order', { ascending: true })
+          .range(1, 1)
+          .maybeSingle();
+
+        if (triagemStage) {
+          await supabase
+            .from('crm_leads')
+            .update({ stage_id: triagemStage.id })
+            .eq('id', lead_id);
+
+          // Log stage transition
+          await supabase.from('crm_lead_stage_history').insert({
+            lead_id,
+            from_stage_id: null,
+            to_stage_id: triagemStage.id,
+            changed_by_staff_id: null,
+          }).then(() => {});
+        }
+
+        // ── Notify master, head_comercial, SDR ──
+        const { data: leadInfo } = await supabase
+          .from('crm_leads')
+          .select('name, email, company')
+          .eq('id', lead_id)
+          .single();
+
+        if (leadInfo) {
+          await sendInternalNotifications(
+            supabase, lead_id,
+            leadInfo.name, leadInfo.email,
+            leadInfo.company || undefined,
+            'Formulário Sessão Estratégica'
+          );
+        }
+      }
+
       return jsonResponse({ success: true });
     }
 

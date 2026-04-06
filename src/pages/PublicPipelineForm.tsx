@@ -43,15 +43,16 @@ const cleanPhone = (value: string) => value.replace(/\D/g, "");
 const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
+  const prefilledLeadId = searchParams.get("lead_id");
   const [form, setForm] = useState<FormConfig | null>(null);
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [loading, setLoading] = useState(true);
   const [submittingStep1, setSubmittingStep1] = useState(false);
   const [submittingStep2, setSubmittingStep2] = useState(false);
-  const [step, setStep] = useState(1);
+  const [step, setStep] = useState(prefilledLeadId ? 2 : 1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [leadId, setLeadId] = useState<string | null>(null);
+  const [leadId, setLeadId] = useState<string | null>(prefilledLeadId);
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
@@ -62,6 +63,9 @@ const PublicPipelineForm = () => {
   const handleFormComplete = () => {
     if (form?.redirect_url) {
       window.location.href = form.redirect_url;
+    } else if (prefilledLeadId) {
+      // If came from sessao-estrategica popup, go to thank you page
+      window.location.hash = "/sessao-estrategica/obrigado";
     } else {
       setSubmitted(true);
     }
