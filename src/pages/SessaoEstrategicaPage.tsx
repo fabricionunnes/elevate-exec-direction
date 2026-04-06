@@ -241,14 +241,14 @@ const SessaoEstrategicaPage = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="hidden lg:flex justify-center items-end"
+              className="hidden lg:flex justify-center items-end overflow-hidden"
             >
-              <div className="relative">
+              <div className="relative w-full flex justify-center">
                 <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[80%] h-24 bg-blue-500/[0.08] blur-[60px] rounded-full" />
                 <img
                   src={fabricioHero}
                   alt="Fabrício Nunnes - Mentor de Vendas"
-                  className="relative z-10 max-h-[560px] object-contain drop-shadow-2xl"
+                  className="relative z-10 max-h-[560px] w-auto object-contain object-bottom drop-shadow-2xl"
                   loading="eager"
                 />
               </div>
