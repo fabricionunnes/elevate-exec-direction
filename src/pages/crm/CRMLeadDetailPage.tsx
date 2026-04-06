@@ -114,6 +114,14 @@ interface Lead {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  fbclid?: string | null;
+  ad_name?: string | null;
+  adset_name?: string | null;
+  campaign_name?: string | null;
   stage?: { name: string; color: string; is_final: boolean; final_type: string | null };
   pipeline?: { name: string };
   owner?: { name: string; avatar_url?: string | null };
