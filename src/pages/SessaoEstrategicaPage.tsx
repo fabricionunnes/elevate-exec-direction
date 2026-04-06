@@ -328,29 +328,28 @@ const SessaoEstrategicaPage = () => {
 
             <AnimatedSection className="space-y-6 lg:order-1">
               <p className="text-xs uppercase tracking-[0.2em] text-red-400/70 font-medium">
-                Sobre o mentor
+                Quem é o seu mentor?
               </p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
                 Fabrício <span className="text-red-400">Nunnes</span>
               </h2>
               <div className="space-y-4 text-neutral-400 text-sm sm:text-base leading-relaxed">
                 <p>
-                  Empresário, mentor e diretor de vendas. Criador da{" "}
-                  <strong className="text-white">Universidade Nacional de Vendas</strong>. Com mais de 20
-                  anos de experiência e uma década como diretor comercial, atende empresas que{" "}
+                  Empresário, mentor, diretor de vendas,{" "}
+                  <strong className="text-white">criador da Universidade Nacional de Vendas.</strong> Com mais de 20
+                  anos de experiência na área e uma década como diretor comercial, atualmente atende diversas empresas que{" "}
                   <strong className="text-white">faturam entre 6 a 7 dígitos todos os meses.</strong>
                 </p>
                 <p>
-                  Alcançou a marca de{" "}
-                  <strong className="text-white">mais de 1 bilhão em vendas</strong> de serviços e
-                  produtos. Focado em empresários de pequenas e médias empresas que desejam escalar.
+                  Durante sua carreira, alcançou a marca de{" "}
+                  <strong className="text-white">mais de 1 bilhão em vendas de serviços e produtos</strong>. Com toda a experiência adquirida, decidiu focar o seu trabalho em empresários de pequenas e médias empresas que desejam escalar o seu negócio.
                 </p>
                 <p>
-                  Sua missão: fazer cada empresário{" "}
-                  <strong className="text-white">alcançar metas regularmente</strong>, aumentar o
-                  faturamento e construir um negócio{" "}
-                  <strong className="text-white">autogerenciável</strong> com{" "}
-                  <strong className="text-white">resultados exponenciais.</strong>
+                  Sua principal missão é fazer com que cada um{" "}
+                  <strong className="text-white">alcance suas metas regularmente, aumente seu faturamento</strong> e consiga estruturar um negócio totalmente{" "}
+                  <strong className="text-white">autogerenciável</strong> que traz{" "}
+                  <strong className="text-white">resultados exponenciais</strong> e mais{" "}
+                  <strong className="text-white">qualidade de vida.</strong>
                 </p>
               </div>
             </AnimatedSection>
