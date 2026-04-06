@@ -401,6 +401,74 @@ const SessaoEstrategicaPage = () => {
       <footer className="py-8 border-t border-neutral-800/40 text-center text-xs text-neutral-600 px-5">
         Todos os direitos reservados · Universidade Nacional de Vendas LTDA
       </footer>
+
+      {/* Popup Form */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="sm:max-w-md bg-[#111] border-neutral-800 text-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">Preencha seus dados</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-nome" className="text-neutral-400 text-sm">Nome completo *</Label>
+              <Input
+                id="popup-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+                maxLength={200}
+                placeholder="Seu nome"
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-telefone" className="text-neutral-400 text-sm">WhatsApp com DDD *</Label>
+              <PhoneInput
+                id="popup-telefone"
+                value={telefone}
+                onChange={setTelefone}
+                required
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-email" className="text-neutral-400 text-sm">E-mail *</Label>
+              <Input
+                id="popup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                maxLength={255}
+                placeholder="seu@email.com"
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-400">{error}</p>}
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-base rounded-xl shadow-[0_0_30px_rgba(220,38,38,0.12)] hover:shadow-[0_0_40px_rgba(220,38,38,0.2)] transition-all duration-500"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Enviando...
+                </>
+              ) : (
+                "QUERO MINHA ANÁLISE GRATUITA"
+              )}
+            </Button>
+
+            <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-neutral-600">
+              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> 100% gratuito</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Sem compromisso</span>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
