@@ -23,12 +23,12 @@ import fabricioMentor from "@/assets/fabricio-mentor.png";
 const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
 
 const painPoints = [
-  { icon: Target, title: "Metas de vendas", desc: "O time não bate as metas todos os meses" },
-  { icon: TrendingUp, title: "Escalar vendas", desc: "Sem processo comercial estruturado" },
-  { icon: Users, title: "Time desmotivado", desc: "Vendedores sem direção e sem resultados" },
-  { icon: BarChart3, title: "Leads que não convertem", desc: "Marketing investe, vendas não fecham" },
-  { icon: Zap, title: "Faturamento estagnado", desc: "Precisa acelerar ainda este mês" },
-  { icon: Award, title: "Alta performance", desc: "Quer vendedores que realmente entregam" },
+  { icon: Target, title: "Têm um time de vendas", desc: "Mas ele não bate as metas todos os meses de forma consistente" },
+  { icon: TrendingUp, title: "Querem escalar o faturamento", desc: "Mas não possuem um processo comercial estruturado para isso" },
+  { icon: Users, title: "Sentem que o time está desmotivado", desc: "Vendedores sem direção, sem treinamento e sem resultados" },
+  { icon: BarChart3, title: "Investem em marketing", desc: "Mas os leads chegam e as vendas não fecham como deveriam" },
+  { icon: Zap, title: "Precisam de resultados rápidos", desc: "Precisam acelerar o faturamento ainda este mês" },
+  { icon: Award, title: "Querem vendedores de alta performance", desc: "Que realmente entregam resultados e fazem a empresa crescer" },
 ];
 
 const stats = [
@@ -159,7 +159,7 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
                 <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.25em] text-red-400/80 font-semibold border border-red-500/20 rounded-full px-4 py-1.5 backdrop-blur-sm">
-                  Vagas limitadas · Análise gratuita
+                  Análise exclusiva para empresários que têm times de vendas e querem ter vendedores de alta performance
                 </span>
               </motion.div>
 
@@ -169,14 +169,20 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.2 }}
                 className="text-[2.5rem] sm:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.05] tracking-tight"
               >
-                Seu time de vendas{" "}
-                <span className="relative inline-block">
-                  <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">
-                    não bate metas?
-                  </span>
-                  <span className="absolute -bottom-1 left-0 w-full h-[3px] bg-gradient-to-r from-red-500 to-transparent rounded-full" />
-                </span>
+                <span className="text-transparent bg-clip-text bg-gradient-to-r from-red-400 to-red-600">
+                  Análise Individual
+                </span>{" "}
+                Gratuita
               </motion.h1>
+
+              <motion.h2
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.25 }}
+                className="text-xl sm:text-2xl lg:text-3xl font-bold leading-tight text-neutral-200"
+              >
+                Quer um time de vendas que bate metas todos os meses? Descubra como as melhores empresas fazem isso!
+              </motion.h2>
 
               <motion.p
                 initial={{ opacity: 0, y: 20 }}
@@ -184,8 +190,19 @@ const SessaoEstrategicaPage = () => {
                 transition={{ duration: 0.5, delay: 0.3 }}
                 className="text-base sm:text-lg lg:text-xl text-neutral-400 leading-relaxed max-w-xl"
               >
-                Agende uma <strong className="text-white">análise individual gratuita</strong> com a
-                equipe do Fabrício Nunnes e descubra o que está travando o crescimento da sua empresa.
+                Seus vendedores estão perdidos e você não sabe mais o que fazer para{" "}
+                <strong className="text-white">aumentar as vendas?</strong>
+              </motion.p>
+
+              <motion.p
+                initial={{ opacity: 0, y: 20 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.5, delay: 0.35 }}
+                className="text-base sm:text-lg text-neutral-400 leading-relaxed max-w-xl"
+              >
+                Agende uma <strong className="text-white">reunião gratuita</strong> com minha equipe. Vamos olhar juntos para sua empresa,{" "}
+                <strong className="text-white">identificar o que está travando seu crescimento</strong> e criar um{" "}
+                <strong className="text-white">plano para você vender mais ainda este mês!</strong>
               </motion.p>
 
               <motion.div
@@ -199,13 +216,13 @@ const SessaoEstrategicaPage = () => {
                   className="group relative bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.15)] hover:shadow-[0_0_60px_rgba(220,38,38,0.25)] transition-all duration-500 w-full sm:w-auto overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
-                    QUERO MINHA ANÁLISE GRATUITA
+                    QUERO AUMENTAR MINHAS VENDAS
                     <ArrowDown className="h-4 w-4 group-hover:translate-y-0.5 transition-transform" />
                   </span>
                 </Button>
                 <span className="text-xs text-neutral-500 sm:pt-4">
-                  <span className="line-through">R$ 297</span>{" "}
-                  <span className="text-red-400 font-semibold">Grátis</span>
+                  De <span className="line-through">R$ 297,00</span>{" "}
+                  <span className="text-red-400 font-semibold">por R$ 0,00</span>
                 </span>
               </motion.div>
             </div>
@@ -267,12 +284,9 @@ const SessaoEstrategicaPage = () => {
       <section className="py-20 sm:py-28 px-5 sm:px-8">
         <div className="max-w-6xl mx-auto">
           <AnimatedSection className="text-center mb-14 sm:mb-20">
-            <p className="text-xs uppercase tracking-[0.2em] text-red-400/70 font-medium mb-3">
-              Você se identifica?
-            </p>
             <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold max-w-2xl mx-auto leading-tight">
-              A análise é para empresários que vivem{" "}
-              <span className="text-red-400">esses desafios</span>
+              A análise estratégica é para{" "}
+              <span className="text-red-400">empresários que:</span>
             </h2>
           </AnimatedSection>
 
@@ -314,29 +328,28 @@ const SessaoEstrategicaPage = () => {
 
             <AnimatedSection className="space-y-6 lg:order-1">
               <p className="text-xs uppercase tracking-[0.2em] text-red-400/70 font-medium">
-                Sobre o mentor
+                Quem é o seu mentor?
               </p>
               <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
                 Fabrício <span className="text-red-400">Nunnes</span>
               </h2>
               <div className="space-y-4 text-neutral-400 text-sm sm:text-base leading-relaxed">
                 <p>
-                  Empresário, mentor e diretor de vendas. Criador da{" "}
-                  <strong className="text-white">Universidade Nacional de Vendas</strong>. Com mais de 20
-                  anos de experiência e uma década como diretor comercial, atende empresas que{" "}
+                  Empresário, mentor, diretor de vendas,{" "}
+                  <strong className="text-white">criador da Universidade Nacional de Vendas.</strong> Com mais de 20
+                  anos de experiência na área e uma década como diretor comercial, atualmente atende diversas empresas que{" "}
                   <strong className="text-white">faturam entre 6 a 7 dígitos todos os meses.</strong>
                 </p>
                 <p>
-                  Alcançou a marca de{" "}
-                  <strong className="text-white">mais de 1 bilhão em vendas</strong> de serviços e
-                  produtos. Focado em empresários de pequenas e médias empresas que desejam escalar.
+                  Durante sua carreira, alcançou a marca de{" "}
+                  <strong className="text-white">mais de 1 bilhão em vendas de serviços e produtos</strong>. Com toda a experiência adquirida, decidiu focar o seu trabalho em empresários de pequenas e médias empresas que desejam escalar o seu negócio.
                 </p>
                 <p>
-                  Sua missão: fazer cada empresário{" "}
-                  <strong className="text-white">alcançar metas regularmente</strong>, aumentar o
-                  faturamento e construir um negócio{" "}
-                  <strong className="text-white">autogerenciável</strong> com{" "}
-                  <strong className="text-white">resultados exponenciais.</strong>
+                  Sua principal missão é fazer com que cada um{" "}
+                  <strong className="text-white">alcance suas metas regularmente, aumente seu faturamento</strong> e consiga estruturar um negócio totalmente{" "}
+                  <strong className="text-white">autogerenciável</strong> que traz{" "}
+                  <strong className="text-white">resultados exponenciais</strong> e mais{" "}
+                  <strong className="text-white">qualidade de vida.</strong>
                 </p>
               </div>
             </AnimatedSection>
@@ -345,21 +358,24 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── Final CTA ── */}
+      {/* ── Resultados ── */}
+      <section className="py-20 sm:py-28 px-5 sm:px-8 border-t border-neutral-800/40">
+        <AnimatedSection className="max-w-2xl mx-auto text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+            Resultados de quem já é{" "}
+            <span className="text-red-400">nosso cliente</span>
+          </h2>
+        </AnimatedSection>
+      </section>
+
+      {/* ── Final CTA ── */}
       <section className="py-20 sm:py-28 px-5 sm:px-8">
         <AnimatedSection className="max-w-2xl mx-auto text-center space-y-8">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
-            Não deixe seu faturamento{" "}
-            <span className="text-red-400">estagnado</span>
-          </h2>
-          <p className="text-neutral-500 text-sm sm:text-base max-w-lg mx-auto">
-            Empresários que passaram pela análise estratégica já estão colhendo resultados.
-            A próxima vaga pode ser sua.
-          </p>
           <Button
             onClick={openPopup}
             className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-10 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.12)] hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] transition-all duration-500"
           >
-            FAZER INSCRIÇÃO GRATUITA
+            QUERO AUMENTAR MINHAS VENDAS
           </Button>
         </AnimatedSection>
       </section>
@@ -425,7 +441,7 @@ const SessaoEstrategicaPage = () => {
                   Enviando...
                 </>
               ) : (
-                "QUERO MINHA ANÁLISE GRATUITA"
+                "QUERO AUMENTAR MINHAS VENDAS"
               )}
             </Button>
 
