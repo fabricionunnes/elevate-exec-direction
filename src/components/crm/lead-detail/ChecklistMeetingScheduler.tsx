@@ -276,9 +276,10 @@ export function ChecklistMeetingScheduler({
     try {
       const dateStr = format(selectedDate, "yyyy-MM-dd");
       const [hours, minutes] = selectedSlot.split(":").map(Number);
-      const endHours = hours + Math.floor(durationMinutes / 60);
-      const endMinutes = minutes + (durationMinutes % 60);
-      const endTime = `${String(endHours).padStart(2, "0")}:${String(endMinutes % 60).padStart(2, "0")}`;
+      const totalEndMinutes = hours * 60 + minutes + durationMinutes;
+      const endHours = Math.floor(totalEndMinutes / 60);
+      const endMins = totalEndMinutes % 60;
+      const endTime = `${String(endHours).padStart(2, "0")}:${String(endMins).padStart(2, "0")}`;
 
       const startDateTime = `${dateStr}T${selectedSlot}:00`;
       const endDateTime = `${dateStr}T${endTime}:00`;
