@@ -389,7 +389,7 @@ const SessaoEstrategicaPage = () => {
             A próxima vaga pode ser sua.
           </p>
           <Button
-            onClick={scrollToForm}
+            onClick={openPopup}
             className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-10 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.12)] hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] transition-all duration-500"
           >
             FAZER INSCRIÇÃO GRATUITA
