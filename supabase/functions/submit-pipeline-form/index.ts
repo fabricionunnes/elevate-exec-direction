@@ -376,9 +376,20 @@ async function sendWhatsAppNotification(
 
   const numbersToNotify: string[] = [];
 
+  const normalizeBRPhone = (p: string) => {
+    let clean = p.replace(/\D/g, '');
+    if (clean.length === 10 || clean.length === 11) clean = '55' + clean;
+    if (clean.length === 12 && clean.startsWith('55')) {
+      clean = clean.slice(0, 4) + '9' + clean.slice(4);
+    }
+    return clean;
+  };
+
+  console.log('[submit-pipeline-form] Staff numbers raw:', JSON.stringify(staffNumbers));
+
   if (staffNumbers) {
     for (const s of staffNumbers) {
-      const clean = s.phone?.replace(/\D/g, '');
+      const clean = normalizeBRPhone(s.phone || '');
       if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
     }
   }
@@ -391,18 +402,24 @@ async function sendWhatsAppNotification(
 
   if (notifNumbers) {
     for (const n of notifNumbers) {
-      const clean = n.phone.replace(/\D/g, '');
+      const clean = normalizeBRPhone(n.phone || '');
       if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
     }
   }
 
+  console.log('[submit-pipeline-form] Numbers to notify:', numbersToNotify);
+
   for (const phone of numbersToNotify) {
     try {
-      await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
+      const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
+      console.log(`[submit-pipeline-form] Sending WhatsApp to ${phone} via ${sendUrl}`);
+      const resp = await fetch(sendUrl, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'apikey': instance.api_key },
         body: JSON.stringify({ number: phone, text: message }),
       });
+      const respText = await resp.text();
+      console.log(`[submit-pipeline-form] WhatsApp response for ${phone}: ${resp.status} - ${respText.slice(0, 200)}`);
     } catch (e) {
       console.error(`[submit-pipeline-form] WhatsApp error for ${phone}:`, e);
     }
