@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Loader2, CheckCircle, Target, TrendingUp, Users, BarChart3, Zap, Award } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.png";
+import fabricioMentor from "@/assets/fabricio-mentor.png";
 
 const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
 
@@ -171,7 +172,7 @@ const SessaoEstrategicaPage = () => {
               <div className="relative">
                 <div className="absolute -inset-8 bg-gradient-to-b from-red-600/10 to-transparent rounded-full blur-3xl" />
                 <img
-                  src={fabricioHero}
+                  src={fabricioMentor}
                   alt="Fabricio"
                   className="relative z-10 max-h-[500px] object-contain rounded-2xl"
                 />
