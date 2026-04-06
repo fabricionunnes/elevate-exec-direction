@@ -207,6 +207,35 @@ const PublicContractDataPage = () => {
 
       if (err) throw err;
 
+      // Propagate data to CRM "Empresa" tab custom fields
+      try {
+        const companyFieldsMap: Record<string, string> = {
+          "7b67f652-0241-4ce4-a0a1-55f662156798": data.company,        // company_name
+          "b3466b71-9393-421f-9de6-5f3e78a64d75": data.document,       // cnpj
+          "2625e412-c60b-44b2-9b95-9ffb4206ba3b": data.phone,          // company_phone
+          "80a12445-cd5e-41ad-a3ec-41990b2dd2ff": data.email,           // company_email
+          "dd91421b-6808-421b-b7b4-da7e81d87702": data.city,            // city
+          "e26503ad-13b4-41fd-9e7b-bc5b8efee7af": data.state,           // state
+          "244d8391-d3ca-4b59-b343-68809511076a": data.zipcode,          // cep
+        };
+
+        const upsertRows = Object.entries(companyFieldsMap)
+          .filter(([_, value]) => value?.trim())
+          .map(([fieldId, value]) => ({
+            lead_id: leadId,
+            field_id: fieldId,
+            value: value.trim(),
+          }));
+
+        if (upsertRows.length > 0) {
+          await supabase
+            .from("crm_custom_field_values")
+            .upsert(upsertRows, { onConflict: "lead_id,field_id" });
+        }
+      } catch (fieldErr) {
+        console.error("Error updating company fields:", fieldErr);
+      }
+
       // Propagate data to linked company (if exists)
       try {
         const { data: project } = await supabase
