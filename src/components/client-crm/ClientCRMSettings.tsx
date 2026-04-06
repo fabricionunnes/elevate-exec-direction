@@ -184,9 +184,9 @@ export const ClientCRMSettings = ({ projectId, pipelines, stages, activePipeline
         if (relatedRules.length > 0) {
           const replaceIds = (obj: any): any => {
             let str = JSON.stringify(obj);
-            str = str.replaceAll(oldPipelineId, newP.id);
+            str = str.split(oldPipelineId).join(newP.id);
             Object.entries(stageIdMap).forEach(([oldId, newId]) => {
-              str = str.replaceAll(oldId, newId);
+              str = str.split(oldId).join(newId);
             });
             return JSON.parse(str);
           };
