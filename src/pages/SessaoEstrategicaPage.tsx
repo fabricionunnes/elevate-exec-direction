@@ -152,7 +152,7 @@ const SessaoEstrategicaPage = () => {
   };
 
   return (
-    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden selection:bg-red-500/20">
+    <div className="min-h-screen bg-white text-slate-900 overflow-x-hidden selection:bg-red-500/20 -mt-16 md:-mt-20">
       {/* ── Hero ── */}
       <section className="relative min-h-[100dvh] flex flex-col justify-center overflow-hidden">
         {/* Navy diagonal background */}
