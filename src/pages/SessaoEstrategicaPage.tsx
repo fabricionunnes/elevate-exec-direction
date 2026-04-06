@@ -159,7 +159,7 @@ const SessaoEstrategicaPage = () => {
         <div className="absolute inset-0 bg-gradient-to-br from-[#0c1b3a] via-[#0f2247] to-[#162d5a]" />
         {/* Watermark text */}
         <div className="absolute inset-0 flex items-center justify-center pointer-events-none select-none overflow-hidden">
-          <img src={unvWatermark} alt="" className="w-[500px] sm:w-[700px] lg:w-[900px] opacity-[0.04]" />
+          <img src={unvWatermark} alt="" className="w-[300px] sm:w-[500px] lg:w-[900px] opacity-[0.04]" />
         </div>
         {/* Subtle red accent glow */}
         <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] pointer-events-none" />
