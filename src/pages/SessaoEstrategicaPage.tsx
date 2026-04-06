@@ -202,7 +202,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.3 }}
-                className="text-base sm:text-lg text-blue-200/60 leading-relaxed max-w-xl"
+                 className="text-sm sm:text-base lg:text-lg text-blue-200/60 leading-relaxed max-w-xl"
               >
                 Seus vendedores estão perdidos e você não sabe mais o que fazer para{" "}
                 <strong className="text-white">aumentar as vendas?</strong>
