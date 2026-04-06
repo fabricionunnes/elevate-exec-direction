@@ -31,7 +31,7 @@ const SessaoEstrategicaPage = () => {
 
   // Meta Pixel
   useEffect(() => {
-    const pixelId = '247392077001023';
+    const pixelId = '1854664928501352';
     // Init pixel
     (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){
       if(f.fbq)return;n=f.fbq=function(){n.callMethod?
