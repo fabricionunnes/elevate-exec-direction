@@ -431,15 +431,17 @@ export const CRMSettingsPage = () => {
         }
 
         // 4. Copy stage actions (automations) for each stage
-        const { data: originalActions, error: actionsError } = await supabase
-          .from("crm_stage_actions")
-          .select("*")
-          .in("stage_id", originalStages.map(s => s.id));
+        const oldStageIds = originalStages.map(s => s.id);
+        const [actionsRes, checklistsRes] = await Promise.all([
+          supabase.from("crm_stage_actions").select("*").in("stage_id", oldStageIds),
+          supabase.from("crm_stage_checklists").select("*").in("stage_id", oldStageIds).eq("is_active", true),
+        ]);
 
-        if (actionsError) throw actionsError;
+        if (actionsRes.error) throw actionsRes.error;
+        if (checklistsRes.error) throw checklistsRes.error;
 
-        if (originalActions && originalActions.length > 0) {
-          const newActions = originalActions.map(action => ({
+        if (actionsRes.data && actionsRes.data.length > 0) {
+          const newActions = actionsRes.data.map(action => ({
             stage_id: stageIdMapping[action.stage_id],
             activity_type: action.activity_type,
             activity_title: action.activity_title,
@@ -458,6 +460,26 @@ export const CRMSettingsPage = () => {
             .insert(newActions);
 
           if (insertActionsError) throw insertActionsError;
+        }
+
+        // 5. Copy stage checklists for each stage
+        if (checklistsRes.data && checklistsRes.data.length > 0) {
+          const newChecklists = checklistsRes.data.map(item => ({
+            stage_id: stageIdMapping[item.stage_id],
+            title: item.title,
+            description: item.description,
+            sort_order: item.sort_order,
+            is_active: true,
+            item_type: item.item_type,
+            whatsapp_template: item.whatsapp_template,
+            whatsapp_attachments: item.whatsapp_attachments,
+          }));
+
+          const { error: insertChecklistError } = await supabase
+            .from("crm_stage_checklists")
+            .insert(newChecklists);
+
+          if (insertChecklistError) throw insertChecklistError;
         }
       }
 
