@@ -1361,25 +1361,37 @@ const OnboardingTasksPage = () => {
           }) ?? false;
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "closed") {
           // Filter companies with closed projects in the period,
-          // but exclude those that are classified as non-renewed in the same period.
-          const hasClosedProjectInPeriod = company.projects?.some(p => {
-            if (p.status !== "closed" && p.status !== "completed") return false;
+          // but exclude those that are classified as non-renewed (same logic as card counter).
+          const closedProjectsInPeriod = (company.projects || []).filter(p => {
+            if (p.status !== "closed") return false;
             const closedDate = new Date((p.churn_date || p.updated_at));
             return isWithinInterval(closedDate, { start: dateRange.start, end: dateRange.end });
-          }) ?? false;
-
-          const hasRenewalInPeriod = contractRenewals.some(r => {
-            if (r.company_id !== company.id) return false;
-            const renewalDate = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
-            return isWithinInterval(renewalDate, { start: dateRange.start, end: dateRange.end });
           });
+          const hasClosedProjectInPeriod = closedProjectsInPeriod.length > 0;
 
-          const isAutoNotRenewed =
-            hasClosedProjectInPeriod &&
-            company.payment_method !== "monthly" &&
-            !hasRenewalInPeriod;
+          if (!hasClosedProjectInPeriod) {
+            matchesMetricFilter = false;
+          } else {
+            const hasRenewalInPeriod = contractRenewals.some(r => {
+              if (r.company_id !== company.id) return false;
+              const renewalDate = new Date(r.renewal_date.substring(0, 10) + "T12:00:00");
+              return isWithinInterval(renewalDate, { start: dateRange.start, end: dateRange.end });
+            });
 
-          matchesMetricFilter = hasClosedProjectInPeriod && !isAutoNotRenewed;
+            // Match card counter logic: check churn_reason from allProjects
+            const closedProjectIds = new Set(closedProjectsInPeriod.map(p => p.id));
+            const matchingAllProjects = allProjects.filter(p => closedProjectIds.has(p.id));
+            const hasProjectWithChurnReason = matchingAllProjects.some(p => p.churn_reason);
+            const hasProjectWithoutChurnReason = matchingAllProjects.some(p => !p.churn_reason);
+            const hasOnlyChurnReasons = hasProjectWithChurnReason && !hasProjectWithoutChurnReason;
+
+            const isAutoNotRenewed =
+              company.payment_method !== "monthly" &&
+              !hasRenewalInPeriod &&
+              !hasOnlyChurnReasons;
+
+            matchesMetricFilter = !isAutoNotRenewed;
+          }
         } else if (activeMetricFilter.type === "status" && activeMetricFilter.value === "churn_signaled") {
           // Special filter: includes both cancellation_signaled AND notice_period
           // No date filter here - matches how projectMetrics.churnSignaled is calculated
