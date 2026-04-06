@@ -138,7 +138,8 @@ Deno.serve(async (req) => {
     // ── Default action: create lead (step 1) ──
     const {
       form_token, nome, telefone, email, empresa, desafio,
-      utm_source, utm_medium, utm_campaign, utm_content
+      utm_source, utm_medium, utm_campaign, utm_content,
+      fbclid, ad_name, adset_name, campaign_name
     } = body;
 
     if (!form_token) return jsonResponse({ error: 'Token do formulário é obrigatório' }, 400);
@@ -270,6 +271,10 @@ Deno.serve(async (req) => {
         utm_medium: utm_medium || null,
         utm_campaign: utm_campaign || null,
         utm_content: utm_content || null,
+        fbclid: fbclid || null,
+        ad_name: ad_name || null,
+        adset_name: adset_name || null,
+        campaign_name: campaign_name || null,
       })
       .select('id')
       .single();

@@ -82,6 +82,10 @@ const SessaoEstrategicaPage = () => {
             utm_medium: searchParams.get("utm_medium") || undefined,
             utm_campaign: searchParams.get("utm_campaign") || undefined,
             utm_content: searchParams.get("utm_content") || undefined,
+            fbclid: searchParams.get("fbclid") || undefined,
+            ad_name: searchParams.get("ad_name") || undefined,
+            adset_name: searchParams.get("adset_name") || undefined,
+            campaign_name: searchParams.get("campaign_name") || undefined,
           }),
         }
       );

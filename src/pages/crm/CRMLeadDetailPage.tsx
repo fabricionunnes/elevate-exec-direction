@@ -114,6 +114,14 @@ interface Lead {
   notes: string | null;
   created_at: string;
   updated_at: string;
+  utm_source?: string | null;
+  utm_medium?: string | null;
+  utm_campaign?: string | null;
+  utm_content?: string | null;
+  fbclid?: string | null;
+  ad_name?: string | null;
+  adset_name?: string | null;
+  campaign_name?: string | null;
   stage?: { name: string; color: string; is_final: boolean; final_type: string | null };
   pipeline?: { name: string };
   owner?: { name: string; avatar_url?: string | null };
@@ -1101,6 +1109,60 @@ export const CRMLeadDetailPage = () => {
               Observações
             </p>
             <p className="text-sm text-foreground whitespace-pre-wrap">{lead.notes}</p>
+          </div>
+        </div>
+      )}
+
+      {/* Rastreamento Meta Ads */}
+      {(lead.utm_source || lead.utm_medium || lead.utm_campaign || lead.utm_content || lead.fbclid || lead.ad_name || lead.adset_name || lead.campaign_name) && (
+        <div className="px-4 sm:px-6 py-2">
+          <div className="rounded-lg border border-blue-200/50 dark:border-blue-800/30 bg-blue-50/50 dark:bg-blue-950/20 p-3">
+            <p className="text-[10px] uppercase tracking-wide text-blue-600 dark:text-blue-400 font-medium mb-2 flex items-center gap-1">
+              <Activity className="h-3 w-3" />
+              Rastreamento de Origem
+            </p>
+            <div className="flex flex-wrap gap-2">
+              {lead.campaign_name && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  📢 Campanha: {lead.campaign_name}
+                </Badge>
+              )}
+              {lead.adset_name && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  🎯 Conjunto: {lead.adset_name}
+                </Badge>
+              )}
+              {lead.ad_name && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  📋 Anúncio: {lead.ad_name}
+                </Badge>
+              )}
+              {lead.utm_source && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  Source: {lead.utm_source}
+                </Badge>
+              )}
+              {lead.utm_medium && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  Medium: {lead.utm_medium}
+                </Badge>
+              )}
+              {lead.utm_campaign && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  Campaign: {lead.utm_campaign}
+                </Badge>
+              )}
+              {lead.utm_content && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background">
+                  Content: {lead.utm_content}
+                </Badge>
+              )}
+              {lead.fbclid && (
+                <Badge variant="outline" className="text-[10px] gap-1 bg-background text-muted-foreground">
+                  FBCLID: {lead.fbclid.slice(0, 12)}...
+                </Badge>
+              )}
+            </div>
           </div>
         </div>
       )}

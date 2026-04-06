@@ -12500,10 +12500,13 @@ export type Database = {
       }
       crm_leads: {
         Row: {
+          ad_name: string | null
           address: string | null
           address_complement: string | null
           address_neighborhood: string | null
           address_number: string | null
+          adset_name: string | null
+          campaign_name: string | null
           city: string | null
           closed_at: string | null
           closer_staff_id: string | null
@@ -12518,6 +12521,7 @@ export type Database = {
           employee_count: string | null
           entered_pipeline_at: string | null
           estimated_revenue: string | null
+          fbclid: string | null
           fit_score: number | null
           head_closing_date: string | null
           head_status: string | null
@@ -12560,10 +12564,13 @@ export type Database = {
           zipcode: string | null
         }
         Insert: {
+          ad_name?: string | null
           address?: string | null
           address_complement?: string | null
           address_neighborhood?: string | null
           address_number?: string | null
+          adset_name?: string | null
+          campaign_name?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
@@ -12578,6 +12585,7 @@ export type Database = {
           employee_count?: string | null
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
+          fbclid?: string | null
           fit_score?: number | null
           head_closing_date?: string | null
           head_status?: string | null
@@ -12620,10 +12628,13 @@ export type Database = {
           zipcode?: string | null
         }
         Update: {
+          ad_name?: string | null
           address?: string | null
           address_complement?: string | null
           address_neighborhood?: string | null
           address_number?: string | null
+          adset_name?: string | null
+          campaign_name?: string | null
           city?: string | null
           closed_at?: string | null
           closer_staff_id?: string | null
@@ -12638,6 +12649,7 @@ export type Database = {
           employee_count?: string | null
           entered_pipeline_at?: string | null
           estimated_revenue?: string | null
+          fbclid?: string | null
           fit_score?: number | null
           head_closing_date?: string | null
           head_status?: string | null
