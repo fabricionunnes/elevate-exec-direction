@@ -205,9 +205,18 @@ Deno.serve(async (req) => {
 
       const numbersToNotify: string[] = [];
 
+      const normalizeBRPhone = (p: string) => {
+        let clean = p.replace(/\D/g, '');
+        if (clean.length === 10 || clean.length === 11) clean = '55' + clean;
+        if (clean.length === 12 && clean.startsWith('55')) {
+          clean = clean.slice(0, 4) + '9' + clean.slice(4);
+        }
+        return clean;
+      };
+
       if (staffNumbers) {
         for (const s of staffNumbers) {
-          const clean = s.phone?.replace(/\D/g, '');
+          const clean = normalizeBRPhone(s.phone || '');
           if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
         }
       }
@@ -220,17 +229,19 @@ Deno.serve(async (req) => {
 
       if (notifNumbers) {
         for (const n of notifNumbers) {
-          const cleanPhone = n.phone.replace(/\D/g, '');
+          const cleanPhone = normalizeBRPhone(n.phone || '');
           if (cleanPhone && !numbersToNotify.includes(cleanPhone)) {
             numbersToNotify.push(cleanPhone);
           }
         }
       }
 
+      console.log('[receive-external-lead] Numbers to notify:', numbersToNotify);
+
       for (const phone of numbersToNotify) {
         try {
           const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
-          await fetch(sendUrl, {
+          const resp = await fetch(sendUrl, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
@@ -238,7 +249,7 @@ Deno.serve(async (req) => {
             },
             body: JSON.stringify({ number: phone, text: message }),
           });
-          console.log(`[receive-external-lead] WhatsApp sent to ${phone}`);
+          console.log(`[receive-external-lead] WhatsApp sent to ${phone}: ${resp.status}`);
         } catch (whatsappError) {
           console.error(`[receive-external-lead] WhatsApp error for ${phone}:`, whatsappError);
         }
