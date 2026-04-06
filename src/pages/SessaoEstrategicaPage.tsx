@@ -20,6 +20,7 @@ import {
 } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.png";
 import fabricioMentor from "@/assets/fabricio-mentor.png";
+import unvWatermark from "@/assets/unv-watermark.png";
 
 const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
 
