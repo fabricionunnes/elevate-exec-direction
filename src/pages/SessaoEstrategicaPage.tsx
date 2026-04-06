@@ -7,6 +7,7 @@ import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Loader2, CheckCircle, Target, TrendingUp, Users, BarChart3, Zap, Award } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.png";
+import fabricioMentor from "@/assets/fabricio-mentor.png";
 
 const FORM_TOKEN = "b4116f2e0b338035238f5750a7436135";
 
