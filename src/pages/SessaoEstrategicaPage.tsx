@@ -5,6 +5,7 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { PhoneInput } from "@/components/ui/phone-input";
+import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import {
   Loader2,
   Target,
@@ -31,9 +32,9 @@ const painPoints = [
 ];
 
 const stats = [
-  { value: "R$ 1BI+", label: "em vendas geradas" },
-  { value: "20+", label: "anos de experiência" },
-  { value: "500+", label: "empresas atendidas" },
+  { display: "+1 Bilhão", label: "em vendas realizadas" },
+  { display: "+20", label: "anos de experiência" },
+  { display: "+500", label: "empresas atendidas" },
 ];
 
 function AnimatedSection({ children, className = "" }: { children: React.ReactNode; className?: string }) {
@@ -52,47 +53,16 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
-function CountUp({ target, suffix = "" }: { target: string; suffix?: string }) {
-  const ref = useRef(null);
-  const isInView = useInView(ref, { once: true });
-  const numMatch = target.match(/[\d.]+/);
-  const num = numMatch ? parseFloat(numMatch[0]) : 0;
-  const prefix = target.replace(/[\d.]+.*/, "");
-  const [count, setCount] = useState(0);
-
-  useEffect(() => {
-    if (!isInView) return;
-    const duration = 1500;
-    const steps = 40;
-    const increment = num / steps;
-    let current = 0;
-    const timer = setInterval(() => {
-      current += increment;
-      if (current >= num) {
-        setCount(num);
-        clearInterval(timer);
-      } else {
-        setCount(Math.floor(current));
-      }
-    }, duration / steps);
-    return () => clearInterval(timer);
-  }, [isInView, num]);
-
-  return (
-    <span ref={ref}>
-      {prefix}{isInView ? (num >= 100 ? count.toLocaleString("pt-BR") : count) : 0}{suffix}
-    </span>
-  );
-}
-
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
+  const [showPopup, setShowPopup] = useState(false);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const formRef = useRef<HTMLDivElement>(null);
+
+  const openPopup = () => setShowPopup(true);
 
   // Meta Pixel
   useEffect(() => {
@@ -127,10 +97,7 @@ const SessaoEstrategicaPage = () => {
     return () => { noscript.remove(); };
   }, []);
 
-  const scrollToForm = () => {
-    formRef.current?.scrollIntoView({ behavior: "smooth", block: "center" });
-  };
-
+  // Removed scrollToForm - using popup instead
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim() || !telefone || !email.trim()) return;
@@ -228,7 +195,7 @@ const SessaoEstrategicaPage = () => {
                 className="flex flex-col sm:flex-row items-start gap-4"
               >
                 <Button
-                  onClick={scrollToForm}
+                  onClick={openPopup}
                   className="group relative bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-8 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.15)] hover:shadow-[0_0_60px_rgba(220,38,38,0.25)] transition-all duration-500 w-full sm:w-auto overflow-hidden"
                 >
                   <span className="relative z-10 flex items-center gap-2">
@@ -287,7 +254,7 @@ const SessaoEstrategicaPage = () => {
             {stats.map((stat, i) => (
               <AnimatedSection key={i}>
                 <div className="text-2xl sm:text-4xl lg:text-5xl font-black text-white tracking-tight">
-                  <CountUp target={stat.value} suffix={stat.value.includes("+") ? "+" : ""} />
+                  {stat.display}
                 </div>
                 <p className="text-[11px] sm:text-sm text-neutral-500 mt-1 uppercase tracking-wider">{stat.label}</p>
               </AnimatedSection>
@@ -327,92 +294,7 @@ const SessaoEstrategicaPage = () => {
         </div>
       </section>
 
-      {/* ── Inline form ── */}
-      <section className="py-20 sm:py-28 px-5 sm:px-8" ref={formRef}>
-        <div className="max-w-lg mx-auto">
-          <AnimatedSection>
-            <div className="text-center mb-8">
-              <p className="text-xs uppercase tracking-[0.2em] text-red-400/70 font-medium mb-3">
-                Inscrição gratuita
-              </p>
-              <h2 className="text-2xl sm:text-3xl font-bold mb-2">Garanta sua análise agora</h2>
-              <p className="text-sm text-neutral-500">
-                Preencha seus dados abaixo e nossa equipe entrará em contato
-              </p>
-            </div>
-
-            <form onSubmit={handleSubmit} className="space-y-4">
-              <div className="space-y-1.5">
-                <Label htmlFor="form-nome" className="text-neutral-400 text-sm">
-                  Nome completo *
-                </Label>
-                <Input
-                  id="form-nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                  maxLength={200}
-                  placeholder="Seu nome"
-                  className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20 transition-colors"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="form-telefone" className="text-neutral-400 text-sm">
-                  WhatsApp com DDD *
-                </Label>
-                <PhoneInput
-                  id="form-telefone"
-                  value={telefone}
-                  onChange={setTelefone}
-                  required
-                  className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
-                />
-              </div>
-              <div className="space-y-1.5">
-                <Label htmlFor="form-email" className="text-neutral-400 text-sm">
-                  E-mail *
-                </Label>
-                <Input
-                  id="form-email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  maxLength={255}
-                  placeholder="seu@email.com"
-                  className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20 transition-colors"
-                />
-              </div>
-
-              {error && <p className="text-sm text-red-400">{error}</p>}
-
-              <Button
-                type="submit"
-                disabled={submitting}
-                className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-base rounded-xl shadow-[0_0_30px_rgba(220,38,38,0.12)] hover:shadow-[0_0_40px_rgba(220,38,38,0.2)] transition-all duration-500 mt-2"
-              >
-                {submitting ? (
-                  <>
-                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                    Enviando...
-                  </>
-                ) : (
-                  "QUERO MINHA ANÁLISE GRATUITA"
-                )}
-              </Button>
-
-              <div className="flex items-center justify-center gap-4 pt-2 text-[11px] text-neutral-600">
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> 100% gratuito
-                </span>
-                <span className="flex items-center gap-1">
-                  <CheckCircle2 className="h-3 w-3" /> Sem compromisso
-                </span>
-              </div>
-            </form>
-          </AnimatedSection>
-        </div>
-      </section>
+      {/* Inline form section removed - using popup */}
 
       {/* ── Mentor ── */}
       <section className="py-20 sm:py-28 px-5 sm:px-8 border-t border-neutral-800/40">
@@ -474,7 +356,7 @@ const SessaoEstrategicaPage = () => {
             A próxima vaga pode ser sua.
           </p>
           <Button
-            onClick={scrollToForm}
+            onClick={openPopup}
             className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-10 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.12)] hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] transition-all duration-500"
           >
             FAZER INSCRIÇÃO GRATUITA
@@ -486,6 +368,74 @@ const SessaoEstrategicaPage = () => {
       <footer className="py-8 border-t border-neutral-800/40 text-center text-xs text-neutral-600 px-5">
         Todos os direitos reservados · Universidade Nacional de Vendas LTDA
       </footer>
+
+      {/* Popup Form */}
+      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+        <DialogContent className="sm:max-w-md bg-[#111] border-neutral-800 text-white rounded-2xl">
+          <DialogHeader>
+            <DialogTitle className="text-xl font-bold text-center">Preencha seus dados</DialogTitle>
+          </DialogHeader>
+          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-nome" className="text-neutral-400 text-sm">Nome completo *</Label>
+              <Input
+                id="popup-nome"
+                value={nome}
+                onChange={(e) => setNome(e.target.value)}
+                required
+                maxLength={200}
+                placeholder="Seu nome"
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-telefone" className="text-neutral-400 text-sm">WhatsApp com DDD *</Label>
+              <PhoneInput
+                id="popup-telefone"
+                value={telefone}
+                onChange={setTelefone}
+                required
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+            <div className="space-y-1.5">
+              <Label htmlFor="popup-email" className="text-neutral-400 text-sm">E-mail *</Label>
+              <Input
+                id="popup-email"
+                type="email"
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                required
+                maxLength={255}
+                placeholder="seu@email.com"
+                className="bg-neutral-900/60 border-neutral-800 text-white placeholder:text-neutral-600 h-12 rounded-xl focus:border-red-500/50 focus:ring-red-500/20"
+              />
+            </div>
+
+            {error && <p className="text-sm text-red-400">{error}</p>}
+
+            <Button
+              type="submit"
+              disabled={submitting}
+              className="w-full bg-red-600 hover:bg-red-700 text-white font-bold py-6 text-base rounded-xl shadow-[0_0_30px_rgba(220,38,38,0.12)] hover:shadow-[0_0_40px_rgba(220,38,38,0.2)] transition-all duration-500"
+            >
+              {submitting ? (
+                <>
+                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                  Enviando...
+                </>
+              ) : (
+                "QUERO MINHA ANÁLISE GRATUITA"
+              )}
+            </Button>
+
+            <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-neutral-600">
+              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> 100% gratuito</span>
+              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3" /> Sem compromisso</span>
+            </div>
+          </form>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 };
