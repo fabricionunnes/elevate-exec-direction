@@ -358,21 +358,24 @@ const SessaoEstrategicaPage = () => {
       </section>
 
       {/* ── Final CTA ── */}
+      {/* ── Resultados ── */}
+      <section className="py-20 sm:py-28 px-5 sm:px-8 border-t border-neutral-800/40">
+        <AnimatedSection className="max-w-2xl mx-auto text-center space-y-6">
+          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
+            Resultados de quem já é{" "}
+            <span className="text-red-400">nosso cliente</span>
+          </h2>
+        </AnimatedSection>
+      </section>
+
+      {/* ── Final CTA ── */}
       <section className="py-20 sm:py-28 px-5 sm:px-8">
         <AnimatedSection className="max-w-2xl mx-auto text-center space-y-8">
-          <h2 className="text-2xl sm:text-3xl lg:text-4xl font-bold leading-tight">
-            Não deixe seu faturamento{" "}
-            <span className="text-red-400">estagnado</span>
-          </h2>
-          <p className="text-neutral-500 text-sm sm:text-base max-w-lg mx-auto">
-            Empresários que passaram pela análise estratégica já estão colhendo resultados.
-            A próxima vaga pode ser sua.
-          </p>
           <Button
             onClick={openPopup}
             className="bg-red-600 hover:bg-red-700 text-white font-bold text-sm sm:text-base px-10 py-6 rounded-xl shadow-[0_0_40px_rgba(220,38,38,0.12)] hover:shadow-[0_0_60px_rgba(220,38,38,0.2)] transition-all duration-500"
           >
-            FAZER INSCRIÇÃO GRATUITA
+            QUERO AUMENTAR MINHAS VENDAS
           </Button>
         </AnimatedSection>
       </section>
