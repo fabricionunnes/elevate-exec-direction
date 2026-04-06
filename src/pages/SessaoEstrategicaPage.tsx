@@ -165,10 +165,10 @@ const SessaoEstrategicaPage = () => {
         <div className="absolute top-20 right-0 w-[600px] h-[600px] bg-red-600/[0.07] rounded-full blur-[150px] pointer-events-none" />
         <div className="absolute bottom-0 left-0 w-[400px] h-[400px] bg-blue-400/[0.05] rounded-full blur-[120px] pointer-events-none" />
 
-        <div className="relative z-10 max-w-7xl mx-auto w-full px-5 sm:px-8 lg:px-12">
+        <div className="relative z-10 max-w-7xl mx-auto w-full px-4 sm:px-8 lg:px-12">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-16 items-center">
             {/* Left copy */}
-            <div className="space-y-6 lg:space-y-7 pt-16 lg:pt-0">
+            <div className="space-y-5 sm:space-y-6 lg:space-y-7 pt-24 sm:pt-20 lg:pt-0 pb-16 sm:pb-12 lg:pb-0">
               <motion.div
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
