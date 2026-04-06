@@ -1,6 +1,34 @@
+import { useEffect } from "react";
 import { CheckCircle2 } from "lucide-react";
 
 const SessaoEstrategicaObrigadoPage = () => {
+  // Meta Pixel + Conversion Event
+  useEffect(() => {
+    const pixelId = '247392077001023';
+    (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){
+      if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)
+    })(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    (window as any).fbq('init', pixelId);
+    (window as any).fbq('track', 'PageView');
+    // Conversion event
+    (window as any).fbq('track', 'Lead');
+
+    const noscript = document.createElement('noscript');
+    const img = document.createElement('img');
+    img.height = 1;
+    img.width = 1;
+    img.style.display = 'none';
+    img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=Lead&noscript=1`;
+    noscript.appendChild(img);
+    document.body.appendChild(noscript);
+
+    return () => { noscript.remove(); };
+  }, []);
   return (
     <div className="min-h-screen bg-black text-white flex items-center justify-center p-4">
       <div className="absolute inset-0 bg-[radial-gradient(ellipse_at_center,_rgba(220,38,38,0.06)_0%,_transparent_70%)]" />

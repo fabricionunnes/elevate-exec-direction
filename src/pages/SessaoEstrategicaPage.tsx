@@ -29,7 +29,36 @@ const SessaoEstrategicaPage = () => {
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  // Meta Pixel
+  useEffect(() => {
+    const pixelId = '247392077001023';
+    // Init pixel
+    (function(f: any,b: any,e: any,v: any,n?: any,t?: any,s?: any){
+      if(f.fbq)return;n=f.fbq=function(){n.callMethod?
+      n.callMethod.apply(n,arguments):n.queue.push(arguments)};
+      if(!f._fbq)f._fbq=n;n.push=n;n.loaded=!0;n.version='2.0';
+      n.queue=[];t=b.createElement(e);t.async=!0;
+      t.src=v;s=b.getElementsByTagName(e)[0];
+      s.parentNode.insertBefore(t,s)
+    })(window,document,'script','https://connect.facebook.net/en_US/fbevents.js');
+    (window as any).fbq('init', pixelId);
+    (window as any).fbq('track', 'PageView');
+
+    // noscript fallback
+    const noscript = document.createElement('noscript');
+    const img = document.createElement('img');
+    img.height = 1;
+    img.width = 1;
+    img.style.display = 'none';
+    img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`;
+    noscript.appendChild(img);
+    document.body.appendChild(noscript);
+
+    return () => {
+      noscript.remove();
+    };
+  }, []);
+
     e.preventDefault();
     if (!nome.trim() || !telefone || !email.trim()) return;
 
