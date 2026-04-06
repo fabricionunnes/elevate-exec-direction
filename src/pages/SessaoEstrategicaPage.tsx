@@ -174,7 +174,7 @@ const SessaoEstrategicaPage = () => {
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.1 }}
               >
-                <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.2em] text-red-300 font-semibold bg-white/[0.08] border border-white/10 rounded-full px-4 py-1.5 backdrop-blur-sm">
+                <span className="inline-block text-[10px] sm:text-xs uppercase tracking-[0.15em] sm:tracking-[0.2em] text-red-300 font-semibold bg-white/[0.08] border border-white/10 rounded-full px-3 sm:px-4 py-1.5 backdrop-blur-sm leading-snug">
                   Análise exclusiva para empresários que têm times de vendas
                 </span>
               </motion.div>
