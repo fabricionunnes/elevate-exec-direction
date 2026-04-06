@@ -1378,10 +1378,11 @@ const OnboardingTasksPage = () => {
               return isWithinInterval(renewalDate, { start: dateRange.start, end: dateRange.end });
             });
 
-            // Match card counter logic: only exclude as "não renovada" if company is non-monthly,
-            // has no renewal, AND has at least one closed project WITHOUT churn_reason
-            const hasProjectWithChurnReason = closedProjectsInPeriod.some(p => p.churn_reason);
-            const hasProjectWithoutChurnReason = closedProjectsInPeriod.some(p => !p.churn_reason);
+            // Match card counter logic: check churn_reason from allProjects
+            const closedProjectIds = new Set(closedProjectsInPeriod.map(p => p.id));
+            const matchingAllProjects = allProjects.filter(p => closedProjectIds.has(p.id));
+            const hasProjectWithChurnReason = matchingAllProjects.some(p => p.churn_reason);
+            const hasProjectWithoutChurnReason = matchingAllProjects.some(p => !p.churn_reason);
             const hasOnlyChurnReasons = hasProjectWithChurnReason && !hasProjectWithoutChurnReason;
 
             const isAutoNotRenewed =
