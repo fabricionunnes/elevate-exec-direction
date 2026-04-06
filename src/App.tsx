@@ -343,6 +343,10 @@ const AppShell = () => {
             <Route path="/distrato" element={<DistratoPage />} />
             <Route path="/distratos" element={<DistratoHistoryPage />} />
             
+            {/* Sessão Estratégica */}
+            <Route path="/sessao-estrategica" element={<SessaoEstrategicaPage />} />
+            <Route path="/sessao-estrategica/obrigado" element={<SessaoEstrategicaObrigadoPage />} />
+            
             {/* Public Pipeline Form */}
             <Route path="/form/:token" element={<PublicPipelineForm />} />
             
