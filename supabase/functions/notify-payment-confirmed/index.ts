@@ -110,7 +110,7 @@ Deno.serve(async (req) => {
 
       if (finInstance?.api_url && finInstance?.api_key) {
         const bankInfo = bankName ? `\n🏦 *Banco:* ${bankName}` : "";
-        const internalMsg = `💰 *Pagamento Recebido!*\n\n🏢 *Empresa:* ${companyName || "N/A"}\n📄 *Descrição:* ${invoice.description || "Mensalidade"}\n💵 *Valor:* ${amountFormatted}${bankInfo}\n📅 *Pago em:* ${paidAtFormatted}`;
+        const internalMsg = `💰 *Pagamento Recebido!*\n\n🏢 *Empresa:* ${companyName || "N/A"}\n📄 *Descrição:* ${invoice.description || "Mensalidade"}\n💵 *Valor líquido:* ${netAmountFormatted}${bankInfo}\n📅 *Pago em:* ${paidAtFormatted}`;
 
         const intResponse = await fetch(
           `${finInstance.api_url}/message/sendText/${finInstance.instance_name}`,
