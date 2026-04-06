@@ -85,8 +85,12 @@ Deno.serve(async (req) => {
     }
 
     // Format message values
-    const amountPaid = (invoice.paid_amount_cents || invoice.amount_cents) / 100;
-    const amountFormatted = amountPaid.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    // For customer message: show original invoice amount (what the customer paid)
+    // For internal message: show net amount received (after fees)
+    const customerAmount = invoice.amount_cents / 100;
+    const customerAmountFormatted = customerAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
+    const netAmount = (invoice.paid_amount_cents || invoice.amount_cents) / 100;
+    const netAmountFormatted = netAmount.toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
     const dueFormatted = invoice.due_date ? invoice.due_date.split("-").reverse().join("/") : "";
     const paidAtFormatted = invoice.paid_at
       ? new Date(invoice.paid_at).toLocaleDateString("pt-BR")
