@@ -29,7 +29,7 @@ const ShowcaseHero = () => {
             <Link to="/sessao-estrategica">
               <Button size="lg" className="gap-2 bg-red-600 hover:bg-red-700 text-white font-semibold px-6">
                 <Target className="w-4 h-4" />
-                Sessão Estratégica
+                Sessão Estratégica Comercial
               </Button>
             </Link>
             <Link to="/trafego-pago">

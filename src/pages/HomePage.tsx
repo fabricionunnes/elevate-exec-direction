@@ -652,7 +652,7 @@ export default function HomePage() {
             <Link to="/sessao-estrategica">
               <Button variant="hero" size="xl" className="w-full sm:w-auto text-sm sm:text-base gap-2">
                 <Target className="h-5 w-5" />
-                Sessão Estratégica
+                Sessão Estratégica Comercial
               </Button>
             </Link>
             <Link to="/trafego-pago">
