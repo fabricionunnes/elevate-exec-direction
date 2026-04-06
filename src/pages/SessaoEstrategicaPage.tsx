@@ -59,6 +59,7 @@ const SessaoEstrategicaPage = () => {
     };
   }, []);
 
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!nome.trim() || !telefone || !email.trim()) return;
 
