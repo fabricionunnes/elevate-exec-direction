@@ -74,7 +74,7 @@ export function AddressFields({ value, onChange }: Props) {
       {/* CEP */}
       <div className="grid grid-cols-3 gap-4">
         <div className="space-y-2">
-          <Label>CEP</Label>
+          <Label>CEP <span className="text-destructive">*</span></Label>
           <div className="relative">
             <Input
               value={value.address_zipcode}
