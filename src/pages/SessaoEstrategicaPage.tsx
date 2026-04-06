@@ -183,7 +183,7 @@ const SessaoEstrategicaPage = () => {
                 initial={{ opacity: 0, y: 20 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.5, delay: 0.2 }}
-                className="text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.1] tracking-tight text-white">
+                 className="text-[2rem] sm:text-4xl md:text-5xl lg:text-[3.5rem] xl:text-6xl font-black leading-[1.1] tracking-tight text-white"
               >
                 Análise Individual{" "}
                 <span className="text-red-400">Gratuita</span>
