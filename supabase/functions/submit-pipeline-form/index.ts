@@ -354,26 +354,36 @@ async function sendWhatsAppNotification(
     (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
     `\n🔗 *Ver no CRM:* ${leadLink}`;
 
-  const { data: whatsappConfig } = await supabase
-    .from('whatsapp_default_config')
-    .select('setting_value')
-    .eq('setting_key', 'default_instance')
+  // Use the "Fabricio Nunnes" instance
+  const { data: instance } = await supabase
+    .from('whatsapp_instances')
+    .select('instance_name, api_url, api_key')
+    .eq('instance_name', 'fabricio-nunnes')
     .maybeSingle();
 
-  const instanceName = whatsappConfig?.setting_value;
-  if (!instanceName) return;
+  if (!instance?.api_url || !instance?.api_key || !instance?.instance_name) {
+    console.warn('[submit-pipeline-form] Fabricio Nunnes WhatsApp instance not found or missing credentials');
+    return;
+  }
 
-  const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-  const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
-  if (!evolutionUrl || !evolutionKey) return;
+  // Get phone numbers from staff with roles: master, head_comercial, sdr
+  const { data: staffNumbers } = await supabase
+    .from('onboarding_staff')
+    .select('phone')
+    .eq('is_active', true)
+    .in('role', ['master', 'head_comercial', 'sdr'])
+    .not('phone', 'is', null);
 
   const numbersToNotify: string[] = [];
 
-  if (owner?.phone) {
-    const clean = owner.phone.replace(/\D/g, '');
-    if (clean) numbersToNotify.push(clean);
+  if (staffNumbers) {
+    for (const s of staffNumbers) {
+      const clean = s.phone?.replace(/\D/g, '');
+      if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
+    }
   }
 
+  // Also include crm_lead_notification_numbers as fallback
   const { data: notifNumbers } = await supabase
     .from('crm_lead_notification_numbers')
     .select('phone')
@@ -388,9 +398,9 @@ async function sendWhatsAppNotification(
 
   for (const phone of numbersToNotify) {
     try {
-      await fetch(`${evolutionUrl}/message/sendText/${instanceName}`, {
+      await fetch(`${instance.api_url}/message/sendText/${instance.instance_name}`, {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': evolutionKey },
+        headers: { 'Content-Type': 'application/json', 'apikey': instance.api_key },
         body: JSON.stringify({ number: phone, text: message }),
       });
     } catch (e) {

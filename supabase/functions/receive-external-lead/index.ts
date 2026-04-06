@@ -187,57 +187,64 @@ Deno.serve(async (req) => {
       (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
       `\n🔗 *Ver no CRM:* ${leadLink}`;
 
-    const { data: whatsappConfig } = await supabase
-      .from('whatsapp_default_config')
-      .select('setting_value')
-      .eq('setting_key', 'default_instance')
+    // Use the "Fabricio Nunnes" instance
+    const { data: instance } = await supabase
+      .from('whatsapp_instances')
+      .select('instance_name, api_url, api_key')
+      .eq('instance_name', 'fabricio-nunnes')
       .maybeSingle();
 
-    const instanceName = whatsappConfig?.setting_value;
+    if (instance?.api_url && instance?.api_key && instance?.instance_name) {
+      // Get phone numbers from staff with roles: master, head_comercial, sdr
+      const { data: staffNumbers } = await supabase
+        .from('onboarding_staff')
+        .select('phone')
+        .eq('is_active', true)
+        .in('role', ['master', 'head_comercial', 'sdr'])
+        .not('phone', 'is', null);
 
-    if (instanceName) {
-      const evolutionUrl = Deno.env.get('EVOLUTION_API_URL');
-      const evolutionKey = Deno.env.get('EVOLUTION_API_KEY');
+      const numbersToNotify: string[] = [];
 
-      if (evolutionUrl && evolutionKey) {
-        const numbersToNotify: string[] = [];
-
-        if (owner?.phone) {
-          const cleanPhone = owner.phone.replace(/\D/g, '');
-          if (cleanPhone) numbersToNotify.push(cleanPhone);
+      if (staffNumbers) {
+        for (const s of staffNumbers) {
+          const clean = s.phone?.replace(/\D/g, '');
+          if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
         }
+      }
 
-        const { data: notifNumbers } = await supabase
-          .from('crm_lead_notification_numbers')
-          .select('phone')
-          .eq('is_active', true);
+      // Also include crm_lead_notification_numbers as fallback
+      const { data: notifNumbers } = await supabase
+        .from('crm_lead_notification_numbers')
+        .select('phone')
+        .eq('is_active', true);
 
-        if (notifNumbers) {
-          for (const n of notifNumbers) {
-            const cleanPhone = n.phone.replace(/\D/g, '');
-            if (cleanPhone && !numbersToNotify.includes(cleanPhone)) {
-              numbersToNotify.push(cleanPhone);
-            }
-          }
-        }
-
-        for (const phone of numbersToNotify) {
-          try {
-            const sendUrl = `${evolutionUrl}/message/sendText/${instanceName}`;
-            await fetch(sendUrl, {
-              method: 'POST',
-              headers: {
-                'Content-Type': 'application/json',
-                'apikey': evolutionKey,
-              },
-              body: JSON.stringify({ number: phone, text: message }),
-            });
-            console.log(`[receive-external-lead] WhatsApp sent to ${phone}`);
-          } catch (whatsappError) {
-            console.error(`[receive-external-lead] WhatsApp error for ${phone}:`, whatsappError);
+      if (notifNumbers) {
+        for (const n of notifNumbers) {
+          const cleanPhone = n.phone.replace(/\D/g, '');
+          if (cleanPhone && !numbersToNotify.includes(cleanPhone)) {
+            numbersToNotify.push(cleanPhone);
           }
         }
       }
+
+      for (const phone of numbersToNotify) {
+        try {
+          const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
+          await fetch(sendUrl, {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+              'apikey': instance.api_key,
+            },
+            body: JSON.stringify({ number: phone, text: message }),
+          });
+          console.log(`[receive-external-lead] WhatsApp sent to ${phone}`);
+        } catch (whatsappError) {
+          console.error(`[receive-external-lead] WhatsApp error for ${phone}:`, whatsappError);
+        }
+      }
+    } else {
+      console.warn('[receive-external-lead] Fabricio Nunnes WhatsApp instance not found');
     }
 
     return new Response(JSON.stringify({ success: true, lead_id: lead.id }), {
