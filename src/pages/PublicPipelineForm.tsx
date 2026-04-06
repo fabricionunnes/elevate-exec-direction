@@ -51,7 +51,8 @@ const PublicPipelineForm = () => {
   const [step, setStep] = useState(1);
   const [submitted, setSubmitted] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [leadId, setLeadId] = useState<string | null>(null);
+  const prefilledLeadId = searchParams.get("lead_id");
+  const [leadId, setLeadId] = useState<string | null>(prefilledLeadId);
 
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
