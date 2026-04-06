@@ -247,14 +247,18 @@ const SessaoEstrategicaPage = () => {
               initial={{ opacity: 0, scale: 0.95 }}
               animate={{ opacity: 1, scale: 1 }}
               transition={{ duration: 0.7, delay: 0.3 }}
-              className="hidden lg:flex justify-center items-end"
+              className="hidden lg:flex justify-center items-center"
             >
-              <div className="relative w-full max-w-md xl:max-w-lg mx-auto">
-                <div className="absolute -bottom-4 left-1/2 -translate-x-1/2 w-[80%] h-24 bg-blue-500/[0.08] blur-[60px] rounded-full" />
+              <div className="relative">
+                {/* Background geometric shape */}
+                <div className="absolute inset-0 -m-6 rounded-[2.5rem] bg-white/[0.04] border border-white/[0.08]" />
+                <div className="absolute -inset-3 rounded-[2rem] bg-gradient-to-b from-white/[0.06] to-transparent" />
+                {/* Subtle glow behind */}
+                <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[70%] h-20 bg-red-500/[0.1] blur-[50px] rounded-full" />
                 <img
                   src={fabricioHero}
                   alt="Fabrício Nunnes - Mentor de Vendas"
-                  className="relative z-10 w-full h-auto max-h-[520px] object-contain object-bottom drop-shadow-2xl"
+                  className="relative z-10 w-auto max-w-[380px] xl:max-w-[420px] h-auto max-h-[480px] object-contain rounded-3xl"
                   loading="eager"
                 />
               </div>
