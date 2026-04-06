@@ -96,7 +96,7 @@ export function AddressFields({ value, onChange }: Props) {
           />
         </div>
         <div className="space-y-2">
-          <Label>UF</Label>
+          <Label>UF <span className="text-destructive">*</span></Label>
           <Select value={value.address_state} onValueChange={(v) => update("address_state", v)}>
             <SelectTrigger>
               <SelectValue placeholder="UF" />
