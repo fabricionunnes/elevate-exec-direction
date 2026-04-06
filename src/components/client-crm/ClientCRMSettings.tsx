@@ -102,6 +102,7 @@ export const ClientCRMSettings = ({ projectId, pipelines, stages, activePipeline
   const duplicatePipeline = async (p: ClientPipeline) => {
     setSaving(true);
     try {
+      // 1. Create new pipeline
       const { data: newP } = await supabase.from("client_crm_pipelines").insert({
         project_id: projectId,
         name: `Cópia de ${p.name}`,
@@ -109,26 +110,108 @@ export const ClientCRMSettings = ({ projectId, pipelines, stages, activePipeline
         is_default: false,
       }).select("id").single();
 
-      if (newP) {
-        const pStages = stages.filter(s => s.pipeline_id === p.id);
-        if (pStages.length > 0) {
-          await supabase.from("client_crm_stages").insert(
-            pStages.map(s => ({
-              pipeline_id: newP.id,
-              name: s.name,
-              color: s.color,
-              sort_order: s.sort_order,
-              is_final: s.is_final,
-              final_type: s.final_type,
+      if (!newP) throw new Error("Erro ao criar pipeline");
+
+      // 2. Duplicate stages and build old→new ID map
+      const pStages = stages.filter(s => s.pipeline_id === p.id);
+      const stageIdMap: Record<string, string> = {};
+
+      if (pStages.length > 0) {
+        const { data: newStages } = await supabase.from("client_crm_stages").insert(
+          pStages.map(s => ({
+            pipeline_id: newP.id,
+            name: s.name,
+            color: s.color,
+            sort_order: s.sort_order,
+            is_final: s.is_final,
+            final_type: s.final_type,
+          }))
+        ).select("id, sort_order");
+
+        if (newStages) {
+          const sortedOld = [...pStages].sort((a, b) => a.sort_order - b.sort_order);
+          const sortedNew = [...newStages].sort((a, b) => a.sort_order - b.sort_order);
+          sortedOld.forEach((oldS, i) => {
+            if (sortedNew[i]) stageIdMap[oldS.id] = sortedNew[i].id;
+          });
+        }
+      }
+
+      // 3. Duplicate activities from deals in the old pipeline (as pending tasks)
+      const { data: oldDeals } = await supabase
+        .from("client_crm_deals")
+        .select("id")
+        .eq("pipeline_id", p.id)
+        .eq("project_id", projectId);
+
+      if (oldDeals && oldDeals.length > 0) {
+        const dealIds = oldDeals.map(d => d.id);
+        const { data: oldActivities } = await supabase
+          .from("client_crm_activities")
+          .select("*")
+          .in("deal_id", dealIds);
+
+        if (oldActivities && oldActivities.length > 0) {
+          await supabase.from("client_crm_activities").insert(
+            oldActivities.map(a => ({
+              project_id: projectId,
+              deal_id: null,
+              contact_id: a.contact_id,
+              type: a.type,
+              title: a.title,
+              description: a.description,
+              scheduled_at: a.scheduled_at,
+              status: "pending",
+              created_by: a.created_by,
+              assigned_to: a.assigned_to,
             }))
           );
         }
-        setSelectedPipeline(newP.id);
       }
-      toast.success("Pipeline duplicado");
+
+      // 4. Duplicate automation rules that reference the old pipeline
+      const { data: allRules } = await supabase
+        .from("automation_rules")
+        .select("*");
+
+      if (allRules) {
+        const oldPipelineId = p.id;
+        const relatedRules = allRules.filter(r => {
+          const configStr = JSON.stringify(r.trigger_config) + JSON.stringify(r.conditions) + JSON.stringify(r.action_config);
+          return configStr.includes(oldPipelineId);
+        });
+
+        if (relatedRules.length > 0) {
+          const replaceIds = (obj: any): any => {
+            let str = JSON.stringify(obj);
+            str = str.split(oldPipelineId).join(newP.id);
+            Object.entries(stageIdMap).forEach(([oldId, newId]) => {
+              str = str.split(oldId).join(newId);
+            });
+            return JSON.parse(str);
+          };
+
+          await supabase.from("automation_rules").insert(
+            relatedRules.map(r => ({
+              name: `${r.name} (cópia)`,
+              description: r.description,
+              trigger_type: r.trigger_type,
+              trigger_config: replaceIds(r.trigger_config),
+              conditions: replaceIds(r.conditions),
+              action_type: r.action_type,
+              action_config: replaceIds(r.action_config),
+              is_active: r.is_active,
+              created_by: r.created_by,
+            }))
+          );
+        }
+      }
+
+      setSelectedPipeline(newP.id);
+      toast.success("Pipeline duplicado com tarefas e automações");
       onRefresh();
     } catch (e: any) {
-      toast.error(e.message || "Erro");
+      toast.error(e.message || "Erro ao duplicar");
     } finally {
       setSaving(false);
     }
