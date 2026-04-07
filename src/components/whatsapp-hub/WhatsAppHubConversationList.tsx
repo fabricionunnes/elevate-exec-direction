@@ -257,7 +257,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           table: "crm_whatsapp_conversations",
         },
         () => {
-          void fetchConversations();
+          void fetchConversations({ silent: true });
         }
       )
       .subscribe();
