@@ -883,7 +883,7 @@ serve(async (req) => {
           const dueDate = b.due_date || new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
           const paymentPayload: any = {
             customer: customerId, billingType, value: amountValue, dueDate,
-            description: b.description || "Cobrança via API", notificationDisabled: false,
+            description: b.description || "Cobrança via API", notificationDisabled: true,
           };
           if (billingType === "CREDIT_CARD" && b.installments > 1) {
             paymentPayload.installmentCount = b.installments;
