@@ -167,6 +167,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   };
 
   useEffect(() => {
+    fetchAllStaff();
     fetchConversations();
 
     const channel = supabase
