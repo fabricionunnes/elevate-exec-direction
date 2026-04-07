@@ -238,19 +238,40 @@ async function handleIncomingMessage(
     return;
   }
 
-  // Get the correct phone number:
-  // - remoteJid usually has the phone@s.whatsapp.net format
+  // Get the correct phone/group JID:
+  // - remoteJid usually has the phone@s.whatsapp.net or groupId@g.us format
   // - remoteJidAlt may have @lid format (new WhatsApp format)
-  // We need to use remoteJid if it contains the phone number
+  // - Some newer versions use phone:N@s.whatsapp.net format (colon separator)
   let remoteJid = key.remoteJid || '';
   const remoteJidAlt = key.remoteJidAlt || '';
+  const isGroup = remoteJid.includes('@g.us');
+  
+  console.log(`[webhook] JID analysis: remoteJid=${remoteJid}, remoteJidAlt=${remoteJidAlt}, isGroup=${isGroup}`);
   
   // If remoteJid is @lid format, try to use remoteJidAlt instead
-  if (remoteJid.endsWith('@lid') && remoteJidAlt.includes('@s.whatsapp.net')) {
-    remoteJid = remoteJidAlt;
+  if (remoteJid.endsWith('@lid')) {
+    if (remoteJidAlt.includes('@s.whatsapp.net') || remoteJidAlt.includes('@g.us')) {
+      remoteJid = remoteJidAlt;
+    } else {
+      // For @lid without a valid alt, try to find phone from participant field (group messages)
+      const participant = key.participant || '';
+      if (participant.includes('@s.whatsapp.net')) {
+        // This is a group message where remoteJid is LID but we have participant info
+        // We can't determine the group, so skip
+        console.log('Skipping @lid message without valid alt JID, participant:', participant);
+        return;
+      }
+      console.log('Skipping message - @lid format without valid alternative:', remoteJid);
+      return;
+    }
   }
-  // If remoteJidAlt is @lid and remoteJid is valid phone, use remoteJid
-  // (This is already the case since remoteJid is used by default)
+  
+  // Clean up colon-separated JIDs (e.g., "553195575428:8@s.whatsapp.net" -> "553195575428@s.whatsapp.net")
+  if (!isGroup && remoteJid.includes(':') && remoteJid.includes('@')) {
+    const colonClean = remoteJid.replace(/:\d+@/, '@');
+    console.log(`[webhook] Cleaned colon JID: ${remoteJid} -> ${colonClean}`);
+    remoteJid = colonClean;
+  }
   
   const fromMe = key.fromMe;
   const messageId = key.id;
@@ -261,9 +282,9 @@ async function handleIncomingMessage(
     return;
   }
 
-  // Skip if we can't extract a valid phone number
-  if (remoteJid.endsWith('@lid') || !remoteJid.includes('@')) {
-    console.log('Skipping message - cannot extract phone from JID:', remoteJid);
+  // Skip if we can't extract a valid identifier
+  if (!remoteJid.includes('@')) {
+    console.log('Skipping message - no @ in JID:', remoteJid);
     return;
   }
 
