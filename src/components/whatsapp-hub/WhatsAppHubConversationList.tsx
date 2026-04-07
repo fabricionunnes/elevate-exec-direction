@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Filter } from "lucide-react";
+import { Search } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
@@ -21,52 +21,140 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
+  const fetchAllowedInstanceIds = async () => {
+    if (isMaster) {
+      const { data } = await supabase.from("whatsapp_instances").select("id");
+      return (data || []).map((item) => item.id);
+    }
+
+    const { data } = await supabase
+      .from("whatsapp_instance_access")
+      .select("instance_id")
+      .eq("staff_id", staffId)
+      .eq("can_view", true);
+
+    return (data || []).map((item) => item.instance_id);
+  };
+
   const fetchConversations = async () => {
+    if (!staffId) return;
     setLoading(true);
-    let query = supabase
-      .from("staff_whatsapp_conversations")
-      .select(`
-        *,
-        project:onboarding_projects(id, product_name),
-        staff:onboarding_staff(id, name),
-        tags:staff_whatsapp_conversation_tags(id, tag:staff_whatsapp_tags(id, name, color))
-      `)
-      .order("last_message_at", { ascending: false, nullsFirst: false });
 
-    if (filterProjectId) {
-      query = query.eq("project_id", filterProjectId);
-    }
+    try {
+      const allowedInstanceIds = await fetchAllowedInstanceIds();
 
-    const { data, error } = await query;
-    if (!error && data) {
-      setConversations(data as unknown as HubConversation[]);
+      if (!isMaster && allowedInstanceIds.length === 0) {
+        setConversations([]);
+        return;
+      }
+
+      let query = supabase
+        .from("crm_whatsapp_conversations")
+        .select(`
+          id,
+          instance_id,
+          lead_id,
+          last_message,
+          last_message_at,
+          unread_count,
+          status,
+          created_at,
+          contact:crm_whatsapp_contacts(name, phone, profile_picture_url),
+          assigned_staff:onboarding_staff(id, name),
+          instance:whatsapp_instances(id, instance_name, display_name)
+        `)
+        .not("instance_id", "is", null)
+        .order("last_message_at", { ascending: false, nullsFirst: false });
+
+      if (!isMaster) {
+        query = query.in("instance_id", allowedInstanceIds);
+      }
+
+      const { data, error } = await query;
+      if (error) throw error;
+
+      const leadIds = Array.from(
+        new Set((data || []).map((item: any) => item.lead_id).filter(Boolean))
+      );
+
+      let projectQuery = supabase
+        .from("onboarding_projects")
+        .select("id, product_name, crm_lead_id")
+        .neq("status", "closed");
+
+      if (filterProjectId) {
+        projectQuery = projectQuery.eq("id", filterProjectId);
+      } else if (leadIds.length > 0) {
+        projectQuery = projectQuery.in("crm_lead_id", leadIds);
+      }
+
+      const { data: projects } = await projectQuery;
+      const projectByLeadId = new Map(
+        (projects || [])
+          .filter((project: any) => project.crm_lead_id)
+          .map((project: any) => [project.crm_lead_id, { id: project.id, product_name: project.product_name }])
+      );
+
+      const mapped = (data || [])
+        .map((conv: any) => {
+          const project = conv.lead_id ? projectByLeadId.get(conv.lead_id) || null : null;
+          return {
+            id: conv.id,
+            instance_id: conv.instance_id,
+            lead_id: conv.lead_id,
+            contact_name: conv.contact?.name || null,
+            contact_phone: conv.contact?.phone || "",
+            contact_photo_url: conv.contact?.profile_picture_url || null,
+            project_id: project?.id || null,
+            last_message: conv.last_message || null,
+            last_message_at: conv.last_message_at || null,
+            unread_count: conv.unread_count || 0,
+            status: conv.status || "open",
+            created_at: conv.created_at || new Date().toISOString(),
+            project,
+            staff: conv.assigned_staff || null,
+            instance: conv.instance || null,
+          } satisfies HubConversation;
+        })
+        .filter((conv) => (filterProjectId ? conv.project_id === filterProjectId : true));
+
+      setConversations(mapped);
+    } catch {
+      setConversations([]);
+    } finally {
+      setLoading(false);
     }
-    setLoading(false);
   };
 
   useEffect(() => {
     fetchConversations();
 
     const channel = supabase
-      .channel("staff_wa_conv_list")
-      .on("postgres_changes", {
-        event: "*",
-        schema: "public",
-        table: "staff_whatsapp_conversations",
-      }, () => {
-        fetchConversations();
-      })
+      .channel("crm_wa_conv_list_hub")
+      .on(
+        "postgres_changes",
+        {
+          event: "*",
+          schema: "public",
+          table: "crm_whatsapp_conversations",
+        },
+        () => {
+          fetchConversations();
+        }
+      )
       .subscribe();
 
-    return () => { supabase.removeChannel(channel); };
-  }, [staffId]);
+    return () => {
+      supabase.removeChannel(channel);
+    };
+  }, [staffId, isMaster, filterProjectId]);
 
-  const filtered = conversations.filter((c) => {
+  const filtered = conversations.filter((conversation) => {
     if (!search) return true;
-    const q = search.toLowerCase();
+    const term = search.toLowerCase();
     return (
-      c.contact_name?.toLowerCase().includes(q) ||
-      c.contact_phone.includes(q)
+      conversation.contact_name?.toLowerCase().includes(term) ||
+      conversation.contact_phone.toLowerCase().includes(term)
     );
   });
 
@@ -93,46 +181,51 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           </div>
         ) : (
           <div>
-            {filtered.map((conv) => (
+            {filtered.map((conversation) => (
               <button
-                key={conv.id}
-                onClick={() => onSelect(conv)}
+                key={conversation.id}
+                onClick={() => onSelect(conversation)}
                 className={cn(
                   "w-full flex items-start gap-3 p-3 hover:bg-muted/50 transition-colors text-left border-b border-border/50",
-                  selectedId === conv.id && "bg-muted"
+                  selectedId === conversation.id && "bg-muted"
                 )}
               >
-                <div className="w-10 h-10 rounded-full bg-green-500/20 flex items-center justify-center text-green-600 font-bold text-sm shrink-0">
-                  {(conv.contact_name || conv.contact_phone)[0]?.toUpperCase()}
+                <div className="w-10 h-10 rounded-full bg-primary/10 flex items-center justify-center text-primary font-bold text-sm shrink-0">
+                  {(conversation.contact_name || conversation.contact_phone)[0]?.toUpperCase()}
                 </div>
                 <div className="flex-1 min-w-0">
                   <div className="flex items-center justify-between gap-2">
                     <p className="text-sm font-semibold truncate">
-                      {conv.contact_name || conv.contact_phone}
+                      {conversation.contact_name || conversation.contact_phone}
                     </p>
-                    {conv.last_message_at && (
+                    {conversation.last_message_at && (
                       <span className="text-[10px] text-muted-foreground shrink-0">
-                        {format(new Date(conv.last_message_at), "HH:mm")}
+                        {format(new Date(conversation.last_message_at), "HH:mm")}
                       </span>
                     )}
                   </div>
                   <p className="text-xs text-muted-foreground truncate mt-0.5">
-                    {conv.last_message || "Sem mensagens"}
+                    {conversation.last_message || "Sem mensagens"}
                   </p>
                   <div className="flex items-center gap-1 mt-1 flex-wrap">
-                    {conv.unread_count > 0 && (
-                      <Badge className="bg-green-500 text-white text-[10px] px-1.5 py-0 h-4">
-                        {conv.unread_count}
+                    {conversation.unread_count > 0 && (
+                      <Badge className="text-[10px] px-1.5 py-0 h-4">
+                        {conversation.unread_count}
                       </Badge>
                     )}
-                    {conv.project && (
+                    {conversation.project && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {conv.project.product_name}
+                        {conversation.project.product_name}
                       </Badge>
                     )}
-                    {isMaster && conv.staff && (
+                    {isMaster && conversation.staff && (
                       <Badge variant="secondary" className="text-[10px] px-1.5 py-0 h-4">
-                        {conv.staff.name}
+                        {conversation.staff.name}
+                      </Badge>
+                    )}
+                    {conversation.instance && (
+                      <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
+                        {conversation.instance.display_name || conversation.instance.instance_name}
                       </Badge>
                     )}
                   </div>

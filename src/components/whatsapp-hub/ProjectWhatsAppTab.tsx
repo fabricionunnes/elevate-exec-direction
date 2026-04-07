@@ -1,5 +1,4 @@
-import { useState, useEffect } from "react";
-import { supabase } from "@/integrations/supabase/client";
+import { useState } from "react";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { WhatsAppHubConversationList } from "./WhatsAppHubConversationList";
 import { WhatsAppHubChat } from "./WhatsAppHubChat";
@@ -7,7 +6,7 @@ import { WhatsAppHubContactPanel } from "./WhatsAppHubContactPanel";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft, MessageSquare } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
-import type { HubConversation, StaffInstance } from "@/pages/onboarding-tasks/WhatsAppHubPage";
+import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 
 interface Props {
   projectId: string;
@@ -18,24 +17,7 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
   const { currentStaff, isMaster } = useStaffPermissions();
   const [selectedConversation, setSelectedConversation] = useState<HubConversation | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
-  const [instance, setInstance] = useState<StaffInstance | null>(null);
   const [mobileView, setMobileView] = useState<"list" | "chat" | "contact">("list");
-
-  useEffect(() => {
-    if (currentStaff) {
-      fetchInstance();
-    }
-  }, [currentStaff]);
-
-  const fetchInstance = async () => {
-    if (!currentStaff) return;
-    const { data } = await supabase
-      .from("staff_whatsapp_instances")
-      .select("*")
-      .eq("staff_id", currentStaff.id)
-      .maybeSingle();
-    setInstance(data);
-  };
 
   const handleSelectConversation = (conv: HubConversation) => {
     setSelectedConversation(conv);
@@ -47,10 +29,17 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
       <div className="flex flex-col" style={{ height: "calc(100dvh - 200px)" }}>
         {mobileView !== "list" && (
           <div className="p-2 border-b">
-            <Button variant="ghost" size="sm" onClick={() => {
-              if (mobileView === "contact") setMobileView("chat");
-              else { setMobileView("list"); setSelectedConversation(null); }
-            }}>
+            <Button
+              variant="ghost"
+              size="sm"
+              onClick={() => {
+                if (mobileView === "contact") setMobileView("chat");
+                else {
+                  setMobileView("list");
+                  setSelectedConversation(null);
+                }
+              }}
+            >
               <ArrowLeft className="h-4 w-4 mr-1" /> Voltar
             </Button>
           </div>
@@ -69,7 +58,6 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
             <WhatsAppHubChat
               conversation={selectedConversation}
               staffId={currentStaff?.id || ""}
-              instance={instance}
               onShowContact={() => setMobileView("contact")}
             />
           )}
@@ -86,7 +74,6 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
 
   return (
     <div className="flex border rounded-lg overflow-hidden" style={{ height: "calc(100vh - 280px)", minHeight: 500 }}>
-      {/* Conversation List */}
       <div className="w-80 border-r flex flex-col shrink-0">
         <WhatsAppHubConversationList
           staffId={currentStaff?.id || ""}
@@ -97,13 +84,11 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
         />
       </div>
 
-      {/* Chat */}
       <div className="flex-1 flex flex-col min-w-0">
         {selectedConversation ? (
           <WhatsAppHubChat
             conversation={selectedConversation}
             staffId={currentStaff?.id || ""}
-            instance={instance}
             onShowContact={() => setShowContactPanel(true)}
           />
         ) : (
@@ -117,7 +102,6 @@ export const ProjectWhatsAppTab = ({ projectId }: Props) => {
         )}
       </div>
 
-      {/* Contact Panel */}
       {showContactPanel && selectedConversation && (
         <div className="w-72 border-l flex flex-col shrink-0">
           <div className="flex items-center justify-between p-3 border-b">
