@@ -93,29 +93,17 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
   };
 
   const handleProjectChange = async (value: string) => {
-    if (!conversation.lead_id) {
-      toast.error("Esta conversa ainda não está vinculada a um lead do CRM");
-      return;
-    }
-
     const projectId = value === "none" ? null : value;
     setSelectedProject(value);
 
     try {
-      await supabase
-        .from("onboarding_projects")
-        .update({ crm_lead_id: null })
-        .eq("crm_lead_id", conversation.lead_id)
-        .neq("id", projectId || "00000000-0000-0000-0000-000000000000");
+      // Update project_id directly on the conversation
+      const { error } = await supabase
+        .from("crm_whatsapp_conversations")
+        .update({ project_id: projectId } as any)
+        .eq("id", conversation.id);
 
-      if (projectId) {
-        const { error } = await supabase
-          .from("onboarding_projects")
-          .update({ crm_lead_id: conversation.lead_id })
-          .eq("id", projectId);
-
-        if (error) throw error;
-      }
+      if (error) throw error;
 
       const project = projects.find((item) => item.id === projectId);
       onConversationUpdate({
@@ -124,7 +112,7 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
         project: project ? { id: project.id, product_name: project.name } : null,
       });
 
-      toast.success(projectId ? "Projeto vinculado" : "Vínculo removido");
+      toast.success(projectId ? "Conversa vinculada ao projeto" : "Vínculo removido");
     } catch {
       toast.error("Erro ao vincular projeto");
     }
@@ -210,11 +198,6 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
               )}
             </SelectContent>
           </Select>
-          {!conversation.lead_id && (
-            <p className="text-xs text-muted-foreground">
-              O vínculo com projeto depende desta conversa já estar associada a um lead do CRM.
-            </p>
-          )}
 
           {/* Show projects of selected company inline */}
           {selectedCompany !== "none" && companyProjects.length > 0 && (
