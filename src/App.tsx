@@ -139,6 +139,7 @@ const FinancialModulePage = lazy(() => import("./pages/onboarding-tasks/Financia
 const ApiDocsPage = lazy(() => import("./pages/onboarding-tasks/ApiDocsPage"));
 const AllRecurringChargesPage = lazy(() => import("./pages/onboarding-tasks/AllRecurringChargesPage"));
 const WhatsAppAdminPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppAdminPage"));
+const WhatsAppHubPage = lazy(() => import("./pages/onboarding-tasks/WhatsAppHubPage"));
 const ClientDisparadorPage = lazy(() => import("./pages/disparador/ClientDisparadorPage"));
 const ChurnPredictionPage = lazy(() => import("./pages/onboarding-tasks/ChurnPredictionPage"));
 const CohortRetentionPage = lazy(() => import("./pages/onboarding-tasks/CohortRetentionPage"));
