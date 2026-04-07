@@ -231,8 +231,8 @@ const WhatsAppHubPage = () => {
   }
 
   return (
-    <div className="h-screen flex flex-col bg-background">
-      <div className="flex items-center gap-3 p-4 border-b shrink-0">
+    <div className="h-screen flex flex-col bg-background overflow-hidden">
+      <div className="flex items-center gap-3 p-4 border-b shrink-0 min-w-0">
         <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
