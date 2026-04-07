@@ -380,6 +380,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
               <Route path="/onboarding-tasks/financeiro/recorrencias" element={<AllRecurringChargesPage />} />
               <Route path="/onboarding-tasks/whatsapp" element={<WhatsAppAdminPage />} />
+              <Route path="/onboarding-tasks/whatsapp-hub" element={<WhatsAppHubPage />} />
               <Route path="/onboarding-tasks/churn-prediction" element={<ChurnPredictionPage />} />
               <Route path="/onboarding-tasks/cohort-retention" element={<CohortRetentionPage />} />
               <Route path="/onboarding-tasks/engagement" element={<ConsultantEngagementPage />} />
