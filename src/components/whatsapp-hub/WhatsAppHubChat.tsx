@@ -219,7 +219,8 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
 
       setNewMessage("");
       await fetchMessages();
-    } catch {
+    } catch (err) {
+      console.error("Error sending message:", err);
       toast.error("Erro ao enviar mensagem");
     } finally {
       setSending(false);
