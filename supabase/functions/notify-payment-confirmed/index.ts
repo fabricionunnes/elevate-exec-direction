@@ -40,6 +40,18 @@ Deno.serve(async (req) => {
       });
     }
 
+    const normalizedDescription = (invoice.description || "")
+      .normalize("NFD")
+      .replace(/[\u0300-\u036f]/g, "")
+      .toLowerCase();
+
+    if (normalizedDescription.includes("mansao empreendedora")) {
+      console.log(`[notify-payment-confirmed] Notifications skipped for invoice ${invoice_id} (${invoice.description})`);
+      return new Response(JSON.stringify({ success: true, skipped: true, reason: "notifications_disabled_for_mansao_empreendedora" }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
     // Get bank name if available
     let bankName = "";
     if (invoice.bank_id) {
