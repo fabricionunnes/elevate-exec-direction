@@ -26,7 +26,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       .from("staff_whatsapp_conversations")
       .select(`
         *,
-        project:onboarding_projects(id, name),
+        project:onboarding_projects(id, product_name),
         staff:onboarding_staff(id, name),
         tags:staff_whatsapp_conversation_tags(id, tag:staff_whatsapp_tags(id, name, color))
       `)

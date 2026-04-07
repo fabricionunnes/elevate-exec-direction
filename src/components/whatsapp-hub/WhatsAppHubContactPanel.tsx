@@ -45,10 +45,10 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
   const fetchProjects = async () => {
     const { data } = await supabase
       .from("onboarding_projects")
-      .select("id, name")
+      .select("id, product_name")
       .neq("status", "closed")
-      .order("name");
-    setProjects(data || []);
+      .order("product_name");
+    setProjects((data || []).map((p: any) => ({ id: p.id, name: p.product_name })));
   };
 
   const fetchTags = async () => {
