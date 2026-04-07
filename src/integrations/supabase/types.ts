@@ -14119,6 +14119,7 @@ export type Database = {
           last_message_at: string | null
           lead_id: string | null
           official_instance_id: string | null
+          project_id: string | null
           sector_id: string | null
           status: string | null
           unread_count: number | null
@@ -14134,6 +14135,7 @@ export type Database = {
           last_message_at?: string | null
           lead_id?: string | null
           official_instance_id?: string | null
+          project_id?: string | null
           sector_id?: string | null
           status?: string | null
           unread_count?: number | null
@@ -14149,6 +14151,7 @@ export type Database = {
           last_message_at?: string | null
           lead_id?: string | null
           official_instance_id?: string | null
+          project_id?: string | null
           sector_id?: string | null
           status?: string | null
           unread_count?: number | null
@@ -14188,6 +14191,13 @@ export type Database = {
             columns: ["official_instance_id"]
             isOneToOne: false
             referencedRelation: "whatsapp_official_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_whatsapp_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
           {

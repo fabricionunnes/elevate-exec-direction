@@ -85,6 +85,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           id,
           instance_id,
           lead_id,
+          project_id,
           last_message,
           last_message_at,
           unread_count,
@@ -100,6 +101,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         query = query.in("instance_id", allowedInstanceIds);
       }
 
+      // Filter by project if provided
+      if (filterProjectId) {
+        query = query.eq("project_id", filterProjectId);
+      }
+
       const { data, error } = await query;
       if (error) throw error;
 
@@ -110,35 +116,28 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           staffMap.set(conv.assigned_staff.id, conv.assigned_staff.name);
         }
       });
-      // Also extract from instance display_name as staff association
       const uniqueStaff = Array.from(staffMap.entries()).map(([id, name]) => ({ id, name }));
       setStaffList(uniqueStaff);
 
-      const leadIds = Array.from(
-        new Set((data || []).map((item: any) => item.lead_id).filter(Boolean))
+      // Fetch project names for conversations that have project_id
+      const projectIds = Array.from(
+        new Set((data || []).map((item: any) => item.project_id).filter(Boolean))
       );
 
-      let projectQuery = supabase
-        .from("onboarding_projects")
-        .select("id, product_name, crm_lead_id")
-        .neq("status", "closed");
-
-      if (filterProjectId) {
-        projectQuery = projectQuery.eq("id", filterProjectId);
-      } else if (leadIds.length > 0) {
-        projectQuery = projectQuery.in("crm_lead_id", leadIds);
+      let projectMap = new Map<string, { id: string; product_name: string }>();
+      if (projectIds.length > 0) {
+        const { data: projects } = await supabase
+          .from("onboarding_projects")
+          .select("id, product_name")
+          .in("id", projectIds);
+        (projects || []).forEach((p: any) => {
+          projectMap.set(p.id, { id: p.id, product_name: p.product_name });
+        });
       }
-
-      const { data: projects } = await projectQuery;
-      const projectByLeadId = new Map(
-        (projects || [])
-          .filter((project: any) => project.crm_lead_id)
-          .map((project: any) => [project.crm_lead_id, { id: project.id, product_name: project.product_name }])
-      );
 
       const mapped = (data || [])
         .map((conv: any) => {
-          const project = conv.lead_id ? projectByLeadId.get(conv.lead_id) || null : null;
+          const project = conv.project_id ? projectMap.get(conv.project_id) || null : null;
           return {
             id: conv.id,
             instance_id: conv.instance_id,
@@ -146,7 +145,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
             contact_name: conv.contact?.name || null,
             contact_phone: conv.contact?.phone || "",
             contact_photo_url: conv.contact?.profile_picture_url || null,
-            project_id: project?.id || null,
+            project_id: conv.project_id || null,
             last_message: conv.last_message || null,
             last_message_at: conv.last_message_at || null,
             unread_count: conv.unread_count || 0,
@@ -156,8 +155,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
             staff: conv.assigned_staff || null,
             instance: conv.instance || null,
           } satisfies HubConversation;
-        })
-        .filter((conv) => (filterProjectId ? conv.project_id === filterProjectId : true));
+        });
 
       setConversations(mapped);
     } catch {
