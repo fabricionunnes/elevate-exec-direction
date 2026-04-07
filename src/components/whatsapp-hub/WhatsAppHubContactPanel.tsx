@@ -215,6 +215,32 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
               O vínculo com projeto depende desta conversa já estar associada a um lead do CRM.
             </p>
           )}
+
+          {/* Show projects of selected company inline */}
+          {selectedCompany !== "none" && companyProjects.length > 0 && (
+            <div className="mt-2 rounded-lg border divide-y">
+              <div className="px-3 py-1.5 text-xs font-medium text-muted-foreground bg-muted/50">
+                Projetos desta empresa ({companyProjects.length})
+              </div>
+              {companyProjects.map((project) => (
+                <button
+                  key={project.id}
+                  onClick={() => handleProjectChange(project.id)}
+                  className={`w-full text-left px-3 py-2 text-sm hover:bg-muted/50 transition-colors flex items-center justify-between ${
+                    selectedProject === project.id ? "bg-primary/5 font-medium text-primary" : ""
+                  }`}
+                >
+                  <span className="truncate">{project.name}</span>
+                  {selectedProject === project.id && (
+                    <span className="text-xs text-primary shrink-0 ml-2">✓ vinculado</span>
+                  )}
+                </button>
+              ))}
+            </div>
+          )}
+          {selectedCompany !== "none" && companyProjects.length === 0 && (
+            <p className="text-xs text-muted-foreground mt-1">Nenhum projeto ativo nesta empresa.</p>
+          )}
         </div>
 
         {conversation.project && (
