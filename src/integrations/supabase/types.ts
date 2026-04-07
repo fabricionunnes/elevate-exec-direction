@@ -28332,6 +28332,322 @@ export type Database = {
           },
         ]
       }
+      staff_whatsapp_access_grants: {
+        Row: {
+          created_at: string
+          granted_by: string | null
+          grantee_staff_id: string
+          granter_staff_id: string
+          id: string
+          is_active: boolean
+        }
+        Insert: {
+          created_at?: string
+          granted_by?: string | null
+          grantee_staff_id: string
+          granter_staff_id: string
+          id?: string
+          is_active?: boolean
+        }
+        Update: {
+          created_at?: string
+          granted_by?: string | null
+          grantee_staff_id?: string
+          granter_staff_id?: string
+          id?: string
+          is_active?: boolean
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_access_grants_granted_by_fkey"
+            columns: ["granted_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_access_grants_grantee_staff_id_fkey"
+            columns: ["grantee_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_access_grants_granter_staff_id_fkey"
+            columns: ["granter_staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_connection_logs: {
+        Row: {
+          created_at: string
+          details: string | null
+          event_type: string
+          id: string
+          instance_id: string
+          staff_id: string
+        }
+        Insert: {
+          created_at?: string
+          details?: string | null
+          event_type: string
+          id?: string
+          instance_id: string
+          staff_id: string
+        }
+        Update: {
+          created_at?: string
+          details?: string | null
+          event_type?: string
+          id?: string
+          instance_id?: string
+          staff_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_connection_logs_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "staff_whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_connection_logs_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_conversation_tags: {
+        Row: {
+          conversation_id: string
+          created_at: string
+          id: string
+          tag_id: string
+        }
+        Insert: {
+          conversation_id: string
+          created_at?: string
+          id?: string
+          tag_id: string
+        }
+        Update: {
+          conversation_id?: string
+          created_at?: string
+          id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_conversation_tags_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "staff_whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_conversation_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "staff_whatsapp_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_conversations: {
+        Row: {
+          contact_name: string | null
+          contact_phone: string
+          contact_photo_url: string | null
+          created_at: string
+          id: string
+          instance_id: string | null
+          last_message: string | null
+          last_message_at: string | null
+          project_id: string | null
+          staff_id: string
+          status: string
+          unread_count: number
+          updated_at: string
+        }
+        Insert: {
+          contact_name?: string | null
+          contact_phone: string
+          contact_photo_url?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          project_id?: string | null
+          staff_id: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Update: {
+          contact_name?: string | null
+          contact_phone?: string
+          contact_photo_url?: string | null
+          created_at?: string
+          id?: string
+          instance_id?: string | null
+          last_message?: string | null
+          last_message_at?: string | null
+          project_id?: string | null
+          staff_id?: string
+          status?: string
+          unread_count?: number
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_conversations_instance_id_fkey"
+            columns: ["instance_id"]
+            isOneToOne: false
+            referencedRelation: "staff_whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_conversations_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_conversations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_instances: {
+        Row: {
+          created_at: string
+          display_name: string | null
+          id: string
+          instance_name: string
+          phone_number: string | null
+          qr_code: string | null
+          staff_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          instance_name: string
+          phone_number?: string | null
+          qr_code?: string | null
+          staff_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          created_at?: string
+          display_name?: string | null
+          id?: string
+          instance_name?: string
+          phone_number?: string | null
+          qr_code?: string | null
+          staff_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_instances_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_messages: {
+        Row: {
+          content: string | null
+          conversation_id: string
+          created_at: string
+          direction: string
+          id: string
+          media_type: string | null
+          media_url: string | null
+          remote_message_id: string | null
+          staff_id: string
+          status: string
+        }
+        Insert: {
+          content?: string | null
+          conversation_id: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          remote_message_id?: string | null
+          staff_id: string
+          status?: string
+        }
+        Update: {
+          content?: string | null
+          conversation_id?: string
+          created_at?: string
+          direction?: string
+          id?: string
+          media_type?: string | null
+          media_url?: string | null
+          remote_message_id?: string | null
+          staff_id?: string
+          status?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_whatsapp_messages_conversation_id_fkey"
+            columns: ["conversation_id"]
+            isOneToOne: false
+            referencedRelation: "staff_whatsapp_conversations"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "staff_whatsapp_messages_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      staff_whatsapp_tags: {
+        Row: {
+          color: string
+          created_at: string
+          id: string
+          name: string
+        }
+        Insert: {
+          color?: string
+          created_at?: string
+          id?: string
+          name: string
+        }
+        Update: {
+          color?: string
+          created_at?: string
+          id?: string
+          name?: string
+        }
+        Relationships: []
+      }
       support_room_sessions: {
         Row: {
           attended_at: string | null
@@ -29978,10 +30294,9 @@ export type Database = {
         Args: { pres_staff_id: string }
         Returns: boolean
       }
-      is_staff_admin_or_master: {
-        Args: { check_user_id: string }
-        Returns: boolean
-      }
+      is_staff_admin_or_master:
+        | { Args: never; Returns: boolean }
+        | { Args: { check_user_id: string }; Returns: boolean }
       is_tenant_admin: { Args: { check_tenant_id: string }; Returns: boolean }
       is_tenant_member: { Args: { check_tenant_id: string }; Returns: boolean }
       merge_crm_leads: {
