@@ -39,18 +39,25 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
 
   useEffect(() => {
     setSelectedProject(conversation.project_id || "none");
+    setSelectedCompany("none");
+    setCompanySearch("");
+    setProjectSearch("");
     fetchData();
   }, [conversation.id, conversation.project_id]);
 
   // When projects load, auto-select company from current project
   useEffect(() => {
-    if (conversation.project_id && projects.length > 0) {
+    if (projects.length > 0 && conversation.project_id) {
       const currentProject = projects.find((p) => p.id === conversation.project_id);
       if (currentProject?.company_id) {
         setSelectedCompany(currentProject.company_id);
+      } else {
+        setSelectedCompany("none");
       }
+    } else if (projects.length > 0 && !conversation.project_id) {
+      setSelectedCompany("none");
     }
-  }, [conversation.project_id, projects]);
+  }, [conversation.id, conversation.project_id, projects]);
 
   const fetchData = async () => {
     const [companiesRes, projectsRes] = await Promise.all([
