@@ -107,7 +107,8 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           assigned_staff:onboarding_staff(id, name),
           instance:whatsapp_instances(id, instance_name, display_name, status)
         `)
-        .order("last_message_at", { ascending: false, nullsFirst: false });
+        .order("last_message_at", { ascending: false, nullsFirst: false })
+        .range(0, MAX_CONVERSATIONS_FETCH - 1);
 
       if (!isMaster) {
         query = query.in("instance_id", allowedInstanceIds);
