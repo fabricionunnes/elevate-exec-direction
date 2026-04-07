@@ -76,11 +76,16 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
     setProjects((projectsRes.data || []).map((p: any) => ({ id: p.id, name: p.product_name, company_id: p.company_id || p.onboarding_company_id })));
   };
 
+  const companiesWithProjects = useMemo(() => {
+    const companyIds = new Set(projects.map((p) => p.company_id).filter(Boolean));
+    return companies.filter((c) => companyIds.has(c.id));
+  }, [companies, projects]);
+
   const filteredCompanies = useMemo(() => {
-    if (!companySearch) return companies;
+    if (!companySearch) return companiesWithProjects;
     const term = companySearch.toLowerCase();
-    return companies.filter((c) => c.name.toLowerCase().includes(term));
-  }, [companies, companySearch]);
+    return companiesWithProjects.filter((c) => c.name.toLowerCase().includes(term));
+  }, [companiesWithProjects, companySearch]);
 
   const companyProjects = useMemo(() => {
     if (selectedCompany === "none") return projects;
