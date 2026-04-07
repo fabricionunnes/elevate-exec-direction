@@ -263,11 +263,27 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         }
       }
 
+      // Project filter
+      if (filterProject !== "all") {
+        if (filterProject === "with") {
+          if (!conversation.project_id) return false;
+        } else if (filterProject === "without") {
+          if (conversation.project_id) return false;
+        }
+      }
+
+      // Type filter (group vs individual)
+      if (filterType !== "all") {
+        const isGroup = conversation.contact_phone.includes("-");
+        if (filterType === "group" && !isGroup) return false;
+        if (filterType === "individual" && isGroup) return false;
+      }
+
       return true;
     });
-  }, [conversations, search, filterInstance, filterStaff]);
+  }, [conversations, search, filterInstance, filterStaff, filterProject, filterType]);
 
-  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all";
+  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all" || filterProject !== "all" || filterType !== "all";
 
   return (
     <div className="flex flex-col h-full">
