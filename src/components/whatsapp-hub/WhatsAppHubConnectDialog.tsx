@@ -41,7 +41,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
       const { data: funcData, error: funcError } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "create-instance",
-          instance_name: cleanName,
+          instanceName: cleanName,
         },
       });
 
@@ -86,7 +86,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
       const { data, error } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "qr-code",
-          instance_name: instance.instance_name,
+          instanceName: instance.instance_name,
         },
       });
 
@@ -116,7 +116,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
       const { data, error } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "status",
-          instance_name: instance.instance_name,
+          instanceName: instance.instance_name,
         },
       });
 
@@ -146,7 +146,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
 
     try {
       await supabase.functions.invoke("evolution-api", {
-        body: { action: "delete-instance", instance_name: instance.instance_name },
+        body: { action: "delete-instance", instanceName: instance.instance_name },
       });
     } catch (e) {
       // Continue even if API fails
