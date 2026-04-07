@@ -110,15 +110,6 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       const { data, error } = await query;
       if (error) throw error;
 
-      // Extract unique staff from conversations
-      const staffMap = new Map<string, string>();
-      (data || []).forEach((conv: any) => {
-        if (conv.assigned_staff?.id) {
-          staffMap.set(conv.assigned_staff.id, conv.assigned_staff.name);
-        }
-      });
-      const uniqueStaff = Array.from(staffMap.entries()).map(([id, name]) => ({ id, name }));
-      setStaffList(uniqueStaff);
 
       // Fetch project names for conversations that have project_id
       const projectIds = Array.from(
