@@ -809,11 +809,18 @@ Deno.serve(async (req) => {
           document: 'document',
         };
 
+        // Detect group JIDs
+        const phoneDigits = String(phone || '').replace(/\D/g, '');
+        const isGroup = phoneDigits.startsWith('120363') && phoneDigits.length > 15;
+        const numberToSend = isGroup 
+          ? `${phoneDigits}@g.us` 
+          : (phone.includes('@') ? phone : `${phoneDigits}@s.whatsapp.net`);
+
         const response = await fetch(`${apiBaseUrl}/message/sendMedia/${instance.instance_name}`, {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
-            number: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            number: numberToSend,
             mediatype: mediatypeMap[mediaType] || 'document',
             media: mediaUrl,
             caption: caption || '',
