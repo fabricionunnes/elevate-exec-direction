@@ -34,7 +34,35 @@ interface StaffOption {
   name: string;
 }
 
+interface WhatsAppGroup {
+  id: string;
+  subject: string;
+  creation?: number;
+}
+
 const MAX_CONVERSATIONS_FETCH = 5000;
+
+const normalizeGroupPhone = (groupId: string) => String(groupId || "").replace(/@g\.us$/i, "").trim();
+
+const mapFetchedGroups = (data: any): WhatsAppGroup[] => {
+  if (Array.isArray(data)) {
+    return data.map((group: any) => ({
+      id: group.id || group.jid || group.groupId,
+      subject: group.subject || group.name || group.groupName || "Grupo sem nome",
+      creation: group.creation,
+    })).filter((group) => group.id);
+  }
+
+  if (Array.isArray(data?.groups)) {
+    return data.groups.map((group: any) => ({
+      id: group.id || group.jid || group.groupId,
+      subject: group.subject || group.name || group.groupName || "Grupo sem nome",
+      creation: group.creation,
+    })).filter((group) => group.id);
+  }
+
+  return [];
+};
 
 export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
@@ -93,12 +121,119 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     setStaffList((data || []).map((s: any) => ({ id: s.id, name: s.name })));
   };
 
-  const fetchConversations = async () => {
+  const syncMissingGroupConversations = async (instanceIds: string[]) => {
+    if (instanceIds.length === 0) return;
+
+    const groupResponses = await Promise.allSettled(
+      instanceIds.map(async (instanceId) => {
+        const { data, error } = await supabase.functions.invoke("evolution-api", {
+          body: {
+            action: "fetchGroups",
+            instanceId,
+          },
+        });
+
+        if (error) throw error;
+
+        return mapFetchedGroups(data).map((group) => ({
+          instanceId,
+          phone: normalizeGroupPhone(group.id),
+          name: group.subject,
+          createdAt: group.creation
+            ? new Date(group.creation * 1000).toISOString()
+            : new Date().toISOString(),
+        }));
+      })
+    );
+
+    const groups = groupResponses.flatMap((result) =>
+      result.status === "fulfilled" ? result.value.filter((group) => group.phone) : []
+    );
+
+    if (groups.length === 0) return;
+
+    const uniquePhones = Array.from(new Set(groups.map((group) => group.phone)));
+    const { data: existingContacts } = await supabase
+      .from("crm_whatsapp_contacts")
+      .select("id, phone, name")
+      .in("phone", uniquePhones);
+
+    const contactMap = new Map((existingContacts || []).map((contact: any) => [contact.phone, contact]));
+
+    const contactsToInsert = groups
+      .filter((group) => !contactMap.has(group.phone))
+      .map((group) => ({
+        phone: group.phone,
+        name: group.name,
+      }));
+
+    if (contactsToInsert.length > 0) {
+      const { data: insertedContacts, error: insertContactsError } = await supabase
+        .from("crm_whatsapp_contacts")
+        .insert(contactsToInsert)
+        .select("id, phone, name");
+
+      if (!insertContactsError) {
+        (insertedContacts || []).forEach((contact: any) => contactMap.set(contact.phone, contact));
+      }
+    }
+
+    const contactsToRename = groups.filter((group) => {
+      const existingContact = contactMap.get(group.phone);
+      return existingContact && (!existingContact.name || existingContact.name === existingContact.phone) && group.name;
+    });
+
+    await Promise.all(
+      contactsToRename.map((group) =>
+        supabase
+          .from("crm_whatsapp_contacts")
+          .update({ name: group.name })
+          .eq("id", contactMap.get(group.phone)?.id)
+      )
+    );
+
+    const contactIds = Array.from(new Set(groups.map((group) => contactMap.get(group.phone)?.id).filter(Boolean)));
+    if (contactIds.length === 0) return;
+
+    const { data: existingConversations } = await supabase
+      .from("crm_whatsapp_conversations")
+      .select("id, instance_id, contact_id")
+      .in("instance_id", instanceIds)
+      .in("contact_id", contactIds);
+
+    const existingConversationKeys = new Set(
+      (existingConversations || []).map((conversation: any) => `${conversation.instance_id}:${conversation.contact_id}`)
+    );
+
+    const conversationsToInsert = groups
+      .map((group) => ({
+        instance_id: group.instanceId,
+        contact_id: contactMap.get(group.phone)?.id,
+        status: "open",
+        last_message: "[Grupo sincronizado]",
+        last_message_at: group.createdAt,
+      }))
+      .filter(
+        (conversation) =>
+          conversation.contact_id &&
+          !existingConversationKeys.has(`${conversation.instance_id}:${conversation.contact_id}`)
+      );
+
+    if (conversationsToInsert.length > 0) {
+      await supabase.from("crm_whatsapp_conversations").insert(conversationsToInsert as any);
+    }
+  };
+
+  const fetchConversations = async (syncGroups = false) => {
     if (!staffId) return;
     setLoading(true);
 
     try {
       const { allowedInstanceIds, allowedOfficialInstanceIds } = await fetchAllowedAccess();
+
+      if (syncGroups) {
+        await syncMissingGroupConversations(allowedInstanceIds);
+      }
 
       let query = supabase
         .from("crm_whatsapp_conversations")
@@ -189,7 +324,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
 
   useEffect(() => {
     fetchAllStaff();
-    fetchConversations();
+    fetchConversations(true);
 
     const channel = supabase
       .channel("crm_wa_conv_list_hub")
