@@ -3,10 +3,11 @@ import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Send, Paperclip, Image, User, Check, CheckCheck } from "lucide-react";
+import { Send, Paperclip, Image, Mic, MicOff, User, Check, CheckCheck, ClipboardCheck, FileText } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import { toast } from "sonner";
+import { CreateActionFromConversation } from "./CreateActionFromConversation";
 import type { HubConversation, HubMessage, StaffInstance } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 
 interface Props {
@@ -21,7 +22,13 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [showActionDialog, setShowActionDialog] = useState(false);
+  const [isRecording, setIsRecording] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
+  const imageInputRef = useRef<HTMLInputElement>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const chunksRef = useRef<Blob[]>([]);
 
   const fetchMessages = async () => {
     setLoading(true);
@@ -37,7 +44,6 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
   useEffect(() => {
     fetchMessages();
 
-    // Mark as read
     if (conversation.unread_count > 0) {
       supabase
         .from("staff_whatsapp_conversations")
@@ -76,31 +82,21 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
 
     setSending(true);
     try {
-      // Save message locally
-      const { error } = await supabase
-        .from("staff_whatsapp_messages")
-        .insert({
-          conversation_id: conversation.id,
-          staff_id: staffId,
-          content: newMessage.trim(),
-          direction: "outgoing",
-          status: "sent",
-        });
+      await supabase.from("staff_whatsapp_messages").insert({
+        conversation_id: conversation.id,
+        staff_id: staffId,
+        content: newMessage.trim(),
+        direction: "outgoing",
+        status: "sent",
+      });
 
-      if (error) throw error;
+      await supabase.from("staff_whatsapp_conversations").update({
+        last_message: newMessage.trim(),
+        last_message_at: new Date().toISOString(),
+      }).eq("id", conversation.id);
 
-      // Update conversation
-      await supabase
-        .from("staff_whatsapp_conversations")
-        .update({
-          last_message: newMessage.trim(),
-          last_message_at: new Date().toISOString(),
-        })
-        .eq("id", conversation.id);
-
-      // Send via Evolution API
       try {
-        const { data: funcData, error: funcError } = await supabase.functions.invoke("evolution-api", {
+        await supabase.functions.invoke("evolution-api", {
           body: {
             action: "send_text",
             instance_name: instance.instance_name,
@@ -108,9 +104,8 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
             message: newMessage.trim(),
           },
         });
-        if (funcError) console.warn("Evolution send error:", funcError);
       } catch (e) {
-        console.warn("Failed to send via API, message saved locally:", e);
+        console.warn("Failed to send via API:", e);
       }
 
       setNewMessage("");
@@ -118,6 +113,107 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
       toast.error("Erro ao enviar mensagem");
     } finally {
       setSending(false);
+    }
+  };
+
+  const sendMediaMessage = async (file: File, mediaType: string) => {
+    if (!instance || instance.status !== "connected") {
+      toast.error("WhatsApp não está conectado");
+      return;
+    }
+
+    setSending(true);
+    try {
+      // Upload to storage
+      const fileName = `whatsapp/${staffId}/${Date.now()}_${file.name}`;
+      const { data: uploadData, error: uploadError } = await supabase.storage
+        .from("whatsapp-media")
+        .upload(fileName, file);
+
+      let mediaUrl = "";
+      if (!uploadError && uploadData) {
+        const { data: urlData } = supabase.storage.from("whatsapp-media").getPublicUrl(fileName);
+        mediaUrl = urlData.publicUrl;
+      }
+
+      await supabase.from("staff_whatsapp_messages").insert({
+        conversation_id: conversation.id,
+        staff_id: staffId,
+        content: file.name,
+        media_url: mediaUrl,
+        media_type: mediaType,
+        direction: "outgoing",
+        status: "sent",
+      });
+
+      await supabase.from("staff_whatsapp_conversations").update({
+        last_message: `📎 ${file.name}`,
+        last_message_at: new Date().toISOString(),
+      }).eq("id", conversation.id);
+
+      // Send via API
+      try {
+        const action = mediaType.startsWith("image") ? "send_media" : 
+                       mediaType.startsWith("audio") ? "send_media" : "send_media";
+        await supabase.functions.invoke("evolution-api", {
+          body: {
+            action,
+            instance_name: instance.instance_name,
+            phone: conversation.contact_phone.replace(/\D/g, ""),
+            media_url: mediaUrl,
+            media_type: mediaType,
+            file_name: file.name,
+          },
+        });
+      } catch (e) {
+        console.warn("Failed to send media via API:", e);
+      }
+
+      toast.success("Arquivo enviado");
+    } catch (err) {
+      toast.error("Erro ao enviar arquivo");
+    } finally {
+      setSending(false);
+    }
+  };
+
+  const handleFileSelect = (e: React.ChangeEvent<HTMLInputElement>, type: string) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      sendMediaMessage(file, type === "image" ? file.type : file.type);
+    }
+    e.target.value = "";
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      chunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) chunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const blob = new Blob(chunksRef.current, { type: "audio/webm" });
+        const file = new File([blob], `audio_${Date.now()}.webm`, { type: "audio/webm" });
+        sendMediaMessage(file, "audio/webm");
+        stream.getTracks().forEach(t => t.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      toast.error("Não foi possível acessar o microfone");
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
     }
   };
 
@@ -134,7 +230,10 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
             <p className="text-xs text-muted-foreground">{conversation.contact_phone}</p>
           </div>
         </button>
-        <div className="ml-auto">
+        <div className="ml-auto flex items-center gap-1">
+          <Button variant="ghost" size="icon" onClick={() => setShowActionDialog(true)} title="Criar ação/tarefa">
+            <ClipboardCheck className="h-4 w-4" />
+          </Button>
           <Button variant="ghost" size="icon" onClick={onShowContact}>
             <User className="h-4 w-4" />
           </Button>
@@ -151,10 +250,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
           messages.map((msg) => (
             <div
               key={msg.id}
-              className={cn(
-                "flex",
-                msg.direction === "outgoing" ? "justify-end" : "justify-start"
-              )}
+              className={cn("flex", msg.direction === "outgoing" ? "justify-end" : "justify-start")}
             >
               <div
                 className={cn(
@@ -168,14 +264,18 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
                   <div className="mb-1">
                     {msg.media_type?.startsWith("image") ? (
                       <img src={msg.media_url} alt="" className="rounded max-w-full max-h-48 object-cover" />
+                    ) : msg.media_type?.startsWith("audio") ? (
+                      <audio controls className="max-w-full" src={msg.media_url} />
                     ) : (
-                      <a href={msg.media_url} target="_blank" rel="noopener noreferrer" className="text-xs underline">
-                        📎 Arquivo
+                      <a href={msg.media_url} target="_blank" rel="noopener noreferrer" className="flex items-center gap-1 text-xs underline">
+                        <FileText className="h-3 w-3" /> {msg.content || "Arquivo"}
                       </a>
                     )}
                   </div>
                 )}
-                {msg.content && <p className="whitespace-pre-wrap break-words">{msg.content}</p>}
+                {msg.content && !msg.media_type?.startsWith("audio") && (
+                  <p className="whitespace-pre-wrap break-words">{msg.content}</p>
+                )}
                 <div className={cn(
                   "flex items-center gap-1 mt-1",
                   msg.direction === "outgoing" ? "justify-end" : "justify-start"
@@ -200,24 +300,58 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
         )}
       </div>
 
+      {/* Hidden file inputs */}
+      <input ref={imageInputRef} type="file" accept="image/*" className="hidden" onChange={(e) => handleFileSelect(e, "image")} />
+      <input ref={fileInputRef} type="file" className="hidden" onChange={(e) => handleFileSelect(e, "file")} />
+
       {/* Input */}
       <div className="p-3 border-t bg-background shrink-0">
         <form
           onSubmit={(e) => { e.preventDefault(); handleSend(); }}
-          className="flex items-center gap-2"
+          className="flex items-center gap-1.5"
         >
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => imageInputRef.current?.click()} disabled={sending}>
+            <Image className="h-4 w-4" />
+          </Button>
+          <Button type="button" variant="ghost" size="icon" className="shrink-0" onClick={() => fileInputRef.current?.click()} disabled={sending}>
+            <Paperclip className="h-4 w-4" />
+          </Button>
+          <Button
+            type="button"
+            variant="ghost"
+            size="icon"
+            className={cn("shrink-0", isRecording && "text-red-500")}
+            onClick={isRecording ? stopRecording : startRecording}
+            disabled={sending}
+          >
+            {isRecording ? <MicOff className="h-4 w-4" /> : <Mic className="h-4 w-4" />}
+          </Button>
           <Input
             placeholder="Digite uma mensagem..."
             value={newMessage}
             onChange={(e) => setNewMessage(e.target.value)}
             className="flex-1"
-            disabled={sending}
+            disabled={sending || isRecording}
           />
-          <Button type="submit" size="icon" disabled={sending || !newMessage.trim()} className="bg-green-500 hover:bg-green-600 shrink-0">
+          <Button type="submit" size="icon" disabled={sending || !newMessage.trim() || isRecording} className="bg-green-500 hover:bg-green-600 shrink-0">
             <Send className="h-4 w-4" />
           </Button>
         </form>
+        {isRecording && (
+          <div className="flex items-center gap-2 mt-2 text-sm text-red-500">
+            <div className="w-2 h-2 rounded-full bg-red-500 animate-pulse" />
+            Gravando... Clique no ícone para parar
+          </div>
+        )}
       </div>
+
+      {/* Create Action Dialog */}
+      <CreateActionFromConversation
+        open={showActionDialog}
+        onOpenChange={setShowActionDialog}
+        conversation={conversation}
+        staffId={staffId}
+      />
     </div>
   );
 };

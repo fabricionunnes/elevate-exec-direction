@@ -13,16 +13,17 @@ interface Props {
   isMaster: boolean;
   onSelect: (conv: HubConversation) => void;
   selectedId?: string;
+  filterProjectId?: string;
 }
 
-export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId }: Props) => {
+export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
 
   const fetchConversations = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("staff_whatsapp_conversations")
       .select(`
         *,
@@ -32,6 +33,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       `)
       .order("last_message_at", { ascending: false, nullsFirst: false });
 
+    if (filterProjectId) {
+      query = query.eq("project_id", filterProjectId);
+    }
+
+    const { data, error } = await query;
     if (!error && data) {
       setConversations(data as unknown as HubConversation[]);
     }

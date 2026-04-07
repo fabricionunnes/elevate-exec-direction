@@ -3,13 +3,15 @@ import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { Button } from "@/components/ui/button";
-import { ArrowLeft, Wifi, WifiOff, Settings2, Phone } from "lucide-react";
+import { ArrowLeft, Wifi, WifiOff, Settings2, MessageSquare, Users } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useStaffPermissions } from "@/hooks/useStaffPermissions";
 import { WhatsAppHubConversationList } from "@/components/whatsapp-hub/WhatsAppHubConversationList";
 import { WhatsAppHubChat } from "@/components/whatsapp-hub/WhatsAppHubChat";
 import { WhatsAppHubContactPanel } from "@/components/whatsapp-hub/WhatsAppHubContactPanel";
 import { WhatsAppHubConnectDialog } from "@/components/whatsapp-hub/WhatsAppHubConnectDialog";
+import { WhatsAppBulkSendDialog } from "@/components/whatsapp-hub/WhatsAppBulkSendDialog";
+import { WhatsAppNotificationBadge } from "@/components/whatsapp-hub/WhatsAppNotificationBadge";
 import { toast } from "sonner";
 
 export interface StaffInstance {
@@ -59,6 +61,7 @@ const WhatsAppHubPage = () => {
   const [selectedConversation, setSelectedConversation] = useState<HubConversation | null>(null);
   const [showContactPanel, setShowContactPanel] = useState(false);
   const [showConnectDialog, setShowConnectDialog] = useState(false);
+  const [showBulkSend, setShowBulkSend] = useState(false);
   const [instance, setInstance] = useState<StaffInstance | null>(null);
   const [loadingInstance, setLoadingInstance] = useState(true);
   const [mobileView, setMobileView] = useState<"list" | "chat" | "contact">("list");
@@ -106,7 +109,6 @@ const WhatsAppHubPage = () => {
   if (isMobile) {
     return (
       <div className="h-[100dvh] flex flex-col bg-background">
-        {/* Mobile Header */}
         <div className="flex items-center gap-2 p-3 border-b bg-background shrink-0">
           {mobileView !== "list" && (
             <Button variant="ghost" size="icon" onClick={handleBack}>
@@ -121,7 +123,7 @@ const WhatsAppHubPage = () => {
           <div className="flex-1 min-w-0">
             {mobileView === "list" && (
               <div className="flex items-center gap-2">
-                <Phone className="h-5 w-5 text-green-500" />
+                <MessageSquare className="h-5 w-5 text-green-500" />
                 <h1 className="text-lg font-bold truncate">WhatsApp</h1>
               </div>
             )}
@@ -141,6 +143,11 @@ const WhatsAppHubPage = () => {
             )}
           </div>
           <div className="flex items-center gap-1">
+            {mobileView === "list" && (
+              <Button variant="ghost" size="icon" onClick={() => setShowBulkSend(true)}>
+                <Users className="h-4 w-4" />
+              </Button>
+            )}
             {isConnected ? (
               <Wifi className="h-4 w-4 text-green-500" />
             ) : (
@@ -152,7 +159,6 @@ const WhatsAppHubPage = () => {
           </div>
         </div>
 
-        {/* Mobile Content */}
         <div className="flex-1 overflow-hidden">
           {mobileView === "list" && (
             <WhatsAppHubConversationList
@@ -185,6 +191,12 @@ const WhatsAppHubPage = () => {
           instance={instance}
           onInstanceUpdate={fetchInstance}
         />
+        <WhatsAppBulkSendDialog
+          open={showBulkSend}
+          onOpenChange={setShowBulkSend}
+          staffId={currentStaff?.id || ""}
+          instance={instance}
+        />
       </div>
     );
   }
@@ -192,17 +204,20 @@ const WhatsAppHubPage = () => {
   // Desktop layout
   return (
     <div className="h-screen flex flex-col bg-background">
-      {/* Header */}
       <div className="flex items-center gap-3 p-4 border-b shrink-0">
         <Button variant="ghost" size="icon" onClick={() => navigate("/onboarding-tasks")}>
           <ArrowLeft className="h-5 w-5" />
         </Button>
         <NexusHeader showTitle={false} />
         <div className="flex items-center gap-2">
-          <Phone className="h-5 w-5 text-green-500" />
+          <MessageSquare className="h-5 w-5 text-green-500" />
           <h1 className="text-xl font-bold">WhatsApp Hub</h1>
         </div>
         <div className="ml-auto flex items-center gap-2">
+          <Button variant="outline" size="sm" onClick={() => setShowBulkSend(true)}>
+            <Users className="h-4 w-4 mr-1" />
+            Envio em Massa
+          </Button>
           <div className="flex items-center gap-1.5 text-sm">
             {isConnected ? (
               <>
@@ -223,9 +238,7 @@ const WhatsAppHubPage = () => {
         </div>
       </div>
 
-      {/* 3-Column Layout */}
       <div className="flex-1 flex overflow-hidden">
-        {/* Column 1: Conversation List */}
         <div className="w-80 xl:w-96 border-r flex flex-col shrink-0">
           <WhatsAppHubConversationList
             staffId={currentStaff?.id || ""}
@@ -235,7 +248,6 @@ const WhatsAppHubPage = () => {
           />
         </div>
 
-        {/* Column 2: Chat */}
         <div className="flex-1 flex flex-col min-w-0">
           {selectedConversation ? (
             <WhatsAppHubChat
@@ -247,7 +259,7 @@ const WhatsAppHubPage = () => {
           ) : (
             <div className="flex-1 flex items-center justify-center text-muted-foreground">
               <div className="text-center">
-                <Phone className="h-16 w-16 mx-auto mb-4 opacity-20" />
+                <MessageSquare className="h-16 w-16 mx-auto mb-4 opacity-20" />
                 <p className="text-lg font-medium">Selecione uma conversa</p>
                 <p className="text-sm">Escolha uma conversa na lista à esquerda</p>
               </div>
@@ -255,7 +267,6 @@ const WhatsAppHubPage = () => {
           )}
         </div>
 
-        {/* Column 3: Contact Panel */}
         {showContactPanel && selectedConversation && (
           <div className="w-80 border-l flex flex-col shrink-0">
             <div className="flex items-center justify-between p-3 border-b">
@@ -276,6 +287,12 @@ const WhatsAppHubPage = () => {
         staffId={currentStaff?.id || ""}
         instance={instance}
         onInstanceUpdate={fetchInstance}
+      />
+      <WhatsAppBulkSendDialog
+        open={showBulkSend}
+        onOpenChange={setShowBulkSend}
+        staffId={currentStaff?.id || ""}
+        instance={instance}
       />
     </div>
   );
