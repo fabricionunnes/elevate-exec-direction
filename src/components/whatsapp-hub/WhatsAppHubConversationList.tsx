@@ -46,20 +46,30 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [staffSearch, setStaffSearch] = useState("");
 
-  const fetchAllowedInstanceIds = async () => {
+  const fetchAllowedAccess = async () => {
     if (isMaster) {
       const { data } = await supabase.from("whatsapp_instances").select("id, instance_name, display_name");
       setInstances((data || []).map((i: any) => ({ id: i.id, display_name: i.display_name, instance_name: i.instance_name })));
-      return (data || []).map((item: any) => item.id);
+      return {
+        allowedInstanceIds: (data || []).map((item: any) => item.id),
+        allowedOfficialInstanceIds: [] as string[],
+      };
     }
 
-    const { data } = await supabase
-      .from("whatsapp_instance_access")
-      .select("instance_id, instance:whatsapp_instances(id, instance_name, display_name)")
-      .eq("staff_id", staffId)
-      .eq("can_view", true);
+    const [{ data: evolutionAccess }, { data: officialAccess }] = await Promise.all([
+      supabase
+        .from("whatsapp_instance_access")
+        .select("instance_id, instance:whatsapp_instances(id, instance_name, display_name)")
+        .eq("staff_id", staffId)
+        .eq("can_view", true),
+      supabase
+        .from("whatsapp_official_instance_access")
+        .select("instance_id")
+        .eq("staff_id", staffId)
+        .eq("can_view", true),
+    ]);
 
-    const instancesList = (data || [])
+    const instancesList = (evolutionAccess || [])
       .filter((item: any) => item.instance)
       .map((item: any) => ({
         id: item.instance.id,
@@ -67,7 +77,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         instance_name: item.instance.instance_name,
       }));
     setInstances(instancesList);
-    return (data || []).map((item: any) => item.instance_id);
+
+    return {
+      allowedInstanceIds: (evolutionAccess || []).map((item: any) => item.instance_id),
+      allowedOfficialInstanceIds: (officialAccess || []).map((item: any) => item.instance_id),
+    };
   };
 
   const fetchAllStaff = async () => {
@@ -84,18 +98,14 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     setLoading(true);
 
     try {
-      const allowedInstanceIds = await fetchAllowedInstanceIds();
-
-      if (!isMaster && allowedInstanceIds.length === 0) {
-        setConversations([]);
-        return;
-      }
+      const { allowedInstanceIds, allowedOfficialInstanceIds } = await fetchAllowedAccess();
 
       let query = supabase
         .from("crm_whatsapp_conversations")
         .select(`
           id,
           instance_id,
+          official_instance_id,
           lead_id,
           project_id,
           last_message,
@@ -109,10 +119,6 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         `)
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .range(0, MAX_CONVERSATIONS_FETCH - 1);
-
-      if (!isMaster) {
-        query = query.in("instance_id", allowedInstanceIds);
-      }
 
       // Filter by project if provided
       if (filterProjectId) {
@@ -139,12 +145,24 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         });
       }
 
-      const mapped = (data || [])
+      const visibleConversations = (data || []).filter((conv: any) => {
+        if (isMaster) return true;
+        if (conv.instance_id) {
+          return allowedInstanceIds.includes(conv.instance_id);
+        }
+        if (conv.official_instance_id) {
+          return allowedOfficialInstanceIds.includes(conv.official_instance_id);
+        }
+        return true;
+      });
+
+      const mapped = visibleConversations
         .map((conv: any) => {
           const project = conv.project_id ? projectMap.get(conv.project_id) || null : null;
           return {
             id: conv.id,
             instance_id: conv.instance_id,
+            official_instance_id: conv.official_instance_id,
             lead_id: conv.lead_id,
             contact_name: conv.contact?.name || null,
             contact_phone: conv.contact?.phone || "",

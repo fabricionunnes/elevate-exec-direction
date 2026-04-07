@@ -26,6 +26,7 @@ export interface StaffInstance {
 export interface HubConversation {
   id: string;
   instance_id: string | null;
+  official_instance_id?: string | null;
   lead_id?: string | null;
   contact_name: string | null;
   contact_phone: string;
