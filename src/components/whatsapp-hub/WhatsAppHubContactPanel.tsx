@@ -68,7 +68,7 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
       supabase
         .from("onboarding_projects")
         .select("id, product_name, company_id, onboarding_company_id")
-        .neq("status", "closed")
+        .eq("status", "active")
         .order("product_name"),
     ]);
 
