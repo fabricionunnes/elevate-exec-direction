@@ -37,6 +37,209 @@ function normalizeInstanceKey(value?: string | null) {
     .replace(/^-|-$/g, '');
 }
 
+function normalizeGroupPhone(groupId?: string | null) {
+  return String(groupId || '').replace(/@g\.us$/i, '').trim();
+}
+
+function mapFetchedGroups(data: any) {
+  const rawGroups = Array.isArray(data)
+    ? data
+    : Array.isArray(data?.groups)
+      ? data.groups
+      : [];
+
+  return rawGroups
+    .map((group: any) => ({
+      id: group.id || group.jid || group.groupId,
+      subject: group.subject || group.name || group.groupName || 'Grupo sem nome',
+      creation: group.creation,
+    }))
+    .filter((group: any) => group.id);
+}
+
+async function fetchGroupsFromInstance(apiBaseUrl: string, apiHeaders: HeadersInit, instanceName: string) {
+  const endpoints = [
+    `/group/fetchAllGroups/${encodeURIComponent(instanceName)}?getParticipants=false`,
+    `/group/list/${encodeURIComponent(instanceName)}`,
+    `/chat/fetchGroups/${encodeURIComponent(instanceName)}`,
+  ];
+
+  let lastRes: Response | null = null;
+  let lastData: any = null;
+
+  for (const endpoint of endpoints) {
+    try {
+      const response = await fetch(`${apiBaseUrl}${endpoint}`, {
+        method: 'GET',
+        headers: apiHeaders,
+      });
+
+      lastRes = response;
+      lastData = await response.json();
+
+      if (response.ok) {
+        console.log(`[evolution-api] fetchGroups succeeded with endpoint: ${endpoint}`);
+        break;
+      }
+
+      console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`, lastData);
+    } catch (err) {
+      console.error(`[evolution-api] fetchGroups network error for ${endpoint}:`, err);
+    }
+  }
+
+  return { lastRes, lastData };
+}
+
+async function getStaffByUserId(supabaseService: any, userId: string) {
+  const { data: staff } = await supabaseService
+    .from('onboarding_staff')
+    .select('id, role')
+    .eq('user_id', userId)
+    .eq('is_active', true)
+    .maybeSingle();
+
+  return staff;
+}
+
+async function userCanViewWhatsAppInstance(supabaseService: any, userId: string, instanceId: string) {
+  const staff = await getStaffByUserId(supabaseService, userId);
+
+  if (!staff) return false;
+  if (String(staff.role || '').toLowerCase() === 'master') return true;
+
+  const { data: access } = await supabaseService
+    .from('whatsapp_instance_access')
+    .select('id')
+    .eq('staff_id', staff.id)
+    .eq('instance_id', instanceId)
+    .eq('can_view', true)
+    .maybeSingle();
+
+  return !!access;
+}
+
+async function syncGroupsToConversations(supabaseService: any, instanceId: string, groupsPayload: any) {
+  const groups = mapFetchedGroups(groupsPayload)
+    .map((group: any) => ({
+      instanceId,
+      phone: normalizeGroupPhone(group.id),
+      name: group.subject,
+      createdAt: group.creation
+        ? new Date(group.creation * 1000).toISOString()
+        : new Date().toISOString(),
+    }))
+    .filter((group: any) => group.phone);
+
+  if (groups.length === 0) {
+    return {
+      groupsFound: 0,
+      contactsInserted: 0,
+      contactsUpdated: 0,
+      conversationsInserted: 0,
+    };
+  }
+
+  const uniquePhones = Array.from(new Set(groups.map((group: any) => group.phone)));
+  const { data: existingContacts, error: contactsError } = await supabaseService
+    .from('crm_whatsapp_contacts')
+    .select('id, phone, name')
+    .in('phone', uniquePhones);
+
+  if (contactsError) throw contactsError;
+
+  const contactMap = new Map((existingContacts || []).map((contact: any) => [contact.phone, contact]));
+
+  const contactsToInsert = groups
+    .filter((group: any) => !contactMap.has(group.phone))
+    .map((group: any) => ({
+      phone: group.phone,
+      name: group.name,
+    }));
+
+  let contactsInserted = 0;
+  if (contactsToInsert.length > 0) {
+    const { data: insertedContacts, error: insertContactsError } = await supabaseService
+      .from('crm_whatsapp_contacts')
+      .insert(contactsToInsert)
+      .select('id, phone, name');
+
+    if (insertContactsError) throw insertContactsError;
+
+    contactsInserted = (insertedContacts || []).length;
+    (insertedContacts || []).forEach((contact: any) => contactMap.set(contact.phone, contact));
+  }
+
+  const contactsToRename = groups.filter((group: any) => {
+    const existingContact = contactMap.get(group.phone);
+    return existingContact && (!existingContact.name || existingContact.name === existingContact.phone) && group.name;
+  });
+
+  if (contactsToRename.length > 0) {
+    await Promise.all(
+      contactsToRename.map((group: any) =>
+        supabaseService
+          .from('crm_whatsapp_contacts')
+          .update({ name: group.name })
+          .eq('id', contactMap.get(group.phone)?.id)
+      )
+    );
+  }
+
+  const contactIds = Array.from(new Set(groups.map((group: any) => contactMap.get(group.phone)?.id).filter(Boolean)));
+  if (contactIds.length === 0) {
+    return {
+      groupsFound: groups.length,
+      contactsInserted,
+      contactsUpdated: contactsToRename.length,
+      conversationsInserted: 0,
+    };
+  }
+
+  const { data: existingConversations, error: conversationsError } = await supabaseService
+    .from('crm_whatsapp_conversations')
+    .select('id, instance_id, contact_id')
+    .eq('instance_id', instanceId)
+    .in('contact_id', contactIds);
+
+  if (conversationsError) throw conversationsError;
+
+  const existingConversationKeys = new Set(
+    (existingConversations || []).map((conversation: any) => `${conversation.instance_id}:${conversation.contact_id}`)
+  );
+
+  const conversationsToInsert = groups
+    .map((group: any) => ({
+      instance_id: group.instanceId,
+      contact_id: contactMap.get(group.phone)?.id,
+      status: 'open',
+      last_message: '[Grupo sincronizado]',
+      last_message_at: group.createdAt,
+    }))
+    .filter(
+      (conversation: any) =>
+        conversation.contact_id &&
+        !existingConversationKeys.has(`${conversation.instance_id}:${conversation.contact_id}`)
+    );
+
+  let conversationsInserted = 0;
+  if (conversationsToInsert.length > 0) {
+    const { error: insertConversationsError } = await supabaseService
+      .from('crm_whatsapp_conversations')
+      .insert(conversationsToInsert);
+
+    if (insertConversationsError) throw insertConversationsError;
+    conversationsInserted = conversationsToInsert.length;
+  }
+
+  return {
+    groupsFound: groups.length,
+    contactsInserted,
+    contactsUpdated: contactsToRename.length,
+    conversationsInserted,
+  };
+}
+
 Deno.serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
 
@@ -1414,42 +1617,63 @@ Deno.serve(async (req) => {
 
         console.log(`[evolution-api] fetchGroups using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
 
-        // Try different endpoints for fetching groups
-        // Note: fetchAllGroups requires getParticipants query param
-        const endpoints = [
-          `/group/fetchAllGroups/${encodeURIComponent(instance.instance_name)}?getParticipants=false`,
-          `/group/list/${encodeURIComponent(instance.instance_name)}`,
-          `/chat/fetchGroups/${encodeURIComponent(instance.instance_name)}`,
-        ];
-
-        let lastRes: Response | null = null;
-        let lastData: any = null;
-
-        for (const endpoint of endpoints) {
-          try {
-            const response = await fetch(`${apiBaseUrl}${endpoint}`, {
-              method: 'GET',
-              headers: apiHeaders,
-            });
-
-            lastRes = response;
-            lastData = await response.json();
-
-            if (response.ok) {
-              console.log(`[evolution-api] fetchGroups succeeded with endpoint: ${endpoint}`);
-              break;
-            }
-            console.log(`[evolution-api] fetchGroups failed with endpoint ${endpoint}: ${response.status}`, lastData);
-          } catch (err) {
-            console.error(`[evolution-api] fetchGroups network error for ${endpoint}:`, err);
-          }
-        }
+        const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
 
         console.log('[evolution-api] fetchGroups response:', JSON.stringify(lastData).substring(0, 500));
 
         return new Response(
           JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
           { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+        );
+      }
+
+      case 'syncGroups': {
+        const { instanceId } = body;
+
+        if (!instanceId) {
+          return new Response(
+            JSON.stringify({ error: 'instanceId is required' }),
+            { status: 400, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const canView = await userCanViewWhatsAppInstance(supabaseService, user.id, instanceId);
+        if (!canView) {
+          return new Response(
+            JSON.stringify({ error: 'Forbidden' }),
+            { status: 403, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const { data: instance, error: instanceError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .eq('id', instanceId)
+          .single();
+
+        if (instanceError || !instance) {
+          return new Response(
+            JSON.stringify({ error: 'Instance not found' }),
+            { status: 404, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
+        const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
+        const { lastRes, lastData } = await fetchGroupsFromInstance(apiBaseUrl, apiHeaders, instance.instance_name);
+
+        if (!lastRes?.ok) {
+          return new Response(
+            JSON.stringify(lastData || { error: 'Failed to fetch groups' }),
+            { status: lastRes?.status || 500, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
+          );
+        }
+
+        const syncResult = await syncGroupsToConversations(supabaseService, instanceId, lastData);
+
+        return new Response(
+          JSON.stringify({ success: true, ...syncResult }),
+          { status: 200, headers: { ...corsHeaders, 'Content-Type': 'application/json' } }
         );
       }
 
@@ -1531,6 +1755,7 @@ Deno.serve(async (req) => {
               'restart',
               'diagnose',
               'fetchGroups',
+              'syncGroups',
               'sendGroupText'
             ],
             _version: EVOLUTION_API_FUNC_VERSION
