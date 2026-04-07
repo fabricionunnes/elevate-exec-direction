@@ -41,6 +41,7 @@ interface AllowedAccess {
 
 interface FetchConversationOptions {
   syncGroupsInBackground?: boolean;
+  silent?: boolean;
 }
 
 const MAX_CONVERSATIONS_FETCH = 5000;
