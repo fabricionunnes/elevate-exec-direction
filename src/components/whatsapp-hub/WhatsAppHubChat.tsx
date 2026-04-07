@@ -360,6 +360,18 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
           </div>
         </button>
         <div className="ml-auto flex items-center gap-1">
+          {conversation.project_id && conversation.project && (
+            <Button
+              variant="ghost"
+              size="sm"
+              className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
+              onClick={() => navigate(`/onboarding-tasks/project/${conversation.project_id}`)}
+              title="Ir para o projeto"
+            >
+              <ExternalLink className="h-3.5 w-3.5" />
+              <span className="hidden sm:inline max-w-[120px] truncate">{conversation.project?.product_name}</span>
+            </Button>
+          )}
           <Button variant="ghost" size="icon" onClick={() => setShowActionDialog(true)} title="Criar ação/tarefa">
             <ClipboardCheck className="h-4 w-4" />
           </Button>
