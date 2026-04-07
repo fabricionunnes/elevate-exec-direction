@@ -1,11 +1,18 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search } from "lucide-react";
+import { Search, Filter, Smartphone, User } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
 import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 
 interface Props {
@@ -16,24 +23,48 @@ interface Props {
   filterProjectId?: string;
 }
 
+interface InstanceOption {
+  id: string;
+  display_name: string | null;
+  instance_name: string;
+}
+
+interface StaffOption {
+  id: string;
+  name: string;
+}
+
 export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
+  const [filterInstance, setFilterInstance] = useState<string>("all");
+  const [filterStaff, setFilterStaff] = useState<string>("all");
+  const [instances, setInstances] = useState<InstanceOption[]>([]);
+  const [staffList, setStaffList] = useState<StaffOption[]>([]);
 
   const fetchAllowedInstanceIds = async () => {
     if (isMaster) {
-      const { data } = await supabase.from("whatsapp_instances").select("id");
-      return (data || []).map((item) => item.id);
+      const { data } = await supabase.from("whatsapp_instances").select("id, instance_name, display_name");
+      setInstances((data || []).map((i: any) => ({ id: i.id, display_name: i.display_name, instance_name: i.instance_name })));
+      return (data || []).map((item: any) => item.id);
     }
 
     const { data } = await supabase
       .from("whatsapp_instance_access")
-      .select("instance_id")
+      .select("instance_id, instance:whatsapp_instances(id, instance_name, display_name)")
       .eq("staff_id", staffId)
       .eq("can_view", true);
 
-    return (data || []).map((item) => item.instance_id);
+    const instancesList = (data || [])
+      .filter((item: any) => item.instance)
+      .map((item: any) => ({
+        id: item.instance.id,
+        display_name: item.instance.display_name,
+        instance_name: item.instance.instance_name,
+      }));
+    setInstances(instancesList);
+    return (data || []).map((item: any) => item.instance_id);
   };
 
   const fetchConversations = async () => {
@@ -71,6 +102,17 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
 
       const { data, error } = await query;
       if (error) throw error;
+
+      // Extract unique staff from conversations
+      const staffMap = new Map<string, string>();
+      (data || []).forEach((conv: any) => {
+        if (conv.assigned_staff?.id) {
+          staffMap.set(conv.assigned_staff.id, conv.assigned_staff.name);
+        }
+      });
+      // Also extract from instance display_name as staff association
+      const uniqueStaff = Array.from(staffMap.entries()).map(([id, name]) => ({ id, name }));
+      setStaffList(uniqueStaff);
 
       const leadIds = Array.from(
         new Set((data || []).map((item: any) => item.lead_id).filter(Boolean))
@@ -148,14 +190,40 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     };
   }, [staffId, isMaster, filterProjectId]);
 
-  const filtered = conversations.filter((conversation) => {
-    if (!search) return true;
-    const term = search.toLowerCase();
-    return (
-      conversation.contact_name?.toLowerCase().includes(term) ||
-      conversation.contact_phone.toLowerCase().includes(term)
-    );
-  });
+  const filtered = useMemo(() => {
+    return conversations.filter((conversation) => {
+      // Text search
+      if (search) {
+        const term = search.toLowerCase();
+        const matchesSearch =
+          conversation.contact_name?.toLowerCase().includes(term) ||
+          conversation.contact_phone.toLowerCase().includes(term);
+        if (!matchesSearch) return false;
+      }
+
+      // Instance filter
+      if (filterInstance !== "all") {
+        if (filterInstance === "none") {
+          if (conversation.instance_id) return false;
+        } else {
+          if (conversation.instance_id !== filterInstance) return false;
+        }
+      }
+
+      // Staff filter
+      if (filterStaff !== "all") {
+        if (filterStaff === "none") {
+          if (conversation.staff) return false;
+        } else {
+          if (conversation.staff?.id !== filterStaff) return false;
+        }
+      }
+
+      return true;
+    });
+  }, [conversations, search, filterInstance, filterStaff]);
+
+  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all";
 
   return (
     <div className="flex flex-col h-full">
@@ -169,6 +237,52 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
             className="pl-9 h-9"
           />
         </div>
+
+        {/* Filters row */}
+        <div className="flex gap-2">
+          <Select value={filterInstance} onValueChange={setFilterInstance}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <Smartphone className="h-3 w-3 mr-1 shrink-0" />
+              <SelectValue placeholder="Instância" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todas instâncias</SelectItem>
+              <SelectItem value="none">Sem instância</SelectItem>
+              {instances.map((inst) => (
+                <SelectItem key={inst.id} value={inst.id}>
+                  {inst.display_name || inst.instance_name}
+                </SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+
+          {isMaster && (
+            <Select value={filterStaff} onValueChange={setFilterStaff}>
+              <SelectTrigger className="h-8 text-xs flex-1">
+                <User className="h-3 w-3 mr-1 shrink-0" />
+                <SelectValue placeholder="Usuário" />
+              </SelectTrigger>
+              <SelectContent>
+                <SelectItem value="all">Todos usuários</SelectItem>
+                <SelectItem value="none">Sem responsável</SelectItem>
+                {staffList.map((s) => (
+                  <SelectItem key={s.id} value={s.id}>
+                    {s.name}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          )}
+        </div>
+
+        {hasActiveFilters && (
+          <button
+            onClick={() => { setFilterInstance("all"); setFilterStaff("all"); }}
+            className="text-[10px] text-primary hover:underline"
+          >
+            Limpar filtros
+          </button>
+        )}
       </div>
 
       <ScrollArea className="flex-1">
