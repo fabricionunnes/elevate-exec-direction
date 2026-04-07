@@ -162,13 +162,15 @@ Deno.serve(async (req) => {
     const instanceName = body.instance;
     const data = body.data;
 
-    // Log event type and key info (avoid logging full payload for common events)
+    // TEMPORARY: Log ALL incoming webhook payloads to debug missing group messages
     const remoteJid = data?.key?.remoteJid || data?.remoteJid || '';
     const isGroupEvent = remoteJid.includes('@g.us');
-    console.log(`[webhook] event=${event} instance=${instanceName} jid=${remoteJid} isGroup=${isGroupEvent}`);
+    const participant = data?.key?.participant || '';
+    console.log(`[webhook] event=${event} instance=${instanceName} jid=${remoteJid} isGroup=${isGroupEvent} participant=${participant}`);
     
-    // For debugging: log full payload for group messages and unhandled events
-    if (isGroupEvent || !['messages.update', 'connection.update'].includes(event)) {
+    // Log full payload for ALL messages.upsert events (to catch group messages)
+    // and for any non-routine events
+    if (event === 'messages.upsert' || isGroupEvent || !['messages.update', 'connection.update'].includes(event)) {
       console.log('[webhook] Full payload:', JSON.stringify(body, null, 2));
     }
 
