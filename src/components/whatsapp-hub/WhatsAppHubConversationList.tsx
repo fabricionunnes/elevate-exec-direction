@@ -121,7 +121,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
                     )}
                     {conv.project && (
                       <Badge variant="outline" className="text-[10px] px-1.5 py-0 h-4">
-                        {conv.project.name}
+                        {conv.project.product_name}
                       </Badge>
                     )}
                     {isMaster && conv.staff && (

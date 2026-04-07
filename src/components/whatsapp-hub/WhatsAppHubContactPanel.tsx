@@ -81,7 +81,7 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
       onConversationUpdate({
         ...conversation,
         project_id: projectId,
-        project: proj ? { id: proj.id, name: proj.name } : null,
+        project: proj ? { id: proj.id, product_name: proj.name } : null,
       });
     }
   };

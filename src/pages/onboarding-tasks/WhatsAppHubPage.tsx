@@ -35,7 +35,7 @@ export interface HubConversation {
   unread_count: number;
   status: string;
   created_at: string;
-  project?: { id: string; name: string } | null;
+  project?: { id: string; product_name: string } | null;
   staff?: { id: string; name: string } | null;
   tags?: { id: string; tag: { id: string; name: string; color: string } }[];
 }
