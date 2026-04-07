@@ -257,19 +257,33 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           </Select>
 
           {isMaster && (
-            <Select value={filterStaff} onValueChange={setFilterStaff}>
+            <Select value={filterStaff} onValueChange={(v) => { setFilterStaff(v); setStaffSearch(""); }}>
               <SelectTrigger className="h-8 text-xs flex-1">
                 <User className="h-3 w-3 mr-1 shrink-0" />
                 <SelectValue placeholder="Usuário" />
               </SelectTrigger>
               <SelectContent>
+                <div className="p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar usuário..."
+                      value={staffSearch}
+                      onChange={(e) => setStaffSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
                 <SelectItem value="all">Todos usuários</SelectItem>
                 <SelectItem value="none">Sem responsável</SelectItem>
-                {staffList.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
+                {staffList
+                  .filter((s) => !staffSearch || s.name.toLowerCase().includes(staffSearch.toLowerCase()))
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           )}
