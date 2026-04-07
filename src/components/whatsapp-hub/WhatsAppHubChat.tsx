@@ -310,7 +310,6 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
         .eq("id", conversation.id);
 
       toast.success("Arquivo enviado");
-      await fetchMessages();
     } catch {
       toast.error("Erro ao enviar arquivo");
     } finally {
