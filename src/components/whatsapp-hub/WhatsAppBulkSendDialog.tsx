@@ -10,21 +10,31 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Send, Loader2, Users, Clock, AlertTriangle } from "lucide-react";
 import { toast } from "sonner";
-import type { StaffInstance, HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
+import type { HubConversation } from "@/pages/onboarding-tasks/WhatsAppHubPage";
 
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   staffId: string;
-  instance: StaffInstance | null;
 }
 
-export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }: Props) => {
+const normalizePhoneDigits = (phoneRaw: string) => {
+  let digits = (phoneRaw || "").replace(/\D/g, "");
+  if (!digits) return "";
+  if (!digits.startsWith("55")) digits = `55${digits}`;
+  if (digits.length === 12) {
+    const ddd = digits.slice(2, 4);
+    const number = digits.slice(4);
+    digits = `55${ddd}9${number}`;
+  }
+  return digits;
+};
+
+export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [selected, setSelected] = useState<string[]>([]);
   const [message, setMessage] = useState("");
@@ -35,87 +45,171 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
 
   useEffect(() => {
     if (open) fetchConversations();
-  }, [open]);
+  }, [open, staffId]);
+
+  const fetchSendableInstanceIds = async () => {
+    const { data: userData } = await supabase.auth.getUser();
+    const userId = userData.user?.id;
+    if (!userId) return [] as string[];
+
+    const { data: staff } = await supabase
+      .from("onboarding_staff")
+      .select("id, role")
+      .eq("user_id", userId)
+      .eq("is_active", true)
+      .maybeSingle();
+
+    if (!staff) return [] as string[];
+
+    if (staff.role === "master") {
+      const { data } = await supabase.from("whatsapp_instances").select("id").eq("status", "connected");
+      return (data || []).map((item) => item.id);
+    }
+
+    const { data } = await supabase
+      .from("whatsapp_instance_access")
+      .select("instance_id, instance:whatsapp_instances(id, status)")
+      .eq("staff_id", staff.id)
+      .eq("can_send", true);
+
+    return (data || [])
+      .filter((item: any) => item.instance?.status === "connected")
+      .map((item: any) => item.instance_id);
+  };
 
   const fetchConversations = async () => {
+    const instanceIds = await fetchSendableInstanceIds();
+    if (instanceIds.length === 0) {
+      setConversations([]);
+      return;
+    }
+
     const { data } = await supabase
-      .from("staff_whatsapp_conversations")
-      .select("*")
-      .eq("staff_id", staffId)
-      .order("contact_name");
-    setConversations(data as unknown as HubConversation[] || []);
+      .from("crm_whatsapp_conversations")
+      .select(`
+        id,
+        instance_id,
+        last_message,
+        last_message_at,
+        unread_count,
+        status,
+        created_at,
+        contact:crm_whatsapp_contacts(name, phone, profile_picture_url)
+      `)
+      .in("instance_id", instanceIds)
+      .order("last_message_at", { ascending: false, nullsFirst: false });
+
+    const mapped = (data || []).map((conversation: any) => ({
+      id: conversation.id,
+      instance_id: conversation.instance_id,
+      lead_id: null,
+      contact_name: conversation.contact?.name || null,
+      contact_phone: conversation.contact?.phone || "",
+      contact_photo_url: conversation.contact?.profile_picture_url || null,
+      project_id: null,
+      last_message: conversation.last_message || null,
+      last_message_at: conversation.last_message_at || null,
+      unread_count: conversation.unread_count || 0,
+      status: conversation.status || "open",
+      created_at: conversation.created_at || new Date().toISOString(),
+      project: null,
+      staff: null,
+      instance: null,
+    })) as HubConversation[];
+
+    setConversations(mapped);
   };
 
   const toggleAll = () => {
-    if (selected.length === filtered.length) {
-      setSelected([]);
-    } else {
-      setSelected(filtered.map(c => c.id));
-    }
+    if (selected.length === filtered.length) setSelected([]);
+    else setSelected(filtered.map((conversation) => conversation.id));
   };
 
   const toggleOne = (id: string) => {
-    setSelected(prev => prev.includes(id) ? prev.filter(x => x !== id) : [...prev, id]);
+    setSelected((prev) => prev.includes(id) ? prev.filter((item) => item !== id) : [...prev, id]);
   };
 
-  const filtered = conversations.filter(c => {
+  const filtered = conversations.filter((conversation) => {
     if (!search) return true;
-    const q = search.toLowerCase();
-    return c.contact_name?.toLowerCase().includes(q) || c.contact_phone.includes(q);
+    const term = search.toLowerCase();
+    return (
+      conversation.contact_name?.toLowerCase().includes(term) ||
+      conversation.contact_phone.toLowerCase().includes(term)
+    );
   });
 
   const handleSend = async () => {
     if (!message.trim() || selected.length === 0) return;
-    if (!instance || instance.status !== "connected") {
-      toast.error("WhatsApp não está conectado");
-      return;
-    }
 
     setSending(true);
     setProgress({ sent: 0, total: selected.length });
 
-    const selectedConvs = conversations.filter(c => selected.includes(c.id));
+    const selectedConversations = conversations.filter((conversation) => selected.includes(conversation.id));
 
-    for (let i = 0; i < selectedConvs.length; i++) {
-      const conv = selectedConvs[i];
+    for (let i = 0; i < selectedConversations.length; i += 1) {
+      const conversation = selectedConversations[i];
       try {
-        // Save message
-        await supabase.from("staff_whatsapp_messages").insert({
-          conversation_id: conv.id,
-          staff_id: staffId,
-          content: message.trim(),
-          direction: "outgoing",
-          status: "sent",
-        });
+        if (!conversation.instance_id) throw new Error("Instância ausente");
 
-        // Update conversation
-        await supabase.from("staff_whatsapp_conversations").update({
-          last_message: message.trim(),
-          last_message_at: new Date().toISOString(),
-        }).eq("id", conv.id);
+        const phone = normalizePhoneDigits(conversation.contact_phone);
+        if (!phone) throw new Error("Telefone inválido");
 
-        // Send via API
-        await supabase.functions.invoke("evolution-api", {
+        const { data: inserted, error: insertError } = await supabase
+          .from("crm_whatsapp_messages")
+          .insert({
+            conversation_id: conversation.id,
+            content: message.trim(),
+            type: "text",
+            direction: "outbound",
+            status: "pending",
+            sent_by: staffId,
+          })
+          .select("id")
+          .single();
+
+        if (insertError) throw insertError;
+
+        const { data: sendData, error: sendError } = await supabase.functions.invoke("evolution-api", {
           body: {
-            action: "send-text",
-            instanceName: instance.instance_name,
-            phone: conv.contact_phone.replace(/\D/g, ""),
+            action: "sendText",
+            instanceId: conversation.instance_id,
+            phone,
             message: message.trim(),
           },
         });
 
+        if (sendError || sendData?.error) {
+          await supabase
+            .from("crm_whatsapp_messages")
+            .update({ status: "failed" })
+            .eq("id", inserted.id);
+          throw sendError || new Error(sendData?.error || "Erro ao enviar mensagem");
+        }
+
+        await supabase
+          .from("crm_whatsapp_messages")
+          .update({ status: "sent", remote_id: sendData?.key?.id ?? null })
+          .eq("id", inserted.id);
+
+        await supabase
+          .from("crm_whatsapp_conversations")
+          .update({
+            last_message: message.trim(),
+            last_message_at: new Date().toISOString(),
+          })
+          .eq("id", conversation.id);
+
         setProgress({ sent: i + 1, total: selected.length });
 
-        // Wait between messages
-        if (i < selectedConvs.length - 1) {
-          await new Promise(r => setTimeout(r, interval * 1000));
+        if (i < selectedConversations.length - 1) {
+          await new Promise((resolve) => setTimeout(resolve, interval * 1000));
         }
-      } catch (err) {
-        console.warn(`Erro ao enviar para ${conv.contact_name}:`, err);
+      } catch (error) {
+        console.warn(`Erro ao enviar para ${conversation.contact_name || conversation.contact_phone}:`, error);
       }
     }
 
-    toast.success(`${selectedConvs.length} mensagens enviadas!`);
+    toast.success(`${selectedConversations.length} mensagens processadas!`);
     setSending(false);
     setProgress({ sent: 0, total: 0 });
     setSelected([]);
@@ -134,13 +228,11 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
         </DialogHeader>
 
         <div className="flex-1 overflow-hidden flex flex-col gap-4">
-          {/* Warning */}
-          <div className="flex items-start gap-2 p-3 bg-amber-500/10 border border-amber-500/20 rounded-lg text-xs text-amber-700">
+          <div className="flex items-start gap-2 p-3 bg-muted rounded-lg text-xs text-muted-foreground">
             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />
             <p>Envie com intervalos para evitar bloqueios. Recomendado: 5-10 segundos entre mensagens.</p>
           </div>
 
-          {/* Message */}
           <div className="space-y-1.5">
             <Label>Mensagem</Label>
             <Textarea
@@ -152,7 +244,6 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
             />
           </div>
 
-          {/* Interval */}
           <div className="flex items-center gap-3">
             <Clock className="h-4 w-4 text-muted-foreground" />
             <Label className="text-sm">Intervalo (segundos):</Label>
@@ -167,7 +258,6 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
             />
           </div>
 
-          {/* Contact Selection */}
           <div className="space-y-2 flex-1 overflow-hidden flex flex-col">
             <div className="flex items-center justify-between">
               <Label>Contatos ({selected.length}/{filtered.length})</Label>
@@ -183,50 +273,35 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
               disabled={sending}
             />
             <ScrollArea className="flex-1 max-h-40 border rounded-md">
-              {filtered.map(conv => (
+              {filtered.map((conversation) => (
                 <label
-                  key={conv.id}
+                  key={conversation.id}
                   className="flex items-center gap-3 px-3 py-2 hover:bg-muted/50 cursor-pointer text-sm border-b border-border/50 last:border-0"
                 >
                   <Checkbox
-                    checked={selected.includes(conv.id)}
-                    onCheckedChange={() => toggleOne(conv.id)}
+                    checked={selected.includes(conversation.id)}
+                    onCheckedChange={() => toggleOne(conversation.id)}
                     disabled={sending}
                   />
-                  <span className="truncate">{conv.contact_name || conv.contact_phone}</span>
-                  <span className="text-xs text-muted-foreground ml-auto">{conv.contact_phone}</span>
+                  <span className="truncate">{conversation.contact_name || conversation.contact_phone}</span>
+                  <span className="text-xs text-muted-foreground ml-auto">{conversation.contact_phone}</span>
                 </label>
               ))}
             </ScrollArea>
           </div>
 
-          {/* Progress */}
           {sending && (
             <div className="flex items-center gap-3 p-3 bg-muted rounded-lg">
-              <Loader2 className="h-4 w-4 animate-spin text-green-500" />
-              <span className="text-sm font-medium">
-                Enviando {progress.sent}/{progress.total}...
-              </span>
+              <Loader2 className="h-4 w-4 animate-spin" />
+              <span className="text-sm font-medium">Enviando {progress.sent}/{progress.total}...</span>
               <div className="flex-1 h-2 bg-muted-foreground/20 rounded-full overflow-hidden">
-                <div
-                  className="h-full bg-green-500 transition-all"
-                  style={{ width: `${(progress.sent / progress.total) * 100}%` }}
-                />
+                <div className="h-full bg-primary transition-all" style={{ width: `${progress.total ? (progress.sent / progress.total) * 100 : 0}%` }} />
               </div>
             </div>
           )}
 
-          {/* Send Button */}
-          <Button
-            onClick={handleSend}
-            disabled={sending || !message.trim() || selected.length === 0}
-            className="w-full bg-green-500 hover:bg-green-600"
-          >
-            {sending ? (
-              <Loader2 className="h-4 w-4 animate-spin mr-2" />
-            ) : (
-              <Send className="h-4 w-4 mr-2" />
-            )}
+          <Button onClick={handleSend} disabled={sending || !message.trim() || selected.length === 0} className="w-full">
+            {sending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
             {sending ? "Enviando..." : `Enviar para ${selected.length} contatos`}
           </Button>
         </div>
