@@ -184,6 +184,7 @@ Deno.serve(async (req) => {
     const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
 
     const message = `🚀 *Novo Lead Externo!*\n\n` +
+      `📊 *Funil:* ${resolvedPipelineName}\n` +
       `👤 *Nome:* ${nome}\n` +
       `📞 *Telefone:* ${telefone}\n` +
       `📧 *Email:* ${email}\n` +
