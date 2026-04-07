@@ -37,10 +37,11 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
     setCreating(true);
     try {
       // Create on Stevo
+      const cleanName = instanceName.trim().toLowerCase().replace(/\s+/g, "_");
       const { data: funcData, error: funcError } = await supabase.functions.invoke("evolution-api", {
         body: {
-          action: "create_instance",
-          instance_name: instanceName.trim().toLowerCase().replace(/\s+/g, "_"),
+          action: "create-instance",
+          instance_name: cleanName,
         },
       });
 
