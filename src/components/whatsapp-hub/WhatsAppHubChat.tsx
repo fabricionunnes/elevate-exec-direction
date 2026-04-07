@@ -17,9 +17,17 @@ interface Props {
   onShowContact: () => void;
 }
 
+const isGroupJid = (phoneRaw: string) => {
+  const digits = (phoneRaw || "").replace(/\D/g, "");
+  // Group LID JIDs start with 120363 and are very long, or contain @g.us
+  return phoneRaw.includes("@g.us") || (digits.startsWith("120363") && digits.length > 15);
+};
+
 const normalizePhoneDigits = (phoneRaw: string) => {
   let digits = (phoneRaw || "").replace(/\D/g, "");
   if (!digits) return "";
+  // Don't normalize group JIDs
+  if (isGroupJid(phoneRaw)) return digits;
   if (!digits.startsWith("55")) digits = `55${digits}`;
   if (digits.length === 12) {
     const ddd = digits.slice(2, 4);
