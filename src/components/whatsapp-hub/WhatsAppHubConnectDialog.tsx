@@ -41,7 +41,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
       const { data: funcData, error: funcError } = await supabase.functions.invoke("evolution-api", {
         body: {
           action: "create-instance",
-          instance_name: cleanName,
+          instanceName: cleanName,
         },
       });
 
