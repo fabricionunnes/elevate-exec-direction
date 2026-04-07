@@ -13,6 +13,7 @@ interface Props {
   isMaster: boolean;
   onSelect: (conv: HubConversation) => void;
   selectedId?: string;
+  filterProjectId?: string;
 }
 
 export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId }: Props) => {
