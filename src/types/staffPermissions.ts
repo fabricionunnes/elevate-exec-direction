@@ -32,6 +32,7 @@ export const STAFF_MENU_KEYS = {
   commercial_actions: "commercial_actions",
   nf_manage: "nf_manage",
   automations: "automations",
+  whatsapp_hub: "whatsapp_hub",
 } as const;
 
 // Financial sub-permission keys
@@ -203,6 +204,12 @@ export const STAFF_MENU_STRUCTURE = [
     label: "Central de Automações", 
     description: "Criar e gerenciar regras de automação entre módulos",
     group: "Administração" 
+  },
+  { 
+    key: STAFF_MENU_KEYS.whatsapp_hub, 
+    label: "WhatsApp Hub", 
+    description: "Hub de comunicação com WhatsApp pessoal",
+    group: "Comunicação" 
   },
 ] as const;
 
