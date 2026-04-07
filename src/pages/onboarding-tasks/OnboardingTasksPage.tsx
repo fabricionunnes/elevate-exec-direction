@@ -1793,6 +1793,10 @@ const OnboardingTasksPage = () => {
                     <MessageSquare className="h-4 w-4 mr-2" />
                     UNV Disparador
                   </DropdownMenuItem>
+                  <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/whatsapp-hub")}>
+                    <Phone className="h-4 w-4 mr-2" />
+                    WhatsApp Hub
+                  </DropdownMenuItem>
                   {/* Vagas RH */}
                   {canAccessHR && (
                     <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/vagas")}>
