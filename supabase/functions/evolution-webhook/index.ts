@@ -157,11 +157,20 @@ Deno.serve(async (req) => {
     );
 
     const body = await req.json();
-    console.log('Evolution webhook received:', JSON.stringify(body, null, 2));
-
+    
     const event = body.event;
     const instanceName = body.instance;
     const data = body.data;
+
+    // Log event type and key info (avoid logging full payload for common events)
+    const remoteJid = data?.key?.remoteJid || data?.remoteJid || '';
+    const isGroupEvent = remoteJid.includes('@g.us');
+    console.log(`[webhook] event=${event} instance=${instanceName} jid=${remoteJid} isGroup=${isGroupEvent}`);
+    
+    // For debugging: log full payload for group messages and unhandled events
+    if (isGroupEvent || !['messages.update', 'connection.update'].includes(event)) {
+      console.log('[webhook] Full payload:', JSON.stringify(body, null, 2));
+    }
 
     // Get instance from database (also fetch instance-specific API credentials)
     const { data: instance } = await supabase
@@ -180,6 +189,10 @@ Deno.serve(async (req) => {
 
     switch (event) {
       case 'messages.upsert':
+      // Handle alternative event names used by some Evolution API versions
+      case 'message':
+      case 'messages':
+      case 'message.new':
         await handleIncomingMessage(
           supabase,
           instance.id,
@@ -203,7 +216,7 @@ Deno.serve(async (req) => {
         break;
 
       default:
-        console.log('Unhandled event:', event);
+        console.log('[webhook] Unhandled event:', event, '- payload keys:', Object.keys(body).join(','));
     }
 
     return new Response(JSON.stringify({ success: true }), {
