@@ -141,9 +141,9 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     );
   };
 
-  const fetchConversations = async ({ syncGroupsInBackground = false }: FetchConversationOptions = {}) => {
+  const fetchConversations = async ({ syncGroupsInBackground = false, silent = false }: FetchConversationOptions = {}) => {
     if (!staffId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     try {
       const access = await fetchAllowedAccess();
