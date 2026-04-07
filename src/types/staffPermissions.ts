@@ -32,6 +32,7 @@ export const STAFF_MENU_KEYS = {
   commercial_actions: "commercial_actions",
   nf_manage: "nf_manage",
   automations: "automations",
+  whatsapp_hub: "whatsapp_hub",
 } as const;
 
 // Financial sub-permission keys
