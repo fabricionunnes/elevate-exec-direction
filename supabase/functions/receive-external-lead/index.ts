@@ -145,6 +145,25 @@ Deno.serve(async (req) => {
 
     const urgency = tag === 'PRIORIDADE' ? 'high' : 'medium';
 
+    // === Deduplication: check if lead with same phone + pipeline was created in last 24h ===
+    const cleanPhone = telefone.replace(/\D/g, '');
+    const dedup24h = new Date(Date.now() - 24 * 60 * 60 * 1000).toISOString();
+    const { data: existingLead } = await supabase
+      .from('crm_leads')
+      .select('id')
+      .eq('pipeline_id', resolvedPipelineId)
+      .gte('created_at', dedup24h)
+      .or(`phone.eq.${telefone},phone.eq.${cleanPhone},phone.ilike.%${cleanPhone.slice(-8)}%`)
+      .limit(1)
+      .maybeSingle();
+
+    if (existingLead) {
+      console.log('[receive-external-lead] Duplicate detected, returning existing lead:', existingLead.id);
+      return new Response(JSON.stringify({ success: true, lead_id: existingLead.id, deduplicated: true }), {
+        headers: { ...corsHeaders, 'Content-Type': 'application/json' },
+      });
+    }
+
     // Insert lead
     const { data: lead, error: insertError } = await supabase
       .from('crm_leads')
