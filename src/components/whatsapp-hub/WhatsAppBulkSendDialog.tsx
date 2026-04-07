@@ -97,7 +97,7 @@ export const WhatsAppBulkSendDialog = ({ open, onOpenChange, staffId, instance }
         // Send via API
         await supabase.functions.invoke("evolution-api", {
           body: {
-            action: "send_text",
+            action: "send-text",
             instance_name: instance.instance_name,
             phone: conv.contact_phone.replace(/\D/g, ""),
             message: message.trim(),
