@@ -43,6 +43,7 @@ const normalizeMessage = (message: any): HubMessage => ({
 });
 
 export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact }: Props) => {
+  const navigate = useNavigate();
   const [messages, setMessages] = useState<HubMessage[]>([]);
   const [newMessage, setNewMessage] = useState("");
   const [sending, setSending] = useState(false);
