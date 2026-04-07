@@ -267,7 +267,7 @@ const WhatsAppHubPage = () => {
       </div>
 
       <div className="flex-1 flex overflow-hidden">
-        <div className="w-80 xl:w-96 border-r flex flex-col shrink-0 overflow-hidden">
+        <div className="w-80 xl:w-96 border-r flex flex-col shrink-0">
           <WhatsAppHubConversationList
             staffId={currentStaff?.id || ""}
             isMaster={isMaster}
