@@ -1,9 +1,9 @@
-import { useState, useEffect, useMemo } from "react";
+import { useState, useEffect, useMemo, useRef } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Filter, Smartphone, User, FolderOpen, Users } from "lucide-react";
+import { Search, Smartphone, User, FolderOpen, Users } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -34,7 +34,32 @@ interface StaffOption {
   name: string;
 }
 
+interface AllowedAccess {
+  allowedInstanceIds: string[];
+  allowedOfficialInstanceIds: string[];
+}
+
+interface FetchConversationOptions {
+  syncGroupsInBackground?: boolean;
+}
+
 const MAX_CONVERSATIONS_FETCH = 5000;
+
+const buildVisibilityFilter = ({ allowedInstanceIds, allowedOfficialInstanceIds }: AllowedAccess) => {
+  const clauses: string[] = [];
+
+  if (allowedInstanceIds.length > 0) {
+    clauses.push(`instance_id.in.(${allowedInstanceIds.join(",")})`);
+  }
+
+  if (allowedOfficialInstanceIds.length > 0) {
+    clauses.push(`official_instance_id.in.(${allowedOfficialInstanceIds.join(",")})`);
+  }
+
+  clauses.push("and(instance_id.is.null,official_instance_id.is.null)");
+
+  return clauses.join(",");
+};
 
 export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
@@ -47,14 +72,16 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [staffSearch, setStaffSearch] = useState("");
+  const lastGroupSyncStaffIdRef = useRef<string | null>(null);
 
-  const fetchAllowedAccess = async () => {
+  const fetchAllowedAccess = async (): Promise<AllowedAccess> => {
     if (isMaster) {
       const { data } = await supabase.from("whatsapp_instances").select("id, instance_name, display_name");
       setInstances((data || []).map((i: any) => ({ id: i.id, display_name: i.display_name, instance_name: i.instance_name })));
+
       return {
         allowedInstanceIds: (data || []).map((item: any) => item.id),
-        allowedOfficialInstanceIds: [] as string[],
+        allowedOfficialInstanceIds: [],
       };
     }
 
@@ -78,6 +105,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         display_name: item.instance.display_name,
         instance_name: item.instance.instance_name,
       }));
+
     setInstances(instancesList);
 
     return {
@@ -92,6 +120,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       .select("id, name")
       .eq("is_active", true)
       .order("name");
+
     setStaffList((data || []).map((s: any) => ({ id: s.id, name: s.name })));
   };
 
@@ -112,15 +141,17 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     );
   };
 
-  const fetchConversations = async (syncGroups = false) => {
+  const fetchConversations = async ({ syncGroupsInBackground = false }: FetchConversationOptions = {}) => {
     if (!staffId) return;
     setLoading(true);
 
     try {
-      const { allowedInstanceIds, allowedOfficialInstanceIds } = await fetchAllowedAccess();
+      const access = await fetchAllowedAccess();
 
-      if (syncGroups) {
-        await syncMissingGroupConversations(allowedInstanceIds);
+      if (syncGroupsInBackground && access.allowedInstanceIds.length > 0) {
+        void syncMissingGroupConversations(access.allowedInstanceIds).then(() => {
+          void fetchConversations();
+        });
       }
 
       let query = supabase
@@ -143,7 +174,10 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         .order("last_message_at", { ascending: false, nullsFirst: false })
         .range(0, MAX_CONVERSATIONS_FETCH - 1);
 
-      // Filter by project if provided
+      if (!isMaster) {
+        query = query.or(buildVisibilityFilter(access));
+      }
+
       if (filterProjectId) {
         query = query.eq("project_id", filterProjectId);
       }
@@ -151,56 +185,44 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       const { data, error } = await query;
       if (error) throw error;
 
-
-      // Fetch project names for conversations that have project_id
       const projectIds = Array.from(
         new Set((data || []).map((item: any) => item.project_id).filter(Boolean))
       );
 
-      let projectMap = new Map<string, { id: string; product_name: string }>();
+      const projectMap = new Map<string, { id: string; product_name: string }>();
       if (projectIds.length > 0) {
         const { data: projects } = await supabase
           .from("onboarding_projects")
           .select("id, product_name")
           .in("id", projectIds);
-        (projects || []).forEach((p: any) => {
-          projectMap.set(p.id, { id: p.id, product_name: p.product_name });
+
+        (projects || []).forEach((project: any) => {
+          projectMap.set(project.id, { id: project.id, product_name: project.product_name });
         });
       }
 
-      const visibleConversations = (data || []).filter((conv: any) => {
-        if (isMaster) return true;
-        if (conv.instance_id) {
-          return allowedInstanceIds.includes(conv.instance_id);
-        }
-        if (conv.official_instance_id) {
-          return allowedOfficialInstanceIds.includes(conv.official_instance_id);
-        }
-        return true;
-      });
+      const mapped = (data || []).map((conv: any) => {
+        const project = conv.project_id ? projectMap.get(conv.project_id) || null : null;
 
-      const mapped = visibleConversations
-        .map((conv: any) => {
-          const project = conv.project_id ? projectMap.get(conv.project_id) || null : null;
-          return {
-            id: conv.id,
-            instance_id: conv.instance_id,
-            official_instance_id: conv.official_instance_id,
-            lead_id: conv.lead_id,
-            contact_name: conv.contact?.name || null,
-            contact_phone: conv.contact?.phone || "",
-            contact_photo_url: conv.contact?.profile_picture_url || null,
-            project_id: conv.project_id || null,
-            last_message: conv.last_message || null,
-            last_message_at: conv.last_message_at || null,
-            unread_count: conv.unread_count || 0,
-            status: conv.status || "open",
-            created_at: conv.created_at || new Date().toISOString(),
-            project,
-            staff: conv.assigned_staff || null,
-            instance: conv.instance || null,
-          } satisfies HubConversation;
-        });
+        return {
+          id: conv.id,
+          instance_id: conv.instance_id,
+          official_instance_id: conv.official_instance_id,
+          lead_id: conv.lead_id,
+          contact_name: conv.contact?.name || null,
+          contact_phone: conv.contact?.phone || "",
+          contact_photo_url: conv.contact?.profile_picture_url || null,
+          project_id: conv.project_id || null,
+          last_message: conv.last_message || null,
+          last_message_at: conv.last_message_at || null,
+          unread_count: conv.unread_count || 0,
+          status: conv.status || "open",
+          created_at: conv.created_at || new Date().toISOString(),
+          project,
+          staff: conv.assigned_staff || null,
+          instance: conv.instance || null,
+        } satisfies HubConversation;
+      });
 
       setConversations(mapped);
     } catch {
@@ -211,8 +233,18 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   };
 
   useEffect(() => {
-    fetchAllStaff();
-    fetchConversations(true);
+    if (isMaster) {
+      void fetchAllStaff();
+    } else {
+      setStaffList([]);
+    }
+
+    const shouldSyncGroupsInBackground = !filterProjectId && lastGroupSyncStaffIdRef.current !== staffId;
+    if (shouldSyncGroupsInBackground) {
+      lastGroupSyncStaffIdRef.current = staffId;
+    }
+
+    void fetchConversations({ syncGroupsInBackground: shouldSyncGroupsInBackground });
 
     const channel = supabase
       .channel("crm_wa_conv_list_hub")
@@ -224,7 +256,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           table: "crm_whatsapp_conversations",
         },
         () => {
-          fetchConversations();
+          void fetchConversations();
         }
       )
       .subscribe();
@@ -236,7 +268,6 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
 
   const filtered = useMemo(() => {
     return conversations.filter((conversation) => {
-      // Text search
       if (search) {
         const term = search.toLowerCase();
         const matchesSearch =
@@ -245,34 +276,30 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         if (!matchesSearch) return false;
       }
 
-      // Instance filter
       if (filterInstance !== "all") {
         if (filterInstance === "none") {
           if (conversation.instance_id) return false;
-        } else {
-          if (conversation.instance_id !== filterInstance) return false;
+        } else if (conversation.instance_id !== filterInstance) {
+          return false;
         }
       }
 
-      // Staff filter
       if (filterStaff !== "all") {
         if (filterStaff === "none") {
           if (conversation.staff) return false;
-        } else {
-          if (conversation.staff?.id !== filterStaff) return false;
+        } else if (conversation.staff?.id !== filterStaff) {
+          return false;
         }
       }
 
-      // Project filter
       if (filterProject !== "all") {
         if (filterProject === "with") {
           if (!conversation.project_id) return false;
-        } else if (filterProject === "without") {
-          if (conversation.project_id) return false;
+        } else if (filterProject === "without" && conversation.project_id) {
+          return false;
         }
       }
 
-      // Type filter (group vs individual)
       if (filterType !== "all") {
         const isGroup = conversation.contact_phone.includes("-");
         if (filterType === "group" && !isGroup) return false;
@@ -283,7 +310,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     });
   }, [conversations, search, filterInstance, filterStaff, filterProject, filterType]);
 
-  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all" || filterProject !== "all" || filterType !== "all";
+  const hasActiveFilters =
+    filterInstance !== "all" ||
+    filterStaff !== "all" ||
+    filterProject !== "all" ||
+    filterType !== "all";
 
   return (
     <div className="flex flex-col h-full">
