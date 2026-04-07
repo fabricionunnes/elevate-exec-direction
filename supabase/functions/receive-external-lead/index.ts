@@ -89,6 +89,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get pipeline name
+    const { data: pipelineData } = await supabase
+      .from('crm_pipelines')
+      .select('name')
+      .eq('id', resolvedPipelineId)
+      .maybeSingle();
+    const resolvedPipelineName = pipelineData?.name || 'Desconhecido';
+
     // Get first stage of pipeline
     const { data: stage } = await supabase
       .from('crm_stages')
