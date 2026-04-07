@@ -3,7 +3,7 @@ import { supabase } from "@/integrations/supabase/client";
 import { Input } from "@/components/ui/input";
 import { Badge } from "@/components/ui/badge";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Search, Filter, Smartphone, User } from "lucide-react";
+import { Search, Filter, Smartphone, User, FolderOpen, Users } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
 import {
@@ -42,6 +42,8 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [loading, setLoading] = useState(true);
   const [filterInstance, setFilterInstance] = useState<string>("all");
   const [filterStaff, setFilterStaff] = useState<string>("all");
+  const [filterProject, setFilterProject] = useState<string>("all");
+  const [filterType, setFilterType] = useState<string>("all");
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
   const [staffSearch, setStaffSearch] = useState("");
@@ -261,11 +263,27 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
         }
       }
 
+      // Project filter
+      if (filterProject !== "all") {
+        if (filterProject === "with") {
+          if (!conversation.project_id) return false;
+        } else if (filterProject === "without") {
+          if (conversation.project_id) return false;
+        }
+      }
+
+      // Type filter (group vs individual)
+      if (filterType !== "all") {
+        const isGroup = conversation.contact_phone.includes("-");
+        if (filterType === "group" && !isGroup) return false;
+        if (filterType === "individual" && isGroup) return false;
+      }
+
       return true;
     });
-  }, [conversations, search, filterInstance, filterStaff]);
+  }, [conversations, search, filterInstance, filterStaff, filterProject, filterType]);
 
-  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all";
+  const hasActiveFilters = filterInstance !== "all" || filterStaff !== "all" || filterProject !== "all" || filterType !== "all";
 
   return (
     <div className="flex flex-col h-full">
@@ -331,9 +349,36 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           )}
         </div>
 
+        {/* Second filters row */}
+        <div className="flex gap-2">
+          <Select value={filterProject} onValueChange={setFilterProject}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <FolderOpen className="h-3 w-3 mr-1 shrink-0" />
+              <SelectValue placeholder="Projeto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="with">Com projeto</SelectItem>
+              <SelectItem value="without">Sem projeto</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <Users className="h-3 w-3 mr-1 shrink-0" />
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="group">Grupo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterInstance("all"); setFilterStaff("all"); }}
+            onClick={() => { setFilterInstance("all"); setFilterStaff("all"); setFilterProject("all"); setFilterType("all"); }}
             className="text-[10px] text-primary hover:underline"
           >
             Limpar filtros
