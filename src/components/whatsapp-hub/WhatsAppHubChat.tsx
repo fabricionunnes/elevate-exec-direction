@@ -98,7 +98,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
       try {
         await supabase.functions.invoke("evolution-api", {
           body: {
-            action: "send_text",
+            action: "send-text",
             instance_name: instance.instance_name,
             phone: conversation.contact_phone.replace(/\D/g, ""),
             message: newMessage.trim(),
