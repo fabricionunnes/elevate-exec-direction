@@ -47,11 +47,9 @@ export const CreateActionFromConversation = ({ open, onOpenChange, conversation,
       if (actionType === "task" && conversation.project_id) {
         // Create task in the project journey
         const { error } = await supabase.from("onboarding_tasks").insert({
-          project_id: conversation.project_id,
           name: title.trim(),
           description: `${description}\n\nContato: ${conversation.contact_phone}`,
           status: "pending",
-          created_by: staffId,
         });
         if (error) throw error;
         toast.success("Tarefa criada na Jornada!");

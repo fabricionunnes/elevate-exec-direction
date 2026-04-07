@@ -23,7 +23,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
 
   const fetchConversations = async () => {
     setLoading(true);
-    const { data, error } = await supabase
+    let query = supabase
       .from("staff_whatsapp_conversations")
       .select(`
         *,
@@ -33,6 +33,11 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       `)
       .order("last_message_at", { ascending: false, nullsFirst: false });
 
+    if (filterProjectId) {
+      query = query.eq("project_id", filterProjectId);
+    }
+
+    const { data, error } = await query;
     if (!error && data) {
       setConversations(data as unknown as HubConversation[]);
     }
