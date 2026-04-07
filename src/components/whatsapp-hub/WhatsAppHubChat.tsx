@@ -365,7 +365,7 @@ export const WhatsAppHubChat = ({ conversation, staffId, instance, onShowContact
               variant="ghost"
               size="sm"
               className="text-xs gap-1.5 text-muted-foreground hover:text-foreground"
-              onClick={() => navigate(`/onboarding-tasks/project/${conversation.project_id}`)}
+              onClick={() => navigate(`/onboarding-tasks/${conversation.project_id}`)}
               title="Ir para o projeto"
             >
               <ExternalLink className="h-3.5 w-3.5" />
