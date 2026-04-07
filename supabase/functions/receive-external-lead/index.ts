@@ -89,6 +89,14 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get pipeline name
+    const { data: pipelineData } = await supabase
+      .from('crm_pipelines')
+      .select('name')
+      .eq('id', resolvedPipelineId)
+      .maybeSingle();
+    const resolvedPipelineName = pipelineData?.name || 'Desconhecido';
+
     // Get first stage of pipeline
     const { data: stage } = await supabase
       .from('crm_stages')
@@ -176,6 +184,7 @@ Deno.serve(async (req) => {
     const leadLink = `${APP_URL}/#/crm/leads/${lead.id}`;
 
     const message = `🚀 *Novo Lead Externo!*\n\n` +
+      `📊 *Funil:* ${resolvedPipelineName}\n` +
       `👤 *Nome:* ${nome}\n` +
       `📞 *Telefone:* ${telefone}\n` +
       `📧 *Email:* ${email}\n` +
