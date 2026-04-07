@@ -42,6 +42,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
+  const [staffSearch, setStaffSearch] = useState("");
 
   const fetchAllowedInstanceIds = async () => {
     if (isMaster) {
