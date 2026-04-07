@@ -63,7 +63,6 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           assigned_staff:onboarding_staff(id, name),
           instance:whatsapp_instances(id, instance_name, display_name, status)
         `)
-        .not("instance_id", "is", null)
         .order("last_message_at", { ascending: false, nullsFirst: false });
 
       if (!isMaster) {
