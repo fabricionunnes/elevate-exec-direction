@@ -1913,6 +1913,10 @@ const OnboardingProjectPage = () => {
             />
           </TabsContent>
 
+          <TabsContent value="whatsapp">
+            <ProjectWhatsAppTab projectId={projectId!} />
+          </TabsContent>
+
         </Tabs>
       </div>
 
