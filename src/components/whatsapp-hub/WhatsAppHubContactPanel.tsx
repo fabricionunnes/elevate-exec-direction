@@ -60,13 +60,13 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
         .order("name"),
       supabase
         .from("onboarding_projects")
-        .select("id, product_name, company_id")
+        .select("id, product_name, company_id, onboarding_company_id")
         .neq("status", "closed")
         .order("product_name"),
     ]);
 
     setCompanies((companiesRes.data || []).map((c: any) => ({ id: c.id, name: c.name })));
-    setProjects((projectsRes.data || []).map((p: any) => ({ id: p.id, name: p.product_name, company_id: p.company_id })));
+    setProjects((projectsRes.data || []).map((p: any) => ({ id: p.id, name: p.product_name, company_id: p.company_id || p.onboarding_company_id })));
   };
 
   const filteredCompanies = useMemo(() => {
