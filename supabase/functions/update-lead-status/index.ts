@@ -145,6 +145,7 @@ Deno.serve(async (req) => {
     if (status === 'won' && paid_value && paid_value > 0) {
       const receivableDescription = description || `Venda: ${lead.company || lead.name || 'Lead'} (via API)`;
       const amountCents = Math.round(paid_value * 100);
+      const apiInvoiceNote = `Lead ID: ${lead.id} | Lead: ${lead.name || ''} | Criado via API`;
 
       // Validate bank_id if provided
       if (bank_id) {
@@ -164,51 +165,71 @@ Deno.serve(async (req) => {
         bankName = bank.name;
       }
 
-      // Create invoice in company_invoices (staff financial module)
-      const { data: invoice, error: recError } = await supabase
+      let duplicateInvoiceQuery = supabase
         .from('company_invoices')
-        .insert({
-          amount_cents: amountCents,
-          paid_amount_cents: amountCents,
-          description: receivableDescription,
-          due_date: today,
-          paid_at: now,
-          status: 'paid',
-          company_id: company_id || null,
-          custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
-          payment_method: payment_method || 'pix',
-          bank_id: bank_id || null,
-          notes: `Lead: ${lead.name || ''} | Criado via API`,
-        })
         .select('id')
-        .single();
+        .eq('description', receivableDescription)
+        .eq('amount_cents', amountCents)
+        .eq('due_date', today)
+        .eq('status', 'paid')
+        .limit(1);
 
-      if (recError) {
-        console.error('[update-lead-status] Invoice error:', recError);
-      } else {
-        receivableId = invoice.id;
-        console.log(`[update-lead-status] Invoice created: ${invoice.id}`);
+      duplicateInvoiceQuery = company_id
+        ? duplicateInvoiceQuery.eq('company_id', company_id)
+        : duplicateInvoiceQuery.is('company_id', null);
+
+      if (bank_id) {
+        duplicateInvoiceQuery = duplicateInvoiceQuery.eq('bank_id', bank_id);
       }
 
-      // Credit the bank if bank_id provided
-      if (bank_id && !recError) {
-        // Increment bank balance
-        await supabase.rpc('increment_bank_balance' as any, {
-          p_bank_id: bank_id,
-          p_amount: amountCents,
-        });
+      const { data: existingInvoice } = await duplicateInvoiceQuery.maybeSingle();
 
-        // Create bank transaction
-        await supabase.from('financial_bank_transactions').insert({
-          bank_id: bank_id,
-          type: 'credit',
-          amount_cents: amountCents,
-          description: receivableDescription,
-          reference_type: 'invoice',
-          reference_id: receivableId,
-        } as any);
+      if (existingInvoice) {
+        receivableId = existingInvoice.id;
+        console.log(`[update-lead-status] Duplicate invoice skipped for lead ${lead_id}: ${existingInvoice.id}`);
+      } else {
+        const { data: invoice, error: recError } = await supabase
+          .from('company_invoices')
+          .insert({
+            amount_cents: amountCents,
+            paid_amount_cents: amountCents,
+            description: receivableDescription,
+            due_date: today,
+            paid_at: now,
+            status: 'paid',
+            company_id: company_id || null,
+            custom_receiver_name: !company_id ? (lead.company || lead.name || null) : null,
+            payment_method: payment_method || 'pix',
+            bank_id: bank_id || null,
+            notes: apiInvoiceNote,
+          })
+          .select('id')
+          .single();
 
-        console.log(`[update-lead-status] Bank credited: ${bank_id} +${amountCents} cents`);
+        if (recError) {
+          console.error('[update-lead-status] Invoice error:', recError);
+        } else {
+          receivableId = invoice.id;
+          console.log(`[update-lead-status] Invoice created: ${invoice.id}`);
+
+          if (bank_id) {
+            await supabase.rpc('increment_bank_balance' as any, {
+              p_bank_id: bank_id,
+              p_amount: amountCents,
+            });
+
+            await supabase.from('financial_bank_transactions').insert({
+              bank_id: bank_id,
+              type: 'credit',
+              amount_cents: amountCents,
+              description: receivableDescription,
+              reference_type: 'invoice',
+              reference_id: receivableId,
+            } as any);
+
+            console.log(`[update-lead-status] Bank credited: ${bank_id} +${amountCents} cents`);
+          }
+        }
       }
     }
 
