@@ -1,0 +1,1 @@
+DELETE FROM crm_leads WHERE id = 'e0ae90b8-f5a9-468f-ba56-499848c47177';
