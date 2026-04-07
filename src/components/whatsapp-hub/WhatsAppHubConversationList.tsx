@@ -349,9 +349,36 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           )}
         </div>
 
+        {/* Second filters row */}
+        <div className="flex gap-2">
+          <Select value={filterProject} onValueChange={setFilterProject}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <FolderOpen className="h-3 w-3 mr-1 shrink-0" />
+              <SelectValue placeholder="Projeto" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="with">Com projeto</SelectItem>
+              <SelectItem value="without">Sem projeto</SelectItem>
+            </SelectContent>
+          </Select>
+
+          <Select value={filterType} onValueChange={setFilterType}>
+            <SelectTrigger className="h-8 text-xs flex-1">
+              <Users className="h-3 w-3 mr-1 shrink-0" />
+              <SelectValue placeholder="Tipo" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="individual">Individual</SelectItem>
+              <SelectItem value="group">Grupo</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+
         {hasActiveFilters && (
           <button
-            onClick={() => { setFilterInstance("all"); setFilterStaff("all"); }}
+            onClick={() => { setFilterInstance("all"); setFilterStaff("all"); setFilterProject("all"); setFilterType("all"); }}
             className="text-[10px] text-primary hover:underline"
           >
             Limpar filtros
