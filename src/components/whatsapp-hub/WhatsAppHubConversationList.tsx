@@ -68,6 +68,15 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     return (data || []).map((item: any) => item.instance_id);
   };
 
+  const fetchAllStaff = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name");
+    setStaffList((data || []).map((s: any) => ({ id: s.id, name: s.name })));
+  };
+
   const fetchConversations = async () => {
     if (!staffId) return;
     setLoading(true);
