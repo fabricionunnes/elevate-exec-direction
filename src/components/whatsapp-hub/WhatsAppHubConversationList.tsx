@@ -41,6 +41,7 @@ interface AllowedAccess {
 
 interface FetchConversationOptions {
   syncGroupsInBackground?: boolean;
+  silent?: boolean;
 }
 
 const MAX_CONVERSATIONS_FETCH = 5000;
@@ -141,9 +142,9 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
     );
   };
 
-  const fetchConversations = async ({ syncGroupsInBackground = false }: FetchConversationOptions = {}) => {
+  const fetchConversations = async ({ syncGroupsInBackground = false, silent = false }: FetchConversationOptions = {}) => {
     if (!staffId) return;
-    setLoading(true);
+    if (!silent) setLoading(true);
 
     try {
       const access = await fetchAllowedAccess();
@@ -256,7 +257,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           table: "crm_whatsapp_conversations",
         },
         () => {
-          void fetchConversations();
+          void fetchConversations({ silent: true });
         }
       )
       .subscribe();

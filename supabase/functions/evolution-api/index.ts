@@ -688,6 +688,10 @@ Deno.serve(async (req) => {
         const { instanceId, phone, message } = body;
         const digitsOnlyPhone = String(phone || '').replace(/\D/g, '');
         
+        // Detect group JIDs (LID format starts with 120363 and is long)
+        const isGroup = digitsOnlyPhone.startsWith('120363') && digitsOnlyPhone.length > 15;
+        const numberToSend = isGroup ? `${digitsOnlyPhone}@g.us` : digitsOnlyPhone;
+        
         // Get instance name AND custom API credentials from database
         const supabaseService = createClient(
           Deno.env.get('SUPABASE_URL')!,
@@ -711,13 +715,13 @@ Deno.serve(async (req) => {
         const apiBaseUrl = instance.api_url ? normalizeBaseUrl(instance.api_url) : evolutionBaseUrl;
         const apiHeaders = instance.api_key ? buildEvolutionHeaders(instance.api_key) : evolutionHeaders;
 
-        console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}`);
+        console.log(`[evolution-api] sendText using ${instance.api_url ? 'custom' : 'global'} credentials for instance ${instance.instance_name}, isGroup=${isGroup}`);
 
         const response = await fetch(`${apiBaseUrl}/message/sendText/${instance.instance_name}`, {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
-            number: digitsOnlyPhone,
+            number: numberToSend,
             text: message,
           }),
         });
@@ -805,11 +809,18 @@ Deno.serve(async (req) => {
           document: 'document',
         };
 
+        // Detect group JIDs
+        const phoneDigits = String(phone || '').replace(/\D/g, '');
+        const isGroup = phoneDigits.startsWith('120363') && phoneDigits.length > 15;
+        const numberToSend = isGroup 
+          ? `${phoneDigits}@g.us` 
+          : (phone.includes('@') ? phone : `${phoneDigits}@s.whatsapp.net`);
+
         const response = await fetch(`${apiBaseUrl}/message/sendMedia/${instance.instance_name}`, {
           method: 'POST',
           headers: apiHeaders,
           body: JSON.stringify({
-            number: phone.includes('@') ? phone : `${phone}@s.whatsapp.net`,
+            number: numberToSend,
             mediatype: mediatypeMap[mediaType] || 'document',
             media: mediaUrl,
             caption: caption || '',
