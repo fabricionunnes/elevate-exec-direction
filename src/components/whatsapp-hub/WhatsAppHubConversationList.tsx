@@ -42,6 +42,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [instances, setInstances] = useState<InstanceOption[]>([]);
   const [staffList, setStaffList] = useState<StaffOption[]>([]);
+  const [staffSearch, setStaffSearch] = useState("");
 
   const fetchAllowedInstanceIds = async () => {
     if (isMaster) {
@@ -65,6 +66,15 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       }));
     setInstances(instancesList);
     return (data || []).map((item: any) => item.instance_id);
+  };
+
+  const fetchAllStaff = async () => {
+    const { data } = await supabase
+      .from("onboarding_staff")
+      .select("id, name")
+      .eq("is_active", true)
+      .order("name");
+    setStaffList((data || []).map((s: any) => ({ id: s.id, name: s.name })));
   };
 
   const fetchConversations = async () => {
@@ -109,15 +119,6 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
       const { data, error } = await query;
       if (error) throw error;
 
-      // Extract unique staff from conversations
-      const staffMap = new Map<string, string>();
-      (data || []).forEach((conv: any) => {
-        if (conv.assigned_staff?.id) {
-          staffMap.set(conv.assigned_staff.id, conv.assigned_staff.name);
-        }
-      });
-      const uniqueStaff = Array.from(staffMap.entries()).map(([id, name]) => ({ id, name }));
-      setStaffList(uniqueStaff);
 
       // Fetch project names for conversations that have project_id
       const projectIds = Array.from(
@@ -166,6 +167,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
   };
 
   useEffect(() => {
+    fetchAllStaff();
     fetchConversations();
 
     const channel = supabase
@@ -255,19 +257,33 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           </Select>
 
           {isMaster && (
-            <Select value={filterStaff} onValueChange={setFilterStaff}>
+            <Select value={filterStaff} onValueChange={(v) => { setFilterStaff(v); setStaffSearch(""); }}>
               <SelectTrigger className="h-8 text-xs flex-1">
                 <User className="h-3 w-3 mr-1 shrink-0" />
                 <SelectValue placeholder="Usuário" />
               </SelectTrigger>
               <SelectContent>
+                <div className="p-2">
+                  <div className="relative">
+                    <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                    <Input
+                      placeholder="Buscar usuário..."
+                      value={staffSearch}
+                      onChange={(e) => setStaffSearch(e.target.value)}
+                      className="h-8 pl-8 text-xs"
+                      onKeyDown={(e) => e.stopPropagation()}
+                    />
+                  </div>
+                </div>
                 <SelectItem value="all">Todos usuários</SelectItem>
                 <SelectItem value="none">Sem responsável</SelectItem>
-                {staffList.map((s) => (
-                  <SelectItem key={s.id} value={s.id}>
-                    {s.name}
-                  </SelectItem>
-                ))}
+                {staffList
+                  .filter((s) => !staffSearch || s.name.toLowerCase().includes(staffSearch.toLowerCase()))
+                  .map((s) => (
+                    <SelectItem key={s.id} value={s.id}>
+                      {s.name}
+                    </SelectItem>
+                  ))}
               </SelectContent>
             </Select>
           )}
