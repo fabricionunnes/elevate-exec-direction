@@ -37,13 +37,18 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
   const [companySearch, setCompanySearch] = useState("");
   const [projectSearch, setProjectSearch] = useState("");
 
+  // Fetch data only when conversation changes (not on project_id update)
   useEffect(() => {
-    setSelectedProject(conversation.project_id || "none");
     setSelectedCompany("none");
     setCompanySearch("");
     setProjectSearch("");
     fetchData();
-  }, [conversation.id, conversation.project_id]);
+  }, [conversation.id]);
+
+  // Sync selected project from prop without refetching
+  useEffect(() => {
+    setSelectedProject(conversation.project_id || "none");
+  }, [conversation.project_id]);
 
   // When projects load, auto-select company from current project
   useEffect(() => {
