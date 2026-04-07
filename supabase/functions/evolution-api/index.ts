@@ -26,6 +26,17 @@ function buildEvolutionHeaders(apiKey: string) {
   };
 }
 
+function normalizeInstanceKey(value?: string | null) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[̀-ͯ]/g, '')
+    .toLowerCase()
+    .replace(/[\s_]+/g, '-')
+    .replace(/[^a-z0-9-]/g, '')
+    .replace(/-+/g, '-')
+    .replace(/^-|-$/g, '');
+}
+
 Deno.serve(async (req) => {
   console.log(`[evolution-api] Version: ${EVOLUTION_API_FUNC_VERSION}`);
 
@@ -104,6 +115,83 @@ Deno.serve(async (req) => {
     let action = url.searchParams.get('action');
 
     const evolutionHeaders = buildEvolutionHeaders(EVOLUTION_API_KEY);
+    const supabaseService = createClient(
+      Deno.env.get('SUPABASE_URL')!,
+      Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
+    );
+
+    const resolveEvolutionCredentials = async (instanceName?: string) => {
+      const defaultTarget = {
+        baseUrl: evolutionBaseUrl,
+        headers: evolutionHeaders,
+        source: 'global-env',
+      };
+
+      try {
+        const { data: configuredInstances, error: configuredInstancesError } = await supabaseService
+          .from('whatsapp_instances')
+          .select('instance_name, api_url, api_key')
+          .not('api_url', 'is', null)
+          .not('api_key', 'is', null);
+
+        if (configuredInstancesError) {
+          console.error('[evolution-api] Failed to load whatsapp_instances credentials:', configuredInstancesError.message);
+        }
+
+        const normalizedTarget = normalizeInstanceKey(instanceName);
+        const matchedInstance = normalizedTarget
+          ? (configuredInstances || []).find((item: any) => normalizeInstanceKey(item.instance_name) === normalizedTarget)
+          : null;
+
+        if (matchedInstance?.api_url && matchedInstance?.api_key) {
+          return {
+            baseUrl: normalizeBaseUrl(matchedInstance.api_url),
+            headers: buildEvolutionHeaders(matchedInstance.api_key),
+            source: `whatsapp_instances:${matchedInstance.instance_name}`,
+          };
+        }
+
+        const { data: defaultConfig } = await supabaseService
+          .from('whatsapp_default_config')
+          .select('setting_value')
+          .eq('setting_key', 'default_instance')
+          .maybeSingle();
+
+        const defaultInstance = (configuredInstances || []).find(
+          (item: any) => item.instance_name === defaultConfig?.setting_value
+        );
+
+        if (defaultInstance?.api_url && defaultInstance?.api_key) {
+          return {
+            baseUrl: normalizeBaseUrl(defaultInstance.api_url),
+            headers: buildEvolutionHeaders(defaultInstance.api_key),
+            source: `default-instance:${defaultInstance.instance_name}`,
+          };
+        }
+
+        const { data: clientConfig, error: clientConfigError } = await supabaseService
+          .from('client_crm_whatsapp_config')
+          .select('server_url, api_key')
+          .limit(1)
+          .maybeSingle();
+
+        if (clientConfigError) {
+          console.error('[evolution-api] Failed to load client_crm_whatsapp_config:', clientConfigError.message);
+        }
+
+        if (clientConfig?.server_url && clientConfig?.api_key) {
+          return {
+            baseUrl: normalizeBaseUrl(clientConfig.server_url),
+            headers: buildEvolutionHeaders(clientConfig.api_key),
+            source: 'client-crm-config',
+          };
+        }
+      } catch (error) {
+        console.error('[evolution-api] Failed to resolve custom Evolution credentials:', error);
+      }
+
+      return defaultTarget;
+    };
 
     // Make a raw fetch to any URL with Evolution headers
     const fetchEvolutionRaw = async (fullUrl: string, init?: RequestInit) => {
@@ -288,13 +376,35 @@ Deno.serve(async (req) => {
           };
         }
 
+        const createTarget = await resolveEvolutionCredentials(instanceName);
+        const createWithPrefixes = async (path: string, init?: RequestInit): Promise<{ res: Response; json: any; prefix: string }> => {
+          for (const prefix of ROUTE_PREFIXES) {
+            const endpoint = `${prefix}${path}`;
+            const fullUrl = `${createTarget.baseUrl}${endpoint}`;
+            const { res, json } = await fetchEvolutionRaw(fullUrl, {
+              ...init,
+              headers: { ...createTarget.headers, ...(init?.headers || {}) },
+            });
+            if (res.ok || (res.status !== 404 && res.status !== 405)) {
+              return { res, json, prefix };
+            }
+          }
+          const endpoint = `${ROUTE_PREFIXES[0]}${path}`;
+          const fullUrl = `${createTarget.baseUrl}${endpoint}`;
+          const { res, json } = await fetchEvolutionRaw(fullUrl, {
+            ...init,
+            headers: { ...createTarget.headers, ...(init?.headers || {}) },
+          });
+          return { res, json, prefix: '' };
+        };
+
         // Evolution API route can vary by install/version; try common prefixes
-        const { res, json, prefix } = await fetchWithPrefixes('/instance/create', {
+        const { res, json, prefix } = await createWithPrefixes('/instance/create', {
           method: 'POST',
           body: JSON.stringify(createPayload),
         });
 
-        console.log(`[evolution-api] create-instance used prefix: "${prefix}"`);
+        console.log(`[evolution-api] create-instance used prefix: "${prefix}" via ${createTarget.source}`);
 
         if (!res.ok) {
           return new Response(
@@ -815,9 +925,10 @@ Deno.serve(async (req) => {
           );
         }
 
-        const { res, json } = await fetchEvolutionJson(
-          `/instance/connectionState/${encodeURIComponent(instanceName)}`,
-          { method: 'GET' }
+        const statusTarget = await resolveEvolutionCredentials(instanceName);
+        const { res, json } = await fetchEvolutionRaw(
+          `${statusTarget.baseUrl}/instance/connectionState/${encodeURIComponent(instanceName)}`,
+          { method: 'GET', headers: statusTarget.headers }
         );
 
         return new Response(
@@ -1062,23 +1173,11 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Look up instance-specific API credentials from database
-        const supabaseServiceSendText = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
+        const sendTextTarget = await resolveEvolutionCredentials(instanceName);
+        const sendTextBaseUrl = sendTextTarget.baseUrl;
+        const sendTextHeaders = sendTextTarget.headers;
 
-        const { data: sendTextInstance } = await supabaseServiceSendText
-          .from('whatsapp_instances')
-          .select('api_url, api_key')
-          .eq('instance_name', instanceName)
-          .maybeSingle();
-
-        // Use instance-specific credentials if available, otherwise fall back to global
-        const sendTextBaseUrl = sendTextInstance?.api_url ? normalizeBaseUrl(sendTextInstance.api_url) : evolutionBaseUrl;
-        const sendTextHeaders = sendTextInstance?.api_key ? buildEvolutionHeaders(sendTextInstance.api_key) : evolutionHeaders;
-
-        console.log(`[evolution-api] send-text using ${sendTextInstance?.api_url ? 'custom' : 'global'} credentials for instance ${instanceName}`);
+        console.log(`[evolution-api] send-text using ${sendTextTarget.source} credentials for instance ${instanceName}`);
 
         const sendTextController = new AbortController();
         const sendTextTimeout = setTimeout(() => sendTextController.abort(), 25000);
@@ -1147,9 +1246,10 @@ Deno.serve(async (req) => {
           );
         }
 
-        const response = await fetch(`${evolutionBaseUrl}/message/sendMedia/${instanceName}`, {
+        const sendMediaTarget = await resolveEvolutionCredentials(instanceName);
+        const response = await fetch(`${sendMediaTarget.baseUrl}/message/sendMedia/${instanceName}`, {
           method: 'POST',
-          headers: evolutionHeaders,
+          headers: sendMediaTarget.headers,
           body: JSON.stringify({
             number,
             mediatype,
@@ -1179,20 +1279,9 @@ Deno.serve(async (req) => {
           );
         }
 
-        // Look up instance-specific API credentials from database
-        const supabaseServiceDelete = createClient(
-          Deno.env.get('SUPABASE_URL')!,
-          Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!
-        );
-
-        const { data: delInstance } = await supabaseServiceDelete
-          .from('whatsapp_instances')
-          .select('api_url, api_key')
-          .eq('instance_name', instanceName)
-          .maybeSingle();
-
-        const deleteBaseUrl = delInstance?.api_url ? normalizeBaseUrl(delInstance.api_url) : evolutionBaseUrl;
-        const deleteHeaders = delInstance?.api_key ? buildEvolutionHeaders(delInstance.api_key) : evolutionHeaders;
+        const deleteTarget = await resolveEvolutionCredentials(instanceName);
+        const deleteBaseUrl = deleteTarget.baseUrl;
+        const deleteHeaders = deleteTarget.headers;
 
         const response = await fetch(`${deleteBaseUrl}/instance/delete/${instanceName}`, {
           method: 'DELETE',
