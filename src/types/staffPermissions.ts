@@ -205,6 +205,12 @@ export const STAFF_MENU_STRUCTURE = [
     description: "Criar e gerenciar regras de automação entre módulos",
     group: "Administração" 
   },
+  { 
+    key: STAFF_MENU_KEYS.whatsapp_hub, 
+    label: "WhatsApp Hub", 
+    description: "Hub de comunicação com WhatsApp pessoal",
+    group: "Comunicação" 
+  },
 ] as const;
 
 // Role labels in Portuguese
