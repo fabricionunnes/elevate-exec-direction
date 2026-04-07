@@ -38,7 +38,7 @@ export interface HubConversation {
   created_at: string;
   project?: { id: string; product_name: string } | null;
   staff?: { id: string; name: string } | null;
-  instance?: { id: string; instance_name: string; display_name: string | null } | null;
+  instance?: { id: string; instance_name: string; display_name: string | null; status?: string | null } | null;
 }
 
 export interface HubMessage {

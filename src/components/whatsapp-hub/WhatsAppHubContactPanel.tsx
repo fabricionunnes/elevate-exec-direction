@@ -1,7 +1,8 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { ScrollArea } from "@/components/ui/scroll-area";
-import { Phone, Building2, Link2 } from "lucide-react";
+import { Phone, Building2, Link2, Search } from "lucide-react";
+import { Input } from "@/components/ui/input";
 import {
   Select,
   SelectContent,
@@ -17,28 +18,78 @@ interface Props {
   onConversationUpdate: (conv: HubConversation) => void;
 }
 
-interface Project {
+interface Company {
   id: string;
   name: string;
 }
 
+interface Project {
+  id: string;
+  name: string;
+  company_id: string | null;
+}
+
 export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: Props) => {
+  const [companies, setCompanies] = useState<Company[]>([]);
   const [projects, setProjects] = useState<Project[]>([]);
+  const [selectedCompany, setSelectedCompany] = useState<string>("none");
   const [selectedProject, setSelectedProject] = useState(conversation.project_id || "none");
+  const [companySearch, setCompanySearch] = useState("");
+  const [projectSearch, setProjectSearch] = useState("");
 
   useEffect(() => {
     setSelectedProject(conversation.project_id || "none");
-    fetchProjects();
+    fetchData();
   }, [conversation.id, conversation.project_id]);
 
-  const fetchProjects = async () => {
-    const { data } = await supabase
-      .from("onboarding_projects")
-      .select("id, product_name")
-      .neq("status", "closed")
-      .order("product_name");
+  // When projects load, auto-select company from current project
+  useEffect(() => {
+    if (conversation.project_id && projects.length > 0) {
+      const currentProject = projects.find((p) => p.id === conversation.project_id);
+      if (currentProject?.company_id) {
+        setSelectedCompany(currentProject.company_id);
+      }
+    }
+  }, [conversation.project_id, projects]);
 
-    setProjects((data || []).map((project: any) => ({ id: project.id, name: project.product_name })));
+  const fetchData = async () => {
+    const [companiesRes, projectsRes] = await Promise.all([
+      supabase
+        .from("onboarding_companies")
+        .select("id, name")
+        .order("name"),
+      supabase
+        .from("onboarding_projects")
+        .select("id, product_name, company_id")
+        .neq("status", "closed")
+        .order("product_name"),
+    ]);
+
+    setCompanies((companiesRes.data || []).map((c: any) => ({ id: c.id, name: c.name })));
+    setProjects((projectsRes.data || []).map((p: any) => ({ id: p.id, name: p.product_name, company_id: p.company_id })));
+  };
+
+  const filteredCompanies = useMemo(() => {
+    if (!companySearch) return companies;
+    const term = companySearch.toLowerCase();
+    return companies.filter((c) => c.name.toLowerCase().includes(term));
+  }, [companies, companySearch]);
+
+  const companyProjects = useMemo(() => {
+    if (selectedCompany === "none") return projects;
+    return projects.filter((p) => p.company_id === selectedCompany);
+  }, [projects, selectedCompany]);
+
+  const filteredProjects = useMemo(() => {
+    if (!projectSearch) return companyProjects;
+    const term = projectSearch.toLowerCase();
+    return companyProjects.filter((p) => p.name.toLowerCase().includes(term));
+  }, [companyProjects, projectSearch]);
+
+  const handleCompanyChange = (value: string) => {
+    setSelectedCompany(value);
+    setSelectedProject("none");
+    setProjectSearch("");
   };
 
   const handleProjectChange = async (value: string) => {
@@ -93,9 +144,44 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
           </div>
         </div>
 
+        {/* Company selector */}
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-sm font-medium">
             <Building2 className="h-4 w-4" />
+            Empresa
+          </div>
+          <Select value={selectedCompany} onValueChange={handleCompanyChange}>
+            <SelectTrigger className="h-9">
+              <SelectValue placeholder="Selecione uma empresa" />
+            </SelectTrigger>
+            <SelectContent>
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar empresa..."
+                    value={companySearch}
+                    onChange={(e) => setCompanySearch(e.target.value)}
+                    className="h-8 pl-8 text-sm"
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
+              <SelectItem value="none">Todas</SelectItem>
+              {filteredCompanies.map((company) => (
+                <SelectItem key={company.id} value={company.id}>{company.name}</SelectItem>
+              ))}
+              {filteredCompanies.length === 0 && companySearch && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Nenhuma empresa encontrada</div>
+              )}
+            </SelectContent>
+          </Select>
+        </div>
+
+        {/* Project selector */}
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-sm font-medium">
+            <Link2 className="h-4 w-4" />
             Vincular ao Projeto
           </div>
           <Select value={selectedProject} onValueChange={handleProjectChange}>
@@ -103,10 +189,25 @@ export const WhatsAppHubContactPanel = ({ conversation, onConversationUpdate }: 
               <SelectValue placeholder="Selecione um projeto" />
             </SelectTrigger>
             <SelectContent>
+              <div className="p-2">
+                <div className="relative">
+                  <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-3.5 w-3.5 text-muted-foreground" />
+                  <Input
+                    placeholder="Buscar projeto..."
+                    value={projectSearch}
+                    onChange={(e) => setProjectSearch(e.target.value)}
+                    className="h-8 pl-8 text-sm"
+                    onKeyDown={(e) => e.stopPropagation()}
+                  />
+                </div>
+              </div>
               <SelectItem value="none">Nenhum</SelectItem>
-              {projects.map((project) => (
+              {filteredProjects.map((project) => (
                 <SelectItem key={project.id} value={project.id}>{project.name}</SelectItem>
               ))}
+              {filteredProjects.length === 0 && projectSearch && (
+                <div className="px-3 py-2 text-xs text-muted-foreground">Nenhum projeto encontrado</div>
+              )}
             </SelectContent>
           </Select>
           {!conversation.lead_id && (

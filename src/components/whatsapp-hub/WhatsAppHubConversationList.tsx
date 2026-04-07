@@ -61,7 +61,7 @@ export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selec
           created_at,
           contact:crm_whatsapp_contacts(name, phone, profile_picture_url),
           assigned_staff:onboarding_staff(id, name),
-          instance:whatsapp_instances(id, instance_name, display_name)
+          instance:whatsapp_instances(id, instance_name, display_name, status)
         `)
         .not("instance_id", "is", null)
         .order("last_message_at", { ascending: false, nullsFirst: false });
