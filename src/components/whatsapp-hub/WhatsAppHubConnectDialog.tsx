@@ -85,7 +85,7 @@ export const WhatsAppHubConnectDialog = ({ open, onOpenChange, staffId, instance
     try {
       const { data, error } = await supabase.functions.invoke("evolution-api", {
         body: {
-          action: "get_qrcode",
+          action: "qr-code",
           instance_name: instance.instance_name,
         },
       });
