@@ -16,7 +16,7 @@ interface Props {
   filterProjectId?: string;
 }
 
-export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId }: Props) => {
+export const WhatsAppHubConversationList = ({ staffId, isMaster, onSelect, selectedId, filterProjectId }: Props) => {
   const [conversations, setConversations] = useState<HubConversation[]>([]);
   const [search, setSearch] = useState("");
   const [loading, setLoading] = useState(true);
