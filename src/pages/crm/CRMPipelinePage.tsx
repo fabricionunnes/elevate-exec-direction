@@ -251,7 +251,7 @@ export const CRMPipelinePage = () => {
 
       // Fetch leads in batches to bypass the 1000-row limit
       // Cap at 10,000 to avoid browser memory issues on very large pipelines
-      const PAGE_SIZE = 1000;
+      const PAGE_SIZE = 500;
       const MAX_LEADS = 10000;
       let allLeads: Lead[] = [];
       let from = 0;
@@ -261,7 +261,8 @@ export const CRMPipelinePage = () => {
         let query = supabase
           .from("crm_leads")
           .select(`
-            *,
+            id, name, company, phone, email, document, stage_id, origin_id, owner_staff_id,
+            opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at,
             origin:crm_origins(name),
             owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
             tags:crm_lead_tags(tag:crm_tags(id, name, color))
