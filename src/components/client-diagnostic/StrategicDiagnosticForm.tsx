@@ -418,10 +418,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Investimento mensal em social (R$)</Label>
-              <Input type="number" value={form.investimento_social} onChange={e => set("investimento_social", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Investimento mensal em social" value={form.investimento_social} onChange={v => set("investimento_social", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Seguidores no Instagram (aprox.)</Label>
               <Input type="number" value={form.seguidores_instagram} onChange={e => set("seguidores_instagram", e.target.value)} className="bg-muted/30 border-border/50" />
