@@ -26,6 +26,7 @@ import {
   Download,
   Settings2,
   RotateCcw,
+  Phone,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -43,6 +44,7 @@ export interface CRMFilters {
   origins: string[];
   valueMin: number | null;
   valueMax: number | null;
+  phoneFilter: "all" | "with_phone" | "without_phone";
 }
 
 interface FilterOption {
@@ -98,6 +100,7 @@ export const CRMFiltersBar = ({
       origins: [],
       valueMin: null,
       valueMax: null,
+      phoneFilter: "all",
     });
   };
 
@@ -110,6 +113,7 @@ export const CRMFiltersBar = ({
     filters.stages.length,
     filters.origins.length,
     filters.valueMin || filters.valueMax ? 1 : 0,
+    filters.phoneFilter !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
@@ -343,6 +347,27 @@ export const CRMFiltersBar = ({
             </div>
           </PopoverContent>
         </Popover>
+
+        {/* Phone Filter */}
+        <Select
+          value={filters.phoneFilter}
+          onValueChange={(value) => updateFilter("phoneFilter", value as CRMFilters["phoneFilter"])}
+        >
+          <SelectTrigger
+            className={cn(
+              "h-9 w-auto min-w-[140px] gap-2",
+              filters.phoneFilter !== "all" && "bg-primary/10 border-primary/30"
+            )}
+          >
+            <Phone className="h-4 w-4" />
+            <SelectValue placeholder="Telefone" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="with_phone">Com telefone</SelectItem>
+            <SelectItem value="without_phone">Sem telefone</SelectItem>
+          </SelectContent>
+        </Select>
 
         {/* More Filters */}
         <Popover>

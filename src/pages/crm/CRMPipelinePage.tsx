@@ -80,6 +80,7 @@ const defaultFilters: CRMFilters = {
   origins: [],
   valueMin: null,
   valueMax: null,
+  phoneFilter: "all",
 };
 
 export const CRMPipelinePage = () => {
@@ -391,6 +392,13 @@ export const CRMPipelinePage = () => {
         const leadDate = new Date(lead.created_at);
         if (leadDate < filters.dateRange.from) return false;
         if (filters.dateRange.to && leadDate > filters.dateRange.to) return false;
+      }
+
+      // Phone filter
+      if (filters.phoneFilter === "with_phone") {
+        if (!lead.phone) return false;
+      } else if (filters.phoneFilter === "without_phone") {
+        if (lead.phone) return false;
       }
 
       return true;
