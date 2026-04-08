@@ -44,10 +44,7 @@ const papelUNV = [
 
 // Critérios de entrada obrigatórios
 const criteriosEntrada = [
-  { icon: Target, text: "200 leads qualificados por mês (comprovados)" },
-  { icon: TrendingUp, text: "Investimento mínimo de R$ 2.000/mês em tráfego pago" },
   { icon: CheckCircle, text: "Oferta validada" },
-  { icon: Percent, text: "Ticket mínimo compatível com comissão" },
   { icon: Settings, text: "Estrutura mínima (agenda, contrato, meios de pagamento)" },
 ];
 
