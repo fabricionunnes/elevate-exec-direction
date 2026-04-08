@@ -135,7 +135,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
 
   const set = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const toggleArray = (key: "plataformas_trafego" | "redes_ativas" | "produtos_oferecer", val: string) => {
+  const toggleArray = (key: "plataformas_trafego" | "redes_ativas" | "produtos_oferecer" | "principal_canal", val: string) => {
     setForm(prev => {
       const arr = prev[key] as string[];
       return { ...prev, [key]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
