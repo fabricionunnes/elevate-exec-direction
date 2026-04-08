@@ -19,7 +19,29 @@ interface Props {
   projectId: string;
   onSaved: (record: DiagnosticRecord) => void;
   projectContext?: ProjectContext | null;
+  editingRecord?: DiagnosticRecord | null;
 }
+
+const numberToCurrency = (val: number | null | undefined): string => {
+  if (val == null) return "";
+  return val.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCanaisFromString = (val: string | null): { canais: string[]; outro: string } => {
+  if (!val) return { canais: [], outro: "" };
+  const known = ["Indicação", "Prospecção ativa", "Tráfego pago", "Orgânico", "Redes sociais"];
+  const parts = val.split(", ").map(s => s.trim()).filter(Boolean);
+  const canais = parts.filter(p => known.includes(p));
+  const outros = parts.filter(p => !known.includes(p));
+  return { canais, outro: outros.join(", ") };
+};
+
+const parseSocialFrom = (val: string | null): { select: string; outro: string } => {
+  const known = ["UNV", "Agência externa", "Freelancer", "Colaborador interno", "O próprio dono", "Ninguém faz"];
+  if (!val) return { select: "", outro: "" };
+  if (known.includes(val)) return { select: val, outro: "" };
+  return { select: "Outro", outro: val };
+};
 
 const defaultForm = {
   empresa: "",
