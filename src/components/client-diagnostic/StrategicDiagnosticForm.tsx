@@ -190,7 +190,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         satisfeito_trafego: form.satisfeito_trafego || null,
         acompanha_relatorios: form.acompanha_relatorios || null,
         observacoes_trafego: form.observacoes_trafego || null,
-        quem_faz_social: form.quem_faz_social || null,
+        quem_faz_social: form.quem_faz_social === "Outro" ? (form.quem_faz_social_outro || "Outro") : (form.quem_faz_social || null),
         investimento_social: parseCurrencyToNumber(form.investimento_social),
         seguidores_instagram: form.seguidores_instagram ? parseInt(form.seguidores_instagram) : null,
         engajamento_medio: form.engajamento_medio ? parseFloat(form.engajamento_medio) : null,
