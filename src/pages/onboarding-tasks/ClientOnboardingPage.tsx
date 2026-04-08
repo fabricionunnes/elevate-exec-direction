@@ -72,6 +72,7 @@ import { CommercialDirectorModule } from "@/components/commercial-director/Comme
 import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOtherServicesPanel";
 import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import { B2BProspectionEmbed } from "@/components/b2b-prospection/B2BProspectionEmbed";
+import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import {
   DropdownMenu,
   DropdownMenuContent,
