@@ -61,6 +61,7 @@ const defaultForm = {
   acompanha_relatorios: "",
   observacoes_trafego: "",
   quem_faz_social: "",
+  quem_faz_social_outro: "",
   investimento_social: "",
   seguidores_instagram: "",
   engajamento_medio: "",
