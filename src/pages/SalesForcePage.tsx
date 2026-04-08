@@ -71,8 +71,7 @@ const icpNao = [
 // Formato
 const formato = [
   { label: "Modelo", value: "Terceirização de SDR + Closer" },
-  { label: "Fixo", value: "R$ 6.000/mês" },
-  { label: "Variável", value: "Comissão sobre vendas" },
+  { label: "Fixo", value: "R$ 3.000/mês" },
   { label: "Contrato mínimo", value: "3 meses" },
 ];
 
