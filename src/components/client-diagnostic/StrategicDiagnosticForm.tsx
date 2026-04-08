@@ -36,6 +36,7 @@ const defaultForm = {
   controle_financeiro: "",
   gestao_financeira: "",
   usa_contador: "",
+  usa_bpo_financeiro: "",
   maior_dor_financeira: "",
   observacoes_financeiras: "",
   consultor_financeiro: "",
@@ -164,6 +165,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         controle_financeiro: form.controle_financeiro || null,
         gestao_financeira: form.gestao_financeira || null,
         usa_contador: form.usa_contador || null,
+        usa_bpo_financeiro: form.usa_bpo_financeiro || null,
         maior_dor_financeira: form.maior_dor_financeira || null,
         observacoes_financeiras: form.observacoes_financeiras || null,
         consultor_financeiro: form.consultor_financeiro || null,
@@ -317,7 +319,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
               </SelectContent>
             </Select>
           </div>
-          <RadioField label="Usa contador / BPO financeiro?" name="usa_contador" options={["Sim", "Não"]} />
+          <RadioField label="Possui contador?" name="usa_contador" options={["Sim", "Não"]} />
+          <RadioField label="Possui BPO financeiro?" name="usa_bpo_financeiro" options={["Sim", "Não", "Tem interesse"]} />
           <RadioField label="Possui consultor financeiro ou tem interesse em contratar?" name="consultor_financeiro" options={["Já possui", "Tem interesse", "Não tem interesse"]} />
           <RadioField label="Maior dor financeira hoje" name="maior_dor_financeira" options={["Fluxo de caixa", "Margem baixa", "Inadimplência", "Custo fixo alto", "Falta de previsibilidade", "Não identifica"]} />
           <div className="space-y-1.5">
