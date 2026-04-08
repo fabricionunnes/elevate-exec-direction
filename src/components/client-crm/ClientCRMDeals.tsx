@@ -7,7 +7,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Label } from "@/components/ui/label";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { Plus, Trash2, Search, Pencil, Upload } from "lucide-react";
+import { Plus, Trash2, Search, Pencil, Upload, Phone } from "lucide-react";
 import { toast } from "sonner";
 import type { ClientDeal, ClientStage, ClientContact, ClientPipeline, ClientActivity } from "./hooks/useClientCRM";
 import { ClientCRMImportDialog } from "./ClientCRMImportDialog";
@@ -52,19 +52,28 @@ export const ClientCRMDeals = ({
   const [showNewActivity, setShowNewActivity] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", value: "", contact_id: "", notes: "", expected_close_date: "" });
+  const [phoneFilter, setPhoneFilter] = useState<string>("all");
 
   const nonFinalStages = stages.filter(s => !s.is_final);
   const finalStages = stages.filter(s => s.is_final);
 
   const filteredDeals = useMemo(() => {
-    if (!search) return deals;
-    const s = search.toLowerCase();
-    return deals.filter(d =>
-      d.title.toLowerCase().includes(s) ||
-      (d.contact as any)?.name?.toLowerCase().includes(s) ||
-      d.notes?.toLowerCase().includes(s)
-    );
-  }, [deals, search]);
+    let result = deals;
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(d =>
+        d.title.toLowerCase().includes(s) ||
+        (d.contact as any)?.name?.toLowerCase().includes(s) ||
+        d.notes?.toLowerCase().includes(s)
+      );
+    }
+    if (phoneFilter === "with_phone") {
+      result = result.filter(d => (d.contact as any)?.phone);
+    } else if (phoneFilter === "without_phone") {
+      result = result.filter(d => !(d.contact as any)?.phone);
+    }
+    return result;
+  }, [deals, search, phoneFilter]);
 
   const handleCreateDeal = async () => {
     if (!newDeal.title.trim()) return;
@@ -194,6 +203,17 @@ export const ClientCRMDeals = ({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 h-8 w-[180px]" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <Select value={phoneFilter} onValueChange={setPhoneFilter}>
+            <SelectTrigger className="h-8 w-[160px] text-sm">
+              <Phone className="h-3.5 w-3.5 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="with_phone">Com telefone</SelectItem>
+              <SelectItem value="without_phone">Sem telefone</SelectItem>
+            </SelectContent>
+          </Select>
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4" /> Importar
           </Button>
