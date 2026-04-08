@@ -637,27 +637,13 @@ export default function SalesForcePage() {
               Investimento
             </h2>
             
-            <div className="grid sm:grid-cols-3 gap-6">
+            <div className="max-w-md mx-auto">
               <div className="card-premium p-8 text-center bg-accent/5 border-accent/20">
                 <p className="text-small uppercase tracking-wider text-muted-foreground mb-2">
                   Fixo
                 </p>
-                <p className="text-3xl font-bold text-foreground mb-2">R$ 6.000</p>
+                <p className="text-3xl font-bold text-foreground mb-2">R$ 3.000</p>
                 <p className="text-muted-foreground">/mês</p>
-              </div>
-              <div className="card-premium p-8 text-center bg-primary/5 border-primary/20">
-                <p className="text-small uppercase tracking-wider text-muted-foreground mb-2">
-                  Variável
-                </p>
-                <p className="text-xl font-bold text-foreground mb-2">Comissão</p>
-                <p className="text-muted-foreground">sobre vendas (contrato)</p>
-              </div>
-              <div className="card-premium p-8 text-center">
-                <p className="text-small uppercase tracking-wider text-muted-foreground mb-2">
-                  Tráfego (cliente)
-                </p>
-                <p className="text-xl font-bold text-foreground mb-2">Mín. R$ 2.000</p>
-                <p className="text-muted-foreground">/mês em mídia</p>
               </div>
             </div>
 
