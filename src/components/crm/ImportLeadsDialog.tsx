@@ -32,6 +32,7 @@ interface ImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  selectedOriginId?: string | null;
 }
 
 interface Pipeline {
