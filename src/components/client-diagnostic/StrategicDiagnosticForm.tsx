@@ -166,6 +166,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         usa_contador: form.usa_contador || null,
         maior_dor_financeira: form.maior_dor_financeira || null,
         observacoes_financeiras: form.observacoes_financeiras || null,
+        consultor_financeiro: form.consultor_financeiro || null,
         num_vendedores: form.num_vendedores ? parseInt(form.num_vendedores) : null,
         meta_vendas: form.meta_vendas ? parseFloat(form.meta_vendas) : null,
         resultado_ultimo_mes: form.resultado_ultimo_mes ? parseFloat(form.resultado_ultimo_mes) : null,
