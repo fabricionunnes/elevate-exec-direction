@@ -438,9 +438,17 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             <Select value={form.quem_faz_social} onValueChange={v => set("quem_faz_social", v)}>
               <SelectTrigger className="bg-muted/30 border-border/50"><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
-                {["UNV", "Agência externa", "Freelancer", "Colaborador interno", "O próprio dono", "Ninguém faz"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                {["UNV", "Agência externa", "Freelancer", "Colaborador interno", "O próprio dono", "Ninguém faz", "Outro"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
               </SelectContent>
             </Select>
+            {form.quem_faz_social === "Outro" && (
+              <Input
+                value={form.quem_faz_social_outro}
+                onChange={e => set("quem_faz_social_outro", e.target.value)}
+                placeholder="Digite quem faz..."
+                className="bg-muted/30 border-border/50 mt-2"
+              />
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CurrencyInput label="Investimento mensal em social" value={form.investimento_social} onChange={v => set("investimento_social", v)} />
