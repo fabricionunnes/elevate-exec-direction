@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Clock,
   Star,
+  MessageCircle,
 } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.png";
 import fabricioMentor from "@/assets/fabricio-mentor.png";
@@ -99,6 +100,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
     </button>
   );
 }
+const WHATSAPP_URL = `https://wa.me/5531984935274?text=${encodeURIComponent("Olá, tenho uma empresa, vi seu anúncio e quero saber mais sobre como ter o Fabricio Nunnes como meu diretor comercial")}`;
 
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
@@ -482,6 +484,18 @@ const SessaoEstrategicaPage = () => {
       <footer className="py-6 bg-slate-900 text-center text-xs text-slate-500 px-5">
         Todos os direitos reservados · Universidade Nacional de Vendas LTDA
       </footer>
+
+      {/* ── FLOATING WHATSAPP ── */}
+      <a
+        href={WHATSAPP_URL}
+        target="_blank"
+        rel="noopener noreferrer"
+        className="fixed bottom-6 right-6 z-50 flex items-center gap-2 bg-green-500 hover:bg-green-600 text-white font-bold text-sm px-5 py-3.5 rounded-full shadow-lg shadow-green-500/30 hover:shadow-xl hover:shadow-green-500/40 transition-all duration-300 animate-bounce hover:animate-none"
+        style={{ animationDuration: '2s', animationIterationCount: 3 }}
+      >
+        <MessageCircle className="h-5 w-5" />
+        <span className="hidden sm:inline">Falar comigo</span>
+      </a>
 
       {/* ── POPUP FORM ── */}
       <Dialog open={showPopup} onOpenChange={setShowPopup}>
