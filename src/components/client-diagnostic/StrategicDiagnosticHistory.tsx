@@ -68,9 +68,16 @@ export function StrategicDiagnosticHistory({ records, loading, onView, onEdit }:
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="icon" className="flex-shrink-0">
-              <Eye className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {onEdit && (
+                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(record); }}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="flex-shrink-0">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </Card>
       ))}
