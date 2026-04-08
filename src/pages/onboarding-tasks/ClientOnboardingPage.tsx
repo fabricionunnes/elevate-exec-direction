@@ -377,6 +377,7 @@ const ClientOnboardingPage = () => {
         other_services: "Outros Serviços",
         crm_comercial: "CRM Comercial",
         b2b_prospection: "Prospecção B2B",
+        diagnostic: "Diagnóstico",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
