@@ -73,6 +73,16 @@ export const KanbanBulkActions = ({
   const [moveToPipeline, setMoveToPipeline] = useState<string>("");
   const [pipelines, setPipelines] = useState<Pipeline[]>([]);
 
+  const chunkLeadIds = (leadIds: string[], chunkSize = 100) => {
+    const chunks: string[][] = [];
+
+    for (let index = 0; index < leadIds.length; index += chunkSize) {
+      chunks.push(leadIds.slice(index, index + chunkSize));
+    }
+
+    return chunks;
+  };
+
   useEffect(() => {
     const loadPipelines = async () => {
       const { data } = await supabase
@@ -208,26 +218,24 @@ export const KanbanBulkActions = ({
     
     setLoading(true);
     try {
-      const relatedTables = [
-        "crm_lead_tags", "crm_lead_history", "crm_activities", "crm_attachments",
-        "crm_lead_files", "crm_custom_field_values", "crm_scheduled_calls",
-        "crm_sales", "crm_forecasts", "crm_meeting_events", "crm_activity_history",
-        "crm_lead_form_answers", "crm_transcriptions",
-        "crm_whatsapp_conversations", "crm_whatsapp_contacts", "instagram_conversations",
-      ];
+      const leadBatches = chunkLeadIds(selectedLeads);
 
-      for (const table of relatedTables) {
-        await supabase.from(table as any).delete().in("lead_id", selectedLeads);
+      for (const leadIds of leadBatches) {
+        const cleanupResults = await Promise.all([
+          supabase.from("crm_sales").delete().in("lead_id", leadIds),
+          supabase.from("instagram_conversations" as any).delete().in("lead_id", leadIds),
+        ]);
+
+        const cleanupError = cleanupResults.find((result) => result.error)?.error;
+        if (cleanupError) throw cleanupError;
+
+        const { error } = await supabase
+          .from("crm_leads")
+          .delete()
+          .in("id", leadIds);
+
+        if (error) throw error;
       }
-
-      await supabase.from("crm_clint_sync_log" as any).delete().in("crm_lead_id", selectedLeads);
-
-      const { error } = await supabase
-        .from("crm_leads")
-        .delete()
-        .in("id", selectedLeads);
-
-      if (error) throw error;
 
       toast.success(`${selectedLeads.length} leads excluídos com sucesso`);
       setDeleteConfirmOpen(false);
@@ -235,7 +243,7 @@ export const KanbanBulkActions = ({
       onSuccess();
     } catch (error) {
       console.error("Error deleting leads:", error);
-      toast.error("Erro ao excluir leads");
+      toast.error("Erro ao excluir leads em massa");
     } finally {
       setLoading(false);
     }
