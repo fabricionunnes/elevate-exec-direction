@@ -203,7 +203,7 @@ const SessaoEstrategicaPage = () => {
         <div className="relative z-10 max-w-6xl mx-auto w-full px-5 sm:px-8">
           <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center">
             {/* Copy */}
-            <div className="pt-28 sm:pt-24 lg:pt-0 pb-8 lg:pb-0 space-y-5">
+            <div className="pt-24 sm:pt-20 lg:pt-0 pb-8 lg:pb-0 space-y-4">
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
@@ -236,10 +236,31 @@ const SessaoEstrategicaPage = () => {
                 <strong className="text-slate-900">vender mais ainda este mês.</strong>
               </motion.p>
 
+              <motion.p
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.22 }}
+                className="text-sm sm:text-base text-slate-500 leading-relaxed max-w-md"
+              >
+                Nosso time vai analisar sua operação comercial, identificar os gargalos e criar um{" "}
+                <strong className="text-slate-800">plano de ação personalizado</strong> para aumentar suas vendas de forma consistente.
+              </motion.p>
+
               <motion.div
                 initial={{ opacity: 0, y: 16 }}
                 animate={{ opacity: 1, y: 0 }}
                 transition={{ duration: 0.4, delay: 0.25 }}
+                className="flex flex-wrap items-center gap-x-4 gap-y-1.5 text-xs sm:text-sm text-slate-600"
+              >
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Diagnóstico completo</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Plano de ação</span>
+                <span className="flex items-center gap-1.5"><CheckCircle2 className="h-4 w-4 text-red-500" /> Previsão de faturamento</span>
+              </motion.div>
+
+              <motion.div
+                initial={{ opacity: 0, y: 16 }}
+                animate={{ opacity: 1, y: 0 }}
+                transition={{ duration: 0.4, delay: 0.28 }}
                 className="space-y-3 pt-1"
               >
                 <Button
