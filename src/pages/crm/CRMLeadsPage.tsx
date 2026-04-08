@@ -759,6 +759,7 @@ export const CRMLeadsPage = () => {
         open={importLeadsOpen}
         onOpenChange={setImportLeadsOpen}
         onSuccess={loadData}
+        selectedOriginId={null}
       />
     </div>
   );

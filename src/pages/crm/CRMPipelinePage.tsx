@@ -839,6 +839,7 @@ export const CRMPipelinePage = () => {
         open={importLeadsOpen}
         onOpenChange={setImportLeadsOpen}
         onSuccess={loadStagesAndLeads}
+        selectedOriginId={selectedOrigin}
       />
     </div>
   );

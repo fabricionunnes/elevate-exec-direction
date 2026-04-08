@@ -93,7 +93,7 @@ const CRM_FIELDS = [
   { value: "ignore", label: "Ignorar coluna" },
 ];
 
-export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeadsDialogProps) => {
+export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOriginId }: ImportLeadsDialogProps) => {
   const [step, setStep] = useState<"upload" | "pipeline" | "mapping" | "stage-mapping" | "preview" | "importing">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<ParsedLead[]>([]);
