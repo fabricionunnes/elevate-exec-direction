@@ -2,13 +2,14 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Calendar, Building2, AlertCircle } from "lucide-react";
+import { Eye, Calendar, Building2, AlertCircle, Pencil } from "lucide-react";
 import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
 
 interface Props {
   records: DiagnosticRecord[];
   loading: boolean;
   onView: (record: DiagnosticRecord) => void;
+  onEdit?: (record: DiagnosticRecord) => void;
 }
 
 const urgencyColors: Record<string, string> = {
@@ -17,7 +18,7 @@ const urgencyColors: Record<string, string> = {
   "Baixa": "bg-green-100 text-green-700 border-green-200",
 };
 
-export function StrategicDiagnosticHistory({ records, loading, onView }: Props) {
+export function StrategicDiagnosticHistory({ records, loading, onView, onEdit }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
@@ -67,9 +68,16 @@ export function StrategicDiagnosticHistory({ records, loading, onView }: Props) 
                 </div>
               )}
             </div>
-            <Button variant="ghost" size="icon" className="flex-shrink-0">
-              <Eye className="h-4 w-4" />
-            </Button>
+            <div className="flex items-center gap-1 flex-shrink-0">
+              {onEdit && (
+                <Button variant="ghost" size="icon" onClick={(e) => { e.stopPropagation(); onEdit(record); }}>
+                  <Pencil className="h-4 w-4" />
+                </Button>
+              )}
+              <Button variant="ghost" size="icon" className="flex-shrink-0">
+                <Eye className="h-4 w-4" />
+              </Button>
+            </div>
           </div>
         </Card>
       ))}

@@ -1,10 +1,13 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
 
 interface Props {
   record: DiagnosticRecord;
+  onEdit?: () => void;
 }
 
 const fmt = (val: number | null | undefined) => val != null ? `R$ ${Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—";
@@ -35,9 +38,16 @@ const urgencyColors: Record<string, string> = {
   "Baixa": "bg-green-100 text-green-800 border-green-200",
 };
 
-export function StrategicDiagnosticSummary({ record }: Props) {
+export function StrategicDiagnosticSummary({ record, onEdit }: Props) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {onEdit && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-2" onClick={onEdit}>
+            <Pencil className="h-4 w-4" /> Editar diagnóstico
+          </Button>
+        </div>
+      )}
       <div className="bg-white dark:bg-background border border-border/50 rounded-xl p-6">
         <h2 className="text-xl font-bold mb-1">Check-point Estratégico — {record.empresa}</h2>
         <p className="text-sm text-muted-foreground">
