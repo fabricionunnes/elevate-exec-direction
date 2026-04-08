@@ -156,7 +156,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
         const workbook = XLSX.read(binaryStr, { type: 'binary' });
         const sheetName = workbook.SheetNames[0];
         const worksheet = workbook.Sheets[sheetName];
-        const jsonData = XLSX.utils.sheet_to_json<ParsedLead>(worksheet, { header: 1 });
+        const jsonData = XLSX.utils.sheet_to_json<ParsedLead>(worksheet, { header: 1, raw: false, defval: '' });
         
         if (jsonData.length > 0) {
           const headers = (jsonData[0] as unknown as string[]).map(h => String(h || '').trim());
