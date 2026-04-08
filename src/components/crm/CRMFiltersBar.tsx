@@ -99,6 +99,7 @@ export const CRMFiltersBar = ({
       origins: [],
       valueMin: null,
       valueMax: null,
+      phoneFilter: "all",
     });
   };
 
