@@ -296,10 +296,20 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext, ed
         observacoes_gerais: form.observacoes_gerais || null,
       };
 
-      const { data, error } = await (supabase.from("client_strategic_diagnostics" as any).insert(payload).select().single() as any);
-      if (error) throw error;
-      toast.success("Diagnóstico salvo com sucesso!");
-      onSaved(data as DiagnosticRecord);
+      let result;
+      if (editingRecord?.id) {
+        const { id, created_at, created_by, project_id, ...rest } = payload;
+        const { data, error } = await (supabase.from("client_strategic_diagnostics" as any).update(rest).eq("id", editingRecord.id).select().single() as any);
+        if (error) throw error;
+        result = data;
+        toast.success("Diagnóstico atualizado com sucesso!");
+      } else {
+        const { data, error } = await (supabase.from("client_strategic_diagnostics" as any).insert(payload).select().single() as any);
+        if (error) throw error;
+        result = data;
+        toast.success("Diagnóstico salvo com sucesso!");
+      }
+      onSaved(result as DiagnosticRecord);
     } catch (e: any) {
       toast.error("Erro ao salvar: " + e.message);
     } finally {
