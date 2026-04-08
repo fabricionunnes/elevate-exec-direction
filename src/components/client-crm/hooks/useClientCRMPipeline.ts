@@ -114,10 +114,8 @@ export function useClientCRMPipeline(projectId: string) {
   }, [projectId]);
 
   const loadFilterOptions = useCallback(async () => {
-    const [tagsRes, ownersRes] = await Promise.all([
-      supabase.from("client_crm_tags").select("id, name, color").eq("project_id", projectId).eq("is_active", true),
-      supabase.from("onboarding_users").select("id, name").eq("project_id", projectId).eq("is_active", true),
-    ]);
+    const tagsRes = await supabase.from("client_crm_tags" as any).select("id, name, color").eq("project_id", projectId).eq("is_active", true);
+    const ownersRes = await supabase.from("onboarding_users").select("id, name").eq("project_id", projectId).eq("is_active", true);
     setTagOptions((tagsRes.data || []) as any[]);
     setOwnerOptions((ownersRes.data || []) as any[]);
   }, [projectId]);
