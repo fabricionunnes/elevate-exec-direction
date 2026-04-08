@@ -13,11 +13,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, RotateCcw, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
+import type { DiagnosticRecord, ProjectContext } from "./StrategicDiagnosticModule";
 
 interface Props {
   projectId: string;
   onSaved: (record: DiagnosticRecord) => void;
+  projectContext?: ProjectContext | null;
 }
 
 const defaultForm = {
