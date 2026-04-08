@@ -214,6 +214,7 @@ export const CRMPipelinePage = () => {
   }, [negotiationData, filters.owners]);
 
   const isRealtimeRefresh = useRef(false);
+  const loadFnRef = useRef<() => Promise<void>>();
 
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
@@ -306,6 +307,11 @@ export const CRMPipelinePage = () => {
     }
   }, [selectedPipeline, selectedOrigin]);
 
+  // Keep a ref to the latest load function so realtime always calls the current version
+  useEffect(() => {
+    loadFnRef.current = loadStagesAndLeads;
+  }, [loadStagesAndLeads]);
+
   useEffect(() => {
     loadPipelines();
     loadFilterOptions();
@@ -319,12 +325,13 @@ export const CRMPipelinePage = () => {
     loadStagesAndLeads();
   }, [loadStagesAndLeads]);
 
-  // Realtime subscription
+  // Realtime subscription - only depends on selectedPipeline to avoid
+  // unnecessary channel teardown/recreation when origin changes
   useEffect(() => {
     if (!selectedPipeline) return;
 
     const channel = supabase
-      .channel("crm-leads-changes")
+      .channel(`crm-leads-${selectedPipeline}`)
       .on(
         "postgres_changes",
         {
@@ -335,7 +342,7 @@ export const CRMPipelinePage = () => {
         },
         () => {
           isRealtimeRefresh.current = true;
-          loadStagesAndLeads();
+          loadFnRef.current?.();
         }
       )
       .subscribe();
@@ -343,7 +350,7 @@ export const CRMPipelinePage = () => {
     return () => {
       supabase.removeChannel(channel);
     };
-  }, [selectedPipeline, loadStagesAndLeads]);
+  }, [selectedPipeline]);
 
   // Filter leads
   const filteredLeads = useMemo(() => {
