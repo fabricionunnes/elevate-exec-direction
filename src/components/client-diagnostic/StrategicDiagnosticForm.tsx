@@ -36,6 +36,7 @@ const defaultForm = {
   controle_financeiro: "",
   gestao_financeira: "",
   usa_contador: "",
+  usa_bpo_financeiro: "",
   maior_dor_financeira: "",
   observacoes_financeiras: "",
   consultor_financeiro: "",
