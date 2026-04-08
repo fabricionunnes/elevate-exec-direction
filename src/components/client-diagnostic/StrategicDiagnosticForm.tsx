@@ -47,7 +47,8 @@ const defaultForm = {
   possui_sdr: "",
   usa_crm: "",
   tem_script: "",
-  principal_canal: "",
+  principal_canal: [] as string[],
+  principal_canal_outro: "",
   maior_dor_comercial: "",
   observacoes_comerciais: "",
   investe_trafego: "",
@@ -60,6 +61,7 @@ const defaultForm = {
   acompanha_relatorios: "",
   observacoes_trafego: "",
   quem_faz_social: "",
+  quem_faz_social_outro: "",
   investimento_social: "",
   seguidores_instagram: "",
   engajamento_medio: "",
@@ -133,7 +135,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
 
   const set = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
 
-  const toggleArray = (key: "plataformas_trafego" | "redes_ativas" | "produtos_oferecer", val: string) => {
+  const toggleArray = (key: "plataformas_trafego" | "redes_ativas" | "produtos_oferecer" | "principal_canal", val: string) => {
     setForm(prev => {
       const arr = prev[key] as string[];
       return { ...prev, [key]: arr.includes(val) ? arr.filter(v => v !== val) : [...arr, val] };
@@ -176,7 +178,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         possui_sdr: form.possui_sdr || null,
         usa_crm: form.usa_crm || null,
         tem_script: form.tem_script || null,
-        principal_canal: form.principal_canal || null,
+        principal_canal: [...form.principal_canal, ...(form.principal_canal_outro ? [form.principal_canal_outro] : [])].join(", ") || null,
         maior_dor_comercial: form.maior_dor_comercial || null,
         observacoes_comerciais: form.observacoes_comerciais || null,
         investe_trafego: form.investe_trafego || null,
@@ -188,7 +190,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         satisfeito_trafego: form.satisfeito_trafego || null,
         acompanha_relatorios: form.acompanha_relatorios || null,
         observacoes_trafego: form.observacoes_trafego || null,
-        quem_faz_social: form.quem_faz_social || null,
+        quem_faz_social: form.quem_faz_social === "Outro" ? (form.quem_faz_social_outro || "Outro") : (form.quem_faz_social || null),
         investimento_social: parseCurrencyToNumber(form.investimento_social),
         seguidores_instagram: form.seguidores_instagram ? parseInt(form.seguidores_instagram) : null,
         engajamento_medio: form.engajamento_medio ? parseFloat(form.engajamento_medio) : null,
@@ -352,14 +354,34 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
           <RadioField label="Possui SDR / pré-vendas?" name="possui_sdr" options={["Sim", "Não", "Estruturando"]} />
           <RadioField label="Usa CRM?" name="usa_crm" options={["Sim", "Não", "Parcialmente"]} />
           <RadioField label="Tem script de vendas?" name="tem_script" options={["Sim", "Não", "Informal"]} />
-          <div className="space-y-1.5">
-            <Label className="text-sm">Principal canal de venda</Label>
-            <Select value={form.principal_canal} onValueChange={v => set("principal_canal", v)}>
-              <SelectTrigger className="bg-muted/30 border-border/50"><SelectValue placeholder="Selecione" /></SelectTrigger>
-              <SelectContent>
-                {["Indicação", "Prospecção ativa", "Tráfego pago", "Orgânico", "Redes sociais", "Misto"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
-              </SelectContent>
-            </Select>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium">Canais de venda (marque todos que se aplicam)</Label>
+            <div className="flex flex-wrap gap-3">
+              {["Indicação", "Prospecção ativa", "Tráfego pago", "Orgânico", "Redes sociais"].map(opt => (
+                <div key={opt} className="flex items-center gap-1.5">
+                  <Checkbox
+                    id={`canal-${opt}`}
+                    checked={(form.principal_canal as string[]).includes(opt)}
+                    onCheckedChange={() => toggleArray("principal_canal", opt)}
+                  />
+                  <Label htmlFor={`canal-${opt}`} className="text-sm font-normal cursor-pointer">{opt}</Label>
+                </div>
+              ))}
+            </div>
+            <div className="flex items-center gap-2 mt-2">
+              <Checkbox
+                id="canal-outro"
+                checked={!!form.principal_canal_outro}
+                onCheckedChange={(checked) => { if (!checked) set("principal_canal_outro", ""); }}
+              />
+              <Label htmlFor="canal-outro" className="text-sm font-normal cursor-pointer">Outro:</Label>
+              <Input
+                value={form.principal_canal_outro}
+                onChange={e => set("principal_canal_outro", e.target.value)}
+                placeholder="Digite o canal..."
+                className="bg-muted/30 border-border/50 h-8 max-w-[200px]"
+              />
+            </div>
           </div>
           <RadioField label="Maior dor comercial hoje" name="maior_dor_comercial" options={["Falta de leads", "Conversão baixa", "Equipe despreparada", "Ticket médio baixo", "Falta de processo", "Churn alto"]} />
           <div className="space-y-1.5">
@@ -416,9 +438,17 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             <Select value={form.quem_faz_social} onValueChange={v => set("quem_faz_social", v)}>
               <SelectTrigger className="bg-muted/30 border-border/50"><SelectValue placeholder="Selecione" /></SelectTrigger>
               <SelectContent>
-                {["UNV", "Agência externa", "Freelancer", "Colaborador interno", "O próprio dono", "Ninguém faz"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
+                {["UNV", "Agência externa", "Freelancer", "Colaborador interno", "O próprio dono", "Ninguém faz", "Outro"].map(o => <SelectItem key={o} value={o}>{o}</SelectItem>)}
               </SelectContent>
             </Select>
+            {form.quem_faz_social === "Outro" && (
+              <Input
+                value={form.quem_faz_social_outro}
+                onChange={e => set("quem_faz_social_outro", e.target.value)}
+                placeholder="Digite quem faz..."
+                className="bg-muted/30 border-border/50 mt-2"
+              />
+            )}
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
             <CurrencyInput label="Investimento mensal em social" value={form.investimento_social} onChange={v => set("investimento_social", v)} />
