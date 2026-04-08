@@ -10195,6 +10195,7 @@ export type Database = {
       client_strategic_diagnostics: {
         Row: {
           acompanha_relatorios: string | null
+          consultor_financeiro: string | null
           consultor_unv: string | null
           controle_financeiro: string | null
           cpl_estimado: number | null
@@ -10254,6 +10255,7 @@ export type Database = {
         }
         Insert: {
           acompanha_relatorios?: string | null
+          consultor_financeiro?: string | null
           consultor_unv?: string | null
           controle_financeiro?: string | null
           cpl_estimado?: number | null
@@ -10313,6 +10315,7 @@ export type Database = {
         }
         Update: {
           acompanha_relatorios?: string | null
+          consultor_financeiro?: string | null
           consultor_unv?: string | null
           controle_financeiro?: string | null
           cpl_estimado?: number | null
