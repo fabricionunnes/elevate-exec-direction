@@ -84,7 +84,7 @@ const faqCategories = [
       },
       { 
         question: "Qual a diferença entre Sales Force e Sales System?", 
-        answer: "Sales Force são pessoas (equipe UNV) executando vendas por você. Sales System é tecnologia (agentes de IA) automatizando partes do processo. Sales Force exige volume de leads; Sales System exige estrutura para implementar IA." 
+        answer: "Sales Force são pessoas (equipe UNV) executando vendas por você. Sales System é tecnologia (agentes de IA) automatizando partes do processo." 
       },
       { 
         question: "Preciso de um CRM para trabalhar com a UNV?", 
