@@ -187,7 +187,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         acompanha_relatorios: form.acompanha_relatorios || null,
         observacoes_trafego: form.observacoes_trafego || null,
         quem_faz_social: form.quem_faz_social || null,
-        investimento_social: form.investimento_social ? parseFloat(form.investimento_social) : null,
+        investimento_social: parseCurrencyToNumber(form.investimento_social),
         seguidores_instagram: form.seguidores_instagram ? parseInt(form.seguidores_instagram) : null,
         engajamento_medio: form.engajamento_medio ? parseFloat(form.engajamento_medio) : null,
         frequencia_postagens: form.frequencia_postagens || null,
