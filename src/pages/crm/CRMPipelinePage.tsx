@@ -80,6 +80,7 @@ const defaultFilters: CRMFilters = {
   origins: [],
   valueMin: null,
   valueMax: null,
+  phoneFilter: "all",
 };
 
 export const CRMPipelinePage = () => {
