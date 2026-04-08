@@ -44,10 +44,7 @@ const papelUNV = [
 
 // Critérios de entrada obrigatórios
 const criteriosEntrada = [
-  { icon: Target, text: "200 leads qualificados por mês (comprovados)" },
-  { icon: TrendingUp, text: "Investimento mínimo de R$ 2.000/mês em tráfego pago" },
   { icon: CheckCircle, text: "Oferta validada" },
-  { icon: Percent, text: "Ticket mínimo compatível com comissão" },
   { icon: Settings, text: "Estrutura mínima (agenda, contrato, meios de pagamento)" },
 ];
 
@@ -65,8 +62,6 @@ const icpIdeal = [
 // Quem NÃO entra
 const icpNao = [
   "Quem quer 'testar'",
-  "Quem não gera leads",
-  "Quem não investe em tráfego",
   "Quem quer terceirizar decisão estratégica",
   "Negócios imaturos",
 ];
@@ -74,8 +69,7 @@ const icpNao = [
 // Formato
 const formato = [
   { label: "Modelo", value: "Terceirização de SDR + Closer" },
-  { label: "Fixo", value: "R$ 6.000/mês" },
-  { label: "Variável", value: "Comissão sobre vendas" },
+  { label: "Fixo", value: "R$ 3.000/mês" },
   { label: "Contrato mínimo", value: "3 meses" },
 ];
 
@@ -243,7 +237,7 @@ export default function SalesForcePage() {
           "Closer UNV fechando vendas",
           "Follow-up estruturado",
           "Gestão de pipeline",
-          "Comissão sobre vendas"
+          "Relatórios de performance"
         ]}
         arrow="A UNV executa a venda."
         targetAudience={{
@@ -734,10 +728,10 @@ export default function SalesForcePage() {
       {/* ROI Simulator */}
       <ROISimulator
         productName="UNV Sales Force"
-        productPrice="R$ 6.000/mês + comissão"
-        productPriceValue={72000}
+        productPrice="R$ 3.000/mês"
+        productPriceValue={36000}
         productSlug="sales-force"
-        benefitDescription="Operação de SDR e Closer terceirizada. Sem custos de contratação, sem risco trabalhista. Pague por resultado. Seu time de vendas funcionando com profissionais experientes."
+        benefitDescription="Operação de SDR e Closer terceirizada. Sem custos de contratação, sem risco trabalhista. Seu time de vendas funcionando com profissionais experientes."
         expectedConversionIncrease={15}
         expectedTicketIncrease={10}
       />

@@ -139,7 +139,7 @@ const supportTrail: Product[] = [
       "SDR e Closer terceirizados. A UNV executa a venda para empresas com demanda qualificada que precisam de conversão profissional.",
     icp: "Faturamento R$ 100k–1M+/mês • 200+ leads/mês",
     href: "/sales-force",
-    investment: "R$ 6.000/mês + comissão",
+    investment: "R$ 3.000/mês",
   },
 ];
 

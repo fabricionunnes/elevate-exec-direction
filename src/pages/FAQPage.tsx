@@ -76,7 +76,7 @@ const faqCategories = [
       },
       { 
         question: "O que é o UNV Sales Force?", 
-        answer: "UNV Sales Force é execução direta: a UNV opera como SDR e/ou Closer para sua empresa. Diferente dos outros produtos que fornecem direção, no Sales Force nós executamos as vendas. Exige critérios de entrada: 200+ leads/mês, tráfego pago ativo, oferta validada." 
+        answer: "UNV Sales Force é execução direta: a UNV opera como SDR e/ou Closer para sua empresa. Diferente dos outros produtos que fornecem direção, no Sales Force nós executamos as vendas. Exige critérios de entrada: oferta validada e estrutura mínima." 
       },
       { 
         question: "O que é o UNV Sales System?", 
@@ -84,7 +84,7 @@ const faqCategories = [
       },
       { 
         question: "Qual a diferença entre Sales Force e Sales System?", 
-        answer: "Sales Force são pessoas (equipe UNV) executando vendas por você. Sales System é tecnologia (agentes de IA) automatizando partes do processo. Sales Force exige volume de leads; Sales System exige estrutura para implementar IA." 
+        answer: "Sales Force são pessoas (equipe UNV) executando vendas por você. Sales System é tecnologia (agentes de IA) automatizando partes do processo." 
       },
       { 
         question: "Preciso de um CRM para trabalhar com a UNV?", 
