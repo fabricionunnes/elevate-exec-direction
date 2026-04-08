@@ -730,8 +730,8 @@ export default function SalesForcePage() {
       {/* ROI Simulator */}
       <ROISimulator
         productName="UNV Sales Force"
-        productPrice="R$ 6.000/mês + comissão"
-        productPriceValue={72000}
+        productPrice="R$ 3.000/mês"
+        productPriceValue={36000}
         productSlug="sales-force"
         benefitDescription="Operação de SDR e Closer terceirizada. Sem custos de contratação, sem risco trabalhista. Pague por resultado. Seu time de vendas funcionando com profissionais experientes."
         expectedConversionIncrease={15}
