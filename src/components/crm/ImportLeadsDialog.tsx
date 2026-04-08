@@ -74,6 +74,15 @@ interface PipelineStageMapping {
   stageId: string;
 }
 
+const normalizePhone = (raw: string): string => {
+  const digits = raw.replace(/[^0-9]/g, '');
+  // Remove Brazilian DDI (55) when number has 13+ digits (55 + DDD 2 digits + 9 digits)
+  if (digits.startsWith('55') && digits.length >= 12) {
+    return digits.slice(2);
+  }
+  return digits;
+};
+
 const CRM_FIELDS = [
   { value: "name", label: "Nome *", required: true },
   { value: "phone", label: "Telefone" },
@@ -456,6 +465,8 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
                   if (originId) {
                     lead.origin_id = originId;
                   }
+                } else if (mapping.crmField === "phone") {
+                  lead[mapping.crmField] = normalizePhone(value);
                 } else {
                   lead[mapping.crmField] = value;
                 }
