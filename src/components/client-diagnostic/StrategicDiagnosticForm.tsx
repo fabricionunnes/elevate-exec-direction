@@ -165,6 +165,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         controle_financeiro: form.controle_financeiro || null,
         gestao_financeira: form.gestao_financeira || null,
         usa_contador: form.usa_contador || null,
+        usa_bpo_financeiro: form.usa_bpo_financeiro || null,
         maior_dor_financeira: form.maior_dor_financeira || null,
         observacoes_financeiras: form.observacoes_financeiras || null,
         consultor_financeiro: form.consultor_financeiro || null,
