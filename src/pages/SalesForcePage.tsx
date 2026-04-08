@@ -239,7 +239,7 @@ export default function SalesForcePage() {
           "Closer UNV fechando vendas",
           "Follow-up estruturado",
           "Gestão de pipeline",
-          "Comissão sobre vendas"
+          "Relatórios de performance"
         ]}
         arrow="A UNV executa a venda."
         targetAudience={{
