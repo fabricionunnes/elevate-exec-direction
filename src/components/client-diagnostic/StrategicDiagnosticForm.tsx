@@ -178,7 +178,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         possui_sdr: form.possui_sdr || null,
         usa_crm: form.usa_crm || null,
         tem_script: form.tem_script || null,
-        principal_canal: form.principal_canal || null,
+        principal_canal: [...form.principal_canal, ...(form.principal_canal_outro ? [form.principal_canal_outro] : [])].join(", ") || null,
         maior_dor_comercial: form.maior_dor_comercial || null,
         observacoes_comerciais: form.observacoes_comerciais || null,
         investe_trafego: form.investe_trafego || null,
