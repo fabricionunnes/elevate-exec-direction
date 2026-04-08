@@ -112,6 +112,7 @@ export const CRMFiltersBar = ({
     filters.stages.length,
     filters.origins.length,
     filters.valueMin || filters.valueMax ? 1 : 0,
+    filters.phoneFilter !== "all" ? 1 : 0,
   ].reduce((a, b) => a + b, 0);
 
   const statusOptions = [
