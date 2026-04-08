@@ -18,7 +18,7 @@ const urgencyColors: Record<string, string> = {
   "Baixa": "bg-green-100 text-green-700 border-green-200",
 };
 
-export function StrategicDiagnosticHistory({ records, loading, onView }: Props) {
+export function StrategicDiagnosticHistory({ records, loading, onView, onEdit }: Props) {
   if (loading) {
     return (
       <div className="flex justify-center py-12">
