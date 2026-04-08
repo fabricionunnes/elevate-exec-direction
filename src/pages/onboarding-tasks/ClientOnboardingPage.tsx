@@ -1270,6 +1270,19 @@ const ClientOnboardingPage = () => {
               </div>
             </motion.div>
           )}
+
+          {activeView === "diagnostic" && hasViewAccess("diagnostic") && (
+            <motion.div
+              key="diagnostic"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <div className="py-4">
+                <StrategicDiagnosticModule projectId={projectId || ""} />
+              </div>
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
