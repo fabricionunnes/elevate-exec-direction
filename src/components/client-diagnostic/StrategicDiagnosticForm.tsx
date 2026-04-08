@@ -298,22 +298,13 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             <SectionBadge label="gestão & saúde" color="amber" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Faturamento mensal atual (R$)</Label>
-              <Input type="number" value={form.faturamento_atual} onChange={e => set("faturamento_atual", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Faturamento quando entrou na UNV (R$)</Label>
-              <Input type="number" value={form.faturamento_entrada} onChange={e => set("faturamento_entrada", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Faturamento mensal atual" value={form.faturamento_atual} onChange={v => set("faturamento_atual", v)} />
+            <CurrencyInput label="Faturamento quando entrou na UNV" value={form.faturamento_entrada} onChange={v => set("faturamento_entrada", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Margem de lucro estimada (%)</Label>
               <Input type="number" value={form.margem_lucro} onChange={e => set("margem_lucro", e.target.value)} className="bg-muted/30 border-border/50" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Ticket médio atual (R$)</Label>
-              <Input type="number" value={form.ticket_medio} onChange={e => set("ticket_medio", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Ticket médio atual" value={form.ticket_medio} onChange={v => set("ticket_medio", v)} />
           </div>
           <RadioField label="Possui dívidas?" name="possui_dividas" options={["Não", "Sim, controlada", "Sim, preocupante"]} />
           <RadioField label="Faz controle financeiro?" name="controle_financeiro" options={["Não", "Básico", "Sistema"]} />
