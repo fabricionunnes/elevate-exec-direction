@@ -475,10 +475,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <RadioField label="Nível de urgência do cliente" name="nivel_urgencia" options={["Alta", "Média", "Baixa"]} />
-          <div className="space-y-1.5">
-            <Label className="text-sm">Potencial de upsell estimado (R$)</Label>
-            <Input type="number" value={form.potencial_upsell} onChange={e => set("potencial_upsell", e.target.value)} className="bg-muted/30 border-border/50" />
-          </div>
+          <CurrencyInput label="Potencial de upsell estimado" value={form.potencial_upsell} onChange={v => set("potencial_upsell", v)} />
           <div className="space-y-1.5">
             <Label className="text-sm">Observações gerais do consultor</Label>
             <Textarea value={form.observacoes_gerais} onChange={e => set("observacoes_gerais", e.target.value)} className="bg-muted/30 border-border/50" rows={3} />
