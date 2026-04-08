@@ -747,7 +747,7 @@ export const CRMPipelinePage = () => {
                     pipelineId={selectedPipeline || ""}
                     selectedLeads={selectedLeads}
                     isSelectionMode={isSelectionMode}
-                    isMaster={isMaster}
+                    isMaster={isMaster || isAdmin}
                     draggedLeadId={draggedLead?.id || null}
                     onSelectLead={handleLeadSelect}
                     onSelectAllInStage={handleSelectAllInStage}
