@@ -775,7 +775,7 @@ export const CRMPipelinePage = () => {
         stages={stageOptions}
         owners={ownerOptions}
         onSuccess={loadStagesAndLeads}
-        isMaster={isMaster}
+        isMaster={isMaster || isAdmin}
         currentPipelineId={selectedPipeline || undefined}
       />
 
