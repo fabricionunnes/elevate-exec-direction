@@ -251,7 +251,7 @@ export const CRMPipelinePage = () => {
 
       // Fetch leads in batches to bypass the 1000-row limit
       // Cap at 10,000 to avoid browser memory issues on very large pipelines
-      const PAGE_SIZE = 1000;
+      const PAGE_SIZE = 500;
       const MAX_LEADS = 10000;
       let allLeads: Lead[] = [];
       let from = 0;
