@@ -78,6 +78,7 @@ export const CLIENT_MENU_KEYS = {
   crm_comercial_transcricoes: "crm_comercial_transcricoes",
   crm_comercial_contratos: "crm_comercial_contratos",
   crm_comercial_reunioes: "crm_comercial_reunioes",
+  diagnostico: "diagnostico",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
