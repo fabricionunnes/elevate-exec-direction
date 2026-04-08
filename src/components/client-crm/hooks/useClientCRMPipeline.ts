@@ -287,7 +287,7 @@ export function useClientCRMPipeline(projectId: string) {
   // CRUD
   const createLead = async (lead: Partial<ClientCRMLead>) => {
     const { data: userData } = await supabase.auth.getUser();
-    const { data: onbUser } = await supabase
+    const { data: onbUser } = await db
       .from("onboarding_users")
       .select("id")
       .eq("user_id", userData.user?.id || "")
