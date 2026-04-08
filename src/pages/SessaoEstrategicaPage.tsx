@@ -404,16 +404,7 @@ const SessaoEstrategicaPage = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {testimonialVideos.map((videoId, i) => (
               <AnimatedSection key={videoId}>
-                <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoId}`}
-                    title={`Depoimento ${i + 1}`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                    loading="lazy"
-                  />
-                </div>
+                <LazyYouTube videoId={videoId} title={`Depoimento ${i + 1}`} />
               </AnimatedSection>
             ))}
           </div>
