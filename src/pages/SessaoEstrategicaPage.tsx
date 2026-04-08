@@ -65,6 +65,41 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
+/** YouTube facade: shows thumbnail, loads iframe only on click */
+function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const thumbUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+  if (loaded) {
+    return (
+      <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="w-full h-full"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setLoaded(true)}
+      className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-white/5 group cursor-pointer"
+      aria-label={`Reproduzir ${title}`}
+    >
+      <img src={thumbUrl} alt={title} className="w-full h-full object-cover" loading="lazy" />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+        <div className="w-14 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
+          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
   const [showPopup, setShowPopup] = useState(false);
