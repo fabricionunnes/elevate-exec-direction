@@ -29,6 +29,7 @@ interface Lead {
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
+  meeting_events?: { event_type: string }[];
 }
 
 interface KanbanLeadCardProps {
@@ -187,6 +188,7 @@ export const KanbanLeadCard = ({
           pipelineId={pipelineId}
           stageId={lead.stage_id}
           ownerStaffId={lead.owner_staff_id}
+          initialEvents={lead.meeting_events?.map((event) => event.event_type) || []}
           onEventTracked={onRefresh}
         />
         
