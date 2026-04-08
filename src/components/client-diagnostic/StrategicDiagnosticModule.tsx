@@ -33,11 +33,11 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
 
   const fetchRecords = async () => {
     setLoading(true);
-    const { data } = await supabase
+    const { data } = await (supabase
       .from("client_strategic_diagnostics" as any)
       .select("*")
       .eq("project_id", projectId)
-      .order("data_checkpoint", { ascending: false });
+      .order("data_checkpoint", { ascending: false }) as any);
     setRecords((data || []) as DiagnosticRecord[]);
     setLoading(false);
   };
