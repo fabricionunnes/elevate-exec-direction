@@ -7886,6 +7886,571 @@ export type Database = {
           },
         ]
       }
+      client_crm_forecasts: {
+        Row: {
+          created_at: string | null
+          expected_close_date: string | null
+          forecast_value: number
+          id: string
+          lead_id: string | null
+          notes: string | null
+          owner_id: string | null
+          product_name: string | null
+          project_id: string
+          status: string | null
+          updated_at: string | null
+        }
+        Insert: {
+          created_at?: string | null
+          expected_close_date?: string | null
+          forecast_value?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          product_name?: string | null
+          project_id: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Update: {
+          created_at?: string | null
+          expected_close_date?: string | null
+          forecast_value?: number
+          id?: string
+          lead_id?: string | null
+          notes?: string | null
+          owner_id?: string | null
+          product_name?: string | null
+          project_id?: string
+          status?: string | null
+          updated_at?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_forecasts_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_forecasts_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_forecasts_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_lead_activities: {
+        Row: {
+          completed_at: string | null
+          created_at: string
+          description: string | null
+          id: string
+          lead_id: string
+          meeting_link: string | null
+          notes: string | null
+          project_id: string
+          recording_url: string | null
+          responsible_user_id: string | null
+          scheduled_at: string | null
+          status: string | null
+          title: string
+          type: string
+          updated_at: string
+        }
+        Insert: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id: string
+          meeting_link?: string | null
+          notes?: string | null
+          project_id: string
+          recording_url?: string | null
+          responsible_user_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title: string
+          type: string
+          updated_at?: string
+        }
+        Update: {
+          completed_at?: string | null
+          created_at?: string
+          description?: string | null
+          id?: string
+          lead_id?: string
+          meeting_link?: string | null
+          notes?: string | null
+          project_id?: string
+          recording_url?: string | null
+          responsible_user_id?: string | null
+          scheduled_at?: string | null
+          status?: string | null
+          title?: string
+          type?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_lead_activities_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_activities_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_activities_responsible_user_id_fkey"
+            columns: ["responsible_user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_lead_checklist_items: {
+        Row: {
+          checklist_id: string
+          completed_at: string | null
+          completed_by: string | null
+          id: string
+          lead_id: string
+        }
+        Insert: {
+          checklist_id: string
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          lead_id: string
+        }
+        Update: {
+          checklist_id?: string
+          completed_at?: string | null
+          completed_by?: string | null
+          id?: string
+          lead_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_lead_checklist_items_checklist_id_fkey"
+            columns: ["checklist_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_stage_checklists"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_checklist_items_completed_by_fkey"
+            columns: ["completed_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_checklist_items_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_lead_history: {
+        Row: {
+          action: string
+          created_at: string
+          field_changed: string | null
+          id: string
+          lead_id: string
+          new_value: string | null
+          notes: string | null
+          old_value: string | null
+          user_id: string | null
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lead_id: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          field_changed?: string | null
+          id?: string
+          lead_id?: string
+          new_value?: string | null
+          notes?: string | null
+          old_value?: string | null
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_lead_history_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_history_user_id_fkey"
+            columns: ["user_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_lead_tags: {
+        Row: {
+          created_at: string
+          id: string
+          lead_id: string
+          tag_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          lead_id: string
+          tag_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          lead_id?: string
+          tag_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_lead_tags_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_lead_tags_tag_id_fkey"
+            columns: ["tag_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_tags"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_leads: {
+        Row: {
+          city: string | null
+          closed_at: string | null
+          company: string | null
+          created_at: string
+          created_by: string | null
+          document: string | null
+          email: string | null
+          employee_count: string | null
+          entered_pipeline_at: string | null
+          estimated_revenue: string | null
+          fit_score: number | null
+          id: string
+          last_activity_at: string | null
+          loss_reason_id: string | null
+          main_pain: string | null
+          name: string
+          next_activity_at: string | null
+          notes: string | null
+          opportunity_value: number | null
+          origin_id: string | null
+          owner_id: string | null
+          phone: string | null
+          pipeline_id: string | null
+          probability: number | null
+          project_id: string
+          role: string | null
+          segment: string | null
+          stage_id: string
+          state: string | null
+          trade_name: string | null
+          updated_at: string
+          urgency: string | null
+        }
+        Insert: {
+          city?: string | null
+          closed_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          employee_count?: string | null
+          entered_pipeline_at?: string | null
+          estimated_revenue?: string | null
+          fit_score?: number | null
+          id?: string
+          last_activity_at?: string | null
+          loss_reason_id?: string | null
+          main_pain?: string | null
+          name: string
+          next_activity_at?: string | null
+          notes?: string | null
+          opportunity_value?: number | null
+          origin_id?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          pipeline_id?: string | null
+          probability?: number | null
+          project_id: string
+          role?: string | null
+          segment?: string | null
+          stage_id: string
+          state?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Update: {
+          city?: string | null
+          closed_at?: string | null
+          company?: string | null
+          created_at?: string
+          created_by?: string | null
+          document?: string | null
+          email?: string | null
+          employee_count?: string | null
+          entered_pipeline_at?: string | null
+          estimated_revenue?: string | null
+          fit_score?: number | null
+          id?: string
+          last_activity_at?: string | null
+          loss_reason_id?: string | null
+          main_pain?: string | null
+          name?: string
+          next_activity_at?: string | null
+          notes?: string | null
+          opportunity_value?: number | null
+          origin_id?: string | null
+          owner_id?: string | null
+          phone?: string | null
+          pipeline_id?: string | null
+          probability?: number | null
+          project_id?: string
+          role?: string | null
+          segment?: string | null
+          stage_id?: string
+          state?: string | null
+          trade_name?: string | null
+          updated_at?: string
+          urgency?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_leads_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_loss_reason_id_fkey"
+            columns: ["loss_reason_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_loss_reasons"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_origin_id_fkey"
+            columns: ["origin_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_origins"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_owner_id_fkey"
+            columns: ["owner_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_leads_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_stages"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_loss_reasons: {
+        Row: {
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_loss_reasons_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_origin_groups: {
+        Row: {
+          color: string | null
+          created_at: string
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_origin_groups_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_origins: {
+        Row: {
+          color: string | null
+          created_at: string
+          group_id: string | null
+          icon: string | null
+          id: string
+          is_active: boolean | null
+          name: string
+          pipeline_id: string | null
+          project_id: string
+          sort_order: number | null
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name: string
+          pipeline_id?: string | null
+          project_id: string
+          sort_order?: number | null
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          group_id?: string | null
+          icon?: string | null
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          pipeline_id?: string | null
+          project_id?: string
+          sort_order?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_origins_group_id_fkey"
+            columns: ["group_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_origin_groups"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_origins_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_origins_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_crm_pipelines: {
         Row: {
           created_at: string | null
@@ -7923,6 +8488,56 @@ export type Database = {
             columns: ["project_id"]
             isOneToOne: false
             referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_stage_checklists: {
+        Row: {
+          created_at: string
+          description: string | null
+          id: string
+          is_active: boolean
+          item_type: string | null
+          sort_order: number
+          stage_id: string
+          title: string
+          updated_at: string
+          whatsapp_attachments: Json | null
+          whatsapp_template: string | null
+        }
+        Insert: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          item_type?: string | null
+          sort_order?: number
+          stage_id: string
+          title: string
+          updated_at?: string
+          whatsapp_attachments?: Json | null
+          whatsapp_template?: string | null
+        }
+        Update: {
+          created_at?: string
+          description?: string | null
+          id?: string
+          is_active?: boolean
+          item_type?: string | null
+          sort_order?: number
+          stage_id?: string
+          title?: string
+          updated_at?: string
+          whatsapp_attachments?: Json | null
+          whatsapp_template?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_stage_checklists_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_stages"
             referencedColumns: ["id"]
           },
         ]
@@ -7967,6 +8582,126 @@ export type Database = {
             columns: ["pipeline_id"]
             isOneToOne: false
             referencedRelation: "client_crm_pipelines"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_tags: {
+        Row: {
+          color: string | null
+          created_at: string
+          id: string
+          is_active: boolean | null
+          name: string
+          project_id: string
+        }
+        Insert: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name: string
+          project_id: string
+        }
+        Update: {
+          color?: string | null
+          created_at?: string
+          id?: string
+          is_active?: boolean | null
+          name?: string
+          project_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_tags_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      client_crm_transcriptions: {
+        Row: {
+          ai_analysis: string | null
+          created_at: string
+          created_by: string | null
+          duration_seconds: number | null
+          error_message: string | null
+          highlights: Json | null
+          id: string
+          language: string | null
+          lead_id: string | null
+          project_id: string
+          recorded_at: string | null
+          source: string
+          speakers: Json | null
+          status: string
+          summary: string | null
+          title: string
+          transcription_text: string | null
+          updated_at: string
+        }
+        Insert: {
+          ai_analysis?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          highlights?: Json | null
+          id?: string
+          language?: string | null
+          lead_id?: string | null
+          project_id: string
+          recorded_at?: string | null
+          source?: string
+          speakers?: Json | null
+          status?: string
+          summary?: string | null
+          title: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Update: {
+          ai_analysis?: string | null
+          created_at?: string
+          created_by?: string | null
+          duration_seconds?: number | null
+          error_message?: string | null
+          highlights?: Json | null
+          id?: string
+          language?: string | null
+          lead_id?: string | null
+          project_id?: string
+          recorded_at?: string | null
+          source?: string
+          speakers?: Json | null
+          status?: string
+          summary?: string | null
+          title?: string
+          transcription_text?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_crm_transcriptions_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_users"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_transcriptions_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "client_crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_crm_transcriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
             referencedColumns: ["id"]
           },
         ]
