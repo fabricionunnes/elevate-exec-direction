@@ -958,10 +958,18 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
           {/* Step 6: Importing */}
           {step === "importing" && (
             <div className="space-y-6 py-12 text-center">
-              <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              {importing ? (
+                <Loader2 className="h-12 w-12 mx-auto animate-spin text-primary" />
+              ) : (
+                <Check className="h-12 w-12 mx-auto text-green-500" />
+              )}
               <div>
-                <p className="text-lg font-medium">Importando leads...</p>
-                <p className="text-sm text-muted-foreground">Não feche esta janela</p>
+                <p className="text-lg font-medium">
+                  {importing ? "Importando leads..." : "Importação concluída!"}
+                </p>
+                <p className="text-sm text-muted-foreground">
+                  {importing ? "Não feche esta janela" : "Leads importados com sucesso"}
+                </p>
               </div>
 
               <div className="max-w-md mx-auto space-y-2">
@@ -982,7 +990,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                 )}
               </div>
 
-              {!importing && importProgress === 100 && (
+              {!importing && (
                 <Button onClick={handleClose} className="mt-4">
                   Fechar
                 </Button>
