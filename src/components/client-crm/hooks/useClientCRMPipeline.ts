@@ -25,7 +25,7 @@ export interface ClientCRMLead {
   tags?: { tag: { id: string; name: string; color: string } }[];
 }
 
-export interface ClientCRMStage {
+export interface ClientCRMStageData {
   id: string;
   name: string;
   sort_order: number;
@@ -43,7 +43,7 @@ export interface ClientCRMOriginGroup {
   sort_order: number;
 }
 
-export interface ClientCRMOrigin {
+export interface ClientCRMOriginData {
   id: string;
   name: string;
   group_id: string | null;
@@ -54,26 +54,28 @@ export interface ClientCRMOrigin {
   lead_count?: number;
 }
 
-export interface ClientCRMPipelineData {
+export interface ClientCRMPipelineInfo {
   id: string;
   name: string;
   is_default: boolean;
   is_active: boolean;
 }
 
+// Helper to query new tables not yet in generated types
+const db = supabase as any;
+
 export function useClientCRMPipeline(projectId: string) {
-  const [pipelines, setPipelines] = useState<ClientCRMPipelineData[]>([]);
-  const [stages, setStages] = useState<ClientCRMStage[]>([]);
+  const [pipelines, setPipelines] = useState<ClientCRMPipelineInfo[]>([]);
+  const [stages, setStages] = useState<ClientCRMStageData[]>([]);
   const [leads, setLeads] = useState<ClientCRMLead[]>([]);
   const [originGroups, setOriginGroups] = useState<ClientCRMOriginGroup[]>([]);
-  const [origins, setOrigins] = useState<ClientCRMOrigin[]>([]);
+  const [origins, setOrigins] = useState<ClientCRMOriginData[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedPipeline, setSelectedPipeline] = useState<string | null>(null);
   const [selectedOrigin, setSelectedOrigin] = useState<string | null>(null);
   const isRealtimeRefresh = useRef(false);
   const loadFnRef = useRef<() => Promise<void>>();
 
-  // Tag & owner options for filters
   const [tagOptions, setTagOptions] = useState<{ id: string; name: string; color: string }[]>([]);
   const [ownerOptions, setOwnerOptions] = useState<{ id: string; name: string }[]>([]);
   const [originOptions, setOriginOptions] = useState<{ id: string; name: string }[]>([]);
@@ -86,7 +88,7 @@ export function useClientCRMPipeline(projectId: string) {
       .eq("is_active", true)
       .order("is_default", { ascending: false });
 
-    const pipelinesData = (data || []) as ClientCRMPipelineData[];
+    const pipelinesData = (data || []) as ClientCRMPipelineInfo[];
     setPipelines(pipelinesData);
     if (pipelinesData.length > 0 && !selectedPipeline) {
       setSelectedPipeline(pipelinesData[0].id);
@@ -94,27 +96,26 @@ export function useClientCRMPipeline(projectId: string) {
   }, [projectId, selectedPipeline]);
 
   const loadOrigins = useCallback(async () => {
-    const [groupsRes, originsRes] = await Promise.all([
-      supabase
-        .from("client_crm_origin_groups")
-        .select("*")
-        .eq("project_id", projectId)
-        .eq("is_active", true)
-        .order("sort_order"),
-      supabase
-        .from("client_crm_origins")
-        .select("*")
-        .eq("project_id", projectId)
-        .eq("is_active", true)
-        .order("sort_order"),
-    ]);
+    const groupsRes = await db
+      .from("client_crm_origin_groups")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("is_active", true)
+      .order("sort_order");
+    const originsRes = await db
+      .from("client_crm_origins")
+      .select("*")
+      .eq("project_id", projectId)
+      .eq("is_active", true)
+      .order("sort_order");
+
     setOriginGroups((groupsRes.data || []) as ClientCRMOriginGroup[]);
-    setOrigins((originsRes.data || []) as ClientCRMOrigin[]);
+    setOrigins((originsRes.data || []) as ClientCRMOriginData[]);
     setOriginOptions((originsRes.data || []).map((o: any) => ({ id: o.id, name: o.name })));
   }, [projectId]);
 
   const loadFilterOptions = useCallback(async () => {
-    const tagsRes = await supabase.from("client_crm_tags" as any).select("id, name, color").eq("project_id", projectId).eq("is_active", true);
+    const tagsRes = await db.from("client_crm_tags").select("id, name, color").eq("project_id", projectId).eq("is_active", true);
     const ownersRes = await supabase.from("onboarding_users").select("id, name").eq("project_id", projectId).eq("is_active", true);
     setTagOptions((tagsRes.data || []) as any[]);
     setOwnerOptions((ownersRes.data || []) as any[]);
@@ -125,7 +126,7 @@ export function useClientCRMPipeline(projectId: string) {
 
     let effectiveOrigin = selectedOrigin;
     if (effectiveOrigin) {
-      const { data: originData } = await supabase
+      const { data: originData } = await db
         .from("client_crm_origins")
         .select("pipeline_id")
         .eq("id", effectiveOrigin)
@@ -143,9 +144,8 @@ export function useClientCRMPipeline(projectId: string) {
         .select("*")
         .eq("pipeline_id", selectedPipeline)
         .order("sort_order");
-      setStages((stagesData || []) as ClientCRMStage[]);
+      setStages((stagesData || []) as ClientCRMStageData[]);
 
-      // Fetch leads with pagination
       const PAGE_SIZE = 500;
       const MAX_LEADS = 10000;
       let allLeads: ClientCRMLead[] = [];
@@ -153,7 +153,7 @@ export function useClientCRMPipeline(projectId: string) {
       let hasMore = true;
 
       while (hasMore && allLeads.length < MAX_LEADS) {
-        let query = supabase
+        let query = db
           .from("client_crm_leads")
           .select(`
             id, name, company, phone, email, document, stage_id, origin_id, owner_id,
@@ -178,7 +178,7 @@ export function useClientCRMPipeline(projectId: string) {
         }
 
         if (leadsData && leadsData.length > 0) {
-          allLeads = allLeads.concat(leadsData as unknown as ClientCRMLead[]);
+          allLeads = allLeads.concat(leadsData as ClientCRMLead[]);
           from += PAGE_SIZE;
           hasMore = leadsData.length === PAGE_SIZE;
         } else {
@@ -213,7 +213,7 @@ export function useClientCRMPipeline(projectId: string) {
     loadStagesAndLeads();
   }, [loadStagesAndLeads]);
 
-  // Realtime subscription
+  // Realtime
   useEffect(() => {
     if (!selectedPipeline) return;
     const channel = supabase
@@ -237,17 +237,20 @@ export function useClientCRMPipeline(projectId: string) {
 
   const loadSummaryCards = useCallback(async () => {
     try {
+      const pipelineIds = pipelines.map(p => p.id);
+      if (!pipelineIds.length) return;
+
       const { data: forecastStages } = await supabase
         .from("client_crm_stages")
         .select("id")
-        .in("pipeline_id", pipelines.map(p => p.id))
+        .in("pipeline_id", pipelineIds)
         .ilike("name", "%forecast%");
 
       if (forecastStages?.length) {
-        let q = supabase.from("client_crm_leads")
+        let q = db.from("client_crm_leads")
           .select("id, opportunity_value, owner_id")
           .eq("project_id", projectId)
-          .in("stage_id", forecastStages.map(s => s.id));
+          .in("stage_id", forecastStages.map((s: any) => s.id));
         if (selectedOrigin) q = q.eq("origin_id", selectedOrigin);
         const { data } = await q;
         setForecastData(data || []);
@@ -258,14 +261,14 @@ export function useClientCRMPipeline(projectId: string) {
       const { data: negStages } = await supabase
         .from("client_crm_stages")
         .select("id")
-        .in("pipeline_id", pipelines.map(p => p.id))
+        .in("pipeline_id", pipelineIds)
         .ilike("name", "%realizada%");
 
       if (negStages?.length) {
-        let q = supabase.from("client_crm_leads")
+        let q = db.from("client_crm_leads")
           .select("id, opportunity_value, owner_id")
           .eq("project_id", projectId)
-          .in("stage_id", negStages.map(s => s.id));
+          .in("stage_id", negStages.map((s: any) => s.id));
         if (selectedOrigin) q = q.eq("origin_id", selectedOrigin);
         const { data } = await q;
         setNegotiationData(data || []);
@@ -297,7 +300,7 @@ export function useClientCRMPipeline(projectId: string) {
       return;
     }
 
-    const { error } = await supabase.from("client_crm_leads").insert({
+    const { error } = await db.from("client_crm_leads").insert({
       project_id: projectId,
       pipeline_id: lead.pipeline_id || selectedPipeline!,
       stage_id: lead.stage_id || firstStage.id,
@@ -319,7 +322,7 @@ export function useClientCRMPipeline(projectId: string) {
   };
 
   const updateLead = async (id: string, updates: Partial<ClientCRMLead>) => {
-    const { error } = await supabase
+    const { error } = await db
       .from("client_crm_leads")
       .update({ ...updates, updated_at: new Date().toISOString() })
       .eq("id", id);
@@ -328,7 +331,7 @@ export function useClientCRMPipeline(projectId: string) {
   };
 
   const deleteLead = async (id: string) => {
-    const { error } = await supabase.from("client_crm_leads").delete().eq("id", id);
+    const { error } = await db.from("client_crm_leads").delete().eq("id", id);
     if (error) throw error;
     toast.success("Lead excluído");
     await loadStagesAndLeads();
@@ -340,11 +343,11 @@ export function useClientCRMPipeline(projectId: string) {
     if (stage?.is_final) {
       updates.closed_at = new Date().toISOString();
     }
-    const { error } = await supabase.from("client_crm_leads").update(updates).eq("id", leadId);
+    const { error } = await db.from("client_crm_leads").update(updates).eq("id", leadId);
     if (error) throw error;
 
     if (note?.trim()) {
-      await supabase.from("client_crm_lead_history").insert({
+      await db.from("client_crm_lead_history").insert({
         lead_id: leadId,
         action: "note_added",
         notes: note.trim(),
