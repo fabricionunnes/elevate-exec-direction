@@ -13,11 +13,12 @@ import { Calendar } from "@/components/ui/calendar";
 import { CalendarIcon, RotateCcw, Save } from "lucide-react";
 import { format } from "date-fns";
 import { cn } from "@/lib/utils";
-import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
+import type { DiagnosticRecord, ProjectContext } from "./StrategicDiagnosticModule";
 
 interface Props {
   projectId: string;
   onSaved: (record: DiagnosticRecord) => void;
+  projectContext?: ProjectContext | null;
 }
 
 const defaultForm = {
@@ -87,8 +88,15 @@ const SectionBadge = ({ label, color }: { label: string; color: "amber" | "blue"
   return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${colors[color]}`}>{label}</span>;
 };
 
-export function StrategicDiagnosticForm({ projectId, onSaved }: Props) {
-  const [form, setForm] = useState<FormData>({ ...defaultForm });
+export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: Props) {
+  const [form, setForm] = useState<FormData>(() => ({
+    ...defaultForm,
+    empresa: projectContext?.empresa || "",
+    responsavel: projectContext?.responsavel || "",
+    consultor_unv: projectContext?.consultor_unv || "",
+    tempo_cliente: projectContext?.tempo_cliente || "",
+    segmento: projectContext?.segmento || "",
+  }));
   const [saving, setSaving] = useState(false);
 
   const set = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
@@ -101,8 +109,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved }: Props) {
   };
 
   const handleSubmit = async () => {
-    if (!form.empresa.trim()) {
-      toast.error("Preencha o nome da empresa");
+    if (!form.empresa.trim() && !projectContext?.empresa) {
+      toast.error("Não foi possível identificar a empresa");
       return;
     }
     setSaving(true);
@@ -219,19 +227,19 @@ export function StrategicDiagnosticForm({ projectId, onSaved }: Props) {
         {/* BLOCK 1 */}
         <section className="space-y-4">
           <h3 className="font-semibold text-base">Identificação do Cliente</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Empresa *</Label>
-              <Input value={form.empresa} onChange={e => set("empresa", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Responsável</Label>
-              <Input value={form.responsavel} onChange={e => set("responsavel", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Consultor UNV</Label>
-              <Input value={form.consultor_unv} onChange={e => set("consultor_unv", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            {[
+              { label: "Empresa", value: form.empresa },
+              { label: "Responsável", value: form.responsavel },
+              { label: "Consultor UNV", value: form.consultor_unv },
+              { label: "Tempo como cliente", value: form.tempo_cliente },
+              { label: "Segmento", value: form.segmento },
+            ].map(item => (
+              <div key={item.label} className="space-y-1">
+                <Label className="text-xs text-muted-foreground">{item.label}</Label>
+                <p className="text-sm font-medium">{item.value || "—"}</p>
+              </div>
+            ))}
             <div className="space-y-1.5">
               <Label className="text-sm">Data do check-point</Label>
               <Popover>
@@ -245,22 +253,6 @@ export function StrategicDiagnosticForm({ projectId, onSaved }: Props) {
                   <Calendar mode="single" selected={form.data_checkpoint} onSelect={d => d && set("data_checkpoint", d)} initialFocus className="p-3 pointer-events-auto" />
                 </PopoverContent>
               </Popover>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Tempo como cliente UNV</Label>
-              <Select value={form.tempo_cliente} onValueChange={v => set("tempo_cliente", v)}>
-                <SelectTrigger className="bg-muted/30 border-border/50"><SelectValue placeholder="Selecione" /></SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="Menos de 3 meses">Menos de 3 meses</SelectItem>
-                  <SelectItem value="3 a 6 meses">3 a 6 meses</SelectItem>
-                  <SelectItem value="6 a 12 meses">6 a 12 meses</SelectItem>
-                  <SelectItem value="Mais de 12 meses">Mais de 12 meses</SelectItem>
-                </SelectContent>
-              </Select>
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Segmento</Label>
-              <Input value={form.segmento} onChange={e => set("segmento", e.target.value)} placeholder="Ex: saúde, varejo, serviços..." className="bg-muted/30 border-border/50" />
             </div>
           </div>
         </section>
