@@ -38,6 +38,7 @@ const defaultForm = {
   usa_contador: "",
   maior_dor_financeira: "",
   observacoes_financeiras: "",
+  consultor_financeiro: "",
   num_vendedores: "",
   meta_vendas: "",
   resultado_ultimo_mes: "",
