@@ -384,14 +384,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Investimento mensal (R$)</Label>
-              <Input type="number" value={form.investimento_trafego} onChange={e => set("investimento_trafego", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">CPL estimado (R$)</Label>
-              <Input type="number" value={form.cpl_estimado} onChange={e => set("cpl_estimado", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Investimento mensal" value={form.investimento_trafego} onChange={v => set("investimento_trafego", v)} />
+            <CurrencyInput label="CPL estimado" value={form.cpl_estimado} onChange={v => set("cpl_estimado", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Volume de leads/mês</Label>
               <Input type="number" value={form.volume_leads} onChange={e => set("volume_leads", e.target.value)} className="bg-muted/30 border-border/50" />
