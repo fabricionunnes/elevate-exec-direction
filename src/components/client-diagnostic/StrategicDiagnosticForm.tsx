@@ -144,15 +144,80 @@ const CurrencyInput = ({ label, value, onChange }: { label: string; value: strin
   </div>
 );
 
-export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: Props) {
-  const [form, setForm] = useState<FormData>(() => ({
-    ...defaultForm,
-    empresa: projectContext?.empresa || "",
-    responsavel: projectContext?.responsavel || "",
-    consultor_unv: projectContext?.consultor_unv || "",
-    tempo_cliente: projectContext?.tempo_cliente || "",
-    segmento: projectContext?.segmento || "",
-  }));
+export function StrategicDiagnosticForm({ projectId, onSaved, projectContext, editingRecord }: Props) {
+  const [form, setForm] = useState<FormData>(() => {
+    if (editingRecord) {
+      const canais = parseCanaisFromString(editingRecord.principal_canal);
+      const social = parseSocialFrom(editingRecord.quem_faz_social);
+      return {
+        ...defaultForm,
+        empresa: editingRecord.empresa || "",
+        responsavel: editingRecord.responsavel || "",
+        consultor_unv: editingRecord.consultor_unv || "",
+        data_checkpoint: editingRecord.data_checkpoint ? new Date(editingRecord.data_checkpoint + "T12:00:00") : new Date(),
+        tempo_cliente: editingRecord.tempo_cliente || "",
+        segmento: editingRecord.segmento || "",
+        faturamento_atual: numberToCurrency(editingRecord.faturamento_atual),
+        faturamento_entrada: numberToCurrency(editingRecord.faturamento_entrada),
+        margem_lucro: editingRecord.margem_lucro?.toString() || "",
+        ticket_medio: numberToCurrency(editingRecord.ticket_medio),
+        possui_dividas: editingRecord.possui_dividas || "",
+        controle_financeiro: editingRecord.controle_financeiro || "",
+        gestao_financeira: editingRecord.gestao_financeira || "",
+        usa_contador: editingRecord.usa_contador || "",
+        usa_bpo_financeiro: editingRecord.usa_bpo_financeiro || "",
+        maior_dor_financeira: editingRecord.maior_dor_financeira || "",
+        observacoes_financeiras: editingRecord.observacoes_financeiras || "",
+        consultor_financeiro: editingRecord.consultor_financeiro || "",
+        num_vendedores: editingRecord.num_vendedores?.toString() || "",
+        meta_vendas: numberToCurrency(editingRecord.meta_vendas),
+        resultado_ultimo_mes: numberToCurrency(editingRecord.resultado_ultimo_mes),
+        taxa_conversao: editingRecord.taxa_conversao?.toString() || "",
+        possui_sdr: editingRecord.possui_sdr || "",
+        usa_crm: editingRecord.usa_crm || "",
+        tem_script: editingRecord.tem_script || "",
+        principal_canal: canais.canais,
+        principal_canal_outro: canais.outro,
+        maior_dor_comercial: editingRecord.maior_dor_comercial || "",
+        observacoes_comerciais: editingRecord.observacoes_comerciais || "",
+        investe_trafego: editingRecord.investe_trafego || "",
+        quem_gerencia_trafego: editingRecord.quem_gerencia_trafego || "",
+        investimento_trafego: numberToCurrency(editingRecord.investimento_trafego),
+        cpl_estimado: numberToCurrency(editingRecord.cpl_estimado),
+        volume_leads: editingRecord.volume_leads?.toString() || "",
+        plataformas_trafego: editingRecord.plataformas_trafego || [],
+        satisfeito_trafego: editingRecord.satisfeito_trafego || "",
+        acompanha_relatorios: editingRecord.acompanha_relatorios || "",
+        observacoes_trafego: editingRecord.observacoes_trafego || "",
+        quem_faz_social: social.select,
+        quem_faz_social_outro: social.outro,
+        investimento_social: numberToCurrency(editingRecord.investimento_social),
+        seguidores_instagram: editingRecord.seguidores_instagram?.toString() || "",
+        engajamento_medio: editingRecord.engajamento_medio?.toString() || "",
+        frequencia_postagens: editingRecord.frequencia_postagens || "",
+        redes_ativas: editingRecord.redes_ativas || [],
+        identidade_visual: editingRecord.identidade_visual || "",
+        produz_video: editingRecord.produz_video || "",
+        satisfeito_social: editingRecord.satisfeito_social || "",
+        social_gera_leads: editingRecord.social_gera_leads || "",
+        observacoes_marketing: editingRecord.observacoes_marketing || "",
+        principais_dores: editingRecord.principais_dores || "",
+        produtos_oferecer: editingRecord.produtos_oferecer || [],
+        proximo_passo: editingRecord.proximo_passo || "",
+        nivel_urgencia: editingRecord.nivel_urgencia || "",
+        potencial_upsell: numberToCurrency(editingRecord.potencial_upsell),
+        observacoes_gerais: editingRecord.observacoes_gerais || "",
+      };
+    }
+    return {
+      ...defaultForm,
+      empresa: projectContext?.empresa || "",
+      responsavel: projectContext?.responsavel || "",
+      consultor_unv: projectContext?.consultor_unv || "",
+      tempo_cliente: projectContext?.tempo_cliente || "",
+      segmento: projectContext?.segmento || "",
+    };
+  });
   const [saving, setSaving] = useState(false);
 
   const set = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
