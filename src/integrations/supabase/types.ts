@@ -10192,6 +10192,194 @@ export type Database = {
           },
         ]
       }
+      client_strategic_diagnostics: {
+        Row: {
+          acompanha_relatorios: string | null
+          consultor_unv: string | null
+          controle_financeiro: string | null
+          cpl_estimado: number | null
+          created_at: string
+          created_by: string | null
+          data_checkpoint: string
+          empresa: string
+          engajamento_medio: number | null
+          faturamento_atual: number | null
+          faturamento_entrada: number | null
+          frequencia_postagens: string | null
+          gestao_financeira: string | null
+          id: string
+          identidade_visual: string | null
+          investe_trafego: string | null
+          investimento_social: number | null
+          investimento_trafego: number | null
+          maior_dor_comercial: string | null
+          maior_dor_financeira: string | null
+          margem_lucro: number | null
+          meta_vendas: number | null
+          nivel_urgencia: string | null
+          num_vendedores: number | null
+          observacoes_comerciais: string | null
+          observacoes_financeiras: string | null
+          observacoes_gerais: string | null
+          observacoes_marketing: string | null
+          observacoes_trafego: string | null
+          plataformas_trafego: string[] | null
+          possui_dividas: string | null
+          possui_sdr: string | null
+          potencial_upsell: number | null
+          principais_dores: string | null
+          principal_canal: string | null
+          produtos_oferecer: string[] | null
+          produz_video: string | null
+          project_id: string
+          proximo_passo: string | null
+          quem_faz_social: string | null
+          quem_gerencia_trafego: string | null
+          redes_ativas: string[] | null
+          responsavel: string | null
+          resultado_ultimo_mes: number | null
+          satisfeito_social: string | null
+          satisfeito_trafego: string | null
+          segmento: string | null
+          seguidores_instagram: number | null
+          social_gera_leads: string | null
+          taxa_conversao: number | null
+          tem_script: string | null
+          tempo_cliente: string | null
+          ticket_medio: number | null
+          updated_at: string
+          usa_contador: string | null
+          usa_crm: string | null
+          volume_leads: number | null
+        }
+        Insert: {
+          acompanha_relatorios?: string | null
+          consultor_unv?: string | null
+          controle_financeiro?: string | null
+          cpl_estimado?: number | null
+          created_at?: string
+          created_by?: string | null
+          data_checkpoint?: string
+          empresa: string
+          engajamento_medio?: number | null
+          faturamento_atual?: number | null
+          faturamento_entrada?: number | null
+          frequencia_postagens?: string | null
+          gestao_financeira?: string | null
+          id?: string
+          identidade_visual?: string | null
+          investe_trafego?: string | null
+          investimento_social?: number | null
+          investimento_trafego?: number | null
+          maior_dor_comercial?: string | null
+          maior_dor_financeira?: string | null
+          margem_lucro?: number | null
+          meta_vendas?: number | null
+          nivel_urgencia?: string | null
+          num_vendedores?: number | null
+          observacoes_comerciais?: string | null
+          observacoes_financeiras?: string | null
+          observacoes_gerais?: string | null
+          observacoes_marketing?: string | null
+          observacoes_trafego?: string | null
+          plataformas_trafego?: string[] | null
+          possui_dividas?: string | null
+          possui_sdr?: string | null
+          potencial_upsell?: number | null
+          principais_dores?: string | null
+          principal_canal?: string | null
+          produtos_oferecer?: string[] | null
+          produz_video?: string | null
+          project_id: string
+          proximo_passo?: string | null
+          quem_faz_social?: string | null
+          quem_gerencia_trafego?: string | null
+          redes_ativas?: string[] | null
+          responsavel?: string | null
+          resultado_ultimo_mes?: number | null
+          satisfeito_social?: string | null
+          satisfeito_trafego?: string | null
+          segmento?: string | null
+          seguidores_instagram?: number | null
+          social_gera_leads?: string | null
+          taxa_conversao?: number | null
+          tem_script?: string | null
+          tempo_cliente?: string | null
+          ticket_medio?: number | null
+          updated_at?: string
+          usa_contador?: string | null
+          usa_crm?: string | null
+          volume_leads?: number | null
+        }
+        Update: {
+          acompanha_relatorios?: string | null
+          consultor_unv?: string | null
+          controle_financeiro?: string | null
+          cpl_estimado?: number | null
+          created_at?: string
+          created_by?: string | null
+          data_checkpoint?: string
+          empresa?: string
+          engajamento_medio?: number | null
+          faturamento_atual?: number | null
+          faturamento_entrada?: number | null
+          frequencia_postagens?: string | null
+          gestao_financeira?: string | null
+          id?: string
+          identidade_visual?: string | null
+          investe_trafego?: string | null
+          investimento_social?: number | null
+          investimento_trafego?: number | null
+          maior_dor_comercial?: string | null
+          maior_dor_financeira?: string | null
+          margem_lucro?: number | null
+          meta_vendas?: number | null
+          nivel_urgencia?: string | null
+          num_vendedores?: number | null
+          observacoes_comerciais?: string | null
+          observacoes_financeiras?: string | null
+          observacoes_gerais?: string | null
+          observacoes_marketing?: string | null
+          observacoes_trafego?: string | null
+          plataformas_trafego?: string[] | null
+          possui_dividas?: string | null
+          possui_sdr?: string | null
+          potencial_upsell?: number | null
+          principais_dores?: string | null
+          principal_canal?: string | null
+          produtos_oferecer?: string[] | null
+          produz_video?: string | null
+          project_id?: string
+          proximo_passo?: string | null
+          quem_faz_social?: string | null
+          quem_gerencia_trafego?: string | null
+          redes_ativas?: string[] | null
+          responsavel?: string | null
+          resultado_ultimo_mes?: number | null
+          satisfeito_social?: string | null
+          satisfeito_trafego?: string | null
+          segmento?: string | null
+          seguidores_instagram?: number | null
+          social_gera_leads?: string | null
+          taxa_conversao?: number | null
+          tem_script?: string | null
+          tempo_cliente?: string | null
+          ticket_medio?: number | null
+          updated_at?: string
+          usa_contador?: string | null
+          usa_crm?: string | null
+          volume_leads?: number | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "client_strategic_diagnostics_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       client_user_permissions: {
         Row: {
           created_at: string
