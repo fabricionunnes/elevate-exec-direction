@@ -318,6 +318,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <RadioField label="Usa contador / BPO financeiro?" name="usa_contador" options={["Sim", "Não"]} />
+          <RadioField label="Possui consultor financeiro ou tem interesse em contratar?" name="consultor_financeiro" options={["Já possui", "Tem interesse", "Não tem interesse"]} />
           <RadioField label="Maior dor financeira hoje" name="maior_dor_financeira" options={["Fluxo de caixa", "Margem baixa", "Inadimplência", "Custo fixo alto", "Falta de previsibilidade", "Não identifica"]} />
           <div className="space-y-1.5">
             <Label className="text-sm">Observações financeiras</Label>
