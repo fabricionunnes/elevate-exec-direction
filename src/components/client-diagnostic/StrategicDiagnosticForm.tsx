@@ -89,6 +89,36 @@ const SectionBadge = ({ label, color }: { label: string; color: "amber" | "blue"
   return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${colors[color]}`}>{label}</span>;
 };
 
+const formatCurrency = (value: string): string => {
+  const num = value.replace(/\D/g, "");
+  if (!num) return "";
+  const cents = parseInt(num, 10);
+  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyToNumber = (value: string): number | null => {
+  if (!value) return null;
+  const cleaned = value.replace(/\./g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+};
+
+const CurrencyInput = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
+  <div className="space-y-1.5">
+    <Label className="text-sm">{label}</Label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+      <Input
+        value={value}
+        onChange={e => onChange(formatCurrency(e.target.value))}
+        className="bg-muted/30 border-border/50 pl-10"
+        placeholder="0,00"
+        inputMode="numeric"
+      />
+    </div>
+  </div>
+);
+
 export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: Props) {
   const [form, setForm] = useState<FormData>(() => ({
     ...defaultForm,
