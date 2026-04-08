@@ -221,46 +221,16 @@ export const CRMPipelinePage = () => {
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
-    // If an origin is selected, verify it belongs to the current pipeline
-    // to avoid mismatched queries during state transitions
     let effectiveOrigin = selectedOrigin;
-    if (effectiveOrigin) {
-      const { data: originData } = await supabase
-        .from("crm_origins")
-        .select("pipeline_id")
-        .eq("id", effectiveOrigin)
-        .single();
-      if (originData && originData.pipeline_id !== selectedPipeline) {
-        effectiveOrigin = null;
-      }
-    }
 
-    // Only show loading spinner on manual/initial loads, not realtime refreshes
     if (!isRealtimeRefresh.current) {
       setLoading(true);
     }
+
     try {
-      const { data: stagesData, error: stagesError } = await supabase
-        .from("crm_stages")
-        .select("*")
-        .eq("pipeline_id", selectedPipeline)
-        .order("sort_order");
+      const FIRST_PAGE = 200;
 
-      if (stagesError) {
-        console.error("Error loading stages:", stagesError);
-        return; // Preserve existing data on error
-      }
-      setStages(stagesData || []);
-
-      // Fetch leads in batches to bypass the 1000-row limit
-      // Cap at 10,000 to avoid browser memory issues on very large pipelines
-      const PAGE_SIZE = 500;
-      const MAX_LEADS = 10000;
-      let allLeads: Lead[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore && allLeads.length < MAX_LEADS) {
+      const buildLeadQuery = (origin: string | null, from: number, size: number) => {
         let query = supabase
           .from("crm_leads")
           .select(`
@@ -268,42 +238,71 @@ export const CRMPipelinePage = () => {
             opportunity_value, probability, last_activity_at, next_activity_at, urgency, notes, created_at,
             origin:crm_origins(name),
             owner:onboarding_staff!crm_leads_owner_staff_id_fkey(name, avatar_url),
-            tags:crm_lead_tags(tag:crm_tags(id, name, color))
+            tags:crm_lead_tags(tag:crm_tags(id, name, color)),
+            meeting_events:crm_meeting_events(event_type)
           `)
           .eq("pipeline_id", selectedPipeline)
           .order("created_at", { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
+          .range(from, from + size - 1);
 
-        if (effectiveOrigin) {
-          query = query.eq("origin_id", effectiveOrigin);
+        if (origin) {
+          query = query.eq("origin_id", origin);
         }
 
-        const { data: leadsData, error: leadsError } = await query;
+        return query;
+      };
 
-        if (leadsError) {
-          console.error("Error loading leads:", leadsError);
-          // On realtime refresh errors, preserve existing leads
-          return;
-        }
+      const originCheckPromise = effectiveOrigin
+        ? supabase.from("crm_origins").select("pipeline_id").eq("id", effectiveOrigin).single()
+        : Promise.resolve({ data: null, error: null });
 
-        if (leadsData && leadsData.length > 0) {
-          allLeads = allLeads.concat(leadsData as Lead[]);
-          from += PAGE_SIZE;
-          hasMore = leadsData.length === PAGE_SIZE;
-        } else {
-          hasMore = false;
-        }
+      const [stagesRes, originRes] = await Promise.all([
+        supabase.from("crm_stages").select("*").eq("pipeline_id", selectedPipeline).order("sort_order"),
+        originCheckPromise,
+      ]);
+
+      if (stagesRes.error) {
+        console.error("Error loading stages:", stagesRes.error);
+        return;
       }
 
-      // Only update leads if we got results, or if this is NOT a realtime refresh
-      // This prevents leads from disappearing due to transient auth/session issues
-      if (allLeads.length > 0 || !isRealtimeRefresh.current) {
+      if (originRes.data && originRes.data.pipeline_id !== selectedPipeline) {
+        effectiveOrigin = null;
+      }
+
+      setStages(stagesRes.data || []);
+
+      const { data: firstPage, error: firstError } = await buildLeadQuery(effectiveOrigin, 0, FIRST_PAGE);
+      if (firstError) {
+        console.error("Error loading leads:", firstError);
+        return;
+      }
+
+      const firstBatch = (firstPage || []) as Lead[];
+      setLeads(firstBatch);
+      setLoading(false);
+      isRealtimeRefresh.current = false;
+
+      if (firstBatch.length === FIRST_PAGE) {
+        const PAGE_SIZE = 500;
+        const MAX_LEADS = 10000;
+        let allLeads = [...firstBatch];
+        let from = FIRST_PAGE;
+        let hasMore = true;
+
+        while (hasMore && allLeads.length < MAX_LEADS) {
+          const { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, from, PAGE_SIZE);
+          if (pageError || !pageData || pageData.length === 0) break;
+
+          allLeads = allLeads.concat(pageData as Lead[]);
+          from += PAGE_SIZE;
+          hasMore = pageData.length === PAGE_SIZE;
+        }
+
         setLeads(allLeads);
       }
     } catch (error) {
       console.error("Error loading pipeline data:", error);
-      // Don't clear existing data on error - preserve what's on screen
-    } finally {
       setLoading(false);
       isRealtimeRefresh.current = false;
     }

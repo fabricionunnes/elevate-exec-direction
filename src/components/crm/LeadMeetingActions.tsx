@@ -154,6 +154,7 @@ export function LeadMeetingActions({
   pipelineId,
   stageId,
   ownerStaffId,
+  initialEvents = [],
   onEventTracked,
   variant = "icons",
   showContractButton = true,
@@ -161,11 +162,15 @@ export function LeadMeetingActions({
 }: LeadMeetingActionsProps) {
   const [loading, setLoading] = useState<MeetingEventType | null>(null);
   const [trackedEvents, setTrackedEvents] = useState<Set<MeetingEventType>>(
-    new Set()
+    () => new Set(initialEvents as MeetingEventType[])
   );
 
-  // Load existing events on mount
   useEffect(() => {
+    if (initialEvents.length > 0) {
+      setTrackedEvents(new Set(initialEvents as MeetingEventType[]));
+      return;
+    }
+
     const loadExistingEvents = async () => {
       const { data } = await supabase
         .from("crm_meeting_events")
@@ -181,7 +186,7 @@ export function LeadMeetingActions({
     };
 
     loadExistingEvents();
-  }, [leadId]);
+  }, [leadId, initialEvents]);
 
   const handleTrackEvent = async (
     e: React.MouseEvent,

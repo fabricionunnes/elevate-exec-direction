@@ -188,6 +188,7 @@ export const KanbanLeadCard = ({
           pipelineId={pipelineId}
           stageId={lead.stage_id}
           ownerStaffId={lead.owner_staff_id}
+          initialEvents={lead.meeting_events?.map((event) => event.event_type) || []}
           onEventTracked={onRefresh}
         />
         
