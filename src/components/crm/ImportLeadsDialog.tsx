@@ -449,6 +449,13 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                 if (mapping.crmField === "opportunity_value") {
                   const numValue = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.'));
                   lead[mapping.crmField] = isNaN(numValue) ? 0 : numValue;
+                } else if (mapping.crmField === "origin") {
+                  // Resolve origin name to origin_id
+                  const originId = originMap[value.toLowerCase().trim()];
+                  if (originId) {
+                    lead.origin_id = originId;
+                  }
+                  // Don't set "origin" text field, only origin_id
                 } else {
                   lead[mapping.crmField] = value;
                 }
