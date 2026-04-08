@@ -100,6 +100,7 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
     </button>
   );
 }
+const WHATSAPP_URL = `https://wa.me/5531984935274?text=${encodeURIComponent("Olá, tenho uma empresa, vi seu anúncio e quero saber mais sobre como ter o Fabricio Nunnes como meu diretor comercial")}`;
 
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
