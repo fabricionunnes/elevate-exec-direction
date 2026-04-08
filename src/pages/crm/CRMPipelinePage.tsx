@@ -217,10 +217,13 @@ export const CRMPipelinePage = () => {
 
   const isRealtimeRefresh = useRef(false);
   const loadFnRef = useRef<() => Promise<void>>();
+  const activeLoadIdRef = useRef(0);
 
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
+    const loadId = ++activeLoadIdRef.current;
+    const isCurrentLoad = () => activeLoadIdRef.current === loadId;
     let effectiveOrigin = selectedOrigin;
 
     if (!isRealtimeRefresh.current) {
@@ -261,6 +264,8 @@ export const CRMPipelinePage = () => {
         originCheckPromise,
       ]);
 
+      if (!isCurrentLoad()) return;
+
       if (stagesRes.error) {
         console.error("Error loading stages:", stagesRes.error);
         return;
@@ -273,13 +278,17 @@ export const CRMPipelinePage = () => {
       setStages(stagesRes.data || []);
 
       const { data: firstPage, error: firstError } = await buildLeadQuery(effectiveOrigin, 0, FIRST_PAGE);
+      if (!isCurrentLoad()) return;
+
       if (firstError) {
         console.error("Error loading leads:", firstError);
         return;
       }
 
       const firstBatch = (firstPage || []) as Lead[];
-      setLeads(firstBatch);
+      if (firstBatch.length > 0 || !isRealtimeRefresh.current) {
+        setLeads(firstBatch);
+      }
       setLoading(false);
       isRealtimeRefresh.current = false;
 
@@ -292,6 +301,7 @@ export const CRMPipelinePage = () => {
 
         while (hasMore && allLeads.length < MAX_LEADS) {
           const { data: pageData, error: pageError } = await buildLeadQuery(effectiveOrigin, from, PAGE_SIZE);
+          if (!isCurrentLoad()) return;
           if (pageError || !pageData || pageData.length === 0) break;
 
           allLeads = allLeads.concat(pageData as Lead[]);
@@ -299,9 +309,12 @@ export const CRMPipelinePage = () => {
           hasMore = pageData.length === PAGE_SIZE;
         }
 
-        setLeads(allLeads);
+        if (isCurrentLoad()) {
+          setLeads(allLeads);
+        }
       }
     } catch (error) {
+      if (!isCurrentLoad()) return;
       console.error("Error loading pipeline data:", error);
       setLoading(false);
       isRealtimeRefresh.current = false;
