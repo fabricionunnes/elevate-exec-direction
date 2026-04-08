@@ -88,8 +88,15 @@ const SectionBadge = ({ label, color }: { label: string; color: "amber" | "blue"
   return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${colors[color]}`}>{label}</span>;
 };
 
-export function StrategicDiagnosticForm({ projectId, onSaved }: Props) {
-  const [form, setForm] = useState<FormData>({ ...defaultForm });
+export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: Props) {
+  const [form, setForm] = useState<FormData>(() => ({
+    ...defaultForm,
+    empresa: projectContext?.empresa || "",
+    responsavel: projectContext?.responsavel || "",
+    consultor_unv: projectContext?.consultor_unv || "",
+    tempo_cliente: projectContext?.tempo_cliente || "",
+    segmento: projectContext?.segmento || "",
+  }));
   const [saving, setSaving] = useState(false);
 
   const set = (key: keyof FormData, value: any) => setForm(prev => ({ ...prev, [key]: value }));
