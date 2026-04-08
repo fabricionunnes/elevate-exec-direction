@@ -124,36 +124,17 @@ export function useClientCRMPipeline(projectId: string) {
   const loadStagesAndLeads = useCallback(async () => {
     if (!selectedPipeline) return;
 
+    // Resolve effective origin in parallel with initial data — don't block
     let effectiveOrigin = selectedOrigin;
-    if (effectiveOrigin) {
-      const { data: originData } = await db
-        .from("client_crm_origins")
-        .select("pipeline_id")
-        .eq("id", effectiveOrigin)
-        .single();
-      if (originData && originData.pipeline_id !== selectedPipeline) {
-        effectiveOrigin = null;
-      }
-    }
 
     if (!isRealtimeRefresh.current) setLoading(true);
 
     try {
-      const { data: stagesData } = await supabase
-        .from("client_crm_stages")
-        .select("*")
-        .eq("pipeline_id", selectedPipeline)
-        .order("sort_order");
-      setStages((stagesData || []) as ClientCRMStageData[]);
+      // Run stages, leads first page, and origin check ALL in parallel
+      const FIRST_PAGE = 200;
 
-      const PAGE_SIZE = 500;
-      const MAX_LEADS = 10000;
-      let allLeads: ClientCRMLead[] = [];
-      let from = 0;
-      let hasMore = true;
-
-      while (hasMore && allLeads.length < MAX_LEADS) {
-        let query = db
+      const buildLeadQuery = (origin: string | null, from: number, size: number) => {
+        let q = db
           .from("client_crm_leads")
           .select(`
             id, name, company, phone, email, document, stage_id, origin_id, owner_id,
@@ -165,33 +146,60 @@ export function useClientCRMPipeline(projectId: string) {
           .eq("project_id", projectId)
           .eq("pipeline_id", selectedPipeline)
           .order("created_at", { ascending: false })
-          .range(from, from + PAGE_SIZE - 1);
+          .range(from, from + size - 1);
+        if (origin) q = q.eq("origin_id", origin);
+        return q;
+      };
 
-        if (effectiveOrigin) {
-          query = query.eq("origin_id", effectiveOrigin);
-        }
+      // Check origin compatibility only if needed
+      const originCheckPromise = effectiveOrigin
+        ? db.from("client_crm_origins").select("pipeline_id").eq("id", effectiveOrigin).single()
+        : Promise.resolve({ data: null });
 
-        const { data: leadsData, error } = await query;
-        if (error) {
-          console.error("Error loading leads:", error);
-          return;
-        }
+      const [stagesRes, originRes] = await Promise.all([
+        supabase.from("client_crm_stages").select("*").eq("pipeline_id", selectedPipeline).order("sort_order"),
+        originCheckPromise,
+      ]);
 
-        if (leadsData && leadsData.length > 0) {
-          allLeads = allLeads.concat(leadsData as ClientCRMLead[]);
-          from += PAGE_SIZE;
-          hasMore = leadsData.length === PAGE_SIZE;
-        } else {
-          hasMore = false;
-        }
+      // Resolve origin compatibility
+      if (originRes.data && originRes.data.pipeline_id !== selectedPipeline) {
+        effectiveOrigin = null;
       }
 
-      if (allLeads.length > 0 || !isRealtimeRefresh.current) {
+      setStages((stagesRes.data || []) as ClientCRMStageData[]);
+
+      // Now fetch first page of leads (fast due to composite index)
+      const { data: firstPage, error: firstErr } = await buildLeadQuery(effectiveOrigin, 0, FIRST_PAGE);
+      if (firstErr) {
+        console.error("Error loading leads:", firstErr);
+        return;
+      }
+
+      const firstBatch = (firstPage || []) as ClientCRMLead[];
+      setLeads(firstBatch);
+      setLoading(false);
+      isRealtimeRefresh.current = false;
+
+      // Load remaining pages in background without blocking UI
+      if (firstBatch.length === FIRST_PAGE) {
+        const PAGE_SIZE = 500;
+        const MAX_LEADS = 10000;
+        let allLeads = [...firstBatch];
+        let from = FIRST_PAGE;
+        let hasMore = true;
+
+        while (hasMore && allLeads.length < MAX_LEADS) {
+          const { data: pageData, error } = await buildLeadQuery(effectiveOrigin, from, PAGE_SIZE);
+          if (error || !pageData || pageData.length === 0) break;
+          allLeads = allLeads.concat(pageData as ClientCRMLead[]);
+          from += PAGE_SIZE;
+          hasMore = pageData.length === PAGE_SIZE;
+        }
+
         setLeads(allLeads);
       }
     } catch (error) {
       console.error("Error loading pipeline data:", error);
-    } finally {
       setLoading(false);
       isRealtimeRefresh.current = false;
     }
