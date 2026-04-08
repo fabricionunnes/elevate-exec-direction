@@ -769,21 +769,23 @@ export const GenerateStrategicPlanningDialog = ({
       // Build summary content for the main planning task
       const summaryContent = `RESUMO DA EMPRESA\n\n${parsedForTask.resumo.trim()}\n\nANÁLISE SWOT\n\nFORÇAS:\n${parsedForTask.swot.forcas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nFRAQUEZAS:\n${parsedForTask.swot.fraquezas.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nOPORTUNIDADES:\n${parsedForTask.swot.oportunidades.map((f, i) => `${i + 1}. ${f}`).join("\n")}\n\nAMEAÇAS:\n${parsedForTask.swot.ameacas.map((f, i) => `${i + 1}. ${f}`).join("\n")}`;
 
-      // 1. Create the main "Planejamento Estratégico" task (completed, with SWOT + resumo)
+      const phaseName = "Planejamento Estratégico";
+
+      // 1. Create the main summary task (completed, with SWOT + resumo)
       const { error: mainError } = await supabase.from("onboarding_tasks").insert({
         project_id: projectId,
         title: `Planejamento Estratégico - ${companyData.name}`,
         description: summaryContent,
         status: "completed",
         priority: "high",
-        tags: ["Planejamento"],
+        tags: [phaseName],
         sort_order: sortOrder,
         completed_at: new Date().toISOString(),
       });
 
       if (mainError) throw mainError;
 
-      // 2. Create one task per cronograma action
+      // 2. Create one task per cronograma action, all under the same phase
       if (editableCronograma.length > 0) {
         const actionTasks = editableCronograma.map((action, i) => {
           const description = action.subactions.length > 0
@@ -796,7 +798,7 @@ export const GenerateStrategicPlanningDialog = ({
             description,
             status: "pending" as const,
             priority: (i < 4 ? "high" : i < 8 ? "medium" : "low") as "high" | "medium" | "low",
-            tags: ["Plano de Ação"],
+            tags: [phaseName],
             sort_order: sortOrder + 1 + i,
             is_internal: false,
           };
