@@ -620,7 +620,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext, ed
         </Button>
         <Button onClick={handleSubmit} disabled={saving} className="gap-2">
           {saving ? <div className="h-4 w-4 border-2 border-white/30 border-t-white rounded-full animate-spin" /> : <Save className="h-4 w-4" />}
-          Salvar diagnóstico
+          {editingRecord ? "Atualizar diagnóstico" : "Salvar diagnóstico"}
         </Button>
       </div>
     </div>

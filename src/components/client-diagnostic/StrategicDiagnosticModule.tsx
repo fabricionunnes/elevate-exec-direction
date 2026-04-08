@@ -47,6 +47,7 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
   const [records, setRecords] = useState<DiagnosticRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<DiagnosticRecord | null>(null);
+  const [editingRecord, setEditingRecord] = useState<DiagnosticRecord | null>(null);
   const [projectContext, setProjectContext] = useState<ProjectContext | null>(null);
 
   const fetchRecords = async () => {
@@ -95,6 +96,7 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
 
   const handleSaved = (record: DiagnosticRecord) => {
     setSelectedRecord(record);
+    setEditingRecord(null);
     setView("summary");
     fetchRecords();
   };
@@ -104,13 +106,23 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
     setView("summary");
   };
 
+  const handleEditRecord = (record: DiagnosticRecord) => {
+    setEditingRecord(record);
+    setView("form");
+  };
+
   if (view === "form") {
     return (
       <div>
-        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={() => setView("list")}>
+        <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={() => { setView("list"); setEditingRecord(null); }}>
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
-        <StrategicDiagnosticForm projectId={projectId} onSaved={handleSaved} projectContext={projectContext} />
+        <StrategicDiagnosticForm
+          projectId={projectId}
+          onSaved={handleSaved}
+          projectContext={projectContext}
+          editingRecord={editingRecord}
+        />
       </div>
     );
   }
@@ -121,7 +133,7 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
         <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={() => { setView("list"); setSelectedRecord(null); }}>
           <ArrowLeft className="h-4 w-4" /> Voltar ao histórico
         </Button>
-        <StrategicDiagnosticSummary record={selectedRecord} />
+        <StrategicDiagnosticSummary record={selectedRecord} onEdit={() => handleEditRecord(selectedRecord)} />
       </div>
     );
   }
@@ -133,11 +145,11 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
           <h2 className="text-xl font-bold">Check-point Estratégico — UNV</h2>
           <p className="text-sm text-muted-foreground">Diagnósticos realizados com o cliente</p>
         </div>
-        <Button onClick={() => setView("form")} className="gap-2">
+        <Button onClick={() => { setEditingRecord(null); setView("form"); }} className="gap-2">
           <Plus className="h-4 w-4" /> Novo Diagnóstico
         </Button>
       </div>
-      <StrategicDiagnosticHistory records={records} loading={loading} onView={handleViewRecord} />
+      <StrategicDiagnosticHistory records={records} loading={loading} onView={handleViewRecord} onEdit={handleEditRecord} />
     </div>
   );
 }
