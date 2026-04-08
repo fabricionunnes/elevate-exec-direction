@@ -4,7 +4,8 @@ import { StrategicDiagnosticForm } from "./StrategicDiagnosticForm";
 import { StrategicDiagnosticHistory } from "./StrategicDiagnosticHistory";
 import { StrategicDiagnosticSummary } from "./StrategicDiagnosticSummary";
 import { Button } from "@/components/ui/button";
-import { Plus, History, ArrowLeft } from "lucide-react";
+import { Plus, ArrowLeft } from "lucide-react";
+import { differenceInMonths } from "date-fns";
 
 interface Props {
   projectId: string;
@@ -23,6 +24,22 @@ export type DiagnosticRecord = {
   [key: string]: any;
 };
 
+export interface ProjectContext {
+  empresa: string;
+  responsavel: string;
+  consultor_unv: string;
+  tempo_cliente: string;
+  segmento: string;
+}
+
+function computeTempoCliente(createdAt: string): string {
+  const months = differenceInMonths(new Date(), new Date(createdAt));
+  if (months < 3) return "Menos de 3 meses";
+  if (months < 6) return "3 a 6 meses";
+  if (months < 12) return "6 a 12 meses";
+  return "Mais de 12 meses";
+}
+
 type ViewMode = "list" | "form" | "summary";
 
 export function StrategicDiagnosticModule({ projectId }: Props) {
@@ -30,6 +47,7 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
   const [records, setRecords] = useState<DiagnosticRecord[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedRecord, setSelectedRecord] = useState<DiagnosticRecord | null>(null);
+  const [projectContext, setProjectContext] = useState<ProjectContext | null>(null);
 
   const fetchRecords = async () => {
     setLoading(true);
@@ -42,8 +60,37 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
     setLoading(false);
   };
 
+  const fetchProjectContext = async () => {
+    const { data: project } = await supabase
+      .from("onboarding_projects")
+      .select("onboarding_company_id, consultant_id, created_at")
+      .eq("id", projectId)
+      .maybeSingle();
+
+    if (!project) return;
+
+    const [companyRes, consultantRes, usersRes] = await Promise.all([
+      project.onboarding_company_id
+        ? supabase.from("onboarding_companies").select("name, segment").eq("id", project.onboarding_company_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      project.consultant_id
+        ? supabase.from("onboarding_staff").select("name").eq("id", project.consultant_id).maybeSingle()
+        : Promise.resolve({ data: null }),
+      supabase.from("onboarding_users").select("name").eq("project_id", projectId).eq("role", "client").limit(1),
+    ]);
+
+    setProjectContext({
+      empresa: companyRes.data?.name || "",
+      responsavel: usersRes.data?.[0]?.name || "",
+      consultor_unv: consultantRes.data?.name || "",
+      tempo_cliente: computeTempoCliente(project.created_at),
+      segmento: companyRes.data?.segment || "",
+    });
+  };
+
   useEffect(() => {
     fetchRecords();
+    fetchProjectContext();
   }, [projectId]);
 
   const handleSaved = (record: DiagnosticRecord) => {
@@ -63,7 +110,7 @@ export function StrategicDiagnosticModule({ projectId }: Props) {
         <Button variant="ghost" size="sm" className="mb-4 gap-2" onClick={() => setView("list")}>
           <ArrowLeft className="h-4 w-4" /> Voltar
         </Button>
-        <StrategicDiagnosticForm projectId={projectId} onSaved={handleSaved} />
+        <StrategicDiagnosticForm projectId={projectId} onSaved={handleSaved} projectContext={projectContext} />
       </div>
     );
   }
