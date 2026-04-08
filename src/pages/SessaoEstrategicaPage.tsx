@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, LazyMotion, domAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
