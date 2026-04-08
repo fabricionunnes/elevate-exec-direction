@@ -201,7 +201,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         produtos_oferecer: form.produtos_oferecer.length > 0 ? form.produtos_oferecer : null,
         proximo_passo: form.proximo_passo || null,
         nivel_urgencia: form.nivel_urgencia || null,
-        potencial_upsell: form.potencial_upsell ? parseFloat(form.potencial_upsell) : null,
+        potencial_upsell: parseCurrencyToNumber(form.potencial_upsell),
         observacoes_gerais: form.observacoes_gerais || null,
       };
 
