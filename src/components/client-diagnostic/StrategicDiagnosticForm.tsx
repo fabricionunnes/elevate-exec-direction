@@ -339,14 +339,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
               <Label className="text-sm">Número de vendedores ativos</Label>
               <Input type="number" value={form.num_vendedores} onChange={e => set("num_vendedores", e.target.value)} className="bg-muted/30 border-border/50" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Meta mensal de vendas (R$)</Label>
-              <Input type="number" value={form.meta_vendas} onChange={e => set("meta_vendas", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Resultado do último mês (R$)</Label>
-              <Input type="number" value={form.resultado_ultimo_mes} onChange={e => set("resultado_ultimo_mes", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Meta mensal de vendas" value={form.meta_vendas} onChange={v => set("meta_vendas", v)} />
+            <CurrencyInput label="Resultado do último mês" value={form.resultado_ultimo_mes} onChange={v => set("resultado_ultimo_mes", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Taxa de conversão estimada (%)</Label>
               <Input type="number" value={form.taxa_conversao} onChange={e => set("taxa_conversao", e.target.value)} className="bg-muted/30 border-border/50" />
