@@ -67,6 +67,7 @@ interface Lead {
   origin?: { name: string } | null;
   owner?: { name: string; avatar_url?: string | null } | null;
   tags?: { tag: { id: string; name: string; color: string } }[];
+  meeting_events?: { event_type: string }[];
 }
 
 const defaultFilters: CRMFilters = {
