@@ -413,6 +413,18 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
 
       const stageNameMapping = columnMappings.find(m => m.crmField === "stage_name");
       const pipelineNameMapping = columnMappings.find(m => m.crmField === "pipeline_name");
+      const originMapping = columnMappings.find(m => m.crmField === "origin");
+
+      // Pre-load origins for name->id resolution
+      let originMap: Record<string, string> = {};
+      if (originMapping) {
+        const { data: origins } = await supabase.from("crm_origins").select("id, name");
+        if (origins) {
+          origins.forEach(o => {
+            originMap[o.name.toLowerCase().trim()] = o.id;
+          });
+        }
+      }
 
       let success = 0;
       let errors = 0;
