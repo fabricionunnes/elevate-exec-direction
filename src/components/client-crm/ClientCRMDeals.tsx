@@ -52,19 +52,28 @@ export const ClientCRMDeals = ({
   const [showNewActivity, setShowNewActivity] = useState(false);
   const [showImport, setShowImport] = useState(false);
   const [editForm, setEditForm] = useState({ title: "", value: "", contact_id: "", notes: "", expected_close_date: "" });
+  const [phoneFilter, setPhoneFilter] = useState<string>("all");
 
   const nonFinalStages = stages.filter(s => !s.is_final);
   const finalStages = stages.filter(s => s.is_final);
 
   const filteredDeals = useMemo(() => {
-    if (!search) return deals;
-    const s = search.toLowerCase();
-    return deals.filter(d =>
-      d.title.toLowerCase().includes(s) ||
-      (d.contact as any)?.name?.toLowerCase().includes(s) ||
-      d.notes?.toLowerCase().includes(s)
-    );
-  }, [deals, search]);
+    let result = deals;
+    if (search) {
+      const s = search.toLowerCase();
+      result = result.filter(d =>
+        d.title.toLowerCase().includes(s) ||
+        (d.contact as any)?.name?.toLowerCase().includes(s) ||
+        d.notes?.toLowerCase().includes(s)
+      );
+    }
+    if (phoneFilter === "with_phone") {
+      result = result.filter(d => (d.contact as any)?.phone);
+    } else if (phoneFilter === "without_phone") {
+      result = result.filter(d => !(d.contact as any)?.phone);
+    }
+    return result;
+  }, [deals, search, phoneFilter]);
 
   const handleCreateDeal = async () => {
     if (!newDeal.title.trim()) return;
