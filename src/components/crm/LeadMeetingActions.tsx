@@ -19,6 +19,7 @@ interface LeadMeetingActionsProps {
   pipelineId: string;
   stageId: string;
   ownerStaffId: string | null;
+  initialEvents?: string[];
   onEventTracked?: () => void;
   variant?: "icons" | "compact";
   showContractButton?: boolean;
