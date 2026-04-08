@@ -19,6 +19,7 @@ import {
   ShieldCheck,
   Clock,
   Star,
+  MessageCircle,
 } from "lucide-react";
 import fabricioHero from "@/assets/fabricio-hero.png";
 import fabricioMentor from "@/assets/fabricio-mentor.png";
