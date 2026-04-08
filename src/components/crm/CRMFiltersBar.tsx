@@ -26,6 +26,7 @@ import {
   Download,
   Settings2,
   RotateCcw,
+  Phone,
 } from "lucide-react";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
