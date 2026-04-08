@@ -441,6 +441,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOrigi
             owner_staff_id: defaultOwner || staff.id,
             created_by: staff.id,
             entered_pipeline_at: new Date().toISOString(),
+            origin_id: selectedOriginId || undefined,
           };
 
           columnMappings.forEach(mapping => {
