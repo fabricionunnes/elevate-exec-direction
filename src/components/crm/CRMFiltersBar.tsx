@@ -43,6 +43,7 @@ export interface CRMFilters {
   origins: string[];
   valueMin: number | null;
   valueMax: number | null;
+  phoneFilter: "all" | "with_phone" | "without_phone";
 }
 
 interface FilterOption {
