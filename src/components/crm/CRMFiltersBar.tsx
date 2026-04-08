@@ -348,6 +348,27 @@ export const CRMFiltersBar = ({
           </PopoverContent>
         </Popover>
 
+        {/* Phone Filter */}
+        <Select
+          value={filters.phoneFilter}
+          onValueChange={(value) => updateFilter("phoneFilter", value as CRMFilters["phoneFilter"])}
+        >
+          <SelectTrigger
+            className={cn(
+              "h-9 w-auto min-w-[140px] gap-2",
+              filters.phoneFilter !== "all" && "bg-primary/10 border-primary/30"
+            )}
+          >
+            <Phone className="h-4 w-4" />
+            <SelectValue placeholder="Telefone" />
+          </SelectTrigger>
+          <SelectContent>
+            <SelectItem value="all">Todos</SelectItem>
+            <SelectItem value="with_phone">Com telefone</SelectItem>
+            <SelectItem value="without_phone">Sem telefone</SelectItem>
+          </SelectContent>
+        </Select>
+
         {/* More Filters */}
         <Popover>
           <PopoverTrigger asChild>
