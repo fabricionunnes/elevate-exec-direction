@@ -53,6 +53,7 @@ import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
+import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3 } from "lucide-react";
