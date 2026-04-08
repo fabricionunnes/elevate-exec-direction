@@ -32,6 +32,7 @@ interface ImportLeadsDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
   onSuccess: () => void;
+  selectedOriginId?: string | null;
 }
 
 interface Pipeline {
@@ -92,7 +93,7 @@ const CRM_FIELDS = [
   { value: "ignore", label: "Ignorar coluna" },
 ];
 
-export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeadsDialogProps) => {
+export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess, selectedOriginId }: ImportLeadsDialogProps) => {
   const [step, setStep] = useState<"upload" | "pipeline" | "mapping" | "stage-mapping" | "preview" | "importing">("upload");
   const [file, setFile] = useState<File | null>(null);
   const [csvData, setCsvData] = useState<ParsedLead[]>([]);
@@ -440,6 +441,7 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
             owner_staff_id: defaultOwner || staff.id,
             created_by: staff.id,
             entered_pipeline_at: new Date().toISOString(),
+            origin_id: selectedOriginId || undefined,
           };
 
           columnMappings.forEach(mapping => {
@@ -450,12 +452,10 @@ export const ImportLeadsDialog = ({ open, onOpenChange, onSuccess }: ImportLeads
                   const numValue = parseFloat(value.replace(/[^\d.,]/g, '').replace(',', '.'));
                   lead[mapping.crmField] = isNaN(numValue) ? 0 : numValue;
                 } else if (mapping.crmField === "origin") {
-                  // Resolve origin name to origin_id
                   const originId = originMap[value.toLowerCase().trim()];
                   if (originId) {
                     lead.origin_id = originId;
                   }
-                  // Don't set "origin" text field, only origin_id
                 } else {
                   lead[mapping.crmField] = value;
                 }
