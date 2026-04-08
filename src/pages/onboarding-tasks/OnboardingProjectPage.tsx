@@ -53,6 +53,7 @@ import { TicketsPanel } from "@/components/onboarding-tasks/TicketsPanel";
 import { ProjectAIChat } from "@/components/onboarding-tasks/ProjectAIChat";
 import { CompanyBriefingPanel } from "@/components/onboarding-tasks/CompanyBriefingPanel";
 import { AdsBriefingSection } from "@/components/social/strategy/AdsBriefingSection";
+import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 import { GenerateTasksDialog } from "@/components/onboarding-tasks/GenerateTasksDialog";
 import { GeneratePDFTasksDialog } from "@/components/onboarding-tasks/GeneratePDFTasksDialog";
 import { Settings, Sparkles, Building2, Wand2, UserCircle, Route, LayoutList, CalendarDays, LogOut, FileUp, BarChart3 as PanelIcon, Columns3 } from "lucide-react";
@@ -1463,6 +1464,10 @@ const OnboardingProjectPage = () => {
                   <Building2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Briefing
                 </TabsTrigger>
+                <TabsTrigger value="diagnostic" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                  <Sparkles className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                  Diagnóstico
+                </TabsTrigger>
                 <TabsTrigger value="tasks" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
                   <CheckCircle2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
                   Jornada
@@ -1766,6 +1771,10 @@ const OnboardingProjectPage = () => {
             <div className="mt-6">
               <AdsBriefingSection projectId={projectId!} />
             </div>
+          </TabsContent>
+
+          <TabsContent value="diagnostic">
+            <StrategicDiagnosticModule projectId={projectId!} />
           </TabsContent>
 
           <TabsContent value="ai-coach">
