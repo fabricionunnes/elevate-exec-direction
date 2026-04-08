@@ -1,10 +1,13 @@
 import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
+import { Button } from "@/components/ui/button";
+import { Pencil } from "lucide-react";
 import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
 
 interface Props {
   record: DiagnosticRecord;
+  onEdit?: () => void;
 }
 
 const fmt = (val: number | null | undefined) => val != null ? `R$ ${Number(val).toLocaleString("pt-BR", { minimumFractionDigits: 2 })}` : "—";
