@@ -109,8 +109,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
   };
 
   const handleSubmit = async () => {
-    if (!form.empresa.trim()) {
-      toast.error("Preencha o nome da empresa");
+    if (!form.empresa.trim() && !projectContext?.empresa) {
+      toast.error("Não foi possível identificar a empresa");
       return;
     }
     setSaving(true);
