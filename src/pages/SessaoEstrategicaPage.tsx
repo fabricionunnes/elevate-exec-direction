@@ -1,6 +1,6 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
 import { useSearchParams } from "react-router-dom";
-import { motion, useInView } from "framer-motion";
+import { motion, useInView, LazyMotion, domAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
@@ -65,6 +65,41 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
+/** YouTube facade: shows thumbnail, loads iframe only on click */
+function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
+  const [loaded, setLoaded] = useState(false);
+  const thumbUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
+
+  if (loaded) {
+    return (
+      <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-white/5">
+        <iframe
+          src={`https://www.youtube.com/embed/${videoId}?autoplay=1`}
+          title={title}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+          className="w-full h-full"
+        />
+      </div>
+    );
+  }
+
+  return (
+    <button
+      onClick={() => setLoaded(true)}
+      className="relative aspect-video w-full rounded-2xl overflow-hidden border border-white/10 bg-white/5 group cursor-pointer"
+      aria-label={`Reproduzir ${title}`}
+    >
+      <img src={thumbUrl} alt={title} className="w-full h-full object-cover" loading="lazy" />
+      <div className="absolute inset-0 flex items-center justify-center bg-black/30 group-hover:bg-black/40 transition-colors">
+        <div className="w-14 h-10 bg-red-600 rounded-xl flex items-center justify-center shadow-lg">
+          <svg viewBox="0 0 24 24" fill="white" className="w-6 h-6 ml-0.5"><path d="M8 5v14l11-7z"/></svg>
+        </div>
+      </div>
+    </button>
+  );
+}
+
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
   const [showPopup, setShowPopup] = useState(false);
@@ -76,37 +111,39 @@ const SessaoEstrategicaPage = () => {
 
   const openPopup = () => setShowPopup(true);
 
-  // Meta Pixel
+  // Meta Pixel — deferred to not block first paint
   useEffect(() => {
-    const pixelId = "1854664928501352";
-    (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
-      if (f.fbq) return;
-      n = f.fbq = function () {
-        n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
-      };
-      if (!f._fbq) f._fbq = n;
-      n.push = n;
-      n.loaded = !0;
-      n.version = "2.0";
-      n.queue = [];
-      t = b.createElement(e);
-      t.async = !0;
-      t.src = v;
-      s = b.getElementsByTagName(e)[0];
-      s.parentNode.insertBefore(t, s);
-    })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
-    (window as any).fbq("init", pixelId);
-    (window as any).fbq("track", "PageView");
+    const timeout = setTimeout(() => {
+      const pixelId = "1854664928501352";
+      (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
+        if (f.fbq) return;
+        n = f.fbq = function () {
+          n.callMethod ? n.callMethod.apply(n, arguments) : n.queue.push(arguments);
+        };
+        if (!f._fbq) f._fbq = n;
+        n.push = n;
+        n.loaded = !0;
+        n.version = "2.0";
+        n.queue = [];
+        t = b.createElement(e);
+        t.async = !0;
+        t.src = v;
+        s = b.getElementsByTagName(e)[0];
+        s.parentNode.insertBefore(t, s);
+      })(window, document, "script", "https://connect.facebook.net/en_US/fbevents.js");
+      (window as any).fbq("init", pixelId);
+      (window as any).fbq("track", "PageView");
 
-    const noscript = document.createElement("noscript");
-    const img = document.createElement("img");
-    img.height = 1;
-    img.width = 1;
-    img.style.display = "none";
-    img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`;
-    noscript.appendChild(img);
-    document.body.appendChild(noscript);
-    return () => { noscript.remove(); };
+      const noscript = document.createElement("noscript");
+      const img = document.createElement("img");
+      img.height = 1;
+      img.width = 1;
+      img.style.display = "none";
+      img.src = `https://www.facebook.com/tr?id=${pixelId}&ev=PageView&noscript=1`;
+      noscript.appendChild(img);
+      document.body.appendChild(noscript);
+    }, 2500);
+    return () => clearTimeout(timeout);
   }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -404,16 +441,7 @@ const SessaoEstrategicaPage = () => {
           <div className="grid sm:grid-cols-2 lg:grid-cols-3 gap-3 sm:gap-4">
             {testimonialVideos.map((videoId, i) => (
               <AnimatedSection key={videoId}>
-                <div className="aspect-video rounded-2xl overflow-hidden border border-white/10 bg-white/5">
-                  <iframe
-                    src={`https://www.youtube.com/embed/${videoId}`}
-                    title={`Depoimento ${i + 1}`}
-                    allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
-                    allowFullScreen
-                    className="w-full h-full"
-                    loading="lazy"
-                  />
-                </div>
+                <LazyYouTube videoId={videoId} title={`Depoimento ${i + 1}`} />
               </AnimatedSection>
             ))}
           </div>
