@@ -1,0 +1,2 @@
+ALTER TABLE public.client_strategic_diagnostics
+ADD COLUMN consultor_financeiro TEXT;

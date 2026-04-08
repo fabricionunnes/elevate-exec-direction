@@ -38,6 +38,7 @@ const defaultForm = {
   usa_contador: "",
   maior_dor_financeira: "",
   observacoes_financeiras: "",
+  consultor_financeiro: "",
   num_vendedores: "",
   meta_vendas: "",
   resultado_ultimo_mes: "",
@@ -88,6 +89,36 @@ const SectionBadge = ({ label, color }: { label: string; color: "amber" | "blue"
   return <span className={`text-xs font-medium px-2.5 py-0.5 rounded-full border ${colors[color]}`}>{label}</span>;
 };
 
+const formatCurrency = (value: string): string => {
+  const num = value.replace(/\D/g, "");
+  if (!num) return "";
+  const cents = parseInt(num, 10);
+  return (cents / 100).toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+};
+
+const parseCurrencyToNumber = (value: string): number | null => {
+  if (!value) return null;
+  const cleaned = value.replace(/\./g, "").replace(",", ".");
+  const num = parseFloat(cleaned);
+  return isNaN(num) ? null : num;
+};
+
+const CurrencyInput = ({ label, value, onChange }: { label: string; value: string; onChange: (v: string) => void }) => (
+  <div className="space-y-1.5">
+    <Label className="text-sm">{label}</Label>
+    <div className="relative">
+      <span className="absolute left-3 top-1/2 -translate-y-1/2 text-sm text-muted-foreground">R$</span>
+      <Input
+        value={value}
+        onChange={e => onChange(formatCurrency(e.target.value))}
+        className="bg-muted/30 border-border/50 pl-10"
+        placeholder="0,00"
+        inputMode="numeric"
+      />
+    </div>
+  </div>
+);
+
 export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: Props) {
   const [form, setForm] = useState<FormData>(() => ({
     ...defaultForm,
@@ -125,19 +156,20 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         data_checkpoint: format(form.data_checkpoint, "yyyy-MM-dd"),
         tempo_cliente: form.tempo_cliente || null,
         segmento: form.segmento || null,
-        faturamento_atual: form.faturamento_atual ? parseFloat(form.faturamento_atual) : null,
-        faturamento_entrada: form.faturamento_entrada ? parseFloat(form.faturamento_entrada) : null,
+        faturamento_atual: parseCurrencyToNumber(form.faturamento_atual),
+        faturamento_entrada: parseCurrencyToNumber(form.faturamento_entrada),
         margem_lucro: form.margem_lucro ? parseFloat(form.margem_lucro) : null,
-        ticket_medio: form.ticket_medio ? parseFloat(form.ticket_medio) : null,
+        ticket_medio: parseCurrencyToNumber(form.ticket_medio),
         possui_dividas: form.possui_dividas || null,
         controle_financeiro: form.controle_financeiro || null,
         gestao_financeira: form.gestao_financeira || null,
         usa_contador: form.usa_contador || null,
         maior_dor_financeira: form.maior_dor_financeira || null,
         observacoes_financeiras: form.observacoes_financeiras || null,
+        consultor_financeiro: form.consultor_financeiro || null,
         num_vendedores: form.num_vendedores ? parseInt(form.num_vendedores) : null,
-        meta_vendas: form.meta_vendas ? parseFloat(form.meta_vendas) : null,
-        resultado_ultimo_mes: form.resultado_ultimo_mes ? parseFloat(form.resultado_ultimo_mes) : null,
+        meta_vendas: parseCurrencyToNumber(form.meta_vendas),
+        resultado_ultimo_mes: parseCurrencyToNumber(form.resultado_ultimo_mes),
         taxa_conversao: form.taxa_conversao ? parseFloat(form.taxa_conversao) : null,
         possui_sdr: form.possui_sdr || null,
         usa_crm: form.usa_crm || null,
@@ -147,15 +179,15 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         observacoes_comerciais: form.observacoes_comerciais || null,
         investe_trafego: form.investe_trafego || null,
         quem_gerencia_trafego: form.quem_gerencia_trafego || null,
-        investimento_trafego: form.investimento_trafego ? parseFloat(form.investimento_trafego) : null,
-        cpl_estimado: form.cpl_estimado ? parseFloat(form.cpl_estimado) : null,
+        investimento_trafego: parseCurrencyToNumber(form.investimento_trafego),
+        cpl_estimado: parseCurrencyToNumber(form.cpl_estimado),
         volume_leads: form.volume_leads ? parseInt(form.volume_leads) : null,
         plataformas_trafego: form.plataformas_trafego.length > 0 ? form.plataformas_trafego : null,
         satisfeito_trafego: form.satisfeito_trafego || null,
         acompanha_relatorios: form.acompanha_relatorios || null,
         observacoes_trafego: form.observacoes_trafego || null,
         quem_faz_social: form.quem_faz_social || null,
-        investimento_social: form.investimento_social ? parseFloat(form.investimento_social) : null,
+        investimento_social: parseCurrencyToNumber(form.investimento_social),
         seguidores_instagram: form.seguidores_instagram ? parseInt(form.seguidores_instagram) : null,
         engajamento_medio: form.engajamento_medio ? parseFloat(form.engajamento_medio) : null,
         frequencia_postagens: form.frequencia_postagens || null,
@@ -169,7 +201,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
         produtos_oferecer: form.produtos_oferecer.length > 0 ? form.produtos_oferecer : null,
         proximo_passo: form.proximo_passo || null,
         nivel_urgencia: form.nivel_urgencia || null,
-        potencial_upsell: form.potencial_upsell ? parseFloat(form.potencial_upsell) : null,
+        potencial_upsell: parseCurrencyToNumber(form.potencial_upsell),
         observacoes_gerais: form.observacoes_gerais || null,
       };
 
@@ -266,22 +298,13 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             <SectionBadge label="gestão & saúde" color="amber" />
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Faturamento mensal atual (R$)</Label>
-              <Input type="number" value={form.faturamento_atual} onChange={e => set("faturamento_atual", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Faturamento quando entrou na UNV (R$)</Label>
-              <Input type="number" value={form.faturamento_entrada} onChange={e => set("faturamento_entrada", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Faturamento mensal atual" value={form.faturamento_atual} onChange={v => set("faturamento_atual", v)} />
+            <CurrencyInput label="Faturamento quando entrou na UNV" value={form.faturamento_entrada} onChange={v => set("faturamento_entrada", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Margem de lucro estimada (%)</Label>
               <Input type="number" value={form.margem_lucro} onChange={e => set("margem_lucro", e.target.value)} className="bg-muted/30 border-border/50" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Ticket médio atual (R$)</Label>
-              <Input type="number" value={form.ticket_medio} onChange={e => set("ticket_medio", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Ticket médio atual" value={form.ticket_medio} onChange={v => set("ticket_medio", v)} />
           </div>
           <RadioField label="Possui dívidas?" name="possui_dividas" options={["Não", "Sim, controlada", "Sim, preocupante"]} />
           <RadioField label="Faz controle financeiro?" name="controle_financeiro" options={["Não", "Básico", "Sistema"]} />
@@ -295,6 +318,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <RadioField label="Usa contador / BPO financeiro?" name="usa_contador" options={["Sim", "Não"]} />
+          <RadioField label="Possui consultor financeiro ou tem interesse em contratar?" name="consultor_financeiro" options={["Já possui", "Tem interesse", "Não tem interesse"]} />
           <RadioField label="Maior dor financeira hoje" name="maior_dor_financeira" options={["Fluxo de caixa", "Margem baixa", "Inadimplência", "Custo fixo alto", "Falta de previsibilidade", "Não identifica"]} />
           <div className="space-y-1.5">
             <Label className="text-sm">Observações financeiras</Label>
@@ -315,14 +339,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
               <Label className="text-sm">Número de vendedores ativos</Label>
               <Input type="number" value={form.num_vendedores} onChange={e => set("num_vendedores", e.target.value)} className="bg-muted/30 border-border/50" />
             </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Meta mensal de vendas (R$)</Label>
-              <Input type="number" value={form.meta_vendas} onChange={e => set("meta_vendas", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">Resultado do último mês (R$)</Label>
-              <Input type="number" value={form.resultado_ultimo_mes} onChange={e => set("resultado_ultimo_mes", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Meta mensal de vendas" value={form.meta_vendas} onChange={v => set("meta_vendas", v)} />
+            <CurrencyInput label="Resultado do último mês" value={form.resultado_ultimo_mes} onChange={v => set("resultado_ultimo_mes", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Taxa de conversão estimada (%)</Label>
               <Input type="number" value={form.taxa_conversao} onChange={e => set("taxa_conversao", e.target.value)} className="bg-muted/30 border-border/50" />
@@ -366,14 +384,8 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Investimento mensal (R$)</Label>
-              <Input type="number" value={form.investimento_trafego} onChange={e => set("investimento_trafego", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
-            <div className="space-y-1.5">
-              <Label className="text-sm">CPL estimado (R$)</Label>
-              <Input type="number" value={form.cpl_estimado} onChange={e => set("cpl_estimado", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Investimento mensal" value={form.investimento_trafego} onChange={v => set("investimento_trafego", v)} />
+            <CurrencyInput label="CPL estimado" value={form.cpl_estimado} onChange={v => set("cpl_estimado", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Volume de leads/mês</Label>
               <Input type="number" value={form.volume_leads} onChange={e => set("volume_leads", e.target.value)} className="bg-muted/30 border-border/50" />
@@ -406,10 +418,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            <div className="space-y-1.5">
-              <Label className="text-sm">Investimento mensal em social (R$)</Label>
-              <Input type="number" value={form.investimento_social} onChange={e => set("investimento_social", e.target.value)} className="bg-muted/30 border-border/50" />
-            </div>
+            <CurrencyInput label="Investimento mensal em social" value={form.investimento_social} onChange={v => set("investimento_social", v)} />
             <div className="space-y-1.5">
               <Label className="text-sm">Seguidores no Instagram (aprox.)</Label>
               <Input type="number" value={form.seguidores_instagram} onChange={e => set("seguidores_instagram", e.target.value)} className="bg-muted/30 border-border/50" />
@@ -466,10 +475,7 @@ export function StrategicDiagnosticForm({ projectId, onSaved, projectContext }: 
             </Select>
           </div>
           <RadioField label="Nível de urgência do cliente" name="nivel_urgencia" options={["Alta", "Média", "Baixa"]} />
-          <div className="space-y-1.5">
-            <Label className="text-sm">Potencial de upsell estimado (R$)</Label>
-            <Input type="number" value={form.potencial_upsell} onChange={e => set("potencial_upsell", e.target.value)} className="bg-muted/30 border-border/50" />
-          </div>
+          <CurrencyInput label="Potencial de upsell estimado" value={form.potencial_upsell} onChange={v => set("potencial_upsell", v)} />
           <div className="space-y-1.5">
             <Label className="text-sm">Observações gerais do consultor</Label>
             <Textarea value={form.observacoes_gerais} onChange={e => set("observacoes_gerais", e.target.value)} className="bg-muted/30 border-border/50" rows={3} />
