@@ -62,8 +62,6 @@ const icpIdeal = [
 // Quem NÃO entra
 const icpNao = [
   "Quem quer 'testar'",
-  "Quem não gera leads",
-  "Quem não investe em tráfego",
   "Quem quer terceirizar decisão estratégica",
   "Negócios imaturos",
 ];
