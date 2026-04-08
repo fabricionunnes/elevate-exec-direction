@@ -203,6 +203,17 @@ export const ClientCRMDeals = ({
             <Search className="absolute left-2.5 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
             <Input placeholder="Buscar..." className="pl-8 h-8 w-[180px]" value={search} onChange={e => setSearch(e.target.value)} />
           </div>
+          <Select value={phoneFilter} onValueChange={setPhoneFilter}>
+            <SelectTrigger className="h-8 w-[160px] text-sm">
+              <Phone className="h-3.5 w-3.5 mr-1" />
+              <SelectValue />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos</SelectItem>
+              <SelectItem value="with_phone">Com telefone</SelectItem>
+              <SelectItem value="without_phone">Sem telefone</SelectItem>
+            </SelectContent>
+          </Select>
           <Button size="sm" variant="outline" className="gap-1" onClick={() => setShowImport(true)}>
             <Upload className="h-4 w-4" /> Importar
           </Button>
