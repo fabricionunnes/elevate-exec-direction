@@ -1773,6 +1773,10 @@ const OnboardingProjectPage = () => {
             </div>
           </TabsContent>
 
+          <TabsContent value="diagnostic">
+            <StrategicDiagnosticModule projectId={projectId!} />
+          </TabsContent>
+
           <TabsContent value="ai-coach">
             <ProjectAIChat
               projectId={projectId!}
