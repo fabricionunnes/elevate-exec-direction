@@ -1,0 +1,2 @@
+ALTER TABLE public.client_strategic_diagnostics
+ADD COLUMN usa_bpo_financeiro TEXT;

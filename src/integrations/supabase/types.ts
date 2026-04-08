@@ -10249,6 +10249,7 @@ export type Database = {
           tempo_cliente: string | null
           ticket_medio: number | null
           updated_at: string
+          usa_bpo_financeiro: string | null
           usa_contador: string | null
           usa_crm: string | null
           volume_leads: number | null
@@ -10309,6 +10310,7 @@ export type Database = {
           tempo_cliente?: string | null
           ticket_medio?: number | null
           updated_at?: string
+          usa_bpo_financeiro?: string | null
           usa_contador?: string | null
           usa_crm?: string | null
           volume_leads?: number | null
@@ -10369,6 +10371,7 @@ export type Database = {
           tempo_cliente?: string | null
           ticket_medio?: number | null
           updated_at?: string
+          usa_bpo_financeiro?: string | null
           usa_contador?: string | null
           usa_crm?: string | null
           volume_leads?: number | null
