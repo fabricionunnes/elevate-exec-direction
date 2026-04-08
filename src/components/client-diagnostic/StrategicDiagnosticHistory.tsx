@@ -2,13 +2,14 @@ import { format, parseISO } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { Card } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
-import { Eye, Calendar, Building2, AlertCircle } from "lucide-react";
+import { Eye, Calendar, Building2, AlertCircle, Pencil } from "lucide-react";
 import type { DiagnosticRecord } from "./StrategicDiagnosticModule";
 
 interface Props {
   records: DiagnosticRecord[];
   loading: boolean;
   onView: (record: DiagnosticRecord) => void;
+  onEdit?: (record: DiagnosticRecord) => void;
 }
 
 const urgencyColors: Record<string, string> = {

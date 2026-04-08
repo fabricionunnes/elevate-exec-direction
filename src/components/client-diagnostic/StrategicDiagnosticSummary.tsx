@@ -38,9 +38,16 @@ const urgencyColors: Record<string, string> = {
   "Baixa": "bg-green-100 text-green-800 border-green-200",
 };
 
-export function StrategicDiagnosticSummary({ record }: Props) {
+export function StrategicDiagnosticSummary({ record, onEdit }: Props) {
   return (
     <div className="max-w-4xl mx-auto space-y-6">
+      {onEdit && (
+        <div className="flex justify-end">
+          <Button variant="outline" size="sm" className="gap-2" onClick={onEdit}>
+            <Pencil className="h-4 w-4" /> Editar diagnóstico
+          </Button>
+        </div>
+      )}
       <div className="bg-white dark:bg-background border border-border/50 rounded-xl p-6">
         <h2 className="text-xl font-bold mb-1">Check-point Estratégico — {record.empresa}</h2>
         <p className="text-sm text-muted-foreground">
