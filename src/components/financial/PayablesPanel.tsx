@@ -194,9 +194,23 @@ export function PayablesPanel() {
         console.warn("Could not load suppliers:", e);
       }
 
+      // Load cost centers
+      let costCentersData: any[] = [];
+      try {
+        const { data: ccData } = await supabase
+          .from("financial_cost_centers")
+          .select("id, name")
+          .eq("is_active", true)
+          .order("name");
+        costCentersData = ccData || [];
+      } catch (e) {
+        console.warn("Could not load cost centers:", e);
+      }
+
       setCategories(categoriesData || []);
       setBankAccounts(banksData || []);
       setSuppliers(suppliersData);
+      setCostCenters(costCentersData);
 
       // Update overdue status for pending items past due date
       const today = format(new Date(), "yyyy-MM-dd");
