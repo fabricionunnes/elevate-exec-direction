@@ -430,6 +430,59 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
   }
 }
 
+// Auto-reconcile financial_receivables when a company_invoice is paid
+async function reconcileReceivable(supabase: any, invoiceId: string, companyId: string | null, paidAmountCents: number, description: string, dueDate?: string) {
+  try {
+    if (!companyId) {
+      const { data: inv } = await supabase
+        .from("company_invoices")
+        .select("company_id")
+        .eq("id", invoiceId)
+        .single();
+      companyId = inv?.company_id;
+    }
+    if (!companyId) return;
+
+    let query = supabase
+      .from("financial_receivables")
+      .select("id, amount, status, description")
+      .eq("company_id", companyId)
+      .not("status", "in", '("paid","cancelled")');
+
+    if (dueDate) {
+      query = query.eq("due_date", dueDate);
+    }
+
+    const { data: receivables } = await query.order("due_date", { ascending: true }).limit(5);
+    if (!receivables?.length) return;
+
+    const match = receivables.find((r: any) => 
+      description && r.description && (
+        r.description.toLowerCase().includes(description.toLowerCase()) ||
+        description.toLowerCase().includes(r.description.toLowerCase())
+      )
+    ) || (dueDate ? receivables[0] : null);
+
+    if (!match) return;
+
+    const paidReais = paidAmountCents / 100;
+    const isPartial = paidReais < match.amount;
+
+    await supabase
+      .from("financial_receivables")
+      .update({
+        status: isPartial ? "partial" : "paid",
+        paid_date: new Date().toISOString().split("T")[0],
+        paid_amount: paidReais,
+      })
+      .eq("id", match.id);
+
+    console.log(`[Asaas Webhook] Auto-reconciled financial_receivable ${match.id} -> ${isPartial ? 'partial' : 'paid'}`);
+  } catch (err) {
+    console.error("[Asaas Webhook] Error reconciling receivable:", err);
+  }
+}
+
 async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents: number = 0) {
   for (const order of orders) {
     if (!order.payment_link_id) continue;
