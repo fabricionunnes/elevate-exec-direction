@@ -56,8 +56,10 @@ import {
   Trash2,
   Repeat,
   CalendarDays,
-  Copy
+  Copy,
+  Pencil
 } from "lucide-react";
+import { PayableEditDialog } from "./PayableActionDialogs";
 import {
   DropdownMenu,
   DropdownMenuContent,
