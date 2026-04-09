@@ -68,13 +68,16 @@ Deno.serve(async (req) => {
 
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
-      // Check 1: invoice matched by pagarme_charge_id
-      const { data: alreadyPaid } = await supabase
+      // Check 1: invoice matched by pagarme_charge_id (filter by dueDate when available to avoid wrong installment)
+      let idempotencyQuery = supabase
         .from("company_invoices")
         .select("id")
         .eq("pagarme_charge_id", paymentId)
-        .eq("status", "paid")
-        .limit(1);
+        .eq("status", "paid");
+      if (dueDate) {
+        idempotencyQuery = idempotencyQuery.eq("due_date", dueDate);
+      }
+      const { data: alreadyPaid } = await idempotencyQuery.limit(1);
 
       if (alreadyPaid?.length) {
         const invoiceId = alreadyPaid[0].id;
