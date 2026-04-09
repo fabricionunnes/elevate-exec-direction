@@ -6,6 +6,14 @@ const corsHeaders = {
   "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type, x-api-key, x-supabase-client-platform, x-supabase-client-platform-version, x-supabase-client-runtime, x-supabase-client-runtime-version",
 };
 
+const normalizeMonthYear = (value: string | null) => {
+  if (!value) return null;
+  const trimmed = value.trim();
+  const match = trimmed.match(/^(\d{4})-(\d{2})(?:-\d{2})?$/);
+  if (!match) return trimmed;
+  return `${match[1]}-${match[2]}`;
+};
+
 serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
 
@@ -543,7 +551,45 @@ serve(async (req) => {
           if (c.companyId) q = q.eq("company_id", c.companyId);
           const { data, error } = await q;
           if (error) throw error;
-          return json({ data: data || [] });
+
+          const normalizedMonthYear = normalizeMonthYear(c.url.searchParams.get("month_year"));
+          if (!normalizedMonthYear || !data?.length || !c.companyId) {
+            return json({ data: data || [] });
+          }
+
+          const kpiIds = data.map((kpi: any) => kpi.id);
+          const { data: monthlyTargets, error: monthlyTargetsError } = await c.supabase
+            .from("kpi_monthly_targets")
+            .select("kpi_id, month_year, target_value, level_name, level_order, salesperson_id, unit_id, team_id, sector_id")
+            .eq("company_id", c.companyId)
+            .eq("month_year", normalizedMonthYear)
+            .in("kpi_id", kpiIds)
+            .order("level_order", { ascending: true });
+
+          if (monthlyTargetsError) throw monthlyTargetsError;
+
+          const resolvedTargets = new Map<string, any>();
+          for (const target of monthlyTargets || []) {
+            const isCompanyLevel = !target.salesperson_id && !target.unit_id && !target.team_id && !target.sector_id;
+            const isMainMeta = target.level_name === "Meta";
+            if (!isCompanyLevel || !isMainMeta || resolvedTargets.has(target.kpi_id)) continue;
+            resolvedTargets.set(target.kpi_id, target);
+          }
+
+          const enrichedData = (data || []).map((kpi: any) => {
+            const resolvedTarget = resolvedTargets.get(kpi.id);
+            if (!resolvedTarget) return kpi;
+
+            return {
+              ...kpi,
+              default_target_value: kpi.target_value,
+              target_value: resolvedTarget.target_value,
+              target_month_year: resolvedTarget.month_year,
+              target_source: "monthly_targets",
+            };
+          });
+
+          return json({ data: enrichedData });
         },
         entries: async (c) => {
           let q = c.supabase.from("kpi_entries").select("id, company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id, created_at").order("entry_date", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
@@ -561,7 +607,7 @@ serve(async (req) => {
         monthly_targets: async (c) => {
           let q = c.supabase.from("kpi_monthly_targets").select("id, company_id, kpi_id, month_year, target_value, level_name, level_order, salesperson_id, unit_id, team_id, sector_id, created_at").order("month_year", { ascending: false });
           if (c.companyId) q = q.eq("company_id", c.companyId);
-          const monthYear = c.url.searchParams.get("month_year");
+          const monthYear = normalizeMonthYear(c.url.searchParams.get("month_year"));
           if (monthYear) q = q.eq("month_year", monthYear);
           const kpiId = c.url.searchParams.get("kpi_id");
           if (kpiId) q = q.eq("kpi_id", kpiId);
