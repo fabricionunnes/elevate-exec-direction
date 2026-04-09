@@ -129,6 +129,15 @@ Deno.serve(async (req) => {
     const invoiceDueDate = inv.due_date;
 
     if (action === "confirm") {
+      const today = new Date().toISOString().split("T")[0];
+      if (invoiceDueDate && invoiceDueDate > today) {
+        console.log(`Invoice ${invoice_id} has future due date ${invoiceDueDate}, skipping confirm sync`);
+        return new Response(
+          JSON.stringify({ success: true, skipped: true, reason: "future_due_date" }),
+          { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
       if (inv.pagarme_charge_id) {
         console.log(`Invoice ${invoice_id} already linked to Asaas payment ${inv.pagarme_charge_id}, skipping confirm`);
         return new Response(

@@ -927,6 +927,14 @@ export function CompanyInvoicesList({ companyId }: Props) {
           fetchInvoices();
         }}
         onAsaasSync={(invoiceId) => {
+          const todayStr = new Date().toLocaleDateString("en-CA");
+          const currentInvoice = invoices.find((item) => item.id === invoiceId);
+
+          if (currentInvoice?.due_date && currentInvoice.due_date > todayStr) {
+            toast.info("Baixa local salva, sem sincronizar a integração para parcela futura.");
+            return;
+          }
+
           // Asaas sync (non-blocking)
           supabase.functions.invoke("asaas-confirm-payment", {
             body: { invoice_id: invoiceId, action: "confirm" },

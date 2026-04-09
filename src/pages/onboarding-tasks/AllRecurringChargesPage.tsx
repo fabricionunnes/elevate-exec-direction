@@ -734,7 +734,10 @@ export default function AllRecurringChargesPage() {
           }
         }
       }
-      const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", { body: { invoice_id: invoiceId, action: "confirm" } });
+      const shouldSyncAsaas = !!inv?.due_date && inv.due_date <= today;
+      const { data, error: fnError } = shouldSyncAsaas
+        ? await supabase.functions.invoke("asaas-confirm-payment", { body: { invoice_id: invoiceId, action: "confirm" } })
+        : { data: { skipped: true, reason: "future_due_date_manual_payment" }, error: null as any };
       if (fnError) { toast.success(isPartial ? "Baixa parcial realizada (erro ao sincronizar com Asaas)" : "Baixa local realizada (erro ao sincronizar com Asaas)"); }
       else if (data?.skipped) { toast.success(isPartial ? "Baixa parcial realizada localmente" : "Baixa realizada localmente"); }
       else { toast.success(isPartial ? "Baixa parcial realizada e sincronizada ✓" : "Baixa realizada e sincronizada com Asaas ✓"); }
