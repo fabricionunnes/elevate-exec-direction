@@ -1185,6 +1185,18 @@ export function PayablesPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Payable Dialog */}
+      <PayableEditDialog
+        open={isEditPayableOpen}
+        onOpenChange={setIsEditPayableOpen}
+        payable={selectedPayable}
+        categories={categories}
+        costCenters={costCenters}
+        suppliers={suppliers}
+        onSuccess={() => { loadData(); }}
+        onSuppliersRefresh={() => { loadData(); }}
+      />
     </div>
   );
 }
