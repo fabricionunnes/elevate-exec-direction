@@ -116,7 +116,7 @@ const SessaoEstrategicaPage = () => {
   // Meta Pixel — deferred to not block first paint
   useEffect(() => {
     const timeout = setTimeout(() => {
-      const pixelId = "1854664928501352";
+      const pixelId = "247392077001023";
       (function (f: any, b: any, e: any, v: any, n?: any, t?: any, s?: any) {
         if (f.fbq) return;
         n = f.fbq = function () {
