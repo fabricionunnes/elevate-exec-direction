@@ -558,6 +558,23 @@ serve(async (req) => {
           if (error) throw error;
           return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
         },
+        monthly_targets: async (c) => {
+          let q = c.supabase.from("kpi_monthly_targets").select("id, company_id, kpi_id, month_year, target_value, level_name, level_order, salesperson_id, unit_id, team_id, sector_id, created_at").order("month_year", { ascending: false });
+          if (c.companyId) q = q.eq("company_id", c.companyId);
+          const monthYear = c.url.searchParams.get("month_year");
+          if (monthYear) q = q.eq("month_year", monthYear);
+          const kpiId = c.url.searchParams.get("kpi_id");
+          if (kpiId) q = q.eq("kpi_id", kpiId);
+          const spId = c.url.searchParams.get("salesperson_id");
+          if (spId) q = q.eq("salesperson_id", spId);
+          const unitId = c.url.searchParams.get("unit_id");
+          if (unitId) q = q.eq("unit_id", unitId);
+          const teamId = c.url.searchParams.get("team_id");
+          if (teamId) q = q.eq("team_id", teamId);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [] });
+        },
         create_entry: async (c) => {
           const { company_id, salesperson_id, kpi_id, entry_date, value, observations, unit_id, team_id, sector_id } = c.body;
           if (!company_id || !salesperson_id || !kpi_id) return json({ error: "Campos 'company_id', 'salesperson_id' e 'kpi_id' obrigatórios" }, 400);
@@ -1041,7 +1058,7 @@ serve(async (req) => {
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
-              kpis: { actions: ["list", "entries", "create_entry"], description: "KPIs e lançamentos" },
+              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry"], description: "KPIs, metas mensais e lançamentos" },
               salespeople: { actions: ["list", "create", "update"], description: "Vendedores das empresas" },
               receivables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a receber (CRUD + baixa)" },
               payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },

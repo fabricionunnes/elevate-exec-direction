@@ -301,6 +301,39 @@ GET ${API_URL}?module=kpis&action=entries&company_id=UUID&kpi_id=UUID&date_from=
 }`,
       },
       {
+        action: "monthly_targets", method: "GET", description: "Consultar metas mensais configuradas para cada KPI — esta é a meta real do mês (pode ser diferente do target_value padrão do KPI)",
+        params: [
+          { name: "company_id", desc: "UUID da empresa", required: true },
+          { name: "month_year", desc: "Mês no formato YYYY-MM (ex: 2026-04)", required: false },
+          { name: "kpi_id", desc: "UUID do KPI específico", required: false },
+          { name: "salesperson_id", desc: "UUID do vendedor (para metas individuais)", required: false },
+          { name: "unit_id", desc: "UUID da unidade", required: false },
+          { name: "team_id", desc: "UUID da equipe", required: false },
+        ],
+        example: `# Metas de todos os KPIs para Abril/2026
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04
+
+# Meta de um KPI específico para o mês
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&kpi_id=UUID&month_year=2026-04`,
+        response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "company_id": "uuid",
+      "kpi_id": "uuid-kpi",
+      "month_year": "2026-04",
+      "target_value": 750000,
+      "level_name": "Meta",
+      "level_order": 1,
+      "salesperson_id": null,
+      "unit_id": null,
+      "team_id": null,
+      "sector_id": null
+    }
+  ]
+}`,
+      },
+      {
         action: "create_entry", method: "POST", description: "Lançar resultado diário de KPI para um vendedor (upsert: se já existir lançamento para vendedor+KPI+data, atualiza o valor)",
         bodyFields: [
           { name: "company_id", desc: "UUID da empresa", required: true },
@@ -516,11 +549,22 @@ export function ProductApiDocs() {
             <div className="space-y-2">
               <h4 className="font-semibold text-foreground">2️⃣ Listar KPIs configurados</h4>
               <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID`} language="http" />
-              <p className="text-xs text-muted-foreground">O KPI com <code>is_main_goal: true</code> é o Faturamento (meta principal).</p>
+              <p className="text-xs text-muted-foreground">O KPI com <code>is_main_goal: true</code> é o Faturamento (meta principal). O <code>target_value</code> aqui é o valor padrão — use <strong>monthly_targets</strong> para a meta real do mês.</p>
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-semibold text-foreground">3️⃣ Buscar lançamentos do mês desejado</h4>
+              <h4 className="font-semibold text-foreground">3️⃣ Buscar a meta real do mês</h4>
+              <CodeBlock code={`# Meta configurada para Abril/2026
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04`} language="http" />
+              <p className="text-xs text-muted-foreground">
+                ⚠️ <strong>Importante:</strong> A meta do mês fica em <code>monthly_targets</code>, NÃO no <code>target_value</code> do KPI.
+                O <code>target_value</code> do KPI é apenas o valor padrão. A meta real pode ser diferente (ex: 750 mil vs 617 mil).
+                Filtre por <code>level_name = "Meta"</code> para pegar a meta principal. Se não houver registro para o mês, use o <code>target_value</code> do KPI como fallback.
+              </p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">4️⃣ Buscar lançamentos do mês desejado</h4>
               <CodeBlock code={`# Mês atual (Abril/2026)
 GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-04-01&date_to=2026-04-30
 
@@ -529,24 +573,32 @@ GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-03-01&d
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-semibold text-foreground">4️⃣ Cruzar os dados</h4>
+              <h4 className="font-semibold text-foreground">5️⃣ Cruzar os dados</h4>
               <p className="text-xs text-muted-foreground">
-                Com os 3 retornos acima, agrupe os <strong>entries</strong> por <code>salesperson_id</code> e <code>kpi_id</code>, 
-                some os <code>value</code> de cada agrupamento, e compare com o <code>target_value</code> do KPI para calcular o percentual de atingimento.
+                Agrupe os <strong>entries</strong> por <code>salesperson_id</code> e <code>kpi_id</code>, 
+                some os <code>value</code> de cada agrupamento, e compare com a meta do mês (<code>monthly_targets</code>) para calcular o percentual de atingimento.
               </p>
               <CodeBlock code={`// Exemplo de cálculo em JavaScript:
 const vendedorEntries = entries.filter(e => e.salesperson_id === vendedor.id);
 const faturamentoKpi = kpis.find(k => k.is_main_goal);
+
+// Pegar meta real do mês (prioriza monthly_targets sobre target_value)
+const metaMes = monthlyTargets.find(
+  t => t.kpi_id === faturamentoKpi.id && t.level_name === "Meta"
+    && !t.salesperson_id && !t.unit_id && !t.team_id
+);
+const metaValor = metaMes ? metaMes.target_value : faturamentoKpi.target_value;
+
 const totalFaturamento = vendedorEntries
   .filter(e => e.kpi_id === faturamentoKpi.id)
   .reduce((sum, e) => sum + e.value, 0);
-const percentMeta = (totalFaturamento / faturamentoKpi.target_value) * 100;
+const percentMeta = (totalFaturamento / metaValor) * 100;
 
-console.log(\`\${vendedor.name}: R$ \${totalFaturamento} (\${percentMeta.toFixed(1)}% da meta)\`);`} language="javascript" />
+console.log(\`\${vendedor.name}: R$ \${totalFaturamento} (\${percentMeta.toFixed(1)}% da meta de R$ \${metaValor})\`);`} language="javascript" />
             </div>
 
             <div className="space-y-2">
-              <h4 className="font-semibold text-foreground">5️⃣ Ver lançamentos diários de um vendedor específico</h4>
+              <h4 className="font-semibold text-foreground">6️⃣ Ver lançamentos diários de um vendedor específico</h4>
               <CodeBlock code={`GET ${API_URL}?module=kpis&action=entries&company_id=UUID&salesperson_id=UUID-VENDEDOR&date_from=2026-04-01&date_to=2026-04-30`} language="http" />
               <p className="text-xs text-muted-foreground">
                 Retorna todos os lançamentos diários daquele vendedor no mês, com data, valor e KPI de cada lançamento.
