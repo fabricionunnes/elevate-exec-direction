@@ -1048,6 +1048,18 @@ export function ReceivablesPanel() {
           loadData();
         }}
       />
+
+      {/* Edit Receivable Dialog */}
+      <ReceivableEditDialog
+        open={isEditReceivableOpen}
+        onOpenChange={setIsEditReceivableOpen}
+        receivable={selectedReceivable}
+        companies={companies}
+        categories={categories}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
     </div>
   );
 }
