@@ -168,16 +168,23 @@ export function CompanyInvoicesList({ companyId }: Props) {
   };
 
   const markAsPaid = async (invoiceId: string) => {
+    const todayStr = new Date().toLocaleDateString("en-CA");
+
     // First verify invoice is still pending/overdue in DB
     const { data: freshInvoice } = await supabase
       .from("company_invoices")
-      .select("status")
+      .select("status, due_date, recurring_charge_id")
       .eq("id", invoiceId)
       .single();
 
     if ((freshInvoice as any)?.status === "paid") {
       toast.info("Fatura já está paga!");
       fetchInvoices();
+      return;
+    }
+
+    if ((freshInvoice as any)?.recurring_charge_id && (freshInvoice as any)?.due_date > todayStr) {
+      toast.error("Parcela futura de recorrência não pode ser baixada por esse atalho. Aguarde a baixa automática da integração.");
       return;
     }
 

@@ -33,6 +33,8 @@ interface ReceivablePaymentDialogProps {
     paid_amount_cents?: number | null;
     status: string;
     total_with_fees_cents?: number;
+    due_date?: string;
+    recurring_charge_id?: string | null;
   } | null;
   onSuccess: () => void;
   /** Optional callback after Asaas sync for invoices */
@@ -135,6 +137,11 @@ export function ReceivablePaymentDialog({
     try {
       const dateStr = format(paymentDate, "yyyy-MM-dd");
       const refType = isInvoice ? "invoice" : "receivable";
+
+      if (isInvoice && invoice?.recurring_charge_id && invoice?.due_date && invoice.due_date > dateStr) {
+        toast.error("Parcela futura de recorrência não pode ser baixada manualmente antes do vencimento.");
+        return;
+      }
 
       // DEDUPLICATION: Check if a bank credit already exists for this entity
       const { data: existingCredits } = await supabase

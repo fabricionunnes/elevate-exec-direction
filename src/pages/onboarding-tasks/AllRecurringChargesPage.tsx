@@ -704,6 +704,10 @@ export default function AllRecurringChargesPage() {
     try {
       const today = getLocalDateString();
       const inv = invoices.find(i => i.id === invoiceId);
+      if (inv?.recurring_charge_id && inv?.due_date && inv.due_date > today) {
+        toast.error("Parcela futura de recorrência não pode ser baixada manualmente antes do vencimento.");
+        return;
+      }
       const baseAmount = inv?.status === "overdue" ? inv.total_with_fees_cents : inv?.amount_cents;
       const totalDue = (baseAmount || 0) - discountCents + interestCents;
       const previouslyPaid = inv?.paid_amount_cents || 0;
