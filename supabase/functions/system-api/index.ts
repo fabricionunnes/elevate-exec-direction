@@ -926,6 +926,106 @@ serve(async (req) => {
         },
       },
 
+      // ===== CONVERSATIONS (WhatsApp do Projeto) =====
+      conversations: {
+        list: async (c) => {
+          let q = c.supabase.from("crm_whatsapp_conversations")
+            .select("id, instance_id, contact_id, status, assigned_to, lead_id, sector_id, last_message, last_message_at, unread_count, created_at, updated_at, project_id, official_instance_id, contact:crm_whatsapp_contacts(id, phone, name, profile_picture_url)")
+            .order("last_message_at", { ascending: false })
+            .range(c.offset, c.offset + c.limit - 1);
+          if (c.projectId) q = q.eq("project_id", c.projectId);
+          if (c.status) q = q.eq("status", c.status);
+          const instanceId = c.url.searchParams.get("instance_id");
+          if (instanceId) q = q.eq("instance_id", instanceId);
+          const assignedTo = c.url.searchParams.get("assigned_to");
+          if (assignedTo) q = q.eq("assigned_to", assignedTo);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        get: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("crm_whatsapp_conversations")
+            .select("id, instance_id, contact_id, status, assigned_to, lead_id, sector_id, last_message, last_message_at, unread_count, created_at, updated_at, project_id, official_instance_id, contact:crm_whatsapp_contacts(id, phone, name, profile_picture_url)")
+            .eq("id", c.id).single();
+          if (error) throw error;
+          return json({ data });
+        },
+        messages: async (c) => {
+          const conversationId = c.id || c.url.searchParams.get("conversation_id");
+          if (!conversationId) return json({ error: "Parâmetro 'id' ou 'conversation_id' obrigatório" }, 400);
+          let q = c.supabase.from("crm_whatsapp_messages")
+            .select("id, conversation_id, remote_id, content, type, direction, status, media_url, media_mimetype, quoted_message_id, sent_by, created_at, whatsapp_message_id")
+            .eq("conversation_id", conversationId)
+            .order("created_at", { ascending: true })
+            .range(c.offset, c.offset + c.limit - 1);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        send_message: async (c) => {
+          const { conversation_id, message, instance_id } = c.body;
+          if (!conversation_id || !message) return json({ error: "Campos 'conversation_id' e 'message' obrigatórios" }, 400);
+
+          // Get conversation with contact
+          const { data: conv, error: convErr } = await c.supabase.from("crm_whatsapp_conversations")
+            .select("id, instance_id, contact:crm_whatsapp_contacts(phone), project_id")
+            .eq("id", conversation_id).single();
+          if (convErr || !conv) return json({ error: "Conversa não encontrada" }, 404);
+
+          const targetInstanceId = instance_id || conv.instance_id;
+          if (!targetInstanceId) return json({ error: "Instância não identificada para esta conversa" }, 400);
+
+          // Get instance details
+          const { data: instance } = await c.supabase.from("whatsapp_instances")
+            .select("id, instance_name, api_url, api_key")
+            .eq("id", targetInstanceId).single();
+          if (!instance) return json({ error: "Instância WhatsApp não encontrada" }, 404);
+
+          const phone = (conv as any).contact?.phone;
+          if (!phone) return json({ error: "Contato sem telefone" }, 400);
+
+          // Send via Evolution API edge function
+          const supabaseUrl = Deno.env.get("SUPABASE_URL")!;
+          const supabaseKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+
+          const evoResponse = await fetch(`${supabaseUrl}/functions/v1/evolution-api`, {
+            method: "POST",
+            headers: {
+              "Authorization": `Bearer ${supabaseKey}`,
+              "Content-Type": "application/json",
+            },
+            body: JSON.stringify({
+              action: "sendText",
+              instanceId: targetInstanceId,
+              phone: phone,
+              message: message,
+            }),
+          });
+
+          const evoData = await evoResponse.json();
+          if (!evoResponse.ok) return json({ error: "Erro ao enviar mensagem", details: evoData }, evoResponse.status);
+
+          // Save message locally
+          const { data: savedMsg } = await c.supabase.from("crm_whatsapp_messages").insert({
+            conversation_id,
+            content: message,
+            type: "text",
+            direction: "outgoing",
+            status: "sent",
+            sent_by: c.staffId,
+          }).select().single();
+
+          // Update conversation last_message
+          await c.supabase.from("crm_whatsapp_conversations").update({
+            last_message: message,
+            last_message_at: new Date().toISOString(),
+          }).eq("id", conversation_id);
+
+          return json({ data: savedMsg, evolution_response: evoData }, 201);
+        },
+      },
+
       // ===== SYSTEM INFO =====
       system: {
         endpoints: async () => {
@@ -947,6 +1047,7 @@ serve(async (req) => {
               payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },
               invoices: { actions: ["list", "get", "create", "mark_paid", "mark_unpaid"], description: "Faturas de empresas" },
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
+              conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",
