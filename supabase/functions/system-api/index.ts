@@ -1058,7 +1058,7 @@ serve(async (req) => {
               activities: { actions: ["list", "create", "update", "complete", "delete"], description: "Atividades do CRM" },
               meetings: { actions: ["list", "schedule", "finalize"], description: "Reuniões do CRM" },
               sales: { actions: ["list", "create", "update"], description: "Histórico de vendas" },
-              kpis: { actions: ["list", "entries", "create_entry"], description: "KPIs e lançamentos" },
+              kpis: { actions: ["list", "entries", "monthly_targets", "create_entry"], description: "KPIs, metas mensais e lançamentos" },
               salespeople: { actions: ["list", "create", "update"], description: "Vendedores das empresas" },
               receivables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a receber (CRUD + baixa)" },
               payables: { actions: ["list", "get", "create", "update", "mark_paid", "mark_unpaid", "delete"], description: "Contas a pagar (CRUD + baixa)" },
