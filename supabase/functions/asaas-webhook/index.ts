@@ -543,6 +543,8 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
           paidInvForBank.id,
           paidInvForBank.recurring_charge_id
         );
+        // Auto-reconcile financial_receivables
+        reconcileReceivable(supabase, paidInvForBank.id, null, actualPaidCents, paidInvForBank.description || '', '').catch(() => {});
       }
 
       // Send WhatsApp payment confirmation (non-blocking)
