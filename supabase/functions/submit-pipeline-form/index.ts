@@ -177,6 +177,22 @@ Deno.serve(async (req) => {
         .eq('id', existingLead.id);
 
       console.log('[submit-pipeline-form] Existing lead updated:', existingLead.id);
+
+      // Still send notifications for returning leads
+      const originName = form.origin_name || 'Formulário Público';
+      await sendInternalNotifications(supabase, existingLead.id, nome, email, empresa, originName);
+
+      const { data: owner } = await supabase
+        .from('onboarding_staff')
+        .select('id, phone')
+        .eq('is_active', true)
+        .in('role', ['master', 'admin'])
+        .order('created_at', { ascending: true })
+        .limit(1)
+        .maybeSingle();
+
+      await sendWhatsAppNotification(supabase, existingLead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
+
       return jsonResponse({ success: true, lead_id: existingLead.id });
     }
 
