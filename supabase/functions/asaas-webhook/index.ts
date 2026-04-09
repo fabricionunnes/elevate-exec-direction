@@ -192,6 +192,8 @@ Deno.serve(async (req) => {
 
           // Credit Asaas bank account with actual paid amount (minus fee)
           await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${discountCents > 0 ? ` (desconto R$${(discountCents/100).toFixed(2)})` : ''}`, invoice.id, invoice.recurring_charge_id);
+          // Auto-reconcile financial_receivables
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, description || '', dueDate).catch(() => {});
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
