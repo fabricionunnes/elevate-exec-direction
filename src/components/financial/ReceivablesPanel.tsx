@@ -59,6 +59,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
+import { ReceivableEditDialog } from "./ReceivableEditDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -114,6 +115,7 @@ export function ReceivablesPanel() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
+  const [isEditReceivableOpen, setIsEditReceivableOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Form state
