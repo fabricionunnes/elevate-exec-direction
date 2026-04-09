@@ -68,13 +68,16 @@ Deno.serve(async (req) => {
 
     // Idempotency: if payment is already confirmed and bank was credited, skip
     if (newStatus === "paid") {
-      // Check 1: invoice matched by pagarme_charge_id
-      const { data: alreadyPaid } = await supabase
+      // Check 1: invoice matched by pagarme_charge_id (filter by dueDate when available to avoid wrong installment)
+      let idempotencyQuery = supabase
         .from("company_invoices")
         .select("id")
         .eq("pagarme_charge_id", paymentId)
-        .eq("status", "paid")
-        .limit(1);
+        .eq("status", "paid");
+      if (dueDate) {
+        idempotencyQuery = idempotencyQuery.eq("due_date", dueDate);
+      }
+      const { data: alreadyPaid } = await idempotencyQuery.limit(1);
 
       if (alreadyPaid?.length) {
         const invoiceId = alreadyPaid[0].id;
@@ -146,11 +149,15 @@ Deno.serve(async (req) => {
       console.log(`[Asaas Webhook] Trying subscription match: ${subscriptionId}, dueDate: ${dueDate}`);
 
       // Strategy 2a: First check if any invoice already has this payment ID stored (manual confirm flow)
-      const { data: directMatch } = await supabase
+      // When dueDate is available, prioritize matching by due_date to avoid picking the wrong installment
+      let directMatchQuery = supabase
         .from("company_invoices")
         .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
-        .eq("pagarme_charge_id", paymentId)
-        .limit(1);
+        .eq("pagarme_charge_id", paymentId);
+      if (dueDate) {
+        directMatchQuery = directMatchQuery.eq("due_date", dueDate);
+      }
+      const { data: directMatch } = await directMatchQuery.limit(1);
 
       if (directMatch?.length) {
         const invoice = directMatch[0];
