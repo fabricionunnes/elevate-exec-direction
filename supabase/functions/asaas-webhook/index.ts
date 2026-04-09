@@ -239,7 +239,7 @@ Deno.serve(async (req) => {
           // Skip invoices that are already paid, partial (manual payment), or cancelled
           const { data: invoices, error: invErr } = await supabase
             .from("company_invoices")
-            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at")
+            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at, description, company_id")
             .eq("recurring_charge_id", recurringChargeId)
             .eq("due_date", dueDate)
             .not("status", "in", '("paid","partial","cancelled")');
