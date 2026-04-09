@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       // When dueDate is available, prioritize matching by due_date to avoid picking the wrong installment
       let directMatchQuery = supabase
         .from("company_invoices")
-        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, description, company_id")
         .eq("pagarme_charge_id", paymentId);
       if (dueDate) {
         directMatchQuery = directMatchQuery.eq("due_date", dueDate);
@@ -192,6 +192,8 @@ Deno.serve(async (req) => {
 
           // Credit Asaas bank account with actual paid amount (minus fee)
           await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${discountCents > 0 ? ` (desconto R$${(discountCents/100).toFixed(2)})` : ''}`, invoice.id, invoice.recurring_charge_id);
+          // Auto-reconcile financial_receivables
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, description || '', dueDate).catch(() => {});
 
           if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
@@ -237,7 +239,7 @@ Deno.serve(async (req) => {
           // Skip invoices that are already paid, partial (manual payment), or cancelled
           const { data: invoices, error: invErr } = await supabase
             .from("company_invoices")
-            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at")
+            .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, paid_at, description, company_id")
             .eq("recurring_charge_id", recurringChargeId)
             .eq("due_date", dueDate)
             .not("status", "in", '("paid","partial","cancelled")');
@@ -277,6 +279,8 @@ Deno.serve(async (req) => {
 
                 // Credit Asaas bank account with actual paid amount (minus fee)
                 await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id} (parcela ${invoice.installment_number}/${invoice.total_installments})${discountCents > 0 ? ` desconto R$${(discountCents/100).toFixed(2)}` : ''}`, invoice.id, invoice.recurring_charge_id);
+                // Auto-reconcile financial_receivables
+                reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
 
                 supabase.functions.invoke("notify-payment-confirmed", {
                   body: { invoice_id: invoice.id },
@@ -430,6 +434,59 @@ async function creditAsaasBank(supabase: any, amountCents: number, description: 
   }
 }
 
+// Auto-reconcile financial_receivables when a company_invoice is paid
+async function reconcileReceivable(supabase: any, invoiceId: string, companyId: string | null, paidAmountCents: number, description: string, dueDate?: string) {
+  try {
+    if (!companyId) {
+      const { data: inv } = await supabase
+        .from("company_invoices")
+        .select("company_id")
+        .eq("id", invoiceId)
+        .single();
+      companyId = inv?.company_id;
+    }
+    if (!companyId) return;
+
+    let query = supabase
+      .from("financial_receivables")
+      .select("id, amount, status, description")
+      .eq("company_id", companyId)
+      .not("status", "in", '("paid","cancelled")');
+
+    if (dueDate) {
+      query = query.eq("due_date", dueDate);
+    }
+
+    const { data: receivables } = await query.order("due_date", { ascending: true }).limit(5);
+    if (!receivables?.length) return;
+
+    const match = receivables.find((r: any) => 
+      description && r.description && (
+        r.description.toLowerCase().includes(description.toLowerCase()) ||
+        description.toLowerCase().includes(r.description.toLowerCase())
+      )
+    ) || (dueDate ? receivables[0] : null);
+
+    if (!match) return;
+
+    const paidReais = paidAmountCents / 100;
+    const isPartial = paidReais < match.amount;
+
+    await supabase
+      .from("financial_receivables")
+      .update({
+        status: isPartial ? "partial" : "paid",
+        paid_date: new Date().toISOString().split("T")[0],
+        paid_amount: paidReais,
+      })
+      .eq("id", match.id);
+
+    console.log(`[Asaas Webhook] Auto-reconciled financial_receivable ${match.id} -> ${isPartial ? 'partial' : 'paid'}`);
+  } catch (err) {
+    console.error("[Asaas Webhook] Error reconciling receivable:", err);
+  }
+}
+
 async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents: number = 0) {
   for (const order of orders) {
     if (!order.payment_link_id) continue;
@@ -486,6 +543,8 @@ async function markInvoicesPaid(supabase: any, orders: any[], paymentValueCents:
           paidInvForBank.id,
           paidInvForBank.recurring_charge_id
         );
+        // Auto-reconcile financial_receivables
+        reconcileReceivable(supabase, paidInvForBank.id, null, actualPaidCents, paidInvForBank.description || '', '').catch(() => {});
       }
 
       // Send WhatsApp payment confirmation (non-blocking)
