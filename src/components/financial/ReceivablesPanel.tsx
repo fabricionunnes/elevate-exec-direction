@@ -844,6 +844,15 @@ export function ReceivablesPanel() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedReceivable(receivable);
+                              setIsEditReceivableOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
                           {receivable.status !== "paid" && receivable.status !== "cancelled" && (
                             <>
                               <DropdownMenuItem
