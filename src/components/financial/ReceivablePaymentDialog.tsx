@@ -134,6 +134,17 @@ export function ReceivablePaymentDialog({
     setSaving(true);
     try {
       const dateStr = format(paymentDate, "yyyy-MM-dd");
+      const refType = isInvoice ? "invoice" : "receivable";
+
+      // DEDUPLICATION: Check if a bank credit already exists for this entity
+      const { data: existingCredits } = await supabase
+        .from("financial_bank_transactions")
+        .select("id, amount_cents, description")
+        .eq("reference_type", refType)
+        .eq("reference_id", entityId)
+        .eq("type", "credit");
+
+      const existingTotal = (existingCredits || []).reduce((sum: number, tx: any) => sum + (tx.amount_cents || 0), 0);
 
       if (isInvoice) {
         // Update company_invoices
@@ -149,23 +160,35 @@ export function ReceivablePaymentDialog({
           .eq("id", entityId);
         if (error) throw error;
 
-        // Credit bank balance
+        // Only credit bank if no existing credit covers the full amount
         const amountCents = Math.round(finalAmount * 100);
-        await supabase.rpc("increment_bank_balance" as any, {
-          p_bank_id: bankId,
-          p_amount: amountCents,
-        });
-        await supabase.from("financial_bank_transactions").insert({
-          bank_id: bankId,
-          type: "credit",
-          amount_cents: amountCents,
-          description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
-          reference_type: "invoice",
-          reference_id: entityId,
-          discount_cents: Math.round(discount * 100),
-          interest_cents: Math.round(interest * 100),
-          fee_cents: Math.round(fees * 100),
-        } as any);
+        const alreadyCreditedEnough = existingTotal >= amountCents && existingCredits && existingCredits.length > 0;
+
+        if (alreadyCreditedEnough) {
+          console.log(`[PaymentDialog] Bank credit already exists for invoice ${entityId} (${existingTotal} cents), skipping duplicate`);
+          toast.info("Crédito bancário já registrado pela integração. Apenas o status da fatura foi atualizado.");
+        } else {
+          // Calculate only the difference to credit (avoid duplicating what Asaas already credited)
+          const amountToCredit = existingTotal > 0 ? Math.max(0, amountCents - existingTotal) : amountCents;
+          
+          if (amountToCredit > 0) {
+            await supabase.rpc("increment_bank_balance" as any, {
+              p_bank_id: bankId,
+              p_amount: amountToCredit,
+            });
+            await supabase.from("financial_bank_transactions").insert({
+              bank_id: bankId,
+              type: "credit",
+              amount_cents: amountToCredit,
+              description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
+              reference_type: "invoice",
+              reference_id: entityId,
+              discount_cents: Math.round(discount * 100),
+              interest_cents: Math.round(interest * 100),
+              fee_cents: Math.round(fees * 100),
+            } as any);
+          }
+        }
 
         toast.success("Pagamento confirmado!");
 
@@ -194,23 +217,34 @@ export function ReceivablePaymentDialog({
           .eq("id", entityId);
         if (error) throw error;
 
-        // Credit bank balance
+        // Only credit bank if no existing credit covers the full amount
         const amountCents = Math.round(finalAmount * 100);
-        await supabase.rpc("increment_bank_balance" as any, {
-          p_bank_id: bankId,
-          p_amount: amountCents,
-        });
-        await supabase.from("financial_bank_transactions").insert({
-          bank_id: bankId,
-          type: "credit",
-          amount_cents: amountCents,
-          description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
-          reference_type: "receivable",
-          reference_id: entityId,
-          discount_cents: Math.round(discount * 100),
-          interest_cents: Math.round(interest * 100),
-          fee_cents: Math.round(fees * 100),
-        } as any);
+        const alreadyCreditedEnough = existingTotal >= amountCents && existingCredits && existingCredits.length > 0;
+
+        if (alreadyCreditedEnough) {
+          console.log(`[PaymentDialog] Bank credit already exists for receivable ${entityId} (${existingTotal} cents), skipping duplicate`);
+          toast.info("Crédito bancário já registrado. Apenas o status foi atualizado.");
+        } else {
+          const amountToCredit = existingTotal > 0 ? Math.max(0, amountCents - existingTotal) : amountCents;
+          
+          if (amountToCredit > 0) {
+            await supabase.rpc("increment_bank_balance" as any, {
+              p_bank_id: bankId,
+              p_amount: amountToCredit,
+            });
+            await supabase.from("financial_bank_transactions").insert({
+              bank_id: bankId,
+              type: "credit",
+              amount_cents: amountToCredit,
+              description: `Recebimento: ${description}${discount > 0 ? ` (desc: ${fmt(discount)})` : ""}${interest > 0 ? ` (juros: ${fmt(interest)})` : ""}${fees > 0 ? ` (taxas: ${fmt(fees)})` : ""}`,
+              reference_type: "receivable",
+              reference_id: entityId,
+              discount_cents: Math.round(discount * 100),
+              interest_cents: Math.round(interest * 100),
+              fee_cents: Math.round(fees * 100),
+            } as any);
+          }
+        }
 
         toast.success(isPartial ? "Pagamento parcial registrado!" : "Pagamento confirmado!");
       }
