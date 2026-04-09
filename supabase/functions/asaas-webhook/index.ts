@@ -152,7 +152,7 @@ Deno.serve(async (req) => {
       // When dueDate is available, prioritize matching by due_date to avoid picking the wrong installment
       let directMatchQuery = supabase
         .from("company_invoices")
-        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status")
+        .select("id, payment_link_id, amount_cents, installment_number, total_installments, recurring_charge_id, status, description, company_id")
         .eq("pagarme_charge_id", paymentId);
       if (dueDate) {
         directMatchQuery = directMatchQuery.eq("due_date", dueDate);
