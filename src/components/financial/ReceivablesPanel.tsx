@@ -46,7 +46,8 @@ import {
   RefreshCw,
   ExternalLink,
   CalendarDays,
-  Copy
+  Copy,
+  Pencil
 } from "lucide-react";
 import {
   DropdownMenu,
