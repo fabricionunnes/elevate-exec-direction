@@ -236,37 +236,92 @@ const productModules: ModuleDoc[] = [
     name: "KPIs",
     icon: BarChart3,
     module: "kpis",
-    description: "Consultar KPIs e lançar resultados dos clientes",
+    description: "Dashboard de KPIs: consultar indicadores configurados, lançamentos diários dos vendedores, performance mensal e comparativos",
     endpoints: [
       {
-        action: "list", method: "GET", description: "Listar KPIs configurados",
-        params: [{ name: "company_id", desc: "UUID da empresa", required: false }],
+        action: "list", method: "GET", description: "Listar todos os KPIs configurados da empresa (indicadores do funil: Leads, Atendimentos, Visitas, Calls, Propostas, Vendas, Faturamento, etc.)",
+        params: [{ name: "company_id", desc: "UUID da empresa (obrigatório para filtrar)", required: true }],
         example: `GET ${API_URL}?module=kpis&action=list&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "Vendas Mensais", "target_value": 100000 }] }`,
+        response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "company_id": "uuid",
+      "name": "Faturamento",
+      "kpi_type": "monetary",
+      "periodicity": "monthly",
+      "target_value": 100000,
+      "is_individual": true,
+      "is_required": true,
+      "is_active": true,
+      "is_main_goal": true,
+      "scope": "company",
+      "sector_id": null,
+      "team_id": null,
+      "unit_id": null,
+      "salesperson_id": null,
+      "sort_order": 1
+    }
+  ]
+}`,
       },
       {
-        action: "entries", method: "GET", description: "Listar lançamentos de KPIs",
+        action: "entries", method: "GET", description: "Listar lançamentos diários dos vendedores — é aqui que ficam os dados do Dashboard de KPIs. Filtre por mês para ver performance mensal.",
         params: [
-          { name: "company_id", desc: "UUID da empresa", required: false },
-          { name: "kpi_id", desc: "UUID do KPI", required: false },
-          { name: "salesperson_id", desc: "UUID do vendedor", required: false },
-          { name: "date_from / date_to", desc: "Período", required: false },
+          { name: "company_id", desc: "UUID da empresa", required: true },
+          { name: "kpi_id", desc: "UUID do KPI específico (ex: Faturamento)", required: false },
+          { name: "salesperson_id", desc: "UUID do vendedor — para ver lançamentos de um vendedor específico", required: false },
+          { name: "date_from", desc: "Data inicial (YYYY-MM-DD) — ex: 2026-04-01 para mês atual", required: false },
+          { name: "date_to", desc: "Data final (YYYY-MM-DD) — ex: 2026-04-30 para mês atual", required: false },
         ],
-        example: `GET ${API_URL}?module=kpis&action=entries&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "kpi_id": "uuid", "entry_date": "2026-03-25", "value": 15000 }] }`,
+        example: `# Lançamentos do mês atual de todos os vendedores
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-04-01&date_to=2026-04-30
+
+# Lançamentos de um vendedor específico no mês anterior
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&salesperson_id=UUID&date_from=2026-03-01&date_to=2026-03-31
+
+# Lançamentos de um KPI específico (ex: só Faturamento)
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&kpi_id=UUID&date_from=2026-04-01&date_to=2026-04-30`,
+        response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "company_id": "uuid",
+      "salesperson_id": "uuid-vendedor",
+      "kpi_id": "uuid-kpi",
+      "entry_date": "2026-04-08",
+      "value": 15000,
+      "observations": "Venda para cliente X",
+      "unit_id": "uuid-unidade",
+      "team_id": "uuid-equipe",
+      "sector_id": "uuid-setor",
+      "created_at": "2026-04-08T14:30:00Z"
+    }
+  ]
+}`,
       },
       {
-        action: "create_entry", method: "POST", description: "Lançar resultado de KPI",
+        action: "create_entry", method: "POST", description: "Lançar resultado diário de KPI para um vendedor (upsert: se já existir lançamento para vendedor+KPI+data, atualiza o valor)",
         bodyFields: [
           { name: "company_id", desc: "UUID da empresa", required: true },
-          { name: "salesperson_id", desc: "UUID do vendedor", required: true },
-          { name: "kpi_id", desc: "UUID do KPI", required: true },
-          { name: "entry_date", desc: "Data (YYYY-MM-DD)", required: false },
-          { name: "value", desc: "Valor numérico", required: false },
-          { name: "observations", desc: "Observações", required: false },
+          { name: "salesperson_id", desc: "UUID do vendedor que fez a venda/resultado", required: true },
+          { name: "kpi_id", desc: "UUID do KPI (ex: Faturamento, Leads, Visitas)", required: true },
+          { name: "entry_date", desc: "Data do lançamento (YYYY-MM-DD). Default: hoje", required: false },
+          { name: "value", desc: "Valor numérico (ex: 15000 para faturamento, 5 para leads)", required: true },
+          { name: "observations", desc: "Observações sobre o lançamento", required: false },
+          { name: "unit_id", desc: "UUID da unidade (se a empresa usa hierarquia organizacional)", required: false },
+          { name: "team_id", desc: "UUID da equipe", required: false },
+          { name: "sector_id", desc: "UUID do setor", required: false },
         ],
-        example: `POST ${API_URL}?module=kpis&action=create_entry\n\n{ "company_id": "UUID", "salesperson_id": "UUID", "kpi_id": "UUID", "value": 15000 }`,
-        response: `{ "data": { "id": "uuid", "value": 15000 } }`,
+        example: `POST ${API_URL}?module=kpis&action=create_entry\n\n{
+  "company_id": "UUID",
+  "salesperson_id": "UUID-VENDEDOR",
+  "kpi_id": "UUID-KPI-FATURAMENTO",
+  "entry_date": "2026-04-08",
+  "value": 15000,
+  "observations": "Venda para cliente X"
+}`,
+        response: `{ "data": { "id": "uuid", "salesperson_id": "uuid", "kpi_id": "uuid", "entry_date": "2026-04-08", "value": 15000 } }`,
       },
     ],
   },
@@ -274,26 +329,44 @@ const productModules: ModuleDoc[] = [
     name: "Vendedores",
     icon: UserCheck,
     module: "salespeople",
-    description: "Gerenciar vendedores das empresas clientes",
+    description: "Gerenciar vendedores das empresas clientes — necessário para cruzar com os lançamentos de KPI",
     endpoints: [
       {
-        action: "list", method: "GET", description: "Listar vendedores",
+        action: "list", method: "GET", description: "Listar vendedores da empresa (use para cruzar com os lançamentos e montar o dashboard por vendedor)",
         params: [
-          { name: "company_id", desc: "UUID da empresa", required: false },
-          { name: "status", desc: "active, inactive", required: false },
+          { name: "company_id", desc: "UUID da empresa", required: true },
+          { name: "status", desc: "active (ativos) ou inactive (inativos)", required: false },
         ],
-        example: `GET ${API_URL}?module=salespeople&action=list&company_id=UUID`,
-        response: `{ "data": [{ "id": "uuid", "name": "Carlos Silva", "is_active": true }] }`,
+        example: `GET ${API_URL}?module=salespeople&action=list&company_id=UUID&status=active`,
+        response: `{
+  "data": [
+    {
+      "id": "uuid",
+      "company_id": "uuid",
+      "name": "Carlos Silva",
+      "email": "carlos@empresa.com",
+      "phone": "(11) 99999-0000",
+      "is_active": true,
+      "unit_id": "uuid-unidade",
+      "team_id": "uuid-equipe",
+      "sector_id": "uuid-setor",
+      "access_code": "ABC123"
+    }
+  ]
+}`,
       },
       {
         action: "create", method: "POST", description: "Criar vendedor",
         bodyFields: [
           { name: "company_id", desc: "UUID da empresa", required: true },
-          { name: "name", desc: "Nome", required: true },
+          { name: "name", desc: "Nome do vendedor", required: true },
           { name: "email", desc: "E-mail", required: false },
           { name: "phone", desc: "Telefone", required: false },
+          { name: "unit_id", desc: "UUID da unidade", required: false },
+          { name: "team_id", desc: "UUID da equipe", required: false },
+          { name: "sector_id", desc: "UUID do setor", required: false },
         ],
-        example: `POST ${API_URL}?module=salespeople&action=create\n\n{ "company_id": "UUID", "name": "Ana Costa" }`,
+        example: `POST ${API_URL}?module=salespeople&action=create\n\n{ "company_id": "UUID", "name": "Ana Costa", "email": "ana@empresa.com" }`,
         response: `{ "data": { "id": "uuid-gerado", "name": "Ana Costa" } }`,
       },
       {
@@ -421,6 +494,67 @@ export function ProductApiDocs() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Guia Prático: Montando o Dashboard de KPIs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm space-y-3">
+            <p className="text-muted-foreground">
+              Para reproduzir a visão do menu <strong>KPI → Dashboard</strong> via API, siga estes passos:
+            </p>
+            
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">1️⃣ Listar vendedores ativos</h4>
+              <CodeBlock code={`GET ${API_URL}?module=salespeople&action=list&company_id=UUID&status=active`} language="http" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">2️⃣ Listar KPIs configurados</h4>
+              <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID`} language="http" />
+              <p className="text-xs text-muted-foreground">O KPI com <code>is_main_goal: true</code> é o Faturamento (meta principal).</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">3️⃣ Buscar lançamentos do mês desejado</h4>
+              <CodeBlock code={`# Mês atual (Abril/2026)
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-04-01&date_to=2026-04-30
+
+# Mês anterior (Março/2026)
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-03-01&date_to=2026-03-31`} language="http" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">4️⃣ Cruzar os dados</h4>
+              <p className="text-xs text-muted-foreground">
+                Com os 3 retornos acima, agrupe os <strong>entries</strong> por <code>salesperson_id</code> e <code>kpi_id</code>, 
+                some os <code>value</code> de cada agrupamento, e compare com o <code>target_value</code> do KPI para calcular o percentual de atingimento.
+              </p>
+              <CodeBlock code={`// Exemplo de cálculo em JavaScript:
+const vendedorEntries = entries.filter(e => e.salesperson_id === vendedor.id);
+const faturamentoKpi = kpis.find(k => k.is_main_goal);
+const totalFaturamento = vendedorEntries
+  .filter(e => e.kpi_id === faturamentoKpi.id)
+  .reduce((sum, e) => sum + e.value, 0);
+const percentMeta = (totalFaturamento / faturamentoKpi.target_value) * 100;
+
+console.log(\`\${vendedor.name}: R$ \${totalFaturamento} (\${percentMeta.toFixed(1)}% da meta)\`);`} language="javascript" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">5️⃣ Ver lançamentos diários de um vendedor específico</h4>
+              <CodeBlock code={`GET ${API_URL}?module=kpis&action=entries&company_id=UUID&salesperson_id=UUID-VENDEDOR&date_from=2026-04-01&date_to=2026-04-30`} language="http" />
+              <p className="text-xs text-muted-foreground">
+                Retorna todos os lançamentos diários daquele vendedor no mês, com data, valor e KPI de cada lançamento.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
