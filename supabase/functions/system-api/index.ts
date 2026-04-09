@@ -552,8 +552,8 @@ serve(async (req) => {
           const { data, error } = await q;
           if (error) throw error;
 
-          const normalizedMonthYear = normalizeMonthYear(c.url.searchParams.get("month_year"));
-          if (!normalizedMonthYear || !data?.length || !c.companyId) {
+          const normalizedMonthYear = normalizeMonthYear(c.url.searchParams.get("month_year")) || new Date().toISOString().slice(0, 7);
+          if (!data?.length || !c.companyId) {
             return json({ data: data || [] });
           }
 

@@ -242,7 +242,7 @@ const productModules: ModuleDoc[] = [
         action: "list", method: "GET", description: "Listar todos os KPIs configurados da empresa (indicadores do funil: Leads, Atendimentos, Visitas, Calls, Propostas, Vendas, Faturamento, etc.)",
         params: [
           { name: "company_id", desc: "UUID da empresa (obrigatório para filtrar)", required: true },
-          { name: "month_year", desc: "Opcional. Use YYYY-MM ou YYYY-MM-01 para já receber a meta do mês em target_value", required: false }
+          { name: "month_year", desc: "Opcional. Use YYYY-MM ou YYYY-MM-01. Se não enviar, a API usa o mês atual e já resolve target_value com a meta mensal", required: false }
         ],
         example: `GET ${API_URL}?module=kpis&action=list&company_id=UUID&month_year=2026-04`,
         response: `{
@@ -558,7 +558,7 @@ export function ProductApiDocs() {
             <div className="space-y-2">
               <h4 className="font-semibold text-foreground">2️⃣ Listar KPIs configurados</h4>
               <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID&month_year=2026-04`} language="http" />
-              <p className="text-xs text-muted-foreground">Com <code>month_year</code>, o <code>target_value</code> já vem com a meta mensal correta. O valor padrão original continua disponível em <code>default_target_value</code>.</p>
+              <p className="text-xs text-muted-foreground">O <code>target_value</code> já vem com a meta mensal correta do mês atual. Se quiser outro mês, envie <code>month_year</code>. O valor padrão original continua disponível em <code>default_target_value</code>.</p>
             </div>
 
             <div className="space-y-2">
