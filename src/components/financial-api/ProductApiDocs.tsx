@@ -240,8 +240,11 @@ const productModules: ModuleDoc[] = [
     endpoints: [
       {
         action: "list", method: "GET", description: "Listar todos os KPIs configurados da empresa (indicadores do funil: Leads, Atendimentos, Visitas, Calls, Propostas, Vendas, Faturamento, etc.)",
-        params: [{ name: "company_id", desc: "UUID da empresa (obrigatório para filtrar)", required: true }],
-        example: `GET ${API_URL}?module=kpis&action=list&company_id=UUID`,
+        params: [
+          { name: "company_id", desc: "UUID da empresa (obrigatório para filtrar)", required: true },
+          { name: "month_year", desc: "Opcional. Use YYYY-MM ou YYYY-MM-01 para já receber a meta do mês em target_value", required: false }
+        ],
+        example: `GET ${API_URL}?module=kpis&action=list&company_id=UUID&month_year=2026-04`,
         response: `{
   "data": [
     {
@@ -250,7 +253,10 @@ const productModules: ModuleDoc[] = [
       "name": "Faturamento",
       "kpi_type": "monetary",
       "periodicity": "monthly",
-      "target_value": 100000,
+      "target_value": 750000,
+      "default_target_value": 617000,
+      "target_month_year": "2026-04",
+      "target_source": "monthly_targets",
       "is_individual": true,
       "is_required": true,
       "is_active": true,
@@ -304,7 +310,7 @@ GET ${API_URL}?module=kpis&action=entries&company_id=UUID&kpi_id=UUID&date_from=
         action: "monthly_targets", method: "GET", description: "Consultar metas mensais configuradas para cada KPI — esta é a meta real do mês (pode ser diferente do target_value padrão do KPI)",
         params: [
           { name: "company_id", desc: "UUID da empresa", required: true },
-          { name: "month_year", desc: "Mês no formato YYYY-MM (ex: 2026-04)", required: false },
+          { name: "month_year", desc: "Mês no formato YYYY-MM ou YYYY-MM-01 (ex: 2026-04 ou 2026-04-01)", required: false },
           { name: "kpi_id", desc: "UUID do KPI específico", required: false },
           { name: "salesperson_id", desc: "UUID do vendedor (para metas individuais)", required: false },
           { name: "unit_id", desc: "UUID da unidade", required: false },
@@ -314,7 +320,10 @@ GET ${API_URL}?module=kpis&action=entries&company_id=UUID&kpi_id=UUID&date_from=
 GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04
 
 # Meta de um KPI específico para o mês
-GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&kpi_id=UUID&month_year=2026-04`,
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&kpi_id=UUID&month_year=2026-04
+
+# Também aceita o primeiro dia do mês
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04-01`,
         response: `{
   "data": [
     {
@@ -548,14 +557,17 @@ export function ProductApiDocs() {
 
             <div className="space-y-2">
               <h4 className="font-semibold text-foreground">2️⃣ Listar KPIs configurados</h4>
-              <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID`} language="http" />
-              <p className="text-xs text-muted-foreground">O KPI com <code>is_main_goal: true</code> é o Faturamento (meta principal). O <code>target_value</code> aqui é o valor padrão — use <strong>monthly_targets</strong> para a meta real do mês.</p>
+              <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID&month_year=2026-04`} language="http" />
+              <p className="text-xs text-muted-foreground">Com <code>month_year</code>, o <code>target_value</code> já vem com a meta mensal correta. O valor padrão original continua disponível em <code>default_target_value</code>.</p>
             </div>
 
             <div className="space-y-2">
               <h4 className="font-semibold text-foreground">3️⃣ Buscar a meta real do mês</h4>
               <CodeBlock code={`# Meta configurada para Abril/2026
-GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04`} language="http" />
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04
+
+# Ou com a data no primeiro dia do mês
+GET ${API_URL}?module=kpis&action=monthly_targets&company_id=UUID&month_year=2026-04-01`} language="http" />
               <p className="text-xs text-muted-foreground">
                 ⚠️ <strong>Importante:</strong> A meta do mês fica em <code>monthly_targets</code>, NÃO no <code>target_value</code> do KPI.
                 O <code>target_value</code> do KPI é apenas o valor padrão. A meta real pode ser diferente (ex: 750 mil vs 617 mil).
