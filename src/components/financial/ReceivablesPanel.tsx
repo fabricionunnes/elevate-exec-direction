@@ -46,7 +46,8 @@ import {
   RefreshCw,
   ExternalLink,
   CalendarDays,
-  Copy
+  Copy,
+  Pencil
 } from "lucide-react";
 import {
   DropdownMenu,
@@ -59,6 +60,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { ReceivablePaymentDialog } from "./ReceivablePaymentDialog";
 import { EditPaymentsDialog } from "./EditPaymentsDialog";
+import { ReceivableEditDialog } from "./ReceivableEditDialog";
 import { SearchableSelect } from "@/components/ui/searchable-select";
 import { Checkbox } from "@/components/ui/checkbox";
 
@@ -114,6 +116,7 @@ export function ReceivablesPanel() {
   const [pageSize, setPageSize] = useState(10);
   const [currentPage, setCurrentPage] = useState(0);
   const [isEditPaymentsOpen, setIsEditPaymentsOpen] = useState(false);
+  const [isEditReceivableOpen, setIsEditReceivableOpen] = useState(false);
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
 
   // Form state
@@ -841,6 +844,15 @@ export function ReceivablesPanel() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedReceivable(receivable);
+                              setIsEditReceivableOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
                           {receivable.status !== "paid" && receivable.status !== "cancelled" && (
                             <>
                               <DropdownMenuItem
@@ -1032,6 +1044,18 @@ export function ReceivablesPanel() {
         open={isEditPaymentsOpen}
         onOpenChange={setIsEditPaymentsOpen}
         receivable={selectedReceivable}
+        onSuccess={() => {
+          loadData();
+        }}
+      />
+
+      {/* Edit Receivable Dialog */}
+      <ReceivableEditDialog
+        open={isEditReceivableOpen}
+        onOpenChange={setIsEditReceivableOpen}
+        receivable={selectedReceivable}
+        companies={companies}
+        categories={categories}
         onSuccess={() => {
           loadData();
         }}

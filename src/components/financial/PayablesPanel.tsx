@@ -56,8 +56,10 @@ import {
   Trash2,
   Repeat,
   CalendarDays,
-  Copy
+  Copy,
+  Pencil
 } from "lucide-react";
+import { PayableEditDialog } from "./PayableActionDialogs";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -125,6 +127,8 @@ export function PayablesPanel() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [deleteTarget, setDeleteTarget] = useState<Payable | null>(null);
   const [deleteScope, setDeleteScope] = useState<"single" | "future">("single");
+  const [isEditPayableOpen, setIsEditPayableOpen] = useState(false);
+  const [costCenters, setCostCenters] = useState<any[]>([]);
   const { isMaster } = useFinancialPermissions();
   const [selectedIds, setSelectedIds] = useState<Set<string>>(new Set());
   const [formData, setFormData] = useState({
@@ -920,6 +924,15 @@ export function PayablesPanel() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedPayable(payable);
+                              setIsEditPayableOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
                           {payable.status !== "paid" && payable.status !== "cancelled" && (
                             <DropdownMenuItem
                               onClick={() => {
@@ -1172,6 +1185,18 @@ export function PayablesPanel() {
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
+
+      {/* Edit Payable Dialog */}
+      <PayableEditDialog
+        open={isEditPayableOpen}
+        onOpenChange={setIsEditPayableOpen}
+        payable={selectedPayable}
+        categories={categories}
+        costCenters={costCenters}
+        suppliers={suppliers}
+        onSuccess={() => { loadData(); }}
+        onSuppliersRefresh={() => { loadData(); }}
+      />
     </div>
   );
 }
