@@ -924,6 +924,15 @@ export function PayablesPanel() {
                           </Button>
                         </DropdownMenuTrigger>
                         <DropdownMenuContent align="end">
+                          <DropdownMenuItem
+                            onClick={() => {
+                              setSelectedPayable(payable);
+                              setIsEditPayableOpen(true);
+                            }}
+                          >
+                            <Pencil className="h-4 w-4 mr-2" />
+                            Editar
+                          </DropdownMenuItem>
                           {payable.status !== "paid" && payable.status !== "cancelled" && (
                             <DropdownMenuItem
                               onClick={() => {
