@@ -494,6 +494,67 @@ export function ProductApiDocs() {
           </TabsContent>
         ))}
       </Tabs>
+
+      <Card className="border-primary/20 bg-primary/5">
+        <CardHeader>
+          <CardTitle className="text-base flex items-center gap-2">
+            <BarChart3 className="h-5 w-5 text-primary" />
+            Guia Prático: Montando o Dashboard de KPIs
+          </CardTitle>
+        </CardHeader>
+        <CardContent className="space-y-4">
+          <div className="text-sm space-y-3">
+            <p className="text-muted-foreground">
+              Para reproduzir a visão do menu <strong>KPI → Dashboard</strong> via API, siga estes passos:
+            </p>
+            
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">1️⃣ Listar vendedores ativos</h4>
+              <CodeBlock code={`GET ${API_URL}?module=salespeople&action=list&company_id=UUID&status=active`} language="http" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">2️⃣ Listar KPIs configurados</h4>
+              <CodeBlock code={`GET ${API_URL}?module=kpis&action=list&company_id=UUID`} language="http" />
+              <p className="text-xs text-muted-foreground">O KPI com <code>is_main_goal: true</code> é o Faturamento (meta principal).</p>
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">3️⃣ Buscar lançamentos do mês desejado</h4>
+              <CodeBlock code={`# Mês atual (Abril/2026)
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-04-01&date_to=2026-04-30
+
+# Mês anterior (Março/2026)
+GET ${API_URL}?module=kpis&action=entries&company_id=UUID&date_from=2026-03-01&date_to=2026-03-31`} language="http" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">4️⃣ Cruzar os dados</h4>
+              <p className="text-xs text-muted-foreground">
+                Com os 3 retornos acima, agrupe os <strong>entries</strong> por <code>salesperson_id</code> e <code>kpi_id</code>, 
+                some os <code>value</code> de cada agrupamento, e compare com o <code>target_value</code> do KPI para calcular o percentual de atingimento.
+              </p>
+              <CodeBlock code={`// Exemplo de cálculo em JavaScript:
+const vendedorEntries = entries.filter(e => e.salesperson_id === vendedor.id);
+const faturamentoKpi = kpis.find(k => k.is_main_goal);
+const totalFaturamento = vendedorEntries
+  .filter(e => e.kpi_id === faturamentoKpi.id)
+  .reduce((sum, e) => sum + e.value, 0);
+const percentMeta = (totalFaturamento / faturamentoKpi.target_value) * 100;
+
+console.log(\`\${vendedor.name}: R$ \${totalFaturamento} (\${percentMeta.toFixed(1)}% da meta)\`);`} language="javascript" />
+            </div>
+
+            <div className="space-y-2">
+              <h4 className="font-semibold text-foreground">5️⃣ Ver lançamentos diários de um vendedor específico</h4>
+              <CodeBlock code={`GET ${API_URL}?module=kpis&action=entries&company_id=UUID&salesperson_id=UUID-VENDEDOR&date_from=2026-04-01&date_to=2026-04-30`} language="http" />
+              <p className="text-xs text-muted-foreground">
+                Retorna todos os lançamentos diários daquele vendedor no mês, com data, valor e KPI de cada lançamento.
+              </p>
+            </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }
