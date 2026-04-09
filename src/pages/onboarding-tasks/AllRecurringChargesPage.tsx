@@ -718,8 +718,20 @@ export default function AllRecurringChargesPage() {
       if (bankId && paidNow > 0) {
         const netAmount = paidNow - feeCents;
         if (netAmount > 0) {
-          await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: netAmount });
-          await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: netAmount, description: `Recebimento${isPartial ? " parcial" : ""}: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId, discount_cents: discountCents, interest_cents: interestCents, fee_cents: feeCents } as any);
+          const { data: existingCredits } = await supabase
+            .from("financial_bank_transactions")
+            .select("id, amount_cents")
+            .eq("reference_type", "invoice")
+            .eq("reference_id", invoiceId)
+            .eq("type", "credit");
+
+          const existingTotal = (existingCredits || []).reduce((sum: number, tx: any) => sum + (tx.amount_cents || 0), 0);
+          const amountToCredit = Math.max(0, netAmount - existingTotal);
+
+          if (amountToCredit > 0) {
+            await supabase.rpc("increment_bank_balance" as any, { p_bank_id: bankId, p_amount: amountToCredit });
+            await supabase.from("financial_bank_transactions").insert({ bank_id: bankId, type: "credit", amount_cents: amountToCredit, description: `Recebimento${isPartial ? " parcial" : ""}: ${inv?.description} (${inv?.installment_number}/${inv?.total_installments})`, reference_type: "invoice", reference_id: invoiceId, discount_cents: discountCents, interest_cents: interestCents, fee_cents: feeCents } as any);
+          }
         }
       }
       const { data, error: fnError } = await supabase.functions.invoke("asaas-confirm-payment", { body: { invoice_id: invoiceId, action: "confirm" } });
