@@ -38,6 +38,7 @@ interface RecurringCharge {
   recurrence: string;
   next_charge_date: string;
   is_active: boolean;
+  send_whatsapp: boolean;
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
