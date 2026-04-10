@@ -493,6 +493,21 @@ export function CompanyRecurringCharges({
                     {charge.pagarme_link_url && (
                       <Badge variant="outline" className="text-xs">Asaas ✓</Badge>
                     )}
+                    <Badge
+                      variant={charge.send_whatsapp ? "default" : "secondary"}
+                      className="text-xs cursor-pointer"
+                      onClick={async () => {
+                        const newVal = !charge.send_whatsapp;
+                        await supabase
+                          .from("company_recurring_charges")
+                          .update({ send_whatsapp: newVal } as any)
+                          .eq("id", charge.id);
+                        toast.success(newVal ? "WhatsApp ativado" : "WhatsApp desativado");
+                        fetchCharges();
+                      }}
+                    >
+                      {charge.send_whatsapp ? "📲 WhatsApp ✓" : "📲 WhatsApp ✗"}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>R$ {(charge.amount_cents / 100).toFixed(2).replace(".", ",")}</span>
