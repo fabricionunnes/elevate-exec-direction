@@ -7,6 +7,7 @@ function getLocalDateString(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
+import { PeriodNavigator, getDateRangeForPeriod, type PeriodType } from "@/components/financial/PeriodNavigator";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { useNavigate } from "react-router-dom";
