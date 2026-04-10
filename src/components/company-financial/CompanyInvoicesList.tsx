@@ -63,6 +63,7 @@ interface Invoice {
   daily_interest_percent: number;
   created_at: string;
   recurring_charge_id: string | null;
+  send_whatsapp: boolean;
 }
 
 interface Props {
@@ -709,6 +710,24 @@ export function CompanyInvoicesList({ companyId }: Props) {
                             <span className="text-xs text-muted-foreground">
                               {inv.installment_number}/{inv.total_installments}
                             </span>
+                          )}
+                          {!isPaid && inv.status !== "cancelled" && (
+                            <Badge
+                              variant={inv.send_whatsapp ? "default" : "secondary"}
+                              className="text-xs cursor-pointer"
+                              onClick={async (e) => {
+                                e.stopPropagation();
+                                const newVal = !inv.send_whatsapp;
+                                await supabase
+                                  .from("company_invoices")
+                                  .update({ send_whatsapp: newVal } as any)
+                                  .eq("id", inv.id);
+                                toast.success(newVal ? "WhatsApp ativado para esta fatura" : "WhatsApp desativado para esta fatura");
+                                fetchInvoices();
+                              }}
+                            >
+                              {inv.send_whatsapp ? "📲 WhatsApp ✓" : "📲 WhatsApp ✗"}
+                            </Badge>
                           )}
                         </div>
                         <div className="flex items-center gap-3 text-xs text-muted-foreground flex-wrap">
