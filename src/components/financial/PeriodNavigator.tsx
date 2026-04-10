@@ -39,7 +39,7 @@ export function getDateRangeForPeriod(period: PeriodType, offset: number): { sta
   switch (period) {
     case "today": {
       const d = addDays(now, offset);
-      const label = offset === 0 ? "Hoje" : format(d, "dd/MM/yyyy");
+      const label = format(d, "dd/MM/yyyy");
       return { start: startOfDay(d), end: endOfDay(d), label };
     }
     case "this_week": {
