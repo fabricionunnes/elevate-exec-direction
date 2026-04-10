@@ -93,6 +93,7 @@ export function CompanyRecurringCharges({
     categoryId: "",
     costCenterId: "",
     asaasAccountId: "",
+    sendWhatsapp: true,
   });
 
   useEffect(() => {
@@ -172,6 +173,7 @@ export function CompanyRecurringCharges({
         category_id: form.categoryId || null,
         cost_center_id: form.costCenterId || null,
         asaas_account_id: form.asaasAccountId || null,
+        send_whatsapp: form.sendWhatsapp,
       } as any).select().single();
 
       if (error) throw error;
