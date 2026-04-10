@@ -100,6 +100,15 @@ export function AutomationRuleDialog({
     setGroupSearch("");
   }, [editingRule, open]);
 
+  // Load pipelines on open
+  useEffect(() => {
+    if (open) {
+      supabase.from("crm_pipelines").select("id, name").order("name").then(({ data }) => {
+        setPipelines(data || []);
+      });
+    }
+  }, [open]);
+
   // Load instances when action is send_whatsapp
   useEffect(() => {
     if (actionType === "send_whatsapp" && open) {
