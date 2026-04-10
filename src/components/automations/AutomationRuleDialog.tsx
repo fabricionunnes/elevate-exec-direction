@@ -522,7 +522,20 @@ export function AutomationRuleDialog({
                   <Label className="text-xs text-muted-foreground">
                     {field.label}
                   </Label>
-                  {field.type === "select" ? (
+                  {field.type === "pipeline_select" ? (
+                    <Select
+                      value={conditions[field.key] || ""}
+                      onValueChange={(v) => setConditions(prev => ({ ...prev, [field.key]: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Todos os pipelines" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Todos os pipelines</SelectItem>
+                        {pipelines.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "select" ? (
                     <Select
                       value={conditions[field.key] || ""}
                       onValueChange={(v) => setConditions(prev => ({ ...prev, [field.key]: v }))}
