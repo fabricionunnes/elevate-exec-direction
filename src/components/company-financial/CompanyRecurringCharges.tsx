@@ -451,6 +451,16 @@ export function CompanyRecurringCharges({
                     </Select>
                   </div>
                 </div>
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+                  <div>
+                    <Label className="text-sm font-medium">Enviar boleto via WhatsApp</Label>
+                    <p className="text-xs text-muted-foreground">Envia automaticamente o link de pagamento ao gerar as faturas</p>
+                  </div>
+                  <Switch
+                    checked={form.sendWhatsapp}
+                    onCheckedChange={(v) => setForm({ ...form, sendWhatsapp: v })}
+                  />
+                </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Criar Recorrência no Asaas
