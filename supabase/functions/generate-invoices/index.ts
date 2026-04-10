@@ -360,6 +360,7 @@ Deno.serve(async (req) => {
           daily_interest_percent: 1.0,
           category_id: charge.category_id || null,
           cost_center_id: charge.cost_center_id || null,
+          send_whatsapp: charge.send_whatsapp !== false,
         });
       }
 
