@@ -360,6 +360,7 @@ Deno.serve(async (req) => {
           daily_interest_percent: 1.0,
           category_id: charge.category_id || null,
           cost_center_id: charge.cost_center_id || null,
+          send_whatsapp: charge.send_whatsapp !== false,
         });
       }
 
@@ -396,7 +397,7 @@ Deno.serve(async (req) => {
       }
 
       // Send WhatsApp notification for the first pending invoice only (if enabled)
-      const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
+      const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending" && i.send_whatsapp !== false);
       if (charge.send_whatsapp !== false && firstInvoiceUrl && firstPendingInv) {
         let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
@@ -672,7 +673,7 @@ Deno.serve(async (req) => {
         }
 
         // Send WhatsApp for first pending invoice (if enabled)
-        const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
+        const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending" && i.send_whatsapp !== false);
         if (charge.send_whatsapp !== false && firstRenewUrl && firstPendingInv) {
           let customerPhone = charge.customer_phone || "";
           const customerName = charge.customer_name || "";

@@ -11744,6 +11744,7 @@ export type Database = {
           payment_method: string | null
           public_token: string
           recurring_charge_id: string | null
+          send_whatsapp: boolean
           status: string
           total_installments: number | null
           total_with_fees_cents: number | null
@@ -11777,6 +11778,7 @@ export type Database = {
           payment_method?: string | null
           public_token?: string
           recurring_charge_id?: string | null
+          send_whatsapp?: boolean
           status?: string
           total_installments?: number | null
           total_with_fees_cents?: number | null
@@ -11810,6 +11812,7 @@ export type Database = {
           payment_method?: string | null
           public_token?: string
           recurring_charge_id?: string | null
+          send_whatsapp?: boolean
           status?: string
           total_installments?: number | null
           total_with_fees_cents?: number | null
