@@ -286,6 +286,25 @@ Deno.serve(async (req) => {
       console.warn('[receive-external-lead] Fabricio Nunnes WhatsApp instance not found');
     }
 
+    // === Fire automation engine for lead_created ===
+    try {
+      await supabase.functions.invoke("automation-engine", {
+        body: {
+          trigger_type: "lead_created",
+          trigger_data: {
+            lead_id: lead.id,
+            lead_name: nome,
+            lead_phone: telefone,
+            company_name: empresa || "",
+            pipeline_id: resolvedPipelineId,
+            pipeline_name: resolvedPipelineName,
+          },
+        },
+      });
+    } catch (autoErr) {
+      console.error("[receive-external-lead] Automation engine error:", autoErr);
+    }
+
     return new Response(JSON.stringify({ success: true, lead_id: lead.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
