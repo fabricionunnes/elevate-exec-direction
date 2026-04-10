@@ -395,9 +395,9 @@ Deno.serve(async (req) => {
         if (!firstInvoiceUrl && url) firstInvoiceUrl = url;
       }
 
-      // Send WhatsApp notification for the first pending invoice only
+      // Send WhatsApp notification for the first pending invoice only (if enabled)
       const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
-      if (firstInvoiceUrl && firstPendingInv) {
+      if (charge.send_whatsapp !== false && firstInvoiceUrl && firstPendingInv) {
         let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
         
@@ -671,9 +671,9 @@ Deno.serve(async (req) => {
           if (!firstRenewUrl && url) firstRenewUrl = url;
         }
 
-        // Send WhatsApp for first pending invoice
+        // Send WhatsApp for first pending invoice (if enabled)
         const firstPendingInv = (inserted || []).find((i: any) => i.status === "pending");
-        if (firstRenewUrl && firstPendingInv) {
+        if (charge.send_whatsapp !== false && firstRenewUrl && firstPendingInv) {
           let customerPhone = charge.customer_phone || "";
           const customerName = charge.customer_name || "";
           if (!customerPhone && charge.company_id) {
@@ -806,7 +806,7 @@ Deno.serve(async (req) => {
         if (!firstRenewUrl && url) firstRenewUrl = url;
       }
 
-      if (firstRenewUrl && (inserted?.length || 0) > 0) {
+      if (charge.send_whatsapp !== false && firstRenewUrl && (inserted?.length || 0) > 0) {
         const firstInv = inserted![0];
         let customerPhone = charge.customer_phone || "";
         const customerName = charge.customer_name || "";
