@@ -7,6 +7,7 @@ function getLocalDateString(date = new Date()): string {
   return `${y}-${m}-${d}`;
 }
 import { syncEntryToContaAzul, syncPaymentToContaAzul } from "@/utils/contaAzulSync";
+import { PeriodNavigator, getDateRangeForPeriod, type PeriodType } from "@/components/financial/PeriodNavigator";
 import { sendPaymentNotification } from "@/utils/paymentNotification";
 import { getDefaultWhatsAppInstance } from "@/utils/whatsapp-defaults";
 import { useNavigate } from "react-router-dom";
@@ -330,8 +331,10 @@ export default function AllRecurringChargesPage() {
   const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
   const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
   const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
-  const [receivablePeriod, setReceivablePeriod] = useState("this_month");
-  const [payablePeriod, setPayablePeriod] = useState("this_month");
+  const [receivablePeriod, setReceivablePeriod] = useState<PeriodType>("this_month");
+  const [payablePeriod, setPayablePeriod] = useState<PeriodType>("this_month");
+  const [receivableOffset, setReceivableOffset] = useState(0);
+  const [payableOffset, setPayableOffset] = useState(0);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
@@ -348,6 +351,20 @@ export default function AllRecurringChargesPage() {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth() + 1, 0);
   });
+
+  // Sync receivable dates from period+offset
+  useEffect(() => {
+    const { start, end } = getDateRangeForPeriod(receivablePeriod, receivableOffset);
+    setDateFrom(start ?? undefined);
+    setDateTo(end ?? undefined);
+  }, [receivablePeriod, receivableOffset]);
+
+  // Sync payable dates from period+offset
+  useEffect(() => {
+    const { start, end } = getDateRangeForPeriod(payablePeriod, payableOffset);
+    setPayableDateFrom(start ?? undefined);
+    setPayableDateTo(end ?? undefined);
+  }, [payablePeriod, payableOffset]);
 
   useEffect(() => {
     if (!finPerms.loading) {
@@ -1512,21 +1529,15 @@ export default function AllRecurringChargesPage() {
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-5 mt-3">
-                    <Select value={receivablePeriod} onValueChange={(v) => { setReceivablePeriod(v); applyPeriodPreset(v, setDateFrom, setDateTo); }}>
-                      <SelectTrigger>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        <SelectValue placeholder="Período" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Hoje</SelectItem>
-                        <SelectItem value="this_week">Esta semana</SelectItem>
-                        <SelectItem value="this_month">Este mês</SelectItem>
-                        <SelectItem value="this_year">Este ano</SelectItem>
-                        <SelectItem value="last_30">Últimos 30 dias</SelectItem>
-                        <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                        <SelectItem value="all">Todo o período</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground font-medium">Vencimento</span>
+                      <PeriodNavigator
+                        period={receivablePeriod}
+                        offset={receivableOffset}
+                        onPeriodChange={(p) => { setReceivablePeriod(p); setReceivableOffset(0); }}
+                        onOffsetChange={setReceivableOffset}
+                      />
+                    </div>
                     <SearchableSelect
                       value={selectedCategory}
                       onValueChange={setSelectedCategory}
@@ -2012,21 +2023,15 @@ export default function AllRecurringChargesPage() {
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
-                    <Select value={payablePeriod} onValueChange={(v) => { setPayablePeriod(v); applyPeriodPreset(v, setPayableDateFrom, setPayableDateTo); }}>
-                      <SelectTrigger>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        <SelectValue placeholder="Período" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Hoje</SelectItem>
-                        <SelectItem value="this_week">Esta semana</SelectItem>
-                        <SelectItem value="this_month">Este mês</SelectItem>
-                        <SelectItem value="this_year">Este ano</SelectItem>
-                        <SelectItem value="last_30">Últimos 30 dias</SelectItem>
-                        <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                        <SelectItem value="all">Todo o período</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground font-medium">Vencimento</span>
+                      <PeriodNavigator
+                        period={payablePeriod}
+                        offset={payableOffset}
+                        onPeriodChange={(p) => { setPayablePeriod(p); setPayableOffset(0); }}
+                        onOffsetChange={setPayableOffset}
+                      />
+                    </div>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateFrom && "text-muted-foreground")}>

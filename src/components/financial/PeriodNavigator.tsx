@@ -39,7 +39,7 @@ export function getDateRangeForPeriod(period: PeriodType, offset: number): { sta
   switch (period) {
     case "today": {
       const d = addDays(now, offset);
-      const label = offset === 0 ? "Hoje" : format(d, "dd/MM/yyyy");
+      const label = format(d, "dd/MM/yyyy");
       return { start: startOfDay(d), end: endOfDay(d), label };
     }
     case "this_week": {
@@ -97,7 +97,7 @@ export function PeriodNavigator({ period, offset, onPeriodChange, onOffsetChange
       <Select value={period} onValueChange={(v) => handlePeriodChange(v as PeriodType)}>
         <SelectTrigger className="w-[200px] h-9">
           <CalendarDays className="h-4 w-4 mr-2 shrink-0" />
-          {offset !== 0 ? <span className="truncate text-sm">{label}</span> : <SelectValue placeholder="Período" />}
+          <span className="truncate text-sm">{label}</span>
         </SelectTrigger>
         <SelectContent>
           <SelectItem value="today">Hoje</SelectItem>
