@@ -2023,21 +2023,15 @@ export default function AllRecurringChargesPage() {
                     />
                   </div>
                   <div className="grid gap-3 md:grid-cols-2 lg:grid-cols-3 mt-3">
-                    <Select value={payablePeriod} onValueChange={(v) => { setPayablePeriod(v); applyPeriodPreset(v, setPayableDateFrom, setPayableDateTo); }}>
-                      <SelectTrigger>
-                        <CalendarDays className="mr-2 h-4 w-4" />
-                        <SelectValue placeholder="Período" />
-                      </SelectTrigger>
-                      <SelectContent>
-                        <SelectItem value="today">Hoje</SelectItem>
-                        <SelectItem value="this_week">Esta semana</SelectItem>
-                        <SelectItem value="this_month">Este mês</SelectItem>
-                        <SelectItem value="this_year">Este ano</SelectItem>
-                        <SelectItem value="last_30">Últimos 30 dias</SelectItem>
-                        <SelectItem value="last_12_months">Últimos 12 meses</SelectItem>
-                        <SelectItem value="all">Todo o período</SelectItem>
-                      </SelectContent>
-                    </Select>
+                    <div className="flex flex-col gap-1">
+                      <span className="text-xs text-muted-foreground font-medium">Vencimento</span>
+                      <PeriodNavigator
+                        period={payablePeriod}
+                        offset={payableOffset}
+                        onPeriodChange={(p) => { setPayablePeriod(p); setPayableOffset(0); }}
+                        onOffsetChange={setPayableOffset}
+                      />
+                    </div>
                     <Popover>
                       <PopoverTrigger asChild>
                         <Button variant="outline" className={cn("justify-start text-left font-normal", !payableDateFrom && "text-muted-foreground")}>
