@@ -352,7 +352,20 @@ export default function AllRecurringChargesPage() {
     return new Date(now.getFullYear(), now.getMonth() + 1, 0);
   });
 
+  // Sync receivable dates from period+offset
   useEffect(() => {
+    const { start, end } = getDateRangeForPeriod(receivablePeriod, receivableOffset);
+    setDateFrom(start ?? undefined);
+    setDateTo(end ?? undefined);
+  }, [receivablePeriod, receivableOffset]);
+
+  // Sync payable dates from period+offset
+  useEffect(() => {
+    const { start, end } = getDateRangeForPeriod(payablePeriod, payableOffset);
+    setPayableDateFrom(start ?? undefined);
+    setPayableDateTo(end ?? undefined);
+  }, [payablePeriod, payableOffset]);
+
     if (!finPerms.loading) {
       if (finPerms.hasFinancialAccess) {
         setUserRole(finPerms.userRole);
