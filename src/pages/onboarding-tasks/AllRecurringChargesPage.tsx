@@ -331,8 +331,10 @@ export default function AllRecurringChargesPage() {
   const [selectedPayableCategory, setSelectedPayableCategory] = useState("all");
   const [selectedPayableCostCenter, setSelectedPayableCostCenter] = useState("all");
   const [selectedPayableConsultant, setSelectedPayableConsultant] = useState("all");
-  const [receivablePeriod, setReceivablePeriod] = useState("this_month");
-  const [payablePeriod, setPayablePeriod] = useState("this_month");
+  const [receivablePeriod, setReceivablePeriod] = useState<PeriodType>("this_month");
+  const [payablePeriod, setPayablePeriod] = useState<PeriodType>("this_month");
+  const [receivableOffset, setReceivableOffset] = useState(0);
+  const [payableOffset, setPayableOffset] = useState(0);
   const [dateFrom, setDateFrom] = useState<Date | undefined>(() => {
     const now = new Date();
     return new Date(now.getFullYear(), now.getMonth(), 1);
