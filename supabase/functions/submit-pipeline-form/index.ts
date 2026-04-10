@@ -308,6 +308,24 @@ Deno.serve(async (req) => {
     // ── WhatsApp notification ──
     await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
 
+    // ── Fire automation engine for lead_created ──
+    try {
+      await supabase.functions.invoke("automation-engine", {
+        body: {
+          trigger_type: "lead_created",
+          trigger_data: {
+            lead_id: lead.id,
+            lead_name: nome,
+            lead_phone: cleanPhone,
+            company_name: empresa || "",
+            pipeline_id: form.pipeline_id,
+          },
+        },
+      });
+    } catch (autoErr) {
+      console.error("[submit-pipeline-form] Automation engine error:", autoErr);
+    }
+
     return jsonResponse({ success: true, lead_id: lead.id });
 
   } catch (error: unknown) {

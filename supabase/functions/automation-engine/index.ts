@@ -261,6 +261,8 @@ async function executeSendWhatsApp(supabase: any, config: any, data: any) {
 
   if (targetType === "phone" || targetType === "group") {
     targetNumber = config.target_phone || "";
+  } else if (targetType === "lead_phone" && data.lead_phone) {
+    targetNumber = data.lead_phone;
   } else if (targetType === "cs_responsible" && data.cs_phone) {
     targetNumber = data.cs_phone;
   } else if (targetType === "consultant_responsible" && data.consultant_phone) {

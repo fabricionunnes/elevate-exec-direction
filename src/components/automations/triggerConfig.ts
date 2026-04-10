@@ -217,6 +217,7 @@ export const ACTION_DEFINITIONS: ActionDefinition[] = [
         label: "Enviar para",
         type: "select",
         options: [
+          { value: "lead_phone", label: "Telefone do lead (cadastrado)" },
           { value: "phone", label: "Número de telefone" },
           { value: "group", label: "Grupo do WhatsApp (JID)" },
           { value: "cs_responsible", label: "CS Responsável" },
