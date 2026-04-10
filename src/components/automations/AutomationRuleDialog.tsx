@@ -40,6 +40,11 @@ interface WhatsAppGroup {
   subject: string;
 }
 
+interface Pipeline {
+  id: string;
+  name: string;
+}
+
 interface AutomationRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -68,6 +73,9 @@ export function AutomationRuleDialog({
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
 
+  // Pipelines for CRM triggers
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
+
   useEffect(() => {
     if (editingRule) {
       setName(editingRule.name);
@@ -91,6 +99,15 @@ export function AutomationRuleDialog({
     setGroups([]);
     setGroupSearch("");
   }, [editingRule, open]);
+
+  // Load pipelines on open
+  useEffect(() => {
+    if (open) {
+      supabase.from("crm_pipelines").select("id, name").order("name").then(({ data }) => {
+        setPipelines(data || []);
+      });
+    }
+  }, [open]);
 
   // Load instances when action is send_whatsapp
   useEffect(() => {
@@ -505,7 +522,20 @@ export function AutomationRuleDialog({
                   <Label className="text-xs text-muted-foreground">
                     {field.label}
                   </Label>
-                  {field.type === "select" ? (
+                  {field.type === "pipeline_select" ? (
+                    <Select
+                      value={conditions[field.key] || ""}
+                      onValueChange={(v) => setConditions(prev => ({ ...prev, [field.key]: v }))}
+                    >
+                      <SelectTrigger><SelectValue placeholder="Todos os pipelines" /></SelectTrigger>
+                      <SelectContent>
+                        <SelectItem value="any">Todos os pipelines</SelectItem>
+                        {pipelines.map((p) => (
+                          <SelectItem key={p.id} value={p.id}>{p.name}</SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                  ) : field.type === "select" ? (
                     <Select
                       value={conditions[field.key] || ""}
                       onValueChange={(v) => setConditions(prev => ({ ...prev, [field.key]: v }))}

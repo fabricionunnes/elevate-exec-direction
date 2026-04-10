@@ -13,7 +13,7 @@ export interface TriggerDefinition {
 export interface ConditionField {
   key: string;
   label: string;
-  type: "number" | "text" | "select";
+  type: "number" | "text" | "select" | "pipeline_select";
   options?: { value: string; label: string }[];
 }
 
@@ -40,7 +40,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
     conditionFields: [
-      { key: "pipeline_id", label: "Pipeline específico", type: "text" },
+      { key: "pipeline_id", label: "Pipeline específico", type: "pipeline_select" },
     ],
     variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
@@ -50,7 +50,9 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     module: "crm",
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
-    conditionFields: [],
+    conditionFields: [
+      { key: "pipeline_id", label: "Pipeline específico", type: "pipeline_select" },
+    ],
     variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
@@ -59,7 +61,9 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     module: "crm",
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
-    conditionFields: [],
+    conditionFields: [
+      { key: "pipeline_id", label: "Pipeline específico", type: "pipeline_select" },
+    ],
     variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
@@ -68,7 +72,9 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     module: "crm",
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
-    conditionFields: [],
+    conditionFields: [
+      { key: "pipeline_id", label: "Pipeline específico", type: "pipeline_select" },
+    ],
     variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
   },
   {
@@ -131,6 +137,7 @@ export const TRIGGER_DEFINITIONS: TriggerDefinition[] = [
     moduleLabel: "CRM",
     moduleColor: "bg-blue-100 text-blue-800",
     conditionFields: [
+      { key: "pipeline_id", label: "Pipeline específico", type: "pipeline_select" },
       { key: "days_inactive", label: "Dias sem atividade (≥)", type: "number" },
     ],
     variables: ["lead_name", "company_name", "cs_responsavel", "consultor_responsavel"],
