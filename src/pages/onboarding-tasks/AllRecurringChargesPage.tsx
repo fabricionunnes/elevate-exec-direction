@@ -366,6 +366,7 @@ export default function AllRecurringChargesPage() {
     setPayableDateTo(end ?? undefined);
   }, [payablePeriod, payableOffset]);
 
+  useEffect(() => {
     if (!finPerms.loading) {
       if (finPerms.hasFinancialAccess) {
         setUserRole(finPerms.userRole);
