@@ -11955,6 +11955,7 @@ export type Database = {
           pagarme_plan_id: string | null
           payment_method: string
           recurrence: string
+          send_whatsapp: boolean
           updated_at: string
         }
         Insert: {
@@ -11980,6 +11981,7 @@ export type Database = {
           pagarme_plan_id?: string | null
           payment_method?: string
           recurrence?: string
+          send_whatsapp?: boolean
           updated_at?: string
         }
         Update: {
@@ -12005,6 +12007,7 @@ export type Database = {
           pagarme_plan_id?: string | null
           payment_method?: string
           recurrence?: string
+          send_whatsapp?: boolean
           updated_at?: string
         }
         Relationships: [
