@@ -267,6 +267,7 @@ export function AutomationRuleDialog({
           >
             <SelectTrigger><SelectValue placeholder="Selecione..." /></SelectTrigger>
             <SelectContent>
+              <SelectItem value="lead_phone">Telefone do lead (cadastrado)</SelectItem>
               <SelectItem value="phone">Número de telefone</SelectItem>
               <SelectItem value="group">Grupo do WhatsApp</SelectItem>
               <SelectItem value="cs_responsible">CS Responsável</SelectItem>
@@ -276,8 +277,8 @@ export function AutomationRuleDialog({
           </Select>
         </div>
 
-        {/* Instance selector (always shown for phone/group) */}
-        {(targetType === "phone" || targetType === "group") && (
+        {/* Instance selector (always shown for phone/group/lead_phone) */}
+        {(targetType === "phone" || targetType === "group" || targetType === "lead_phone") && (
           <div className="space-y-1">
             <Label className="text-xs text-muted-foreground">Instância WhatsApp</Label>
             {loadingInstances ? (
