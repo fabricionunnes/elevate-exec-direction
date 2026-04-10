@@ -40,6 +40,11 @@ interface WhatsAppGroup {
   subject: string;
 }
 
+interface Pipeline {
+  id: string;
+  name: string;
+}
+
 interface AutomationRuleDialogProps {
   open: boolean;
   onOpenChange: (open: boolean) => void;
@@ -67,6 +72,9 @@ export function AutomationRuleDialog({
   const [groups, setGroups] = useState<WhatsAppGroup[]>([]);
   const [loadingGroups, setLoadingGroups] = useState(false);
   const [groupSearch, setGroupSearch] = useState("");
+
+  // Pipelines for CRM triggers
+  const [pipelines, setPipelines] = useState<Pipeline[]>([]);
 
   useEffect(() => {
     if (editingRule) {
