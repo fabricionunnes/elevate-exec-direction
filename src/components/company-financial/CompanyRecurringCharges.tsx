@@ -38,6 +38,7 @@ interface RecurringCharge {
   recurrence: string;
   next_charge_date: string;
   is_active: boolean;
+  send_whatsapp: boolean;
   customer_name: string | null;
   customer_email: string | null;
   customer_phone: string | null;
@@ -93,6 +94,7 @@ export function CompanyRecurringCharges({
     categoryId: "",
     costCenterId: "",
     asaasAccountId: "",
+    sendWhatsapp: true,
   });
 
   useEffect(() => {
@@ -172,6 +174,7 @@ export function CompanyRecurringCharges({
         category_id: form.categoryId || null,
         cost_center_id: form.costCenterId || null,
         asaas_account_id: form.asaasAccountId || null,
+        send_whatsapp: form.sendWhatsapp,
       } as any).select().single();
 
       if (error) throw error;
@@ -449,6 +452,16 @@ export function CompanyRecurringCharges({
                     </Select>
                   </div>
                 </div>
+                <div className="flex items-center justify-between rounded-lg border p-3 bg-muted/30">
+                  <div>
+                    <Label className="text-sm font-medium">Enviar boleto via WhatsApp</Label>
+                    <p className="text-xs text-muted-foreground">Envia automaticamente o link de pagamento ao gerar as faturas</p>
+                  </div>
+                  <Switch
+                    checked={form.sendWhatsapp}
+                    onCheckedChange={(v) => setForm({ ...form, sendWhatsapp: v })}
+                  />
+                </div>
                 <Button type="button" onClick={handleCreate} disabled={saving} className="w-full">
                   {saving && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
                   Criar Recorrência no Asaas
@@ -480,6 +493,21 @@ export function CompanyRecurringCharges({
                     {charge.pagarme_link_url && (
                       <Badge variant="outline" className="text-xs">Asaas ✓</Badge>
                     )}
+                    <Badge
+                      variant={charge.send_whatsapp ? "default" : "secondary"}
+                      className="text-xs cursor-pointer"
+                      onClick={async () => {
+                        const newVal = !charge.send_whatsapp;
+                        await supabase
+                          .from("company_recurring_charges")
+                          .update({ send_whatsapp: newVal } as any)
+                          .eq("id", charge.id);
+                        toast.success(newVal ? "WhatsApp ativado" : "WhatsApp desativado");
+                        fetchCharges();
+                      }}
+                    >
+                      {charge.send_whatsapp ? "📲 WhatsApp ✓" : "📲 WhatsApp ✗"}
+                    </Badge>
                   </div>
                   <div className="flex items-center gap-3 text-sm text-muted-foreground">
                     <span>R$ {(charge.amount_cents / 100).toFixed(2).replace(".", ",")}</span>
