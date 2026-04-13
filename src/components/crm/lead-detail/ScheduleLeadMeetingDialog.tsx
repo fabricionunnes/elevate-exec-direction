@@ -344,6 +344,45 @@ export const ScheduleLeadMeetingDialog = ({
             .eq("id", activityIdToComplete);
         }
 
+        // Enqueue CRM message rules for meeting_scheduled
+        try {
+          const { data: leadForQueue } = await supabase
+            .from("crm_leads")
+            .select("phone, email, company, pipeline_id")
+            .eq("id", leadId)
+            .single();
+
+          if (leadForQueue?.phone) {
+            const meetingDate = format(new Date(formData.date), "dd/MM/yyyy", { locale: ptBR });
+            const selectedCloserObj = connectedStaff.find(s => s.user_id === selectedStaffUserId);
+            const pipelineName = leadForQueue.pipeline_id
+              ? (await supabase.from("crm_pipelines").select("name").eq("id", leadForQueue.pipeline_id).single())?.data?.name || ""
+              : "";
+
+            await supabase.functions.invoke("crm-message-queue", {
+              body: {
+                action: "enqueue",
+                trigger_type: "meeting_scheduled",
+                lead_id: leadId,
+                lead_name: leadName,
+                lead_phone: leadForQueue.phone,
+                lead_email: leadForQueue.email || leadEmail || "",
+                company_name: leadForQueue.company || "",
+                pipeline_id: leadForQueue.pipeline_id || "",
+                pipeline_name: pipelineName,
+                stage_id: "",
+                stage_name: "",
+                meeting_link: data.event?.meetingLink || "",
+                meeting_date: meetingDate,
+                meeting_time: formData.startTime,
+                responsible_name: selectedCloserObj?.name || "",
+              },
+            });
+          }
+        } catch (queueErr) {
+          console.error("[ScheduleMeeting] Message queue error:", queueErr);
+        }
+
         if (data.event?.meetingLink) {
           setCreatedMeetLink(data.event.meetingLink);
         } else {
