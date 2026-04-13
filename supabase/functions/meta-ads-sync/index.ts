@@ -306,9 +306,70 @@ Deno.serve(async (req) => {
       if (adsets.length > 0) await supabase.from("meta_ads_adsets").insert(adsets);
       if (ads.length > 0) await supabase.from("meta_ads_ads").insert(ads);
 
+      // ── Fetch Instagram Business Account insights ──
+      let igProfileViews = 0;
+      let igFollowersCount = 0;
+      try {
+        // Get Facebook Pages linked to the ad account
+        const pagesUrl = `${GRAPH_API}/${adAccountId}/assigned_pages?fields=id,instagram_business_account&access_token=${token}`;
+        const pagesRes = await fetchWithTimeout(pagesUrl);
+        const pagesData = await pagesRes.json();
+        
+        // Try alternate endpoint if assigned_pages fails
+        let igAccountId: string | null = null;
+        if (pagesData.data) {
+          for (const page of pagesData.data) {
+            if (page.instagram_business_account?.id) {
+              igAccountId = page.instagram_business_account.id;
+              break;
+            }
+          }
+        }
+        
+        if (!igAccountId) {
+          // Try via /me/accounts (user pages)
+          const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,instagram_business_account&access_token=${token}`;
+          const userPagesRes = await fetchWithTimeout(userPagesUrl);
+          const userPagesData = await userPagesRes.json();
+          if (userPagesData.data) {
+            for (const page of userPagesData.data) {
+              if (page.instagram_business_account?.id) {
+                igAccountId = page.instagram_business_account.id;
+                break;
+              }
+            }
+          }
+        }
+
+        if (igAccountId) {
+          // Get followers count
+          const igUserUrl = `${GRAPH_API}/${igAccountId}?fields=followers_count&access_token=${token}`;
+          const igUserRes = await fetchWithTimeout(igUserUrl);
+          const igUserData = await igUserRes.json();
+          igFollowersCount = Number(igUserData.followers_count || 0);
+
+          // Get profile views (last 28 days)
+          const insightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_views&period=day&since=${start}&until=${end}&access_token=${token}`;
+          const insightsRes = await fetchWithTimeout(insightsUrl);
+          const insightsData = await insightsRes.json();
+          if (insightsData.data?.[0]?.values) {
+            igProfileViews = insightsData.data[0].values.reduce((sum: number, v: any) => sum + Number(v.value || 0), 0);
+          }
+        }
+
+        // Save to meta_ads_accounts
+        await supabase.from("meta_ads_accounts").update({
+          ig_profile_views: igProfileViews,
+          ig_followers_count: igFollowersCount,
+        }).eq("project_id", project_id).eq("is_connected", true);
+      } catch (igErr) {
+        console.error("Instagram insights fetch error (non-fatal):", igErr);
+      }
+
       return new Response(JSON.stringify({
         success: true,
         synced: { campaigns: campaigns.length, adsets: adsets.length, ads: ads.length },
+        instagram: { profile_views: igProfileViews, followers: igFollowersCount },
       }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
