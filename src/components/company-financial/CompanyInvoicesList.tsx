@@ -184,10 +184,6 @@ export function CompanyInvoicesList({ companyId }: Props) {
       return;
     }
 
-    if ((freshInvoice as any)?.recurring_charge_id && (freshInvoice as any)?.due_date > todayStr) {
-      toast.error("Parcela futura de recorrência não pode ser baixada por esse atalho. Aguarde a baixa automática da integração.");
-      return;
-    }
 
     const { error } = await supabase
       .from("company_invoices")
