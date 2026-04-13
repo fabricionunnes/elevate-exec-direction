@@ -21807,6 +21807,8 @@ export type Database = {
           connected_by: string | null
           created_at: string
           id: string
+          ig_followers_count: number | null
+          ig_profile_views: number | null
           is_connected: boolean
           project_id: string
           token_expires_at: string | null
@@ -21819,6 +21821,8 @@ export type Database = {
           connected_by?: string | null
           created_at?: string
           id?: string
+          ig_followers_count?: number | null
+          ig_profile_views?: number | null
           is_connected?: boolean
           project_id: string
           token_expires_at?: string | null
@@ -21831,6 +21835,8 @@ export type Database = {
           connected_by?: string | null
           created_at?: string
           id?: string
+          ig_followers_count?: number | null
+          ig_profile_views?: number | null
           is_connected?: boolean
           project_id?: string
           token_expires_at?: string | null
