@@ -910,6 +910,29 @@ const OnboardingTasksPage = () => {
     return { promoters, detractors };
   }, [npsResponses]);
 
+  // Helper: resolve the effective monthly target for a KPI from kpi_monthly_targets.
+  // Priority: company-level target (no unit/team/salesperson) > sum of unit-level targets > kpi.target_value adjusted by periodicity
+  const resolveMonthlyTarget = (kpiId: string, companyId: string, monthYear: string, kpiTargetValue: number, kpiPeriodicity: string, daysInMonth: number): number => {
+    // 1. Company-level target
+    const companyLevel = monthlyTargetsForProjection.find(
+      t => t.kpi_id === kpiId && t.company_id === companyId && t.month_year === monthYear &&
+           t.unit_id === null && t.team_id === null && t.salesperson_id === null
+    );
+    if (companyLevel) return companyLevel.target_value;
+
+    // 2. Sum of unit-level targets (no team/salesperson)
+    const unitTargets = monthlyTargetsForProjection.filter(
+      t => t.kpi_id === kpiId && t.company_id === companyId && t.month_year === monthYear &&
+           t.unit_id !== null && t.team_id === null && t.salesperson_id === null
+    );
+    if (unitTargets.length > 0) return unitTargets.reduce((sum, t) => sum + t.target_value, 0);
+
+    // 3. Fallback to kpi.target_value adjusted by periodicity
+    if (kpiPeriodicity === "daily") return kpiTargetValue * daysInMonth;
+    if (kpiPeriodicity === "weekly") return kpiTargetValue * Math.ceil(daysInMonth / 7);
+    return kpiTargetValue;
+  };
+
   // Calculate company goal projection ranges for the selected period (using company KPIs - same logic as DashboardMetrics)
   const companiesGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
