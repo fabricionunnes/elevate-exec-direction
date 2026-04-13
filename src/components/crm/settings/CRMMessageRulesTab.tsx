@@ -576,7 +576,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                     className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs font-mono hover:bg-accent transition-colors cursor-pointer"
                     onClick={() => {
                       navigator.clipboard.writeText(v.var);
-                      toast({ title: `${v.var} copiado!`, duration: 1500 });
+                      toast.success(`${v.var} copiado!`);
                     }}
                     title={v.desc}
                   >
