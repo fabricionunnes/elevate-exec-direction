@@ -388,6 +388,9 @@ export async function generateMetaAdsPdf(
     { key: "cost_per_conversation", label: "Custo/Conversa", value: formatCurrency(costPerConv) },
     { key: "frequency", label: "Frequência", value: avgFrequency.toFixed(2) },
     { key: "leads", label: "Leads", value: formatNumber(totals.leads) },
+    { key: "profile_visits", label: "Visitas ao Perfil", value: formatNumber(profileVisits) },
+    { key: "followers", label: "Seguidores", value: formatNumber(followersCount) },
+    { key: "visit_to_follower", label: "Conversão Visita→Seguidor", value: visitToFollower > 0 ? formatPercent(visitToFollower) : "—" },
   ];
 
   const kpis = allKpis.filter(k => isVis(k.key));
