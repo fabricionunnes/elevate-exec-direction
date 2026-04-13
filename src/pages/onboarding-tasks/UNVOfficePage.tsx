@@ -1,11 +1,28 @@
 import { useNavigate } from "react-router-dom";
+import { useEffect, useState } from "react";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import ClientUNVOffice from "@/components/client-office/ClientUNVOffice";
+import { supabase } from "@/integrations/supabase/client";
 
 const UNVOfficePage = () => {
   const navigate = useNavigate();
+  const [userId, setUserId] = useState<string | null>(null);
+
+  useEffect(() => {
+    supabase.auth.getUser().then(({ data }) => {
+      setUserId(data.user?.id || null);
+    });
+  }, []);
+
+  if (!userId) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="animate-spin rounded-full h-10 w-10 border-b-2 border-primary" />
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-background">
@@ -18,7 +35,7 @@ const UNVOfficePage = () => {
         </div>
       </div>
       <div className="p-0">
-        <ClientUNVOffice projectId="staff" />
+        <ClientUNVOffice projectId="staff" currentUserId={userId} />
       </div>
     </div>
   );
