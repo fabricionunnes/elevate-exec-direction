@@ -32,9 +32,12 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
   const [embedInput, setEmbedInput] = useState("");
   const [configTab, setConfigTab] = useState("url");
   const { hasPermission, currentUser } = useClientPermissions(projectId);
-  // Staff (canEdit) always sees Meta Ads; clients need permission
   const hasMetaAds = canEdit || !currentUser || hasPermission(CLIENT_MENU_KEYS.meta_ads);
   const [activeTab, setActiveTab] = useState(hasMetaAds ? "meta_ads" : "dashboard");
+
+  // Instagram stats for cards
+  const [profileVisits, setProfileVisits] = useState<number>(0);
+  const [followersCount, setFollowersCount] = useState<number>(0);
 
   useEffect(() => {
     fetchData();
