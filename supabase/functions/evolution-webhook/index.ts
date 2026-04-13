@@ -479,6 +479,13 @@ async function handleIncomingMessage(
       console.error('[evolution-webhook] Cancellation detection error (non-blocking):', err)
     );
   }
+
+  // Fire-and-forget: cancel pending CRM message queue items if lead replied
+  if (!fromMe) {
+    cancelPendingQueueOnReply(supabase, phone).catch((err) =>
+      console.error('[evolution-webhook] Queue cancellation error (non-blocking):', err)
+    );
+  }
 }
 
 async function detectCancellationIntent(supabase: any, messageContent: string, phone: string) {
