@@ -511,7 +511,46 @@ async function detectCancellationIntent(supabase: any, messageContent: string, p
   }
 }
 
-async function handleMessageStatusUpdate(supabase: any, data: any) {
+async function cancelPendingQueueOnReply(supabase: any, phone: string) {
+  try {
+    // Normalize phone to match queue format
+    let cleanPhone = phone.replace(/\D/g, '');
+    
+    // Find pending queue items for this phone where rule has stop_on_reply
+    const { data: pendingItems } = await supabase
+      .from('crm_notification_queue')
+      .select('id, rule_id')
+      .eq('phone', cleanPhone)
+      .eq('status', 'pending');
+
+    if (!pendingItems || pendingItems.length === 0) return;
+
+    const ruleIds = [...new Set(pendingItems.map((p: any) => p.rule_id))];
+    const { data: rules } = await supabase
+      .from('crm_notification_rules')
+      .select('id')
+      .in('id', ruleIds)
+      .eq('stop_on_reply', true);
+
+    const stopRuleIds = new Set((rules || []).map((r: any) => r.id));
+    const idsToCancel = pendingItems
+      .filter((p: any) => stopRuleIds.has(p.rule_id))
+      .map((p: any) => p.id);
+
+    if (idsToCancel.length > 0) {
+      await supabase
+        .from('crm_notification_queue')
+        .update({ status: 'cancelled', cancelled_reason: 'lead_replied' })
+        .in('id', idsToCancel);
+
+      console.log(`[evolution-webhook] Cancelled ${idsToCancel.length} queued messages for ${cleanPhone} (lead replied)`);
+    }
+  } catch (err) {
+    console.error('[evolution-webhook] Error cancelling queue on reply:', err);
+  }
+}
+
+
   console.log('Processing message status update:', JSON.stringify(data, null, 2));
 
   const key = data.key;
