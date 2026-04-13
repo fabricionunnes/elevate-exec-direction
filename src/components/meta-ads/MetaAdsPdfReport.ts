@@ -298,37 +298,20 @@ export async function generateMetaAdsPdf(
   visibleMetrics?: Set<string>
 ) {
   // Load logo and data in parallel
-  const [logoBase64, campaignsRes, adsetsRes, adsRes, instagramAccountRes] = await Promise.all([
+  const [logoBase64, campaignsRes, adsetsRes, adsRes, metaAccountRes] = await Promise.all([
     loadLogoBase64(),
     supabase.from("meta_ads_campaigns").select("*").eq("project_id", projectId).eq("date_start", dateStart).eq("date_stop", dateStop).order("spend", { ascending: false }),
     supabase.from("meta_ads_adsets").select("*").eq("project_id", projectId).eq("date_start", dateStart).eq("date_stop", dateStop).order("spend", { ascending: false }),
     supabase.from("meta_ads_ads").select("*").eq("project_id", projectId).eq("date_start", dateStart).eq("date_stop", dateStop).order("spend", { ascending: false }),
-    supabase.from("instagram_accounts").select("id, followers_count").eq("project_id", projectId).eq("status", "connected").maybeSingle(),
+    supabase.from("meta_ads_accounts").select("ig_profile_views, ig_followers_count").eq("project_id", projectId).eq("is_connected", true).maybeSingle(),
   ]);
 
   const campaigns = campaignsRes.data || [];
   const adsets = adsetsRes.data || [];
   const ads = adsRes.data || [];
 
-  // Fetch Instagram profile visits
-  let profileVisits = 0;
-  let followersCount = 0;
-  const instagramAccount = instagramAccountRes.data;
-  if (instagramAccount) {
-    followersCount = instagramAccount.followers_count || 0;
-    const { data: posts } = await supabase
-      .from("instagram_posts")
-      .select("id")
-      .eq("account_id", instagramAccount.id);
-    if (posts && posts.length > 0) {
-      const postIds = posts.map((p: any) => p.id);
-      const { data: metrics } = await supabase
-        .from("instagram_post_metrics")
-        .select("profile_visits")
-        .in("post_id", postIds);
-      profileVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
-    }
-  }
+  const profileVisits = (metaAccountRes.data as any)?.ig_profile_views || 0;
+  const followersCount = (metaAccountRes.data as any)?.ig_followers_count || 0;
   const visitToFollower = profileVisits > 0 ? (followersCount / profileVisits * 100) : 0;
 
   // Try to capture charts from the DOM
