@@ -55,6 +55,7 @@ interface NotificationRule {
   stage_id: string | null;
   whatsapp_instance_id: string | null;
   is_active: boolean;
+  stop_on_reply: boolean;
   created_at: string;
 }
 
@@ -64,7 +65,13 @@ interface RuleMessage {
   message_template: string;
   delay_minutes: number;
   sort_order: number;
+  send_condition: string;
 }
+
+const SEND_CONDITION_OPTIONS = [
+  { value: "always", label: "Sempre enviar" },
+  { value: "only_if_no_reply", label: "Somente se não respondeu" },
+];
 
 interface WhatsAppInstance {
   id: string;
@@ -128,8 +135,9 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
   const [formPipeline, setFormPipeline] = useState<string>("all");
   const [formStage, setFormStage] = useState<string>("all");
   const [formInstance, setFormInstance] = useState<string>("");
-  const [formMessages, setFormMessages] = useState<{ message_template: string; delay_minutes: number }[]>([
-    { message_template: "", delay_minutes: 0 },
+  const [formStopOnReply, setFormStopOnReply] = useState(false);
+  const [formMessages, setFormMessages] = useState<{ message_template: string; delay_minutes: number; send_condition: string }[]>([
+    { message_template: "", delay_minutes: 0, send_condition: "always" },
   ]);
 
   useEffect(() => {
@@ -171,7 +179,8 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
     setFormPipeline("all");
     setFormStage("all");
     setFormInstance("");
-    setFormMessages([{ message_template: "", delay_minutes: 0 }]);
+    setFormStopOnReply(false);
+    setFormMessages([{ message_template: "", delay_minutes: 0, send_condition: "always" }]);
     setEditingRule(null);
   };
 
@@ -187,6 +196,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
     setFormPipeline(rule.pipeline_id || "all");
     setFormStage(rule.stage_id || "all");
     setFormInstance(rule.whatsapp_instance_id || "");
+    setFormStopOnReply(rule.stop_on_reply ?? false);
 
     const ruleMessages = messages
       .filter((m) => m.rule_id === rule.id)
@@ -194,8 +204,8 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
 
     setFormMessages(
       ruleMessages.length > 0
-        ? ruleMessages.map((m) => ({ message_template: m.message_template, delay_minutes: m.delay_minutes }))
-        : [{ message_template: "", delay_minutes: 0 }]
+        ? ruleMessages.map((m) => ({ message_template: m.message_template, delay_minutes: m.delay_minutes, send_condition: m.send_condition || "always" }))
+        : [{ message_template: "", delay_minutes: 0, send_condition: "always" }]
     );
     setDialogOpen(true);
   };
@@ -218,6 +228,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
         pipeline_id: formPipeline === "all" ? null : formPipeline,
         stage_id: formStage === "all" ? null : formStage,
         whatsapp_instance_id: formInstance,
+        stop_on_reply: formStopOnReply,
       };
 
       let ruleId: string;
@@ -251,6 +262,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
         message_template: m.message_template.trim(),
         delay_minutes: m.delay_minutes,
         sort_order: i,
+        send_condition: m.send_condition,
       }));
 
       const { error: msgError } = await supabase
@@ -298,7 +310,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
   };
 
   const addMessage = () => {
-    setFormMessages((prev) => [...prev, { message_template: "", delay_minutes: 1440 }]);
+    setFormMessages((prev) => [...prev, { message_template: "", delay_minutes: 1440, send_condition: "only_if_no_reply" }]);
   };
 
   const removeMessage = (index: number) => {
@@ -422,6 +434,11 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                         <Badge variant="outline" className="text-xs">
                           {ruleMessages.length} msg{ruleMessages.length !== 1 ? "s" : ""}
                         </Badge>
+                        {rule.stop_on_reply && (
+                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">
+                            Para se responder
+                          </Badge>
+                        )}
                       </div>
                       {instanceName && (
                         <p className="text-xs text-muted-foreground mt-1 ml-6">
@@ -452,11 +469,16 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                     <div className="mt-4 ml-6 space-y-2 border-l-2 border-muted pl-4">
                       {ruleMessages.map((msg, i) => (
                         <div key={msg.id} className="flex items-start gap-3">
-                          <div className="flex items-center gap-1.5 min-w-[100px]">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">
-                              {getDelayLabel(msg.delay_minutes)}
-                            </span>
+                          <div className="flex flex-col items-start gap-0.5 min-w-[120px]">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {getDelayLabel(msg.delay_minutes)}
+                              </span>
+                            </div>
+                            {msg.send_condition === "only_if_no_reply" && (
+                              <span className="text-[10px] text-amber-600 ml-5">Se não respondeu</span>
+                            )}
                           </div>
                           <div className="flex-1 bg-muted/50 rounded-lg p-3">
                             <p className="text-sm whitespace-pre-wrap">{msg.message_template}</p>
@@ -565,6 +587,20 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
               </div>
             </div>
 
+            {/* Stop on reply toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <Label className="text-sm font-medium">Parar automação se o lead responder</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cancela as mensagens pendentes da régua quando o lead responde qualquer mensagem
+                </p>
+              </div>
+              <Switch
+                checked={formStopOnReply}
+                onCheckedChange={setFormStopOnReply}
+              />
+            </div>
+
             {/* Variables reference inside dialog */}
             <div className="rounded-lg border bg-muted/50 p-3">
               <p className="text-xs font-medium mb-2 text-muted-foreground">Variáveis disponíveis (clique para copiar):</p>
@@ -637,6 +673,26 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                           )}
                         </div>
                       </div>
+                      {index > 0 && (
+                        <div>
+                          <Label className="text-xs">Condição de envio</Label>
+                          <Select
+                            value={msg.send_condition}
+                            onValueChange={(v) => updateMessage(index, "send_condition", v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SEND_CONDITION_OPTIONS.map((c) => (
+                                <SelectItem key={c.value} value={c.value}>
+                                  {c.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <Textarea
                         value={msg.message_template}
                         onChange={(e) => updateMessage(index, "message_template", e.target.value)}

@@ -13804,6 +13804,7 @@ export type Database = {
       }
       crm_notification_queue: {
         Row: {
+          cancelled_reason: string | null
           created_at: string
           error_message: string | null
           id: string
@@ -13818,6 +13819,7 @@ export type Database = {
           whatsapp_instance_id: string | null
         }
         Insert: {
+          cancelled_reason?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -13832,6 +13834,7 @@ export type Database = {
           whatsapp_instance_id?: string | null
         }
         Update: {
+          cancelled_reason?: string | null
           created_at?: string
           error_message?: string | null
           id?: string
@@ -13883,6 +13886,7 @@ export type Database = {
           id: string
           message_template: string
           rule_id: string
+          send_condition: string
           sort_order: number
         }
         Insert: {
@@ -13891,6 +13895,7 @@ export type Database = {
           id?: string
           message_template: string
           rule_id: string
+          send_condition?: string
           sort_order?: number
         }
         Update: {
@@ -13899,6 +13904,7 @@ export type Database = {
           id?: string
           message_template?: string
           rule_id?: string
+          send_condition?: string
           sort_order?: number
         }
         Relationships: [
@@ -13920,6 +13926,7 @@ export type Database = {
           name: string
           pipeline_id: string | null
           stage_id: string | null
+          stop_on_reply: boolean
           trigger_type: string
           updated_at: string
           whatsapp_instance_id: string | null
@@ -13932,6 +13939,7 @@ export type Database = {
           name: string
           pipeline_id?: string | null
           stage_id?: string | null
+          stop_on_reply?: boolean
           trigger_type: string
           updated_at?: string
           whatsapp_instance_id?: string | null
@@ -13944,6 +13952,7 @@ export type Database = {
           name?: string
           pipeline_id?: string | null
           stage_id?: string | null
+          stop_on_reply?: boolean
           trigger_type?: string
           updated_at?: string
           whatsapp_instance_id?: string | null
