@@ -1036,21 +1036,10 @@ const OnboardingTasksPage = () => {
       
       if (companyKpisList.length === 0) return;
       
-      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === monthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, monthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
       
       // Get entries for this company in the period
@@ -1107,21 +1096,10 @@ const OnboardingTasksPage = () => {
         return;
       }
       
-      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === monthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, monthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
       
       if (totalMonthlyTarget === 0) {
@@ -1215,21 +1193,10 @@ const OnboardingTasksPage = () => {
         return;
       }
 
-      // Monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       kpisForProjection.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === currentMonthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, currentMonthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
 
       if (totalMonthlyTarget <= 0) {
