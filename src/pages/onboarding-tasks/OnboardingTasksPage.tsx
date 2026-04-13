@@ -144,7 +144,7 @@ const OnboardingTasksPage = () => {
   // Health scores array for DashboardMetrics (eliminates duplicate query)
   const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
   
-  const [monthlyTargetsForProjection, setMonthlyTargetsForProjection] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string }[]>([]);
+  const [monthlyTargetsForProjection, setMonthlyTargetsForProjection] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string; unit_id: string | null; team_id: string | null; salesperson_id: string | null }[]>([]);
   // Announcement dialog state
   const [showAnnouncementDialog, setShowAnnouncementDialog] = useState(false);
   
@@ -214,7 +214,7 @@ const OnboardingTasksPage = () => {
       
       const { data } = await supabase
         .from("kpi_monthly_targets")
-        .select("kpi_id, company_id, target_value, month_year")
+        .select("kpi_id, company_id, target_value, month_year, unit_id, team_id, salesperson_id")
         .in("month_year", monthYears);
       
       if (data) setMonthlyTargetsForProjection(data);
@@ -910,6 +910,29 @@ const OnboardingTasksPage = () => {
     return { promoters, detractors };
   }, [npsResponses]);
 
+  // Helper: resolve the effective monthly target for a KPI from kpi_monthly_targets.
+  // Priority: company-level target (no unit/team/salesperson) > sum of unit-level targets > kpi.target_value adjusted by periodicity
+  const resolveMonthlyTarget = (kpiId: string, companyId: string, monthYear: string, kpiTargetValue: number, kpiPeriodicity: string, daysInMonth: number): number => {
+    // 1. Company-level target
+    const companyLevel = monthlyTargetsForProjection.find(
+      t => t.kpi_id === kpiId && t.company_id === companyId && t.month_year === monthYear &&
+           t.unit_id === null && t.team_id === null && t.salesperson_id === null
+    );
+    if (companyLevel) return companyLevel.target_value;
+
+    // 2. Sum of unit-level targets (no team/salesperson)
+    const unitTargets = monthlyTargetsForProjection.filter(
+      t => t.kpi_id === kpiId && t.company_id === companyId && t.month_year === monthYear &&
+           t.unit_id !== null && t.team_id === null && t.salesperson_id === null
+    );
+    if (unitTargets.length > 0) return unitTargets.reduce((sum, t) => sum + t.target_value, 0);
+
+    // 3. Fallback to kpi.target_value adjusted by periodicity
+    if (kpiPeriodicity === "daily") return kpiTargetValue * daysInMonth;
+    if (kpiPeriodicity === "weekly") return kpiTargetValue * Math.ceil(daysInMonth / 7);
+    return kpiTargetValue;
+  };
+
   // Calculate company goal projection ranges for the selected period (using company KPIs - same logic as DashboardMetrics)
   const companiesGoalRanges = useMemo(() => {
     const periodMonth = dateRange.start.getMonth() + 1;
@@ -1013,21 +1036,10 @@ const OnboardingTasksPage = () => {
       
       if (companyKpisList.length === 0) return;
       
-      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === monthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, monthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
       
       // Get entries for this company in the period
@@ -1084,21 +1096,10 @@ const OnboardingTasksPage = () => {
         return;
       }
       
-      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === monthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, monthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
       
       if (totalMonthlyTarget === 0) {
@@ -1192,21 +1193,10 @@ const OnboardingTasksPage = () => {
         return;
       }
 
-      // Monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target using resolveMonthlyTarget helper
       let totalMonthlyTarget = 0;
       kpisForProjection.forEach(kpi => {
-        const mt = monthlyTargetsForProjection.find(
-          t => t.kpi_id === kpi.id && t.company_id === companyId && t.month_year === currentMonthYear
-        );
-        if (mt) {
-          totalMonthlyTarget += mt.target_value;
-        } else if (kpi.periodicity === "daily") {
-          totalMonthlyTarget += kpi.target_value * daysInMonth;
-        } else if (kpi.periodicity === "weekly") {
-          totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
-        } else {
-          totalMonthlyTarget += kpi.target_value;
-        }
+        totalMonthlyTarget += resolveMonthlyTarget(kpi.id, companyId, currentMonthYear, kpi.target_value, kpi.periodicity, daysInMonth);
       });
 
       if (totalMonthlyTarget <= 0) {
