@@ -41,6 +41,7 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
 
   useEffect(() => {
     fetchData();
+    fetchInstagramStats();
   }, [projectId]);
 
   const fetchData = async () => {
@@ -58,6 +59,41 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
+    }
+  };
+
+  const fetchInstagramStats = async () => {
+    try {
+      // Get instagram account for this project
+      const { data: account } = await supabase
+        .from("instagram_accounts")
+        .select("id, followers_count")
+        .eq("project_id", projectId)
+        .eq("status", "connected")
+        .maybeSingle();
+
+      if (!account) return;
+
+      setFollowersCount(account.followers_count || 0);
+
+      // Sum profile_visits from all post metrics for this account
+      const { data: posts } = await supabase
+        .from("instagram_posts")
+        .select("id")
+        .eq("account_id", account.id);
+
+      if (posts && posts.length > 0) {
+        const postIds = posts.map((p: any) => p.id);
+        const { data: metrics } = await supabase
+          .from("instagram_post_metrics")
+          .select("profile_visits")
+          .in("post_id", postIds);
+
+        const totalVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
+        setProfileVisits(totalVisits);
+      }
+    } catch (error) {
+      console.error("Error fetching Instagram stats:", error);
     }
   };
 
