@@ -124,6 +124,7 @@ const OnboardingBulkTemplatesPage = lazy(() => import("./pages/onboarding-tasks/
 const OnboardingImportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingImportPage"));
 const PaymentNotificationsPage = lazy(() => import("./pages/onboarding-tasks/PaymentNotificationsPage"));
 const VirtualOfficePage = lazy(() => import("./pages/onboarding-tasks/VirtualOfficePage"));
+const UNVOfficePage = lazy(() => import("./pages/onboarding-tasks/UNVOfficePage"));
 const CACFormPage = lazy(() => import("./pages/onboarding-tasks/CACFormPage"));
 const RescheduleTasks = lazy(() => import("./pages/onboarding-tasks/RescheduleTasks"));
 const KickoffFormPage = lazy(() => import("./pages/onboarding-tasks/KickoffFormPage"));
@@ -369,6 +370,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/import" element={<OnboardingImportPage />} />
               <Route path="/onboarding-tasks/payment-notifications" element={<PaymentNotificationsPage />} />
               <Route path="/onboarding-tasks/office" element={<VirtualOfficePage />} />
+              <Route path="/onboarding-tasks/unv-office" element={<UNVOfficePage />} />
               <Route path="/onboarding-tasks/reschedule" element={<RescheduleTasks />} />
               <Route path="/onboarding-tasks/renewals" element={<OnboardingRenewalsPage />} />
               <Route path="/onboarding-tasks/cancellations" element={<OnboardingCancellationsPage />} />
