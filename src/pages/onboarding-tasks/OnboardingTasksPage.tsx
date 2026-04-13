@@ -1,5 +1,5 @@
 import { useState, useEffect, useMemo } from "react";
-import { getTotalBusinessDaysInMonth, getBusinessDayNumber } from "@/lib/businessDays";
+import { isHoliday } from "@/lib/businessDays";
 import { useNavigate } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { STAFF_MENU_KEYS } from "@/types/staffPermissions";
@@ -143,6 +143,7 @@ const OnboardingTasksPage = () => {
   const [healthScoresByProject, setHealthScoresByProject] = useState<Map<string, { total_score: number; risk_level: string }>>(new Map());
   // Health scores array for DashboardMetrics (eliminates duplicate query)
   const [healthScoresArray, setHealthScoresArray] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
+  const [companyDailyGoalSettings, setCompanyDailyGoalSettings] = useState<Record<string, { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }>>({});
   
   const [monthlyTargetsForProjection, setMonthlyTargetsForProjection] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string; unit_id: string | null; team_id: string | null; salesperson_id: string | null }[]>([]);
   // Announcement dialog state
@@ -188,6 +189,7 @@ const OnboardingTasksPage = () => {
           fetchHealthScores(),
           fetchCompanyKpis(),
           fetchContractRenewals(),
+          fetchCompanyDailyGoalSettings(),
         ]);
         
         // Then fetch tasks and companies (companies now depends on tasks)
@@ -507,6 +509,29 @@ const OnboardingTasksPage = () => {
     }
   };
 
+  const fetchCompanyDailyGoalSettings = async () => {
+    try {
+      const { data, error } = await supabase
+        .from("company_daily_goal_settings")
+        .select("company_id, include_saturday, include_sunday, include_holidays");
+
+      if (error) throw error;
+
+      const settingsMap = (data || []).reduce((acc, setting) => {
+        acc[setting.company_id] = {
+          includeSaturday: setting.include_saturday,
+          includeSunday: setting.include_sunday,
+          includeHolidays: setting.include_holidays,
+        };
+        return acc;
+      }, {} as Record<string, { includeSaturday: boolean; includeSunday: boolean; includeHolidays: boolean }>);
+
+      setCompanyDailyGoalSettings(settingsMap);
+    } catch (error) {
+      console.error("Error fetching company daily goal settings:", error);
+    }
+  };
+
   const fetchHealthScores = async () => {
     try {
       const { data, error } = await supabase
@@ -518,6 +543,7 @@ const OnboardingTasksPage = () => {
       // Store array for DashboardMetrics (eliminates duplicate query)
       setHealthScoresArray(data || []);
       
+      // Create map for backward compatibility
       const scoresMap = new Map<string, { total_score: number; risk_level: string }>();
       (data || []).forEach(score => {
         scoresMap.set(score.project_id, {
@@ -529,6 +555,48 @@ const OnboardingTasksPage = () => {
     } catch (error) {
       console.error("Error fetching health scores:", error);
     }
+  };
+
+  const getCompanyDaySettings = (companyId: string) => {
+    return companyDailyGoalSettings[companyId] ?? {
+      includeSaturday: false,
+      includeSunday: false,
+      includeHolidays: false,
+    };
+  };
+
+  const countWorkingDaysForCompany = (year: number, monthIndex: number, companyId: string, upToDay?: number) => {
+    const settings = getCompanyDaySettings(companyId);
+    const lastDay = upToDay ?? new Date(year, monthIndex + 1, 0).getDate();
+    let count = 0;
+
+    for (let day = 1; day <= lastDay; day++) {
+      const date = new Date(year, monthIndex, day);
+      const dayOfWeek = date.getDay();
+
+      if (dayOfWeek === 6 && !settings.includeSaturday) continue;
+      if (dayOfWeek === 0 && !settings.includeSunday) continue;
+      if (!settings.includeHolidays && isHoliday(date)) continue;
+
+      count++;
+    }
+
+    return count;
+  };
+
+  const getTimeElapsedPercentForCompany = (
+    companyId: string,
+    year: number,
+    monthIndex: number,
+    currentDayOfMonth: number,
+    isCurrentMonth: boolean
+  ) => {
+    const totalWorkingDays = countWorkingDaysForCompany(year, monthIndex, companyId);
+    const elapsedWorkingDays = isCurrentMonth
+      ? countWorkingDaysForCompany(year, monthIndex, companyId, Math.max(currentDayOfMonth - 1, 0))
+      : totalWorkingDays;
+
+    return totalWorkingDays > 0 ? elapsedWorkingDays / totalWorkingDays : 0;
   };
 
   const checkUserPermissions = async () => {
@@ -938,16 +1006,20 @@ const OnboardingTasksPage = () => {
     const periodMonth = dateRange.start.getMonth() + 1;
     const periodYear = dateRange.start.getFullYear();
     
-    // Calculate time elapsed percentage using business days (D-1 logic)
+    // Calculate time elapsed percentage using each company's working day settings (same logic as projection screen)
     const today = new Date();
     const isCurrentMonth = today.getMonth() + 1 === periodMonth && today.getFullYear() === periodYear;
     const daysInMonth = new Date(periodYear, periodMonth, 0).getDate();
-    const totalBizDays = getTotalBusinessDaysInMonth(periodYear, periodMonth - 1);
-    const elapsedBizDays = isCurrentMonth
-      ? getBusinessDayNumber(new Date(today.getFullYear(), today.getMonth(), today.getDate() - 1))
-      : totalBizDays;
-    const timeElapsedPercent = totalBizDays > 0 ? elapsedBizDays / totalBizDays : 0;
     const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
+    const timeElapsedPercentCache = new Map<string, number>();
+    const getCompanyTimeElapsedPercent = (companyId: string) => {
+      const cached = timeElapsedPercentCache.get(companyId);
+      if (cached !== undefined) return cached;
+
+      const value = getTimeElapsedPercentForCompany(companyId, periodYear, periodMonth - 1, today.getDate(), isCurrentMonth);
+      timeElapsedPercentCache.set(companyId, value);
+      return value;
+    };
     
     // Get active company IDs (exclude inactive/closed companies AND simulator companies)
     const activeCompanyIds = new Set(
@@ -1064,6 +1136,7 @@ const OnboardingTasksPage = () => {
       if (!hasEntries) return;
       
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const timeElapsedPercent = getCompanyTimeElapsedPercent(companyId);
       
       // Calculate projection
       const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
@@ -1122,6 +1195,7 @@ const OnboardingTasksPage = () => {
       }
       
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const timeElapsedPercent = getCompanyTimeElapsedPercent(companyId);
       
       // Calculate PROJECTION (not just realized) - same formula as the first loop
       const projectionPercent = timeElapsedPercent > 0 && totalMonthlyTarget > 0 
@@ -1142,7 +1216,7 @@ const OnboardingTasksPage = () => {
       hasEntries: hasEntriesIds,
       realizedPercent: realizedPercentByCompany
     };
-  }, [dateRange, companies, companyKpis, kpiEntries, monthlyTargetsForProjection]);
+  }, [dateRange, companies, companyKpis, kpiEntries, monthlyTargetsForProjection, companyDailyGoalSettings]);
 
   // Badge projection should match the company KPI dashboard's "Projeção do Mês",
   // which is always based on the current month (not the MonthYearPicker range).
@@ -1152,11 +1226,6 @@ const OnboardingTasksPage = () => {
     const year = now.getFullYear();
     const daysInMonth = new Date(year, month, 0).getDate();
     const currentMonthYear = `${year}-${String(month).padStart(2, "0")}`;
-    
-    // Use business days for projection (D-1 logic)
-    const totalBizDays = getTotalBusinessDaysInMonth(year, month - 1);
-    const elapsedBizDays = getBusinessDayNumber(new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1));
-    const timeElapsedPercent = totalBizDays > 0 ? elapsedBizDays / totalBizDays : 0;
     
     const monthStart = `${year}-${String(month).padStart(2, "0")}-01`;
     const monthEnd = `${year}-${String(month).padStart(2, "0")}-${daysInMonth}`;
@@ -1217,6 +1286,7 @@ const OnboardingTasksPage = () => {
       }
 
       const totalRealized = companyEntries.reduce((sum, e) => sum + e.value, 0);
+      const timeElapsedPercent = getTimeElapsedPercentForCompany(companyId, year, month - 1, now.getDate(), true);
       const projectionPercent = timeElapsedPercent > 0
         ? Math.round(((totalRealized / totalMonthlyTarget) / timeElapsedPercent) * 100)
         : 0;
@@ -1224,7 +1294,7 @@ const OnboardingTasksPage = () => {
     });
 
     return map;
-  }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection]);
+  }, [companies, companyKpis, kpiEntries, monthlyTargetsForProjection, companyDailyGoalSettings]);
 
   const filteredCompanies = useMemo(() => {
     const filtered = companies.filter((company) => {
