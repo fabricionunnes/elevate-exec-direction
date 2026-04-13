@@ -61,6 +61,7 @@ import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
+import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -1922,6 +1923,11 @@ export const CRMSettingsPage = () => {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="mt-6">
           <WonNotificationSettings />
+        </TabsContent>
+
+        {/* Message Rules Tab */}
+        <TabsContent value="message-rules" className="mt-6">
+          <CRMMessageRulesTab pipelines={pipelines} stages={stages} />
         </TabsContent>
 
         {/* Integrations Tab */}
