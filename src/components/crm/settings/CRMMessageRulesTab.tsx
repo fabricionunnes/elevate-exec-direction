@@ -565,6 +565,28 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
               </div>
             </div>
 
+            {/* Variables reference inside dialog */}
+            <div className="rounded-lg border bg-muted/50 p-3">
+              <p className="text-xs font-medium mb-2 text-muted-foreground">Variáveis disponíveis (clique para copiar):</p>
+              <div className="flex flex-wrap gap-1.5">
+                {TEMPLATE_VARIABLES.map((v) => (
+                  <button
+                    key={v.var}
+                    type="button"
+                    className="inline-flex items-center gap-1 rounded-md border bg-background px-2 py-1 text-xs font-mono hover:bg-accent transition-colors cursor-pointer"
+                    onClick={() => {
+                      navigator.clipboard.writeText(v.var);
+                      toast.success(`${v.var} copiado!`);
+                    }}
+                    title={v.desc}
+                  >
+                    {v.var}
+                    <span className="text-muted-foreground font-sans">= {v.desc}</span>
+                  </button>
+                ))}
+              </div>
+            </div>
+
             {/* Messages sequence */}
             <div>
               <div className="flex items-center justify-between mb-3">
