@@ -214,7 +214,7 @@ const OnboardingTasksPage = () => {
       
       const { data } = await supabase
         .from("kpi_monthly_targets")
-        .select("kpi_id, company_id, target_value, month_year")
+        .select("kpi_id, company_id, target_value, month_year, unit_id, team_id, salesperson_id")
         .in("month_year", monthYears);
       
       if (data) setMonthlyTargetsForProjection(data);
