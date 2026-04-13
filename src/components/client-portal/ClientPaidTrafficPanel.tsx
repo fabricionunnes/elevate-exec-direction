@@ -148,6 +148,7 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
 
   const hasConfig = lookerUrl || embedCode;
   const iframeSrc = getIframeSrc();
+  const conversionRate = profileVisits > 0 ? ((followersCount / profileVisits) * 100) : 0;
 
   if (loading) {
     return (
@@ -162,6 +163,37 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
       <div>
         <h2 className="text-lg font-semibold">Tráfego Pago</h2>
         <p className="text-xs text-muted-foreground">Dashboard de performance de campanhas</p>
+      </div>
+
+      {/* Instagram Stats Cards */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Eye className="h-4 w-4 text-purple-500" />
+              <span className="text-xs text-muted-foreground">Visitas ao Perfil</span>
+            </div>
+            <p className="text-2xl font-bold">{profileVisits.toLocaleString("pt-BR")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Users className="h-4 w-4 text-blue-500" />
+              <span className="text-xs text-muted-foreground">Seguidores</span>
+            </div>
+            <p className="text-2xl font-bold">{followersCount.toLocaleString("pt-BR")}</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardContent className="p-4">
+            <div className="flex items-center gap-2 mb-2">
+              <Percent className="h-4 w-4 text-green-500" />
+              <span className="text-xs text-muted-foreground">Conversão Visita → Seguidor</span>
+            </div>
+            <p className="text-2xl font-bold">{conversionRate > 0 ? conversionRate.toFixed(1) + "%" : "—"}</p>
+          </CardContent>
+        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>
