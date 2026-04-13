@@ -246,6 +246,105 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
       // Sync to Clint in background
       if (newLead?.id) {
         syncLeadToClint(newLead.id, "create");
+
+        // Get pipeline name for notifications
+        const { data: pipelineData } = await supabase
+          .from("crm_pipelines")
+          .select("name")
+          .eq("id", pipelineId)
+          .maybeSingle();
+        const pipelineName = pipelineData?.name || "Desconhecido";
+
+        // Fire automation engine for lead_created (notifications, WhatsApp, etc.)
+        try {
+          await supabase.functions.invoke("automation-engine", {
+            body: {
+              trigger_type: "lead_created",
+              trigger_data: {
+                lead_id: newLead.id,
+                lead_name: formData.name,
+                lead_phone: formData.phone || "",
+                company_name: formData.company || "",
+                pipeline_id: pipelineId,
+                pipeline_name: pipelineName,
+              },
+            },
+          });
+        } catch (autoErr) {
+          console.error("[AddLeadDialog] Automation engine error:", autoErr);
+        }
+
+        // Send WhatsApp notifications to staff
+        try {
+          const APP_URL = window.location.origin;
+          const leadLink = `${APP_URL}/#/crm/leads/${newLead.id}`;
+
+          const message = `🚀 *Novo Lead CRM!*\n\n` +
+            `📊 *Funil:* ${pipelineName}\n` +
+            `👤 *Nome:* ${formData.name}\n` +
+            (formData.phone ? `📞 *Telefone:* ${formData.phone}\n` : '') +
+            (formData.email ? `📧 *Email:* ${formData.email}\n` : '') +
+            (formData.company ? `🏢 *Empresa:* ${formData.company}\n` : '') +
+            `\n🔗 *Ver no CRM:* ${leadLink}`;
+
+          const { data: instance } = await supabase
+            .from("whatsapp_instances")
+            .select("instance_name, api_url, api_key")
+            .eq("instance_name", "fabricio-nunnes")
+            .maybeSingle();
+
+          if (instance?.api_url && instance?.api_key && instance?.instance_name) {
+            // Get staff numbers to notify
+            const { data: staffNumbers } = await supabase
+              .from("onboarding_staff")
+              .select("phone")
+              .eq("is_active", true)
+              .in("role", ["master", "head_comercial", "sdr"])
+              .not("phone", "is", null);
+
+            const { data: notifNumbers } = await supabase
+              .from("crm_lead_notification_numbers")
+              .select("phone")
+              .eq("is_active", true);
+
+            const normalizeBRPhone = (p: string) => {
+              let clean = p.replace(/\D/g, "");
+              if (clean.length === 10 || clean.length === 11) clean = "55" + clean;
+              if (clean.length === 12 && clean.startsWith("55")) {
+                clean = clean.slice(0, 4) + "9" + clean.slice(4);
+              }
+              return clean;
+            };
+
+            const numbersToNotify: string[] = [];
+            for (const s of (staffNumbers || [])) {
+              const clean = normalizeBRPhone(s.phone || "");
+              if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
+            }
+            for (const n of (notifNumbers || [])) {
+              const clean = normalizeBRPhone(n.phone || "");
+              if (clean && !numbersToNotify.includes(clean)) numbersToNotify.push(clean);
+            }
+
+            // Send via edge function to avoid CORS
+            for (const phone of numbersToNotify) {
+              try {
+                await supabase.functions.invoke("evolution-api", {
+                  body: {
+                    action: "send-text",
+                    instanceName: instance.instance_name,
+                    number: phone,
+                    text: message,
+                  },
+                });
+              } catch (whatsappErr) {
+                console.error(`[AddLeadDialog] WhatsApp error for ${phone}:`, whatsappErr);
+              }
+            }
+          }
+        } catch (notifErr) {
+          console.error("[AddLeadDialog] Notification error:", notifErr);
+        }
       }
 
       toast.success("Lead criado com sucesso");
