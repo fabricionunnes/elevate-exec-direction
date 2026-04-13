@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3, Eye, Users, Percent } from "lucide-react";
+import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
@@ -32,16 +32,12 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
   const [embedInput, setEmbedInput] = useState("");
   const [configTab, setConfigTab] = useState("url");
   const { hasPermission, currentUser } = useClientPermissions(projectId);
+  // Staff (canEdit) always sees Meta Ads; clients need permission
   const hasMetaAds = canEdit || !currentUser || hasPermission(CLIENT_MENU_KEYS.meta_ads);
   const [activeTab, setActiveTab] = useState(hasMetaAds ? "meta_ads" : "dashboard");
 
-  // Instagram stats for cards
-  const [profileVisits, setProfileVisits] = useState<number>(0);
-  const [followersCount, setFollowersCount] = useState<number>(0);
-
   useEffect(() => {
     fetchData();
-    fetchInstagramStats();
   }, [projectId]);
 
   const fetchData = async () => {
@@ -59,41 +55,6 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
       console.error("Error fetching data:", error);
     } finally {
       setLoading(false);
-    }
-  };
-
-  const fetchInstagramStats = async () => {
-    try {
-      // Get instagram account for this project
-      const { data: account } = await supabase
-        .from("instagram_accounts")
-        .select("id, followers_count")
-        .eq("project_id", projectId)
-        .eq("status", "connected")
-        .maybeSingle();
-
-      if (!account) return;
-
-      setFollowersCount(account.followers_count || 0);
-
-      // Sum profile_visits from all post metrics for this account
-      const { data: posts } = await supabase
-        .from("instagram_posts")
-        .select("id")
-        .eq("account_id", account.id);
-
-      if (posts && posts.length > 0) {
-        const postIds = posts.map((p: any) => p.id);
-        const { data: metrics } = await supabase
-          .from("instagram_post_metrics")
-          .select("profile_visits")
-          .in("post_id", postIds);
-
-        const totalVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
-        setProfileVisits(totalVisits);
-      }
-    } catch (error) {
-      console.error("Error fetching Instagram stats:", error);
     }
   };
 
@@ -148,7 +109,6 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
 
   const hasConfig = lookerUrl || embedCode;
   const iframeSrc = getIframeSrc();
-  const conversionRate = profileVisits > 0 ? ((followersCount / profileVisits) * 100) : 0;
 
   if (loading) {
     return (
@@ -163,37 +123,6 @@ export const ClientPaidTrafficPanel = ({ projectId, canEdit = false }: ClientPai
       <div>
         <h2 className="text-lg font-semibold">Tráfego Pago</h2>
         <p className="text-xs text-muted-foreground">Dashboard de performance de campanhas</p>
-      </div>
-
-      {/* Instagram Stats Cards */}
-      <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Eye className="h-4 w-4 text-purple-500" />
-              <span className="text-xs text-muted-foreground">Visitas ao Perfil</span>
-            </div>
-            <p className="text-2xl font-bold">{profileVisits.toLocaleString("pt-BR")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Users className="h-4 w-4 text-blue-500" />
-              <span className="text-xs text-muted-foreground">Seguidores</span>
-            </div>
-            <p className="text-2xl font-bold">{followersCount.toLocaleString("pt-BR")}</p>
-          </CardContent>
-        </Card>
-        <Card>
-          <CardContent className="p-4">
-            <div className="flex items-center gap-2 mb-2">
-              <Percent className="h-4 w-4 text-green-500" />
-              <span className="text-xs text-muted-foreground">Conversão Visita → Seguidor</span>
-            </div>
-            <p className="text-2xl font-bold">{conversionRate > 0 ? conversionRate.toFixed(1) + "%" : "—"}</p>
-          </CardContent>
-        </Card>
       </div>
 
       <Tabs value={activeTab} onValueChange={setActiveTab}>

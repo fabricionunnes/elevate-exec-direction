@@ -3,6 +3,7 @@ import { useState, useCallback } from "react";
 export const ALL_METRIC_KEYS = [
   "spend", "impressions", "reach", "clicks", "ctr", "cpc", "cpm", "roas",
   "conversations", "cost_per_conversation", "frequency", "leads", "conversions",
+  "profile_visits", "followers", "visit_to_follower",
 ] as const;
 
 export type MetricKey = typeof ALL_METRIC_KEYS[number];
@@ -21,6 +22,9 @@ export const METRIC_LABELS: Record<MetricKey, string> = {
   frequency: "Frequência",
   leads: "Leads",
   conversions: "Conversões",
+  profile_visits: "Visitas ao Perfil",
+  followers: "Seguidores",
+  visit_to_follower: "Conversão Visita → Seguidor",
 };
 
 const STORAGE_KEY = "meta-ads-visible-metrics";
