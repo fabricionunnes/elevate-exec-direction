@@ -20,6 +20,53 @@ Deno.serve(async (req) => {
     const body = await req.json().catch(() => ({}));
     const action = body.action || "process_queue";
 
+    // === ACTION: mark_replied - mark lead as replied, cancel pending msgs ===
+    if (action === "mark_replied") {
+      const { lead_id } = body;
+      if (!lead_id) {
+        return new Response(
+          JSON.stringify({ error: "lead_id is required" }),
+          { status: 400, headers: { ...corsHeaders, "Content-Type": "application/json" } }
+        );
+      }
+
+      // Find pending queue items for this lead where rule has stop_on_reply
+      const { data: pendingItems } = await supabase
+        .from("crm_notification_queue")
+        .select("id, rule_id")
+        .eq("lead_id", lead_id)
+        .eq("status", "pending");
+
+      if (pendingItems && pendingItems.length > 0) {
+        // Get rules with stop_on_reply enabled
+        const ruleIds = [...new Set(pendingItems.map((p: any) => p.rule_id))];
+        const { data: rules } = await supabase
+          .from("crm_notification_rules")
+          .select("id")
+          .in("id", ruleIds)
+          .eq("stop_on_reply", true);
+
+        const stopRuleIds = new Set((rules || []).map((r: any) => r.id));
+        const idsToCancel = pendingItems
+          .filter((p: any) => stopRuleIds.has(p.rule_id))
+          .map((p: any) => p.id);
+
+        if (idsToCancel.length > 0) {
+          await supabase
+            .from("crm_notification_queue")
+            .update({ status: "cancelled", cancelled_reason: "lead_replied" })
+            .in("id", idsToCancel);
+
+          console.log(`[crm-message-queue] Cancelled ${idsToCancel.length} messages for lead ${lead_id} (replied)`);
+        }
+      }
+
+      return new Response(
+        JSON.stringify({ message: "OK", lead_id }),
+        { headers: { ...corsHeaders, "Content-Type": "application/json" } }
+      );
+    }
+
     // === ACTION: enqueue - enqueue messages for a lead based on trigger ===
     if (action === "enqueue") {
       const { trigger_type, lead_id, lead_name, lead_phone, lead_email, company_name, pipeline_id, pipeline_name, stage_id, stage_name } = body;
@@ -32,13 +79,12 @@ Deno.serve(async (req) => {
       }
 
       // Find matching active rules
-      let query = supabase
+      const { data: rules, error: rulesError } = await supabase
         .from("crm_notification_rules")
         .select("*, crm_notification_rule_messages(*)")
         .eq("trigger_type", trigger_type)
         .eq("is_active", true);
 
-      const { data: rules, error: rulesError } = await query;
       if (rulesError) throw rulesError;
 
       if (!rules || rules.length === 0) {
@@ -80,7 +126,6 @@ Deno.serve(async (req) => {
         );
 
         for (const msg of msgs) {
-          // Replace template variables
           let text = msg.message_template;
           text = text.replace(/\{lead_name\}/g, lead_name || "");
           text = text.replace(/\{primeiro_nome\}/g, firstName);
@@ -143,10 +188,77 @@ Deno.serve(async (req) => {
 
     console.log(`[crm-message-queue] Processing ${pendingMessages.length} pending messages`);
 
+    // Pre-fetch rule message details for send_condition checks
+    const messageIds = [...new Set(pendingMessages.map((m: any) => m.message_id).filter(Boolean))];
+    let messageConditions: Record<string, string> = {};
+    if (messageIds.length > 0) {
+      const { data: msgDetails } = await supabase
+        .from("crm_notification_rule_messages")
+        .select("id, send_condition, sort_order")
+        .in("id", messageIds);
+      if (msgDetails) {
+        for (const md of msgDetails) {
+          messageConditions[md.id] = md.send_condition || "always";
+        }
+      }
+    }
+
     let sentCount = 0;
     let failedCount = 0;
 
     for (const msg of pendingMessages) {
+      // Check send_condition: only_if_no_reply
+      const condition = messageConditions[msg.message_id] || "always";
+      if (condition === "only_if_no_reply" && msg.lead_id) {
+        // Check if any previous message from this rule was replied to (cancelled)
+        const { data: cancelledItems } = await supabase
+          .from("crm_notification_queue")
+          .select("id")
+          .eq("lead_id", msg.lead_id)
+          .eq("rule_id", msg.rule_id)
+          .eq("cancelled_reason", "lead_replied")
+          .limit(1);
+
+        if (cancelledItems && cancelledItems.length > 0) {
+          await supabase
+            .from("crm_notification_queue")
+            .update({ status: "cancelled", cancelled_reason: "lead_replied_condition" })
+            .eq("id", msg.id);
+          console.log(`[crm-message-queue] Skipped ${msg.phone} (lead replied, condition met)`);
+          continue;
+        }
+
+        // Also check if earlier messages from same rule/lead were sent and lead has replied since
+        const { data: sentItems } = await supabase
+          .from("crm_notification_queue")
+          .select("id, sent_at")
+          .eq("lead_id", msg.lead_id)
+          .eq("rule_id", msg.rule_id)
+          .eq("status", "sent")
+          .order("sent_at", { ascending: false })
+          .limit(1);
+
+        if (sentItems && sentItems.length > 0) {
+          // Check crm_activities for a reply after last sent message
+          const { data: replies } = await supabase
+            .from("crm_activities")
+            .select("id")
+            .eq("lead_id", msg.lead_id)
+            .eq("type", "message_received")
+            .gte("created_at", sentItems[0].sent_at)
+            .limit(1);
+
+          if (replies && replies.length > 0) {
+            await supabase
+              .from("crm_notification_queue")
+              .update({ status: "cancelled", cancelled_reason: "lead_replied_condition" })
+              .eq("id", msg.id);
+            console.log(`[crm-message-queue] Skipped ${msg.phone} (lead replied after previous msg)`);
+            continue;
+          }
+        }
+      }
+
       const instance = msg.whatsapp_instances;
 
       if (!instance?.api_url || !instance?.api_key || !instance?.instance_name) {
@@ -174,7 +286,6 @@ Deno.serve(async (req) => {
           throw new Error(`HTTP ${resp.status}: ${errText}`);
         }
 
-        // Consume body
         if (resp.ok) await resp.text();
 
         await supabase
