@@ -345,6 +345,29 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
         } catch (notifErr) {
           console.error("[AddLeadDialog] Notification error:", notifErr);
         }
+
+        // Enqueue CRM message rules (régua de mensagens para o cliente)
+        if (formData.phone) {
+          try {
+            await supabase.functions.invoke("crm-message-queue", {
+              body: {
+                action: "enqueue",
+                trigger_type: "lead_created",
+                lead_id: newLead.id,
+                lead_name: formData.name,
+                lead_phone: formData.phone,
+                lead_email: formData.email || "",
+                company_name: formData.company || "",
+                pipeline_id: pipelineId,
+                pipeline_name: pipelineName,
+                stage_id: formData.stage_id,
+                stage_name: stages.find(s => s.id === formData.stage_id)?.name || "",
+              },
+            });
+          } catch (queueErr) {
+            console.error("[AddLeadDialog] Message queue error:", queueErr);
+          }
+        }
       }
 
       toast.success("Lead criado com sucesso");

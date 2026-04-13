@@ -326,6 +326,27 @@ Deno.serve(async (req) => {
       console.error("[submit-pipeline-form] Automation engine error:", autoErr);
     }
 
+    // ── Enqueue CRM message rules (régua de mensagens para o cliente) ──
+    try {
+      await supabase.functions.invoke("crm-message-queue", {
+        body: {
+          action: "enqueue",
+          trigger_type: "lead_created",
+          lead_id: lead.id,
+          lead_name: nome,
+          lead_phone: cleanPhone,
+          lead_email: email || "",
+          company_name: empresa || "",
+          pipeline_id: form.pipeline_id,
+          pipeline_name: "",
+          stage_id: firstStage?.id || "",
+          stage_name: "",
+        },
+      });
+    } catch (queueErr) {
+      console.error("[submit-pipeline-form] Message queue error:", queueErr);
+    }
+
     return jsonResponse({ success: true, lead_id: lead.id });
 
   } catch (error: unknown) {

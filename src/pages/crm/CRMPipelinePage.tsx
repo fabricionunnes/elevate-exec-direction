@@ -531,6 +531,36 @@ export const CRMPipelinePage = () => {
       } else {
         toast.success("Lead movido com sucesso");
       }
+
+      // === Enqueue CRM message rules for stage change / won / lost ===
+      try {
+        const movedLead = leads.find(l => l.id === stageMoveDialog.leadId);
+        if (movedLead?.phone) {
+          const triggerType = isWonStage 
+            ? "lead_won" 
+            : targetStage?.final_type === "lost" 
+              ? "lead_lost" 
+              : "stage_changed";
+
+          await supabase.functions.invoke("crm-message-queue", {
+            body: {
+              action: "enqueue",
+              trigger_type: triggerType,
+              lead_id: stageMoveDialog.leadId,
+              lead_name: movedLead.name || "",
+              lead_phone: movedLead.phone,
+              lead_email: movedLead.email || "",
+              company_name: movedLead.company || "",
+              pipeline_id: selectedPipeline,
+              pipeline_name: pipelines.find(p => p.id === selectedPipeline)?.name || "",
+              stage_id: stageMoveDialog.targetStageId,
+              stage_name: stageMoveDialog.targetStageName,
+            },
+          });
+        }
+      } catch (queueErr) {
+        console.error("[CRMPipeline] Message queue error:", queueErr);
+      }
       
       setStageMoveDialog({ open: false, leadId: "", targetStageId: "", targetStageName: "" });
     } catch (error) {

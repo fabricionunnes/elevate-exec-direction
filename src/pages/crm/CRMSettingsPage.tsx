@@ -61,6 +61,7 @@ import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
+import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
 import { toast } from "sonner";
 
 interface Pipeline {
@@ -939,6 +940,11 @@ export const CRMSettingsPage = () => {
             <Bell className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Notificações</span>
             <span className="sm:hidden">Notif.</span>
+          </TabsTrigger>
+          <TabsTrigger value="message-rules" className="gap-1.5 text-xs sm:text-sm">
+            <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Régua de Mensagens</span>
+            <span className="sm:hidden">Régua</span>
           </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5 text-xs sm:text-sm">
             <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
@@ -1917,6 +1923,11 @@ export const CRMSettingsPage = () => {
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="mt-6">
           <WonNotificationSettings />
+        </TabsContent>
+
+        {/* Message Rules Tab */}
+        <TabsContent value="message-rules" className="mt-6">
+          <CRMMessageRulesTab pipelines={pipelines} stages={stages} />
         </TabsContent>
 
         {/* Integrations Tab */}
