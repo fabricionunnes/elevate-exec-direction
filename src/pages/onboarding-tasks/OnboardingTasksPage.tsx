@@ -2054,6 +2054,11 @@ const OnboardingTasksPage = () => {
               Escritório
             </Button>
 
+            <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/unv-office")}>
+              <Building className="h-4 w-4 mr-2" />
+              UNV Office
+            </Button>
+
             {canCreateCompany && (
               <Button variant="outline" size="sm" onClick={() => navigate("/onboarding")}>
                 <BookOpen className="h-4 w-4 mr-2" />
