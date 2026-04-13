@@ -314,8 +314,8 @@ Deno.serve(async (req) => {
         const pagesUrl = `${GRAPH_API}/${adAccountId}/assigned_pages?fields=id,instagram_business_account&access_token=${token}`;
         const pagesRes = await fetchWithTimeout(pagesUrl);
         const pagesData = await pagesRes.json();
+        console.log("[IG] assigned_pages response:", JSON.stringify(pagesData).substring(0, 500));
         
-        // Try alternate endpoint if assigned_pages fails
         let igAccountId: string | null = null;
         if (pagesData.data) {
           for (const page of pagesData.data) {
@@ -327,10 +327,10 @@ Deno.serve(async (req) => {
         }
         
         if (!igAccountId) {
-          // Try via /me/accounts (user pages)
           const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,instagram_business_account&access_token=${token}`;
           const userPagesRes = await fetchWithTimeout(userPagesUrl);
           const userPagesData = await userPagesRes.json();
+          console.log("[IG] /me/accounts response:", JSON.stringify(userPagesData).substring(0, 500));
           if (userPagesData.data) {
             for (const page of userPagesData.data) {
               if (page.instagram_business_account?.id) {
@@ -341,21 +341,46 @@ Deno.serve(async (req) => {
           }
         }
 
+        console.log("[IG] Found igAccountId:", igAccountId);
+
         if (igAccountId) {
           // Get followers count
           const igUserUrl = `${GRAPH_API}/${igAccountId}?fields=followers_count&access_token=${token}`;
           const igUserRes = await fetchWithTimeout(igUserUrl);
           const igUserData = await igUserRes.json();
+          console.log("[IG] User data:", JSON.stringify(igUserData).substring(0, 300));
           igFollowersCount = Number(igUserData.followers_count || 0);
 
-          // Get profile views (last 28 days)
+          // Get profile views - use total_value for the period
           const insightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_views&period=day&since=${start}&until=${end}&access_token=${token}`;
+          console.log("[IG] Insights URL:", insightsUrl.replace(token, "TOKEN"));
           const insightsRes = await fetchWithTimeout(insightsUrl);
           const insightsData = await insightsRes.json();
+          console.log("[IG] Insights response:", JSON.stringify(insightsData).substring(0, 500));
+          
           if (insightsData.data?.[0]?.values) {
             igProfileViews = insightsData.data[0].values.reduce((sum: number, v: any) => sum + Number(v.value || 0), 0);
+          } else if (insightsData.data?.[0]?.total_value?.value) {
+            igProfileViews = Number(insightsData.data[0].total_value.value);
+          }
+          
+          // If profile_views metric fails, try website_clicks as fallback or profile_activity
+          if (igProfileViews === 0) {
+            try {
+              const altInsightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_activity&period=day&since=${start}&until=${end}&access_token=${token}`;
+              const altRes = await fetchWithTimeout(altInsightsUrl);
+              const altData = await altRes.json();
+              console.log("[IG] Alt insights (profile_activity):", JSON.stringify(altData).substring(0, 500));
+              if (altData.data?.[0]?.values) {
+                igProfileViews = altData.data[0].values.reduce((sum: number, v: any) => sum + Number(v.value || 0), 0);
+              }
+            } catch (altErr) {
+              console.log("[IG] Alt metric also failed:", altErr);
+            }
           }
         }
+
+        console.log("[IG] Final values - profile_views:", igProfileViews, "followers:", igFollowersCount);
 
         // Save to meta_ads_accounts
         await supabase.from("meta_ads_accounts").update({
