@@ -52,34 +52,20 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visib
     fetchCampaigns();
   }, [projectId, dateStart, dateStop, syncing]);
 
-  // Fetch Instagram stats for this project
+  // Fetch Instagram stats from meta_ads_accounts
   useEffect(() => {
     const fetchInstagramStats = async () => {
       try {
         const { data: account } = await supabase
-          .from("instagram_accounts")
-          .select("id, followers_count")
+          .from("meta_ads_accounts")
+          .select("ig_profile_views, ig_followers_count")
           .eq("project_id", projectId)
-          .eq("status", "connected")
+          .eq("is_connected", true)
           .maybeSingle();
 
-        if (!account) return;
-        setFollowersCount(account.followers_count || 0);
-
-        const { data: posts } = await supabase
-          .from("instagram_posts")
-          .select("id")
-          .eq("account_id", account.id);
-
-        if (posts && posts.length > 0) {
-          const postIds = posts.map((p: any) => p.id);
-          const { data: metrics } = await supabase
-            .from("instagram_post_metrics")
-            .select("profile_visits")
-            .in("post_id", postIds);
-
-          const totalVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
-          setProfileVisits(totalVisits);
+        if (account) {
+          setProfileVisits((account as any).ig_profile_views || 0);
+          setFollowersCount((account as any).ig_followers_count || 0);
         }
       } catch (error) {
         console.error("Error fetching Instagram stats:", error);
