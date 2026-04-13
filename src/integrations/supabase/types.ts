@@ -13802,6 +13802,183 @@ export type Database = {
           },
         ]
       }
+      crm_notification_queue: {
+        Row: {
+          created_at: string
+          error_message: string | null
+          id: string
+          lead_id: string | null
+          message_id: string
+          message_text: string
+          phone: string
+          rule_id: string
+          scheduled_at: string
+          sent_at: string | null
+          status: string
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id: string
+          message_text: string
+          phone: string
+          rule_id: string
+          scheduled_at: string
+          sent_at?: string | null
+          status?: string
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          error_message?: string | null
+          id?: string
+          lead_id?: string | null
+          message_id?: string
+          message_text?: string
+          phone?: string
+          rule_id?: string
+          scheduled_at?: string
+          sent_at?: string | null
+          status?: string
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notification_queue_lead_id_fkey"
+            columns: ["lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_queue_message_id_fkey"
+            columns: ["message_id"]
+            isOneToOne: false
+            referencedRelation: "crm_notification_rule_messages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_queue_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "crm_notification_rules"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_queue_whatsapp_instance_id_fkey"
+            columns: ["whatsapp_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_notification_rule_messages: {
+        Row: {
+          created_at: string
+          delay_minutes: number
+          id: string
+          message_template: string
+          rule_id: string
+          sort_order: number
+        }
+        Insert: {
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          message_template: string
+          rule_id: string
+          sort_order?: number
+        }
+        Update: {
+          created_at?: string
+          delay_minutes?: number
+          id?: string
+          message_template?: string
+          rule_id?: string
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notification_rule_messages_rule_id_fkey"
+            columns: ["rule_id"]
+            isOneToOne: false
+            referencedRelation: "crm_notification_rules"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      crm_notification_rules: {
+        Row: {
+          created_at: string
+          created_by: string | null
+          id: string
+          is_active: boolean
+          name: string
+          pipeline_id: string | null
+          stage_id: string | null
+          trigger_type: string
+          updated_at: string
+          whatsapp_instance_id: string | null
+        }
+        Insert: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name: string
+          pipeline_id?: string | null
+          stage_id?: string | null
+          trigger_type: string
+          updated_at?: string
+          whatsapp_instance_id?: string | null
+        }
+        Update: {
+          created_at?: string
+          created_by?: string | null
+          id?: string
+          is_active?: boolean
+          name?: string
+          pipeline_id?: string | null
+          stage_id?: string | null
+          trigger_type?: string
+          updated_at?: string
+          whatsapp_instance_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "crm_notification_rules_created_by_fkey"
+            columns: ["created_by"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_rules_pipeline_id_fkey"
+            columns: ["pipeline_id"]
+            isOneToOne: false
+            referencedRelation: "crm_pipelines"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_rules_stage_id_fkey"
+            columns: ["stage_id"]
+            isOneToOne: false
+            referencedRelation: "crm_stages"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "crm_notification_rules_whatsapp_instance_id_fkey"
+            columns: ["whatsapp_instance_id"]
+            isOneToOne: false
+            referencedRelation: "whatsapp_instances"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       crm_origin_groups: {
         Row: {
           color: string | null
