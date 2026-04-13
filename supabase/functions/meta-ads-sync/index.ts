@@ -416,6 +416,7 @@ Deno.serve(async (req) => {
               const userPagesRes = await fetchWithTimeout(userPagesUrl);
               const userPagesData = await userPagesRes.json();
               userPages = userPagesData.data || [];
+              console.log("[IG] /me/accounts page ids:", JSON.stringify(userPages.map((page: any) => ({ id: page.id, name: page.name, has_ig: !!(page.instagram_business_account || page.connected_instagram_account) }))));
 
               const resolvedFromAccountsList = resolveInstagramFromAccountsList(pageIdFromAds, userPages);
               if (resolvedFromAccountsList?.id) {
@@ -439,6 +440,7 @@ Deno.serve(async (req) => {
             const userPagesRes = await fetchWithTimeout(userPagesUrl);
             const userPagesData = await userPagesRes.json();
             userPages = userPagesData.data || [];
+            console.log("[IG] /me/accounts fallback page ids:", JSON.stringify(userPages.map((page: any) => ({ id: page.id, name: page.name, has_ig: !!(page.instagram_business_account || page.connected_instagram_account) }))));
           }
 
           const discoveredAccounts = new Map<string, { id: string; username: string | null; followers_count: number | null; source: string }>();
