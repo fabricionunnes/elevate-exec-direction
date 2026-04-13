@@ -22211,6 +22211,321 @@ export type Database = {
           },
         ]
       }
+      office_activity_logs: {
+        Row: {
+          action: string
+          created_at: string
+          duration_seconds: number | null
+          id: string
+          metadata: Json | null
+          room_id: string | null
+          user_id: string
+        }
+        Insert: {
+          action: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          user_id: string
+        }
+        Update: {
+          action?: string
+          created_at?: string
+          duration_seconds?: number | null
+          id?: string
+          metadata?: Json | null
+          room_id?: string | null
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_activity_logs_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "office_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_chat_messages: {
+        Row: {
+          created_at: string
+          id: string
+          message: string
+          message_type: string
+          room_id: string
+          user_id: string
+        }
+        Insert: {
+          created_at?: string
+          id?: string
+          message: string
+          message_type?: string
+          room_id: string
+          user_id: string
+        }
+        Update: {
+          created_at?: string
+          id?: string
+          message?: string
+          message_type?: string
+          room_id?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_chat_messages_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "office_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_presence: {
+        Row: {
+          floor_number: number
+          id: string
+          joined_at: string
+          last_seen_at: string
+          position_x: number
+          position_y: number
+          position_z: number
+          room_id: string | null
+          status: string
+          user_id: string
+        }
+        Insert: {
+          floor_number?: number
+          id?: string
+          joined_at?: string
+          last_seen_at?: string
+          position_x?: number
+          position_y?: number
+          position_z?: number
+          room_id?: string | null
+          status?: string
+          user_id: string
+        }
+        Update: {
+          floor_number?: number
+          id?: string
+          joined_at?: string
+          last_seen_at?: string
+          position_x?: number
+          position_y?: number
+          position_z?: number
+          room_id?: string | null
+          status?: string
+          user_id?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_presence_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "office_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_room_access: {
+        Row: {
+          access_level: string
+          created_at: string
+          id: string
+          project_id: string | null
+          room_id: string
+          user_id: string | null
+        }
+        Insert: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          room_id: string
+          user_id?: string | null
+        }
+        Update: {
+          access_level?: string
+          created_at?: string
+          id?: string
+          project_id?: string | null
+          room_id?: string
+          user_id?: string | null
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_room_access_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_room_access_room_id_fkey"
+            columns: ["room_id"]
+            isOneToOne: false
+            referencedRelation: "office_rooms"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_rooms: {
+        Row: {
+          capacity: number | null
+          color: string | null
+          created_at: string
+          depth: number
+          description: string | null
+          floor_number: number
+          id: string
+          is_active: boolean
+          is_private: boolean
+          name: string
+          position_x: number
+          position_y: number
+          position_z: number
+          room_type: string
+          width: number
+        }
+        Insert: {
+          capacity?: number | null
+          color?: string | null
+          created_at?: string
+          depth?: number
+          description?: string | null
+          floor_number?: number
+          id?: string
+          is_active?: boolean
+          is_private?: boolean
+          name: string
+          position_x?: number
+          position_y?: number
+          position_z?: number
+          room_type?: string
+          width?: number
+        }
+        Update: {
+          capacity?: number | null
+          color?: string | null
+          created_at?: string
+          depth?: number
+          description?: string | null
+          floor_number?: number
+          id?: string
+          is_active?: boolean
+          is_private?: boolean
+          name?: string
+          position_x?: number
+          position_y?: number
+          position_z?: number
+          room_type?: string
+          width?: number
+        }
+        Relationships: []
+      }
+      office_subscriptions: {
+        Row: {
+          active_users: number
+          cancelled_at: string | null
+          company_id: string | null
+          created_at: string
+          id: string
+          max_users: number
+          price_per_user: number
+          project_id: string
+          started_at: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          active_users?: number
+          cancelled_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          max_users?: number
+          price_per_user?: number
+          project_id: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          active_users?: number
+          cancelled_at?: string | null
+          company_id?: string | null
+          created_at?: string
+          id?: string
+          max_users?: number
+          price_per_user?: number
+          project_id?: string
+          started_at?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "office_subscriptions_company_id_fkey"
+            columns: ["company_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_companies"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "office_subscriptions_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      office_user_avatars: {
+        Row: {
+          accessory: string | null
+          created_at: string
+          display_name: string
+          hair_color: string
+          hair_style: string
+          id: string
+          pants_color: string
+          shirt_color: string
+          skin_color: string
+          updated_at: string
+          user_id: string
+        }
+        Insert: {
+          accessory?: string | null
+          created_at?: string
+          display_name?: string
+          hair_color?: string
+          hair_style?: string
+          id?: string
+          pants_color?: string
+          shirt_color?: string
+          skin_color?: string
+          updated_at?: string
+          user_id: string
+        }
+        Update: {
+          accessory?: string | null
+          created_at?: string
+          display_name?: string
+          hair_color?: string
+          hair_style?: string
+          id?: string
+          pants_color?: string
+          shirt_color?: string
+          skin_color?: string
+          updated_at?: string
+          user_id?: string
+        }
+        Relationships: []
+      }
       onboarding_ai_chat: {
         Row: {
           content: string
