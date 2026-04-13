@@ -79,6 +79,7 @@ export const CLIENT_MENU_KEYS = {
   crm_comercial_contratos: "crm_comercial_contratos",
   crm_comercial_reunioes: "crm_comercial_reunioes",
   diagnostico: "diagnostico",
+  unv_office: "unv_office",
 } as const;
 
 export type ClientMenuKey = typeof CLIENT_MENU_KEYS[keyof typeof CLIENT_MENU_KEYS];
@@ -314,6 +315,11 @@ export const CLIENT_MENU_STRUCTURE = [
     key: CLIENT_MENU_KEYS.diagnostico,
     label: "Diagnóstico",
     group: null,
+  },
+  {
+    key: CLIENT_MENU_KEYS.unv_office,
+    label: "UNV Office",
+    group: "Integrações",
   },
 ] as const;
 
