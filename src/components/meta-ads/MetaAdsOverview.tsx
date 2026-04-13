@@ -1,7 +1,7 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import { Card, CardContent } from "@/components/ui/card";
-import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle, UserPlus } from "lucide-react";
+import { Loader2, TrendingUp, TrendingDown, Eye, MousePointerClick, DollarSign, Target, Users, Repeat, BarChart3, MessageCircle, UserPlus, Percent } from "lucide-react";
 import { motion } from "framer-motion";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer, PieChart, Pie, Cell, Legend, RadialBarChart, RadialBar, AreaChart, Area } from "recharts";
 import type { MetricKey } from "./useMetricVisibility";
@@ -33,9 +33,11 @@ const formatPercent = (v: number) => `${v.toFixed(2)}%`;
 export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visibleMetrics }: MetaAdsOverviewProps) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileVisits, setProfileVisits] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchCampaigns = async () => {
       setLoading(true);
       const { data } = await supabase
         .from("meta_ads_campaigns")
@@ -47,8 +49,44 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visib
       setCampaigns(data || []);
       setLoading(false);
     };
-    fetch();
+    fetchCampaigns();
   }, [projectId, dateStart, dateStop, syncing]);
+
+  // Fetch Instagram stats for this project
+  useEffect(() => {
+    const fetchInstagramStats = async () => {
+      try {
+        const { data: account } = await supabase
+          .from("instagram_accounts")
+          .select("id, followers_count")
+          .eq("project_id", projectId)
+          .eq("status", "connected")
+          .maybeSingle();
+
+        if (!account) return;
+        setFollowersCount(account.followers_count || 0);
+
+        const { data: posts } = await supabase
+          .from("instagram_posts")
+          .select("id")
+          .eq("account_id", account.id);
+
+        if (posts && posts.length > 0) {
+          const postIds = posts.map((p: any) => p.id);
+          const { data: metrics } = await supabase
+            .from("instagram_post_metrics")
+            .select("profile_visits")
+            .in("post_id", postIds);
+
+          const totalVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
+          setProfileVisits(totalVisits);
+        }
+      } catch (error) {
+        console.error("Error fetching Instagram stats:", error);
+      }
+    };
+    fetchInstagramStats();
+  }, [projectId, syncing]);
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
@@ -97,6 +135,9 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visib
     { key: "cost_per_conversation" as MetricKey, label: "Custo/Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, gradient: "from-orange-500 to-red-600", iconBg: "bg-gradient-to-br from-orange-500 to-red-700", shadow: "shadow-orange-500/20" },
     { key: "frequency" as MetricKey, label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, gradient: "from-teal-500 to-cyan-600", iconBg: "bg-gradient-to-br from-teal-500 to-cyan-700", shadow: "shadow-teal-500/20" },
     { key: "leads" as MetricKey, label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, gradient: "from-lime-500 to-green-600", iconBg: "bg-gradient-to-br from-lime-500 to-green-700", shadow: "shadow-lime-500/20" },
+    { key: "profile_visits" as MetricKey, label: "Visitas ao Perfil", value: formatNumber(profileVisits), icon: Eye, gradient: "from-fuchsia-500 to-pink-600", iconBg: "bg-gradient-to-br from-fuchsia-500 to-pink-700", shadow: "shadow-fuchsia-500/20" },
+    { key: "followers" as MetricKey, label: "Seguidores", value: formatNumber(followersCount), icon: Users, gradient: "from-sky-500 to-blue-600", iconBg: "bg-gradient-to-br from-sky-500 to-blue-700", shadow: "shadow-sky-500/20" },
+    { key: "visit_to_follower" as MetricKey, label: "Conversão Visita → Seguidor", value: profileVisits > 0 ? formatPercent((followersCount / profileVisits) * 100) : "—", icon: Percent, gradient: "from-emerald-500 to-green-600", iconBg: "bg-gradient-to-br from-emerald-500 to-green-700", shadow: "shadow-emerald-500/20" },
   ];
 
   const kpis = allKpis.filter(k => visibleMetrics.has(k.key));
