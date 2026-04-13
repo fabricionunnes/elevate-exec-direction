@@ -305,6 +305,27 @@ Deno.serve(async (req) => {
       console.error("[receive-external-lead] Automation engine error:", autoErr);
     }
 
+    // === Enqueue CRM message rules (régua de mensagens para o cliente) ===
+    try {
+      await supabase.functions.invoke("crm-message-queue", {
+        body: {
+          action: "enqueue",
+          trigger_type: "lead_created",
+          lead_id: lead.id,
+          lead_name: nome,
+          lead_phone: telefone,
+          lead_email: email || "",
+          company_name: empresa || "",
+          pipeline_id: resolvedPipelineId,
+          pipeline_name: resolvedPipelineName,
+          stage_id: stage.id,
+          stage_name: "",
+        },
+      });
+    } catch (queueErr) {
+      console.error("[receive-external-lead] Message queue error:", queueErr);
+    }
+
     return new Response(JSON.stringify({ success: true, lead_id: lead.id }), {
       headers: { ...corsHeaders, 'Content-Type': 'application/json' },
     });
