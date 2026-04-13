@@ -46,7 +46,7 @@ Deno.serve(async (req) => {
         ? redirect_uri.trim()
         : META_ADS_STABLE_REDIRECT_URI;
 
-      const scopes = "ads_read,ads_management,business_management";
+      const scopes = "ads_read,ads_management,business_management,instagram_basic,instagram_manage_insights";
       const state = btoa(JSON.stringify({
         project_id,
         flow: "meta_ads",
