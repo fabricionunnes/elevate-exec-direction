@@ -550,7 +550,7 @@ async function cancelPendingQueueOnReply(supabase: any, phone: string) {
   }
 }
 
-
+async function handleMessageStatusUpdate(supabase: any, data: any) {
   console.log('Processing message status update:', JSON.stringify(data, null, 2));
 
   const key = data.key;
