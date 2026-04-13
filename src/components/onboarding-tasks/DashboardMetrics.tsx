@@ -159,7 +159,7 @@ const DashboardMetrics = ({
   const [internalCompanyKpis, setInternalCompanyKpis] = useState<{ id: string; company_id: string; kpi_type: string; periodicity: string; target_value: number; is_main_goal?: boolean }[]>([]);
   const [internalContractRenewals, setInternalContractRenewals] = useState<{ company_id: string; renewal_date: string }[]>([]);
   const [internalHealthScores, setInternalHealthScores] = useState<{ project_id: string; total_score: number; risk_level: string | null }[]>([]);
-  const [monthlyTargets, setMonthlyTargets] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string }[]>([]);
+  const [monthlyTargets, setMonthlyTargets] = useState<{ kpi_id: string; company_id: string; target_value: number; month_year: string; unit_id: string | null; team_id: string | null; salesperson_id: string | null }[]>([]);
   const [loading, setLoading] = useState(true);
   const [recalculatingHealth, setRecalculatingHealth] = useState(false);
   const [tasksDialogOpen, setTasksDialogOpen] = useState(false);
@@ -218,7 +218,7 @@ const DashboardMetrics = ({
     const monthYear = `${periodYear}-${String(periodMonth).padStart(2, '0')}`;
     supabase
       .from("kpi_monthly_targets")
-      .select("kpi_id, company_id, target_value, month_year")
+      .select("kpi_id, company_id, target_value, month_year, unit_id, team_id, salesperson_id")
       .eq("month_year", monthYear)
       .then(({ data }) => {
         if (data) setMonthlyTargets(data);
@@ -926,17 +926,29 @@ const DashboardMetrics = ({
       
       if (companyKpisList.length === 0) return;
 
-      // Calculate monthly target - PRIORITY: kpi_monthly_targets > company_kpis.target_value
+      // Calculate monthly target - resolve company-level from kpi_monthly_targets
       let totalMonthlyTarget = 0;
       companyKpisList.forEach(kpi => {
-        // Check if there's a monthly target override for this KPI
-        const monthlyTarget = monthlyTargets.find(
-          mt => mt.kpi_id === kpi.id && mt.company_id === companyId && mt.month_year === monthYear
+        // 1. Company-level target (no unit/team/salesperson)
+        const companyLevel = monthlyTargets.find(
+          mt => mt.kpi_id === kpi.id && mt.company_id === companyId && mt.month_year === monthYear &&
+               mt.unit_id === null && mt.team_id === null && mt.salesperson_id === null
         );
-        
-        if (monthlyTarget) {
-          totalMonthlyTarget += monthlyTarget.target_value;
-        } else if (kpi.periodicity === "daily") {
+        if (companyLevel) {
+          totalMonthlyTarget += companyLevel.target_value;
+          return;
+        }
+        // 2. Sum unit-level targets
+        const unitTargets = monthlyTargets.filter(
+          mt => mt.kpi_id === kpi.id && mt.company_id === companyId && mt.month_year === monthYear &&
+               mt.unit_id !== null && mt.team_id === null && mt.salesperson_id === null
+        );
+        if (unitTargets.length > 0) {
+          totalMonthlyTarget += unitTargets.reduce((sum, t) => sum + t.target_value, 0);
+          return;
+        }
+        // 3. Fallback to kpi.target_value
+        if (kpi.periodicity === "daily") {
           totalMonthlyTarget += kpi.target_value * daysInMonth;
         } else if (kpi.periodicity === "weekly") {
           totalMonthlyTarget += kpi.target_value * Math.ceil(daysInMonth / 7);
