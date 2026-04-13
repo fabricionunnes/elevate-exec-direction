@@ -55,6 +55,7 @@ interface NotificationRule {
   stage_id: string | null;
   whatsapp_instance_id: string | null;
   is_active: boolean;
+  stop_on_reply: boolean;
   created_at: string;
 }
 
@@ -64,7 +65,13 @@ interface RuleMessage {
   message_template: string;
   delay_minutes: number;
   sort_order: number;
+  send_condition: string;
 }
+
+const SEND_CONDITION_OPTIONS = [
+  { value: "always", label: "Sempre enviar" },
+  { value: "only_if_no_reply", label: "Somente se não respondeu" },
+];
 
 interface WhatsAppInstance {
   id: string;
@@ -128,8 +135,9 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
   const [formPipeline, setFormPipeline] = useState<string>("all");
   const [formStage, setFormStage] = useState<string>("all");
   const [formInstance, setFormInstance] = useState<string>("");
-  const [formMessages, setFormMessages] = useState<{ message_template: string; delay_minutes: number }[]>([
-    { message_template: "", delay_minutes: 0 },
+  const [formStopOnReply, setFormStopOnReply] = useState(false);
+  const [formMessages, setFormMessages] = useState<{ message_template: string; delay_minutes: number; send_condition: string }[]>([
+    { message_template: "", delay_minutes: 0, send_condition: "always" },
   ]);
 
   useEffect(() => {
@@ -171,7 +179,8 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
     setFormPipeline("all");
     setFormStage("all");
     setFormInstance("");
-    setFormMessages([{ message_template: "", delay_minutes: 0 }]);
+    setFormStopOnReply(false);
+    setFormMessages([{ message_template: "", delay_minutes: 0, send_condition: "always" }]);
     setEditingRule(null);
   };
 
@@ -187,6 +196,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
     setFormPipeline(rule.pipeline_id || "all");
     setFormStage(rule.stage_id || "all");
     setFormInstance(rule.whatsapp_instance_id || "");
+    setFormStopOnReply(rule.stop_on_reply ?? false);
 
     const ruleMessages = messages
       .filter((m) => m.rule_id === rule.id)
@@ -194,8 +204,8 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
 
     setFormMessages(
       ruleMessages.length > 0
-        ? ruleMessages.map((m) => ({ message_template: m.message_template, delay_minutes: m.delay_minutes }))
-        : [{ message_template: "", delay_minutes: 0 }]
+        ? ruleMessages.map((m) => ({ message_template: m.message_template, delay_minutes: m.delay_minutes, send_condition: m.send_condition || "always" }))
+        : [{ message_template: "", delay_minutes: 0, send_condition: "always" }]
     );
     setDialogOpen(true);
   };
@@ -218,6 +228,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
         pipeline_id: formPipeline === "all" ? null : formPipeline,
         stage_id: formStage === "all" ? null : formStage,
         whatsapp_instance_id: formInstance,
+        stop_on_reply: formStopOnReply,
       };
 
       let ruleId: string;
@@ -251,6 +262,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
         message_template: m.message_template.trim(),
         delay_minutes: m.delay_minutes,
         sort_order: i,
+        send_condition: m.send_condition,
       }));
 
       const { error: msgError } = await supabase
@@ -298,7 +310,7 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
   };
 
   const addMessage = () => {
-    setFormMessages((prev) => [...prev, { message_template: "", delay_minutes: 1440 }]);
+    setFormMessages((prev) => [...prev, { message_template: "", delay_minutes: 1440, send_condition: "only_if_no_reply" }]);
   };
 
   const removeMessage = (index: number) => {
