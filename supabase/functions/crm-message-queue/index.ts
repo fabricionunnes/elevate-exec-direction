@@ -134,6 +134,10 @@ Deno.serve(async (req) => {
           text = text.replace(/\{company_name\}/g, company_name || "");
           text = text.replace(/\{pipeline_name\}/g, pipeline_name || "");
           text = text.replace(/\{stage_name\}/g, stage_name || "");
+          text = text.replace(/\{meeting_link\}/g, body.meeting_link || "");
+          text = text.replace(/\{meeting_date\}/g, body.meeting_date || "");
+          text = text.replace(/\{meeting_time\}/g, body.meeting_time || "");
+          text = text.replace(/\{responsible_name\}/g, body.responsible_name || "");
 
           const scheduledAt = new Date(now.getTime() + msg.delay_minutes * 60 * 1000);
 
