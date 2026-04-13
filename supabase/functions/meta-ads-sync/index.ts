@@ -306,83 +306,91 @@ Deno.serve(async (req) => {
       if (adsets.length > 0) await supabase.from("meta_ads_adsets").insert(adsets);
       if (ads.length > 0) await supabase.from("meta_ads_ads").insert(ads);
 
-      // ── Fetch Instagram Business Account insights ──
+      // ── Fetch Instagram insights ──
       let igProfileViews = 0;
       let igFollowersCount = 0;
       try {
-        // Get Facebook Pages linked to the ad account
-        const pagesUrl = `${GRAPH_API}/${adAccountId}/assigned_pages?fields=id,instagram_business_account&access_token=${token}`;
-        const pagesRes = await fetchWithTimeout(pagesUrl);
-        const pagesData = await pagesRes.json();
-        console.log("[IG] assigned_pages response:", JSON.stringify(pagesData).substring(0, 500));
-        
         let igAccountId: string | null = null;
-        if (pagesData.data) {
-          for (const page of pagesData.data) {
-            if (page.instagram_business_account?.id) {
-              igAccountId = page.instagram_business_account.id;
-              break;
-            }
-          }
-        }
-        
-        if (!igAccountId) {
-          const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,instagram_business_account&access_token=${token}`;
+        let igAccessToken = token;
+
+        const [socialIgRes, legacyIgRes] = await Promise.all([
+          supabase
+            .from("social_instagram_accounts")
+            .select("instagram_user_id, access_token, followers_count, instagram_username")
+            .eq("project_id", project_id)
+            .eq("is_connected", true)
+            .maybeSingle(),
+          supabase
+            .from("instagram_accounts")
+            .select("instagram_user_id, access_token, followers_count, username")
+            .eq("project_id", project_id)
+            .maybeSingle(),
+        ]);
+
+        if (socialIgRes.data?.instagram_user_id) {
+          igAccountId = socialIgRes.data.instagram_user_id;
+          igAccessToken = socialIgRes.data.access_token || token;
+          igFollowersCount = Number(socialIgRes.data.followers_count || 0);
+          console.log("[IG] Using project social_instagram_accounts:", socialIgRes.data.instagram_username, igAccountId);
+        } else if (legacyIgRes.data?.instagram_user_id) {
+          igAccountId = legacyIgRes.data.instagram_user_id;
+          igAccessToken = legacyIgRes.data.access_token || token;
+          igFollowersCount = Number(legacyIgRes.data.followers_count || 0);
+          console.log("[IG] Using project instagram_accounts:", legacyIgRes.data.username, igAccountId);
+        } else {
+          const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,name,instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${token}`;
           const userPagesRes = await fetchWithTimeout(userPagesUrl);
           const userPagesData = await userPagesRes.json();
-          console.log("[IG] /me/accounts response:", JSON.stringify(userPagesData).substring(0, 500));
-          if (userPagesData.data) {
-            for (const page of userPagesData.data) {
-              if (page.instagram_business_account?.id) {
-                igAccountId = page.instagram_business_account.id;
-                break;
+
+          const discoveredAccounts = new Map<string, { id: string; username: string | null; followers_count: number | null; source: string }>();
+          for (const page of userPagesData.data || []) {
+            const candidates = [
+              { data: page.instagram_business_account, source: "instagram_business_account" },
+              { data: page.connected_instagram_account, source: "connected_instagram_account" },
+            ];
+
+            for (const candidate of candidates) {
+              if (candidate.data?.id && !discoveredAccounts.has(candidate.data.id)) {
+                discoveredAccounts.set(candidate.data.id, {
+                  id: candidate.data.id,
+                  username: candidate.data.username || null,
+                  followers_count: Number(candidate.data.followers_count || 0),
+                  source: candidate.source,
+                });
               }
             }
           }
+
+          const candidates = [...discoveredAccounts.values()];
+          console.log("[IG] Candidate accounts from Meta token:", JSON.stringify(candidates));
+
+          if (candidates.length === 1) {
+            igAccountId = candidates[0].id;
+            igFollowersCount = Number(candidates[0].followers_count || 0);
+            console.log("[IG] Using single candidate from Meta token:", candidates[0].username, igAccountId);
+          } else {
+            console.log("[IG] Ambiguous or unavailable Instagram account for this project. Skipping automatic selection.");
+          }
         }
 
-        console.log("[IG] Found igAccountId:", igAccountId);
-
         if (igAccountId) {
-          // Get followers count
-          const igUserUrl = `${GRAPH_API}/${igAccountId}?fields=followers_count&access_token=${token}`;
+          const igUserUrl = `${GRAPH_API}/${igAccountId}?fields=followers_count&access_token=${igAccessToken}`;
           const igUserRes = await fetchWithTimeout(igUserUrl);
           const igUserData = await igUserRes.json();
-          console.log("[IG] User data:", JSON.stringify(igUserData).substring(0, 300));
-          igFollowersCount = Number(igUserData.followers_count || 0);
+          if (!igUserData.error) {
+            igFollowersCount = Number(igUserData.followers_count || igFollowersCount || 0);
+          }
 
-          // Get profile views - use total_value for the period
-          const insightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_views&period=day&since=${start}&until=${end}&access_token=${token}`;
-          console.log("[IG] Insights URL:", insightsUrl.replace(token, "TOKEN"));
+          const insightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_views&metric_type=total_value&period=day&since=${start}&until=${end}&access_token=${igAccessToken}`;
           const insightsRes = await fetchWithTimeout(insightsUrl);
           const insightsData = await insightsRes.json();
           console.log("[IG] Insights response:", JSON.stringify(insightsData).substring(0, 500));
-          
-          if (insightsData.data?.[0]?.values) {
-            igProfileViews = insightsData.data[0].values.reduce((sum: number, v: any) => sum + Number(v.value || 0), 0);
-          } else if (insightsData.data?.[0]?.total_value?.value) {
-            igProfileViews = Number(insightsData.data[0].total_value.value);
-          }
-          
-          // If profile_views metric fails, try website_clicks as fallback or profile_activity
-          if (igProfileViews === 0) {
-            try {
-              const altInsightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_activity&period=day&since=${start}&until=${end}&access_token=${token}`;
-              const altRes = await fetchWithTimeout(altInsightsUrl);
-              const altData = await altRes.json();
-              console.log("[IG] Alt insights (profile_activity):", JSON.stringify(altData).substring(0, 500));
-              if (altData.data?.[0]?.values) {
-                igProfileViews = altData.data[0].values.reduce((sum: number, v: any) => sum + Number(v.value || 0), 0);
-              }
-            } catch (altErr) {
-              console.log("[IG] Alt metric also failed:", altErr);
-            }
-          }
+
+          igProfileViews = Number(insightsData.data?.[0]?.total_value?.value || 0);
         }
 
         console.log("[IG] Final values - profile_views:", igProfileViews, "followers:", igFollowersCount);
 
-        // Save to meta_ads_accounts
         await supabase.from("meta_ads_accounts").update({
           ig_profile_views: igProfileViews,
           ig_followers_count: igFollowersCount,
