@@ -587,6 +587,20 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
               </div>
             </div>
 
+            {/* Stop on reply toggle */}
+            <div className="flex items-center justify-between rounded-lg border p-4">
+              <div>
+                <Label className="text-sm font-medium">Parar automação se o lead responder</Label>
+                <p className="text-xs text-muted-foreground mt-0.5">
+                  Cancela as mensagens pendentes da régua quando o lead responde qualquer mensagem
+                </p>
+              </div>
+              <Switch
+                checked={formStopOnReply}
+                onCheckedChange={setFormStopOnReply}
+              />
+            </div>
+
             {/* Variables reference inside dialog */}
             <div className="rounded-lg border bg-muted/50 p-3">
               <p className="text-xs font-medium mb-2 text-muted-foreground">Variáveis disponíveis (clique para copiar):</p>
@@ -659,6 +673,26 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                           )}
                         </div>
                       </div>
+                      {index > 0 && (
+                        <div>
+                          <Label className="text-xs">Condição de envio</Label>
+                          <Select
+                            value={msg.send_condition}
+                            onValueChange={(v) => updateMessage(index, "send_condition", v)}
+                          >
+                            <SelectTrigger className="h-8 text-xs">
+                              <SelectValue />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {SEND_CONDITION_OPTIONS.map((c) => (
+                                <SelectItem key={c.value} value={c.value}>
+                                  {c.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                        </div>
+                      )}
                       <Textarea
                         value={msg.message_template}
                         onChange={(e) => updateMessage(index, "message_template", e.target.value)}
