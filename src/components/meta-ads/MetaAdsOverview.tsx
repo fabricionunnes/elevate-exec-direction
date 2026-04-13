@@ -33,9 +33,11 @@ const formatPercent = (v: number) => `${v.toFixed(2)}%`;
 export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visibleMetrics }: MetaAdsOverviewProps) => {
   const [campaigns, setCampaigns] = useState<any[]>([]);
   const [loading, setLoading] = useState(true);
+  const [profileVisits, setProfileVisits] = useState(0);
+  const [followersCount, setFollowersCount] = useState(0);
 
   useEffect(() => {
-    const fetch = async () => {
+    const fetchCampaigns = async () => {
       setLoading(true);
       const { data } = await supabase
         .from("meta_ads_campaigns")
@@ -47,8 +49,44 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visib
       setCampaigns(data || []);
       setLoading(false);
     };
-    fetch();
+    fetchCampaigns();
   }, [projectId, dateStart, dateStop, syncing]);
+
+  // Fetch Instagram stats for this project
+  useEffect(() => {
+    const fetchInstagramStats = async () => {
+      try {
+        const { data: account } = await supabase
+          .from("instagram_accounts")
+          .select("id, followers_count")
+          .eq("project_id", projectId)
+          .eq("status", "connected")
+          .maybeSingle();
+
+        if (!account) return;
+        setFollowersCount(account.followers_count || 0);
+
+        const { data: posts } = await supabase
+          .from("instagram_posts")
+          .select("id")
+          .eq("account_id", account.id);
+
+        if (posts && posts.length > 0) {
+          const postIds = posts.map((p: any) => p.id);
+          const { data: metrics } = await supabase
+            .from("instagram_post_metrics")
+            .select("profile_visits")
+            .in("post_id", postIds);
+
+          const totalVisits = (metrics || []).reduce((sum: number, m: any) => sum + (m.profile_visits || 0), 0);
+          setProfileVisits(totalVisits);
+        }
+      } catch (error) {
+        console.error("Error fetching Instagram stats:", error);
+      }
+    };
+    fetchInstagramStats();
+  }, [projectId, syncing]);
 
   if (loading) {
     return <div className="flex justify-center py-12"><Loader2 className="h-6 w-6 animate-spin text-muted-foreground" /></div>;
