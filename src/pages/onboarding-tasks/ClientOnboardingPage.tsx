@@ -37,6 +37,7 @@ import {
   Instagram,
   BrainCircuit,
   Target,
+  Building,
 } from "lucide-react";
 import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -73,6 +74,7 @@ import { ClientOtherServicesPanel } from "@/components/client-portal/ClientOther
 import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import { B2BProspectionEmbed } from "@/components/b2b-prospection/B2BProspectionEmbed";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
+const ClientUNVOffice = lazy(() => import("@/components/client-office/ClientUNVOffice"));
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -120,7 +122,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -378,6 +380,7 @@ const ClientOnboardingPage = () => {
         crm_comercial: "CRM Comercial",
         b2b_prospection: "Prospecção B2B",
         diagnostic: "Diagnóstico",
+        unv_office: "UNV Office",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -536,6 +539,7 @@ const ClientOnboardingPage = () => {
       { id: "crm_comercial" as ViewType, icon: Briefcase, label: "CRM Comercial", menuKey: CLIENT_MENU_KEYS.crm_comercial },
       { id: "b2b_prospection" as ViewType, icon: Target, label: "Prospecção B2B", menuKey: CLIENT_MENU_KEYS.prospeccao_b2b },
       { id: "diagnostic" as ViewType, icon: ClipboardCheck, label: "Diagnóstico", menuKey: CLIENT_MENU_KEYS.diagnostico },
+      { id: "unv_office" as ViewType, icon: Building, label: "UNV Office", menuKey: CLIENT_MENU_KEYS.unv_office },
     ];
 
     // Project-level menu filtering applies to ALL roles including full access
@@ -1281,6 +1285,19 @@ const ClientOnboardingPage = () => {
               <div className="py-4">
                 <StrategicDiagnosticModule projectId={projectId || ""} />
               </div>
+            </motion.div>
+          )}
+
+          {activeView === "unv_office" && hasViewAccess("unv_office") && (
+            <motion.div
+              key="unv_office"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
+                <ClientUNVOffice projectId={projectId || ""} currentUserId={currentUser?.user_id || ""} />
+              </Suspense>
             </motion.div>
           )}
         </AnimatePresence>
