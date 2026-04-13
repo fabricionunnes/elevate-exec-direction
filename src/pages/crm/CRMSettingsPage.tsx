@@ -940,6 +940,11 @@ export const CRMSettingsPage = () => {
             <span className="hidden sm:inline">Notificações</span>
             <span className="sm:hidden">Notif.</span>
           </TabsTrigger>
+          <TabsTrigger value="message-rules" className="gap-1.5 text-xs sm:text-sm">
+            <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+            <span className="hidden sm:inline">Régua de Mensagens</span>
+            <span className="sm:hidden">Régua</span>
+          </TabsTrigger>
           <TabsTrigger value="integrations" className="gap-1.5 text-xs sm:text-sm">
             <Link2 className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
             <span className="hidden sm:inline">Integrações</span>
