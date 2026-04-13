@@ -2055,7 +2055,7 @@ const OnboardingTasksPage = () => {
             </Button>
 
             <Button variant="outline" size="sm" onClick={() => navigate("/onboarding-tasks/unv-office")}>
-              <Building className="h-4 w-4 mr-2" />
+              <Building2 className="h-4 w-4 mr-2" />
               UNV Office
             </Button>
 
