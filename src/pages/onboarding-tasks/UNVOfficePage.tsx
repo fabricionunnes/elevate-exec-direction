@@ -2,7 +2,7 @@ import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { ArrowLeft } from "lucide-react";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
-import { ClientUNVOffice } from "@/components/client-office/ClientUNVOffice";
+import ClientUNVOffice from "@/components/client-office/ClientUNVOffice";
 
 const UNVOfficePage = () => {
   const navigate = useNavigate();
