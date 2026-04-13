@@ -7,7 +7,7 @@ import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
-import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3 } from "lucide-react";
+import { Megaphone, ExternalLink, Settings, Loader2, Code, Link, BarChart3, Eye, Users, Percent } from "lucide-react";
 import { toast } from "sonner";
 import { MetaAdsModule } from "@/components/meta-ads/MetaAdsModule";
 import { useClientPermissions } from "@/hooks/useClientPermissions";
