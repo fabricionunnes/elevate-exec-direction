@@ -105,12 +105,16 @@ const DELAY_OPTIONS = [
 
 const TEMPLATE_VARIABLES = [
   { var: "{lead_name}", desc: "Nome do lead" },
+  { var: "{primeiro_nome}", desc: "Primeiro nome do lead" },
   { var: "{lead_phone}", desc: "Telefone do lead" },
   { var: "{lead_email}", desc: "Email do lead" },
   { var: "{company_name}", desc: "Empresa do lead" },
   { var: "{pipeline_name}", desc: "Nome do funil" },
   { var: "{stage_name}", desc: "Nome da etapa" },
-  { var: "{primeiro_nome}", desc: "Primeiro nome do lead" },
+  { var: "{meeting_link}", desc: "Link da reunião" },
+  { var: "{meeting_date}", desc: "Data da reunião" },
+  { var: "{meeting_time}", desc: "Horário da reunião" },
+  { var: "{responsible_name}", desc: "Nome do responsável" },
 ];
 
 interface CRMMessageRulesTabProps {
