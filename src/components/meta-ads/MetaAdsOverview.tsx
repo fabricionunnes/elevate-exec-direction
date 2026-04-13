@@ -135,6 +135,9 @@ export const MetaAdsOverview = ({ projectId, dateStart, dateStop, syncing, visib
     { key: "cost_per_conversation" as MetricKey, label: "Custo/Conversa", value: formatCurrency(costPerConversation), icon: MessageCircle, gradient: "from-orange-500 to-red-600", iconBg: "bg-gradient-to-br from-orange-500 to-red-700", shadow: "shadow-orange-500/20" },
     { key: "frequency" as MetricKey, label: "Frequência", value: avgFrequency.toFixed(2), icon: Repeat, gradient: "from-teal-500 to-cyan-600", iconBg: "bg-gradient-to-br from-teal-500 to-cyan-700", shadow: "shadow-teal-500/20" },
     { key: "leads" as MetricKey, label: "Leads", value: formatNumber(totals.leads), icon: UserPlus, gradient: "from-lime-500 to-green-600", iconBg: "bg-gradient-to-br from-lime-500 to-green-700", shadow: "shadow-lime-500/20" },
+    { key: "profile_visits" as MetricKey, label: "Visitas ao Perfil", value: formatNumber(profileVisits), icon: Eye, gradient: "from-fuchsia-500 to-pink-600", iconBg: "bg-gradient-to-br from-fuchsia-500 to-pink-700", shadow: "shadow-fuchsia-500/20" },
+    { key: "followers" as MetricKey, label: "Seguidores", value: formatNumber(followersCount), icon: Users, gradient: "from-sky-500 to-blue-600", iconBg: "bg-gradient-to-br from-sky-500 to-blue-700", shadow: "shadow-sky-500/20" },
+    { key: "visit_to_follower" as MetricKey, label: "Conversão Visita → Seguidor", value: profileVisits > 0 ? formatPercent((followersCount / profileVisits) * 100) : "—", icon: Percent, gradient: "from-emerald-500 to-green-600", iconBg: "bg-gradient-to-br from-emerald-500 to-green-700", shadow: "shadow-emerald-500/20" },
   ];
 
   const kpis = allKpis.filter(k => visibleMetrics.has(k.key));
