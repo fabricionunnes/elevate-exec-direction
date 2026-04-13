@@ -25,6 +25,38 @@ async function fetchWithTimeout(url: string, timeout = 30000) {
   }
 }
 
+function pickMostLikelyId(counter: Map<string, number>, label: string) {
+  const ranked = [...counter.entries()].sort((a, b) => b[1] - a[1]);
+  if (ranked.length === 0) return null;
+  if (ranked.length === 1 || ranked[0][1] > ranked[1][1]) {
+    console.log(`[IG] Using ${label} candidate:`, ranked[0][0], "count:", ranked[0][1]);
+    return ranked[0][0];
+  }
+
+  console.log(`[IG] Ambiguous ${label} candidates:`, JSON.stringify(ranked));
+  return null;
+}
+
+async function resolveInstagramFromPage(pageId: string, accessToken: string) {
+  const pageUrl = `${GRAPH_API}/${pageId}?fields=instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${accessToken}`;
+  const pageRes = await fetchWithTimeout(pageUrl);
+  const pageData = await pageRes.json();
+
+  if (pageData.error) {
+    console.log("[IG] Page resolution error:", pageId, pageData.error.message);
+    return null;
+  }
+
+  const igAccount = pageData.instagram_business_account || pageData.connected_instagram_account;
+  if (!igAccount?.id) return null;
+
+  return {
+    id: String(igAccount.id),
+    username: igAccount.username || null,
+    followers_count: Number(igAccount.followers_count || 0),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -307,11 +339,12 @@ Deno.serve(async (req) => {
       if (ads.length > 0) await supabase.from("meta_ads_ads").insert(ads);
 
       // ── Fetch Instagram insights ──
-      let igProfileViews = 0;
-      let igFollowersCount = 0;
+      let igProfileViews = Number(account.ig_profile_views || 0);
+      let igFollowersCount = Number(account.ig_followers_count || 0);
       try {
         let igAccountId: string | null = null;
         let igAccessToken = token;
+        let shouldPersistInstagram = false;
 
         const [socialIgRes, legacyIgRes] = await Promise.all([
           supabase
@@ -338,6 +371,42 @@ Deno.serve(async (req) => {
           igFollowersCount = Number(legacyIgRes.data.followers_count || 0);
           console.log("[IG] Using project instagram_accounts:", legacyIgRes.data.username, igAccountId);
         } else {
+          const adCreativeActorIds = new Map<string, number>();
+          const adCreativePageIds = new Map<string, number>();
+
+          for (const ad of adsData.data || []) {
+            const storySpec = ad?.creative?.object_story_spec || {};
+            const instagramActorId = storySpec.instagram_actor_id || storySpec.video_data?.instagram_actor_id || storySpec.link_data?.instagram_actor_id;
+            const pageId = storySpec.page_id || storySpec.video_data?.page_id || storySpec.link_data?.page_id || storySpec.photo_data?.page_id;
+
+            if (instagramActorId) {
+              adCreativeActorIds.set(String(instagramActorId), (adCreativeActorIds.get(String(instagramActorId)) || 0) + 1);
+            }
+
+            if (pageId) {
+              adCreativePageIds.set(String(pageId), (adCreativePageIds.get(String(pageId)) || 0) + 1);
+            }
+          }
+
+          const actorIdFromAds = pickMostLikelyId(adCreativeActorIds, "instagram_actor_id from ads");
+          if (actorIdFromAds) {
+            igAccountId = actorIdFromAds;
+            console.log("[IG] Resolved Instagram via ad creative instagram_actor_id:", igAccountId);
+          }
+
+          if (!igAccountId) {
+            const pageIdFromAds = pickMostLikelyId(adCreativePageIds, "page_id from ads");
+            if (pageIdFromAds) {
+              const resolvedFromPage = await resolveInstagramFromPage(pageIdFromAds, token);
+              if (resolvedFromPage?.id) {
+                igAccountId = resolvedFromPage.id;
+                igFollowersCount = Number(resolvedFromPage.followers_count || 0);
+                console.log("[IG] Resolved Instagram via page linked to ads:", resolvedFromPage.username, igAccountId);
+              }
+            }
+          }
+
+          if (!igAccountId) {
           const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,name,instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${token}`;
           const userPagesRes = await fetchWithTimeout(userPagesUrl);
           const userPagesData = await userPagesRes.json();
@@ -371,6 +440,7 @@ Deno.serve(async (req) => {
           } else {
             console.log("[IG] Ambiguous or unavailable Instagram account for this project. Skipping automatic selection.");
           }
+          }
         }
 
         if (igAccountId) {
@@ -379,6 +449,9 @@ Deno.serve(async (req) => {
           const igUserData = await igUserRes.json();
           if (!igUserData.error) {
             igFollowersCount = Number(igUserData.followers_count || igFollowersCount || 0);
+            shouldPersistInstagram = true;
+          } else {
+            console.log("[IG] followers_count error:", igUserData.error?.message);
           }
 
           const insightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_views&metric_type=total_value&period=day&since=${start}&until=${end}&access_token=${igAccessToken}`;
@@ -386,15 +459,34 @@ Deno.serve(async (req) => {
           const insightsData = await insightsRes.json();
           console.log("[IG] Insights response:", JSON.stringify(insightsData).substring(0, 500));
 
-          igProfileViews = Number(insightsData.data?.[0]?.total_value?.value || 0);
+          if (!insightsData.error) {
+            igProfileViews = Number(insightsData.data?.[0]?.total_value?.value || 0);
+            shouldPersistInstagram = true;
+          } else {
+            console.log("[IG] profile_views error:", insightsData.error?.message);
+
+            const fallbackInsightsUrl = `${GRAPH_API}/${igAccountId}/insights?metric=profile_activity&metric_type=total_value&period=day&since=${start}&until=${end}&access_token=${igAccessToken}`;
+            const fallbackInsightsRes = await fetchWithTimeout(fallbackInsightsUrl);
+            const fallbackInsightsData = await fallbackInsightsRes.json();
+            console.log("[IG] Fallback insights response:", JSON.stringify(fallbackInsightsData).substring(0, 500));
+
+            if (!fallbackInsightsData.error) {
+              igProfileViews = Number(fallbackInsightsData.data?.[0]?.total_value?.value || 0);
+              shouldPersistInstagram = true;
+            }
+          }
         }
 
         console.log("[IG] Final values - profile_views:", igProfileViews, "followers:", igFollowersCount);
 
-        await supabase.from("meta_ads_accounts").update({
-          ig_profile_views: igProfileViews,
-          ig_followers_count: igFollowersCount,
-        }).eq("project_id", project_id).eq("is_connected", true);
+        if (shouldPersistInstagram) {
+          await supabase.from("meta_ads_accounts").update({
+            ig_profile_views: igProfileViews,
+            ig_followers_count: igFollowersCount,
+          }).eq("project_id", project_id).eq("is_connected", true);
+        } else {
+          console.log("[IG] Keeping previously saved Instagram values because no deterministic account could be resolved.");
+        }
       } catch (igErr) {
         console.error("Instagram insights fetch error (non-fatal):", igErr);
       }
