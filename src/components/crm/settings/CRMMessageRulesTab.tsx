@@ -434,6 +434,11 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                         <Badge variant="outline" className="text-xs">
                           {ruleMessages.length} msg{ruleMessages.length !== 1 ? "s" : ""}
                         </Badge>
+                        {rule.stop_on_reply && (
+                          <Badge variant="secondary" className="text-xs bg-amber-100 text-amber-800">
+                            Para se responder
+                          </Badge>
+                        )}
                       </div>
                       {instanceName && (
                         <p className="text-xs text-muted-foreground mt-1 ml-6">
@@ -464,11 +469,16 @@ export const CRMMessageRulesTab = ({ pipelines, stages }: CRMMessageRulesTabProp
                     <div className="mt-4 ml-6 space-y-2 border-l-2 border-muted pl-4">
                       {ruleMessages.map((msg, i) => (
                         <div key={msg.id} className="flex items-start gap-3">
-                          <div className="flex items-center gap-1.5 min-w-[100px]">
-                            <Clock className="h-3.5 w-3.5 text-muted-foreground" />
-                            <span className="text-xs text-muted-foreground">
-                              {getDelayLabel(msg.delay_minutes)}
-                            </span>
+                          <div className="flex flex-col items-start gap-0.5 min-w-[120px]">
+                            <div className="flex items-center gap-1.5">
+                              <Clock className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="text-xs text-muted-foreground">
+                                {getDelayLabel(msg.delay_minutes)}
+                              </span>
+                            </div>
+                            {msg.send_condition === "only_if_no_reply" && (
+                              <span className="text-[10px] text-amber-600 ml-5">Se não respondeu</span>
+                            )}
                           </div>
                           <div className="flex-1 bg-muted/50 rounded-lg p-3">
                             <p className="text-sm whitespace-pre-wrap">{msg.message_template}</p>
