@@ -316,6 +316,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "Diagnóstico",
     group: null,
   },
+  {
+    key: CLIENT_MENU_KEYS.unv_office,
+    label: "UNV Office",
+    group: "Integrações",
+  },
 ] as const;
 
 // Role labels in Portuguese
