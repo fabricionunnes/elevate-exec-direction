@@ -57,6 +57,20 @@ async function resolveInstagramFromPage(pageId: string, accessToken: string) {
   };
 }
 
+function resolveInstagramFromAccountsList(pageId: string, pages: any[]) {
+  const page = (pages || []).find((entry: any) => String(entry.id) === String(pageId));
+  if (!page) return null;
+
+  const igAccount = page.instagram_business_account || page.connected_instagram_account;
+  if (!igAccount?.id) return null;
+
+  return {
+    id: String(igAccount.id),
+    username: igAccount.username || null,
+    followers_count: Number(igAccount.followers_count || 0),
+  };
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
@@ -373,6 +387,7 @@ Deno.serve(async (req) => {
         } else {
           const adCreativeActorIds = new Map<string, number>();
           const adCreativePageIds = new Map<string, number>();
+          let userPages: any[] = [];
 
           for (const ad of adsData.data || []) {
             const storySpec = ad?.creative?.object_story_spec || {};
@@ -397,7 +412,19 @@ Deno.serve(async (req) => {
           if (!igAccountId) {
             const pageIdFromAds = pickMostLikelyId(adCreativePageIds, "page_id from ads");
             if (pageIdFromAds) {
-              const resolvedFromPage = await resolveInstagramFromPage(pageIdFromAds, token);
+              const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,name,instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${token}`;
+              const userPagesRes = await fetchWithTimeout(userPagesUrl);
+              const userPagesData = await userPagesRes.json();
+              userPages = userPagesData.data || [];
+
+              const resolvedFromAccountsList = resolveInstagramFromAccountsList(pageIdFromAds, userPages);
+              if (resolvedFromAccountsList?.id) {
+                igAccountId = resolvedFromAccountsList.id;
+                igFollowersCount = Number(resolvedFromAccountsList.followers_count || 0);
+                console.log("[IG] Resolved Instagram via /me/accounts page match:", resolvedFromAccountsList.username, igAccountId);
+              }
+
+              const resolvedFromPage = igAccountId ? null : await resolveInstagramFromPage(pageIdFromAds, token);
               if (resolvedFromPage?.id) {
                 igAccountId = resolvedFromPage.id;
                 igFollowersCount = Number(resolvedFromPage.followers_count || 0);
@@ -407,12 +434,15 @@ Deno.serve(async (req) => {
           }
 
           if (!igAccountId) {
-          const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,name,instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${token}`;
-          const userPagesRes = await fetchWithTimeout(userPagesUrl);
-          const userPagesData = await userPagesRes.json();
+          if (userPages.length === 0) {
+            const userPagesUrl = `${GRAPH_API}/me/accounts?fields=id,name,instagram_business_account{id,username,followers_count},connected_instagram_account{id,username,followers_count}&access_token=${token}`;
+            const userPagesRes = await fetchWithTimeout(userPagesUrl);
+            const userPagesData = await userPagesRes.json();
+            userPages = userPagesData.data || [];
+          }
 
           const discoveredAccounts = new Map<string, { id: string; username: string | null; followers_count: number | null; source: string }>();
-          for (const page of userPagesData.data || []) {
+          for (const page of userPages || []) {
             const candidates = [
               { data: page.instagram_business_account, source: "instagram_business_account" },
               { data: page.connected_instagram_account, source: "connected_instagram_account" },
