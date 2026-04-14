@@ -353,10 +353,50 @@ const KickoffFormPage = () => {
     }
   };
 
-  const nextStep = () => {
-    if (currentStep === 5 && !validateSalesHistory()) {
-      return;
+  const validateStep = (step: number): boolean => {
+    const requiredFieldsByStep: Record<number, (keyof KickoffFormData)[]> = {
+      1: ['main_challenges', 'sales_team_size', 'conversion_rate', 'average_ticket', 'acquisition_channels', 'target_audience', 'has_structured_process', 'crm_usage', 'competitors', 'has_sales_goals'],
+      2: ['swot_strengths', 'swot_weaknesses', 'swot_opportunities', 'swot_threats'],
+      3: ['commercial_structure', 'growth_target', 'tools_used', 'objectives_with_unv', 'key_results'],
+      6: ['growth_expectation_3m', 'growth_expectation_6m', 'growth_expectation_12m'],
+    };
+
+    // Step 4: validate quarterly goals
+    if (step === 4) {
+      const qg = formData.quarterly_goals;
+      const quarters = ['q1', 'q2', 'q3', 'q4'] as const;
+      const types = ['pessimista', 'realista', 'otimista'] as const;
+      for (const q of quarters) {
+        for (const t of types) {
+          if (!qg[q][t]?.trim()) {
+            toast.error("Preencha todas as metas trimestrais antes de avançar");
+            return false;
+          }
+        }
+      }
+      return true;
     }
+
+    // Step 5: validate sales history
+    if (step === 5) {
+      return validateSalesHistory();
+    }
+
+    const fields = requiredFieldsByStep[step];
+    if (!fields) return true;
+
+    for (const field of fields) {
+      const value = formData[field];
+      if (typeof value === 'string' && !value.trim()) {
+        toast.error("Preencha todos os campos obrigatórios antes de avançar");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (!validateStep(currentStep)) return;
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
