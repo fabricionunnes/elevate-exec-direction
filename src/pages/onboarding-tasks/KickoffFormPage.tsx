@@ -276,9 +276,12 @@ const KickoffFormPage = () => {
 
   const handleSubmit = async () => {
     if (!companyId) return;
-    if (!validateSalesHistory()) {
-      setCurrentStep(5);
-      return;
+    // Validate all steps
+    for (let step = 1; step <= STEPS.length; step++) {
+      if (!validateStep(step)) {
+        setCurrentStep(step);
+        return;
+      }
     }
     setSaving(true);
     try {
@@ -353,10 +356,50 @@ const KickoffFormPage = () => {
     }
   };
 
-  const nextStep = () => {
-    if (currentStep === 5 && !validateSalesHistory()) {
-      return;
+  const validateStep = (step: number): boolean => {
+    const requiredFieldsByStep: Record<number, (keyof KickoffFormData)[]> = {
+      1: ['main_challenges', 'sales_team_size', 'conversion_rate', 'average_ticket', 'acquisition_channels', 'target_audience', 'has_structured_process', 'crm_usage', 'competitors', 'has_sales_goals'],
+      2: ['swot_strengths', 'swot_weaknesses', 'swot_opportunities', 'swot_threats'],
+      3: ['commercial_structure', 'growth_target', 'tools_used', 'objectives_with_unv', 'key_results'],
+      6: ['growth_expectation_3m', 'growth_expectation_6m', 'growth_expectation_12m'],
+    };
+
+    // Step 4: validate quarterly goals
+    if (step === 4) {
+      const qg = formData.quarterly_goals;
+      const quarters = ['q1', 'q2', 'q3', 'q4'] as const;
+      const types = ['pessimista', 'realista', 'otimista'] as const;
+      for (const q of quarters) {
+        for (const t of types) {
+          if (!qg[q][t]?.trim()) {
+            toast.error("Preencha todas as metas trimestrais antes de avançar");
+            return false;
+          }
+        }
+      }
+      return true;
     }
+
+    // Step 5: validate sales history
+    if (step === 5) {
+      return validateSalesHistory();
+    }
+
+    const fields = requiredFieldsByStep[step];
+    if (!fields) return true;
+
+    for (const field of fields) {
+      const value = formData[field];
+      if (typeof value === 'string' && !value.trim()) {
+        toast.error("Preencha todos os campos obrigatórios antes de avançar");
+        return false;
+      }
+    }
+    return true;
+  };
+
+  const nextStep = () => {
+    if (!validateStep(currentStep)) return;
     if (currentStep < STEPS.length) {
       setCurrentStep(currentStep + 1);
     }
@@ -435,7 +478,7 @@ const KickoffFormPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="sales_team_size">2. Quantos vendedores ativos há na equipe?</Label>
+                <Label htmlFor="sales_team_size">2. Quantos vendedores ativos há na equipe? *</Label>
                 <Input
                   id="sales_team_size"
                   value={formData.sales_team_size}
@@ -444,7 +487,7 @@ const KickoffFormPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="conversion_rate">3. Qual a taxa de conversão atual?</Label>
+                <Label htmlFor="conversion_rate">3. Qual a taxa de conversão atual? *</Label>
                 <Input
                   id="conversion_rate"
                   value={formData.conversion_rate}
@@ -456,7 +499,7 @@ const KickoffFormPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="average_ticket">4. Qual o ticket médio de venda?</Label>
+                <Label htmlFor="average_ticket">4. Qual o ticket médio de venda? *</Label>
                 <Input
                   id="average_ticket"
                   value={formData.average_ticket}
@@ -465,7 +508,7 @@ const KickoffFormPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="acquisition_channels">5. Quais são os principais canais de aquisição?</Label>
+                <Label htmlFor="acquisition_channels">5. Quais são os principais canais de aquisição? *</Label>
                 <Input
                   id="acquisition_channels"
                   value={formData.acquisition_channels}
@@ -476,7 +519,7 @@ const KickoffFormPage = () => {
             </div>
 
             <div className="space-y-2">
-              <Label htmlFor="target_audience">6. Qual é o perfil do seu cliente ideal?</Label>
+              <Label htmlFor="target_audience">6. Qual é o perfil do seu cliente ideal? *</Label>
               <Textarea
                 id="target_audience"
                 value={formData.target_audience}
@@ -488,7 +531,7 @@ const KickoffFormPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="has_structured_process">7. O time de vendas segue um processo estruturado?</Label>
+                <Label htmlFor="has_structured_process">7. O time de vendas segue um processo estruturado? *</Label>
                 <Input
                   id="has_structured_process"
                   value={formData.has_structured_process}
@@ -497,7 +540,7 @@ const KickoffFormPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="crm_usage">8. O CRM está sendo utilizado corretamente?</Label>
+                <Label htmlFor="crm_usage">8. O CRM está sendo utilizado corretamente? *</Label>
                 <Input
                   id="crm_usage"
                   value={formData.crm_usage}
@@ -509,7 +552,7 @@ const KickoffFormPage = () => {
 
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div className="space-y-2">
-                <Label htmlFor="competitors">9. Quais são os principais concorrentes?</Label>
+                <Label htmlFor="competitors">9. Quais são os principais concorrentes? *</Label>
                 <Input
                   id="competitors"
                   value={formData.competitors}
@@ -518,7 +561,7 @@ const KickoffFormPage = () => {
                 />
               </div>
               <div className="space-y-2">
-                <Label htmlFor="has_sales_goals">10. Existe um plano de metas para os vendedores?</Label>
+                <Label htmlFor="has_sales_goals">10. Existe um plano de metas para os vendedores? *</Label>
                 <Input
                   id="has_sales_goals"
                   value={formData.has_sales_goals}
@@ -541,7 +584,7 @@ const KickoffFormPage = () => {
             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <Card className="border-green-200 dark:border-green-800">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-green-600">1. Forças</CardTitle>
+                  <CardTitle className="text-base text-green-600">1. Forças *</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
@@ -555,7 +598,7 @@ const KickoffFormPage = () => {
 
               <Card className="border-red-200 dark:border-red-800">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-red-600">2. Fraquezas</CardTitle>
+                  <CardTitle className="text-base text-red-600">2. Fraquezas *</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
@@ -569,7 +612,7 @@ const KickoffFormPage = () => {
 
               <Card className="border-blue-200 dark:border-blue-800">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-blue-600">3. Oportunidades</CardTitle>
+                  <CardTitle className="text-base text-blue-600">3. Oportunidades *</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
@@ -583,7 +626,7 @@ const KickoffFormPage = () => {
 
               <Card className="border-yellow-200 dark:border-yellow-800">
                 <CardHeader className="pb-2">
-                  <CardTitle className="text-base text-yellow-600">4. Ameaças</CardTitle>
+                  <CardTitle className="text-base text-yellow-600">4. Ameaças *</CardTitle>
                 </CardHeader>
                 <CardContent>
                   <Textarea
@@ -605,7 +648,7 @@ const KickoffFormPage = () => {
               <h3 className="text-lg font-semibold mb-4">Checklist de Informações</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>1. Estrutura atual da equipe comercial</Label>
+                  <Label>1. Estrutura atual da equipe comercial *</Label>
                   <Textarea
                     value={formData.commercial_structure}
                     onChange={(e) => updateField("commercial_structure", e.target.value)}
@@ -614,7 +657,7 @@ const KickoffFormPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>2. Meta de crescimento</Label>
+                  <Label>2. Meta de crescimento *</Label>
                   <Input
                     value={formData.growth_target}
                     onChange={(e) => updateField("growth_target", e.target.value)}
@@ -622,7 +665,7 @@ const KickoffFormPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>3. Ferramentas utilizadas (CRM, automação)</Label>
+                  <Label>3. Ferramentas utilizadas (CRM, automação) *</Label>
                   <Input
                     value={formData.tools_used}
                     onChange={(e) => updateField("tools_used", e.target.value)}
@@ -636,7 +679,7 @@ const KickoffFormPage = () => {
               <h3 className="text-lg font-semibold mb-4">OKRs</h3>
               <div className="space-y-4">
                 <div className="space-y-2">
-                  <Label>1. Principais objetivos com a UNV</Label>
+                  <Label>1. Principais objetivos com a UNV *</Label>
                   <Textarea
                     value={formData.objectives_with_unv}
                     onChange={(e) => updateField("objectives_with_unv", e.target.value)}
@@ -645,7 +688,7 @@ const KickoffFormPage = () => {
                   />
                 </div>
                 <div className="space-y-2">
-                  <Label>2. Resultados-chave (O que vai fazer você dizer que valeu a pena?)</Label>
+                  <Label>2. Resultados-chave (O que vai fazer você dizer que valeu a pena?) *</Label>
                   <Textarea
                     value={formData.key_results}
                     onChange={(e) => updateField("key_results", e.target.value)}
