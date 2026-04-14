@@ -276,9 +276,12 @@ const KickoffFormPage = () => {
 
   const handleSubmit = async () => {
     if (!companyId) return;
-    if (!validateSalesHistory()) {
-      setCurrentStep(5);
-      return;
+    // Validate all steps
+    for (let step = 1; step <= STEPS.length; step++) {
+      if (!validateStep(step)) {
+        setCurrentStep(step);
+        return;
+      }
     }
     setSaving(true);
     try {
