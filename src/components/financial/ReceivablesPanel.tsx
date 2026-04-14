@@ -488,12 +488,8 @@ export function ReceivablesPanel() {
   const paidReceivables = filteredReceivables.filter(r => r.status === "paid");
   const totalReceived = paidReceivables.reduce((sum, r) => {
     const baseAmount = Number(r.paid_amount || r.amount);
-    // Se tiver campos de ajustes (juros, taxas, descontos), calcular o líquido
-    const interest = Number((r as any).interest_amount || 0);
-    const lateFee = Number((r as any).late_fee_amount || 0);
-    const discount = Number((r as any).discount_amount || 0);
     const fee = Number((r as any).fee_amount || 0);
-    const netReceived = baseAmount + interest + lateFee - discount - fee;
+    const netReceived = baseAmount - fee;
     return sum + netReceived;
   }, 0);
   
