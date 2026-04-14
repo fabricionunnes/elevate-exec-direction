@@ -75,10 +75,11 @@ Deno.serve(async (req) => {
         id, amount_cents, description, due_date, status,
         payment_link_url, daily_interest_percent, late_fee_percent,
         late_fee_cents, interest_cents, installment_number,
-        total_installments, company_id, recurring_charge_id
+        total_installments, company_id, recurring_charge_id, send_whatsapp
       `)
       .in("status", ["pending", "overdue"])
-      .in("due_date", targetDatesArray);
+      .in("due_date", targetDatesArray)
+      .neq("send_whatsapp", false);
 
     if (invError) throw invError;
     if (!invoices || invoices.length === 0) {
