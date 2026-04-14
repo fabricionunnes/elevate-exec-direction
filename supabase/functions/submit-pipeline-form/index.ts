@@ -153,6 +153,14 @@ Deno.serve(async (req) => {
 
     if (!form || !form.is_active) return jsonResponse({ error: 'Formulário não encontrado ou inativo' }, 404);
 
+    // Fetch pipeline name
+    const { data: pipelineData } = await supabase
+      .from('crm_pipelines')
+      .select('name')
+      .eq('id', form.pipeline_id)
+      .maybeSingle();
+    const pipelineName = pipelineData?.name || 'Desconhecido';
+
     // ── Check for existing lead by email or phone in the same pipeline ──
     const cleanPhone = telefone.replace(/\D/g, '');
     const { data: existingLead } = await supabase
@@ -191,7 +199,7 @@ Deno.serve(async (req) => {
         .limit(1)
         .maybeSingle();
 
-      await sendWhatsAppNotification(supabase, existingLead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
+      await sendWhatsAppNotification(supabase, existingLead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
 
       return jsonResponse({ success: true, lead_id: existingLead.id });
     }
@@ -306,7 +314,7 @@ Deno.serve(async (req) => {
     await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName);
 
     // ── WhatsApp notification ──
-    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner);
+    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
 
     // ── Fire automation engine for lead_created ──
     try {
@@ -395,12 +403,14 @@ async function sendWhatsAppNotification(
   supabase: any, leadId: string,
   nome: string, telefone: string, email: string,
   empresa?: string, desafio?: string, utm_source?: string,
-  owner?: { id: string; phone: string | null } | null
+  owner?: { id: string; phone: string | null } | null,
+  pipelineName?: string
 ) {
   const APP_URL = 'https://elevate-exec-direction.lovable.app';
   const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
 
   const message = `🚀 *Novo Lead via Formulário!*\n\n` +
+    `📊 *Funil:* ${pipelineName || 'Desconhecido'}\n` +
     `👤 *Nome:* ${nome}\n` +
     `📞 *Telefone:* ${telefone}\n` +
     `📧 *Email:* ${email}\n` +
