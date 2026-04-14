@@ -1,0 +1,1 @@
+ALTER TABLE public.onboarding_companies ADD COLUMN owner_phone TEXT;

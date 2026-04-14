@@ -22780,6 +22780,7 @@ export type Database = {
           owner_cpf: string | null
           owner_marital_status: string | null
           owner_name: string | null
+          owner_phone: string | null
           owner_rg: string | null
           payment_method: string | null
           phone: string | null
@@ -22854,6 +22855,7 @@ export type Database = {
           owner_cpf?: string | null
           owner_marital_status?: string | null
           owner_name?: string | null
+          owner_phone?: string | null
           owner_rg?: string | null
           payment_method?: string | null
           phone?: string | null
@@ -22928,6 +22930,7 @@ export type Database = {
           owner_cpf?: string | null
           owner_marital_status?: string | null
           owner_name?: string | null
+          owner_phone?: string | null
           owner_rg?: string | null
           payment_method?: string | null
           phone?: string | null
