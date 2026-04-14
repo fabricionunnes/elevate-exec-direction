@@ -1112,11 +1112,9 @@ export default function AllRecurringChargesPage() {
       rows = [["Empresa", "Descrição", "Parcela", "Valor", "Vencimento", "Status", "Pago em", "Recebido"]];
       filteredInvoices.forEach(inv => {
         const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
-        const interest = (inv as any).interest_cents || 0;
-        const discount = (inv as any).discount_cents || 0;
         const fee = (inv as any).payment_fee_cents || 0;
         const hasPaid = inv.status === "paid" || inv.status === "partial";
-        const net = hasPaid ? (base + interest - discount - fee) : 0;
+        const net = hasPaid ? (base - fee) : 0;
         rows.push([inv.company_name || "", inv.description, `${inv.installment_number}/${inv.total_installments}`, formatCurrencyCents(inv.amount_cents), inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "", statusLabel(inv.status, inv.due_date), inv.paid_at ? format(new Date(inv.paid_at.substring(0, 10) + "T12:00:00"), "dd/MM/yyyy") : "", hasPaid ? formatCurrencyCents(net) : ""]);
       });
     }
@@ -1186,10 +1184,8 @@ export default function AllRecurringChargesPage() {
       pendingCount: pending.length,
       totalPaid: paid.reduce((s, i) => {
         const base = i.paid_amount_cents || (i.status === "paid" ? i.amount_cents : 0);
-        const interest = (i as any).interest_cents || 0;
-        const discount = (i as any).discount_cents || 0;
         const fee = (i as any).payment_fee_cents || 0;
-        return s + base + interest - discount - fee;
+        return s + base - fee;
       }, 0),
       paidCount: paid.length,
       totalOverdue: effectivelyOverdue.reduce((s, i) => s + i.total_with_fees_cents, 0),
@@ -1805,10 +1801,8 @@ export default function AllRecurringChargesPage() {
                               <TableCell className="text-right font-medium text-sm">
                                 {(inv.status === "paid" || inv.status === "partial") ? (() => {
                                   const base = inv.paid_amount_cents || (inv.status === "paid" ? inv.amount_cents : 0);
-                                  const interest = (inv as any).interest_cents || 0;
-                                  const discount = (inv as any).discount_cents || 0;
                                   const fee = (inv as any).payment_fee_cents || 0;
-                                  const net = base + interest - discount - fee;
+                                  const net = base - fee;
                                   return <span className={inv.status === "partial" ? "text-amber-600" : "text-emerald-600"}>{formatCurrencyCents(net)}</span>;
                                 })() : "-"}
                               </TableCell>
