@@ -862,6 +862,7 @@ const OnboardingCompanyDetailPage = () => {
                             setForm({ ...form, owner_phone: masked });
                           }}
                         />
+                      </div>
                       <div className="space-y-2">
                         <Label htmlFor="owner_cpf">CPF</Label>
                         <Input
