@@ -844,6 +844,25 @@ const OnboardingCompanyDetailPage = () => {
                         />
                       </div>
                       <div className="space-y-2">
+                        <Label htmlFor="owner_phone">Telefone de Contato</Label>
+                        <Input
+                          id="owner_phone"
+                          value={form.owner_phone}
+                          placeholder="(00) 00000-0000"
+                          onChange={(e) => {
+                            const raw = e.target.value.replace(/\D/g, "").slice(0, 11);
+                            let masked = raw;
+                            if (raw.length > 2 && raw.length <= 7) {
+                              masked = `(${raw.slice(0,2)}) ${raw.slice(2)}`;
+                            } else if (raw.length > 7) {
+                              masked = `(${raw.slice(0,2)}) ${raw.slice(2,7)}-${raw.slice(7)}`;
+                            } else if (raw.length > 0) {
+                              masked = `(${raw}`;
+                            }
+                            setForm({ ...form, owner_phone: masked });
+                          }}
+                        />
+                      <div className="space-y-2">
                         <Label htmlFor="owner_cpf">CPF</Label>
                         <Input
                           id="owner_cpf"
