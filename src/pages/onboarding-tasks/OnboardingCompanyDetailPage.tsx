@@ -103,6 +103,7 @@ interface CompanyForm {
   is_simulator: boolean;
   goal_not_required: boolean;
   owner_name: string;
+  owner_phone: string;
   owner_cpf: string;
   owner_rg: string;
   owner_marital_status: string;
@@ -168,6 +169,7 @@ const OnboardingCompanyDetailPage = () => {
     is_simulator: false,
     goal_not_required: false,
     owner_name: "",
+    owner_phone: "",
     owner_cpf: "",
     owner_rg: "",
     owner_marital_status: "",
@@ -275,6 +277,7 @@ const OnboardingCompanyDetailPage = () => {
         is_simulator: data.is_simulator || false,
         goal_not_required: data.goal_not_required || false,
         owner_name: (data as any).owner_name || "",
+        owner_phone: (data as any).owner_phone || data.phone || "",
         owner_cpf: (data as any).owner_cpf || "",
         owner_rg: (data as any).owner_rg || "",
         owner_marital_status: (data as any).owner_marital_status || "",
@@ -337,6 +340,7 @@ const OnboardingCompanyDetailPage = () => {
         is_simulator: currentForm.is_simulator,
         goal_not_required: currentForm.goal_not_required,
         owner_name: currentForm.owner_name || null,
+        owner_phone: currentForm.owner_phone || null,
         owner_cpf: currentForm.owner_cpf || null,
         owner_rg: currentForm.owner_rg || null,
         owner_marital_status: currentForm.owner_marital_status || null,
