@@ -400,7 +400,7 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const closerMetrics: CloserMetrics[] = rawCloserStaff.map(closer => {
       const closerSales = rawSalesData.filter(s => s.closer_staff_id === closer.id);
       const closerRevenue = closerSales.reduce((sum, s) => sum + (s.revenue_value || 0), 0);
-      const closerMeetingEvents = uniqueMeetingEvents.filter(e => e.lead?.owner_staff_id === closer.id);
+      const closerMeetingEvents = uniqueMeetingEvents.filter(e => e.credited_staff_id === closer.id);
       const closerScheduled = closerMeetingEvents.filter(e => e.event_type === "scheduled").length;
       const closerCompleted = closerMeetingEvents.filter(e => e.event_type === "realized").length;
 
