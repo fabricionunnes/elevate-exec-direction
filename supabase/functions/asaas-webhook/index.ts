@@ -317,7 +317,7 @@ Deno.serve(async (req) => {
 
     // Move CRM lead to "won" stage when public service purchase is paid
     if (newStatus === "paid") {
-      await movePublicPurchaseLeadToWon(supabase, subscriptionId, paymentId);
+      await movePublicPurchaseLeadToWon(supabase, subscriptionId, paymentId, paymentValue, paymentNetValue, paymentDiscount);
       await activatePendingProjects(supabase, paymentId);
     }
 
