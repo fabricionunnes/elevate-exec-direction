@@ -172,11 +172,7 @@ const SessaoEstrategicaPage = () => {
     });
 
     const targetUrl = `${window.location.origin}/#/form/${FORM_TOKEN}?${params.toString()}`;
-    const popup = window.open(targetUrl, "_blank");
-
-    if (!popup) {
-      window.location.href = targetUrl;
-    }
+    window.location.href = targetUrl;
 
     setShowPopup(false);
   };
