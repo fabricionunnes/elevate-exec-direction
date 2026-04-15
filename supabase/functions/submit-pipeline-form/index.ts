@@ -310,60 +310,49 @@ Deno.serve(async (req) => {
 
     console.log('[submit-pipeline-form] Lead created:', lead.id);
 
-    // ── Return immediately to the lead, fire notifications in background ──
-    // Using EdgeRuntime.waitUntil to send response fast while background tasks complete
-    const backgroundTasks = (async () => {
-      // Internal notifications for head_comercial, sdr, master
-      await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName);
+    // ── Internal notifications for head_comercial, sdr, master ──
+    await sendInternalNotifications(supabase, lead.id, nome, email, empresa, originName);
 
-      // WhatsApp notification
-      await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
+    // ── WhatsApp notification ──
+    await sendWhatsAppNotification(supabase, lead.id, nome, telefone, email, empresa, desafio, utm_source, owner, pipelineName);
 
-      // Fire automation engine for lead_created
-      try {
-        await supabase.functions.invoke("automation-engine", {
-          body: {
-            trigger_type: "lead_created",
-            trigger_data: {
-              lead_id: lead.id,
-              lead_name: nome,
-              lead_phone: cleanPhone,
-              company_name: empresa || "",
-              pipeline_id: form.pipeline_id,
-            },
-          },
-        });
-      } catch (autoErr) {
-        console.error("[submit-pipeline-form] Automation engine error:", autoErr);
-      }
-
-      // Enqueue CRM message rules
-      try {
-        await supabase.functions.invoke("crm-message-queue", {
-          body: {
-            action: "enqueue",
-            trigger_type: "lead_created",
+    // ── Fire automation engine for lead_created ──
+    try {
+      await supabase.functions.invoke("automation-engine", {
+        body: {
+          trigger_type: "lead_created",
+          trigger_data: {
             lead_id: lead.id,
             lead_name: nome,
             lead_phone: cleanPhone,
-            lead_email: email || "",
             company_name: empresa || "",
             pipeline_id: form.pipeline_id,
-            pipeline_name: "",
-            stage_id: firstStage?.id || "",
-            stage_name: "",
           },
-        });
-      } catch (queueErr) {
-        console.error("[submit-pipeline-form] Message queue error:", queueErr);
-      }
-    })();
+        },
+      });
+    } catch (autoErr) {
+      console.error("[submit-pipeline-form] Automation engine error:", autoErr);
+    }
 
-    // Use waitUntil if available (keeps function alive after response), otherwise fire-and-forget
-    if (typeof (globalThis as any).EdgeRuntime?.waitUntil === 'function') {
-      (globalThis as any).EdgeRuntime.waitUntil(backgroundTasks);
-    } else {
-      backgroundTasks.catch(e => console.error('[submit-pipeline-form] Background task error:', e));
+    // ── Enqueue CRM message rules (régua de mensagens para o cliente) ──
+    try {
+      await supabase.functions.invoke("crm-message-queue", {
+        body: {
+          action: "enqueue",
+          trigger_type: "lead_created",
+          lead_id: lead.id,
+          lead_name: nome,
+          lead_phone: cleanPhone,
+          lead_email: email || "",
+          company_name: empresa || "",
+          pipeline_id: form.pipeline_id,
+          pipeline_name: pipelineName,
+          stage_id: stage.id,
+          stage_name: "",
+        },
+      });
+    } catch (queueErr) {
+      console.error("[submit-pipeline-form] Message queue error:", queueErr);
     }
 
     return jsonResponse({ success: true, lead_id: lead.id });

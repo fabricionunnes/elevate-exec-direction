@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useParams, useSearchParams } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Button } from "@/components/ui/button";
@@ -44,6 +44,12 @@ const PublicPipelineForm = () => {
   const { token } = useParams<{ token: string }>();
   const [searchParams] = useSearchParams();
   const prefilledLeadId = searchParams.get("lead_id");
+  const autoSubmit = searchParams.get("auto_submit") === "1";
+  const autoNome = (searchParams.get("nome") || "").trim();
+  const autoTelefone = (searchParams.get("telefone") || "").trim();
+  const autoEmail = (searchParams.get("email") || "").trim();
+  const autoSubmittedRef = useRef(false);
+
   const [form, setForm] = useState<FormConfig | null>(null);
   const [questions, setQuestions] = useState<FormQuestion[]>([]);
   const [loading, setLoading] = useState(true);
@@ -54,17 +60,16 @@ const PublicPipelineForm = () => {
   const [error, setError] = useState<string | null>(null);
   const [leadId, setLeadId] = useState<string | null>(prefilledLeadId);
 
-  const [nome, setNome] = useState("");
-  const [telefone, setTelefone] = useState("");
-  const [email, setEmail] = useState("");
+  const [nome, setNome] = useState(autoNome);
+  const [telefone, setTelefone] = useState(autoTelefone ? formatPhone(autoTelefone) : "");
+  const [email, setEmail] = useState(autoEmail);
 
   const [answers, setAnswers] = useState<Record<string, string>>({});
 
   const handleFormComplete = () => {
     if (form?.redirect_url) {
       window.location.href = form.redirect_url;
-    } else if (prefilledLeadId) {
-      // If came from sessao-estrategica popup, go to thank you page
+    } else if (prefilledLeadId || autoSubmit) {
       window.location.hash = "/sessao-estrategica/obrigado";
     } else {
       setSubmitted(true);
@@ -99,9 +104,17 @@ const PublicPipelineForm = () => {
     setLoading(false);
   };
 
-  const handleStep1Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!form || !nome.trim() || !cleanPhone(telefone) || !email.trim()) return;
+  const submitStep1 = async (payload?: { nome?: string; telefone?: string; email?: string }) => {
+    if (!form) return;
+
+    const finalNome = (payload?.nome ?? nome).trim();
+    const finalTelefone = cleanPhone(payload?.telefone ?? telefone);
+    const finalEmail = (payload?.email ?? email).trim();
+
+    if (!finalNome || !finalTelefone || !finalEmail) {
+      setError("Preencha nome, WhatsApp e e-mail.");
+      return;
+    }
 
     setSubmittingStep1(true);
     setError(null);
@@ -115,13 +128,17 @@ const PublicPipelineForm = () => {
           headers: { "Content-Type": "application/json" },
           body: JSON.stringify({
             form_token: form.form_token,
-            nome: nome.trim(),
-            telefone: cleanPhone(telefone),
-            email: email.trim(),
+            nome: finalNome,
+            telefone: finalTelefone,
+            email: finalEmail,
             utm_source: searchParams.get("utm_source") || undefined,
             utm_medium: searchParams.get("utm_medium") || undefined,
             utm_campaign: searchParams.get("utm_campaign") || undefined,
             utm_content: searchParams.get("utm_content") || undefined,
+            fbclid: searchParams.get("fbclid") || undefined,
+            ad_name: searchParams.get("ad_name") || undefined,
+            adset_name: searchParams.get("adset_name") || undefined,
+            campaign_name: searchParams.get("campaign_name") || undefined,
           }),
         }
       );
@@ -130,8 +147,6 @@ const PublicPipelineForm = () => {
       if (!response.ok) throw new Error(data.error || "Erro ao enviar");
 
       setLeadId(data.lead_id);
-
-      // If there are questions, go to step 2, otherwise done
       if (questions.length > 0) {
         setStep(2);
       } else {
@@ -144,11 +159,23 @@ const PublicPipelineForm = () => {
     }
   };
 
+  useEffect(() => {
+    if (!form || prefilledLeadId || !autoSubmit || autoSubmittedRef.current) return;
+    if (!autoNome || !autoTelefone || !autoEmail) return;
+
+    autoSubmittedRef.current = true;
+    void submitStep1({ nome: autoNome, telefone: autoTelefone, email: autoEmail });
+  }, [form, prefilledLeadId, autoSubmit, autoNome, autoTelefone, autoEmail, questions.length]);
+
+  const handleStep1Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    await submitStep1();
+  };
+
   const handleStep2Submit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!leadId) return;
 
-    // Validate required questions
     for (const q of questions) {
       if (q.is_required && (!answers[q.id] || !answers[q.id].trim())) {
         setError(`Por favor, responda: "${q.question_text}"`);
@@ -244,51 +271,59 @@ const PublicPipelineForm = () => {
         </CardHeader>
         <CardContent>
           {step === 1 && (
-            <form onSubmit={handleStep1Submit} className="space-y-4">
-              <div className="space-y-2">
-                <Label htmlFor="nome">Nome completo *</Label>
-                <Input
-                  id="nome"
-                  value={nome}
-                  onChange={(e) => setNome(e.target.value)}
-                  required
-                  maxLength={200}
-                />
+            autoSubmit ? (
+              <div className="py-8 text-center space-y-3">
+                <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" />
+                <p className="text-sm text-muted-foreground">Abrindo formulário e captando seu cadastro...</p>
+                {error && <p className="text-sm text-destructive">{error}</p>}
               </div>
-              <div className="space-y-2">
-                <Label htmlFor="telefone">Telefone *</Label>
-                <Input
-                  id="telefone"
-                  value={telefone}
-                  onChange={(e) => setTelefone(formatPhone(e.target.value))}
-                  required
-                  maxLength={16}
-                  placeholder="(11) 99999-9999"
-                />
-              </div>
-              <div className="space-y-2">
-                <Label htmlFor="email">E-mail *</Label>
-                <Input
-                  id="email"
-                  type="email"
-                  value={email}
-                  onChange={(e) => setEmail(e.target.value)}
-                  required
-                  maxLength={255}
-                />
-              </div>
+            ) : (
+              <form onSubmit={handleStep1Submit} className="space-y-4">
+                <div className="space-y-2">
+                  <Label htmlFor="nome">Nome completo *</Label>
+                  <Input
+                    id="nome"
+                    value={nome}
+                    onChange={(e) => setNome(e.target.value)}
+                    required
+                    maxLength={200}
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="telefone">Telefone *</Label>
+                  <Input
+                    id="telefone"
+                    value={telefone}
+                    onChange={(e) => setTelefone(formatPhone(e.target.value))}
+                    required
+                    maxLength={16}
+                    placeholder="(11) 99999-9999"
+                  />
+                </div>
+                <div className="space-y-2">
+                  <Label htmlFor="email">E-mail *</Label>
+                  <Input
+                    id="email"
+                    type="email"
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    required
+                    maxLength={255}
+                  />
+                </div>
 
-              {error && <p className="text-sm text-destructive">{error}</p>}
+                {error && <p className="text-sm text-destructive">{error}</p>}
 
-              <Button type="submit" className="w-full" disabled={submittingStep1}>
-                {submittingStep1 ? (
-                  <Loader2 className="h-4 w-4 animate-spin mr-2" />
-                ) : (
-                  <ArrowRight className="h-4 w-4 mr-2" />
-                )}
-                {questions.length > 0 ? "Continuar" : "Enviar"}
-              </Button>
-            </form>
+                <Button type="submit" className="w-full" disabled={submittingStep1}>
+                  {submittingStep1 ? (
+                    <Loader2 className="h-4 w-4 animate-spin mr-2" />
+                  ) : (
+                    <ArrowRight className="h-4 w-4 mr-2" />
+                  )}
+                  {questions.length > 0 ? "Continuar" : "Enviar"}
+                </Button>
+              </form>
+            )
           )}
 
           {step === 2 && (
