@@ -314,14 +314,14 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           updatePayload.client_pays_amount = parseFloat(form.client_pays_amount) || 0;
         }
 
-        const { error } = await supabase
-          .from("sf_commission_configs")
+        const { error } = await (supabase
+          .from("sf_commission_configs") as any)
           .update(updatePayload)
           .eq("id", editingConfig.id);
         if (error) throw error;
 
-        await supabase.from("sf_commission_tiers").delete().eq("config_id", editingConfig.id);
-        const { error: tierError } = await supabase.from("sf_commission_tiers").insert(
+        await (supabase.from("sf_commission_tiers") as any).delete().eq("config_id", editingConfig.id);
+        const { error: tierError } = await (supabase.from("sf_commission_tiers") as any).insert(
           tiers.map((t, i) => ({ ...t, config_id: editingConfig.id, sort_order: i }))
         );
         if (tierError) throw tierError;
@@ -343,8 +343,8 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           insertPayload.client_pays_amount = parseFloat(form.client_pays_amount) || 0;
         }
 
-        const { data: newConfig, error } = await supabase
-          .from("sf_commission_configs")
+        const { data: newConfig, error } = await (supabase
+          .from("sf_commission_configs") as any)
           .insert(insertPayload)
           .select("id")
           .single();

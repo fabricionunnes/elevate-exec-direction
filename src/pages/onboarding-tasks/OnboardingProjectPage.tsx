@@ -1939,6 +1939,7 @@ const OnboardingProjectPage = () => {
               <SFCommissionsPanel
                 projectId={projectId!}
                 companyId={project.onboarding_company_id || ""}
+                viewerRole={currentUserRole}
               />
             </TabsContent>
           )}

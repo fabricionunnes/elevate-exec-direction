@@ -1321,6 +1321,7 @@ const ClientOnboardingPage = () => {
               <SFCommissionsPanel
                 projectId={projectId || ""}
                 companyId={project?.onboarding_company_id || ""}
+                viewerRole={currentUser?.role || null}
               />
             </motion.div>
           )}
