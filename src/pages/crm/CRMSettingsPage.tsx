@@ -1922,7 +1922,10 @@ export const CRMSettingsPage = () => {
 
         {/* Notifications Tab */}
         <TabsContent value="notifications" className="mt-6">
-          <WonNotificationSettings />
+          <div className="space-y-8">
+            <LeadNotificationSettings />
+            <WonNotificationSettings />
+          </div>
         </TabsContent>
 
         {/* Message Rules Tab */}
