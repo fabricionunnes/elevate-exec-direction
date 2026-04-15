@@ -1,14 +1,11 @@
-import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo, memo } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, useInView, LazyMotion, domAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
-import { Textarea } from "@/components/ui/textarea";
-import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { PhoneInput } from "@/components/ui/phone-input";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
-import { supabase } from "@/integrations/supabase/client";
 import {
   Loader2,
   Target,
@@ -69,7 +66,6 @@ function AnimatedSection({ children, className = "" }: { children: React.ReactNo
   );
 }
 
-/** YouTube facade: shows thumbnail, loads iframe only on click */
 function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
   const [loaded, setLoaded] = useState(false);
   const thumbUrl = `https://i.ytimg.com/vi/${videoId}/hqdefault.jpg`;
@@ -105,57 +101,16 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
 }
 const WHATSAPP_URL = `https://wa.me/5531984935274?text=${encodeURIComponent("Olá, tenho uma empresa, vi seu anúncio e quero saber mais sobre como ter o Fabricio Nunnes como meu diretor comercial")}`;
 
-interface FormQuestion {
-  id: string;
-  question_text: string;
-  question_type: string;
-  options: string[];
-  is_required: boolean;
-  sort_order: number;
-}
-
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
   const [showPopup, setShowPopup] = useState(false);
   const [nome, setNome] = useState("");
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const [submittingStep2, setSubmittingStep2] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [step, setStep] = useState(1);
-  const [leadId, setLeadId] = useState<string | null>(null);
-  const [questions, setQuestions] = useState<FormQuestion[]>([]);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
-  const [formDone, setFormDone] = useState(false);
 
   const openPopup = () => setShowPopup(true);
 
-  // Pre-fetch questions on mount so step 2 is instant
-  useEffect(() => {
-    const fetchQuestions = async () => {
-      // First get the form ID from the token
-      const { data: formData } = await supabase
-        .from("crm_pipeline_forms")
-        .select("id")
-        .eq("form_token", FORM_TOKEN)
-        .eq("is_active", true)
-        .maybeSingle();
-
-      if (formData) {
-        const { data: qData } = await (supabase
-          .from("crm_pipeline_form_questions" as any)
-          .select("id, question_text, question_type, options, is_required, sort_order")
-          .eq("form_id", formData.id)
-          .eq("is_active", true)
-          .order("sort_order", { ascending: true }) as any);
-        setQuestions((qData as FormQuestion[]) || []);
-      }
-    };
-    fetchQuestions();
-  }, []);
-
-  // Meta Pixel — deferred to not block first paint
   useEffect(() => {
     const timeout = setTimeout(() => {
       const pixelId = "247392077001023";
@@ -190,113 +145,40 @@ const SessaoEstrategicaPage = () => {
     return () => clearTimeout(timeout);
   }, []);
 
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault();
-    if (!nome.trim() || !telefone || !email.trim()) return;
 
-    setSubmitting(true);
-    setError(null);
+    const trimmedNome = nome.trim();
+    const trimmedEmail = email.trim();
+    const cleanTelefone = telefone.trim();
 
-    try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            form_token: FORM_TOKEN,
-            nome: nome.trim(),
-            telefone,
-            email: email.trim(),
-            utm_source: searchParams.get("utm_source") || undefined,
-            utm_medium: searchParams.get("utm_medium") || undefined,
-            utm_campaign: searchParams.get("utm_campaign") || undefined,
-            utm_content: searchParams.get("utm_content") || undefined,
-            fbclid: searchParams.get("fbclid") || undefined,
-            ad_name: searchParams.get("ad_name") || undefined,
-            adset_name: searchParams.get("adset_name") || undefined,
-            campaign_name: searchParams.get("campaign_name") || undefined,
-          }),
-        }
-      );
-
-      const data = await response.json();
-      if (!response.ok) throw new Error(data.error || "Erro ao enviar");
-
-      // Fire Meta Pixel Lead event
-      if (typeof (window as any).fbq === 'function') {
-        (window as any).fbq('track', 'Lead', {
-          content_name: 'Sessão Estratégica',
-          content_category: 'sessao-estrategica',
-        });
-      }
-
-      setLeadId(data.lead_id);
-
-      // If there are questions, go to step 2 inline, otherwise done
-      if (questions.length > 0) {
-        setStep(2);
-      } else {
-        setFormDone(true);
-      }
-    } catch (err: any) {
-      setError(err.message || "Erro ao enviar");
-    } finally {
-      setSubmitting(false);
-    }
-  };
-
-  const handleStep2Submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!leadId) return;
-
-    for (const q of questions) {
-      if (q.is_required && (!answers[q.id] || !answers[q.id].trim())) {
-        setError(`Por favor, responda: "${q.question_text}"`);
-        return;
-      }
-    }
-
-    setSubmittingStep2(true);
-    setError(null);
-
-    try {
-      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
-      const response = await fetch(
-        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
-        {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({
-            action: "submit_answers",
-            lead_id: leadId,
-            answers: Object.entries(answers)
-              .filter(([, v]) => v.trim())
-              .map(([questionId, answerText]) => ({ question_id: questionId, answer_text: answerText })),
-          }),
-        }
-      );
-
-      if (!response.ok) {
-        const data = await response.json();
-        throw new Error(data.error || "Erro ao enviar respostas");
-      }
-
-      setFormDone(true);
-    } catch (err: any) {
-      setError(err.message || "Erro ao enviar respostas");
-    } finally {
-      setSubmittingStep2(false);
-    }
-  };
-
-  const handlePopupClose = (open: boolean) => {
-    if (!open && formDone) {
-      window.location.hash = "/sessao-estrategica/obrigado";
+    if (!trimmedNome || !cleanTelefone || !trimmedEmail) {
+      setError("Preencha nome, WhatsApp e e-mail.");
       return;
     }
-    setShowPopup(open);
+
+    setError(null);
+
+    const params = new URLSearchParams({
+      auto_submit: "1",
+      nome: trimmedNome,
+      telefone: cleanTelefone,
+      email: trimmedEmail,
+    });
+
+    ["utm_source", "utm_medium", "utm_campaign", "utm_content", "fbclid", "ad_name", "adset_name", "campaign_name"].forEach((key) => {
+      const value = searchParams.get(key);
+      if (value) params.set(key, value);
+    });
+
+    const targetUrl = `${window.location.origin}/#/form/${FORM_TOKEN}?${params.toString()}`;
+    const popup = window.open(targetUrl, "_blank");
+
+    if (!popup) {
+      window.location.href = targetUrl;
+    }
+
+    setShowPopup(false);
   };
 
   return (
