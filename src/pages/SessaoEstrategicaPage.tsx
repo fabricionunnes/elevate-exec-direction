@@ -105,6 +105,15 @@ function LazyYouTube({ videoId, title }: { videoId: string; title: string }) {
 }
 const WHATSAPP_URL = `https://wa.me/5531984935274?text=${encodeURIComponent("Olá, tenho uma empresa, vi seu anúncio e quero saber mais sobre como ter o Fabricio Nunnes como meu diretor comercial")}`;
 
+interface FormQuestion {
+  id: string;
+  question_text: string;
+  question_type: string;
+  options: string[];
+  is_required: boolean;
+  sort_order: number;
+}
+
 const SessaoEstrategicaPage = () => {
   const [searchParams] = useSearchParams();
   const [showPopup, setShowPopup] = useState(false);
@@ -112,9 +121,39 @@ const SessaoEstrategicaPage = () => {
   const [telefone, setTelefone] = useState("");
   const [email, setEmail] = useState("");
   const [submitting, setSubmitting] = useState(false);
+  const [submittingStep2, setSubmittingStep2] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [step, setStep] = useState(1);
+  const [leadId, setLeadId] = useState<string | null>(null);
+  const [questions, setQuestions] = useState<FormQuestion[]>([]);
+  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [formDone, setFormDone] = useState(false);
 
   const openPopup = () => setShowPopup(true);
+
+  // Pre-fetch questions on mount so step 2 is instant
+  useEffect(() => {
+    const fetchQuestions = async () => {
+      // First get the form ID from the token
+      const { data: formData } = await supabase
+        .from("crm_pipeline_forms")
+        .select("id")
+        .eq("form_token", FORM_TOKEN)
+        .eq("is_active", true)
+        .maybeSingle();
+
+      if (formData) {
+        const { data: qData } = await (supabase
+          .from("crm_pipeline_form_questions" as any)
+          .select("id, question_text, question_type, options, is_required, sort_order")
+          .eq("form_id", formData.id)
+          .eq("is_active", true)
+          .order("sort_order", { ascending: true }) as any);
+        setQuestions((qData as FormQuestion[]) || []);
+      }
+    };
+    fetchQuestions();
+  }, []);
 
   // Meta Pixel — deferred to not block first paint
   useEffect(() => {
@@ -193,13 +232,71 @@ const SessaoEstrategicaPage = () => {
         });
       }
 
-      const leadId = data.lead_id;
-      window.location.hash = `/form/${FORM_TOKEN}?lead_id=${leadId}`;
+      setLeadId(data.lead_id);
+
+      // If there are questions, go to step 2 inline, otherwise done
+      if (questions.length > 0) {
+        setStep(2);
+      } else {
+        setFormDone(true);
+      }
     } catch (err: any) {
       setError(err.message || "Erro ao enviar");
     } finally {
       setSubmitting(false);
     }
+  };
+
+  const handleStep2Submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!leadId) return;
+
+    for (const q of questions) {
+      if (q.is_required && (!answers[q.id] || !answers[q.id].trim())) {
+        setError(`Por favor, responda: "${q.question_text}"`);
+        return;
+      }
+    }
+
+    setSubmittingStep2(true);
+    setError(null);
+
+    try {
+      const projectId = import.meta.env.VITE_SUPABASE_PROJECT_ID;
+      const response = await fetch(
+        `https://${projectId}.supabase.co/functions/v1/submit-pipeline-form`,
+        {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            action: "submit_answers",
+            lead_id: leadId,
+            answers: Object.entries(answers)
+              .filter(([, v]) => v.trim())
+              .map(([questionId, answerText]) => ({ question_id: questionId, answer_text: answerText })),
+          }),
+        }
+      );
+
+      if (!response.ok) {
+        const data = await response.json();
+        throw new Error(data.error || "Erro ao enviar respostas");
+      }
+
+      setFormDone(true);
+    } catch (err: any) {
+      setError(err.message || "Erro ao enviar respostas");
+    } finally {
+      setSubmittingStep2(false);
+    }
+  };
+
+  const handlePopupClose = (open: boolean) => {
+    if (!open && formDone) {
+      window.location.hash = "/sessao-estrategica/obrigado";
+      return;
+    }
+    setShowPopup(open);
   };
 
   return (
