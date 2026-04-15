@@ -38,6 +38,7 @@ import {
   BrainCircuit,
   Target,
   Building,
+  DollarSign,
 } from "lucide-react";
 import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
