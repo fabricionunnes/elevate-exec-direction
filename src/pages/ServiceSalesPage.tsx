@@ -78,12 +78,12 @@ export default function ServiceSalesPage() {
             </Link>
             <ServiceSalesNavMenu />
           </div>
-          <a
-            href="#comprar"
+          <button
+            onClick={() => document.getElementById("comprar")?.scrollIntoView({ behavior: "smooth" })}
             className="bg-[hsl(355,85%,50%)] hover:bg-[hsl(355,85%,45%)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
           >
             Contratar Agora
-          </a>
+          </button>
         </div>
       </header>
 
