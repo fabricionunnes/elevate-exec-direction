@@ -476,6 +476,7 @@ export default function CRMHeadComercialPage() {
       setCompletedMeetingsMonth(enrichSdr(completedMeetingsData));
       setNoShowMeetingsMonth(enrichSdr(noShowMeetingsData));
       setMeetingsScheduledYesterday(enrichSdr(scheduledYesterdayData));
+      setRealizedMeetingEvents((realizedEventsRes.data || []) as any[]);
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
       const { data: forecastStages } = await supabase
