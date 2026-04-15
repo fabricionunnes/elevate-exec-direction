@@ -118,7 +118,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
 
   return (
     <Dialog open={open} onOpenChange={onOpenChange}>
-      <DialogContent className="max-w-3xl max-h-[90vh] flex flex-col p-0">
+      <DialogContent className="max-w-4xl max-h-[90vh] flex flex-col p-0">
         <DialogHeader className="px-4 pt-4 sm:px-6 sm:pt-6 pb-0">
           <div className="flex items-center gap-3">
             <div className="p-2 bg-primary/10 rounded-lg">
@@ -237,7 +237,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                         <TableCell className="text-sm">
                           {t.reference_type === "invoice" ? "Fatura" : t.reference_type || "-"}
                         </TableCell>
-                        <TableCell className={`text-right text-sm font-medium ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
+                        <TableCell className={`text-right text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                           {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
                         </TableCell>
                       </TableRow>
