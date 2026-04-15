@@ -182,6 +182,14 @@ const SessaoEstrategicaPage = () => {
       const data = await response.json();
       if (!response.ok) throw new Error(data.error || "Erro ao enviar");
 
+      // Fire Meta Pixel Lead event
+      if (typeof (window as any).fbq === 'function') {
+        (window as any).fbq('track', 'Lead', {
+          content_name: 'Sessão Estratégica',
+          content_category: 'sessao-estrategica',
+        });
+      }
+
       const leadId = data.lead_id;
       window.location.hash = `/form/${FORM_TOKEN}?lead_id=${leadId}`;
     } catch (err: any) {
