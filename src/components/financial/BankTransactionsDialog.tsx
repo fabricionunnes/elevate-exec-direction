@@ -237,7 +237,7 @@ export function BankTransactionsDialog({ bank, open, onOpenChange, formatCurrenc
                         <TableCell className="text-sm">
                           {t.reference_type === "invoice" ? "Fatura" : t.reference_type || "-"}
                         </TableCell>
-                        <TableCell className={`text-right text-sm font-medium ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
+                        <TableCell className={`text-right text-sm font-medium whitespace-nowrap ${t.type === "credit" ? "text-emerald-600" : "text-destructive"}`}>
                           {t.type === "credit" ? "+" : "-"}{formatCurrencyCents(t.amount_cents)}
                         </TableCell>
                       </TableRow>
