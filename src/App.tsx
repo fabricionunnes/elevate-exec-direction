@@ -356,6 +356,7 @@ const AppShell = () => {
             <Route path="/social-media" element={<SocialMediaPage />} />
             
             {/* Service Sales Pages - Public */}
+            <Route path="/servicos" element={<ServicesCatalogPage />} />
             <Route path="/servico/:slug" element={<ServiceSalesPage />} />
             
             {/* Public Pipeline Form */}
