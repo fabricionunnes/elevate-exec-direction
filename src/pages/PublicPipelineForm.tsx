@@ -89,8 +89,8 @@ const PublicPipelineForm = () => {
       .maybeSingle();
 
     const formData = formRes.data;
-    setForm(formData);
 
+    let loadedQuestions: any[] = [];
     if (formData) {
       const { data: qData } = await supabase
         .from("crm_pipeline_form_questions" as any)
@@ -98,9 +98,12 @@ const PublicPipelineForm = () => {
         .eq("form_id", formData.id)
         .eq("is_active", true)
         .order("sort_order", { ascending: true });
-      setQuestions((qData as any[]) || []);
+      loadedQuestions = (qData as any[]) || [];
     }
 
+    // Set both together to avoid race condition with auto-submit
+    setQuestions(loadedQuestions);
+    setForm(formData);
     setLoading(false);
   };
 
