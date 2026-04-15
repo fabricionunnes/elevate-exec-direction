@@ -14,6 +14,7 @@ import { toast } from "sonner";
 interface Props {
   projectId: string;
   companyId: string;
+  viewerRole?: string | null;
 }
 
 interface CommissionConfig {
@@ -51,7 +52,7 @@ interface KpiData {
   achievement_percent: number;
 }
 
-export function SFCommissionsPanel({ projectId, companyId }: Props) {
+export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) {
   const [configs, setConfigs] = useState<CommissionConfig[]>([]);
   const [salespeople, setSalespeople] = useState<Salesperson[]>([]);
   const [kpiData, setKpiData] = useState<KpiData[]>([]);
@@ -59,7 +60,9 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
 
-  // Month navigation
+  const canViewClientAmounts = viewerRole !== "consultant";
+  const canManageConfigs = viewerRole !== "consultant";
+
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const monthYear = useMemo(() => {
     const m = selectedDate.getMonth() + 1;
@@ -79,7 +82,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     });
   };
 
-  // Form state
   const [form, setForm] = useState({
     salesperson_id: "",
     role: "closer" as "sdr" | "closer",
@@ -90,28 +92,36 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
   const [tiers, setTiers] = useState<Omit<CommissionTier, "id" | "config_id">[]>([]);
 
   const fetchAll = useCallback(async () => {
-    if (!projectId || !companyId) return;
+    if (!projectId || !companyId) {
+      setLoading(false);
+      return;
+    }
 
-    // Fetch salespeople, configs, and KPI data in parallel
-    const spRes = await (supabase.from("onboarding_users") as any).select("id, name").eq("project_id", projectId).eq("is_active", true);
-    const configRes = await supabase
+    setLoading(true);
+
+    const [salespeopleRes, configRes] = await Promise.all([
+      (supabase.from("company_salespeople") as any)
+        .select("id, name")
+        .eq("company_id", companyId)
+        .eq("is_active", true)
+        .order("name"),
+      supabase
         .from("sf_commission_configs")
         .select("*")
         .eq("project_id", projectId)
-        .eq("is_active", true);
+        .eq("is_active", true),
+    ]);
 
-    let spList: Salesperson[] = [];
-    if (spRes && spRes.data) {
-      spList = (spRes.data as any[])
-        .map((u: any) => ({ id: u.id, name: u.name }));
-    }
+    const spList: Salesperson[] = ((salespeopleRes?.data as any[]) || []).map((sp: any) => ({
+      id: sp.id,
+      name: sp.name,
+    }));
 
     setSalespeople(spList);
 
-    // Fetch configs with tiers
     const configsData = (configRes.data as any[]) || [];
     const configIds = configsData.map((c: any) => c.id);
-    
+
     let allTiers: any[] = [];
     if (configIds.length > 0) {
       const { data: tiersData } = await supabase
@@ -128,9 +138,7 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     }));
     setConfigs(mergedConfigs);
 
-    // Fetch KPI data for the selected month
     await fetchKpiData(spList, companyId);
-
     setLoading(false);
   }, [projectId, companyId]);
 
@@ -142,7 +150,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     const lastDay = new Date(year, month, 0).getDate();
     const endDate = `${year}-${String(month).padStart(2, "0")}-${String(lastDay).padStart(2, "0")}`;
 
-    // Get main goal KPIs for this company
     const { data: mainKpis } = await supabase
       .from("company_kpis")
       .select("id, target_value, periodicity, name")
@@ -157,7 +164,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
 
     const kpiIds = mainKpis.map((k: any) => k.id);
 
-    // Get monthly targets for overrides
     const { data: monthlyTargets } = await supabase
       .from("kpi_monthly_targets")
       .select("*")
@@ -165,7 +171,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
       .eq("company_id", cId)
       .eq("month_year", monthYear);
 
-    // Get entries for the month
     const { data: entries } = await supabase
       .from("kpi_entries")
       .select("*")
@@ -174,21 +179,18 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
       .gte("entry_date", startDate)
       .lte("entry_date", endDate);
 
-    // Calculate per salesperson
     const result: KpiData[] = [];
     for (const sp of spList) {
       let totalValue = 0;
       let totalTarget = 0;
 
       for (const kpi of mainKpis) {
-        // Resolve target: monthly override > default
         const override = monthlyTargets?.find(
           (mt: any) => mt.kpi_id === kpi.id && mt.salesperson_id === sp.id
         );
         const target = override ? Number(override.target_value) : Number(kpi.target_value);
         totalTarget += target;
 
-        // Sum entries for this salesperson + kpi
         const spEntries = entries?.filter(
           (e: any) => e.kpi_id === kpi.id && e.salesperson_id === sp.id
         ) || [];
@@ -206,9 +208,10 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     setKpiData(result);
   }, [monthYear]);
 
-  useEffect(() => { fetchAll(); }, [fetchAll]);
+  useEffect(() => {
+    fetchAll();
+  }, [fetchAll]);
 
-  // Refetch KPI data when month changes
   useEffect(() => {
     if (salespeople.length > 0 && companyId) {
       fetchKpiData(salespeople, companyId);
@@ -221,12 +224,36 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     setEditingConfig(null);
   };
 
+  const availableSalespeople = salespeople.filter(
+    (sp) => !configs.some((c) => c.salesperson_id === sp.id) || editingConfig?.salesperson_id === sp.id
+  );
+
   const openNewConfig = () => {
+    if (!canManageConfigs) {
+      toast.error("Consultores podem apenas visualizar a comissão do vendedor");
+      return;
+    }
+
+    if (salespeople.length === 0) {
+      toast.error("Cadastre os vendedores no menu KPIs para configurar as comissões");
+      return;
+    }
+
+    if (availableSalespeople.length === 0) {
+      toast.info("Todos os vendedores ativos já possuem configuração");
+      return;
+    }
+
     resetForm();
     setDialogOpen(true);
   };
 
   const openEditConfig = (config: CommissionConfig) => {
+    if (!canManageConfigs) {
+      toast.error("Consultores podem apenas visualizar a comissão do vendedor");
+      return;
+    }
+
     setEditingConfig(config);
     setForm({
       salesperson_id: config.salesperson_id,
@@ -267,52 +294,62 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
   };
 
   const handleSave = async () => {
+    if (!canManageConfigs) {
+      toast.error("Consultores não podem alterar configurações de comissão");
+      return;
+    }
+
     if (!form.salesperson_id) { toast.error("Selecione um vendedor"); return; }
     if (tiers.length === 0) { toast.error("Adicione ao menos uma faixa de comissão"); return; }
 
     try {
       if (editingConfig) {
-        // Update config
-        const { error } = await supabase
-          .from("sf_commission_configs")
-          .update({
-            role: form.role,
-            base_salary: parseFloat(form.base_salary) || 0,
-            client_pays_amount: parseFloat(form.client_pays_amount) || 0,
-            notes: form.notes || null,
-          })
+        const updatePayload: Record<string, any> = {
+          role: form.role,
+          base_salary: parseFloat(form.base_salary) || 0,
+          notes: form.notes || null,
+        };
+
+        if (canViewClientAmounts) {
+          updatePayload.client_pays_amount = parseFloat(form.client_pays_amount) || 0;
+        }
+
+        const { error } = await (supabase
+          .from("sf_commission_configs") as any)
+          .update(updatePayload)
           .eq("id", editingConfig.id);
         if (error) throw error;
 
-        // Delete old tiers and insert new
-        await supabase.from("sf_commission_tiers").delete().eq("config_id", editingConfig.id);
-        const { error: tierError } = await supabase.from("sf_commission_tiers").insert(
+        await (supabase.from("sf_commission_tiers") as any).delete().eq("config_id", editingConfig.id);
+        const { error: tierError } = await (supabase.from("sf_commission_tiers") as any).insert(
           tiers.map((t, i) => ({ ...t, config_id: editingConfig.id, sort_order: i }))
         );
         if (tierError) throw tierError;
 
         toast.success("Configuração atualizada");
       } else {
-        // Check if config already exists for this salesperson
         const existing = configs.find((c) => c.salesperson_id === form.salesperson_id);
         if (existing) { toast.error("Já existe uma configuração para este vendedor"); return; }
 
-        // Insert config
-        const { data: newConfig, error } = await supabase
-          .from("sf_commission_configs")
-          .insert({
-            project_id: projectId,
-            salesperson_id: form.salesperson_id,
-            role: form.role,
-            base_salary: parseFloat(form.base_salary) || 0,
-            client_pays_amount: parseFloat(form.client_pays_amount) || 0,
-            notes: form.notes || null,
-          })
+        const insertPayload: Record<string, any> = {
+          project_id: projectId,
+          salesperson_id: form.salesperson_id,
+          role: form.role,
+          base_salary: parseFloat(form.base_salary) || 0,
+          notes: form.notes || null,
+        };
+
+        if (canViewClientAmounts) {
+          insertPayload.client_pays_amount = parseFloat(form.client_pays_amount) || 0;
+        }
+
+        const { data: newConfig, error } = await (supabase
+          .from("sf_commission_configs") as any)
+          .insert(insertPayload)
           .select("id")
           .single();
         if (error) throw error;
 
-        // Insert tiers
         const { error: tierError } = await supabase.from("sf_commission_tiers").insert(
           tiers.map((t, i) => ({ ...t, config_id: newConfig.id, sort_order: i }))
         );
@@ -330,6 +367,11 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
   };
 
   const handleDelete = async (configId: string) => {
+    if (!canManageConfigs) {
+      toast.error("Consultores não podem excluir configurações");
+      return;
+    }
+
     if (!confirm("Tem certeza que deseja excluir esta configuração?")) return;
     await supabase.from("sf_commission_configs").update({ is_active: false }).eq("id", configId);
     toast.success("Configuração removida");
@@ -346,17 +388,11 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
       const max = tier.max_percent;
       if (percent >= min && (max === null || percent < max)) {
         if (tier.commission_type === "fixed") return tier.commission_value;
-        // percent of what? of base_salary + client_pays
         return (tier.commission_value / 100) * config.base_salary;
       }
     }
     return 0;
   };
-
-  // Available salespeople (not yet configured)
-  const availableSalespeople = salespeople.filter(
-    (sp) => !configs.some((c) => c.salesperson_id === sp.id) || editingConfig?.salesperson_id === sp.id
-  );
 
   if (loading) {
     return <div className="flex justify-center py-10"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>;
@@ -364,7 +400,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
 
   return (
     <div className="space-y-6 py-4">
-      {/* Header */}
       <div className="flex flex-col sm:flex-row items-start sm:items-center justify-between gap-3">
         <div>
           <h2 className="text-xl font-bold flex items-center gap-2">
@@ -375,13 +410,14 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
             Configure faixas de comissão por vendedor e acompanhe os valores automaticamente.
           </p>
         </div>
-        <Button onClick={openNewConfig} size="sm" disabled={availableSalespeople.length === 0 && !editingConfig}>
-          <Plus className="h-4 w-4 mr-1" />
-          Configurar Vendedor
-        </Button>
+        {canManageConfigs && (
+          <Button onClick={openNewConfig} size="sm">
+            <Plus className="h-4 w-4 mr-1" />
+            Configurar Vendedor
+          </Button>
+        )}
       </div>
 
-      {/* Month Navigation */}
       <div className="flex items-center justify-center gap-4">
         <Button variant="outline" size="icon" onClick={() => navigateMonth(-1)}>
           <ChevronLeft className="h-4 w-4" />
@@ -392,9 +428,8 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
         </Button>
       </div>
 
-      {/* Summary cards */}
       {configs.length > 0 && (
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+        <div className={`grid grid-cols-2 ${canViewClientAmounts ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3`}>
           <Card>
             <CardContent className="p-4 text-center">
               <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
@@ -402,24 +437,29 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
               <p className="text-xs text-muted-foreground">Vendedores</p>
             </CardContent>
           </Card>
+
+          {canViewClientAmounts && (
+            <Card>
+              <CardContent className="p-4 text-center">
+                <DollarSign className="h-5 w-5 mx-auto text-primary mb-1" />
+                <p className="text-2xl font-bold">
+                  {formatCurrency(configs.reduce((sum, c) => sum + c.client_pays_amount, 0))}
+                </p>
+                <p className="text-xs text-muted-foreground">Cliente paga (total)</p>
+              </CardContent>
+            </Card>
+          )}
+
           <Card>
             <CardContent className="p-4 text-center">
-              <DollarSign className="h-5 w-5 mx-auto text-green-500 mb-1" />
-              <p className="text-2xl font-bold">
-                {formatCurrency(configs.reduce((sum, c) => sum + c.client_pays_amount, 0))}
-              </p>
-              <p className="text-xs text-muted-foreground">Cliente paga (total)</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="p-4 text-center">
-              <DollarSign className="h-5 w-5 mx-auto text-orange-500 mb-1" />
+              <DollarSign className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
               <p className="text-2xl font-bold">
                 {formatCurrency(configs.reduce((sum, c) => sum + c.base_salary, 0))}
               </p>
               <p className="text-xs text-muted-foreground">Salários base (total)</p>
             </CardContent>
           </Card>
+
           <Card>
             <CardContent className="p-4 text-center">
               <TrendingUp className="h-5 w-5 mx-auto text-primary mb-1" />
@@ -438,13 +478,16 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
         </div>
       )}
 
-      {/* Salesperson cards */}
       {configs.length === 0 ? (
         <Card>
           <CardContent className="py-12 text-center">
             <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
             <p className="text-muted-foreground">Nenhum vendedor configurado ainda.</p>
-            <p className="text-xs text-muted-foreground mt-1">Clique em "Configurar Vendedor" para começar.</p>
+            <p className="text-xs text-muted-foreground mt-1">
+              {canManageConfigs
+                ? 'Clique em "Configurar Vendedor" para começar.'
+                : "Ainda não há configurações de comissão para visualizar."}
+            </p>
           </CardContent>
         </Card>
       ) : (
@@ -473,31 +516,31 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
                         </Badge>
                       </div>
                     </div>
-                    <div className="flex gap-1">
-                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditConfig(config)}>
-                        <Settings2 className="h-4 w-4" />
-                      </Button>
-                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(config.id)}>
-                        <Trash2 className="h-4 w-4" />
-                      </Button>
-                    </div>
+                    {canManageConfigs && (
+                      <div className="flex gap-1">
+                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditConfig(config)}>
+                          <Settings2 className="h-4 w-4" />
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(config.id)}>
+                          <Trash2 className="h-4 w-4" />
+                        </Button>
+                      </div>
+                    )}
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {/* KPI Achievement */}
                   <div className="flex items-center justify-between text-sm">
                     <span className="text-muted-foreground flex items-center gap-1">
                       <Target className="h-3.5 w-3.5" /> Meta atingida
                     </span>
-                    <span className={`font-bold ${achievement >= 100 ? "text-green-500" : achievement >= 80 ? "text-yellow-500" : "text-red-500"}`}>
+                    <span className={`font-bold ${achievement >= 100 ? "text-primary" : achievement >= 80 ? "text-foreground" : "text-destructive"}`}>
                       {achievement.toFixed(1)}%
                     </span>
                   </div>
 
-                  {/* Progress bar */}
                   <div className="w-full bg-muted rounded-full h-2">
                     <div
-                      className={`h-2 rounded-full transition-all ${achievement >= 100 ? "bg-green-500" : achievement >= 80 ? "bg-yellow-500" : "bg-red-500"}`}
+                      className={`h-2 rounded-full transition-all ${achievement >= 100 ? "bg-primary" : achievement >= 80 ? "bg-accent" : "bg-destructive"}`}
                       style={{ width: `${Math.min(achievement, 100)}%` }}
                     />
                   </div>
@@ -511,12 +554,13 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
 
                   <Separator />
 
-                  {/* Financial breakdown */}
                   <div className="space-y-1.5 text-sm">
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Cliente paga à UNV</span>
-                      <span className="font-medium text-green-600">{formatCurrency(config.client_pays_amount)}</span>
-                    </div>
+                    {canViewClientAmounts && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Cliente paga à UNV</span>
+                        <span className="font-medium text-primary">{formatCurrency(config.client_pays_amount)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Salário base</span>
                       <span className="font-medium">{formatCurrency(config.base_salary)}</span>
@@ -528,17 +572,18 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
                     <Separator />
                     <div className="flex justify-between font-bold">
                       <span>Total a pagar ao vendedor</span>
-                      <span className="text-orange-500">{formatCurrency(totalPayable)}</span>
+                      <span className="text-primary">{formatCurrency(totalPayable)}</span>
                     </div>
-                    <div className="flex justify-between text-xs">
-                      <span className="text-muted-foreground">Margem UNV</span>
-                      <span className={`font-medium ${config.client_pays_amount - totalPayable >= 0 ? "text-green-600" : "text-red-500"}`}>
-                        {formatCurrency(config.client_pays_amount - totalPayable)}
-                      </span>
-                    </div>
+                    {canViewClientAmounts && (
+                      <div className="flex justify-between text-xs">
+                        <span className="text-muted-foreground">Margem UNV</span>
+                        <span className={`font-medium ${config.client_pays_amount - totalPayable >= 0 ? "text-primary" : "text-destructive"}`}>
+                          {formatCurrency(config.client_pays_amount - totalPayable)}
+                        </span>
+                      </div>
+                    )}
                   </div>
 
-                  {/* Tiers preview */}
                   <div className="mt-2">
                     <p className="text-xs font-medium text-muted-foreground mb-1.5">Faixas de comissão:</p>
                     <div className="space-y-1">
@@ -570,14 +615,12 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
         </div>
       )}
 
-      {/* Config Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
             <DialogTitle>{editingConfig ? "Editar Comissão" : "Configurar Comissão"}</DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
-            {/* Salesperson */}
             <div>
               <Label>Vendedor *</Label>
               <Select
@@ -594,7 +637,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
               </Select>
             </div>
 
-            {/* Role */}
             <div>
               <Label>Função</Label>
               <Select value={form.role} onValueChange={(v) => setForm((f) => ({ ...f, role: v as any }))}>
@@ -606,8 +648,7 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
               </Select>
             </div>
 
-            {/* Financial */}
-            <div className="grid grid-cols-2 gap-3">
+            <div className={`grid ${canViewClientAmounts ? "grid-cols-2" : "grid-cols-1"} gap-3`}>
               <div>
                 <Label>Salário Base (R$)</Label>
                 <Input
@@ -618,19 +659,20 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
                   placeholder="0,00"
                 />
               </div>
-              <div>
-                <Label>Cliente paga à UNV (R$)</Label>
-                <Input
-                  type="number"
-                  step="0.01"
-                  value={form.client_pays_amount}
-                  onChange={(e) => setForm((f) => ({ ...f, client_pays_amount: e.target.value }))}
-                  placeholder="0,00"
-                />
-              </div>
+              {canViewClientAmounts && (
+                <div>
+                  <Label>Cliente paga à UNV (R$)</Label>
+                  <Input
+                    type="number"
+                    step="0.01"
+                    value={form.client_pays_amount}
+                    onChange={(e) => setForm((f) => ({ ...f, client_pays_amount: e.target.value }))}
+                    placeholder="0,00"
+                  />
+                </div>
+              )}
             </div>
 
-            {/* Notes */}
             <div>
               <Label>Observações</Label>
               <Input
@@ -642,7 +684,6 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
 
             <Separator />
 
-            {/* Commission Tiers */}
             <div>
               <div className="flex items-center justify-between mb-2">
                 <Label className="text-sm font-semibold">Faixas de Comissão</Label>
