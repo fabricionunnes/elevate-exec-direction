@@ -103,6 +103,8 @@ import { BrainCircuit } from "lucide-react";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { TransferTasksDialog } from "@/components/onboarding-tasks/TransferTasksDialog";
 import { ProjectWhatsAppTab } from "@/components/whatsapp-hub/ProjectWhatsAppTab";
+import { DollarSign } from "lucide-react";
+import { SFCommissionsPanel } from "@/components/sf-commissions/SFCommissionsPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
@@ -1550,6 +1552,12 @@ const OnboardingProjectPage = () => {
                   <MessageSquare className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-green-500" />
                   Conversas
                 </TabsTrigger>
+                {project?.product_name === "UNV Sales Force" && (
+                  <TabsTrigger value="sf_commissions" className="gap-1 sm:gap-1.5 px-2.5 sm:px-3 py-1.5 sm:py-2 text-xs sm:text-sm data-[state=active]:bg-primary data-[state=active]:text-primary-foreground bg-muted whitespace-nowrap">
+                    <DollarSign className="h-3.5 w-3.5 sm:h-4 sm:w-4" />
+                    Comissões
+                  </TabsTrigger>
+                )}
               </TabsList>
             </div>
           </div>
@@ -1925,6 +1933,15 @@ const OnboardingProjectPage = () => {
           <TabsContent value="whatsapp">
             <ProjectWhatsAppTab projectId={projectId!} />
           </TabsContent>
+
+          {project?.product_name === "UNV Sales Force" && (
+            <TabsContent value="sf_commissions">
+              <SFCommissionsPanel
+                projectId={projectId!}
+                companyId={project.onboarding_company_id || ""}
+              />
+            </TabsContent>
+          )}
 
         </Tabs>
       </div>
