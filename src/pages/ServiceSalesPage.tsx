@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useParams } from "react-router-dom";
+import { useParams, Link } from "react-router-dom";
 import { supabase } from "@/integrations/supabase/client";
 import { Loader2 } from "lucide-react";
 import { ServiceSalesHero } from "@/components/service-sales/ServiceSalesHero";
@@ -72,7 +72,12 @@ export default function ServiceSalesPage() {
       {/* Header */}
       <header className="fixed top-0 left-0 right-0 z-50 bg-[hsl(214,65%,15%)]/95 backdrop-blur-sm border-b border-white/10">
         <div className="max-w-7xl mx-auto px-4 py-3 flex items-center justify-between">
-          <img src={logoUnv} alt="UNV" className="h-8" />
+          <div className="flex items-center gap-6">
+            <Link to="/">
+              <img src={logoUnv} alt="UNV" className="h-8" />
+            </Link>
+            <ServiceSalesNavMenu />
+          </div>
           <a
             href="#comprar"
             className="bg-[hsl(355,85%,50%)] hover:bg-[hsl(355,85%,45%)] text-white px-5 py-2 rounded-lg text-sm font-semibold transition-colors"
