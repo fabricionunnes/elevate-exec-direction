@@ -780,7 +780,7 @@ async function activatePendingProjects(supabase: any, paymentId: string) {
   }
 }
 
-async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string | null, paymentId: string) {
+async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string | null, paymentId: string, paymentValue?: number, paymentNetValue?: number, paymentDiscount?: number) {
   try {
     const searchId = subscriptionId || paymentId;
     if (!searchId) return;
@@ -788,7 +788,7 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
     // Find public_service_purchases linked to this payment
     let query = supabase
       .from("public_service_purchases")
-      .select("id, crm_lead_id, user_provisioned")
+      .select("id, crm_lead_id, user_provisioned, amount_cents, buyer_name, buyer_email, menu_key, company_id, service_catalog_id")
 
     if (subscriptionId) {
       query = query.eq("asaas_subscription_id", subscriptionId);
@@ -831,6 +831,9 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
         }
       }
 
+      // Create financial_receivables record (paid) for the purchase
+      await createReceivableForPublicPurchase(supabase, purchase, paymentValue, paymentNetValue, paymentDiscount);
+
       // Provision user account (create login + send email)
       if (!purchase.user_provisioned) {
         try {
@@ -842,8 +845,108 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
           console.error(`[Asaas Webhook] Provision error for purchase ${purchase.id}:`, provErr);
         }
       }
+
+      // Update purchase status to paid
+      await supabase
+        .from("public_service_purchases")
+        .update({ status: "paid", converted_at: new Date().toISOString() })
+        .eq("id", purchase.id);
     }
   } catch (err) {
     console.error("[Asaas Webhook] Error moving public purchase lead to won:", err);
+  }
+}
+
+async function createReceivableForPublicPurchase(supabase: any, purchase: any, paymentValue?: number, paymentNetValue?: number, paymentDiscount?: number) {
+  try {
+    // Check if receivable already exists for this purchase
+    const { data: existing } = await supabase
+      .from("financial_receivables")
+      .select("id")
+      .eq("notes", `public_service_purchase:${purchase.id}`)
+      .limit(1);
+
+    if (existing?.length) {
+      console.log(`[Asaas Webhook] Receivable already exists for public purchase ${purchase.id}`);
+      return;
+    }
+
+    // Get service name
+    let serviceName = purchase.menu_key || "Módulo Extra";
+    if (purchase.service_catalog_id) {
+      const { data: catalog } = await supabase
+        .from("service_catalog")
+        .select("name")
+        .eq("id", purchase.service_catalog_id)
+        .single();
+      if (catalog?.name) serviceName = catalog.name;
+    }
+
+    const grossAmount = (purchase.amount_cents || 0) / 100;
+    const today = new Date().toISOString().split("T")[0];
+    const currentMonth = new Date().toISOString().substring(0, 7);
+
+    // Calculate fee (difference between gross and net) 
+    const feeAmount = paymentValue && paymentNetValue ? paymentValue - paymentNetValue : 0;
+    // Discount from Asaas (antecipation discount or payment discount)
+    const discountAmount = paymentDiscount || 0;
+    // Net paid amount
+    const paidAmount = paymentNetValue || grossAmount;
+
+    await supabase.from("financial_receivables").insert({
+      company_id: purchase.company_id || null,
+      description: `Venda Online: ${serviceName} - ${purchase.buyer_name}`,
+      amount: grossAmount,
+      due_date: today,
+      paid_date: today,
+      paid_amount: paidAmount,
+      status: "paid",
+      payment_method: "pix",
+      fee_amount: feeAmount > 0 ? feeAmount : 0,
+      discount_amount: discountAmount > 0 ? discountAmount : 0,
+      reference_month: currentMonth,
+      custom_receiver_name: !purchase.company_id ? purchase.buyer_name : null,
+      notes: `public_service_purchase:${purchase.id}`,
+    });
+
+    console.log(`[Asaas Webhook] Created financial_receivable for public purchase ${purchase.id}: R$${grossAmount} (fee: R$${feeAmount.toFixed(2)}, discount: R$${discountAmount.toFixed(2)}, net: R$${paidAmount.toFixed(2)})`);
+
+    // Also credit the Asaas bank account
+    const netCents = Math.round(paidAmount * 100);
+    if (netCents > 0) {
+      // Find Asaas bank
+      const { data: banks } = await supabase
+        .from("financial_banks")
+        .select("id")
+        .eq("name", "Asaas")
+        .eq("is_active", true)
+        .limit(1);
+
+      if (banks?.length) {
+        // Check dedup
+        const { data: existingTx } = await supabase
+          .from("financial_bank_transactions")
+          .select("id")
+          .eq("reference_id", purchase.id)
+          .eq("reference_type", "public_purchase")
+          .eq("type", "credit")
+          .limit(1);
+
+        if (!existingTx?.length) {
+          await supabase.rpc("increment_bank_balance", { p_bank_id: banks[0].id, p_amount: netCents });
+          await supabase.from("financial_bank_transactions").insert({
+            bank_id: banks[0].id,
+            type: "credit",
+            amount_cents: netCents,
+            description: `Venda Online: ${serviceName} - ${purchase.buyer_name} (taxa R$${feeAmount.toFixed(2)} deduzida)`,
+            reference_type: "public_purchase",
+            reference_id: purchase.id,
+          });
+          console.log(`[Asaas Webhook] Credited Asaas bank: ${netCents} cents for public purchase ${purchase.id}`);
+        }
+      }
+    }
+  } catch (err) {
+    console.error("[Asaas Webhook] Error creating receivable for public purchase:", err);
   }
 }
