@@ -236,6 +236,7 @@ export default function CRMHeadComercialPage() {
   const [completedMeetingsMonth, setCompletedMeetingsMonth] = useState<any[]>([]);
   const [noShowMeetingsMonth, setNoShowMeetingsMonth] = useState<any[]>([]);
   const [meetingsScheduledYesterday, setMeetingsScheduledYesterday] = useState<any[]>([]);
+  const [realizedMeetingEvents, setRealizedMeetingEvents] = useState<any[]>([]);
   const [dynamicForecastLeads, setDynamicForecastLeads] = useState<LeadWithStage[]>([]);
   const [dynamicNegotiationLeads, setDynamicNegotiationLeads] = useState<LeadWithStage[]>([]);
   const [editingNotes, setEditingNotes] = useState<Record<string, string>>({});
@@ -267,7 +268,7 @@ export default function CRMHeadComercialPage() {
       const monthEnd = endOfMonth(now);
 
       const [leadsRes, yesterdayRes, todayRes, staffRes, goalsRes, wonRes, statsRes,
-             sdrYesterdayRes, sdrTodayRes, sdrMonthRes, completedMeetingsRes, noShowMeetingsRes, scheduledYesterdayRes] =
+             sdrYesterdayRes, sdrTodayRes, sdrMonthRes, completedMeetingsRes, noShowMeetingsRes, scheduledYesterdayRes, realizedEventsRes] =
         await Promise.all([
           supabase
             .from("crm_leads")
@@ -375,6 +376,14 @@ export default function CRMHeadComercialPage() {
             .eq("type", "meeting")
             .gte("scheduled_at", startOfDay(yesterday).toISOString())
             .lt("scheduled_at", endOfDay(yesterday).toISOString()),
+
+          // Realized meeting events from crm_meeting_events (tracked on stage changes)
+          supabase
+            .from("crm_meeting_events")
+            .select("credited_staff_id, lead_id, event_type, event_date")
+            .eq("event_type", "realized")
+            .gte("event_date", monthStart.toISOString())
+            .lte("event_date", monthEnd.toISOString()),
         ]);
 
       if (leadsRes.data) {
@@ -467,6 +476,7 @@ export default function CRMHeadComercialPage() {
       setCompletedMeetingsMonth(enrichSdr(completedMeetingsData));
       setNoShowMeetingsMonth(enrichSdr(noShowMeetingsData));
       setMeetingsScheduledYesterday(enrichSdr(scheduledYesterdayData));
+      setRealizedMeetingEvents((realizedEventsRes.data || []) as any[]);
 
       // ── Dynamic forecast & negotiation (same logic as Dashboard/Pipeline) ──
       const { data: forecastStages } = await supabase
@@ -634,6 +644,13 @@ export default function CRMHeadComercialPage() {
         let monthCompletedMeetings: number;
         let monthNoShowMeetings: number;
 
+        // Count realized meeting events from crm_meeting_events (stage-change tracking)
+        const realizedEventsForStaff = realizedMeetingEvents.filter(
+          (e: any) => e.credited_staff_id === staff.id
+        );
+        // Deduplicate: collect lead_ids already counted from meeting events
+        const realizedLeadIds = new Set(realizedEventsForStaff.map((e: any) => e.lead_id));
+
         if (isSdr) {
           // SDR: count meetings CREATED on that day, using resolved_sdr_id (from lead's scheduled_by or sdr)
           yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => (a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id)).length;
@@ -642,7 +659,11 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = monthMeetings;
           // Meetings scheduled FOR yesterday attributed to this SDR
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id).length;
-          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
+          // Reuniões realizadas: merge crm_activities (completed) + crm_meeting_events (realized), deduplicated
+          const activityCompleted = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id);
+          const activityCompletedLeadIds = new Set(activityCompleted.map((a: any) => a.lead_id));
+          const extraFromEvents = realizedEventsForStaff.filter((e: any) => !activityCompletedLeadIds.has(e.lead_id));
+          monthCompletedMeetings = activityCompleted.length + extraFromEvents.length;
           monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
         } else {
           yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
@@ -654,7 +675,11 @@ export default function CRMHeadComercialPage() {
             (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
           ).length;
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // Reuniões realizadas: merge crm_activities (completed) + crm_meeting_events (realized), deduplicated
+          const activityCompleted = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id);
+          const activityCompletedLeadIds = new Set(activityCompleted.map((a: any) => a.lead_id));
+          const extraFromEvents = realizedEventsForStaff.filter((e: any) => !activityCompletedLeadIds.has(e.lead_id));
+          monthCompletedMeetings = activityCompleted.length + extraFromEvents.length;
           monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
         }
 
@@ -677,7 +702,7 @@ export default function CRMHeadComercialPage() {
         };
       })
       .sort((a, b) => b.percentAtingido - a.percentAtingido);
-  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, noShowMeetingsMonth, meetingsScheduledYesterday, elapsedBizDays, totalBizDays, remainingBizDays]);
+  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, noShowMeetingsMonth, meetingsScheduledYesterday, realizedMeetingEvents, elapsedBizDays, totalBizDays, remainingBizDays]);
 
   const closersPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "closer"), [staffPerformance]);
   const sdrsPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "sdr"), [staffPerformance]);
