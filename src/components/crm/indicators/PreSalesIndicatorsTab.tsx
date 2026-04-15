@@ -240,6 +240,8 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         ])
       );
 
+      // Attribution: use credited_staff_id directly (events are now created with proper SDR/closer credit)
+      // Fallback to lead-based attribution for legacy events
       const attributedMeetingEvents = (meetingEvents || []).map((event) => ({
         ...event,
         attributed_sdr_id: leadAttributionMap.get(event.lead_id) || event.credited_staff_id || null,
@@ -250,10 +252,11 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
         attributed_sdr_id: leadAttributionMap.get(activity.lead_id) || null,
       }));
 
+      // Deduplicate by lead + event_type + credited_staff_id to keep separate SDR/closer events
       const uniqueAttributedMeetingEvents = (() => {
         const seen = new Set<string>();
         return attributedMeetingEvents.filter((event) => {
-          const key = `${event.lead_id}-${event.event_type}-${event.attributed_sdr_id || "unassigned"}`;
+          const key = `${event.lead_id}-${event.event_type}-${event.credited_staff_id || "unassigned"}`;
           if (seen.has(key)) return false;
           seen.add(key);
           return true;
@@ -291,9 +294,19 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
 
-      const meetingEventsScheduled = uniqueAttributedMeetingEvents.filter(e => e.event_type === "scheduled").length;
-      const meetingEventsRealized = uniqueAttributedMeetingEvents.filter(e => e.event_type === "realized").length;
-      const meetingEventsNoShow = uniqueAttributedMeetingEvents.filter(e => e.event_type === "no_show").length;
+      // For TOTAL counts, deduplicate by lead_id + event_type (unique meetings regardless of who gets credit)
+      const uniqueByLead = (() => {
+        const seen = new Set<string>();
+        return uniqueAttributedMeetingEvents.filter((event) => {
+          const key = `${event.lead_id}-${event.event_type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      })();
+      const meetingEventsScheduled = uniqueByLead.filter(e => e.event_type === "scheduled").length;
+      const meetingEventsRealized = uniqueByLead.filter(e => e.event_type === "realized").length;
+      const meetingEventsNoShow = uniqueByLead.filter(e => e.event_type === "no_show").length;
 
       const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
@@ -363,7 +376,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const sdrMetricsList: SDRMetrics[] = (sdrStaff || []).map(sdr => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
-        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.attributed_sdr_id === sdr.id);
+        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.credited_staff_id === sdr.id);
         const sdrEventsScheduled = sdrMeetingEvents.filter(e => e.event_type === "scheduled").length;
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;

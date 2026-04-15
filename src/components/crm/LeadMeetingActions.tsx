@@ -44,10 +44,10 @@ const trackMeetingEvent = async (
       .limit(1);
 
     if (existing && existing.length > 0) {
-      return false; // Already tracked - return false to indicate it wasn't newly created
+      return false; // Already tracked
     }
 
-    // If scheduling, update lead with scheduler info (use triggeredBy as they are the one scheduling)
+    // If scheduling, update lead with scheduler info
     if (eventType === "scheduled") {
       await supabase
         .from("crm_leads")
@@ -59,34 +59,63 @@ const trackMeetingEvent = async (
     }
 
     const eventDate = new Date().toISOString();
-    const eventsToInsert: Array<{
-      lead_id: string;
-      pipeline_id: string;
-      event_type: string;
-      credited_staff_id: string;
-      triggered_by_staff_id: string;
-      stage_id: string;
-      event_date: string;
-    }> = [{
-      lead_id: leadId,
-      pipeline_id: pipelineId,
-      event_type: eventType,
-      credited_staff_id: creditedStaffId,
-      triggered_by_staff_id: triggeredByStaffId,
-      stage_id: stageId,
-      event_date: eventDate,
-    }];
 
-    // For realized/no_show/out_of_icp: also credit the SDR who scheduled if different
-    if (eventType === "realized" || eventType === "no_show" || eventType === "out_of_icp") {
+    // --- ATTRIBUTION RULES ---
+    // "scheduled": credit the SDR who triggered the scheduling (triggeredByStaffId)
+    // "realized"/"no_show"/"out_of_icp": credit BOTH the closer (owner) AND the SDR who scheduled
+
+    if (eventType === "scheduled") {
+      // Rule: SDR gets 1 scheduling on the day they schedule
+      // The person clicking "scheduled" IS the SDR
+      const { error } = await supabase.from("crm_meeting_events").insert([{
+        lead_id: leadId,
+        pipeline_id: pipelineId,
+        event_type: eventType,
+        credited_staff_id: triggeredByStaffId,
+        triggered_by_staff_id: triggeredByStaffId,
+        stage_id: stageId,
+        event_date: eventDate,
+      }]);
+      if (error) {
+        console.error("Error tracking meeting event:", error);
+        return false;
+      }
+    } else {
+      // For realized/no_show/out_of_icp: create events for both closer AND SDR
+
+      // Find the SDR who originally scheduled this lead
       const { data: leadData } = await supabase
         .from("crm_leads")
-        .select("scheduled_by_staff_id")
+        .select("scheduled_by_staff_id, sdr_staff_id, owner_staff_id")
         .eq("id", leadId)
         .single();
 
-      const sdrId = leadData?.scheduled_by_staff_id;
-      if (sdrId && sdrId !== creditedStaffId) {
+      const closerId = creditedStaffId; // The closer/owner of the lead
+      const sdrId = leadData?.scheduled_by_staff_id || leadData?.sdr_staff_id || null;
+
+      const eventsToInsert: Array<{
+        lead_id: string;
+        pipeline_id: string;
+        event_type: string;
+        credited_staff_id: string;
+        triggered_by_staff_id: string;
+        stage_id: string;
+        event_date: string;
+      }> = [];
+
+      // Event for the closer (person conducting the meeting)
+      eventsToInsert.push({
+        lead_id: leadId,
+        pipeline_id: pipelineId,
+        event_type: eventType,
+        credited_staff_id: closerId,
+        triggered_by_staff_id: triggeredByStaffId,
+        stage_id: stageId,
+        event_date: eventDate,
+      });
+
+      // Event for the SDR (person who scheduled), if different from closer
+      if (sdrId && sdrId !== closerId) {
         eventsToInsert.push({
           lead_id: leadId,
           pipeline_id: pipelineId,
@@ -97,33 +126,45 @@ const trackMeetingEvent = async (
           event_date: eventDate,
         });
       }
-    }
 
-    const { error } = await supabase.from("crm_meeting_events").insert(eventsToInsert);
+      // If the person triggering is different from both closer and SDR, also credit them
+      if (triggeredByStaffId !== closerId && triggeredByStaffId !== sdrId) {
+        eventsToInsert.push({
+          lead_id: leadId,
+          pipeline_id: pipelineId,
+          event_type: eventType,
+          credited_staff_id: triggeredByStaffId,
+          triggered_by_staff_id: triggeredByStaffId,
+          stage_id: stageId,
+          event_date: eventDate,
+        });
+      }
 
-    if (error) {
-      console.error("Error tracking meeting event:", error);
-      return false;
-    }
+      const { error } = await supabase.from("crm_meeting_events").insert(eventsToInsert);
+      if (error) {
+        console.error("Error tracking meeting event:", error);
+        return false;
+      }
 
-    // When marking as realized, also update matching meeting activities to completed
-    if (eventType === "realized") {
-      await supabase
-        .from("crm_activities")
-        .update({ status: "completed", completed_at: eventDate })
-        .eq("lead_id", leadId)
-        .eq("type", "meeting")
-        .eq("status", "pending");
-    }
+      // When marking as realized, update meeting activities to completed
+      if (eventType === "realized") {
+        await supabase
+          .from("crm_activities")
+          .update({ status: "completed", completed_at: eventDate })
+          .eq("lead_id", leadId)
+          .eq("type", "meeting")
+          .eq("status", "pending");
+      }
 
-    // When marking as no_show or out_of_icp, update matching meeting activities to cancelled
-    if (eventType === "no_show" || eventType === "out_of_icp") {
-      await supabase
-        .from("crm_activities")
-        .update({ status: "cancelled" })
-        .eq("lead_id", leadId)
-        .eq("type", "meeting")
-        .eq("status", "pending");
+      // When marking as no_show or out_of_icp, update activities to cancelled
+      if (eventType === "no_show" || eventType === "out_of_icp") {
+        await supabase
+          .from("crm_activities")
+          .update({ status: "cancelled" })
+          .eq("lead_id", leadId)
+          .eq("type", "meeting")
+          .eq("status", "pending");
+      }
     }
 
     return true;
