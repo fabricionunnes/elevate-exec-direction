@@ -1182,11 +1182,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="hidden lg:block">
-          <CardContent className="p-2 sm:p-3">
+        <Card className="hidden lg:block relative overflow-hidden border-green-500/20 bg-gradient-to-br from-green-500/5 via-background to-green-500/10">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-green-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", npsMetrics.averageNps === null ? "bg-gray-400/10" : npsMetrics.averageNps >= 9 ? "bg-green-500/10" : npsMetrics.averageNps >= 7 ? "bg-yellow-500/10" : "bg-red-500/10")}>
-                <Star className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", npsMetrics.averageNps === null ? "text-gray-400" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")} />
+              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0 shadow-md", npsMetrics.averageNps === null ? "bg-gradient-to-br from-gray-400 to-gray-500 shadow-gray-400/30" : npsMetrics.averageNps >= 9 ? "bg-gradient-to-br from-green-500 to-green-600 shadow-green-500/30" : npsMetrics.averageNps >= 7 ? "bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-yellow-500/30" : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30")}>
+                <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", npsMetrics.averageNps === null ? "text-muted-foreground" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")}>
@@ -1199,25 +1200,21 @@ const DashboardMetrics = ({
         </Card>
 
         <Card 
-          className="hidden lg:block cursor-pointer transition-all hover:shadow-md group relative"
+          className="hidden lg:block cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 group relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-background to-emerald-500/10"
           onClick={(e) => {
-            // If clicking the recalculate button, don't propagate
             if ((e.target as HTMLElement).closest('button')) return;
             setHealthHistoryDialogOpen(true);
           }}
         >
-          <CardContent className="p-2 sm:p-3">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-emerald-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", 
-                healthMetrics.averageScore === null ? "bg-gray-400/10" : 
-                healthMetrics.averageScore >= 80 ? "bg-green-500/10" : 
-                healthMetrics.averageScore >= 60 ? "bg-yellow-500/10" : 
-                healthMetrics.averageScore >= 40 ? "bg-orange-500/10" : "bg-red-500/10")}>
-                <HeartPulse className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", 
-                  healthMetrics.averageScore === null ? "text-gray-400" : 
-                  healthMetrics.averageScore >= 80 ? "text-green-500" : 
-                  healthMetrics.averageScore >= 60 ? "text-yellow-500" : 
-                  healthMetrics.averageScore >= 40 ? "text-orange-500" : "text-red-500")} />
+              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0 shadow-md", 
+                healthMetrics.averageScore === null ? "bg-gradient-to-br from-gray-400 to-gray-500 shadow-gray-400/30" : 
+                healthMetrics.averageScore >= 80 ? "bg-gradient-to-br from-green-500 to-green-600 shadow-green-500/30" : 
+                healthMetrics.averageScore >= 60 ? "bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-yellow-500/30" : 
+                healthMetrics.averageScore >= 40 ? "bg-gradient-to-br from-orange-500 to-orange-600 shadow-orange-500/30" : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30")}>
+                <HeartPulse className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", 
@@ -1229,7 +1226,6 @@ const DashboardMetrics = ({
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Saúde</p>
               </div>
-              {/* Recalculate button - visible on hover */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1245,11 +1241,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("hidden lg:block cursor-pointer transition-all hover:shadow-md", isCardActive("goals", "meeting") && "ring-2 ring-teal-500")} onClick={() => handleCardClick("goals", "meeting")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("hidden lg:block cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-teal-500/20 bg-gradient-to-br from-teal-500/5 via-background to-teal-500/10", isCardActive("goals", "meeting") && "ring-2 ring-teal-500 shadow-lg shadow-teal-500/20")} onClick={() => handleCardClick("goals", "meeting")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-teal-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
-                <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-teal-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shrink-0 shadow-md shadow-teal-500/30">
+                <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", goalsMetrics.goalRate >= 70 ? "text-teal-500" : goalsMetrics.goalRate >= 40 ? "text-amber-500" : "text-red-500")}>
