@@ -401,6 +401,7 @@ Deno.serve(async (req) => {
     // 8. Send password reset email so user can set their password
     if (userId) {
       const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      let accessEmailSent = false;
       try {
         const confirmationUrl = await generatePasswordSetupLink(
           supabase,
@@ -416,9 +417,12 @@ Deno.serve(async (req) => {
           confirmationUrl,
           purchaseId: purchase_id,
         });
+        accessEmailSent = true;
       } catch (emailErr) {
         console.error("[provision-service-buyer] Access email error:", emailErr);
-      } else {
+      }
+
+      if (accessEmailSent) {
         console.log(`[provision-service-buyer] Branded access email sent to ${buyer_email}`);
       }
     }
