@@ -8,9 +8,12 @@ import {
   Container,
   Head,
   Heading,
+  Hr,
   Html,
+  Img,
   Link,
   Preview,
+  Section,
   Text,
 } from 'npm:@react-email/components@0.0.22'
 
@@ -27,32 +30,43 @@ export const EmailChangeEmail = ({
   newEmail,
   confirmationUrl,
 }: EmailChangeEmailProps) => (
-  <Html lang="en" dir="ltr">
+  <Html lang="pt-BR" dir="ltr">
     <Head />
-    <Preview>Confirm your email change for {siteName}</Preview>
+    <Preview>Confirme a alteração do seu e-mail — Universidade Nacional de Vendas</Preview>
     <Body style={main}>
       <Container style={container}>
-        <Heading style={h1}>Confirm your email change</Heading>
-        <Text style={text}>
-          You requested to change your email address for {siteName} from{' '}
-          <Link href={`mailto:${email}`} style={link}>
-            {email}
-          </Link>{' '}
-          to{' '}
-          <Link href={`mailto:${newEmail}`} style={link}>
-            {newEmail}
-          </Link>
-          .
-        </Text>
-        <Text style={text}>
-          Click the button below to confirm this change:
-        </Text>
-        <Button style={button} href={confirmationUrl}>
-          Confirm Email Change
-        </Button>
+        <Section style={header}>
+          <Img
+            src="https://czmyjgdixwhpfasfugkm.supabase.co/storage/v1/object/public/email-assets/logo-unv.png"
+            width="180"
+            height="auto"
+            alt="Universidade Nacional de Vendas"
+            style={{ margin: '0 auto' }}
+          />
+        </Section>
+        <Section style={content}>
+          <Heading style={h1}>Confirme a alteração do e-mail</Heading>
+          <Text style={text}>
+            Você solicitou a alteração do seu e-mail na Universidade Nacional de Vendas de{' '}
+            <Link href={`mailto:${email}`} style={link}>{email}</Link>{' '}
+            para{' '}
+            <Link href={`mailto:${newEmail}`} style={link}>{newEmail}</Link>.
+          </Text>
+          <Text style={text}>
+            Clique no botão abaixo para confirmar esta alteração:
+          </Text>
+          <Section style={buttonContainer}>
+            <Button style={button} href={confirmationUrl}>
+              Confirmar Alteração
+            </Button>
+          </Section>
+          <Text style={smallText}>
+            Se você não solicitou esta alteração, proteja sua conta imediatamente.
+          </Text>
+        </Section>
+        <Hr style={divider} />
         <Text style={footer}>
-          If you didn't request this change, please secure your account
-          immediately.
+          © {new Date().getFullYear()} Universidade Nacional de Vendas — Direção Comercial como Serviço
         </Text>
       </Container>
     </Body>
@@ -61,27 +75,15 @@ export const EmailChangeEmail = ({
 
 export default EmailChangeEmail
 
-const main = { backgroundColor: '#ffffff', fontFamily: 'Arial, sans-serif' }
-const container = { padding: '20px 25px' }
-const h1 = {
-  fontSize: '22px',
-  fontWeight: 'bold' as const,
-  color: '#000000',
-  margin: '0 0 20px',
-}
-const text = {
-  fontSize: '14px',
-  color: '#55575d',
-  lineHeight: '1.5',
-  margin: '0 0 25px',
-}
-const link = { color: 'inherit', textDecoration: 'underline' }
-const button = {
-  backgroundColor: '#000000',
-  color: '#ffffff',
-  fontSize: '14px',
-  borderRadius: '8px',
-  padding: '12px 20px',
-  textDecoration: 'none',
-}
-const footer = { fontSize: '12px', color: '#999999', margin: '30px 0 0' }
+const main = { backgroundColor: '#f4f4f5', fontFamily: "'Segoe UI', Arial, sans-serif", padding: '20px 0' }
+const container = { backgroundColor: '#ffffff', borderRadius: '12px', maxWidth: '560px', margin: '0 auto', overflow: 'hidden' as const }
+const header = { backgroundColor: '#0A1628', padding: '28px 40px', textAlign: 'center' as const }
+const content = { padding: '32px 40px' }
+const h1 = { fontSize: '24px', fontWeight: 'bold' as const, color: '#0A1628', margin: '0 0 16px' }
+const text = { fontSize: '15px', color: '#374151', lineHeight: '1.6', margin: '0 0 20px' }
+const link = { color: '#DC2626', textDecoration: 'underline' }
+const buttonContainer = { textAlign: 'center' as const, margin: '28px 0' }
+const button = { backgroundColor: '#DC2626', color: '#ffffff', fontSize: '15px', fontWeight: 'bold' as const, borderRadius: '8px', padding: '14px 32px', textDecoration: 'none' }
+const smallText = { fontSize: '13px', color: '#9ca3af', lineHeight: '1.5', margin: '20px 0 0' }
+const divider = { borderColor: '#e5e7eb', margin: '0' }
+const footer = { fontSize: '12px', color: '#9ca3af', textAlign: 'center' as const, padding: '20px 40px', margin: '0' }
