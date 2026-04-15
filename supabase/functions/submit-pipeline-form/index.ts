@@ -355,13 +355,6 @@ Deno.serve(async (req) => {
       console.error("[submit-pipeline-form] Message queue error:", queueErr);
     }
 
-    // Use waitUntil if available (keeps function alive after response), otherwise fire-and-forget
-    if (typeof (globalThis as any).EdgeRuntime?.waitUntil === 'function') {
-      (globalThis as any).EdgeRuntime.waitUntil(backgroundTasks);
-    } else {
-      backgroundTasks.catch(e => console.error('[submit-pipeline-form] Background task error:', e));
-    }
-
     return jsonResponse({ success: true, lead_id: lead.id });
 
   } catch (error: unknown) {
