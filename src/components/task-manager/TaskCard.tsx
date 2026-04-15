@@ -1,4 +1,5 @@
 import React from "react";
+import { isTaskOverdueBrasilia } from "@/utils/brasilia-date";
 import { useDraggable } from "@dnd-kit/core";
 import { CSS } from "@dnd-kit/utilities";
 import { Card } from "@/components/ui/card";
@@ -32,7 +33,7 @@ export const TaskCard = React.forwardRef<HTMLDivElement, Props>(({ task, isDragg
     : undefined;
 
   const priority = task.priority ? priorityConfig[task.priority] : null;
-  const isOverdue = task.due_date && new Date(task.due_date) < new Date() && task.status !== "completed";
+  const isOverdue = isTaskOverdueBrasilia(task.due_date, task.status);
 
   const handleCheckboxClick = (e: React.MouseEvent) => {
     e.stopPropagation();

@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isTaskOverdueBrasilia } from "@/utils/brasilia-date";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from "@/components/ui/collapsible";
@@ -37,17 +38,11 @@ const STATUS_LABELS: Record<string, string> = {
 export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
   const statusCounts = useMemo(() => {
     const counts = { overdue: 0, pending: 0, in_progress: 0, completed: 0 };
     tasks.forEach(t => {
       if (t.status === "inactive") return;
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) {
         counts.overdue++;
       } else if (t.status in counts) {
@@ -55,7 +50,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       }
     });
     return counts;
-  }, [tasks, today]);
+  }, [tasks]);
 
   const total = statusCounts.overdue + statusCounts.pending + statusCounts.in_progress + statusCounts.completed;
 
@@ -66,7 +61,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       const name = t.company_name || "Sem empresa";
       if (!map.has(name)) map.set(name, { pending: 0, in_progress: 0, overdue: 0, completed: 0 });
       const entry = map.get(name)!;
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) entry.overdue++;
       else if (t.status === "pending") entry.pending++;
       else if (t.status === "in_progress") entry.in_progress++;
@@ -81,7 +76,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 8);
-  }, [tasks, today]);
+  }, [tasks]);
 
   const consultantData = useMemo(() => {
     const staffMap = new Map(staff.map(s => [s.id, s.name]));
@@ -91,7 +86,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       const name = t.responsible_staff_id ? (staffMap.get(t.responsible_staff_id) || "Desconhecido") : "Sem responsável";
       if (!map.has(name)) map.set(name, { pending: 0, in_progress: 0, overdue: 0, completed: 0 });
       const entry = map.get(name)!;
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) entry.overdue++;
       else if (t.status === "pending") entry.pending++;
       else if (t.status === "in_progress") entry.in_progress++;
@@ -106,7 +101,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       }))
       .sort((a, b) => b.total - a.total)
       .slice(0, 8);
-  }, [tasks, staff, today]);
+  }, [tasks, staff]);
 
   const trendData = useMemo(() => {
     const completedTasks = tasks.filter(t => t.status === "completed" && t.due_date);

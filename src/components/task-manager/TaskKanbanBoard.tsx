@@ -1,4 +1,5 @@
 import { useMemo, useState } from "react";
+import { isTaskOverdueBrasilia } from "@/utils/brasilia-date";
 import {
   DndContext,
   DragEndEvent,
@@ -39,9 +40,6 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick, selectedTa
   );
 
   const tasksByColumn = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
-
     const map: Record<string, TaskWithProject[]> = {
       overdue: [],
       pending: [],
@@ -52,7 +50,7 @@ export const TaskKanbanBoard = ({ tasks, onStatusChange, onTaskClick, selectedTa
     tasks.forEach(t => {
       if (t.status === "inactive") return;
 
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) {
         map.overdue.push(t);
       } else if (map[t.status]) {
