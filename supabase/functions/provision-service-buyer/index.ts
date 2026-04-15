@@ -43,9 +43,34 @@ Deno.serve(async (req) => {
     const menuKey = purchase.menu_key || service?.menu_key;
 
     // 2. Check if already provisioned
-    if (purchase.user_provisioned) {
+    if (purchase.user_provisioned && !force_resend_email) {
       console.log(`[provision-service-buyer] Already provisioned for purchase ${purchase_id}`);
       return new Response(JSON.stringify({ success: true, already_provisioned: true }), {
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    }
+
+    // If force_resend_email, skip to email sending
+    if (purchase.user_provisioned && force_resend_email) {
+      const { buyer_email: email, buyer_name: name, service } = purchase;
+      const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
+      const { createClient: createPublicClient } = await import("@supabase/supabase-js");
+      const publicSupabase = createPublicClient(supabaseUrl, anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      const { error: resetErr } = await publicSupabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${siteUrl}/reset-password`,
+      });
+      if (resetErr) {
+        console.error("[provision-service-buyer] Resend email error:", resetErr);
+        return new Response(JSON.stringify({ error: resetErr.message }), {
+          status: 400,
+          headers: { ...corsHeaders, "Content-Type": "application/json" },
+        });
+      }
+      console.log(`[provision-service-buyer] Resent reset password email to ${email}`);
+      return new Response(JSON.stringify({ success: true, email_resent: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
     }
