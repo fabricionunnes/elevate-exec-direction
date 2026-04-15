@@ -59,6 +59,7 @@ const CRMMeetingsPage = () => {
   const [meetings, setMeetings] = useState<MeetingActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [staffMap, setStaffMap] = useState<Map<string, string>>(new Map());
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
