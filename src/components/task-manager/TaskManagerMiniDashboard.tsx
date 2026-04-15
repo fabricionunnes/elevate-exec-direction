@@ -50,7 +50,7 @@ export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
       }
     });
     return counts;
-  }, [tasks, today]);
+  }, [tasks]);
 
   const total = statusCounts.overdue + statusCounts.pending + statusCounts.in_progress + statusCounts.completed;
 
