@@ -302,3 +302,6 @@ verify_jwt = false
 
 [functions.asaas-service-purchase]
 verify_jwt = false
+
+[functions.process-email-queue]
+verify_jwt = true
