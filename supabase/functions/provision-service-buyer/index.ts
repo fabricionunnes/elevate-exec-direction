@@ -14,6 +14,7 @@ const SENDER_DOMAIN = "noreply.unvholdings.com.br";
 const FROM_DOMAIN = "unvholdings.com.br";
 const ACCESS_EMAIL_TEMPLATE = "signup_access";
 const ACCESS_EMAIL_SUBJECT = "Crie sua senha de acesso — UNV";
+const PORTAL_RESET_PATH = "/portal/reset-password";
 
 type ServiceSupabaseClient = ReturnType<typeof createClient>;
 
@@ -181,7 +182,7 @@ Deno.serve(async (req) => {
         const confirmationUrl = await generatePasswordSetupLink(
           supabase,
           email,
-          `${siteUrl}/reset-password`,
+          `${siteUrl}${PORTAL_RESET_PATH}`,
         );
 
         await enqueueAccessEmail({
@@ -406,7 +407,7 @@ Deno.serve(async (req) => {
         const confirmationUrl = await generatePasswordSetupLink(
           supabase,
           buyer_email,
-          `${siteUrl}/reset-password`,
+          `${siteUrl}${PORTAL_RESET_PATH}`,
         );
 
         await enqueueAccessEmail({
