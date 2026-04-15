@@ -341,9 +341,20 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const totalSales = salesData.length;
     const ticketMedio = totalSales > 0 ? totalRevenue / totalSales : 0;
 
-    const totalScheduled = meetingEvents.filter(e => e.event_type === "scheduled").length;
-    const totalCompleted = meetingEvents.filter(e => e.event_type === "realized").length;
-    const totalNoShow = meetingEvents.filter(e => e.event_type === "no_show").length;
+    // For totals when not filtering by closer, deduplicate by lead to avoid double-counting
+    const uniqueByLeadEvents = (() => {
+      if (isCloserFilter) return meetingEvents; // Already filtered by credited_staff_id
+      const seen = new Set<string>();
+      return meetingEvents.filter((event) => {
+        const key = `${event.lead_id}-${event.event_type}`;
+        if (seen.has(key)) return false;
+        seen.add(key);
+        return true;
+      });
+    })();
+    const totalScheduled = uniqueByLeadEvents.filter(e => e.event_type === "scheduled").length;
+    const totalCompleted = uniqueByLeadEvents.filter(e => e.event_type === "realized").length;
+    const totalNoShow = uniqueByLeadEvents.filter(e => e.event_type === "no_show").length;
 
     const noShowPercent = totalScheduled > 0 ? (totalNoShow / totalScheduled) * 100 : 0;
     const conversion = totalCompleted > 0 ? (totalSales / totalCompleted) * 100 : 0;
