@@ -103,6 +103,8 @@ import { BrainCircuit } from "lucide-react";
 import { CommercialDirectorModule } from "@/components/commercial-director/CommercialDirectorModule";
 import { TransferTasksDialog } from "@/components/onboarding-tasks/TransferTasksDialog";
 import { ProjectWhatsAppTab } from "@/components/whatsapp-hub/ProjectWhatsAppTab";
+import { DollarSign } from "lucide-react";
+import { SFCommissionsPanel } from "@/components/sf-commissions/SFCommissionsPanel";
 
 // Support Tab with sub-tabs
 const SupportTabContent = ({ projectId, users }: { projectId: string; users: OnboardingUser[] }) => {
