@@ -93,7 +93,7 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     if (!projectId || !companyId) return;
 
     // Fetch salespeople, configs, and KPI data in parallel
-    const spRes = await supabase.from("onboarding_users").select("id, name").eq("project_id", projectId).eq("is_active", true);
+    const spRes: any = await supabase.from("onboarding_users").select("id, name").eq("project_id", projectId).eq("is_active", true);
     const configRes = await supabase
         .from("sf_commission_configs")
         .select("*")
