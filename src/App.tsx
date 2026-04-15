@@ -74,6 +74,7 @@ const SessaoEstrategicaObrigadoPage = lazy(() => import("./pages/SessaoEstrategi
 const TrafegoPagoPage = lazy(() => import("./pages/TrafegoPagoPage"));
 const SocialMediaPage = lazy(() => import("./pages/SocialMediaPage"));
 const ServiceSalesPage = lazy(() => import("./pages/ServiceSalesPage"));
+const ServicesCatalogPage = lazy(() => import("./pages/ServicesCatalogPage"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
