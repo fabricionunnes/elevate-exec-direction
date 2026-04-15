@@ -59,6 +59,25 @@ const productCategories: ProductCategory[] = [
     ],
   },
   {
+    category: "Módulos Extras",
+    items: [
+      { name: "CRM Comercial", href: "/servico/crm-comercial" },
+      { name: "Prospecção B2B", href: "/servico/prospeccao-b2b" },
+      { name: "Diretor Comercial IA", href: "/servico/diretor-comercial-ia" },
+      { name: "UNV Social IA", href: "/servico/unv-social" },
+      { name: "UNV Academy", href: "/servico/unv-academy" },
+      { name: "UNV Office", href: "/servico/unv-office" },
+      { name: "Meta Ads", href: "/servico/meta-ads" },
+      { name: "Gestão Integrada", href: "/servico/gestao-clientes" },
+      { name: "RH", href: "/servico/rh" },
+      { name: "Board IA", href: "/servico/board" },
+      { name: "Instagram", href: "/servico/instagram" },
+      { name: "Disparador", href: "/servico/unv-disparador" },
+      { name: "Funil de Vendas", href: "/servico/funil-vendas" },
+      { name: "Pontuação (Cashback)", href: "/servico/pontuacao" },
+    ],
+  },
+  {
     category: "Outros",
     items: [
       { name: "Mansão Empreendedora", href: "https://mansaoempreendedora.com.br", external: true, highlight: true },
