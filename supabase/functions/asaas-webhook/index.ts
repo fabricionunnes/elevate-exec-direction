@@ -315,8 +315,9 @@ Deno.serve(async (req) => {
     // Handle service purchase permission management
     await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus, paymentValueCents, dueDate);
 
-    // Activate pending projects when invoice is paid
+    // Move CRM lead to "won" stage when public service purchase is paid
     if (newStatus === "paid") {
+      await movePublicPurchaseLeadToWon(supabase, subscriptionId, paymentId);
       await activatePendingProjects(supabase, paymentId);
     }
 
