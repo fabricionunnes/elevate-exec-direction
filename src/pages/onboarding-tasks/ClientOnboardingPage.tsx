@@ -75,6 +75,7 @@ import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import { B2BProspectionEmbed } from "@/components/b2b-prospection/B2BProspectionEmbed";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 const ClientUNVOffice = lazy(() => import("@/components/client-office/ClientUNVOffice"));
+import { SFCommissionsPanel } from "@/components/sf-commissions/SFCommissionsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
