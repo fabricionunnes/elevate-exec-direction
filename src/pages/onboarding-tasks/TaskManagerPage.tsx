@@ -299,12 +299,10 @@ const TaskManagerPage = () => {
   }, [tasks, selectedCompany]);
 
   const statusCounts = useMemo(() => {
-    const today = new Date();
-    today.setHours(0, 0, 0, 0);
     const counts = { overdue: 0, pending: 0, in_progress: 0, completed: 0 };
     filteredTasks.forEach(t => {
       if (t.status === "inactive") return;
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) {
         counts.overdue++;
       } else if (t.status in counts) {

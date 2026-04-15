@@ -37,17 +37,11 @@ const STATUS_LABELS: Record<string, string> = {
 export function TaskManagerMiniDashboard({ tasks, staff }: Props) {
   const [expanded, setExpanded] = useState(false);
 
-  const today = useMemo(() => {
-    const d = new Date();
-    d.setHours(0, 0, 0, 0);
-    return d;
-  }, []);
-
   const statusCounts = useMemo(() => {
     const counts = { overdue: 0, pending: 0, in_progress: 0, completed: 0 };
     tasks.forEach(t => {
       if (t.status === "inactive") return;
-      const isOverdue = t.due_date && new Date(t.due_date) < today && t.status !== "completed";
+      const isOverdue = isTaskOverdueBrasilia(t.due_date, t.status);
       if (isOverdue) {
         counts.overdue++;
       } else if (t.status in counts) {
