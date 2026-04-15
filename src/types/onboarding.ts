@@ -322,6 +322,11 @@ export const CLIENT_MENU_STRUCTURE = [
     label: "UNV Office",
     group: "Integrações",
   },
+  {
+    key: CLIENT_MENU_KEYS.sf_comissoes,
+    label: "Comissões (Sales Force)",
+    group: "Gestão",
+  },
 ] as const;
 
 // Role labels in Portuguese
