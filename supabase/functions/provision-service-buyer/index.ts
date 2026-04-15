@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
           .from("onboarding_projects")
           .insert({
             onboarding_company_id: resolvedCompanyId,
-            product_name: serviceName,
+            product_name: `${buyer_name} - ${serviceName}`,
+            product_id: "modulo_extra",
             status: "active",
           })
           .select("id")
@@ -242,32 +243,25 @@ Deno.serve(async (req) => {
     }
 
     // 8. Send password reset email so user can set their password
-    if (isNewUser && userId) {
+    if (userId) {
       const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
       
-      // Use inviteUserByEmail which actually sends an email
-      const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(buyer_email, {
-        redirectTo: `${siteUrl}/portal/login`,
+      // Use a public client to call resetPasswordForEmail — this actually sends the email
+      const { createClient: createPublicClient } = await import("@supabase/supabase-js");
+      const publicSupabase = createPublicClient(supabaseUrl, anonKey, {
+        auth: { autoRefreshToken: false, persistSession: false },
+      });
+      
+      const { error: resetErr } = await publicSupabase.auth.resetPasswordForEmail(buyer_email, {
+        redirectTo: `${siteUrl}/reset-password`,
       });
 
-      if (inviteErr) {
-        console.error("[provision-service-buyer] Invite email error:", inviteErr);
-        // Fallback: generate a recovery link and log it
-        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
-          type: "recovery",
-          email: buyer_email,
-          options: { redirectTo: `${siteUrl}/reset-password` },
-        });
-        if (linkErr) {
-          console.error("[provision-service-buyer] Recovery link error:", linkErr);
-        } else {
-          console.log(`[provision-service-buyer] Recovery link generated for ${buyer_email}`);
-        }
+      if (resetErr) {
+        console.error("[provision-service-buyer] Reset password email error:", resetErr);
       } else {
-        console.log(`[provision-service-buyer] Invite email sent to ${buyer_email}`);
+        console.log(`[provision-service-buyer] Reset password email sent to ${buyer_email}`);
       }
-    } else if (!isNewUser) {
-      console.log(`[provision-service-buyer] Existing user, skipping email for ${buyer_email}`);
     }
 
     // 9. Mark purchase as provisioned
