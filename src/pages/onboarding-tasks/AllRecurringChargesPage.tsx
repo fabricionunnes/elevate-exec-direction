@@ -1634,10 +1634,14 @@ export default function AllRecurringChargesPage() {
                               const amountFormatted = formatCurrencyCents(displayAmount);
                               const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
                               const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-                              const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
+                              const discountDateObj = inv.due_date ? new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000) : null;
+                              const discountDate = discountDateObj ? format(discountDateObj, "dd/MM/yyyy") : "";
+                              const todayStart = new Date(); todayStart.setHours(0, 0, 0, 0);
+                              const showDiscount = discountDateObj ? discountDateObj.getTime() >= todayStart.getTime() : false;
                               const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                               const customerName = inv.company_name || "";
-                              const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
+                              const discountLine = showDiscount ? `\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*` : "";
+                              const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}${discountLine}\n\n🔗 ${inv.payment_link_url}`;
                               try {
                                 await sendWhatsAppMessage(phone, msg);
                                 sent++;
@@ -1823,10 +1827,14 @@ export default function AllRecurringChargesPage() {
                                           const amountFormatted = formatCurrencyCents(displayAmount);
                                           const dueDateFormatted = inv.due_date ? format(new Date(inv.due_date + "T12:00:00"), "dd/MM/yyyy") : "-";
                                           const discountedAmount = (displayAmount * 0.95 / 100).toLocaleString("pt-BR", { style: "currency", currency: "BRL" });
-                                          const discountDate = inv.due_date ? format(new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000), "dd/MM/yyyy") : "";
+                                          const discountDateObj2 = inv.due_date ? new Date(new Date(inv.due_date + "T12:00:00").getTime() - 86400000) : null;
+                                          const discountDate = discountDateObj2 ? format(discountDateObj2, "dd/MM/yyyy") : "";
+                                          const todayStart2 = new Date(); todayStart2.setHours(0, 0, 0, 0);
+                                          const showDiscount2 = discountDateObj2 ? discountDateObj2.getTime() >= todayStart2.getTime() : false;
                                           const installmentInfo = `\n📦 *Parcela:* ${inv.installment_number}/${inv.total_installments}`;
                                           const customerName = inv.company_name || "";
-                                          const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*\n\n🔗 ${inv.payment_link_url}`;
+                                          const discountLine2 = showDiscount2 ? `\n\n🏷️ *Desconto de 5%* pagando até *${discountDate}*! Valor com desconto: *${discountedAmount}*` : "";
+                                          const msg = `Olá ${customerName}!\n\nSegue sua fatura:\n\n📄 *${inv.description}*\n💰 *Valor:* ${amountFormatted}\n📅 *Vencimento:* ${dueDateFormatted}${installmentInfo}${discountLine2}\n\n🔗 ${inv.payment_link_url}`;
                                           console.log("[WhatsApp Send] Sending to:", phone, "msg length:", msg.length);
                                           toast.info("Enviando mensagem...");
                                           try {
