@@ -26137,6 +26137,7 @@ export type Database = {
           company_id: string | null
           converted_at: string | null
           created_at: string
+          crm_lead_id: string | null
           id: string
           invoice_url: string | null
           menu_key: string
@@ -26160,6 +26161,7 @@ export type Database = {
           company_id?: string | null
           converted_at?: string | null
           created_at?: string
+          crm_lead_id?: string | null
           id?: string
           invoice_url?: string | null
           menu_key: string
@@ -26183,6 +26185,7 @@ export type Database = {
           company_id?: string | null
           converted_at?: string | null
           created_at?: string
+          crm_lead_id?: string | null
           id?: string
           invoice_url?: string | null
           menu_key?: string
@@ -26194,6 +26197,13 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "public_service_purchases_crm_lead_id_fkey"
+            columns: ["crm_lead_id"]
+            isOneToOne: false
+            referencedRelation: "crm_leads"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "public_service_purchases_service_catalog_id_fkey"
             columns: ["service_catalog_id"]
