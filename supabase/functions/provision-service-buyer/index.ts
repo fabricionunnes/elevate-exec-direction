@@ -17,7 +17,7 @@ Deno.serve(async (req) => {
       auth: { autoRefreshToken: false, persistSession: false },
     });
 
-    const { purchase_id } = await req.json();
+    const { purchase_id, force_resend_email } = await req.json();
     if (!purchase_id) {
       return new Response(JSON.stringify({ error: "purchase_id required" }), {
         status: 400,
