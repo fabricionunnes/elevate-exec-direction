@@ -487,10 +487,8 @@ export function ReceivablesPanel() {
   
   const paidReceivables = filteredReceivables.filter(r => r.status === "paid");
   const totalReceived = paidReceivables.reduce((sum, r) => {
-    const baseAmount = Number(r.paid_amount || r.amount);
-    const fee = Number((r as any).fee_amount || 0);
-    const netReceived = baseAmount - fee;
-    return sum + netReceived;
+    // paid_amount is already the net credited amount (after fees and discounts)
+    return sum + Number(r.paid_amount || r.amount);
   }, 0);
   
   const totals = {
