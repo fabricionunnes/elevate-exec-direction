@@ -9,6 +9,7 @@ import { ServiceSalesFAQ } from "@/components/service-sales/ServiceSalesFAQ";
 import { ServiceSalesPurchaseSection } from "@/components/service-sales/ServiceSalesPurchaseSection";
 import { ServiceSalesFooter } from "@/components/service-sales/ServiceSalesFooter";
 import logoUnv from "@/assets/logo-unv.png";
+import { ServiceSalesNavMenu } from "@/components/service-sales/ServiceSalesNavMenu";
 
 export interface ServiceData {
   id: string;
