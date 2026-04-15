@@ -1934,6 +1934,15 @@ const OnboardingProjectPage = () => {
             <ProjectWhatsAppTab projectId={projectId!} />
           </TabsContent>
 
+          {project?.product_name === "UNV Sales Force" && (
+            <TabsContent value="sf_commissions">
+              <SFCommissionsPanel
+                projectId={projectId!}
+                companyId={project.onboarding_company_id || ""}
+              />
+            </TabsContent>
+          )}
+
         </Tabs>
       </div>
 
