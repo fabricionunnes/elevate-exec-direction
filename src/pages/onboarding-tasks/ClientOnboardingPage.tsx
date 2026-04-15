@@ -544,6 +544,13 @@ const ClientOnboardingPage = () => {
       { id: "unv_office" as ViewType, icon: Building, label: "UNV Office", menuKey: CLIENT_MENU_KEYS.unv_office },
     ];
 
+    // Add SF Commissions menu only for UNV Sales Force projects and admin roles (client/gerente)
+    const isSalesForceProject = project?.product_name === "UNV Sales Force";
+    const isAdminRole = currentUser?.role === "client" || currentUser?.role === "gerente";
+    if (isSalesForceProject && isAdminRole) {
+      allMenus.push({ id: "sf_comissoes" as ViewType, icon: DollarSign, label: "Comissões", menuKey: CLIENT_MENU_KEYS.sf_comissoes });
+    }
+
     // Project-level menu filtering applies to ALL roles including full access
 
     return allMenus
