@@ -93,20 +93,17 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
     if (!projectId || !companyId) return;
 
     // Fetch salespeople, configs, and KPI data in parallel
-    const [spRes, configRes] = await Promise.all([
-      supabase.from("onboarding_users").select("salesperson_id, name").eq("project_id", projectId).not("salesperson_id", "is", null).then((r) => r),
-      supabase
+    const spRes = await (supabase.from("onboarding_users") as any).select("id, name").eq("project_id", projectId).eq("is_active", true);
+    const configRes = await supabase
         .from("sf_commission_configs")
         .select("*")
         .eq("project_id", projectId)
-        .eq("is_active", true),
-    ]);
+        .eq("is_active", true);
 
     let spList: Salesperson[] = [];
     if (spRes && spRes.data) {
       spList = (spRes.data as any[])
-        .filter((u: any) => u.salesperson_id)
-        .map((u: any) => ({ id: u.salesperson_id, name: u.name }));
+        .map((u: any) => ({ id: u.id, name: u.name }));
     }
 
     setSalespeople(spList);
