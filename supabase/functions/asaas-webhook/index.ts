@@ -788,8 +788,7 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
     // Find public_service_purchases linked to this payment
     let query = supabase
       .from("public_service_purchases")
-      .select("id, crm_lead_id")
-      .not("crm_lead_id", "is", null);
+      .select("id, crm_lead_id, user_provisioned")
 
     if (subscriptionId) {
       query = query.eq("asaas_subscription_id", subscriptionId);
