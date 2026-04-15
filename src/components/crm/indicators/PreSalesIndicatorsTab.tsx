@@ -294,9 +294,19 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const totalCancelled = (calls || []).filter(c => c.status === "cancelled").length;
       const totalRescheduled = (calls || []).filter(c => c.status === "rescheduled").length;
 
-      const meetingEventsScheduled = uniqueAttributedMeetingEvents.filter(e => e.event_type === "scheduled").length;
-      const meetingEventsRealized = uniqueAttributedMeetingEvents.filter(e => e.event_type === "realized").length;
-      const meetingEventsNoShow = uniqueAttributedMeetingEvents.filter(e => e.event_type === "no_show").length;
+      // For TOTAL counts, deduplicate by lead_id + event_type (unique meetings regardless of who gets credit)
+      const uniqueByLead = (() => {
+        const seen = new Set<string>();
+        return uniqueAttributedMeetingEvents.filter((event) => {
+          const key = `${event.lead_id}-${event.event_type}`;
+          if (seen.has(key)) return false;
+          seen.add(key);
+          return true;
+        });
+      })();
+      const meetingEventsScheduled = uniqueByLead.filter(e => e.event_type === "scheduled").length;
+      const meetingEventsRealized = uniqueByLead.filter(e => e.event_type === "realized").length;
+      const meetingEventsNoShow = uniqueByLead.filter(e => e.event_type === "no_show").length;
 
       const eventDetails: MeetingEventDetail[] = uniqueAttributedMeetingEvents
         .filter(e => ["scheduled", "realized", "no_show", "out_of_icp"].includes(e.event_type))
