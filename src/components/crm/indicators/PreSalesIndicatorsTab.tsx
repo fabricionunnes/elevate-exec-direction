@@ -366,7 +366,7 @@ export const PreSalesIndicatorsTab = ({ staffId, staffRole }: PreSalesIndicators
       const sdrMetricsList: SDRMetrics[] = (sdrStaff || []).map(sdr => {
         const sdrActivities = (dailyActivities || []).filter(a => a.staff_id === sdr.id);
         const sdrCalls = (calls || []).filter(c => c.scheduled_by === sdr.id);
-        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.attributed_sdr_id === sdr.id);
+        const sdrMeetingEvents = uniqueAttributedMeetingEvents.filter(e => e.credited_staff_id === sdr.id);
         const sdrEventsScheduled = sdrMeetingEvents.filter(e => e.event_type === "scheduled").length;
         const sdrEventsRealized = sdrMeetingEvents.filter(e => e.event_type === "realized").length;
         const sdrEventsNoShow = sdrMeetingEvents.filter(e => e.event_type === "no_show").length;
