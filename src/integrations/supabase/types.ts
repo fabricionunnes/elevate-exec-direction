@@ -26123,6 +26123,86 @@ export type Database = {
           },
         ]
       }
+      public_service_purchases: {
+        Row: {
+          amount_cents: number
+          asaas_customer_id: string | null
+          asaas_payment_id: string | null
+          asaas_subscription_id: string | null
+          billing_type: string
+          buyer_document: string | null
+          buyer_email: string
+          buyer_name: string
+          buyer_phone: string | null
+          company_id: string | null
+          converted_at: string | null
+          created_at: string
+          id: string
+          invoice_url: string | null
+          menu_key: string
+          pix_qr_code: string | null
+          pix_qr_code_url: string | null
+          project_id: string | null
+          service_catalog_id: string
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          amount_cents: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_type?: string
+          buyer_document?: string | null
+          buyer_email: string
+          buyer_name: string
+          buyer_phone?: string | null
+          company_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          invoice_url?: string | null
+          menu_key: string
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          project_id?: string | null
+          service_catalog_id: string
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          amount_cents?: number
+          asaas_customer_id?: string | null
+          asaas_payment_id?: string | null
+          asaas_subscription_id?: string | null
+          billing_type?: string
+          buyer_document?: string | null
+          buyer_email?: string
+          buyer_name?: string
+          buyer_phone?: string | null
+          company_id?: string | null
+          converted_at?: string | null
+          created_at?: string
+          id?: string
+          invoice_url?: string | null
+          menu_key?: string
+          pix_qr_code?: string | null
+          pix_qr_code_url?: string | null
+          project_id?: string | null
+          service_catalog_id?: string
+          status?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "public_service_purchases_service_catalog_id_fkey"
+            columns: ["service_catalog_id"]
+            isOneToOne: false
+            referencedRelation: "service_catalog"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       rescue_playbooks: {
         Row: {
           ai_recommendations: string | null
@@ -26850,9 +26930,12 @@ export type Database = {
           description: string | null
           id: string
           is_active: boolean
+          is_public: boolean
+          landing_page_config: Json | null
           menu_key: string
           name: string
           price: number
+          slug: string | null
           sort_order: number
           updated_at: string
         }
@@ -26862,9 +26945,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
+          landing_page_config?: Json | null
           menu_key: string
           name: string
           price?: number
+          slug?: string | null
           sort_order?: number
           updated_at?: string
         }
@@ -26874,9 +26960,12 @@ export type Database = {
           description?: string | null
           id?: string
           is_active?: boolean
+          is_public?: boolean
+          landing_page_config?: Json | null
           menu_key?: string
           name?: string
           price?: number
+          slug?: string | null
           sort_order?: number
           updated_at?: string
         }
