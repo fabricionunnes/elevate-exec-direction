@@ -12,7 +12,9 @@ import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, 
 import { Popover, PopoverContent, PopoverTrigger } from "@/components/ui/popover";
 import { Calendar as CalendarComponent } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
-import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX, X, Link2 } from "lucide-react";
+import { Clock, Video, RefreshCw, Loader2, User, ExternalLink, CheckCircle2, CalendarIcon, Filter, Trash2, UserX, X, Link2, Phone, Mail, Building2, UserCheck, Headphones } from "lucide-react";
+import { ScrollArea } from "@/components/ui/scroll-area";
+import { Separator } from "@/components/ui/separator";
 import { format, startOfDay, endOfDay, startOfMonth, endOfMonth, parseISO, addDays, subDays, startOfWeek, endOfWeek, addWeeks, subWeeks, subMonths } from "date-fns";
 import { ptBR } from "date-fns/locale";
 import { cn } from "@/lib/utils";
@@ -31,7 +33,18 @@ interface MeetingActivity {
   lead_id: string | null;
   responsible_staff_id: string | null;
   recording_url: string | null;
-  lead?: { id: string; name: string; stage_id: string | null } | null;
+  notes: string | null;
+  lead?: {
+    id: string;
+    name: string;
+    stage_id: string | null;
+    phone: string | null;
+    email: string | null;
+    company: string | null;
+    sdr_staff_id: string | null;
+    scheduled_by_staff_id: string | null;
+    owner_staff_id: string | null;
+  } | null;
   responsible_staff?: { id: string; name: string } | null;
 }
 
@@ -48,6 +61,7 @@ const CRMMeetingsPage = () => {
   const [meetings, setMeetings] = useState<MeetingActivity[]>([]);
   const [loading, setLoading] = useState(true);
   const [staffOptions, setStaffOptions] = useState<StaffOption[]>([]);
+  const [staffMap, setStaffMap] = useState<Map<string, string>>(new Map());
   const [stages, setStages] = useState<PipelineStage[]>([]);
   const [filterStaff, setFilterStaff] = useState<string>("all");
   const [filterStatus, setFilterStatus] = useState<string>("all");
@@ -69,15 +83,16 @@ const CRMMeetingsPage = () => {
   const [deleting, setDeleting] = useState(false);
 
   const fetchStaff = useCallback(async () => {
-    if (!canFilterStaff) return;
     const { data } = await supabase
       .from("onboarding_staff")
       .select("id, name")
       .in("role", ["closer", "sdr", "head_comercial", "admin", "master"])
       .eq("is_active", true)
       .order("name");
-    setStaffOptions(data || []);
-  }, [canFilterStaff]);
+    const list = data || [];
+    setStaffOptions(list);
+    setStaffMap(new Map(list.map(s => [s.id, s.name])));
+  }, []);
 
   const fetchStages = useCallback(async () => {
     const { data } = await supabase
@@ -94,9 +109,8 @@ const CRMMeetingsPage = () => {
         .from("crm_activities")
         .select(`
           id, title, description, type, status, scheduled_at, completed_at, created_at,
-          lead_id, responsible_staff_id, recording_url,
-          lead_id, responsible_staff_id,
-          lead:crm_leads!crm_activities_lead_id_fkey(id, name, stage_id),
+          lead_id, responsible_staff_id, recording_url, notes,
+          lead:crm_leads!crm_activities_lead_id_fkey(id, name, stage_id, phone, email, company, sdr_staff_id, scheduled_by_staff_id, owner_staff_id),
           responsible_staff:onboarding_staff!crm_activities_responsible_staff_id_fkey(id, name, avatar_url)
         `)
         .eq("type", "meeting")
@@ -662,148 +676,230 @@ const CRMMeetingsPage = () => {
         </div>
       )}
 
-      {/* Meeting Detail Dialog */}
+      {/* Meeting Detail Dialog — Painel Completo */}
       <Dialog open={!!selectedMeeting} onOpenChange={(open) => { if (!open) setSelectedMeeting(null); }}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-2xl max-h-[85vh] overflow-hidden flex flex-col">
           <DialogHeader>
             <DialogTitle className="flex items-center gap-2">
               <Video className="h-5 w-5 text-primary" />
               {selectedMeeting?.title}
+              {selectedMeeting && <span className="ml-auto">{getStatusBadge(selectedMeeting.status)}</span>}
             </DialogTitle>
           </DialogHeader>
 
           {selectedMeeting && (
-            <div className="space-y-4">
-              <div className="grid grid-cols-2 gap-3 text-sm">
-                <div>
-                  <p className="text-muted-foreground text-xs">Data/Hora</p>
-                  <p className="font-medium">
-                    {selectedMeeting.scheduled_at
-                      ? format(parseISO(selectedMeeting.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
-                      : "Sem data"}
-                  </p>
-                </div>
-                <div>
-                  <p className="text-muted-foreground text-xs">Status</p>
-                  {getStatusBadge(selectedMeeting.status)}
-                </div>
+            <ScrollArea className="flex-1 -mx-6 px-6">
+              <div className="space-y-5 pb-4">
+                {/* Lead Info Card */}
                 {selectedMeeting.lead && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Lead</p>
-                    <p className="font-medium">{selectedMeeting.lead.name}</p>
+                  <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold flex items-center gap-2">
+                      <User className="h-4 w-4 text-primary" />
+                      Informações do Lead
+                    </h3>
+                    <div className="grid grid-cols-2 gap-3 text-sm">
+                      <div>
+                        <p className="text-muted-foreground text-xs">Nome</p>
+                        <p className="font-medium">{selectedMeeting.lead.name}</p>
+                      </div>
+                      {selectedMeeting.lead.company && (
+                        <div>
+                          <p className="text-muted-foreground text-xs">Empresa</p>
+                          <p className="font-medium flex items-center gap-1">
+                            <Building2 className="h-3 w-3" />
+                            {selectedMeeting.lead.company}
+                          </p>
+                        </div>
+                      )}
+                      {selectedMeeting.lead.phone && (
+                        <div>
+                          <p className="text-muted-foreground text-xs">Telefone</p>
+                          <p className="font-medium flex items-center gap-1">
+                            <Phone className="h-3 w-3" />
+                            {selectedMeeting.lead.phone}
+                          </p>
+                        </div>
+                      )}
+                      {selectedMeeting.lead.email && (
+                        <div>
+                          <p className="text-muted-foreground text-xs">E-mail</p>
+                          <p className="font-medium flex items-center gap-1 truncate">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            {selectedMeeting.lead.email}
+                          </p>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 )}
-                {selectedMeeting.responsible_staff && (
-                  <div>
-                    <p className="text-muted-foreground text-xs">Responsável</p>
-                    <p className="font-medium">{selectedMeeting.responsible_staff.name}</p>
-                  </div>
-                )}
-              </div>
 
-              <div>
-                <label className="text-sm font-medium">URL da Gravação</label>
-                <div className="flex items-center gap-2">
-                  <div className="relative flex-1">
-                    <Link2 className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                    <Input
-                      value={recordingUrl}
-                      onChange={(e) => setRecordingUrl(e.target.value)}
-                      placeholder="https://drive.google.com/..."
-                      className="pl-10"
-                    />
+                {/* Meeting Details */}
+                <div className="rounded-xl border bg-muted/30 p-4 space-y-3">
+                  <h3 className="text-sm font-semibold flex items-center gap-2">
+                    <CalendarIcon className="h-4 w-4 text-primary" />
+                    Detalhes da Reunião
+                  </h3>
+                  <div className="grid grid-cols-2 gap-3 text-sm">
+                    <div>
+                      <p className="text-muted-foreground text-xs">Data/Hora Agendada</p>
+                      <p className="font-medium">
+                        {selectedMeeting.scheduled_at
+                          ? format(parseISO(selectedMeeting.scheduled_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })
+                          : "Sem data"}
+                      </p>
+                    </div>
+                    {selectedMeeting.completed_at && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">
+                          {selectedMeeting.status === "completed" ? "Finalizada em" : "Encerrada em"}
+                        </p>
+                        <p className="font-medium">
+                          {format(parseISO(selectedMeeting.completed_at), "dd/MM/yyyy 'às' HH:mm", { locale: ptBR })}
+                        </p>
+                      </div>
+                    )}
+                    {selectedMeeting.responsible_staff && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">Closer / Responsável</p>
+                        <p className="font-medium flex items-center gap-1">
+                          <Headphones className="h-3 w-3" />
+                          {selectedMeeting.responsible_staff.name}
+                        </p>
+                      </div>
+                    )}
+                    {selectedMeeting.lead && (
+                      <div>
+                        <p className="text-muted-foreground text-xs">SDR que Agendou</p>
+                        <p className="font-medium flex items-center gap-1">
+                          <UserCheck className="h-3 w-3" />
+                          {staffMap.get(selectedMeeting.lead.scheduled_by_staff_id || selectedMeeting.lead.sdr_staff_id || "") || "—"}
+                        </p>
+                      </div>
+                    )}
                   </div>
-                  {recordingUrl && (
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => window.open(recordingUrl, "_blank")}
-                    >
-                      <ExternalLink className="h-4 w-4" />
-                    </Button>
-                  )}
                 </div>
-              </div>
 
-              <div>
-                <label className="text-sm font-medium">Briefing</label>
-                <Textarea
-                  value={briefing}
-                  onChange={(e) => setBriefing(e.target.value)}
-                  placeholder="Descreva o que foi discutido na reunião..."
-                  rows={4}
-                  disabled={selectedMeeting.status === "completed" || selectedMeeting.status === "no_show"}
-                />
-              </div>
+                {/* Recording URL */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium flex items-center gap-1.5">
+                    <Link2 className="h-3.5 w-3.5" />
+                    URL da Gravação
+                  </label>
+                  <div className="flex items-center gap-2">
+                    <div className="relative flex-1">
+                      <Input
+                        value={recordingUrl}
+                        onChange={(e) => setRecordingUrl(e.target.value)}
+                        placeholder="https://drive.google.com/..."
+                      />
+                    </div>
+                    {recordingUrl && (
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => window.open(recordingUrl, "_blank")}
+                      >
+                        <ExternalLink className="h-4 w-4" />
+                      </Button>
+                    )}
+                  </div>
+                </div>
 
-              <DialogFooter className="flex-wrap gap-2">
-                {selectedMeeting.lead_id && (
-                  <Button
-                    variant="outline"
-                    size="sm"
-                    onClick={() => navigate(`/crm/leads/${selectedMeeting.lead_id}`)}
-                  >
-                    <ExternalLink className="h-3.5 w-3.5 mr-1" />
-                    Abrir Lead
-                  </Button>
+                {/* Briefing / Notes */}
+                <div className="space-y-1.5">
+                  <label className="text-sm font-medium">Briefing / Resumo</label>
+                  <Textarea
+                    value={briefing}
+                    onChange={(e) => setBriefing(e.target.value)}
+                    placeholder="Descreva o que foi discutido na reunião..."
+                    rows={4}
+                    disabled={selectedMeeting.status === "completed" || selectedMeeting.status === "no_show"}
+                  />
+                </div>
+
+                {/* Notes read-only if exists */}
+                {selectedMeeting.notes && selectedMeeting.notes !== briefing && (
+                  <div className="space-y-1.5">
+                    <label className="text-sm font-medium text-muted-foreground">Notas Adicionais</label>
+                    <p className="text-sm bg-muted/50 p-3 rounded-lg whitespace-pre-wrap">{selectedMeeting.notes}</p>
+                  </div>
                 )}
+              </div>
+            </ScrollArea>
+          )}
 
-                {canDelete && (
-                  <Button
-                    variant="destructive"
-                    size="sm"
-                    onClick={() => { setDeleteTargetIds([selectedMeeting.id]); setShowDeleteConfirm(true); }}
-                  >
-                    <Trash2 className="h-3.5 w-3.5 mr-1" />
-                    Excluir
-                  </Button>
-                )}
+          {selectedMeeting && (
+            <Separator className="my-0" />
+          )}
 
+          {selectedMeeting && (
+            <DialogFooter className="flex-wrap gap-2 pt-2">
+              {selectedMeeting.lead_id && (
                 <Button
                   variant="outline"
                   size="sm"
-                  disabled={saving || !recordingUrl.trim()}
-                  onClick={async () => {
-                    setSaving(true);
-                    try {
-                      await supabase
-                        .from("crm_activities")
-                        .update({ recording_url: recordingUrl.trim() || null } as any)
-                        .eq("id", selectedMeeting.id);
-                      toast.success("Link da gravação salvo!");
-                      await fetchMeetings();
-                    } catch { toast.error("Erro ao salvar"); }
-                    finally { setSaving(false); }
-                  }}
+                  onClick={() => navigate(`/crm/leads/${selectedMeeting.lead_id}`)}
                 >
-                  <Link2 className="h-3.5 w-3.5 mr-1" />
-                  Salvar Gravação
+                  <ExternalLink className="h-3.5 w-3.5 mr-1" />
+                  Abrir Lead
                 </Button>
+              )}
 
-                {selectedMeeting.status !== "completed" && selectedMeeting.status !== "no_show" && (
-                  <>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={handleNoShow}
-                      disabled={saving}
-                      className="text-amber-600 border-amber-300 hover:bg-amber-50"
-                    >
-                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
-                      No Show
-                    </Button>
-                    <Button
-                      size="sm"
-                      onClick={handleFinalize}
-                      disabled={saving}
-                    >
-                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
-                      Finalizar Reunião
-                    </Button>
-                  </>
-                )}
-              </DialogFooter>
-            </div>
+              {canDelete && (
+                <Button
+                  variant="destructive"
+                  size="sm"
+                  onClick={() => { setDeleteTargetIds([selectedMeeting.id]); setShowDeleteConfirm(true); }}
+                >
+                  <Trash2 className="h-3.5 w-3.5 mr-1" />
+                  Excluir
+                </Button>
+              )}
+
+              <Button
+                variant="outline"
+                size="sm"
+                disabled={saving || !recordingUrl.trim()}
+                onClick={async () => {
+                  setSaving(true);
+                  try {
+                    await supabase
+                      .from("crm_activities")
+                      .update({ recording_url: recordingUrl.trim() || null } as any)
+                      .eq("id", selectedMeeting.id);
+                    toast.success("Link da gravação salvo!");
+                    await fetchMeetings();
+                  } catch { toast.error("Erro ao salvar"); }
+                  finally { setSaving(false); }
+                }}
+              >
+                <Link2 className="h-3.5 w-3.5 mr-1" />
+                Salvar Gravação
+              </Button>
+
+              {selectedMeeting.status !== "completed" && selectedMeeting.status !== "no_show" && (
+                <>
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleNoShow}
+                    disabled={saving}
+                    className="text-amber-600 border-amber-300 hover:bg-amber-50"
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <UserX className="h-3.5 w-3.5 mr-1" />}
+                    No Show
+                  </Button>
+                  <Button
+                    size="sm"
+                    onClick={handleFinalize}
+                    disabled={saving}
+                  >
+                    {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                    Finalizar Reunião
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
