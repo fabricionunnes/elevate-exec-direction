@@ -183,7 +183,7 @@ async function sendWhatsAppInvoiceNotification(
       .from("whatsapp_instances")
       .select("api_url, api_key, instance_name, is_default")
       .eq("status", "connected")
-      .eq("instance_name", "fabricionunnes")
+      .eq("instance_name", "financeirounv")
       .single();
 
     if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) {

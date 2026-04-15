@@ -196,7 +196,7 @@ Deno.serve(async (req) => {
         if (!cleanPhone || cleanPhone.length < 10) continue;
         const formattedPhone = cleanPhone.startsWith("55") ? cleanPhone : `55${cleanPhone}`;
 
-        const instanceName = rule.whatsapp_instance_name || "fabricionunnes";
+        const instanceName = rule.whatsapp_instance_name || "financeirounv";
         const whatsappInstance = instanceMap.get(instanceName) || instanceMap.values().next().value;
         if (!whatsappInstance?.api_url || !whatsappInstance?.api_key) continue;
 
