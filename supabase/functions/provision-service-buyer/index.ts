@@ -242,23 +242,32 @@ Deno.serve(async (req) => {
     }
 
     // 8. Send password reset email so user can set their password
-    if (!existingUser) {
-      const siteUrl = Deno.env.get("SITE_URL") || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}`;
-      const { error: resetErr } = await supabase.auth.admin.generateLink({
-        type: "magiclink",
-        email: buyer_email,
-        options: {
-          redirectTo: `${siteUrl}/portal/login`,
-        },
+    if (isNewUser && userId) {
+      const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      
+      // Use inviteUserByEmail which actually sends an email
+      const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(buyer_email, {
+        redirectTo: `${siteUrl}/portal/login`,
       });
 
-      if (resetErr) {
-        console.error("[provision-service-buyer] Magic link error:", resetErr);
-        // Fallback: try resetPasswordForEmail
-        // Note: this uses the public client, which will send a standard reset email
+      if (inviteErr) {
+        console.error("[provision-service-buyer] Invite email error:", inviteErr);
+        // Fallback: generate a recovery link and log it
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+          type: "recovery",
+          email: buyer_email,
+          options: { redirectTo: `${siteUrl}/reset-password` },
+        });
+        if (linkErr) {
+          console.error("[provision-service-buyer] Recovery link error:", linkErr);
+        } else {
+          console.log(`[provision-service-buyer] Recovery link generated for ${buyer_email}`);
+        }
       } else {
-        console.log(`[provision-service-buyer] Password setup email sent to ${buyer_email}`);
+        console.log(`[provision-service-buyer] Invite email sent to ${buyer_email}`);
       }
+    } else if (!isNewUser) {
+      console.log(`[provision-service-buyer] Existing user, skipping email for ${buyer_email}`);
     }
 
     // 9. Mark purchase as provisioned
