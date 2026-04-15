@@ -59,6 +59,7 @@ import { StageChecklistDialog } from "@/components/crm/StageChecklistDialog";
 import { CRMPermissionsManager } from "@/components/crm/CRMPermissionsManager";
 import { CRMGoalsTab } from "@/components/crm/settings/CRMGoalsTab";
 import { WonNotificationSettings } from "@/components/crm/settings/WonNotificationSettings";
+import { LeadNotificationSettings } from "@/components/crm/settings/LeadNotificationSettings";
 import { ClintIntegrationTab } from "@/components/crm/settings/ClintIntegrationTab";
 import { PipelineFormsManager } from "@/components/crm/PipelineFormsManager";
 import { CRMMessageRulesTab } from "@/components/crm/settings/CRMMessageRulesTab";
