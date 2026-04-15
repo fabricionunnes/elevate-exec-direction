@@ -156,7 +156,7 @@ Deno.serve(async (req) => {
         .eq("setting_key", "default_instance")
         .maybeSingle();
 
-      const defaultInstanceName = defaultConfig?.setting_value || "fabricionunnes";
+      const defaultInstanceName = defaultConfig?.setting_value || "financeirounv";
 
       // Allow sending regardless of local status - delegate validation to server
       const { data: whatsappInstance } = await supabase
