@@ -94,7 +94,7 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
 
     // Fetch salespeople, configs, and KPI data in parallel
     const [spRes, configRes] = await Promise.all([
-      supabase.rpc("get_company_salespeople_list", { p_company_id: companyId }).then((r) => r).catch(() => null),
+      supabase.from("onboarding_users").select("salesperson_id, name").eq("project_id", projectId).not("salesperson_id", "is", null).then((r) => r),
       supabase
         .from("sf_commission_configs")
         .select("*")
