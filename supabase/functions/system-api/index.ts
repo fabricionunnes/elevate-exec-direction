@@ -1089,6 +1089,51 @@ serve(async (req) => {
         },
       },
 
+      // ===== PROJECT MEETINGS (onboarding_meeting_notes) =====
+      project_meetings: {
+        list: async (c) => {
+          let q = c.supabase.from("onboarding_meeting_notes").select(`
+            id, project_id, staff_id, meeting_title, meeting_date, subject, notes, attendees,
+            meeting_link, recording_link, is_finalized, transcript, live_notes, is_no_show, is_internal,
+            scheduled_by, calendar_owner_id, calendar_owner_name, google_event_id, created_at, updated_at,
+            staff:onboarding_staff!onboarding_meeting_notes_staff_id_fkey(id, name, email, role),
+            scheduled_by_staff:onboarding_staff!onboarding_meeting_notes_scheduled_by_fkey(id, name, email),
+            project:onboarding_projects!inner(id, product_name, onboarding_company_id, onboarding_companies(id, name)),
+            briefings:onboarding_meeting_briefings(id, briefing_content, generated_at)
+          `).order("meeting_date", { ascending: false }).range(c.offset, c.offset + c.limit - 1);
+          if (c.projectId) q = q.eq("project_id", c.projectId);
+          if (c.companyId) q = q.eq("project.onboarding_company_id", c.companyId);
+          const staffId = c.url.searchParams.get("staff_id");
+          if (staffId) q = q.eq("staff_id", staffId);
+          const isFinalized = c.url.searchParams.get("is_finalized");
+          if (isFinalized === "true") q = q.eq("is_finalized", true);
+          if (isFinalized === "false") q = q.eq("is_finalized", false);
+          const isInternal = c.url.searchParams.get("is_internal");
+          if (isInternal === "true") q = q.eq("is_internal", true);
+          if (isInternal === "false") q = q.eq("is_internal", false);
+          if (c.dateFrom) q = q.gte("meeting_date", c.dateFrom);
+          if (c.dateTo) q = q.lte("meeting_date", c.dateTo);
+          const { data, error } = await q;
+          if (error) throw error;
+          return json({ data: data || [], pagination: { limit: c.limit, offset: c.offset } });
+        },
+        get: async (c) => {
+          if (!c.id) return json({ error: "Parâmetro 'id' obrigatório" }, 400);
+          const { data, error } = await c.supabase.from("onboarding_meeting_notes").select(`
+            id, project_id, staff_id, meeting_title, meeting_date, subject, notes, attendees,
+            meeting_link, recording_link, is_finalized, transcript, live_notes, is_no_show, is_internal,
+            scheduled_by, calendar_owner_id, calendar_owner_name, google_event_id, created_at, updated_at,
+            staff:onboarding_staff!onboarding_meeting_notes_staff_id_fkey(id, name, email, role),
+            scheduled_by_staff:onboarding_staff!onboarding_meeting_notes_scheduled_by_fkey(id, name, email),
+            project:onboarding_projects(id, product_name, onboarding_company_id, onboarding_companies(id, name)),
+            briefings:onboarding_meeting_briefings(id, briefing_content, generated_at)
+          `).eq("id", c.id).maybeSingle();
+          if (error) throw error;
+          if (!data) return json({ error: "Reunião não encontrada" }, 404);
+          return json({ data });
+        },
+      },
+
       // ===== SYSTEM INFO =====
       system: {
         endpoints: async () => {
@@ -1111,6 +1156,7 @@ serve(async (req) => {
               invoices: { actions: ["list", "get", "create", "mark_paid", "mark_unpaid"], description: "Faturas de empresas" },
               asaas: { actions: ["create_charge"], description: "Criar cobrança no Asaas (PIX/Boleto/Cartão)" },
               conversations: { actions: ["list", "get", "messages", "send_message"], description: "Conversas WhatsApp dos projetos" },
+              project_meetings: { actions: ["list", "get"], description: "Reuniões de projetos (atas, participantes, transcrições, briefings)" },
             },
             usage: "?module=<module>&action=<action>&id=<id>",
             auth: "Authorization: Bearer <jwt> OU x-api-key: <key>",
