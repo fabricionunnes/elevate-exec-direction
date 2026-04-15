@@ -1310,6 +1310,20 @@ const ClientOnboardingPage = () => {
               </Suspense>
             </motion.div>
           )}
+
+          {activeView === "sf_comissoes" && (
+            <motion.div
+              key="sf_comissoes"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <SFCommissionsPanel
+                projectId={projectId || ""}
+                companyId={project?.onboarding_company_id || ""}
+              />
+            </motion.div>
+          )}
         </AnimatePresence>
       </main>
 
