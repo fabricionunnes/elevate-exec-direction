@@ -298,16 +298,17 @@ export const SalesIndicatorsTab = ({ staffId, staffRole }: SalesIndicatorsTabPro
     const uniqueMeetingEvents = (() => {
       const seen = new Set<string>();
       return rawMeetingEvents.filter((event) => {
-        const attributedCloserId = event.lead?.owner_staff_id || event.credited_staff_id || "unassigned";
-        const key = `${event.lead_id}-${event.event_type}-${attributedCloserId}`;
+        // Use credited_staff_id directly - each staff member gets their own event
+        const key = `${event.lead_id}-${event.event_type}-${event.credited_staff_id || "unassigned"}`;
         if (seen.has(key)) return false;
         seen.add(key);
         return true;
       });
     })();
 
+    // Filter meeting events by credited_staff_id for the selected closer
     const meetingEvents = isCloserFilter
-      ? uniqueMeetingEvents.filter(e => e.lead?.owner_staff_id === selectedCloser)
+      ? uniqueMeetingEvents.filter(e => e.credited_staff_id === selectedCloser)
       : uniqueMeetingEvents;
 
     const calls = isCloserFilter
