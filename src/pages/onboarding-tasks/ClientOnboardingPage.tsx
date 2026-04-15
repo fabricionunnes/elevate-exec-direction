@@ -38,6 +38,7 @@ import {
   BrainCircuit,
   Target,
   Building,
+  DollarSign,
 } from "lucide-react";
 import { ShoppingCart } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
@@ -75,6 +76,7 @@ import { ClientCRMModule } from "@/components/client-crm/ClientCRMModule";
 import { B2BProspectionEmbed } from "@/components/b2b-prospection/B2BProspectionEmbed";
 import { StrategicDiagnosticModule } from "@/components/client-diagnostic/StrategicDiagnosticModule";
 const ClientUNVOffice = lazy(() => import("@/components/client-office/ClientUNVOffice"));
+import { SFCommissionsPanel } from "@/components/sf-commissions/SFCommissionsPanel";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -122,7 +124,7 @@ interface TaskPhase {
   completedCount: number;
 }
 
-type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office";
+type ViewType = "kpis" | "trail" | "timeline" | "list" | "metrics" | "tickets" | "supports" | "meetings" | "assessments" | "referrals" | "rh" | "board" | "financial" | "inventory" | "sales" | "customers" | "appointments" | "billing" | "paid_traffic" | "sales_funnel" | "instagram" | "commercial_director" | "other_services" | "crm_comercial" | "b2b_prospection" | "diagnostic" | "unv_office" | "sf_comissoes";
 
 const ClientOnboardingPage = () => {
   const navigate = useNavigate();
@@ -381,6 +383,7 @@ const ClientOnboardingPage = () => {
         b2b_prospection: "Prospecção B2B",
         diagnostic: "Diagnóstico",
         unv_office: "UNV Office",
+        sf_comissoes: "Comissões",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
@@ -541,6 +544,13 @@ const ClientOnboardingPage = () => {
       { id: "diagnostic" as ViewType, icon: ClipboardCheck, label: "Diagnóstico", menuKey: CLIENT_MENU_KEYS.diagnostico },
       { id: "unv_office" as ViewType, icon: Building, label: "UNV Office", menuKey: CLIENT_MENU_KEYS.unv_office },
     ];
+
+    // Add SF Commissions menu only for UNV Sales Force projects and admin roles (client/gerente)
+    const isSalesForceProject = project?.product_name === "UNV Sales Force";
+    const isAdminRole = currentUser?.role === "client" || currentUser?.role === "gerente";
+    if (isSalesForceProject && isAdminRole) {
+      allMenus.push({ id: "sf_comissoes" as ViewType, icon: DollarSign, label: "Comissões", menuKey: CLIENT_MENU_KEYS.sf_comissoes as any });
+    }
 
     // Project-level menu filtering applies to ALL roles including full access
 
@@ -1298,6 +1308,20 @@ const ClientOnboardingPage = () => {
               <Suspense fallback={<div className="flex justify-center py-8"><div className="animate-spin rounded-full h-8 w-8 border-b-2 border-primary" /></div>}>
                 <ClientUNVOffice projectId={projectId || ""} currentUserId={currentUser?.user_id || ""} />
               </Suspense>
+            </motion.div>
+          )}
+
+          {activeView === "sf_comissoes" && (
+            <motion.div
+              key="sf_comissoes"
+              initial={{ opacity: 0, x: -20 }}
+              animate={{ opacity: 1, x: 0 }}
+              exit={{ opacity: 0, x: 20 }}
+            >
+              <SFCommissionsPanel
+                projectId={projectId || ""}
+                companyId={project?.onboarding_company_id || ""}
+              />
             </motion.div>
           )}
         </AnimatePresence>

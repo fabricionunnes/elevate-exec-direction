@@ -27209,6 +27209,97 @@ export type Database = {
           },
         ]
       }
+      sf_commission_configs: {
+        Row: {
+          base_salary: number
+          client_pays_amount: number
+          created_at: string
+          id: string
+          is_active: boolean
+          notes: string | null
+          project_id: string
+          role: string
+          salesperson_id: string
+          updated_at: string
+        }
+        Insert: {
+          base_salary?: number
+          client_pays_amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          project_id: string
+          role?: string
+          salesperson_id: string
+          updated_at?: string
+        }
+        Update: {
+          base_salary?: number
+          client_pays_amount?: number
+          created_at?: string
+          id?: string
+          is_active?: boolean
+          notes?: string | null
+          project_id?: string
+          role?: string
+          salesperson_id?: string
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sf_commission_configs_project_id_fkey"
+            columns: ["project_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_projects"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
+      sf_commission_tiers: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          config_id: string
+          created_at: string
+          id: string
+          label: string | null
+          max_percent: number | null
+          min_percent: number
+          sort_order: number
+        }
+        Insert: {
+          commission_type?: string
+          commission_value?: number
+          config_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          max_percent?: number | null
+          min_percent?: number
+          sort_order?: number
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          config_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          max_percent?: number | null
+          min_percent?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sf_commission_tiers_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "sf_commission_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       slide_items: {
         Row: {
           background_color: string | null
