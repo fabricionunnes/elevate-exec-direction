@@ -117,7 +117,7 @@ Deno.serve(async (req) => {
       const { data: finInstance } = await supabase
         .from("whatsapp_instances")
         .select("api_url, api_key, instance_name")
-        .eq("instance_name", "financeiro-unv")
+        .eq("instance_name", "financeirounv")
         .maybeSingle();
 
       if (finInstance?.api_url && finInstance?.api_key) {
