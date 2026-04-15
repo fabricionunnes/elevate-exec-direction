@@ -74,6 +74,7 @@ const SessaoEstrategicaObrigadoPage = lazy(() => import("./pages/SessaoEstrategi
 const TrafegoPagoPage = lazy(() => import("./pages/TrafegoPagoPage"));
 const SocialMediaPage = lazy(() => import("./pages/SocialMediaPage"));
 const ServiceSalesPage = lazy(() => import("./pages/ServiceSalesPage"));
+const ServicesCatalogPage = lazy(() => import("./pages/ServicesCatalogPage"));
 
 // Portal
 const PortalLandingPage = lazy(() => import("./pages/portal/PortalLandingPage"));
@@ -355,6 +356,7 @@ const AppShell = () => {
             <Route path="/social-media" element={<SocialMediaPage />} />
             
             {/* Service Sales Pages - Public */}
+            <Route path="/servicos" element={<ServicesCatalogPage />} />
             <Route path="/servico/:slug" element={<ServiceSalesPage />} />
             
             {/* Public Pipeline Form */}
