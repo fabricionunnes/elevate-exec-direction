@@ -702,7 +702,7 @@ export default function CRMHeadComercialPage() {
         };
       })
       .sort((a, b) => b.percentAtingido - a.percentAtingido);
-  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, noShowMeetingsMonth, meetingsScheduledYesterday, elapsedBizDays, totalBizDays, remainingBizDays]);
+  }, [allStaff, goals, wonData, leads, yesterdayActivities, todayActivities, activityStats, sdrCreatedYesterday, sdrCreatedToday, sdrCreatedMonth, completedMeetingsMonth, noShowMeetingsMonth, meetingsScheduledYesterday, realizedMeetingEvents, elapsedBizDays, totalBizDays, remainingBizDays]);
 
   const closersPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "closer"), [staffPerformance]);
   const sdrsPerf = useMemo(() => staffPerformance.filter((s) => s.staff.role === "sdr"), [staffPerformance]);
