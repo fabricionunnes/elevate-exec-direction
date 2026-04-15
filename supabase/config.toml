@@ -1,307 +1,209 @@
 project_id = "czmyjgdixwhpfasfugkm"
 
-[functions.tactiq-webhook]
-verify_jwt = false
-
-[functions.generate-strategic-planning]
-verify_jwt = false
-
-[functions.create-admin]
-verify_jwt = false
-
-[functions.create-onboarding-user]
-verify_jwt = false
-
-[functions.create-staff-user]
-verify_jwt = false
-
-[functions.portal-ai-coach]
-verify_jwt = true
-
-[functions.portal-recommendations]
-verify_jwt = true
-
-[functions.service-advisor-chat]
-verify_jwt = false
-
-[functions.onboarding-ai-chat]
-verify_jwt = true
-
-[functions.generate-playbook-tasks]
-verify_jwt = true
-
-[functions.generate-monthly-tasks]
-verify_jwt = false
-
-[functions.sheets-webhook]
-verify_jwt = false
-
-[functions.google-calendar]
-verify_jwt = false
-
-[functions.check-notice-periods]
-verify_jwt = false
-
-[functions.generate-ai-tasks]
-verify_jwt = true
-
-[functions.generate-pdf-tasks]
-verify_jwt = true
-
-[functions.transcribe-recording]
-verify_jwt = true
-
-[functions.transcribe-assemblyai]
-verify_jwt = true
-
-[functions.kpi-analysis]
-verify_jwt = true
-
-[functions.csat-public]
-verify_jwt = false
-
-[functions.sync-all-recordings]
-verify_jwt = false
-
-[functions.health-analysis]
-verify_jwt = true
-
-[functions.calculate-all-health-scores]
-verify_jwt = false
-
-[functions.check-pending-meetings]
-verify_jwt = false
-
-[functions.conta-azul-oauth]
-verify_jwt = false
-
-[functions.conta-azul-callback]
-verify_jwt = false
-
-[functions.google-drive-oauth]
-verify_jwt = false
-
-[functions.google-drive-files]
-verify_jwt = true
-
-[functions.evolution-api]
-verify_jwt = false
-
-[functions.evolution-webhook]
-verify_jwt = false
-
-[functions.generate-meeting-actions]
-verify_jwt = true
-
-[functions.health-portfolio-insights]
-verify_jwt = true
-
-[functions.predict-churn]
-verify_jwt = false
-
-[functions.analyze-meeting-sentiment]
-verify_jwt = true
-
-[functions.calculate-engagement-score]
-verify_jwt = false
-
-[functions.generate-rescue-playbook]
-verify_jwt = true
-
-[functions.prepare-meeting-briefing]
-verify_jwt = true
-
-[functions.ceo-ai-analysis]
-verify_jwt = false
-
-[functions.generate-weekly-report]
-verify_jwt = false
-
-[functions.ceo-virtual-board]
-verify_jwt = false
-
-[functions.ceo-decision-simulator]
-verify_jwt = false
-
-[functions.hr-ai-analysis]
-verify_jwt = false
-
-[functions.ceo-board-chat]
-verify_jwt = false
-
-[functions.notify-referral]
-verify_jwt = false
-
-[functions.nps-public]
-verify_jwt = false
-
-[functions.hotseat-public]
-verify_jwt = false
-
-[functions.hotseat-company-summary]
-verify_jwt = true
-
-[functions.assessment-ai-report]
-verify_jwt = true
-
-[functions.process-hotseat-recording]
-verify_jwt = true
-
-[functions.send-to-zapsign]
-verify_jwt = false
-
-[functions.check-zapsign-status]
-verify_jwt = false
-
-[functions.circle-ai-quality]
-verify_jwt = false
-
-[functions.circle-community-summary]
-verify_jwt = false
-
-[functions.circle-mentor]
-verify_jwt = false
-
-[functions.circle-ads-ai]
-verify_jwt = false
-
-[functions.cancel-zapsign]
-verify_jwt = false
-
-[functions.instagram-oauth]
-verify_jwt = false
-
-[functions.whatsapp-bulk-send]
-verify_jwt = false
-
-[functions.whatsapp-official-webhook]
-verify_jwt = false
-
-[functions.whatsapp-official-api]
-verify_jwt = true
-
-[functions.social-generate-company-profile]
-verify_jwt = true
-
-[functions.social-send-approval]
-verify_jwt = false
-
-[functions.social-approval-preview]
-verify_jwt = false
-
-[functions.social-get-approval]
-verify_jwt = false
-
-[functions.social-submit-approval]
-verify_jwt = false
-
-[functions.social-ai-suggestions]
-verify_jwt = true
-
-[functions.social-ai-generate-image]
-verify_jwt = true
-
-[functions.academy-generate-quiz]
-verify_jwt = true
-
-[functions.culture-manual-ai]
-verify_jwt = false
-
-[functions.analyze-resume]
-verify_jwt = true
-
-[functions.generate-crm-briefing]
-verify_jwt = true
-
-[functions.generate-meeting-presentation]
-verify_jwt = true
-
-[functions.client-virtual-board]
-verify_jwt = true
-
-[functions.social-instagram-publish]
-verify_jwt = false
-
-[functions.social-scheduled-publish]
-verify_jwt = false
-
-[functions.generate-career-plan]
-verify_jwt = false
-
-[functions.pagarme-checkout]
-verify_jwt = false
-
-[functions.pagarme-webhook]
-verify_jwt = false
-
-[functions.pagarme-subscription]
-verify_jwt = false
-
-[functions.pagarme-order-status]
-verify_jwt = false
-
-[functions.asaas-checkout]
-verify_jwt = false
-
-[functions.asaas-subscription]
-verify_jwt = false
-
-[functions.asaas-cancel-subscription]
-verify_jwt = false
-
-[functions.asaas-confirm-payment]
-verify_jwt = false
-
-[functions.asaas-webhook]
-verify_jwt = false
-
-[functions.cfo-ai-analysis]
-verify_jwt = false
-
-[functions.billing-notifications]
-verify_jwt = false
-
-[functions.mercadopago-checkout]
-verify_jwt = false
-
-[functions.clint-webhook]
-verify_jwt = false
-
-[functions.clint-sync]
-verify_jwt = false
-
-[functions.analyze-payment-receipt]
-verify_jwt = false
-
-[functions.detect-cancellation-intent]
-verify_jwt = false
-
-[functions.pdi-evaluate-summary]
-verify_jwt = false
-
-[functions.nfeio-nfse]
-verify_jwt = false
-
-[functions.commercial-director-analysis]
-verify_jwt = false
-
-[functions.social-transcribe-video]
-verify_jwt = false
-
-[functions.social-sync-metrics]
-verify_jwt = false
-
-[functions.social-instagram-delete]
-verify_jwt = false
-
-[functions.receive-external-lead]
-verify_jwt = false
-
-[functions.update-lead-status]
-verify_jwt = false
-
-[functions.asaas-service-purchase]
-verify_jwt = false
-
-[functions.process-email-queue]
-verify_jwt = true
+[functions]
+  [functions.academy-generate-quiz]
+    verify_jwt = true
+  [functions.analyze-meeting-sentiment]
+    verify_jwt = true
+  [functions.analyze-payment-receipt]
+    verify_jwt = false
+  [functions.analyze-resume]
+    verify_jwt = true
+  [functions.asaas-cancel-subscription]
+    verify_jwt = false
+  [functions.asaas-checkout]
+    verify_jwt = false
+  [functions.asaas-confirm-payment]
+    verify_jwt = false
+  [functions.asaas-service-purchase]
+    verify_jwt = false
+  [functions.asaas-subscription]
+    verify_jwt = false
+  [functions.asaas-webhook]
+    verify_jwt = false
+  [functions.assessment-ai-report]
+    verify_jwt = true
+  [functions.auth-email-hook]
+    verify_jwt = false
+  [functions.billing-notifications]
+    verify_jwt = false
+  [functions.calculate-all-health-scores]
+    verify_jwt = false
+  [functions.calculate-engagement-score]
+    verify_jwt = false
+  [functions.cancel-zapsign]
+    verify_jwt = false
+  [functions.ceo-ai-analysis]
+    verify_jwt = false
+  [functions.ceo-board-chat]
+    verify_jwt = false
+  [functions.ceo-decision-simulator]
+    verify_jwt = false
+  [functions.ceo-virtual-board]
+    verify_jwt = false
+  [functions.cfo-ai-analysis]
+    verify_jwt = false
+  [functions.check-notice-periods]
+    verify_jwt = false
+  [functions.check-pending-meetings]
+    verify_jwt = false
+  [functions.check-zapsign-status]
+    verify_jwt = false
+  [functions.circle-ads-ai]
+    verify_jwt = false
+  [functions.circle-ai-quality]
+    verify_jwt = false
+  [functions.circle-community-summary]
+    verify_jwt = false
+  [functions.circle-mentor]
+    verify_jwt = false
+  [functions.client-virtual-board]
+    verify_jwt = true
+  [functions.clint-sync]
+    verify_jwt = false
+  [functions.clint-webhook]
+    verify_jwt = false
+  [functions.commercial-director-analysis]
+    verify_jwt = false
+  [functions.conta-azul-callback]
+    verify_jwt = false
+  [functions.conta-azul-oauth]
+    verify_jwt = false
+  [functions.create-admin]
+    verify_jwt = false
+  [functions.create-onboarding-user]
+    verify_jwt = false
+  [functions.create-staff-user]
+    verify_jwt = false
+  [functions.csat-public]
+    verify_jwt = false
+  [functions.culture-manual-ai]
+    verify_jwt = false
+  [functions.detect-cancellation-intent]
+    verify_jwt = false
+  [functions.evolution-api]
+    verify_jwt = false
+  [functions.evolution-webhook]
+    verify_jwt = false
+  [functions.generate-ai-tasks]
+    verify_jwt = true
+  [functions.generate-career-plan]
+    verify_jwt = false
+  [functions.generate-crm-briefing]
+    verify_jwt = true
+  [functions.generate-meeting-actions]
+    verify_jwt = true
+  [functions.generate-meeting-presentation]
+    verify_jwt = true
+  [functions.generate-monthly-tasks]
+    verify_jwt = false
+  [functions.generate-pdf-tasks]
+    verify_jwt = true
+  [functions.generate-playbook-tasks]
+    verify_jwt = true
+  [functions.generate-rescue-playbook]
+    verify_jwt = true
+  [functions.generate-strategic-planning]
+    verify_jwt = false
+  [functions.generate-weekly-report]
+    verify_jwt = false
+  [functions.google-calendar]
+    verify_jwt = false
+  [functions.google-drive-files]
+    verify_jwt = true
+  [functions.google-drive-oauth]
+    verify_jwt = false
+  [functions.health-analysis]
+    verify_jwt = true
+  [functions.health-portfolio-insights]
+    verify_jwt = true
+  [functions.hotseat-company-summary]
+    verify_jwt = true
+  [functions.hotseat-public]
+    verify_jwt = false
+  [functions.hr-ai-analysis]
+    verify_jwt = false
+  [functions.instagram-oauth]
+    verify_jwt = false
+  [functions.kpi-analysis]
+    verify_jwt = true
+  [functions.mercadopago-checkout]
+    verify_jwt = false
+  [functions.nfeio-nfse]
+    verify_jwt = false
+  [functions.notify-referral]
+    verify_jwt = false
+  [functions.nps-public]
+    verify_jwt = false
+  [functions.onboarding-ai-chat]
+    verify_jwt = true
+  [functions.pagarme-checkout]
+    verify_jwt = false
+  [functions.pagarme-order-status]
+    verify_jwt = false
+  [functions.pagarme-subscription]
+    verify_jwt = false
+  [functions.pagarme-webhook]
+    verify_jwt = false
+  [functions.pdi-evaluate-summary]
+    verify_jwt = false
+  [functions.portal-ai-coach]
+    verify_jwt = true
+  [functions.portal-recommendations]
+    verify_jwt = true
+  [functions.predict-churn]
+    verify_jwt = false
+  [functions.prepare-meeting-briefing]
+    verify_jwt = true
+  [functions.process-email-queue]
+    verify_jwt = true
+  [functions.process-hotseat-recording]
+    verify_jwt = true
+  [functions.receive-external-lead]
+    verify_jwt = false
+  [functions.send-to-zapsign]
+    verify_jwt = false
+  [functions.service-advisor-chat]
+    verify_jwt = false
+  [functions.sheets-webhook]
+    verify_jwt = false
+  [functions.social-ai-generate-image]
+    verify_jwt = true
+  [functions.social-ai-suggestions]
+    verify_jwt = true
+  [functions.social-approval-preview]
+    verify_jwt = false
+  [functions.social-generate-company-profile]
+    verify_jwt = true
+  [functions.social-get-approval]
+    verify_jwt = false
+  [functions.social-instagram-delete]
+    verify_jwt = false
+  [functions.social-instagram-publish]
+    verify_jwt = false
+  [functions.social-scheduled-publish]
+    verify_jwt = false
+  [functions.social-send-approval]
+    verify_jwt = false
+  [functions.social-submit-approval]
+    verify_jwt = false
+  [functions.social-sync-metrics]
+    verify_jwt = false
+  [functions.social-transcribe-video]
+    verify_jwt = false
+  [functions.sync-all-recordings]
+    verify_jwt = false
+  [functions.tactiq-webhook]
+    verify_jwt = false
+  [functions.transcribe-assemblyai]
+    verify_jwt = true
+  [functions.transcribe-recording]
+    verify_jwt = true
+  [functions.update-lead-status]
+    verify_jwt = false
+  [functions.whatsapp-bulk-send]
+    verify_jwt = false
+  [functions.whatsapp-official-api]
+    verify_jwt = true
+  [functions.whatsapp-official-webhook]
+    verify_jwt = false
