@@ -409,15 +409,7 @@ async function sendWhatsAppNotification(
   const APP_URL = 'https://elevate-exec-direction.lovable.app';
   const leadLink = `${APP_URL}/#/crm/leads/${leadId}`;
 
-  const message = `🚀 *Novo Lead via Formulário!*\n\n` +
-    `📊 *Funil:* ${pipelineName || 'Desconhecido'}\n` +
-    `👤 *Nome:* ${nome}\n` +
-    `📞 *Telefone:* ${telefone}\n` +
-    `📧 *Email:* ${email}\n` +
-    (empresa ? `🏢 *Empresa:* ${empresa}\n` : '') +
-    (desafio ? `🎯 *Desafio:* ${desafio}\n` : '') +
-    (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
-    `\n🔗 *Ver no CRM:* ${leadLink}`;
+  const message = `📋 *${nome}* preencheu o formulário no funil *${pipelineName || 'Desconhecido'}*.\n\n🔗 ${leadLink}`;
 
   // Read configured instance from crm_settings, fallback to "fabricionunnes"
   const { data: instanceSetting } = await supabase
