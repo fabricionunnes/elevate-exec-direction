@@ -1,0 +1,1 @@
+UPDATE public.public_service_purchases SET user_provisioned = false WHERE id = '650e833d-7a0a-4b0c-9b20-9c53cbb5a401';
