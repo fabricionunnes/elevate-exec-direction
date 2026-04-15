@@ -376,6 +376,14 @@ export default function CRMHeadComercialPage() {
             .eq("type", "meeting")
             .gte("scheduled_at", startOfDay(yesterday).toISOString())
             .lt("scheduled_at", endOfDay(yesterday).toISOString()),
+
+          // Realized meeting events from crm_meeting_events (tracked on stage changes)
+          supabase
+            .from("crm_meeting_events")
+            .select("credited_staff_id, lead_id, event_type, event_date")
+            .eq("event_type", "realized")
+            .gte("event_date", monthStart.toISOString())
+            .lte("event_date", monthEnd.toISOString()),
         ]);
 
       if (leadsRes.data) {
