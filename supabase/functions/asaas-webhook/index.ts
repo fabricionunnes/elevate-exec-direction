@@ -195,7 +195,11 @@ Deno.serve(async (req) => {
           // Auto-reconcile financial_receivables
           reconcileReceivable(supabase, invoice.id, null, actualPaidCents, description || '', dueDate).catch(() => {});
 
-          if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
+          // Notify payment confirmed (WhatsApp + internal notifications)
+          supabase.functions.invoke("notify-payment-confirmed", {
+            body: { invoice_id: invoice.id },
+          }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
+
             await supabase.functions.invoke("generate-invoices", {
               body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
             });
