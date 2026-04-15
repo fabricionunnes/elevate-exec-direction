@@ -644,6 +644,13 @@ export default function CRMHeadComercialPage() {
         let monthCompletedMeetings: number;
         let monthNoShowMeetings: number;
 
+        // Count realized meeting events from crm_meeting_events (stage-change tracking)
+        const realizedEventsForStaff = realizedMeetingEvents.filter(
+          (e: any) => e.credited_staff_id === staff.id
+        );
+        // Deduplicate: collect lead_ids already counted from meeting events
+        const realizedLeadIds = new Set(realizedEventsForStaff.map((e: any) => e.lead_id));
+
         if (isSdr) {
           // SDR: count meetings CREATED on that day, using resolved_sdr_id (from lead's scheduled_by or sdr)
           yesterdayMeetings = sdrCreatedYesterday.filter((a: any) => (a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id)).length;
@@ -652,7 +659,11 @@ export default function CRMHeadComercialPage() {
           monthAgendamentos = monthMeetings;
           // Meetings scheduled FOR yesterday attributed to this SDR
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.resolved_sdr_id === staff.id || a.resolved_staff_id === staff.id).length;
-          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
+          // Reuniões realizadas: merge crm_activities (completed) + crm_meeting_events (realized), deduplicated
+          const activityCompleted = completedMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id);
+          const activityCompletedLeadIds = new Set(activityCompleted.map((a: any) => a.lead_id));
+          const extraFromEvents = realizedEventsForStaff.filter((e: any) => !activityCompletedLeadIds.has(e.lead_id));
+          monthCompletedMeetings = activityCompleted.length + extraFromEvents.length;
           monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.resolved_sdr_id === staff.id).length;
         } else {
           yesterdayMeetings = myYesterday.filter((a) => a.type === "meeting" || a.type === "call").length;
@@ -664,7 +675,11 @@ export default function CRMHeadComercialPage() {
             (a: any) => a.responsible_staff_id === staff.id && a.type === "meeting"
           ).length;
           yesterdayScheduledMeetings = meetingsScheduledYesterday.filter((a: any) => a.responsible_staff_id === staff.id).length;
-          monthCompletedMeetings = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
+          // Reuniões realizadas: merge crm_activities (completed) + crm_meeting_events (realized), deduplicated
+          const activityCompleted = completedMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id);
+          const activityCompletedLeadIds = new Set(activityCompleted.map((a: any) => a.lead_id));
+          const extraFromEvents = realizedEventsForStaff.filter((e: any) => !activityCompletedLeadIds.has(e.lead_id));
+          monthCompletedMeetings = activityCompleted.length + extraFromEvents.length;
           monthNoShowMeetings = noShowMeetingsMonth.filter((a: any) => a.responsible_staff_id === staff.id).length;
         }
 
