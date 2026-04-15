@@ -549,7 +549,7 @@ const ClientOnboardingPage = () => {
     const isSalesForceProject = project?.product_name === "UNV Sales Force";
     const isAdminRole = currentUser?.role === "client" || currentUser?.role === "gerente";
     if (isSalesForceProject && isAdminRole) {
-      allMenus.push({ id: "sf_comissoes" as ViewType, icon: DollarSign, label: "Comissões", menuKey: CLIENT_MENU_KEYS.sf_comissoes });
+      allMenus.push({ id: "sf_comissoes" as ViewType, icon: DollarSign, label: "Comissões", menuKey: CLIENT_MENU_KEYS.sf_comissoes as any });
     }
 
     // Project-level menu filtering applies to ALL roles including full access
