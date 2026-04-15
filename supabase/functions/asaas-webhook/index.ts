@@ -200,6 +200,7 @@ Deno.serve(async (req) => {
             body: { invoice_id: invoice.id },
           }).catch((e: any) => console.error("[Asaas Webhook] WhatsApp notify error:", e));
 
+          if (invoice.installment_number === invoice.total_installments && invoice.recurring_charge_id) {
             await supabase.functions.invoke("generate-invoices", {
               body: { action: "auto_renew", recurring_charge_id: invoice.recurring_charge_id },
             });
