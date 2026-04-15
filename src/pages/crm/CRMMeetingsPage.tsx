@@ -894,13 +894,12 @@ const CRMMeetingsPage = () => {
                     onClick={handleFinalize}
                     disabled={saving}
                   >
-                      {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
-                      Finalizar Reunião
-                    </Button>
-                  </>
-                )}
-              </DialogFooter>
-            </div>
+                    {saving ? <Loader2 className="h-3.5 w-3.5 mr-1 animate-spin" /> : <CheckCircle2 className="h-3.5 w-3.5 mr-1" />}
+                    Finalizar Reunião
+                  </Button>
+                </>
+              )}
+            </DialogFooter>
           )}
         </DialogContent>
       </Dialog>
