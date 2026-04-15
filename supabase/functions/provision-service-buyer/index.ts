@@ -155,7 +155,8 @@ Deno.serve(async (req) => {
           .from("onboarding_projects")
           .insert({
             onboarding_company_id: resolvedCompanyId,
-            product_name: serviceName,
+            product_name: `${buyer_name} - ${serviceName}`,
+            product_id: "modulo_extra",
             status: "active",
           })
           .select("id")
@@ -266,8 +267,19 @@ Deno.serve(async (req) => {
       } else {
         console.log(`[provision-service-buyer] Invite email sent to ${buyer_email}`);
       }
-    } else if (!isNewUser) {
-      console.log(`[provision-service-buyer] Existing user, skipping email for ${buyer_email}`);
+    } else if (!isNewUser && userId) {
+      // For existing users, send a recovery email so they can access the portal
+      const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      const { error: recoveryErr } = await supabase.auth.admin.generateLink({
+        type: "recovery",
+        email: buyer_email,
+        options: { redirectTo: `${siteUrl}/reset-password` },
+      });
+      if (recoveryErr) {
+        console.error("[provision-service-buyer] Recovery link error for existing user:", recoveryErr);
+      } else {
+        console.log(`[provision-service-buyer] Recovery email generated for existing user ${buyer_email}`);
+      }
     }
 
     // 9. Mark purchase as provisioned
