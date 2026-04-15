@@ -31,7 +31,18 @@ interface MeetingActivity {
   lead_id: string | null;
   responsible_staff_id: string | null;
   recording_url: string | null;
-  lead?: { id: string; name: string; stage_id: string | null } | null;
+  notes: string | null;
+  lead?: {
+    id: string;
+    name: string;
+    stage_id: string | null;
+    phone: string | null;
+    email: string | null;
+    company: string | null;
+    sdr_staff_id: string | null;
+    scheduled_by_staff_id: string | null;
+    owner_staff_id: string | null;
+  } | null;
   responsible_staff?: { id: string; name: string } | null;
 }
 
