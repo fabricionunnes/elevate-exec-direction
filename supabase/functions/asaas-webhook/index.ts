@@ -193,7 +193,7 @@ Deno.serve(async (req) => {
           // Credit Asaas bank account with actual paid amount (minus fee)
           await creditAsaasBank(supabase, actualPaidCents, `Fatura ${invoice.id}${discountCents > 0 ? ` (desconto R$${(discountCents/100).toFixed(2)})` : ''}`, invoice.id, invoice.recurring_charge_id);
           // Auto-reconcile financial_receivables
-          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, description || '', dueDate).catch(() => {});
+          reconcileReceivable(supabase, invoice.id, null, actualPaidCents, invoice.description || '', dueDate).catch(() => {});
 
           // Notify payment confirmed (WhatsApp + internal notifications)
           supabase.functions.invoke("notify-payment-confirmed", {
