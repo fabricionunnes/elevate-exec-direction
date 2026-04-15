@@ -61,13 +61,13 @@ export function ServiceSalesHero({ service, formatPrice }: Props) {
             )}
           </div>
           
-          <a
-            href="#comprar"
+          <button
+            onClick={() => document.getElementById("comprar")?.scrollIntoView({ behavior: "smooth" })}
             className="mt-4 inline-flex items-center gap-2 bg-[hsl(355,85%,50%)] hover:bg-[hsl(355,85%,45%)] text-white px-8 py-4 rounded-xl text-lg font-bold transition-all hover:scale-105 shadow-lg shadow-[hsl(355,85%,50%)]/25"
           >
             Contratar Agora
             <ArrowDown className="h-5 w-5 animate-bounce" />
-          </a>
+          </button>
         </div>
       </div>
     </section>
