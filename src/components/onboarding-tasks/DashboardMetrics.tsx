@@ -1099,11 +1099,12 @@ const DashboardMetrics = ({
     <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
       {/* Summary Row - Always Visible - Mobile Optimized */}
       <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
-        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "active") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "active")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/10", isCardActive("status", "active") && "ring-2 ring-primary shadow-lg shadow-primary/20")} onClick={() => handleCardClick("status", "active")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-primary/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 shadow-md shadow-primary/30">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none">{companyMetrics.activeCompanies}</p>
@@ -1115,15 +1116,16 @@ const DashboardMetrics = ({
 
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md", 
-            isCardActive("projects_active", "active") && "ring-2 ring-indigo-500"
+            "cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 via-background to-indigo-500/10", 
+            isCardActive("projects_active", "active") && "ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20"
           )} 
           onClick={() => handleCardClick("projects_active", "active")}
         >
-          <CardContent className="p-2 sm:p-3">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-indigo-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/30">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-indigo-500">
@@ -1135,11 +1137,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "churn_signaled") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("status", "churn_signaled")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/10", isCardActive("status", "churn_signaled") && "ring-2 ring-amber-500 shadow-lg shadow-amber-500/20")} onClick={() => handleCardClick("status", "churn_signaled")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-amber-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-amber-500">{projectMetrics.churnSignaled}</p>
@@ -1149,11 +1152,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(todayTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-blue-500/20 bg-gradient-to-br from-blue-500/5 via-background to-blue-500/10" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(todayTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-blue-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/30">
+                <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none">{taskMetrics.todayTasks}</p>
@@ -1163,11 +1167,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => { setTasksDialogType("overdue"); setTasksDialogStatus(null); setTasksDialogIds(overdueTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 via-background to-red-500/10" onClick={() => { setTasksDialogType("overdue"); setTasksDialogStatus(null); setTasksDialogIds(overdueTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-red-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shrink-0 shadow-md shadow-red-500/30">
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-red-500">{taskMetrics.overdueTasks}</p>
