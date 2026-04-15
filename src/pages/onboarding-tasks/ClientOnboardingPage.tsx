@@ -381,6 +381,7 @@ const ClientOnboardingPage = () => {
         b2b_prospection: "Prospecção B2B",
         diagnostic: "Diagnóstico",
         unv_office: "UNV Office",
+        sf_comissoes: "Comissões",
       };
       trackTabChanged(viewNames[activeView] || activeView);
     }
