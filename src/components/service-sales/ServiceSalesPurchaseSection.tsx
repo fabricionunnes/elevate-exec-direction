@@ -209,6 +209,12 @@ export function ServiceSalesPurchaseSection({ service, formatPrice }: Props) {
             <p className="text-xs text-white/30 text-center">
               O PIX é processado instantaneamente. O boleto pode levar até 3 dias úteis para compensar.
             </p>
+
+            <div className="rounded-xl bg-blue-500/10 border border-blue-500/30 p-4 mt-2">
+              <p className="text-sm text-blue-300 text-center">
+                📧 Após a confirmação do pagamento, você receberá um <strong>e-mail com as instruções de acesso</strong> ao portal. Verifique também sua caixa de spam.
+              </p>
+            </div>
           </div>
         )}
       </div>

@@ -52,33 +52,51 @@ Deno.serve(async (req) => {
 
     // 3. Find or create auth user
     let userId: string | null = null;
+    let isNewUser = false;
 
-    // Check if user already exists
-    const { data: existingUsers } = await supabase.auth.admin.listUsers({ page: 1, perPage: 50 });
-    const existingUser = existingUsers?.users?.find(
-      (u: any) => u.email?.toLowerCase() === buyer_email.toLowerCase()
-    );
+    // Try to create user first — if it already exists, we catch the error
+    const randomPass = crypto.randomUUID() + "Aa1!";
+    const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
+      email: buyer_email,
+      password: randomPass,
+      email_confirm: true,
+    });
 
-    if (existingUser) {
-      userId = existingUser.id;
-      console.log(`[provision-service-buyer] Found existing auth user: ${userId}`);
-    } else {
-      // Create with random password - user will set via reset link
-      const randomPass = crypto.randomUUID() + "Aa1!";
-      const { data: newUser, error: createErr } = await supabase.auth.admin.createUser({
-        email: buyer_email,
-        password: randomPass,
-        email_confirm: true,
-      });
+    if (createErr && createErr.message?.includes("already been registered")) {
+      // User exists — find by listing with email filter
+      const { data: usersPage } = await supabase.auth.admin.listUsers({ page: 1, perPage: 1 });
+      // Use a workaround: query onboarding_users or profiles for the user_id
+      const { data: existingOU } = await supabase
+        .from("onboarding_users")
+        .select("user_id")
+        .eq("email", buyer_email)
+        .limit(1)
+        .maybeSingle();
 
-      if (createErr) {
-        console.error("[provision-service-buyer] Create user error:", createErr);
-        return new Response(JSON.stringify({ error: createErr.message }), {
-          status: 400,
-          headers: { ...corsHeaders, "Content-Type": "application/json" },
-        });
+      if (existingOU?.user_id) {
+        userId = existingOU.user_id;
+      } else {
+        // Fallback: search through pages
+        let page = 1;
+        let found = false;
+        while (!found && page <= 10) {
+          const { data: batch } = await supabase.auth.admin.listUsers({ page, perPage: 1000 });
+          const match = batch?.users?.find((u: any) => u.email?.toLowerCase() === buyer_email.toLowerCase());
+          if (match) { userId = match.id; found = true; }
+          if (!batch?.users?.length || batch.users.length < 1000) break;
+          page++;
+        }
       }
+      console.log(`[provision-service-buyer] Found existing auth user: ${userId}`);
+    } else if (createErr) {
+      console.error("[provision-service-buyer] Create user error:", createErr);
+      return new Response(JSON.stringify({ error: createErr.message }), {
+        status: 400,
+        headers: { ...corsHeaders, "Content-Type": "application/json" },
+      });
+    } else {
       userId = newUser.user.id;
+      isNewUser = true;
       console.log(`[provision-service-buyer] Created auth user: ${userId}`);
     }
 
@@ -224,23 +242,32 @@ Deno.serve(async (req) => {
     }
 
     // 8. Send password reset email so user can set their password
-    if (!existingUser) {
-      const siteUrl = Deno.env.get("SITE_URL") || `${supabaseUrl.replace('.supabase.co', '.lovable.app')}`;
-      const { error: resetErr } = await supabase.auth.admin.generateLink({
-        type: "magiclink",
-        email: buyer_email,
-        options: {
-          redirectTo: `${siteUrl}/portal/login`,
-        },
+    if (isNewUser && userId) {
+      const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
+      
+      // Use inviteUserByEmail which actually sends an email
+      const { error: inviteErr } = await supabase.auth.admin.inviteUserByEmail(buyer_email, {
+        redirectTo: `${siteUrl}/portal/login`,
       });
 
-      if (resetErr) {
-        console.error("[provision-service-buyer] Magic link error:", resetErr);
-        // Fallback: try resetPasswordForEmail
-        // Note: this uses the public client, which will send a standard reset email
+      if (inviteErr) {
+        console.error("[provision-service-buyer] Invite email error:", inviteErr);
+        // Fallback: generate a recovery link and log it
+        const { data: linkData, error: linkErr } = await supabase.auth.admin.generateLink({
+          type: "recovery",
+          email: buyer_email,
+          options: { redirectTo: `${siteUrl}/reset-password` },
+        });
+        if (linkErr) {
+          console.error("[provision-service-buyer] Recovery link error:", linkErr);
+        } else {
+          console.log(`[provision-service-buyer] Recovery link generated for ${buyer_email}`);
+        }
       } else {
-        console.log(`[provision-service-buyer] Password setup email sent to ${buyer_email}`);
+        console.log(`[provision-service-buyer] Invite email sent to ${buyer_email}`);
       }
+    } else if (!isNewUser) {
+      console.log(`[provision-service-buyer] Existing user, skipping email for ${buyer_email}`);
     }
 
     // 9. Mark purchase as provisioned
