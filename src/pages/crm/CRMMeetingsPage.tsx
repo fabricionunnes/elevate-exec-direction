@@ -81,15 +81,16 @@ const CRMMeetingsPage = () => {
   const [deleting, setDeleting] = useState(false);
 
   const fetchStaff = useCallback(async () => {
-    if (!canFilterStaff) return;
     const { data } = await supabase
       .from("onboarding_staff")
       .select("id, name")
       .in("role", ["closer", "sdr", "head_comercial", "admin", "master"])
       .eq("is_active", true)
       .order("name");
-    setStaffOptions(data || []);
-  }, [canFilterStaff]);
+    const list = data || [];
+    setStaffOptions(list);
+    setStaffMap(new Map(list.map(s => [s.id, s.name])));
+  }, []);
 
   const fetchStages = useCallback(async () => {
     const { data } = await supabase
