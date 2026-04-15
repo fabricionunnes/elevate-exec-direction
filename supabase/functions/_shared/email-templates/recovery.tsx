@@ -19,15 +19,25 @@ import {
 interface RecoveryEmailProps {
   siteName: string
   confirmationUrl: string
+  previewText?: string
+  title?: string
+  introText?: string
+  buttonLabel?: string
+  smallText?: string
 }
 
 export const RecoveryEmail = ({
   siteName,
   confirmationUrl,
+  previewText,
+  title,
+  introText,
+  buttonLabel,
+  smallText,
 }: RecoveryEmailProps) => (
   <Html lang="pt-BR" dir="ltr">
     <Head />
-    <Preview>Redefinir sua senha — Universidade Nacional de Vendas</Preview>
+    <Preview>{previewText ?? `Redefinir sua senha — ${siteName}`}</Preview>
     <Body style={main}>
       <Container style={container}>
         <Section style={header}>
@@ -40,17 +50,17 @@ export const RecoveryEmail = ({
           />
         </Section>
         <Section style={content}>
-          <Heading style={h1}>Redefinir sua senha</Heading>
+          <Heading style={h1}>{title ?? 'Redefinir sua senha'}</Heading>
           <Text style={text}>
-            Recebemos uma solicitação para redefinir a senha da sua conta na Universidade Nacional de Vendas. Clique no botão abaixo para criar uma nova senha.
+            {introText ?? `Recebemos uma solicitação para redefinir a senha da sua conta na ${siteName}. Clique no botão abaixo para criar uma nova senha.`}
           </Text>
           <Section style={buttonContainer}>
             <Button style={button} href={confirmationUrl}>
-              Redefinir Senha
+              {buttonLabel ?? 'Redefinir Senha'}
             </Button>
           </Section>
           <Text style={smallText}>
-            Se você não solicitou a redefinição de senha, pode ignorar este e-mail. Sua senha não será alterada.
+            {smallText ?? 'Se você não solicitou a redefinição de senha, pode ignorar este e-mail. Sua senha não será alterada.'}
           </Text>
         </Section>
         <Hr style={divider} />

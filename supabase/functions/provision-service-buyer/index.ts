@@ -1,10 +1,133 @@
 import { createClient } from "@supabase/supabase-js";
+import * as React from "npm:react@18.3.1";
+import { renderAsync } from "npm:@react-email/components@0.0.22";
+import { RecoveryEmail } from "../_shared/email-templates/recovery.tsx";
 
 const corsHeaders = {
   "Access-Control-Allow-Origin": "*",
   "Access-Control-Allow-Headers":
     "authorization, x-client-info, apikey, content-type",
 };
+
+const SITE_NAME = "Universidade Nacional de Vendas";
+const SENDER_DOMAIN = "noreply.unvholdings.com.br";
+const FROM_DOMAIN = "unvholdings.com.br";
+const ACCESS_EMAIL_TEMPLATE = "signup_access";
+const ACCESS_EMAIL_SUBJECT = "Crie sua senha de acesso — UNV";
+
+type ServiceSupabaseClient = ReturnType<typeof createClient>;
+
+async function generatePasswordSetupLink(
+  supabase: ServiceSupabaseClient,
+  email: string,
+  redirectTo: string,
+) {
+  const { data, error } = await supabase.auth.admin.generateLink({
+    type: "recovery",
+    email,
+    options: { redirectTo },
+  });
+
+  if (error) throw error;
+
+  const actionLink =
+    (data as { properties?: { action_link?: string }; action_link?: string } | null)?.properties
+      ?.action_link ??
+    (data as { action_link?: string } | null)?.action_link;
+
+  if (!actionLink) {
+    throw new Error("Password setup link was not generated");
+  }
+
+  return actionLink;
+}
+
+function buildAccessEmailCopy(
+  buyerName?: string | null,
+  serviceName?: string | null,
+) {
+  const firstName = buyerName?.trim().split(/\s+/)[0];
+  const greeting = firstName ? `Olá ${firstName},` : "Olá,";
+  const serviceText = serviceName?.trim()
+    ? ` para acessar o módulo ${serviceName}`
+    : "";
+
+  return {
+    previewText: "Seu acesso foi liberado — Universidade Nacional de Vendas",
+    title: "Seu acesso foi liberado",
+    introText: `${greeting} seu acesso${serviceText} já está pronto. Clique no botão abaixo para criar sua senha e entrar no sistema.`,
+    buttonLabel: "Criar senha de acesso",
+    smallText:
+      "Este link é pessoal e expira em breve. Se você não esperava este e-mail, pode ignorá-lo com segurança.",
+  };
+}
+
+async function enqueueAccessEmail({
+  supabase,
+  email,
+  buyerName,
+  serviceName,
+  confirmationUrl,
+  purchaseId,
+}: {
+  supabase: ServiceSupabaseClient;
+  email: string;
+  buyerName?: string | null;
+  serviceName?: string | null;
+  confirmationUrl: string;
+  purchaseId: string;
+}) {
+  const emailCopy = buildAccessEmailCopy(buyerName, serviceName);
+  const templateProps = {
+    siteName: SITE_NAME,
+    confirmationUrl,
+    ...emailCopy,
+  };
+
+  const html = await renderAsync(React.createElement(RecoveryEmail, templateProps));
+  const text = await renderAsync(React.createElement(RecoveryEmail, templateProps), {
+    plainText: true,
+  });
+
+  const messageId = crypto.randomUUID();
+
+  await supabase.from("email_send_log").insert({
+    message_id: messageId,
+    template_name: ACCESS_EMAIL_TEMPLATE,
+    recipient_email: email,
+    status: "pending",
+  });
+
+  const { error: enqueueError } = await supabase.rpc("enqueue_email", {
+    queue_name: "auth_emails",
+    payload: {
+      message_id: messageId,
+      to: email,
+      from: `${SITE_NAME} <noreply@${FROM_DOMAIN}>`,
+      sender_domain: SENDER_DOMAIN,
+      subject: ACCESS_EMAIL_SUBJECT,
+      html,
+      text,
+      purpose: "transactional",
+      label: ACCESS_EMAIL_TEMPLATE,
+      queued_at: new Date().toISOString(),
+      idempotency_key: `${ACCESS_EMAIL_TEMPLATE}-${purchaseId}-${messageId}`,
+    },
+  });
+
+  if (enqueueError) {
+    await supabase.from("email_send_log").insert({
+      message_id: messageId,
+      template_name: ACCESS_EMAIL_TEMPLATE,
+      recipient_email: email,
+      status: "failed",
+      error_message: enqueueError.message,
+    });
+    throw new Error(enqueueError.message);
+  }
+
+  return messageId;
+}
 
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response(null, { headers: corsHeaders });
@@ -54,22 +177,30 @@ Deno.serve(async (req) => {
     if (purchase.user_provisioned && force_resend_email) {
       const { buyer_email: email, buyer_name: name, service } = purchase;
       const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      const { createClient: createPublicClient } = await import("@supabase/supabase-js");
-      const publicSupabase = createPublicClient(supabaseUrl, anonKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-      const { error: resetErr } = await publicSupabase.auth.resetPasswordForEmail(email, {
-        redirectTo: `${siteUrl}/reset-password`,
-      });
-      if (resetErr) {
-        console.error("[provision-service-buyer] Resend email error:", resetErr);
-        return new Response(JSON.stringify({ error: resetErr.message }), {
+      try {
+        const confirmationUrl = await generatePasswordSetupLink(
+          supabase,
+          email,
+          `${siteUrl}/reset-password`,
+        );
+
+        await enqueueAccessEmail({
+          supabase,
+          email,
+          buyerName: name,
+          serviceName: service?.name,
+          confirmationUrl,
+          purchaseId: purchase_id,
+        });
+      } catch (emailErr: any) {
+        console.error("[provision-service-buyer] Resend access email error:", emailErr);
+        return new Response(JSON.stringify({ error: emailErr.message }), {
           status: 400,
           headers: { ...corsHeaders, "Content-Type": "application/json" },
         });
       }
-      console.log(`[provision-service-buyer] Resent reset password email to ${email}`);
+
+      console.log(`[provision-service-buyer] Resent branded access email to ${email}`);
       return new Response(JSON.stringify({ success: true, email_resent: true }), {
         headers: { ...corsHeaders, "Content-Type": "application/json" },
       });
@@ -270,22 +401,25 @@ Deno.serve(async (req) => {
     // 8. Send password reset email so user can set their password
     if (userId) {
       const siteUrl = Deno.env.get("SITE_URL") || "https://elevate-exec-direction.lovable.app";
-      const anonKey = Deno.env.get("SUPABASE_ANON_KEY") || Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
-      
-      // Use a public client to call resetPasswordForEmail — this actually sends the email
-      const { createClient: createPublicClient } = await import("@supabase/supabase-js");
-      const publicSupabase = createPublicClient(supabaseUrl, anonKey, {
-        auth: { autoRefreshToken: false, persistSession: false },
-      });
-      
-      const { error: resetErr } = await publicSupabase.auth.resetPasswordForEmail(buyer_email, {
-        redirectTo: `${siteUrl}/reset-password`,
-      });
+      try {
+        const confirmationUrl = await generatePasswordSetupLink(
+          supabase,
+          buyer_email,
+          `${siteUrl}/reset-password`,
+        );
 
-      if (resetErr) {
-        console.error("[provision-service-buyer] Reset password email error:", resetErr);
+        await enqueueAccessEmail({
+          supabase,
+          email: buyer_email,
+          buyerName,
+          serviceName: service?.name,
+          confirmationUrl,
+          purchaseId: purchase_id,
+        });
+      } catch (emailErr) {
+        console.error("[provision-service-buyer] Access email error:", emailErr);
       } else {
-        console.log(`[provision-service-buyer] Reset password email sent to ${buyer_email}`);
+        console.log(`[provision-service-buyer] Branded access email sent to ${buyer_email}`);
       }
     }
 
