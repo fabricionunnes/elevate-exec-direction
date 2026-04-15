@@ -224,6 +224,63 @@ Deno.serve(async (req) => {
       console.error("[public-service-purchase] Purchase record error:", purchaseError);
     }
 
+    // 5b. Create CRM lead in "Módulos Extras" pipeline
+    let crmLeadId: string | null = null;
+    try {
+      const { data: mePipeline } = await supabase
+        .from("crm_pipelines")
+        .select("id")
+        .eq("name", "Módulos Extras")
+        .eq("is_active", true)
+        .limit(1)
+        .maybeSingle();
+
+      if (mePipeline) {
+        const { data: firstStage } = await supabase
+          .from("crm_stages")
+          .select("id")
+          .eq("pipeline_id", mePipeline.id)
+          .eq("is_final", false)
+          .order("sort_order", { ascending: true })
+          .limit(1)
+          .maybeSingle();
+
+        if (firstStage) {
+          const { data: newLead, error: leadErr } = await supabase
+            .from("crm_leads")
+            .insert({
+              name: buyer_name,
+              email: buyer_email,
+              phone: buyer_phone || null,
+              company: null,
+              pipeline_id: mePipeline.id,
+              stage_id: firstStage.id,
+              origin: `Página de Vendas: ${service.name}`,
+              opportunity_value: service.price,
+              notes: `Compra pública - Serviço: ${service.name} (${service.billing_type})\nDocumento: ${buyer_document || "N/A"}\nValor: R$ ${service.price}`,
+              entered_pipeline_at: new Date().toISOString(),
+            })
+            .select("id")
+            .single();
+
+          if (leadErr) {
+            console.error("[public-service-purchase] CRM lead error:", leadErr);
+          } else {
+            crmLeadId = newLead.id;
+            console.log(`[public-service-purchase] CRM lead created: ${crmLeadId}`);
+            if (purchase?.id) {
+              await supabase
+                .from("public_service_purchases")
+                .update({ crm_lead_id: crmLeadId })
+                .eq("id", purchase.id);
+            }
+          }
+        }
+      }
+    } catch (crmErr) {
+      console.error("[public-service-purchase] CRM lead creation error:", crmErr);
+    }
+
     // 6. If company/project exists, also create records in existing system
     if (companyId && projectId) {
       // Create recurring charge
