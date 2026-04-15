@@ -215,11 +215,19 @@ Deno.serve(async (req) => {
       (utm_source ? `📊 *Origem:* ${utm_source}\n` : '') +
       `\n🔗 *Ver no CRM:* ${leadLink}`;
 
-    // Use the "Fabricio Nunnes" instance
+    // Read configured instance from crm_settings, fallback to "fabricionunnes"
+    const { data: instanceSetting } = await supabase
+      .from('crm_settings')
+      .select('setting_value')
+      .eq('setting_key', 'lead_notification_instance_name')
+      .maybeSingle();
+
+    const notifInstanceName = (instanceSetting?.setting_value as string) || 'fabricionunnes';
+
     const { data: instance } = await supabase
       .from('whatsapp_instances')
       .select('instance_name, api_url, api_key')
-      .eq('instance_name', 'fabricio-nunnes')
+      .eq('instance_name', notifInstanceName)
       .maybeSingle();
 
     if (instance?.api_url && instance?.api_key && instance?.instance_name) {
