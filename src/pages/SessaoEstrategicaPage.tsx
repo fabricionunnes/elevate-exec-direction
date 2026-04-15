@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef, lazy, Suspense, useCallback } from "react";
+import { useState, useEffect, useRef, lazy, Suspense, useCallback, useMemo, memo } from "react";
 import { useSearchParams } from "react-router-dom";
 import { motion, useInView, LazyMotion, domAnimation } from "framer-motion";
 import { Button } from "@/components/ui/button";
