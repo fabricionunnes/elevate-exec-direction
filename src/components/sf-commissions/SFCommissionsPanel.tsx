@@ -102,33 +102,11 @@ export function SFCommissionsPanel({ projectId, companyId }: Props) {
         .eq("is_active", true),
     ]);
 
-    // Fallback: try kpi_salespeople directly
     let spList: Salesperson[] = [];
     if (spRes && spRes.data) {
-      spList = (spRes.data as any[]).map((s: any) => ({ id: s.id, name: s.name }));
-    } else {
-      // Direct query for salespeople linked to company KPIs
-      const { data: kpiSp } = await supabase
-        .from("kpi_salespeople")
-        .select("salesperson_id, kpi:company_kpis!inner(company_id)")
-        .eq("kpi.company_id", companyId);
-      
-      if (kpiSp && kpiSp.length > 0) {
-        const spIds = [...new Set(kpiSp.map((k: any) => k.salesperson_id))];
-        // We need names - get from onboarding_users with salesperson_id
-        const { data: usersData } = await supabase
-          .from("onboarding_users")
-          .select("salesperson_id, name")
-          .eq("project_id", projectId)
-          .in("salesperson_id", spIds);
-        
-        if (usersData) {
-          spList = usersData.filter((u: any) => u.salesperson_id).map((u: any) => ({
-            id: u.salesperson_id,
-            name: u.name,
-          }));
-        }
-      }
+      spList = (spRes.data as any[])
+        .filter((u: any) => u.salesperson_id)
+        .map((u: any) => ({ id: u.salesperson_id, name: u.name }));
     }
 
     setSalespeople(spList);
