@@ -475,18 +475,33 @@ async function sendWhatsAppNotification(
   console.log('[submit-pipeline-form] Numbers to notify:', numbersToNotify);
 
   for (const phone of numbersToNotify) {
-    try {
-      const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
-      console.log(`[submit-pipeline-form] Sending WhatsApp to ${phone} via ${sendUrl}`);
-      const resp = await fetch(sendUrl, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'apikey': instance.api_key },
-        body: JSON.stringify({ number: phone, text: message }),
-      });
-      const respText = await resp.text();
-      console.log(`[submit-pipeline-form] WhatsApp response for ${phone}: ${resp.status} - ${respText.slice(0, 200)}`);
-    } catch (e) {
-      console.error(`[submit-pipeline-form] WhatsApp error for ${phone}:`, e);
+    const sendUrl = `${instance.api_url}/message/sendText/${instance.instance_name}`;
+    const payload = JSON.stringify({ number: phone, text: message });
+    const maxRetries = 2;
+
+    for (let attempt = 1; attempt <= maxRetries; attempt++) {
+      try {
+        console.log(`[submit-pipeline-form] Sending WhatsApp to ${phone} (attempt ${attempt}) via ${sendUrl}`);
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 10000); // 10s timeout
+
+        const resp = await fetch(sendUrl, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json', 'apikey': instance.api_key },
+          body: payload,
+          signal: controller.signal,
+        });
+        clearTimeout(timeoutId);
+
+        const respText = await resp.text();
+        console.log(`[submit-pipeline-form] WhatsApp response for ${phone}: ${resp.status} - ${respText.slice(0, 200)}`);
+        break; // success, no retry needed
+      } catch (e) {
+        console.error(`[submit-pipeline-form] WhatsApp error for ${phone} (attempt ${attempt}):`, e);
+        if (attempt < maxRetries) {
+          await new Promise(r => setTimeout(r, 1500)); // wait 1.5s before retry
+        }
+      }
     }
   }
 }
