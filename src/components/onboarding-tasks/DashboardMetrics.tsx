@@ -1099,11 +1099,12 @@ const DashboardMetrics = ({
     <div className="space-y-3 sm:space-y-4 mb-4 sm:mb-6">
       {/* Summary Row - Always Visible - Mobile Optimized */}
       <div className="grid grid-cols-4 sm:grid-cols-4 lg:grid-cols-8 gap-1.5 sm:gap-2">
-        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "active") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "active")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-primary/20 bg-gradient-to-br from-primary/5 via-background to-primary/10", isCardActive("status", "active") && "ring-2 ring-primary shadow-lg shadow-primary/20")} onClick={() => handleCardClick("status", "active")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-primary/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-primary/10 flex items-center justify-center shrink-0">
-                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-primary" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-primary to-primary/70 flex items-center justify-center shrink-0 shadow-md shadow-primary/30">
+                <Zap className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none">{companyMetrics.activeCompanies}</p>
@@ -1115,15 +1116,16 @@ const DashboardMetrics = ({
 
         <Card 
           className={cn(
-            "cursor-pointer transition-all hover:shadow-md", 
-            isCardActive("projects_active", "active") && "ring-2 ring-indigo-500"
+            "cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-indigo-500/20 bg-gradient-to-br from-indigo-500/5 via-background to-indigo-500/10", 
+            isCardActive("projects_active", "active") && "ring-2 ring-indigo-500 shadow-lg shadow-indigo-500/20"
           )} 
           onClick={() => handleCardClick("projects_active", "active")}
         >
-          <CardContent className="p-2 sm:p-3">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-indigo-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-indigo-500/10 flex items-center justify-center shrink-0">
-                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-indigo-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-indigo-500 to-indigo-600 flex items-center justify-center shrink-0 shadow-md shadow-indigo-500/30">
+                <Package className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-indigo-500">
@@ -1135,11 +1137,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "churn_signaled") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("status", "churn_signaled")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-amber-500/20 bg-gradient-to-br from-amber-500/5 via-background to-amber-500/10", isCardActive("status", "churn_signaled") && "ring-2 ring-amber-500 shadow-lg shadow-amber-500/20")} onClick={() => handleCardClick("status", "churn_signaled")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-amber-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-amber-500/10 flex items-center justify-center shrink-0">
-                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-amber-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-amber-500 to-amber-600 flex items-center justify-center shrink-0 shadow-md shadow-amber-500/30">
+                <XCircle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-amber-500">{projectMetrics.churnSignaled}</p>
@@ -1149,11 +1152,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(todayTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-blue-500/20 bg-gradient-to-br from-blue-500/5 via-background to-blue-500/10" onClick={() => { setTasksDialogType("today"); setTasksDialogStatus(null); setTasksDialogIds(todayTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-blue-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-blue-500/10 flex items-center justify-center shrink-0">
-                <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-blue-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-blue-500 to-blue-600 flex items-center justify-center shrink-0 shadow-md shadow-blue-500/30">
+                <ListTodo className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none">{taskMetrics.todayTasks}</p>
@@ -1163,11 +1167,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="cursor-pointer transition-all hover:shadow-md" onClick={() => { setTasksDialogType("overdue"); setTasksDialogStatus(null); setTasksDialogIds(overdueTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className="cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-red-500/20 bg-gradient-to-br from-red-500/5 via-background to-red-500/10" onClick={() => { setTasksDialogType("overdue"); setTasksDialogStatus(null); setTasksDialogIds(overdueTasks.map(t => t.id)); setTasksDialogOpen(true); }}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-red-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-red-500/10 flex items-center justify-center shrink-0">
-                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-red-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-red-500 to-red-600 flex items-center justify-center shrink-0 shadow-md shadow-red-500/30">
+                <AlertTriangle className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className="text-base sm:text-lg font-bold leading-none text-red-500">{taskMetrics.overdueTasks}</p>
@@ -1177,11 +1182,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className="hidden lg:block">
-          <CardContent className="p-2 sm:p-3">
+        <Card className="hidden lg:block relative overflow-hidden border-green-500/20 bg-gradient-to-br from-green-500/5 via-background to-green-500/10">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-green-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", npsMetrics.averageNps === null ? "bg-gray-400/10" : npsMetrics.averageNps >= 9 ? "bg-green-500/10" : npsMetrics.averageNps >= 7 ? "bg-yellow-500/10" : "bg-red-500/10")}>
-                <Star className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", npsMetrics.averageNps === null ? "text-gray-400" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")} />
+              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0 shadow-md", npsMetrics.averageNps === null ? "bg-gradient-to-br from-gray-400 to-gray-500 shadow-gray-400/30" : npsMetrics.averageNps >= 9 ? "bg-gradient-to-br from-green-500 to-green-600 shadow-green-500/30" : npsMetrics.averageNps >= 7 ? "bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-yellow-500/30" : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30")}>
+                <Star className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", npsMetrics.averageNps === null ? "text-muted-foreground" : npsMetrics.averageNps >= 9 ? "text-green-500" : npsMetrics.averageNps >= 7 ? "text-yellow-500" : "text-red-500")}>
@@ -1194,25 +1200,21 @@ const DashboardMetrics = ({
         </Card>
 
         <Card 
-          className="hidden lg:block cursor-pointer transition-all hover:shadow-md group relative"
+          className="hidden lg:block cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 group relative overflow-hidden border-emerald-500/20 bg-gradient-to-br from-emerald-500/5 via-background to-emerald-500/10"
           onClick={(e) => {
-            // If clicking the recalculate button, don't propagate
             if ((e.target as HTMLElement).closest('button')) return;
             setHealthHistoryDialogOpen(true);
           }}
         >
-          <CardContent className="p-2 sm:p-3">
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-emerald-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0", 
-                healthMetrics.averageScore === null ? "bg-gray-400/10" : 
-                healthMetrics.averageScore >= 80 ? "bg-green-500/10" : 
-                healthMetrics.averageScore >= 60 ? "bg-yellow-500/10" : 
-                healthMetrics.averageScore >= 40 ? "bg-orange-500/10" : "bg-red-500/10")}>
-                <HeartPulse className={cn("h-3.5 w-3.5 sm:h-4 sm:w-4", 
-                  healthMetrics.averageScore === null ? "text-gray-400" : 
-                  healthMetrics.averageScore >= 80 ? "text-green-500" : 
-                  healthMetrics.averageScore >= 60 ? "text-yellow-500" : 
-                  healthMetrics.averageScore >= 40 ? "text-orange-500" : "text-red-500")} />
+              <div className={cn("h-7 w-7 sm:h-8 sm:w-8 rounded-full flex items-center justify-center shrink-0 shadow-md", 
+                healthMetrics.averageScore === null ? "bg-gradient-to-br from-gray-400 to-gray-500 shadow-gray-400/30" : 
+                healthMetrics.averageScore >= 80 ? "bg-gradient-to-br from-green-500 to-green-600 shadow-green-500/30" : 
+                healthMetrics.averageScore >= 60 ? "bg-gradient-to-br from-yellow-500 to-yellow-600 shadow-yellow-500/30" : 
+                healthMetrics.averageScore >= 40 ? "bg-gradient-to-br from-orange-500 to-orange-600 shadow-orange-500/30" : "bg-gradient-to-br from-red-500 to-red-600 shadow-red-500/30")}>
+                <HeartPulse className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", 
@@ -1224,7 +1226,6 @@ const DashboardMetrics = ({
                 </p>
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground truncate">Saúde</p>
               </div>
-              {/* Recalculate button - visible on hover */}
               <button
                 onClick={(e) => {
                   e.stopPropagation();
@@ -1240,11 +1241,12 @@ const DashboardMetrics = ({
           </CardContent>
         </Card>
 
-        <Card className={cn("hidden lg:block cursor-pointer transition-all hover:shadow-md", isCardActive("goals", "meeting") && "ring-2 ring-teal-500")} onClick={() => handleCardClick("goals", "meeting")}>
-          <CardContent className="p-2 sm:p-3">
+        <Card className={cn("hidden lg:block cursor-pointer transition-all hover:shadow-lg hover:-translate-y-0.5 relative overflow-hidden border-teal-500/20 bg-gradient-to-br from-teal-500/5 via-background to-teal-500/10", isCardActive("goals", "meeting") && "ring-2 ring-teal-500 shadow-lg shadow-teal-500/20")} onClick={() => handleCardClick("goals", "meeting")}>
+          <div className="absolute -top-6 -right-6 w-14 h-14 bg-teal-500/10 rounded-full blur-xl" />
+          <CardContent className="p-2 sm:p-3 relative z-10">
             <div className="flex flex-col sm:flex-row items-center gap-1 sm:gap-2">
-              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-teal-500/10 flex items-center justify-center shrink-0">
-                <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-teal-500" />
+              <div className="h-7 w-7 sm:h-8 sm:w-8 rounded-full bg-gradient-to-br from-teal-500 to-teal-600 flex items-center justify-center shrink-0 shadow-md shadow-teal-500/30">
+                <Target className="h-3.5 w-3.5 sm:h-4 sm:w-4 text-white" />
               </div>
               <div className="text-center sm:text-left min-w-0">
                 <p className={cn("text-base sm:text-lg font-bold leading-none", goalsMetrics.goalRate >= 70 ? "text-teal-500" : goalsMetrics.goalRate >= 40 ? "text-amber-500" : "text-red-500")}>
@@ -1284,16 +1286,16 @@ const DashboardMetrics = ({
 
         <TabsContent value="empresas" className="mt-2 sm:mt-3 space-y-2 sm:space-y-3">
           <div className="grid grid-cols-3 sm:grid-cols-4 lg:grid-cols-12 gap-1.5 sm:gap-2">
-            <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
-            <Card className={cn("cursor-pointer transition-all hover:shadow-md", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
-            <Card className={cn("cursor-pointer", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-primary/5 hover:-translate-y-0.5", isCardActive("status", "all") && "ring-2 ring-primary")} onClick={() => handleCardClick("status", "all")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold">{filteredCompanies.length}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Total</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-amber-500/5 hover:-translate-y-0.5", isCardActive("company", "no_consultant") && "ring-2 ring-amber-500")} onClick={() => handleCardClick("company", "no_consultant")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-amber-500">{companyMetrics.activeWithoutConsultant}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Sem Consultor</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-orange-500/5 hover:-translate-y-0.5", isCardActive("status", "notice_period") && "ring-2 ring-orange-500")} onClick={() => handleCardClick("status", "notice_period")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-orange-500">{projectMetrics.noticePeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Aviso</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-red-600/5 hover:-translate-y-0.5", isCardActive("status", "closed") && "ring-2 ring-red-600")} onClick={() => handleCardClick("status", "closed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-600">{churnMetrics.closedCompaniesInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Encerradas</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-purple-500/5 hover:-translate-y-0.5", isCardActive("contracts", "ending") && "ring-2 ring-purple-500")} onClick={() => handleCardClick("contracts", "ending")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-purple-500">{companyMetrics.contractsEndingInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencendo</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-rose-500/5 hover:-translate-y-0.5", isCardActive("contracts", "expired") && "ring-2 ring-rose-500")} onClick={() => handleCardClick("contracts", "expired")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-rose-500">{companyMetrics.expiredContracts}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Vencidos</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-emerald-500/5 hover:-translate-y-0.5", isCardActive("contracts", "renewed") && "ring-2 ring-emerald-500")} onClick={() => handleCardClick("contracts", "renewed")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-emerald-500">{renewalMetrics.renewedPercent}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Renovados ({renewalMetrics.renewedClientsCount}/{renewalMetrics.eligibleCount})</p></CardContent></Card>
             <Card 
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-red-400/5 hover:-translate-y-0.5", 
                 showNotRenewedCompanies && "ring-2 ring-red-400"
               )} 
               onClick={() => setShowNotRenewedCompanies(!showNotRenewedCompanies)}
@@ -1305,7 +1307,7 @@ const DashboardMetrics = ({
             </Card>
             <Card 
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-blue-400/5 hover:-translate-y-0.5", 
                 showCompletedCompanies && "ring-2 ring-blue-400"
               )} 
               onClick={() => setShowCompletedCompanies(!showCompletedCompanies)}
@@ -1315,11 +1317,11 @@ const DashboardMetrics = ({
                 <p className="text-[9px] sm:text-[10px] text-muted-foreground">Concluídos</p>
               </CardContent>
             </Card>
-            <Card className={cn("cursor-pointer", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
-            <Card><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
+            <Card className={cn("cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-cyan-500/5 hover:-translate-y-0.5", isCardActive("status", "reactivated") && "ring-2 ring-cyan-500")} onClick={() => handleCardClick("status", "reactivated")}><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-cyan-500">{projectMetrics.reactivatedInPeriod}</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Revertidos</p></CardContent></Card>
+            <Card className="relative overflow-hidden bg-gradient-to-b from-background to-red-500/5"><CardContent className="p-2 sm:p-3 text-center"><p className="text-lg sm:text-xl font-bold text-red-500">{churnMetrics.churnRate}%</p><p className="text-[9px] sm:text-[10px] text-muted-foreground">Churn</p></CardContent></Card>
             <Card 
               className={cn(
-                "cursor-pointer transition-all hover:shadow-md", 
+                "cursor-pointer transition-all hover:shadow-md relative overflow-hidden bg-gradient-to-b from-background to-orange-600/5 hover:-translate-y-0.5", 
                 showOverdueCompanies && "ring-2 ring-orange-600"
               )} 
               onClick={() => setShowOverdueCompanies(!showOverdueCompanies)}
