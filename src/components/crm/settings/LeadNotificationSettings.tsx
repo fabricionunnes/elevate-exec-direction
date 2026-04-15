@@ -62,7 +62,7 @@ export const LeadNotificationSettings = () => {
       const { error } = await supabase
         .from("crm_settings")
         .upsert(
-          { setting_key: "lead_notification_instance_name", setting_value: instanceName },
+          { setting_key: "lead_notification_instance_name", setting_value: instanceName || null },
           { onConflict: "setting_key" }
         );
       if (error) throw error;
