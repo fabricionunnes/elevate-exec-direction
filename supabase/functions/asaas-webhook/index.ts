@@ -788,8 +788,7 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
     // Find public_service_purchases linked to this payment
     let query = supabase
       .from("public_service_purchases")
-      .select("id, crm_lead_id")
-      .not("crm_lead_id", "is", null);
+      .select("id, crm_lead_id, user_provisioned")
 
     if (subscriptionId) {
       query = query.eq("asaas_subscription_id", subscriptionId);
@@ -801,41 +800,48 @@ async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string
     if (!purchases?.length) return;
 
     for (const purchase of purchases) {
+      // Move CRM lead to won stage
       const leadId = purchase.crm_lead_id;
-      if (!leadId) continue;
+      if (leadId) {
+        const { data: lead } = await supabase
+          .from("crm_leads")
+          .select("id, pipeline_id, stage_id")
+          .eq("id", leadId)
+          .single();
 
-      // Get lead's pipeline
-      const { data: lead } = await supabase
-        .from("crm_leads")
-        .select("id, pipeline_id, stage_id")
-        .eq("id", leadId)
-        .single();
+        if (lead) {
+          const { data: wonStage } = await supabase
+            .from("crm_stages")
+            .select("id")
+            .eq("pipeline_id", lead.pipeline_id)
+            .eq("final_type", "won")
+            .limit(1)
+            .maybeSingle();
 
-      if (!lead) continue;
+          if (wonStage && lead.stage_id !== wonStage.id) {
+            await supabase
+              .from("crm_leads")
+              .update({
+                stage_id: wonStage.id,
+                closed_at: new Date().toISOString(),
+              })
+              .eq("id", leadId);
+            console.log(`[Asaas Webhook] CRM lead ${leadId} moved to won stage (payment confirmed)`);
+          }
+        }
+      }
 
-      // Find the "won" stage in the pipeline
-      const { data: wonStage } = await supabase
-        .from("crm_stages")
-        .select("id")
-        .eq("pipeline_id", lead.pipeline_id)
-        .eq("final_type", "won")
-        .limit(1)
-        .maybeSingle();
-
-      if (!wonStage) continue;
-
-      // Already in won stage? Skip
-      if (lead.stage_id === wonStage.id) continue;
-
-      await supabase
-        .from("crm_leads")
-        .update({
-          stage_id: wonStage.id,
-          closed_at: new Date().toISOString(),
-        })
-        .eq("id", leadId);
-
-      console.log(`[Asaas Webhook] CRM lead ${leadId} moved to won stage (payment confirmed)`);
+      // Provision user account (create login + send email)
+      if (!purchase.user_provisioned) {
+        try {
+          await supabase.functions.invoke("provision-service-buyer", {
+            body: { purchase_id: purchase.id },
+          });
+          console.log(`[Asaas Webhook] User provisioned for purchase ${purchase.id}`);
+        } catch (provErr) {
+          console.error(`[Asaas Webhook] Provision error for purchase ${purchase.id}:`, provErr);
+        }
+      }
     }
   } catch (err) {
     console.error("[Asaas Webhook] Error moving public purchase lead to won:", err);

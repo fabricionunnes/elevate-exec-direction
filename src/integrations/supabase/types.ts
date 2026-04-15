@@ -26147,6 +26147,7 @@ export type Database = {
           service_catalog_id: string
           status: string
           updated_at: string
+          user_provisioned: boolean | null
         }
         Insert: {
           amount_cents: number
@@ -26171,6 +26172,7 @@ export type Database = {
           service_catalog_id: string
           status?: string
           updated_at?: string
+          user_provisioned?: boolean | null
         }
         Update: {
           amount_cents?: number
@@ -26195,6 +26197,7 @@ export type Database = {
           service_catalog_id?: string
           status?: string
           updated_at?: string
+          user_provisioned?: boolean | null
         }
         Relationships: [
           {
