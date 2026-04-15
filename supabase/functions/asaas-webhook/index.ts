@@ -315,8 +315,9 @@ Deno.serve(async (req) => {
     // Handle service purchase permission management
     await handleServicePurchasePermissions(supabase, subscriptionId, paymentId, newStatus, paymentValueCents, dueDate);
 
-    // Activate pending projects when invoice is paid
+    // Move CRM lead to "won" stage when public service purchase is paid
     if (newStatus === "paid") {
+      await movePublicPurchaseLeadToWon(supabase, subscriptionId, paymentId);
       await activatePendingProjects(supabase, paymentId);
     }
 
@@ -776,5 +777,67 @@ async function activatePendingProjects(supabase: any, paymentId: string) {
     }
   } catch (err) {
     console.error("[Asaas Webhook] Error activating pending projects:", err);
+  }
+}
+
+async function movePublicPurchaseLeadToWon(supabase: any, subscriptionId: string | null, paymentId: string) {
+  try {
+    const searchId = subscriptionId || paymentId;
+    if (!searchId) return;
+
+    // Find public_service_purchases linked to this payment
+    let query = supabase
+      .from("public_service_purchases")
+      .select("id, crm_lead_id")
+      .not("crm_lead_id", "is", null);
+
+    if (subscriptionId) {
+      query = query.eq("asaas_subscription_id", subscriptionId);
+    } else {
+      query = query.eq("asaas_payment_id", paymentId);
+    }
+
+    const { data: purchases } = await query;
+    if (!purchases?.length) return;
+
+    for (const purchase of purchases) {
+      const leadId = purchase.crm_lead_id;
+      if (!leadId) continue;
+
+      // Get lead's pipeline
+      const { data: lead } = await supabase
+        .from("crm_leads")
+        .select("id, pipeline_id, stage_id")
+        .eq("id", leadId)
+        .single();
+
+      if (!lead) continue;
+
+      // Find the "won" stage in the pipeline
+      const { data: wonStage } = await supabase
+        .from("crm_stages")
+        .select("id")
+        .eq("pipeline_id", lead.pipeline_id)
+        .eq("final_type", "won")
+        .limit(1)
+        .maybeSingle();
+
+      if (!wonStage) continue;
+
+      // Already in won stage? Skip
+      if (lead.stage_id === wonStage.id) continue;
+
+      await supabase
+        .from("crm_leads")
+        .update({
+          stage_id: wonStage.id,
+          closed_at: new Date().toISOString(),
+        })
+        .eq("id", leadId);
+
+      console.log(`[Asaas Webhook] CRM lead ${leadId} moved to won stage (payment confirmed)`);
+    }
+  } catch (err) {
+    console.error("[Asaas Webhook] Error moving public purchase lead to won:", err);
   }
 }
