@@ -27209,6 +27209,50 @@ export type Database = {
           },
         ]
       }
+      sf_commission_client_tiers: {
+        Row: {
+          commission_type: string
+          commission_value: number
+          config_id: string
+          created_at: string
+          id: string
+          label: string | null
+          max_percent: number | null
+          min_percent: number
+          sort_order: number
+        }
+        Insert: {
+          commission_type?: string
+          commission_value?: number
+          config_id: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          max_percent?: number | null
+          min_percent?: number
+          sort_order?: number
+        }
+        Update: {
+          commission_type?: string
+          commission_value?: number
+          config_id?: string
+          created_at?: string
+          id?: string
+          label?: string | null
+          max_percent?: number | null
+          min_percent?: number
+          sort_order?: number
+        }
+        Relationships: [
+          {
+            foreignKeyName: "sf_commission_client_tiers_config_id_fkey"
+            columns: ["config_id"]
+            isOneToOne: false
+            referencedRelation: "sf_commission_configs"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       sf_commission_configs: {
         Row: {
           base_salary: number
