@@ -17,12 +17,12 @@ const corsHeaders = {
 }
 
 const EMAIL_SUBJECTS: Record<string, string> = {
-  signup: 'Confirm your email',
-  invite: "You've been invited",
-  magiclink: 'Your login link',
-  recovery: 'Reset your password',
-  email_change: 'Confirm your new email',
-  reauthentication: 'Your verification code',
+  signup: 'Confirme seu e-mail — UNV',
+  invite: 'Você foi convidado — UNV',
+  magiclink: 'Seu link de acesso — UNV',
+  recovery: 'Redefinir sua senha — UNV',
+  email_change: 'Confirme a alteração do e-mail — UNV',
+  reauthentication: 'Seu código de verificação — UNV',
 }
 
 // Template mapping
@@ -36,7 +36,7 @@ const EMAIL_TEMPLATES: Record<string, React.ComponentType<any>> = {
 }
 
 // Configuration
-const SITE_NAME = "elevate-exec-direction"
+const SITE_NAME = "Universidade Nacional de Vendas"
 const SENDER_DOMAIN = "noreply.unvholdings.com.br"
 const ROOT_DOMAIN = "unvholdings.com.br"
 const FROM_DOMAIN = "unvholdings.com.br" // Domain shown in From address (may be root or sender subdomain)
