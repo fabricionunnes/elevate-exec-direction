@@ -627,73 +627,151 @@ const SessaoEstrategicaPage = () => {
       </a>
 
       {/* ── POPUP FORM ── */}
-      <Dialog open={showPopup} onOpenChange={setShowPopup}>
+      <Dialog open={showPopup} onOpenChange={handlePopupClose}>
         <DialogContent className="sm:max-w-md bg-white border-slate-200 text-slate-900 rounded-2xl shadow-2xl">
           <DialogHeader>
             <DialogTitle className="text-xl font-bold text-center text-slate-900">
-              Agende sua análise gratuita
+              {formDone ? "Recebemos seus dados!" : step === 2 ? "Só mais algumas perguntas" : "Agende sua análise gratuita"}
             </DialogTitle>
-            <p className="text-sm text-center text-slate-400 mt-1">Preencha abaixo e nossa equipe entrará em contato</p>
+            {!formDone && (
+              <p className="text-sm text-center text-slate-400 mt-1">
+                {step === 2 ? "Responda abaixo para completar seu cadastro" : "Preencha abaixo e nossa equipe entrará em contato"}
+              </p>
+            )}
+            {questions.length > 0 && !formDone && (
+              <div className="flex gap-2 mt-3">
+                <div className={`h-1.5 flex-1 rounded-full ${step >= 1 ? "bg-red-500" : "bg-slate-200"}`} />
+                <div className={`h-1.5 flex-1 rounded-full ${step >= 2 ? "bg-red-500" : "bg-slate-200"}`} />
+              </div>
+            )}
           </DialogHeader>
-          <form onSubmit={handleSubmit} className="space-y-4 pt-2">
-            <div className="space-y-1.5">
-              <Label htmlFor="popup-nome" className="text-slate-600 text-sm font-medium">Nome completo *</Label>
-              <Input
-                id="popup-nome"
-                value={nome}
-                onChange={(e) => setNome(e.target.value)}
-                required
-                maxLength={200}
-                placeholder="Seu nome"
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="popup-telefone" className="text-slate-600 text-sm font-medium">WhatsApp com DDD *</Label>
-              <PhoneInput
-                id="popup-telefone"
-                value={telefone}
-                onChange={setTelefone}
-                required
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
-              />
-            </div>
-            <div className="space-y-1.5">
-              <Label htmlFor="popup-email" className="text-slate-600 text-sm font-medium">E-mail *</Label>
-              <Input
-                id="popup-email"
-                type="email"
-                value={email}
-                onChange={(e) => setEmail(e.target.value)}
-                required
-                maxLength={255}
-                placeholder="seu@email.com"
-                className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
-              />
-            </div>
 
-            {error && <p className="text-sm text-red-600">{error}</p>}
-
-            <Button
-              type="submit"
-              disabled={submitting}
-              className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-red-500/20 transition-all duration-300"
-            >
-              {submitting ? (
-                <>
-                  <Loader2 className="h-5 w-5 animate-spin mr-2" />
-                  Enviando...
-                </>
-              ) : (
-                "QUERO MINHA ANÁLISE GRATUITA"
-              )}
-            </Button>
-
-            <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-slate-400">
-              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> 100% gratuito</span>
-              <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> Sem compromisso</span>
+          {formDone ? (
+            <div className="text-center py-6 space-y-4">
+              <CheckCircle2 className="h-14 w-14 text-green-500 mx-auto" />
+              <p className="text-lg font-semibold text-slate-900">Enviado com sucesso!</p>
+              <p className="text-sm text-slate-500">Entraremos em contato em breve.</p>
+              <Button
+                onClick={() => { window.location.hash = "/sessao-estrategica/obrigado"; }}
+                className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-5 rounded-xl"
+              >
+                Continuar
+              </Button>
             </div>
-          </form>
+          ) : step === 1 ? (
+            <form onSubmit={handleSubmit} className="space-y-4 pt-2">
+              <div className="space-y-1.5">
+                <Label htmlFor="popup-nome" className="text-slate-600 text-sm font-medium">Nome completo *</Label>
+                <Input
+                  id="popup-nome"
+                  value={nome}
+                  onChange={(e) => setNome(e.target.value)}
+                  required
+                  maxLength={200}
+                  placeholder="Seu nome"
+                  className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="popup-telefone" className="text-slate-600 text-sm font-medium">WhatsApp com DDD *</Label>
+                <PhoneInput
+                  id="popup-telefone"
+                  value={telefone}
+                  onChange={setTelefone}
+                  required
+                  className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                />
+              </div>
+              <div className="space-y-1.5">
+                <Label htmlFor="popup-email" className="text-slate-600 text-sm font-medium">E-mail *</Label>
+                <Input
+                  id="popup-email"
+                  type="email"
+                  value={email}
+                  onChange={(e) => setEmail(e.target.value)}
+                  required
+                  maxLength={255}
+                  placeholder="seu@email.com"
+                  className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 h-12 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                />
+              </div>
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <Button
+                type="submit"
+                disabled={submitting}
+                className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-red-500/20 transition-all duration-300"
+              >
+                {submitting ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Enviando...
+                  </>
+                ) : (
+                  questions.length > 0 ? "CONTINUAR" : "QUERO MINHA ANÁLISE GRATUITA"
+                )}
+              </Button>
+
+              <div className="flex items-center justify-center gap-4 pt-1 text-[11px] text-slate-400">
+                <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> 100% gratuito</span>
+                <span className="flex items-center gap-1"><CheckCircle2 className="h-3 w-3 text-green-500" /> Sem compromisso</span>
+              </div>
+            </form>
+          ) : (
+            <form onSubmit={handleStep2Submit} className="space-y-4 pt-2 max-h-[60vh] overflow-y-auto">
+              {questions.map((q) => (
+                <div key={q.id} className="space-y-2">
+                  <Label className="text-slate-600 text-sm font-medium">
+                    {q.question_text} {q.is_required && "*"}
+                  </Label>
+
+                  {q.question_type === "open" ? (
+                    <Textarea
+                      value={answers[q.id] || ""}
+                      onChange={(e) => setAnswers((prev) => ({ ...prev, [q.id]: e.target.value }))}
+                      maxLength={2000}
+                      rows={3}
+                      required={q.is_required}
+                      className="bg-slate-50 border-slate-200 text-slate-900 placeholder:text-slate-400 rounded-xl focus:border-red-500 focus:ring-red-500/20"
+                    />
+                  ) : (
+                    <RadioGroup
+                      value={answers[q.id] || ""}
+                      onValueChange={(v) => setAnswers((prev) => ({ ...prev, [q.id]: v }))}
+                      className="space-y-2"
+                    >
+                      {(q.options || []).map((opt, idx) => (
+                        <div key={idx} className="flex items-center space-x-2">
+                          <RadioGroupItem value={opt} id={`${q.id}-${idx}`} />
+                          <Label htmlFor={`${q.id}-${idx}`} className="font-normal cursor-pointer text-slate-700">
+                            {opt}
+                          </Label>
+                        </div>
+                      ))}
+                    </RadioGroup>
+                  )}
+                </div>
+              ))}
+
+              {error && <p className="text-sm text-red-600">{error}</p>}
+
+              <Button
+                type="submit"
+                disabled={submittingStep2}
+                className="w-full bg-gradient-to-r from-red-600 to-red-500 hover:from-red-700 hover:to-red-600 text-white font-bold py-6 text-base rounded-xl shadow-lg shadow-red-500/20 transition-all duration-300"
+              >
+                {submittingStep2 ? (
+                  <>
+                    <Loader2 className="h-5 w-5 animate-spin mr-2" />
+                    Enviando...
+                  </>
+                ) : (
+                  "ENVIAR"
+                )}
+              </Button>
+            </form>
+          )}
         </DialogContent>
       </Dialog>
     </div>
