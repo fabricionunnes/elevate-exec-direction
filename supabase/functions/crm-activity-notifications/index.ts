@@ -54,7 +54,6 @@ Deno.serve(async (req) => {
         .from("whatsapp_instances")
         .select("id, instance_name, status, api_url, api_key")
         .eq("instance_name", instanceName)
-        .eq("status", "connected")
         .maybeSingle();
 
       if (inst) {
