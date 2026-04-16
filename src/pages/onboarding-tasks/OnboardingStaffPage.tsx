@@ -95,6 +95,8 @@ const OnboardingStaffPage = () => {
   // Estado para permissões
   const [permissionsStaff, setPermissionsStaff] = useState<Staff | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [generatedRegistrationLink, setGeneratedRegistrationLink] = useState("");
+  const [showRegistrationLinkDialog, setShowRegistrationLinkDialog] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -411,20 +413,21 @@ const OnboardingStaffPage = () => {
                   if (error) throw error;
                   const baseUrl = window.location.origin;
                   const link = `${baseUrl}/#/staff-register/${data.token}`;
+                  setGeneratedRegistrationLink(link);
+                  setShowRegistrationLinkDialog(true);
+
+                  let copied = false;
                   try {
                     await navigator.clipboard.writeText(link);
-                    toast.success("Link de cadastro copiado!");
+                    copied = true;
                   } catch {
-                    // Fallback for environments without clipboard permission
-                    const textArea = document.createElement("textarea");
-                    textArea.value = link;
-                    textArea.style.position = "fixed";
-                    textArea.style.left = "-9999px";
-                    document.body.appendChild(textArea);
-                    textArea.select();
-                    document.execCommand("copy");
-                    document.body.removeChild(textArea);
+                    copied = false;
+                  }
+
+                  if (copied) {
                     toast.success("Link de cadastro copiado!");
+                  } else {
+                    toast.success("Link gerado com sucesso.");
                   }
                 } catch (error: any) {
                   toast.error(error.message || "Erro ao gerar link");
@@ -827,6 +830,42 @@ const OnboardingStaffPage = () => {
                 ) : (
                   "Alterar Senha"
                 )}
+              </Button>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
+      {/* Dialog do link de cadastro */}
+      <Dialog open={showRegistrationLinkDialog} onOpenChange={setShowRegistrationLinkDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Link de Cadastro</DialogTitle>
+            <DialogDescription>
+              Use este link para o colaborador preencher os dados cadastrais.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="space-y-2">
+              <Label>Link gerado</Label>
+              <Input readOnly value={generatedRegistrationLink} onFocus={(e) => e.target.select()} />
+            </div>
+            <div className="flex justify-end gap-2">
+              <Button variant="outline" onClick={() => setShowRegistrationLinkDialog(false)}>
+                Fechar
+              </Button>
+              <Button
+                onClick={async () => {
+                  try {
+                    await navigator.clipboard.writeText(generatedRegistrationLink);
+                    toast.success("Link copiado!");
+                  } catch {
+                    toast.error("Não foi possível copiar automaticamente. Selecione e copie manualmente.");
+                  }
+                }}
+              >
+                <ClipboardList className="h-4 w-4 mr-2" />
+                Copiar link
               </Button>
             </div>
           </div>
