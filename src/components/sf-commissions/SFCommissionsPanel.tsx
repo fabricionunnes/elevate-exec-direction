@@ -63,6 +63,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const [loading, setLoading] = useState(true);
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
+  const [selectedSalesperson, setSelectedSalesperson] = useState<string>("all");
 
   const isAdminOrMaster = viewerRole === "admin" || viewerRole === "master" || viewerRole === "client";
   const canViewClientAmounts = isAdminOrMaster;
