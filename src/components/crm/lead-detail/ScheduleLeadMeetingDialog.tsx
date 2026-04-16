@@ -1,5 +1,6 @@
 import { useState, useEffect } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyCrmActivityViaWhatsApp } from "@/lib/crm/notifyActivityWhatsApp";
 import { getPublicBaseUrl } from "@/lib/publicDomain";
 import {
   Dialog,
@@ -235,6 +236,17 @@ export const ScheduleLeadMeetingDialog = ({
         };
 
         await supabase.from("crm_activities").insert(activityInsert);
+
+        // Send WhatsApp notification to responsible staff
+        if (staffData?.id) {
+          notifyCrmActivityViaWhatsApp({
+            staffId: staffData.id,
+            leadName,
+            activityTitle: formData.title,
+            activityType: "meeting",
+            scheduledAt: startDateTime,
+          });
+        }
 
         // Log the scheduling action in history
         const { data: insertedActivity } = await supabase
