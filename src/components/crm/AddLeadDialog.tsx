@@ -15,6 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { PhoneInput } from "@/components/ui/phone-input";
 import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
+import { LeadNameAutocomplete, type LeadAutocompleteSelection } from "./LeadNameAutocomplete";
 
 interface AddLeadDialogProps {
   open: boolean;
