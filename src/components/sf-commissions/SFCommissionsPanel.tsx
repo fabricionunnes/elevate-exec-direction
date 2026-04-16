@@ -328,14 +328,15 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         {/* Result cards - UNV revenue & vendor payout */}
         <div className={`grid ${canViewClientAmounts ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}>
           {canViewClientAmounts && (() => {
-            const totalUNVReceives = configs.reduce((sum, c) => {
+            const totalClientPays = configs.reduce((sum, c) => {
               const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-              const achievement = kpi?.achievement_percent || 0;
-              const clientPays = kpi?.total_value || 0; // Actual revenue
-              const vendorCommission = getTierValue(c.vendorTiers, achievement);
-              const totalVendor = c.base_salary + vendorCommission;
-              return sum + (clientPays - totalVendor);
+              return sum + (kpi?.total_value || 0);
             }, 0);
+            const totalVendorPayout = configs.reduce((sum, c) => {
+              const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+              return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
+            }, 0);
+            const margin = totalClientPays - totalVendorPayout;
             return (
               <Card className="border-primary/30 bg-primary/5">
                 <CardContent className="p-5">
@@ -344,30 +345,24 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
                       <TrendingUp className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">UNV vai receber (margem)</p>
+                      <p className="text-sm font-medium text-muted-foreground">UNV vai receber</p>
                       <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
                     </div>
                   </div>
-                  <p className={`text-3xl font-bold ${totalUNVReceives >= 0 ? "text-primary" : "text-destructive"}`}>
-                    {formatCurrency(totalUNVReceives)}
+                  <p className="text-3xl font-bold text-primary">
+                    {formatCurrency(totalClientPays)}
                   </p>
                   <div className="mt-2 space-y-1 text-xs text-muted-foreground">
                     <div className="flex justify-between">
-                      <span>Total que o cliente paga</span>
+                      <span>Total pago aos vendedores</span>
                       <span className="font-medium text-foreground">
-                        {formatCurrency(configs.reduce((sum, c) => {
-                          const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                          return sum + (kpi?.total_value || 0);
-                        }, 0))}
+                        {formatCurrency(totalVendorPayout)}
                       </span>
                     </div>
                     <div className="flex justify-between">
-                      <span>Total pago aos vendedores</span>
-                      <span className="font-medium text-foreground">
-                        {formatCurrency(configs.reduce((sum, c) => {
-                          const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                          return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
-                        }, 0))}
+                      <span>Margem UNV</span>
+                      <span className={`font-medium ${margin >= 0 ? "text-primary" : "text-destructive"}`}>
+                        {formatCurrency(margin)}
                       </span>
                     </div>
                   </div>
