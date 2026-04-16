@@ -58,7 +58,10 @@ export async function notifyCrmActivityViaWhatsApp({
       .eq("id", staffId)
       .maybeSingle();
 
-    const phone = staff?.phone?.replace(/\D/g, "");
+    let phone = staff?.phone?.replace(/\D/g, "") || "";
+    if (phone && !phone.startsWith("55") && (phone.length === 10 || phone.length === 11)) {
+      phone = "55" + phone;
+    }
     if (!phone) return; // staff has no phone registered
 
     // 4) Build message
