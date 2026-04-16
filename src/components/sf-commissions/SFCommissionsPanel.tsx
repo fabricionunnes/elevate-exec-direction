@@ -64,10 +64,10 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
 
-  const isAdmin = viewerRole !== "consultant";
-  const canViewClientAmounts = isAdmin;
-  const canViewBaseSalary = isAdmin;
-  const canManageConfigs = isAdmin;
+  const isAdminOrMaster = viewerRole === "admin" || viewerRole === "master" || viewerRole === "client";
+  const canViewClientAmounts = isAdminOrMaster;
+  const canViewBaseSalary = isAdminOrMaster;
+  const canManageConfigs = isAdminOrMaster;
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const monthYear = useMemo(() => {
@@ -324,47 +324,82 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
 
       {/* Summary cards */}
       {configs.length > 0 && (
-        <div className={`grid grid-cols-2 ${canViewClientAmounts ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3`}>
-          <Card><CardContent className="p-4 text-center">
-            <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-            <p className="text-2xl font-bold">{configs.length}</p>
-            <p className="text-xs text-muted-foreground">Vendedores</p>
-          </CardContent></Card>
+        <>
+        {/* Result cards - UNV revenue & vendor payout */}
+        <div className={`grid ${canViewClientAmounts ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}>
+          {canViewClientAmounts && (() => {
+            const totalUNVReceives = configs.reduce((sum, c) => {
+              const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+              const achievement = kpi?.achievement_percent || 0;
+              const clientPays = getTierValue(c.clientTiers, achievement);
+              const vendorCommission = getTierValue(c.vendorTiers, achievement);
+              const totalVendor = c.base_salary + vendorCommission;
+              return sum + (clientPays - totalVendor);
+            }, 0);
+            return (
+              <Card className="border-primary/30 bg-primary/5">
+                <CardContent className="p-5">
+                  <div className="flex items-center gap-3 mb-3">
+                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                      <TrendingUp className="h-5 w-5 text-primary" />
+                    </div>
+                    <div>
+                      <p className="text-sm font-medium text-muted-foreground">UNV vai receber (margem)</p>
+                      <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
+                    </div>
+                  </div>
+                  <p className={`text-3xl font-bold ${totalUNVReceives >= 0 ? "text-primary" : "text-destructive"}`}>
+                    {formatCurrency(totalUNVReceives)}
+                  </p>
+                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                    <div className="flex justify-between">
+                      <span>Total que o cliente paga</span>
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(configs.reduce((sum, c) => {
+                          const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+                          return sum + getTierValue(c.clientTiers, kpi?.achievement_percent || 0);
+                        }, 0))}
+                      </span>
+                    </div>
+                    <div className="flex justify-between">
+                      <span>Total pago aos vendedores</span>
+                      <span className="font-medium text-foreground">
+                        {formatCurrency(configs.reduce((sum, c) => {
+                          const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+                          return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
+                        }, 0))}
+                      </span>
+                    </div>
+                  </div>
+                </CardContent>
+              </Card>
+            );
+          })()}
 
-          {canViewClientAmounts && (
-            <Card><CardContent className="p-4 text-center">
-              <DollarSign className="h-5 w-5 mx-auto text-primary mb-1" />
-              <p className="text-2xl font-bold">
+          <Card className="border-accent/30 bg-accent/5">
+            <CardContent className="p-5">
+              <div className="flex items-center gap-3 mb-3">
+                <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
+                  <DollarSign className="h-5 w-5 text-accent-foreground" />
+                </div>
+                <div>
+                  <p className="text-sm font-medium text-muted-foreground">Vendedores vão receber</p>
+                  <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
+                </div>
+              </div>
+              <p className="text-3xl font-bold text-foreground">
                 {formatCurrency(configs.reduce((sum, c) => {
                   const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                  return sum + getTierValue(c.clientTiers, kpi?.achievement_percent || 0);
+                  return sum + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
                 }, 0))}
               </p>
-              <p className="text-xs text-muted-foreground">Cliente paga (total)</p>
-            </CardContent></Card>
-          )}
-
-          {canViewBaseSalary && (
-            <Card><CardContent className="p-4 text-center">
-              <DollarSign className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-              <p className="text-2xl font-bold">
-                {formatCurrency(configs.reduce((sum, c) => sum + c.base_salary, 0))}
-              </p>
-              <p className="text-xs text-muted-foreground">Salários base (total)</p>
-            </CardContent></Card>
-          )}
-
-          <Card><CardContent className="p-4 text-center">
-            <TrendingUp className="h-5 w-5 mx-auto text-primary mb-1" />
-            <p className="text-2xl font-bold">
-              {formatCurrency(configs.reduce((sum, c) => {
-                const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                return sum + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
-              }, 0))}
-            </p>
-            <p className="text-xs text-muted-foreground">{canViewBaseSalary ? "Total a pagar (mês)" : "Comissões (total)"}</p>
-          </CardContent></Card>
+              <div className="mt-2 text-xs text-muted-foreground">
+                <span>{configs.length} vendedor{configs.length !== 1 ? "es" : ""} configurado{configs.length !== 1 ? "s" : ""}</span>
+              </div>
+            </CardContent>
+          </Card>
         </div>
+        </>
       )}
 
       {/* Salesperson cards */}
