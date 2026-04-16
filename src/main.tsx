@@ -37,6 +37,7 @@ const publicRoutes = [
   "/fatura",
   "/pdi/enroll",
   "/pdi/participant",
+  "/staff-register",
 ];
 
 const urlSearch = new URLSearchParams(window.location.search);
