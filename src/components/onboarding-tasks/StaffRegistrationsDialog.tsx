@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Eye, Trash2, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -49,6 +51,8 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [selected, setSelected] = useState<Registration | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"submitted" | "pending" | "all">("submitted");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -102,75 +106,114 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm text-muted-foreground">
-            {registrations.length} cadastro{registrations.length === 1 ? "" : "s"} no total
-          </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        </div>
+        {(() => {
+          const filtered = registrations.filter((r) => {
+            if (statusFilter !== "all" && r.status !== statusFilter) return false;
+            if (search) {
+              const q = search.toLowerCase();
+              return (
+                (r.full_name || "").toLowerCase().includes(q) ||
+                (r.email || "").toLowerCase().includes(q) ||
+                (r.cpf || "").toLowerCase().includes(q)
+              );
+            }
+            return true;
+          });
+          const totals = {
+            submitted: registrations.filter((r) => r.status === "submitted").length,
+            pending: registrations.filter((r) => r.status === "pending").length,
+            all: registrations.length,
+          };
+          return (
+            <>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="submitted">Enviados ({totals.submitted})</SelectItem>
+                    <SelectItem value="pending">Pendentes ({totals.pending})</SelectItem>
+                    <SelectItem value="all">Todos ({totals.all})</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Buscar por nome, email ou CPF..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 min-w-[200px]"
+                />
+                <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  Atualizar
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                {filtered.length} cadastro{filtered.length === 1 ? "" : "s"} exibido{filtered.length === 1 ? "" : "s"}
+              </div>
 
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : registrations.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Nenhum cadastro recebido ainda.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Recebido em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {registrations.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
-                  <TableCell>{r.email || "—"}</TableCell>
-                  <TableCell>{r.cpf || "—"}</TableCell>
-                  <TableCell>{r.phone || "—"}</TableCell>
-                  <TableCell>{statusBadge(r.status)}</TableCell>
-                  <TableCell>
-                    {r.submitted_at
-                      ? format(new Date(r.submitted_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                      : format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => setSelected(r)} title="Ver detalhes">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(r.id)}
-                        disabled={deleting === r.id}
-                        title="Excluir"
-                      >
-                        {deleting === r.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nenhum cadastro encontrado com esses filtros.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Recebido em</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
+                        <TableCell>{r.email || "—"}</TableCell>
+                        <TableCell>{r.cpf || "—"}</TableCell>
+                        <TableCell>{r.phone || "—"}</TableCell>
+                        <TableCell>{statusBadge(r.status)}</TableCell>
+                        <TableCell>
+                          {r.submitted_at
+                            ? format(new Date(r.submitted_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setSelected(r)} title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(r.id)}
+                              disabled={deleting === r.id}
+                              title="Excluir"
+                            >
+                              {deleting === r.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
+            </>
+          );
+        })()}
 
         {/* Detalhes */}
         <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
