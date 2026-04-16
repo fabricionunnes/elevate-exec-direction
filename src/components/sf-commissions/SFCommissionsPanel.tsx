@@ -418,7 +418,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
             const kpi = kpiData.find(k => k.salesperson_id === config.salesperson_id);
             const achievement = kpi?.achievement_percent || 0;
             const vendorCommission = getTierValue(config.vendorTiers, achievement);
-            const clientPays = getTierValue(config.clientTiers, achievement);
+            const clientPays = kpi?.total_value || 0; // Client pays actual revenue to UNV
             const totalPayable = config.base_salary + vendorCommission;
 
             return (
