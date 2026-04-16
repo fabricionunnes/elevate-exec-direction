@@ -1,5 +1,6 @@
 import { useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import { notifyCrmActivityViaWhatsApp } from "@/lib/crm/notifyActivityWhatsApp";
 import {
   Dialog,
   DialogContent,
@@ -56,6 +57,8 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
         .eq("user_id", user?.id)
         .single();
 
+      const scheduledIso = formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null;
+
       const { error } = await supabase
         .from("crm_activities")
         .insert({
@@ -63,12 +66,29 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
           type: formData.type,
           title: formData.title,
           description: formData.description || null,
-          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null,
+          scheduled_at: scheduledIso,
           responsible_staff_id: staff?.id,
           status: "pending",
         });
 
       if (error) throw error;
+
+      // Send WhatsApp notification to responsible staff
+      if (staff?.id) {
+        const { data: leadData } = await supabase
+          .from("crm_leads")
+          .select("name")
+          .eq("id", leadId)
+          .maybeSingle();
+
+        notifyCrmActivityViaWhatsApp({
+          staffId: staff.id,
+          leadName: leadData?.name || "Lead",
+          activityTitle: formData.title,
+          activityType: formData.type,
+          scheduledAt: scheduledIso,
+        });
+      }
 
       toast.success("Atividade criada");
       onSuccess();
