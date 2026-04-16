@@ -1,5 +1,6 @@
 import { supabase } from "@/integrations/supabase/client";
 import { addBusinessDays, ensureBusinessDay } from "@/lib/businessDays";
+import { notifyCrmActivityViaWhatsApp } from "@/lib/crm/notifyActivityWhatsApp";
 import type { Json } from "@/integrations/supabase/types";
 interface StageAction {
   id: string;
@@ -105,6 +106,19 @@ export async function createStageActivities(
     if (insertError) {
       console.error("Error creating stage activities:", insertError);
       return;
+    }
+
+    // Send WhatsApp notifications for each activity to the responsible staff
+    if (staffId && leadData) {
+      for (const activity of activities) {
+        notifyCrmActivityViaWhatsApp({
+          staffId: activity.responsible_staff_id || staffId,
+          leadName: leadData.name || "Lead",
+          activityTitle: activity.title,
+          activityType: activity.type,
+          scheduledAt: activity.scheduled_at,
+        });
+      }
     }
 
     // Create notification for the responsible staff member
