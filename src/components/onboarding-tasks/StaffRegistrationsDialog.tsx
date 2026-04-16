@@ -151,69 +151,69 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
               <div className="text-sm text-muted-foreground mb-2">
                 {filtered.length} cadastro{filtered.length === 1 ? "" : "s"} exibido{filtered.length === 1 ? "" : "s"}
               </div>
+
+              {loading ? (
+                <div className="flex items-center justify-center py-12">
+                  <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                </div>
+              ) : filtered.length === 0 ? (
+                <div className="text-center py-12 text-muted-foreground">
+                  Nenhum cadastro encontrado com esses filtros.
+                </div>
+              ) : (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Nome</TableHead>
+                      <TableHead>Email</TableHead>
+                      <TableHead>CPF</TableHead>
+                      <TableHead>Telefone</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Recebido em</TableHead>
+                      <TableHead className="text-right">Ações</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {filtered.map((r) => (
+                      <TableRow key={r.id}>
+                        <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
+                        <TableCell>{r.email || "—"}</TableCell>
+                        <TableCell>{r.cpf || "—"}</TableCell>
+                        <TableCell>{r.phone || "—"}</TableCell>
+                        <TableCell>{statusBadge(r.status)}</TableCell>
+                        <TableCell>
+                          {r.submitted_at
+                            ? format(new Date(r.submitted_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
+                            : format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
+                        </TableCell>
+                        <TableCell className="text-right">
+                          <div className="flex items-center justify-end gap-1">
+                            <Button variant="ghost" size="icon" onClick={() => setSelected(r)} title="Ver detalhes">
+                              <Eye className="h-4 w-4" />
+                            </Button>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              onClick={() => handleDelete(r.id)}
+                              disabled={deleting === r.id}
+                              title="Excluir"
+                            >
+                              {deleting === r.id ? (
+                                <Loader2 className="h-4 w-4 animate-spin" />
+                              ) : (
+                                <Trash2 className="h-4 w-4 text-destructive" />
+                              )}
+                            </Button>
+                          </div>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </>
           );
         })()}
-
-        {loading ? (
-          <div className="flex items-center justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : registrations.length === 0 ? (
-          <div className="text-center py-12 text-muted-foreground">
-            Nenhum cadastro recebido ainda.
-          </div>
-        ) : (
-          <Table>
-            <TableHeader>
-              <TableRow>
-                <TableHead>Nome</TableHead>
-                <TableHead>Email</TableHead>
-                <TableHead>CPF</TableHead>
-                <TableHead>Telefone</TableHead>
-                <TableHead>Status</TableHead>
-                <TableHead>Recebido em</TableHead>
-                <TableHead className="text-right">Ações</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {registrations.map((r) => (
-                <TableRow key={r.id}>
-                  <TableCell className="font-medium">{r.full_name || "—"}</TableCell>
-                  <TableCell>{r.email || "—"}</TableCell>
-                  <TableCell>{r.cpf || "—"}</TableCell>
-                  <TableCell>{r.phone || "—"}</TableCell>
-                  <TableCell>{statusBadge(r.status)}</TableCell>
-                  <TableCell>
-                    {r.submitted_at
-                      ? format(new Date(r.submitted_at), "dd/MM/yyyy HH:mm", { locale: ptBR })
-                      : format(new Date(r.created_at), "dd/MM/yyyy HH:mm", { locale: ptBR })}
-                  </TableCell>
-                  <TableCell className="text-right">
-                    <div className="flex items-center justify-end gap-1">
-                      <Button variant="ghost" size="icon" onClick={() => setSelected(r)} title="Ver detalhes">
-                        <Eye className="h-4 w-4" />
-                      </Button>
-                      <Button
-                        variant="ghost"
-                        size="icon"
-                        onClick={() => handleDelete(r.id)}
-                        disabled={deleting === r.id}
-                        title="Excluir"
-                      >
-                        {deleting === r.id ? (
-                          <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                          <Trash2 className="h-4 w-4 text-destructive" />
-                        )}
-                      </Button>
-                    </div>
-                  </TableCell>
-                </TableRow>
-              ))}
-            </TableBody>
-          </Table>
-        )}
 
         {/* Detalhes */}
         <Dialog open={!!selected} onOpenChange={(o) => !o && setSelected(null)}>
