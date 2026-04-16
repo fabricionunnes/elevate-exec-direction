@@ -47,7 +47,7 @@ import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermi
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
-type StaffRole = "master" | "cs" | "consultant" | "admin" | "closer" | "sdr" | "rh" | "marketing" | "financeiro";
+type StaffRole = "master" | "cs" | "consultant" | "admin" | "closer" | "sdr" | "rh" | "marketing" | "financeiro" | "pending";
 
 interface Staff {
   id: string;
@@ -74,7 +74,7 @@ const OnboardingStaffPage = () => {
   const [formData, setFormData] = useState({
     name: "",
     email: "",
-    role: "cs" as StaffRole,
+    role: "pending" as StaffRole,
     phone: "",
     password: "",
   });
@@ -186,7 +186,7 @@ const OnboardingStaffPage = () => {
 
       setShowDialog(false);
       setEditingStaff(null);
-      setFormData({ name: "", email: "", role: "cs", phone: "", password: "" });
+      setFormData({ name: "", email: "", role: "pending", phone: "", password: "" });
       fetchStaff();
     } catch (error: any) {
       console.error("Error saving staff:", error);
@@ -650,6 +650,7 @@ const OnboardingStaffPage = () => {
                   <SelectValue />
                 </SelectTrigger>
                 <SelectContent>
+                  <SelectItem value="pending">Pendente (sem acesso)</SelectItem>
                   <SelectItem value="admin">Administrador</SelectItem>
                   <SelectItem value="cs">CS (Customer Success)</SelectItem>
                   <SelectItem value="consultant">Consultor</SelectItem>
