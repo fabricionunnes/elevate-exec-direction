@@ -136,6 +136,7 @@ const OnboardingCancellationsPage = lazy(() => import("./pages/onboarding-tasks/
 const CancellationsRetentionModulePage = lazy(() => import("./pages/onboarding-tasks/CancellationsRetentionModulePage"));
 const OnboardingActivityHistoryPage = lazy(() => import("./pages/onboarding-tasks/OnboardingActivityHistoryPage"));
 const OnboardingCompaniesReportPage = lazy(() => import("./pages/onboarding-tasks/OnboardingCompaniesReportPage"));
+const SalesReportPage = lazy(() => import("./pages/onboarding-tasks/SalesReportPage"));
 const OnboardingResultsPage = lazy(() => import("./pages/onboarding-tasks/OnboardingResultsPage"));
 const KPIEntryPage = lazy(() => import("./pages/onboarding-tasks/KPIEntryPage"));
 const HealthScorePage = lazy(() => import("./pages/onboarding-tasks/HealthScorePage"));
@@ -387,6 +388,7 @@ const AppShell = () => {
               <Route path="/onboarding-tasks/cancellations-retention" element={<CancellationsRetentionModulePage />} />
               <Route path="/onboarding-tasks/activity-history" element={<OnboardingActivityHistoryPage />} />
               <Route path="/onboarding-tasks/companies-report" element={<OnboardingCompaniesReportPage />} />
+              <Route path="/sales-report" element={<SalesReportPage />} />
               <Route path="/onboarding-tasks/results" element={<OnboardingResultsPage />} />
               <Route path="/onboarding-tasks/financeiro" element={<FinancialModulePage />} />
               <Route path="/onboarding-tasks/api-docs" element={<ApiDocsPage />} />
