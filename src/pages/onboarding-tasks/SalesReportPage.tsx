@@ -355,7 +355,7 @@ export default function SalesReportPage() {
       (projectsInPeriod || []).forEach((p: any) => {
         if (projectsCovered.has(p.id)) return;
         const cid = p.company_id;
-        const isNew = cid ? !companyHasPriorProject[cid] : true;
+        const isNew = isCompanyNew(cid);
         const consId = p.consultant_id || (cid ? companyConsultant.get(cid) : null) || null;
         sales.push({
           id: `proj-${p.id}`,
