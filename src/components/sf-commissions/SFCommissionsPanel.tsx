@@ -376,16 +376,21 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           <span className="text-sm font-medium capitalize min-w-[160px] text-center">{monthLabel}</span>
           <Button variant="outline" size="icon" onClick={() => navigateMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
         </div>
-        {salespeople.length > 1 && (
+        {configs.length > 0 && (
           <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
-            <SelectTrigger className="w-[200px]">
+            <SelectTrigger className="w-[220px]">
               <SelectValue placeholder="Filtrar vendedor" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">Todos os vendedores</SelectItem>
-              {salespeople.map(sp => (
-                <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
-              ))}
+              {configs.map(c => {
+                const sp = salespeople.find(s => s.id === c.salesperson_id);
+                return (
+                  <SelectItem key={c.id} value={c.salesperson_id}>
+                    {sp?.name || "Vendedor"}
+                  </SelectItem>
+                );
+              })}
             </SelectContent>
           </Select>
         )}
