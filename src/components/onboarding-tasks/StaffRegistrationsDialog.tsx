@@ -5,6 +5,8 @@ import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Loader2, Eye, Trash2, RefreshCw } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Input } from "@/components/ui/input";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -49,6 +51,8 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [selected, setSelected] = useState<Registration | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
+  const [statusFilter, setStatusFilter] = useState<"submitted" | "pending" | "all">("submitted");
+  const [search, setSearch] = useState("");
 
   const load = async () => {
     setLoading(true);
@@ -102,15 +106,54 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
           </DialogDescription>
         </DialogHeader>
 
-        <div className="flex items-center justify-between mb-2">
-          <div className="text-sm text-muted-foreground">
-            {registrations.length} cadastro{registrations.length === 1 ? "" : "s"} no total
-          </div>
-          <Button variant="outline" size="sm" onClick={load} disabled={loading}>
-            <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
-            Atualizar
-          </Button>
-        </div>
+        {(() => {
+          const filtered = registrations.filter((r) => {
+            if (statusFilter !== "all" && r.status !== statusFilter) return false;
+            if (search) {
+              const q = search.toLowerCase();
+              return (
+                (r.full_name || "").toLowerCase().includes(q) ||
+                (r.email || "").toLowerCase().includes(q) ||
+                (r.cpf || "").toLowerCase().includes(q)
+              );
+            }
+            return true;
+          });
+          const totals = {
+            submitted: registrations.filter((r) => r.status === "submitted").length,
+            pending: registrations.filter((r) => r.status === "pending").length,
+            all: registrations.length,
+          };
+          return (
+            <>
+              <div className="flex items-center gap-2 mb-3 flex-wrap">
+                <Select value={statusFilter} onValueChange={(v: any) => setStatusFilter(v)}>
+                  <SelectTrigger className="w-[200px]">
+                    <SelectValue />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="submitted">Enviados ({totals.submitted})</SelectItem>
+                    <SelectItem value="pending">Pendentes ({totals.pending})</SelectItem>
+                    <SelectItem value="all">Todos ({totals.all})</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Buscar por nome, email ou CPF..."
+                  value={search}
+                  onChange={(e) => setSearch(e.target.value)}
+                  className="flex-1 min-w-[200px]"
+                />
+                <Button variant="outline" size="sm" onClick={load} disabled={loading}>
+                  <RefreshCw className={`h-4 w-4 mr-2 ${loading ? "animate-spin" : ""}`} />
+                  Atualizar
+                </Button>
+              </div>
+              <div className="text-sm text-muted-foreground mb-2">
+                {filtered.length} cadastro{filtered.length === 1 ? "" : "s"} exibido{filtered.length === 1 ? "" : "s"}
+              </div>
+            </>
+          );
+        })()}
 
         {loading ? (
           <div className="flex items-center justify-center py-12">
