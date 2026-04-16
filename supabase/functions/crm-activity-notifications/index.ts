@@ -80,6 +80,7 @@ Deno.serve(async (req) => {
 
       const leadName = (activity.lead as any)?.name || "Lead";
       const label = typeLabel[activity.type] || "Atividade";
+      let shouldMarkAsNotified = false;
 
       // 1) Create internal notification
       const { error: notifError } = await supabase
@@ -97,6 +98,8 @@ Deno.serve(async (req) => {
         console.error("Error creating notification:", notifError);
         continue;
       }
+
+      shouldMarkAsNotified = true;
 
       // 2) Send WhatsApp notification to responsible staff
       if (whatsappInstance) {
@@ -135,24 +138,35 @@ Deno.serve(async (req) => {
             });
 
             if (resp.ok) {
+              await resp.text();
               console.log(`[crm-activity-notifications] WhatsApp sent to ${phone} for activity ${activity.id}`);
             } else {
               const errText = await resp.text();
               console.error(`[crm-activity-notifications] WhatsApp send failed: ${errText}`);
+              shouldMarkAsNotified = false;
             }
+          } else {
+            console.warn(`[crm-activity-notifications] Staff ${activity.responsible_staff_id} has no phone for activity ${activity.id}`);
+            shouldMarkAsNotified = false;
           }
         } catch (whatsappError) {
           console.error("[crm-activity-notifications] WhatsApp error:", whatsappError);
+          shouldMarkAsNotified = false;
         }
+      } else {
+        console.warn(`[crm-activity-notifications] No connected WhatsApp instance configured for activity ${activity.id}`);
+        shouldMarkAsNotified = false;
       }
 
       // 3) Mark as notified
-      await supabase
-        .from("crm_activities")
-        .update({ notified_at: now })
-        .eq("id", activity.id);
+      if (shouldMarkAsNotified) {
+        await supabase
+          .from("crm_activities")
+          .update({ notified_at: now })
+          .eq("id", activity.id);
 
-      notifiedCount++;
+        notifiedCount++;
+      }
     }
 
     return new Response(

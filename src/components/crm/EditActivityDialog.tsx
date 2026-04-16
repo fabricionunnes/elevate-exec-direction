@@ -73,13 +73,20 @@ export const EditActivityDialog = ({ open, onOpenChange, activity, onSuccess }: 
 
     setLoading(true);
     try {
+      const nextScheduledAt = formData.scheduled_at
+        ? new Date(formData.scheduled_at).toISOString()
+        : null;
+
+      const scheduledAtChanged = (activity.scheduled_at || null) !== nextScheduledAt;
+
       const { error } = await supabase
         .from("crm_activities")
         .update({
           type: formData.type,
           title: formData.title,
           description: formData.description || null,
-          scheduled_at: formData.scheduled_at ? new Date(formData.scheduled_at).toISOString() : null,
+          scheduled_at: nextScheduledAt,
+          ...(scheduledAtChanged ? { notified_at: null } : {}),
         })
         .eq("id", activity.id);
 
