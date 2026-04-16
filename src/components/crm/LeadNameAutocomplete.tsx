@@ -73,12 +73,12 @@ export const LeadNameAutocomplete = ({ value, onChange, onSelect, placeholder, i
       const [leadsRes, companiesRes] = await Promise.all([
         supabase
           .from("crm_leads")
-          .select("id, name, phone, email, document, company, role, city, state, segment")
+          .select("id, name, phone, email, document, company, role, city, state, segment, address, address_number, address_complement, address_neighborhood, zipcode")
           .or(`name.ilike.${like},company.ilike.${like}`)
           .limit(8),
         supabase
           .from("onboarding_companies")
-          .select("id, name, cnpj, phone, email, segment, address_city, address_state, owner_name, owner_phone")
+          .select("id, name, cnpj, phone, email, segment, address, address_number, address_complement, address_neighborhood, address_zipcode, address_city, address_state, owner_name, owner_phone")
           .ilike("name", like)
           .limit(8),
       ]);
@@ -99,6 +99,11 @@ export const LeadNameAutocomplete = ({ value, onChange, onSelect, placeholder, i
           city: l.city,
           state: l.state,
           segment: l.segment,
+          address: l.address,
+          address_number: l.address_number,
+          address_complement: l.address_complement,
+          address_neighborhood: l.address_neighborhood,
+          zipcode: l.zipcode,
         },
       }));
 
@@ -117,6 +122,11 @@ export const LeadNameAutocomplete = ({ value, onChange, onSelect, placeholder, i
           city: c.address_city,
           state: c.address_state,
           segment: c.segment,
+          address: c.address,
+          address_number: c.address_number,
+          address_complement: c.address_complement,
+          address_neighborhood: c.address_neighborhood,
+          zipcode: c.address_zipcode,
         },
       }));
 
