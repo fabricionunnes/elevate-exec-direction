@@ -40,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2, Shield, Crown } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2, Shield, Crown, Link2, ClipboardList } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
