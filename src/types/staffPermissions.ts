@@ -11,7 +11,8 @@ export type StaffRole =
   | "bdr"
   | "rh"
   | "financeiro"
-  | "marketing";
+  | "marketing"
+  | "pending";
 
 // Menu permission keys for staff
 export const STAFF_MENU_KEYS = {
@@ -227,6 +228,7 @@ export const STAFF_ROLE_LABELS: Record<StaffRole, string> = {
   rh: "RH",
   financeiro: "Financeiro",
   marketing: "Marketing",
+  pending: "Pendente",
 };
 
 // Role colors for badges
@@ -243,6 +245,7 @@ export const STAFF_ROLE_COLORS: Record<StaffRole, string> = {
   rh: "bg-pink-100 text-pink-800",
   financeiro: "bg-slate-100 text-slate-800",
   marketing: "bg-rose-100 text-rose-800",
+  pending: "bg-gray-100 text-gray-500",
 };
 
 // Commercial roles that can access CRM
