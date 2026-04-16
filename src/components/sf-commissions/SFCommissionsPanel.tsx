@@ -524,7 +524,6 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           </>
         );
       })()}
-      )}
 
       {/* Config Dialog */}
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
