@@ -1,0 +1,1 @@
+ALTER TABLE public.sf_commission_configs DROP CONSTRAINT IF EXISTS sf_commission_configs_project_id_salesperson_id_key;
