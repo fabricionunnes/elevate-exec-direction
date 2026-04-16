@@ -411,8 +411,21 @@ const OnboardingStaffPage = () => {
                   if (error) throw error;
                   const baseUrl = window.location.origin;
                   const link = `${baseUrl}/#/staff-register/${data.token}`;
-                  await navigator.clipboard.writeText(link);
-                  toast.success("Link de cadastro copiado!");
+                  try {
+                    await navigator.clipboard.writeText(link);
+                    toast.success("Link de cadastro copiado!");
+                  } catch {
+                    // Fallback for environments without clipboard permission
+                    const textArea = document.createElement("textarea");
+                    textArea.value = link;
+                    textArea.style.position = "fixed";
+                    textArea.style.left = "-9999px";
+                    document.body.appendChild(textArea);
+                    textArea.select();
+                    document.execCommand("copy");
+                    document.body.removeChild(textArea);
+                    toast.success("Link de cadastro copiado!");
+                  }
                 } catch (error: any) {
                   toast.error(error.message || "Erro ao gerar link");
                 }
