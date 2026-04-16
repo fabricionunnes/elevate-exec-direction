@@ -411,7 +411,8 @@ const OnboardingStaffPage = () => {
                     .select("token")
                     .single();
                   if (error) throw error;
-                  const baseUrl = window.location.origin;
+                  const { getPublicBaseUrl } = await import("@/lib/publicDomain");
+                  const baseUrl = getPublicBaseUrl();
                   const link = `${baseUrl}/#/staff-register/${data.token}`;
                   setGeneratedRegistrationLink(link);
                   setShowRegistrationLinkDialog(true);
