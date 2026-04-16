@@ -412,10 +412,29 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
           <div className="grid grid-cols-2 gap-4">
             <div className="col-span-2">
               <Label htmlFor="name">Nome *</Label>
-              <DebouncedInput
+              <LeadNameAutocomplete
                 id="name"
                 value={formData.name}
                 onChange={(value) => setFormData(prev => ({ ...prev, name: value }))}
+                onSelect={(sel: LeadAutocompleteSelection) => {
+                  setFormData(prev => ({
+                    ...prev,
+                    name: sel.name || prev.name,
+                    phone: sel.phone || prev.phone,
+                    email: sel.email || prev.email,
+                    document: sel.document || prev.document,
+                    company: sel.company || prev.company,
+                    role: sel.role || prev.role,
+                    city: sel.city || prev.city,
+                    state: sel.state || prev.state,
+                    segment: sel.segment || prev.segment,
+                  }));
+                  toast.success(
+                    sel.source === "company"
+                      ? "Dados da empresa preenchidos"
+                      : "Dados do lead preenchidos"
+                  );
+                }}
                 placeholder="Nome do lead"
               />
             </div>
