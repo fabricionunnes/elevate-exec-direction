@@ -241,6 +241,7 @@ export const ScheduleLeadMeetingDialog = ({
         if (staffData?.id) {
           notifyCrmActivityViaWhatsApp({
             staffId: staffData.id,
+            leadId,
             leadName,
             activityTitle: formData.title,
             activityType: "meeting",
