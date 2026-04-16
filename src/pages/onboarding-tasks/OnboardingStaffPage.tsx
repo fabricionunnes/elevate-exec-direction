@@ -399,6 +399,29 @@ const OnboardingStaffPage = () => {
               <Plus className="h-4 w-4 mr-2" />
               Novo Membro
             </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from("staff_registrations")
+                    .insert({ status: "pending" })
+                    .select("token")
+                    .single();
+                  if (error) throw error;
+                  const baseUrl = window.location.origin;
+                  const link = `${baseUrl}/#/staff-register/${data.token}`;
+                  await navigator.clipboard.writeText(link);
+                  toast.success("Link de cadastro copiado!");
+                } catch (error: any) {
+                  toast.error(error.message || "Erro ao gerar link");
+                }
+              }}
+              title="Gerar link de cadastro para colaborador"
+            >
+              <Link2 className="h-4 w-4 mr-2" />
+              Link de Cadastro
+            </Button>
             <Button 
               variant="ghost" 
               size="icon"
