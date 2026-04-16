@@ -331,7 +331,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
             const totalUNVReceives = configs.reduce((sum, c) => {
               const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
               const achievement = kpi?.achievement_percent || 0;
-              const clientPays = getTierValue(c.clientTiers, achievement);
+              const clientPays = kpi?.total_value || 0; // Actual revenue
               const vendorCommission = getTierValue(c.vendorTiers, achievement);
               const totalVendor = c.base_salary + vendorCommission;
               return sum + (clientPays - totalVendor);
