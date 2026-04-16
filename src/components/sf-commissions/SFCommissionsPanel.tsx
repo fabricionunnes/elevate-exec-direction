@@ -331,7 +331,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
             const totalUNVReceives = configs.reduce((sum, c) => {
               const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
               const achievement = kpi?.achievement_percent || 0;
-              const clientPays = getTierValue(c.clientTiers, achievement);
+              const clientPays = kpi?.total_value || 0; // Actual revenue
               const vendorCommission = getTierValue(c.vendorTiers, achievement);
               const totalVendor = c.base_salary + vendorCommission;
               return sum + (clientPays - totalVendor);
@@ -357,7 +357,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
                       <span className="font-medium text-foreground">
                         {formatCurrency(configs.reduce((sum, c) => {
                           const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                          return sum + getTierValue(c.clientTiers, kpi?.achievement_percent || 0);
+                          return sum + (kpi?.total_value || 0);
                         }, 0))}
                       </span>
                     </div>
@@ -418,7 +418,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
             const kpi = kpiData.find(k => k.salesperson_id === config.salesperson_id);
             const achievement = kpi?.achievement_percent || 0;
             const vendorCommission = getTierValue(config.vendorTiers, achievement);
-            const clientPays = getTierValue(config.clientTiers, achievement);
+            const clientPays = kpi?.total_value || 0; // Client pays actual revenue to UNV
             const totalPayable = config.base_salary + vendorCommission;
 
             return (
