@@ -357,7 +357,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
                       <span className="font-medium text-foreground">
                         {formatCurrency(configs.reduce((sum, c) => {
                           const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                          return sum + getTierValue(c.clientTiers, kpi?.achievement_percent || 0);
+                          return sum + (kpi?.total_value || 0);
                         }, 0))}
                       </span>
                     </div>
