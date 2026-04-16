@@ -95,6 +95,8 @@ const OnboardingStaffPage = () => {
   // Estado para permissões
   const [permissionsStaff, setPermissionsStaff] = useState<Staff | null>(null);
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
+  const [generatedRegistrationLink, setGeneratedRegistrationLink] = useState("");
+  const [showRegistrationLinkDialog, setShowRegistrationLinkDialog] = useState(false);
 
   useEffect(() => {
     fetchStaff();
