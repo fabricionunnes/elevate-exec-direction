@@ -2424,6 +2424,12 @@ const OnboardingTasksPage = () => {
                           Relatórios
                         </DropdownMenuSubTrigger>
                         <DropdownMenuSubContent className="w-52">
+                          {isAdmin && (
+                            <DropdownMenuItem onClick={() => navigate("/sales-report")}>
+                              <TrendingUp className="h-4 w-4 mr-2" />
+                              Relatório de Vendas do Mês
+                            </DropdownMenuItem>
+                          )}
                           <DropdownMenuItem onClick={() => navigate("/onboarding-tasks/companies-report")}>
                             <FileBarChart className="h-4 w-4 mr-2" />
                             Relatório de Empresas
