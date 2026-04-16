@@ -197,22 +197,31 @@ export default function SalesReportPage() {
         new Set(Array.from(contractToProject.values()).filter(Boolean) as string[]),
       );
 
-      const { data: projectsInPeriod } = await supabase
+      const { data: projectsInPeriodRaw } = await supabase
         .from("onboarding_projects")
-        .select("id, company_id, product_name, consultant_id, created_at")
+        .select("id, company_id, onboarding_company_id, product_name, consultant_id, created_at")
         .gte("created_at", startDate.toISOString())
         .lte("created_at", endDate.toISOString());
+
+      // Normalize: use onboarding_company_id as fallback for company_id
+      const projectsInPeriod = (projectsInPeriodRaw || []).map((p: any) => ({
+        ...p,
+        company_id: p.company_id || p.onboarding_company_id || null,
+      }));
 
       let invoiceProjects: any[] = [];
       if (projectIdsFromInvoices.length > 0) {
         const { data: ip } = await supabase
           .from("onboarding_projects")
-          .select("id, company_id, product_name, consultant_id, created_at")
+          .select("id, company_id, onboarding_company_id, product_name, consultant_id, created_at")
           .in("id", projectIdsFromInvoices);
-        invoiceProjects = ip || [];
+        invoiceProjects = (ip || []).map((p: any) => ({
+          ...p,
+          company_id: p.company_id || p.onboarding_company_id || null,
+        }));
       }
       const projectMap = new Map<string, any>();
-      [...(projectsInPeriod || []), ...invoiceProjects].forEach((p: any) =>
+      [...projectsInPeriod, ...invoiceProjects].forEach((p: any) =>
         projectMap.set(p.id, p),
       );
 
