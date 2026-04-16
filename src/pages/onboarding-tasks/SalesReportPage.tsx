@@ -267,42 +267,7 @@ export default function SalesReportPage() {
 
       const sales: SaleRow[] = [];
 
-      // From projects
-      (projectsInPeriod || []).forEach((p: any) => {
-        const cid = p.company_id;
-        const isNew = cid ? !companyHasPriorProject[cid] : true;
-        const consId = p.consultant_id || (cid ? companyConsultant.get(cid) : null) || null;
-        sales.push({
-          id: `proj-${p.id}`,
-          date: p.created_at,
-          amount: 0, // project creation has no direct value here
-          company_id: cid,
-          company_name: cid ? companyMap.get(cid) || "—" : "—",
-          product_name: p.product_name || null,
-          consultant_id: consId,
-          consultant_name: consId ? staffMap.get(consId) || "—" : "—",
-          source: "project",
-          classification: isNew ? "new" : "existing",
-        });
-      });
-
-      // For invoices: classify by whether the company already had a project BEFORE the period
-      const invCompanyIds = Array.from(
-        new Set((paidInvoices || []).map((i: any) => i.company_id).filter(Boolean) as string[]),
-      );
-      let invHasPrior: Record<string, boolean> = {};
-      if (invCompanyIds.length > 0) {
-        const { data: priorForInv } = await supabase
-          .from("onboarding_projects")
-          .select("company_id, created_at")
-          .in("company_id", invCompanyIds)
-          .lt("created_at", startDate.toISOString());
-        (priorForInv || []).forEach((p: any) => {
-          if (p.company_id) invHasPrior[p.company_id] = true;
-        });
-      }
-
-      // Track invoice count per company in period to mark renewal vs upsell heuristically
+      // Track which company_ids already had an invoice in this period (for upsell heuristic)
       const invoiceCountInPeriod: Record<string, number> = {};
       (paidInvoices || []).forEach((i: any) => {
         if (i.company_id) {
@@ -310,26 +275,75 @@ export default function SalesReportPage() {
         }
       });
 
+      // ── Build sales rows from PAID INVOICES (real sale value) ──
+      // Classification rule:
+      //  - The invoice belongs to a contract → contract → project.
+      //  - If that project was created within the period AND the company had no
+      //    prior project before the period → NEW CLIENT sale.
+      //  - Otherwise → EXISTING CLIENT sale.
+      //  - If the invoice has no contract/project, fall back to the company:
+      //    company has prior project → existing; else → new.
+      const projectsCovered = new Set<string>();
+
       (paidInvoices || []).forEach((i: any) => {
-        const cid = i.company_id;
-        const isExisting = cid ? !!invHasPrior[cid] : false;
-        const consId = cid ? companyConsultant.get(cid) || null : null;
+        const cid = i.company_id as string | null;
+        const projectId = i.contract_id ? contractToProject.get(i.contract_id) || null : null;
+        const project = projectId ? projectMap.get(projectId) : null;
+
+        let isNew = false;
+        if (project) {
+          const projectCreated = new Date(project.created_at);
+          const createdInPeriod =
+            projectCreated >= startDate && projectCreated <= endDate;
+          const companyHadPrior = cid ? !!companyHasPriorProject[cid] : false;
+          isNew = createdInPeriod && !companyHadPrior;
+          if (projectId) projectsCovered.add(projectId);
+        } else {
+          isNew = cid ? !companyHasPriorProject[cid] : true;
+        }
+
+        const consId =
+          (project?.consultant_id as string | null) ||
+          (cid ? companyConsultant.get(cid) || null : null);
         const value = Number(i.paid_amount || i.amount || 0);
-        let subtype: "renewal" | "upsell" = "renewal";
-        // heuristic: if there are multiple paid invoices in this period for same company, treat extras as upsell
-        if (isExisting && invoiceCountInPeriod[cid!] > 1) subtype = "upsell";
+
+        let subtype: "renewal" | "upsell" | undefined;
+        if (!isNew) {
+          subtype = cid && invoiceCountInPeriod[cid] > 1 ? "upsell" : "renewal";
+        }
+
         sales.push({
           id: `inv-${i.id}`,
           date: i.paid_date,
           amount: value,
           company_id: cid,
           company_name: cid ? companyMap.get(cid) || "—" : i.description || "—",
-          product_name: i.description || null,
+          product_name: project?.product_name || i.description || null,
           consultant_id: consId,
           consultant_name: consId ? staffMap.get(consId) || "—" : "—",
           source: "invoice",
-          classification: isExisting ? "existing" : "new",
-          existing_subtype: isExisting ? subtype : undefined,
+          classification: isNew ? "new" : "existing",
+          existing_subtype: subtype,
+        });
+      });
+
+      // ── Add projects created in period that have NO paid invoice yet ──
+      (projectsInPeriod || []).forEach((p: any) => {
+        if (projectsCovered.has(p.id)) return;
+        const cid = p.company_id;
+        const isNew = cid ? !companyHasPriorProject[cid] : true;
+        const consId = p.consultant_id || (cid ? companyConsultant.get(cid) : null) || null;
+        sales.push({
+          id: `proj-${p.id}`,
+          date: p.created_at,
+          amount: 0,
+          company_id: cid,
+          company_name: cid ? companyMap.get(cid) || "—" : "—",
+          product_name: p.product_name || null,
+          consultant_id: consId,
+          consultant_name: consId ? staffMap.get(consId) || "—" : "—",
+          source: "project",
+          classification: isNew ? "new" : "existing",
         });
       });
 
