@@ -109,7 +109,11 @@ Deno.serve(async (req) => {
             .eq("id", activity.responsible_staff_id)
             .maybeSingle();
 
-          const phone = staff?.phone?.replace(/\D/g, "");
+          let phone = staff?.phone?.replace(/\D/g, "") || "";
+          // Normalize: ensure Brazilian country code (55) is present
+          if (phone && !phone.startsWith("55") && (phone.length === 10 || phone.length === 11)) {
+            phone = "55" + phone;
+          }
 
           if (phone) {
             let scheduledText = "";
