@@ -325,10 +325,25 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
       </div>
 
       {/* Month navigation */}
-      <div className="flex items-center justify-center gap-4">
-        <Button variant="outline" size="icon" onClick={() => navigateMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
-        <span className="text-sm font-medium capitalize min-w-[160px] text-center">{monthLabel}</span>
-        <Button variant="outline" size="icon" onClick={() => navigateMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+      <div className="flex flex-col sm:flex-row items-center justify-center gap-4">
+        <div className="flex items-center gap-2">
+          <Button variant="outline" size="icon" onClick={() => navigateMonth(-1)}><ChevronLeft className="h-4 w-4" /></Button>
+          <span className="text-sm font-medium capitalize min-w-[160px] text-center">{monthLabel}</span>
+          <Button variant="outline" size="icon" onClick={() => navigateMonth(1)}><ChevronRight className="h-4 w-4" /></Button>
+        </div>
+        {salespeople.length > 1 && (
+          <Select value={selectedSalesperson} onValueChange={setSelectedSalesperson}>
+            <SelectTrigger className="w-[200px]">
+              <SelectValue placeholder="Filtrar vendedor" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">Todos os vendedores</SelectItem>
+              {salespeople.map(sp => (
+                <SelectItem key={sp.id} value={sp.id}>{sp.name}</SelectItem>
+              ))}
+            </SelectContent>
+          </Select>
+        )}
       </div>
 
       {/* Summary cards */}
