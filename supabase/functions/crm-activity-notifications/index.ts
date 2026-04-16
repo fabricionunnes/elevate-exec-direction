@@ -16,8 +16,9 @@ Deno.serve(async (req) => {
     const supabaseServiceKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")!;
     const supabase = createClient(supabaseUrl, supabaseServiceKey);
 
-    // Find pending activities that are due and not yet notified
     const now = new Date().toISOString();
+
+    // Find pending activities that are due and not yet notified
     const { data: dueActivities, error: fetchError } = await supabase
       .from("crm_activities")
       .select(`
@@ -37,25 +38,50 @@ Deno.serve(async (req) => {
       });
     }
 
+    // Get the configured WhatsApp notification instance
+    const { data: setting } = await supabase
+      .from("crm_settings")
+      .select("setting_value")
+      .eq("setting_key", "lead_notification_instance_name")
+      .maybeSingle();
+
+    const instanceName = (setting?.setting_value as string) || null;
+
+    let whatsappInstance: { id: string; instance_name: string; api_url: string; api_key: string } | null = null;
+
+    if (instanceName) {
+      const { data: inst } = await supabase
+        .from("whatsapp_instances")
+        .select("id, instance_name, status, api_url, api_key")
+        .eq("instance_name", instanceName)
+        .eq("status", "connected")
+        .maybeSingle();
+
+      if (inst) {
+        whatsappInstance = inst;
+      }
+    }
+
+    const typeLabel: Record<string, string> = {
+      call: "Ligação",
+      whatsapp: "WhatsApp",
+      email: "E-mail",
+      meeting: "Reunião",
+      followup: "Follow-up",
+      proposal: "Proposta",
+      note: "Nota",
+      other: "Atividade",
+    };
+
     let notifiedCount = 0;
 
     for (const activity of dueActivities) {
       if (!activity.responsible_staff_id) continue;
 
       const leadName = (activity.lead as any)?.name || "Lead";
-      const typeLabel: Record<string, string> = {
-        call: "Ligação",
-        whatsapp: "WhatsApp",
-        email: "E-mail",
-        meeting: "Reunião",
-        followup: "Follow-up",
-        proposal: "Proposta",
-        other: "Atividade",
-      };
-
       const label = typeLabel[activity.type] || "Atividade";
 
-      // Create notification
+      // 1) Create internal notification
       const { error: notifError } = await supabase
         .from("onboarding_notifications")
         .insert({
@@ -72,7 +98,55 @@ Deno.serve(async (req) => {
         continue;
       }
 
-      // Mark as notified
+      // 2) Send WhatsApp notification to responsible staff
+      if (whatsappInstance) {
+        try {
+          const { data: staff } = await supabase
+            .from("onboarding_staff")
+            .select("phone, name")
+            .eq("id", activity.responsible_staff_id)
+            .maybeSingle();
+
+          const phone = staff?.phone?.replace(/\D/g, "");
+
+          if (phone) {
+            let scheduledText = "";
+            if (activity.scheduled_at) {
+              const date = new Date(activity.scheduled_at);
+              scheduledText = `\n*Agendado para:* ${date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}`;
+            }
+
+            const message =
+              `📋 *Atividade do CRM pendente!*\n\n` +
+              `*Tipo:* ${label}\n` +
+              `*Título:* ${activity.title}\n` +
+              `*Lead:* ${leadName}` +
+              scheduledText +
+              `\n\nAcesse o CRM para mais detalhes.`;
+
+            const sendUrl = `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`;
+            const resp = await fetch(sendUrl, {
+              method: "POST",
+              headers: {
+                "Content-Type": "application/json",
+                apikey: whatsappInstance.api_key,
+              },
+              body: JSON.stringify({ number: phone, text: message }),
+            });
+
+            if (resp.ok) {
+              console.log(`[crm-activity-notifications] WhatsApp sent to ${phone} for activity ${activity.id}`);
+            } else {
+              const errText = await resp.text();
+              console.error(`[crm-activity-notifications] WhatsApp send failed: ${errText}`);
+            }
+          }
+        } catch (whatsappError) {
+          console.error("[crm-activity-notifications] WhatsApp error:", whatsappError);
+        }
+      }
+
+      // 3) Mark as notified
       await supabase
         .from("crm_activities")
         .update({ notified_at: now })
@@ -87,7 +161,7 @@ Deno.serve(async (req) => {
     );
   } catch (error) {
     console.error("Error:", error);
-    return new Response(JSON.stringify({ error: error.message }), {
+    return new Response(JSON.stringify({ error: (error as any).message }), {
       status: 500,
       headers: { ...corsHeaders, "Content-Type": "application/json" },
     });
