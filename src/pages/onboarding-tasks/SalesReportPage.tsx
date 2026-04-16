@@ -169,38 +169,72 @@ export default function SalesReportPage() {
       setConsultants((staffList || []) as Consultant[]);
       setCompanies((companiesList || []) as { id: string; name: string }[]);
 
-      // ── Projects created in period ──
-      const { data: projectsInPeriod } = await supabase
-        .from("onboarding_projects")
-        .select("id, company_id, product_name, consultant_id, created_at, created_by")
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
-
-      // For classification: a company is "new" if it has NO active project before this period
-      // (i.e., this is its first project ever, considering the project was created within period)
-      const candidateCompanyIds = Array.from(
-        new Set((projectsInPeriod || []).map((p) => p.company_id).filter(Boolean) as string[]),
-      );
-
-      let companyHasPriorProject: Record<string, boolean> = {};
-      if (candidateCompanyIds.length > 0) {
-        const { data: priorProjects } = await supabase
-          .from("onboarding_projects")
-          .select("company_id, created_at")
-          .in("company_id", candidateCompanyIds)
-          .lt("created_at", startDate.toISOString());
-        (priorProjects || []).forEach((p: any) => {
-          if (p.company_id) companyHasPriorProject[p.company_id] = true;
-        });
-      }
-
-      // ── Paid invoices in period ──
+      // ── Paid invoices in period (these carry the actual sale value) ──
       const { data: paidInvoices } = await supabase
         .from("financial_receivables")
         .select("id, company_id, description, paid_amount, amount, paid_date, contract_id")
         .in("status", ["paid", "received"])
         .gte("paid_date", format(startDate, "yyyy-MM-dd"))
         .lte("paid_date", format(endDate, "yyyy-MM-dd"));
+
+      // ── Resolve project_id of each invoice via financial_contracts ──
+      const contractIds = Array.from(
+        new Set((paidInvoices || []).map((i: any) => i.contract_id).filter(Boolean) as string[]),
+      );
+      const contractToProject = new Map<string, string | null>();
+      if (contractIds.length > 0) {
+        const { data: contractsData } = await supabase
+          .from("financial_contracts")
+          .select("id, project_id")
+          .in("id", contractIds);
+        (contractsData || []).forEach((c: any) =>
+          contractToProject.set(c.id, c.project_id || null),
+        );
+      }
+
+      // ── Fetch all referenced projects (from contracts) + projects created in period ──
+      const projectIdsFromInvoices = Array.from(
+        new Set(Array.from(contractToProject.values()).filter(Boolean) as string[]),
+      );
+
+      const { data: projectsInPeriod } = await supabase
+        .from("onboarding_projects")
+        .select("id, company_id, product_name, consultant_id, created_at")
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
+
+      let invoiceProjects: any[] = [];
+      if (projectIdsFromInvoices.length > 0) {
+        const { data: ip } = await supabase
+          .from("onboarding_projects")
+          .select("id, company_id, product_name, consultant_id, created_at")
+          .in("id", projectIdsFromInvoices);
+        invoiceProjects = ip || [];
+      }
+      const projectMap = new Map<string, any>();
+      [...(projectsInPeriod || []), ...invoiceProjects].forEach((p: any) =>
+        projectMap.set(p.id, p),
+      );
+
+      // For classification: a company is "new" if it has NO project before this period
+      const allInvolvedCompanyIds = Array.from(
+        new Set([
+          ...((projectsInPeriod || []).map((p: any) => p.company_id).filter(Boolean) as string[]),
+          ...((paidInvoices || []).map((i: any) => i.company_id).filter(Boolean) as string[]),
+        ]),
+      );
+
+      let companyHasPriorProject: Record<string, boolean> = {};
+      if (allInvolvedCompanyIds.length > 0) {
+        const { data: priorProjects } = await supabase
+          .from("onboarding_projects")
+          .select("company_id, created_at")
+          .in("company_id", allInvolvedCompanyIds)
+          .lt("created_at", startDate.toISOString());
+        (priorProjects || []).forEach((p: any) => {
+          if (p.company_id) companyHasPriorProject[p.company_id] = true;
+        });
+      }
 
       // ── Previous month total (paid invoices) for growth comparison ──
       const { data: prevPaid } = await supabase
