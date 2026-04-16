@@ -336,7 +336,18 @@ export function ChecklistMeetingScheduler({
           google_calendar_user_id: selectedStaffUserId || null,
         } as any);
 
-        // Log history
+        // Send WhatsApp notification to responsible staff
+        const responsibleId = selectedStaff?.id || staffData?.id;
+        if (responsibleId) {
+          notifyCrmActivityViaWhatsApp({
+            staffId: responsibleId,
+            leadName,
+            activityTitle: meetingTitle,
+            activityType: "meeting",
+            scheduledAt: startDateTime,
+          });
+        }
+
         const { data: insertedActivity } = await supabase
           .from("crm_activities")
           .select("id")
