@@ -112,11 +112,11 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         .eq("company_id", companyId)
         .eq("is_active", true)
         .order("name"),
-      supabase
-        .from("sf_commission_configs")
+      (supabase.from("sf_commission_configs") as any)
         .select("*")
         .eq("project_id", projectId)
-        .eq("is_active", true),
+        .eq("is_active", true)
+        .eq("month_year", monthYear),
     ]);
 
     const spList: Salesperson[] = ((salespeopleRes?.data as any[]) || []).map((sp: any) => ({
@@ -148,7 +148,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
 
     await fetchKpiData(spList, companyId);
     setLoading(false);
-  }, [projectId, companyId]);
+  }, [projectId, companyId, monthYear]);
 
   const fetchKpiData = useCallback(async (spList: Salesperson[], cId: string) => {
     if (!cId) return;
