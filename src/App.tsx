@@ -363,6 +363,9 @@ const AppShell = () => {
             {/* Public Pipeline Form */}
             <Route path="/form/:token" element={<PublicPipelineForm />} />
             
+            {/* Staff Self-Registration */}
+            <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />
+            
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>
               <Route path="/onboarding-tasks" element={<OnboardingTasksPage />} />
