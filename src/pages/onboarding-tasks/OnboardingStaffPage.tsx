@@ -891,6 +891,12 @@ const OnboardingStaffPage = () => {
         staff={permissionsStaff}
         onSaved={fetchStaff}
       />
+
+      {/* Dialog de cadastros recebidos */}
+      <StaffRegistrationsDialog
+        open={showRegistrationsDialog}
+        onOpenChange={setShowRegistrationsDialog}
+      />
     </div>
   );
 };
