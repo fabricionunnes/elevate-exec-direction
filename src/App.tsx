@@ -66,6 +66,7 @@ const MetaAdsCallbackPage = lazy(() => import("./pages/MetaAdsCallbackPage"));
 const GoogleCalendarOAuthCallback = lazy(() => import("./pages/GoogleCalendarOAuthCallback"));
 const SystemShowcasePage = lazy(() => import("./pages/SystemShowcasePage"));
 const HotseatFormPage = lazy(() => import("./pages/HotseatFormPage"));
+const StaffRegistrationPage = lazy(() => import("./pages/StaffRegistrationPage"));
 const NPSSurveyPage = lazy(() => import("./pages/NPSSurveyPage"));
 const CSATSurveyPage = lazy(() => import("./pages/CSATSurveyPage"));
 const PublicPipelineForm = lazy(() => import("./pages/PublicPipelineForm"));
@@ -361,6 +362,9 @@ const AppShell = () => {
             
             {/* Public Pipeline Form */}
             <Route path="/form/:token" element={<PublicPipelineForm />} />
+            
+            {/* Staff Self-Registration */}
+            <Route path="/staff-register/:token" element={<StaffRegistrationPage />} />
             
             {/* Staff pages with global notifications */}
             <Route element={<OnboardingStaffLayout />}>

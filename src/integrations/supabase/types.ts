@@ -30063,6 +30063,110 @@ export type Database = {
           },
         ]
       }
+      staff_registrations: {
+        Row: {
+          address_number: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          birth_date: string | null
+          cep: string | null
+          city: string | null
+          cnpj: string | null
+          company_name: string | null
+          complement: string | null
+          cpf: string | null
+          created_at: string
+          email: string | null
+          full_name: string | null
+          id: string
+          municipal_registration: string | null
+          neighborhood: string | null
+          phone: string | null
+          pix_key: string | null
+          rg: string | null
+          staff_id: string | null
+          state: string | null
+          status: string
+          street: string | null
+          submitted_at: string | null
+          token: string
+          trade_name: string | null
+          updated_at: string
+        }
+        Insert: {
+          address_number?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          complement?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          municipal_registration?: string | null
+          neighborhood?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          rg?: string | null
+          staff_id?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          submitted_at?: string | null
+          token?: string
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Update: {
+          address_number?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          complement?: string | null
+          cpf?: string | null
+          created_at?: string
+          email?: string | null
+          full_name?: string | null
+          id?: string
+          municipal_registration?: string | null
+          neighborhood?: string | null
+          phone?: string | null
+          pix_key?: string | null
+          rg?: string | null
+          staff_id?: string | null
+          state?: string | null
+          status?: string
+          street?: string | null
+          submitted_at?: string | null
+          token?: string
+          trade_name?: string | null
+          updated_at?: string
+        }
+        Relationships: [
+          {
+            foreignKeyName: "staff_registrations_staff_id_fkey"
+            columns: ["staff_id"]
+            isOneToOne: false
+            referencedRelation: "onboarding_staff"
+            referencedColumns: ["id"]
+          },
+        ]
+      }
       staff_salaries: {
         Row: {
           amount: number

@@ -40,7 +40,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { toast } from "sonner";
-import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2, Shield, Crown } from "lucide-react";
+import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key, Eye, EyeOff, Loader2, Shield, Crown, Link2, ClipboardList } from "lucide-react";
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
@@ -398,6 +398,29 @@ const OnboardingStaffPage = () => {
             <Button onClick={openNewDialog}>
               <Plus className="h-4 w-4 mr-2" />
               Novo Membro
+            </Button>
+            <Button
+              variant="outline"
+              onClick={async () => {
+                try {
+                  const { data, error } = await supabase
+                    .from("staff_registrations")
+                    .insert({ status: "pending" })
+                    .select("token")
+                    .single();
+                  if (error) throw error;
+                  const baseUrl = window.location.origin;
+                  const link = `${baseUrl}/#/staff-register/${data.token}`;
+                  await navigator.clipboard.writeText(link);
+                  toast.success("Link de cadastro copiado!");
+                } catch (error: any) {
+                  toast.error(error.message || "Erro ao gerar link");
+                }
+              }}
+              title="Gerar link de cadastro para colaborador"
+            >
+              <Link2 className="h-4 w-4 mr-2" />
+              Link de Cadastro
             </Button>
             <Button 
               variant="ghost" 
