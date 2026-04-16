@@ -433,19 +433,25 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
                         <span className="font-medium text-primary">{formatCurrency(clientPays)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Salário base</span>
-                      <span className="font-medium">{formatCurrency(config.base_salary)}</span>
-                    </div>
+                    {canViewBaseSalary && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Salário base</span>
+                        <span className="font-medium">{formatCurrency(config.base_salary)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Comissão vendedor</span>
                       <span className="font-medium text-primary">{formatCurrency(vendorCommission)}</span>
                     </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold">
-                      <span>Total a pagar ao vendedor</span>
-                      <span className="text-primary">{formatCurrency(totalPayable)}</span>
-                    </div>
+                    {canViewBaseSalary && (
+                      <>
+                        <Separator />
+                        <div className="flex justify-between font-bold">
+                          <span>Total a pagar ao vendedor</span>
+                          <span className="text-primary">{formatCurrency(totalPayable)}</span>
+                        </div>
+                      </>
+                    )}
                     {canViewClientAmounts && (
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Margem UNV</span>
