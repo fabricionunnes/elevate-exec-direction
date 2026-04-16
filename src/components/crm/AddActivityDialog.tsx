@@ -83,6 +83,7 @@ export const AddActivityDialog = ({ open, onOpenChange, leadId, onSuccess }: Add
 
         notifyCrmActivityViaWhatsApp({
           staffId: staff.id,
+          leadId,
           leadName: leadData?.name || "Lead",
           activityTitle: formData.title,
           activityType: formData.type,

@@ -341,6 +341,7 @@ export function ChecklistMeetingScheduler({
         if (responsibleId) {
           notifyCrmActivityViaWhatsApp({
             staffId: responsibleId,
+            leadId,
             leadName,
             activityTitle: meetingTitle,
             activityType: "meeting",

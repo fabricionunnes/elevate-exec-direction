@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface NotifyActivityParams {
   staffId: string;
+  leadId: string;
   leadName: string;
   activityTitle: string;
   activityType: string;
@@ -26,6 +27,7 @@ const typeLabels: Record<string, string> = {
  */
 export async function notifyCrmActivityViaWhatsApp({
   staffId,
+  leadId,
   leadName,
   activityTitle,
   activityType,
@@ -81,7 +83,8 @@ export async function notifyCrmActivityViaWhatsApp({
       message += `*Agendado para:* ${formatted}\n`;
     }
 
-    message += `\nAcesse o CRM para mais detalhes.`;
+    const leadUrl = `https://unvholdings.com.br/#/crm/leads/${leadId}`;
+    message += `\n🔗 Acesse o lead: ${leadUrl}`;
 
     // 5) Send via evolution-api
     await supabase.functions.invoke("evolution-api", {

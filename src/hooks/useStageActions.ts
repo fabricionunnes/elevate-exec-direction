@@ -113,6 +113,7 @@ export async function createStageActivities(
       for (const activity of activities) {
         notifyCrmActivityViaWhatsApp({
           staffId: activity.responsible_staff_id || staffId,
+          leadId,
           leadName: leadData.name || "Lead",
           activityTitle: activity.title,
           activityType: activity.type,

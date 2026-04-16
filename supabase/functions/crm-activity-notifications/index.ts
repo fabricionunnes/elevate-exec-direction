@@ -122,13 +122,14 @@ Deno.serve(async (req) => {
               scheduledText = `\n*Agendado para:* ${date.toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short", timeZone: "America/Sao_Paulo" })}`;
             }
 
+            const leadUrl = `https://unvholdings.com.br/#/crm/leads/${activity.lead_id}`;
             const message =
               `📋 *Atividade do CRM pendente!*\n\n` +
               `*Tipo:* ${label}\n` +
               `*Título:* ${activity.title}\n` +
               `*Lead:* ${leadName}` +
               scheduledText +
-              `\n\nAcesse o CRM para mais detalhes.`;
+              `\n\n🔗 Acesse o lead: ${leadUrl}`;
 
             const sendUrl = `${whatsappInstance.api_url}/message/sendText/${whatsappInstance.instance_name}`;
             const resp = await fetch(sendUrl, {
