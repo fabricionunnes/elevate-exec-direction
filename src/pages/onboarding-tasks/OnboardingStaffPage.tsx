@@ -429,7 +429,7 @@ const OnboardingStaffPage = () => {
                 } catch (error: any) {
                   toast.error(error.message || "Erro ao gerar link");
                 }
-              }
+              }}
               title="Gerar link de cadastro para colaborador"
             >
               <Link2 className="h-4 w-4 mr-2" />
