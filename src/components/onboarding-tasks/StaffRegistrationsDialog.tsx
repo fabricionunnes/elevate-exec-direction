@@ -1,12 +1,13 @@
 import { useEffect, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
-import { Loader2, Eye, Trash2, RefreshCw } from "lucide-react";
+import { Loader2, Eye, Trash2, RefreshCw, UserCheck } from "lucide-react";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { toast } from "sonner";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
@@ -44,15 +45,38 @@ interface Registration {
 interface Props {
   open: boolean;
   onOpenChange: (open: boolean) => void;
+  onApproved?: () => void;
 }
 
-export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
+const ROLE_OPTIONS: { value: string; label: string }[] = [
+  { value: "admin", label: "Administrador" },
+  { value: "cs", label: "Customer Success" },
+  { value: "consultant", label: "Consultor" },
+  { value: "closer", label: "Closer" },
+  { value: "sdr", label: "SDR" },
+  { value: "rh", label: "RH" },
+  { value: "marketing", label: "Marketing" },
+  { value: "financeiro", label: "Financeiro" },
+];
+
+function generateTempPassword() {
+  return (
+    Math.random().toString(36).slice(-8) +
+    Math.random().toString(36).slice(-4).toUpperCase() +
+    "!9"
+  );
+}
+
+export function StaffRegistrationsDialog({ open, onOpenChange, onApproved }: Props) {
   const [loading, setLoading] = useState(false);
   const [registrations, setRegistrations] = useState<Registration[]>([]);
   const [selected, setSelected] = useState<Registration | null>(null);
   const [deleting, setDeleting] = useState<string | null>(null);
-  const [statusFilter, setStatusFilter] = useState<"submitted" | "pending" | "all">("submitted");
+  const [statusFilter, setStatusFilter] = useState<"submitted" | "pending" | "approved" | "all">("submitted");
   const [search, setSearch] = useState("");
+
+  const [approveRole, setApproveRole] = useState<string>("");
+  const [approving, setApproving] = useState(false);
 
   const load = async () => {
     setLoading(true);
@@ -74,6 +98,10 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
     if (open) load();
   }, [open]);
 
+  useEffect(() => {
+    setApproveRole("");
+  }, [selected?.id]);
+
   const handleDelete = async (id: string) => {
     if (!confirm("Excluir este cadastro? Essa ação não pode ser desfeita.")) return;
     setDeleting(id);
@@ -90,9 +118,65 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
     }
   };
 
+  const handleApprove = async () => {
+    if (!selected) return;
+    if (!selected.email || !selected.full_name) {
+      toast.error("Cadastro sem nome ou e-mail. Não é possível aprovar.");
+      return;
+    }
+    if (!approveRole) {
+      toast.error("Selecione o cargo do colaborador");
+      return;
+    }
+    setApproving(true);
+    try {
+      // 1) Cria login + onboarding_staff (com senha temporária)
+      const tempPassword = generateTempPassword();
+      const { data: result, error: fnError } = await supabase.functions.invoke("create-staff-user", {
+        body: {
+          email: selected.email,
+          password: tempPassword,
+          name: selected.full_name,
+          role: approveRole,
+          phone: selected.phone || null,
+        },
+      });
+      if (fnError) throw fnError;
+      if ((result as any)?.error) throw new Error((result as any).error);
+      const newStaffId = (result as any)?.staff_id as string | undefined;
+
+      // 2) Marca cadastro como aprovado
+      const updatePayload: any = { status: "approved" };
+      if (newStaffId) updatePayload.staff_id = newStaffId;
+      await supabase.from("staff_registrations").update(updatePayload).eq("id", selected.id);
+
+      // 3) Envia e-mail para o colaborador definir a senha
+      const redirectUrl = `${window.location.origin}/reset-password`;
+      const { error: resetError } = await supabase.auth.resetPasswordForEmail(selected.email, {
+        redirectTo: redirectUrl,
+      });
+      if (resetError) {
+        console.warn("Falha ao enviar e-mail de redefinição:", resetError);
+        toast.warning("Colaborador criado, mas não foi possível enviar o e-mail de senha automaticamente.");
+      } else {
+        toast.success("Colaborador aprovado! E-mail enviado para criação da senha.");
+      }
+
+      setSelected(null);
+      await load();
+      onApproved?.();
+    } catch (e: any) {
+      console.error(e);
+      toast.error(e.message || "Erro ao aprovar cadastro");
+    } finally {
+      setApproving(false);
+    }
+  };
+
   const statusBadge = (status: string) => {
     if (status === "submitted") return <Badge className="bg-green-100 text-green-800 hover:bg-green-100">Enviado</Badge>;
     if (status === "pending") return <Badge variant="outline">Pendente</Badge>;
+    if (status === "approved") return <Badge className="bg-blue-100 text-blue-800 hover:bg-blue-100">Aprovado</Badge>;
     return <Badge variant="secondary">{status}</Badge>;
   };
 
@@ -122,6 +206,7 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
           const totals = {
             submitted: registrations.filter((r) => r.status === "submitted").length,
             pending: registrations.filter((r) => r.status === "pending").length,
+            approved: registrations.filter((r) => r.status === "approved").length,
             all: registrations.length,
           };
           return (
@@ -133,6 +218,7 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="submitted">Enviados ({totals.submitted})</SelectItem>
+                    <SelectItem value="approved">Aprovados ({totals.approved})</SelectItem>
                     <SelectItem value="pending">Pendentes ({totals.pending})</SelectItem>
                     <SelectItem value="all">Todos ({totals.all})</SelectItem>
                   </SelectContent>
@@ -276,8 +362,50 @@ export function StaffRegistrationsDialog({ open, onOpenChange }: Props) {
                     }
                   />
                 </Section>
+
+                {selected.status !== "approved" && (
+                  <div className="rounded-lg border border-primary/30 bg-primary/5 p-4 space-y-3">
+                    <h3 className="text-sm font-semibold text-foreground">
+                      Aprovar e criar como funcionário
+                    </h3>
+                    <p className="text-xs text-muted-foreground">
+                      Ao aprovar, criamos o login do colaborador e enviamos um e-mail para que ele
+                      defina a própria senha de acesso ao sistema.
+                    </p>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 items-end">
+                      <div>
+                        <Label className="text-xs">Cargo *</Label>
+                        <Select value={approveRole} onValueChange={setApproveRole}>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Selecione o cargo" />
+                          </SelectTrigger>
+                          <SelectContent>
+                            {ROLE_OPTIONS.map((r) => (
+                              <SelectItem key={r.value} value={r.value}>
+                                {r.label}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                      </div>
+                      <Button onClick={handleApprove} disabled={approving || !approveRole}>
+                        {approving ? (
+                          <Loader2 className="h-4 w-4 mr-2 animate-spin" />
+                        ) : (
+                          <UserCheck className="h-4 w-4 mr-2" />
+                        )}
+                        Aprovar e criar funcionário
+                      </Button>
+                    </div>
+                  </div>
+                )}
               </div>
             )}
+            <DialogFooter>
+              <Button variant="outline" onClick={() => setSelected(null)}>
+                Fechar
+              </Button>
+            </DialogFooter>
           </DialogContent>
         </Dialog>
       </DialogContent>
