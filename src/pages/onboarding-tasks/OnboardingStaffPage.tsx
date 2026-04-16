@@ -100,6 +100,7 @@ const OnboardingStaffPage = () => {
   const [generatedRegistrationLink, setGeneratedRegistrationLink] = useState("");
   const [showRegistrationLinkDialog, setShowRegistrationLinkDialog] = useState(false);
   const [showRegistrationsDialog, setShowRegistrationsDialog] = useState(false);
+  const [detailsStaffId, setDetailsStaffId] = useState<string | null>(null);
 
   useEffect(() => {
     fetchStaff();
@@ -561,8 +562,16 @@ const OnboardingStaffPage = () => {
                       <Button
                         variant="ghost"
                         size="icon"
+                        onClick={() => setDetailsStaffId(member.id)}
+                        title="Ver/Editar detalhes completos"
+                      >
+                        <Eye className="h-4 w-4 text-blue-500" />
+                      </Button>
+                      <Button
+                        variant="ghost"
+                        size="icon"
                         onClick={() => openEditDialog(member)}
-                        title="Editar"
+                        title="Editar dados básicos"
                       >
                         <Pencil className="h-4 w-4" />
                       </Button>
@@ -898,6 +907,13 @@ const OnboardingStaffPage = () => {
         open={showRegistrationsDialog}
         onOpenChange={setShowRegistrationsDialog}
         onApproved={fetchStaff}
+      />
+
+      <StaffDetailsDialog
+        open={!!detailsStaffId}
+        onOpenChange={(o) => !o && setDetailsStaffId(null)}
+        staffId={detailsStaffId}
+        onSaved={fetchStaff}
       />
     </div>
   );
