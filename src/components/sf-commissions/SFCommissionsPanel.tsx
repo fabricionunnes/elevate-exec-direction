@@ -64,8 +64,10 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
 
-  const canViewClientAmounts = viewerRole !== "consultant";
-  const canManageConfigs = viewerRole !== "consultant";
+  const isAdmin = viewerRole !== "consultant";
+  const canViewClientAmounts = isAdmin;
+  const canViewBaseSalary = isAdmin;
+  const canManageConfigs = isAdmin;
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const monthYear = useMemo(() => {
