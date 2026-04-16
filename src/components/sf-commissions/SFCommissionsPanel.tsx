@@ -398,10 +398,20 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           return (
             <Card><CardContent className="py-12 text-center">
               <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">{configs.length === 0 ? "Nenhum vendedor configurado ainda." : "Nenhum resultado para este filtro."}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {configs.length === 0 && canManageConfigs ? 'Clique em "Configurar Vendedor" para começar.' : ""}
-              </p>
+              <p className="text-muted-foreground">{configs.length === 0 ? `Nenhum vendedor configurado para ${monthLabel}.` : "Nenhum resultado para este filtro."}</p>
+              {configs.length === 0 && canManageConfigs && (
+                <div className="mt-3 flex flex-col items-center gap-2">
+                  <p className="text-xs text-muted-foreground">Crie uma nova configuração ou replique do mês anterior.</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={carryForwardFromPreviousMonth}>
+                      Replicar do mês anterior
+                    </Button>
+                    <Button size="sm" onClick={openNewConfig}>
+                      <Plus className="h-4 w-4 mr-1" /> Nova configuração
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent></Card>
           );
         }
