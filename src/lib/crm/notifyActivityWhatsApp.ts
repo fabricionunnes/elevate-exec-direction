@@ -2,6 +2,7 @@ import { supabase } from "@/integrations/supabase/client";
 
 interface NotifyActivityParams {
   staffId: string;
+  leadId: string;
   leadName: string;
   activityTitle: string;
   activityType: string;
