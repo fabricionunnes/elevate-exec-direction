@@ -145,7 +145,33 @@ export function StaffRegistrationsDialog({ open, onOpenChange, onApproved }: Pro
       if ((result as any)?.error) throw new Error((result as any).error);
       const newStaffId = (result as any)?.staff_id as string | undefined;
 
-      // 2) Marca cadastro como aprovado
+      // 2) Copia todos os dados do cadastro recebido para onboarding_staff
+      if (newStaffId) {
+        const fullPayload: any = {
+          cpf: selected.cpf,
+          rg: selected.rg,
+          birth_date: selected.birth_date,
+          cep: selected.cep,
+          street: selected.street,
+          address_number: selected.address_number,
+          complement: selected.complement,
+          neighborhood: selected.neighborhood,
+          city: selected.city,
+          state: selected.state,
+          bank_name: selected.bank_name,
+          bank_agency: selected.bank_agency,
+          bank_account: selected.bank_account,
+          bank_account_type: selected.bank_account_type,
+          pix_key: selected.pix_key,
+          cnpj: selected.cnpj,
+          company_name: selected.company_name,
+          trade_name: selected.trade_name,
+          municipal_registration: selected.municipal_registration,
+        };
+        await supabase.from("onboarding_staff").update(fullPayload).eq("id", newStaffId);
+      }
+
+      // 3) Marca cadastro como aprovado
       const updatePayload: any = { status: "approved" };
       if (newStaffId) updatePayload.staff_id = newStaffId;
       await supabase.from("staff_registrations").update(updatePayload).eq("id", selected.id);

@@ -23824,38 +23824,95 @@ export type Database = {
       }
       onboarding_staff: {
         Row: {
+          address_number: string | null
           avatar_url: string | null
+          bank_account: string | null
+          bank_account_type: string | null
+          bank_agency: string | null
+          bank_name: string | null
+          birth_date: string | null
+          cep: string | null
+          city: string | null
+          cnpj: string | null
+          company_name: string | null
+          complement: string | null
+          cpf: string | null
           created_at: string
           email: string
           id: string
           is_active: boolean
+          municipal_registration: string | null
           name: string
+          neighborhood: string | null
           phone: string | null
+          pix_key: string | null
+          rg: string | null
           role: string
+          state: string | null
+          street: string | null
+          trade_name: string | null
           updated_at: string
           user_id: string | null
         }
         Insert: {
+          address_number?: string | null
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
           email: string
           id?: string
           is_active?: boolean
+          municipal_registration?: string | null
           name: string
+          neighborhood?: string | null
           phone?: string | null
+          pix_key?: string | null
+          rg?: string | null
           role: string
+          state?: string | null
+          street?: string | null
+          trade_name?: string | null
           updated_at?: string
           user_id?: string | null
         }
         Update: {
+          address_number?: string | null
           avatar_url?: string | null
+          bank_account?: string | null
+          bank_account_type?: string | null
+          bank_agency?: string | null
+          bank_name?: string | null
+          birth_date?: string | null
+          cep?: string | null
+          city?: string | null
+          cnpj?: string | null
+          company_name?: string | null
+          complement?: string | null
+          cpf?: string | null
           created_at?: string
           email?: string
           id?: string
           is_active?: boolean
+          municipal_registration?: string | null
           name?: string
+          neighborhood?: string | null
           phone?: string | null
+          pix_key?: string | null
+          rg?: string | null
           role?: string
+          state?: string | null
+          street?: string | null
+          trade_name?: string | null
           updated_at?: string
           user_id?: string | null
         }
