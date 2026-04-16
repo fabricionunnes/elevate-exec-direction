@@ -169,6 +169,32 @@ export const OnboardingStaffLayout = () => {
     );
   }
 
+  // SECURITY: Block pending users - they need admin approval first
+  if (staffRole === "pending") {
+    return (
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4 p-6">
+        <div className="text-center space-y-2">
+          <div className="w-16 h-16 rounded-full bg-muted flex items-center justify-center mx-auto mb-4">
+            <svg xmlns="http://www.w3.org/2000/svg" width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className="text-muted-foreground"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+          </div>
+          <h1 className="text-2xl font-bold text-foreground">Aguardando Aprovação</h1>
+          <p className="text-muted-foreground max-w-md">
+            Seu cadastro foi recebido. Um administrador precisa definir seu cargo e permissões antes que você possa acessar o sistema.
+          </p>
+        </div>
+        <button 
+          onClick={async () => {
+            await supabase.auth.signOut();
+            navigate("/onboarding-tasks/login");
+          }}
+          className="px-4 py-2 bg-primary text-primary-foreground rounded-md hover:bg-primary/90 transition-colors"
+        >
+          Sair
+        </button>
+      </div>
+    );
+  }
+
   return (
     <>
       {/* Notificações globais para staff - wrapped in Suspense */}
