@@ -44,6 +44,7 @@ import { ArrowLeft, Plus, Pencil, UserCheck, UserX, Search, Trash2, LogOut, Key,
 import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
+import { StaffRegistrationsDialog } from "@/components/onboarding-tasks/StaffRegistrationsDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
@@ -97,6 +98,7 @@ const OnboardingStaffPage = () => {
   const [currentUserRole, setCurrentUserRole] = useState<string | null>(null);
   const [generatedRegistrationLink, setGeneratedRegistrationLink] = useState("");
   const [showRegistrationLinkDialog, setShowRegistrationLinkDialog] = useState(false);
+  const [showRegistrationsDialog, setShowRegistrationsDialog] = useState(false);
 
   useEffect(() => {
     fetchStaff();
@@ -438,6 +440,14 @@ const OnboardingStaffPage = () => {
             >
               <Link2 className="h-4 w-4 mr-2" />
               Link de Cadastro
+            </Button>
+            <Button
+              variant="outline"
+              onClick={() => setShowRegistrationsDialog(true)}
+              title="Ver cadastros recebidos"
+            >
+              <ClipboardList className="h-4 w-4 mr-2" />
+              Cadastros Recebidos
             </Button>
             <Button 
               variant="ghost" 
