@@ -320,18 +320,11 @@ export default function SalesReportPage() {
         const cid = i.company_id as string | null;
         const projectId = i.contract_id ? contractToProject.get(i.contract_id) || null : null;
         const project = projectId ? projectMap.get(projectId) : null;
+        if (projectId) projectsCovered.add(projectId);
 
-        let isNew = false;
-        if (project) {
-          const projectCreated = new Date(project.created_at);
-          const createdInPeriod =
-            projectCreated >= startDate && projectCreated <= endDate;
-          const companyHadPrior = cid ? !!companyHasPriorProject[cid] : false;
-          isNew = createdInPeriod && !companyHadPrior;
-          if (projectId) projectsCovered.add(projectId);
-        } else {
-          isNew = cid ? !companyHasPriorProject[cid] : true;
-        }
+        // Classification depends ONLY on the company history,
+        // not on whether a new project was opened in the period.
+        const isNew = isCompanyNew(cid);
 
         const consId =
           (project?.consultant_id as string | null) ||
