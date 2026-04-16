@@ -584,7 +584,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingConfig ? "Editar Comissão" : "Configurar Comissão"}</DialogTitle>
+            <DialogTitle>{editingConfig ? "Editar Comissão" : "Configurar Comissão"} — <span className="capitalize">{monthLabel}</span></DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Vendedor + Função */}
