@@ -896,6 +896,7 @@ const OnboardingStaffPage = () => {
       <StaffRegistrationsDialog
         open={showRegistrationsDialog}
         onOpenChange={setShowRegistrationsDialog}
+        onApproved={fetchStaff}
       />
     </div>
   );
