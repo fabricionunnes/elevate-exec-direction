@@ -38,6 +38,7 @@ interface CommissionConfig {
   client_pays_amount: number;
   notes: string | null;
   is_active: boolean;
+  month_year: string;
   vendorTiers: TierData[];
   clientTiers: TierData[];
 }
