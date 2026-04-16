@@ -443,6 +443,11 @@ export const AddLeadDialog = ({ open, onOpenChange, pipelineId, onSuccess, initi
                     city: sel.city || prev.city,
                     state: sel.state || prev.state,
                     segment: sel.segment || prev.segment,
+                    address: sel.address || prev.address,
+                    address_number: sel.address_number || prev.address_number,
+                    address_complement: sel.address_complement || prev.address_complement,
+                    address_neighborhood: sel.address_neighborhood || prev.address_neighborhood,
+                    zipcode: sel.zipcode || prev.zipcode,
                   }));
                   toast.success(
                     sel.source === "company"
