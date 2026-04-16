@@ -38,7 +38,7 @@ import {
   XCircle, CalendarIcon, Landmark, Plus, Trash2, Edit2, LayoutDashboard,
   ArrowDownCircle, FolderTree, FileText, ArrowRightLeft, BarChart3,
   TrendingUp, TrendingDown, Target, Wallet, Copy, Send, Menu, Brain, CalendarDays, Bell, Truck, MessageSquare, ChevronDown, ChevronRight, Headphones,
-  ArrowUpDown, ArrowUp, ArrowDown, FileCheck,
+  ArrowUpDown, ArrowUp, ArrowDown, FileCheck, Link2,
 } from "lucide-react";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { toast } from "sonner";
@@ -1816,7 +1816,7 @@ export default function AllRecurringChargesPage() {
                                     <>
                                       <Button variant="ghost" size="icon" className="h-7 w-7" title="Copiar link de pagamento"
                                         onClick={() => { navigator.clipboard.writeText(inv.payment_link_url!); toast.success("Link copiado!"); }}>
-                                        <Copy className="h-3.5 w-3.5" />
+                                        <Link2 className="h-3.5 w-3.5" />
                                       </Button>
                                       <Button variant="ghost" size="icon" className="h-7 w-7 text-emerald-600 hover:text-emerald-700" title="Enviar via WhatsApp"
                                         onClick={async () => {
