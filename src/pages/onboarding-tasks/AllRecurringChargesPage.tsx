@@ -1723,7 +1723,7 @@ export default function AllRecurringChargesPage() {
               <Card>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="text-xs">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-10">
