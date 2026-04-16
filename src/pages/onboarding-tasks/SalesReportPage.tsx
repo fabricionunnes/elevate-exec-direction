@@ -256,14 +256,45 @@ export default function SalesReportPage() {
       const companyMap = new Map<string, string>();
       (companiesList || []).forEach((c: any) => companyMap.set(c.id, c.name));
 
-      // Also fetch company consultant_id (fallback when project missing consultant_id)
+      // Also fetch company consultant_id + created_at (used for new/existing classification)
       const { data: companiesFull } = await supabase
         .from("onboarding_companies")
-        .select("id, consultant_id");
+        .select("id, consultant_id, created_at");
       const companyConsultant = new Map<string, string | null>();
-      (companiesFull || []).forEach((c: any) =>
-        companyConsultant.set(c.id, c.consultant_id || null),
-      );
+      const companyCreatedAt = new Map<string, string>();
+      (companiesFull || []).forEach((c: any) => {
+        companyConsultant.set(c.id, c.consultant_id || null);
+        if (c.created_at) companyCreatedAt.set(c.id, c.created_at);
+      });
+
+      // A company is considered NEW only if:
+      //  1) it has no project created BEFORE the start of the period, AND
+      //  2) it has no paid invoice BEFORE the start of the period, AND
+      //  3) onboarding_companies.created_at falls within the period.
+      // Otherwise it is EXISTING — even if a brand new project (e.g. an
+      // additional service like "Sales Force") was opened during the period.
+      const companiesWithPriorInvoice = new Set<string>();
+      if (allInvolvedCompanyIds.length > 0) {
+        const { data: priorPaid } = await supabase
+          .from("financial_receivables")
+          .select("company_id")
+          .in("company_id", allInvolvedCompanyIds)
+          .in("status", ["paid", "received"])
+          .lt("paid_date", format(startDate, "yyyy-MM-dd"));
+        (priorPaid || []).forEach((r: any) => {
+          if (r.company_id) companiesWithPriorInvoice.add(r.company_id);
+        });
+      }
+
+      const isCompanyNew = (cid: string | null): boolean => {
+        if (!cid) return false;
+        if (companyHasPriorProject[cid]) return false;
+        if (companiesWithPriorInvoice.has(cid)) return false;
+        const created = companyCreatedAt.get(cid);
+        if (!created) return false;
+        const createdDate = new Date(created);
+        return createdDate >= startDate && createdDate <= endDate;
+      };
 
       const sales: SaleRow[] = [];
 
