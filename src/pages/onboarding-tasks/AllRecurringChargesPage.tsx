@@ -1437,7 +1437,7 @@ export default function AllRecurringChargesPage() {
 
       {/* Main Content */}
       <main className="flex-1 overflow-auto">
-        <div className="p-4 md:p-6 max-w-7xl mx-auto space-y-4 md:space-y-6">
+        <div className="p-4 md:p-6 max-w-[1600px] mx-auto space-y-4 md:space-y-6">
           {/* Dashboard */}
           {activeTab === "dashboard" && (
             <FinancialDashboardTab
@@ -1723,7 +1723,7 @@ export default function AllRecurringChargesPage() {
               <Card>
                 <CardContent className="p-0">
                   <div className="overflow-x-auto">
-                    <Table>
+                    <Table className="text-xs">
                       <TableHeader>
                         <TableRow>
                           <TableHead className="w-10">
