@@ -45,6 +45,7 @@ import { WelcomeHeader } from "@/components/onboarding-tasks/WelcomeHeader";
 import { NexusHeader } from "@/components/onboarding-tasks/NexusHeader";
 import { StaffPermissionsDialog } from "@/components/onboarding-tasks/StaffPermissionsDialog";
 import { StaffRegistrationsDialog } from "@/components/onboarding-tasks/StaffRegistrationsDialog";
+import { StaffDetailsDialog } from "@/components/onboarding-tasks/StaffDetailsDialog";
 import { format } from "date-fns";
 import { ptBR } from "date-fns/locale";
 
