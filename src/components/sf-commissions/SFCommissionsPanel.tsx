@@ -346,188 +346,184 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         )}
       </div>
 
-      {/* Filtered configs */}
       {(() => {
         const filteredConfigs = selectedSalesperson === "all" ? configs : configs.filter(c => c.salesperson_id === selectedSalesperson);
-        return filteredConfigs.length > 0 && (
-        <>
-        {/* Result cards - UNV revenue & vendor payout */}
-        <div className={`grid ${canViewClientAmounts ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}>
-          {canViewClientAmounts && (() => {
-            const totalClientPays = configs.reduce((sum, c) => {
-              const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-              return sum + (kpi?.total_value || 0);
-            }, 0);
-            const totalVendorPayout = configs.reduce((sum, c) => {
-              const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-              return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
-            }, 0);
-            const margin = totalClientPays - totalVendorPayout;
-            return (
-              <Card className="border-primary/30 bg-primary/5">
+
+        if (filteredConfigs.length === 0) {
+          return (
+            <Card><CardContent className="py-12 text-center">
+              <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
+              <p className="text-muted-foreground">{configs.length === 0 ? "Nenhum vendedor configurado ainda." : "Nenhum resultado para este filtro."}</p>
+              <p className="text-xs text-muted-foreground mt-1">
+                {configs.length === 0 && canManageConfigs ? 'Clique em "Configurar Vendedor" para começar.' : ""}
+              </p>
+            </CardContent></Card>
+          );
+        }
+
+        return (
+          <>
+            {/* Summary cards */}
+            <div className={`grid ${canViewClientAmounts ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}>
+              {canViewClientAmounts && (() => {
+                const totalClientPays = filteredConfigs.reduce((sum, c) => {
+                  const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+                  return sum + (kpi?.total_value || 0);
+                }, 0);
+                const totalVendorPayout = filteredConfigs.reduce((sum, c) => {
+                  const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+                  return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
+                }, 0);
+                const margin = totalClientPays - totalVendorPayout;
+                return (
+                  <Card className="border-primary/30 bg-primary/5">
+                    <CardContent className="p-5">
+                      <div className="flex items-center gap-3 mb-3">
+                        <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                          <TrendingUp className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                          <p className="text-sm font-medium text-muted-foreground">UNV vai receber</p>
+                          <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
+                        </div>
+                      </div>
+                      <p className="text-3xl font-bold text-primary">
+                        {formatCurrency(totalClientPays)}
+                      </p>
+                      <div className="mt-2 space-y-1 text-xs text-muted-foreground">
+                        <div className="flex justify-between">
+                          <span>Total pago aos vendedores</span>
+                          <span className="font-medium text-foreground">{formatCurrency(totalVendorPayout)}</span>
+                        </div>
+                        <div className="flex justify-between">
+                          <span>Margem UNV</span>
+                          <span className={`font-medium ${margin >= 0 ? "text-primary" : "text-destructive"}`}>{formatCurrency(margin)}</span>
+                        </div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                );
+              })()}
+
+              <Card className="border-accent/30 bg-accent/5">
                 <CardContent className="p-5">
                   <div className="flex items-center gap-3 mb-3">
-                    <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                      <TrendingUp className="h-5 w-5 text-primary" />
+                    <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
+                      <DollarSign className="h-5 w-5 text-accent-foreground" />
                     </div>
                     <div>
-                      <p className="text-sm font-medium text-muted-foreground">UNV vai receber</p>
+                      <p className="text-sm font-medium text-muted-foreground">Vendedores vão receber</p>
                       <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
                     </div>
                   </div>
-                  <p className="text-3xl font-bold text-primary">
-                    {formatCurrency(totalClientPays)}
+                  <p className="text-3xl font-bold text-foreground">
+                    {formatCurrency(filteredConfigs.reduce((sum, c) => {
+                      const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
+                      return sum + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
+                    }, 0))}
                   </p>
-                  <div className="mt-2 space-y-1 text-xs text-muted-foreground">
-                    <div className="flex justify-between">
-                      <span>Total pago aos vendedores</span>
-                      <span className="font-medium text-foreground">
-                        {formatCurrency(totalVendorPayout)}
-                      </span>
-                    </div>
-                    <div className="flex justify-between">
-                      <span>Margem UNV</span>
-                      <span className={`font-medium ${margin >= 0 ? "text-primary" : "text-destructive"}`}>
-                        {formatCurrency(margin)}
-                      </span>
-                    </div>
+                  <div className="mt-2 text-xs text-muted-foreground">
+                    <span>{filteredConfigs.length} vendedor{filteredConfigs.length !== 1 ? "es" : ""} configurado{filteredConfigs.length !== 1 ? "s" : ""}</span>
                   </div>
                 </CardContent>
               </Card>
-            );
-          })()}
+            </div>
 
-          <Card className="border-accent/30 bg-accent/5">
-            <CardContent className="p-5">
-              <div className="flex items-center gap-3 mb-3">
-                <div className="h-10 w-10 rounded-full bg-accent/10 flex items-center justify-center">
-                  <DollarSign className="h-5 w-5 text-accent-foreground" />
-                </div>
-                <div>
-                  <p className="text-sm font-medium text-muted-foreground">Vendedores vão receber</p>
-                  <p className="text-xs text-muted-foreground capitalize">{monthLabel}</p>
-                </div>
-              </div>
-              <p className="text-3xl font-bold text-foreground">
-                {formatCurrency(configs.reduce((sum, c) => {
-                  const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                  return sum + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
-                }, 0))}
-              </p>
-              <div className="mt-2 text-xs text-muted-foreground">
-                <span>{configs.length} vendedor{configs.length !== 1 ? "es" : ""} configurado{configs.length !== 1 ? "s" : ""}</span>
-              </div>
-            </CardContent>
-          </Card>
-        </div>
-        </>
-      )}
+            {/* Salesperson cards */}
+            <div className="grid gap-4 md:grid-cols-2">
+              {filteredConfigs.map((config) => {
+                const sp = salespeople.find(s => s.id === config.salesperson_id);
+                const kpi = kpiData.find(k => k.salesperson_id === config.salesperson_id);
+                const achievement = kpi?.achievement_percent || 0;
+                const vendorCommission = getTierValue(config.vendorTiers, achievement);
+                const clientPays = kpi?.total_value || 0;
+                const totalPayable = config.base_salary + vendorCommission;
 
-      {/* Salesperson cards */}
-      {configs.length === 0 ? (
-        <Card><CardContent className="py-12 text-center">
-          <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-          <p className="text-muted-foreground">Nenhum vendedor configurado ainda.</p>
-          <p className="text-xs text-muted-foreground mt-1">
-            {canManageConfigs ? 'Clique em "Configurar Vendedor" para começar.' : "Ainda não há configurações para visualizar."}
-          </p>
-        </CardContent></Card>
-      ) : (
-        <div className="grid gap-4 md:grid-cols-2">
-          {configs.map((config) => {
-            const sp = salespeople.find(s => s.id === config.salesperson_id);
-            const kpi = kpiData.find(k => k.salesperson_id === config.salesperson_id);
-            const achievement = kpi?.achievement_percent || 0;
-            const vendorCommission = getTierValue(config.vendorTiers, achievement);
-            const clientPays = kpi?.total_value || 0; // Client pays actual revenue to UNV
-            const totalPayable = config.base_salary + vendorCommission;
-
-            return (
-              <Card key={config.id} className="overflow-hidden">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                        <span className="text-sm font-bold text-primary">{(sp?.name || "?")[0].toUpperCase()}</span>
-                      </div>
-                      <div>
-                        <CardTitle className="text-sm">{sp?.name || "Vendedor"}</CardTitle>
-                        <Badge variant="outline" className="text-[10px] mt-0.5">{config.role === "sdr" ? "SDR" : "Closer"}</Badge>
-                      </div>
-                    </div>
-                    {canManageConfigs && (
-                      <div className="flex gap-1">
-                        <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditConfig(config)}><Settings2 className="h-4 w-4" /></Button>
-                        <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(config.id)}><Trash2 className="h-4 w-4" /></Button>
-                      </div>
-                    )}
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  {/* Achievement */}
-                  <div className="flex items-center justify-between text-sm">
-                    <span className="text-muted-foreground flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Meta atingida</span>
-                    <span className={`font-bold ${achievement >= 100 ? "text-primary" : achievement >= 80 ? "text-foreground" : "text-destructive"}`}>{achievement.toFixed(1)}%</span>
-                  </div>
-                  <div className="w-full bg-muted rounded-full h-2">
-                    <div className={`h-2 rounded-full transition-all ${achievement >= 100 ? "bg-primary" : achievement >= 80 ? "bg-accent" : "bg-destructive"}`} style={{ width: `${Math.min(achievement, 100)}%` }} />
-                  </div>
-                  {kpi && (
-                    <div className="flex justify-between text-xs text-muted-foreground">
-                      <span>Realizado: {formatCurrency(kpi.total_value)}</span>
-                      <span>Meta: {formatCurrency(kpi.target_value)}</span>
-                    </div>
-                  )}
-
-                  <Separator />
-
-                  {/* Financial breakdown */}
-                  <div className="space-y-1.5 text-sm">
-                    {canViewClientAmounts && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Cliente paga à UNV</span>
-                        <span className="font-medium text-primary">{formatCurrency(clientPays)}</span>
-                      </div>
-                    )}
-                    {canViewBaseSalary && (
-                      <div className="flex justify-between">
-                        <span className="text-muted-foreground">Salário base</span>
-                        <span className="font-medium">{formatCurrency(config.base_salary)}</span>
-                      </div>
-                    )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Comissão vendedor</span>
-                      <span className="font-medium text-primary">{formatCurrency(vendorCommission)}</span>
-                    </div>
-                    {canViewBaseSalary && (
-                      <>
-                        <Separator />
-                        <div className="flex justify-between font-bold">
-                          <span>Total a pagar ao vendedor</span>
-                          <span className="text-primary">{formatCurrency(totalPayable)}</span>
+                return (
+                  <Card key={config.id} className="overflow-hidden">
+                    <CardHeader className="pb-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
+                            <span className="text-sm font-bold text-primary">{(sp?.name || "?")[0].toUpperCase()}</span>
+                          </div>
+                          <div>
+                            <CardTitle className="text-sm">{sp?.name || "Vendedor"}</CardTitle>
+                            <Badge variant="outline" className="text-[10px] mt-0.5">{config.role === "sdr" ? "SDR" : "Closer"}</Badge>
+                          </div>
                         </div>
-                      </>
-                    )}
-                    {canViewClientAmounts && (
-                      <div className="flex justify-between text-xs">
-                        <span className="text-muted-foreground">Margem UNV</span>
-                        <span className={`font-medium ${clientPays - totalPayable >= 0 ? "text-primary" : "text-destructive"}`}>{formatCurrency(clientPays - totalPayable)}</span>
+                        {canManageConfigs && (
+                          <div className="flex gap-1">
+                            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => openEditConfig(config)}><Settings2 className="h-4 w-4" /></Button>
+                            <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => handleDelete(config.id)}><Trash2 className="h-4 w-4" /></Button>
+                          </div>
+                        )}
                       </div>
-                    )}
-                  </div>
+                    </CardHeader>
+                    <CardContent className="space-y-3">
+                      <div className="flex items-center justify-between text-sm">
+                        <span className="text-muted-foreground flex items-center gap-1"><Target className="h-3.5 w-3.5" /> Meta atingida</span>
+                        <span className={`font-bold ${achievement >= 100 ? "text-primary" : achievement >= 80 ? "text-foreground" : "text-destructive"}`}>{achievement.toFixed(1)}%</span>
+                      </div>
+                      <div className="w-full bg-muted rounded-full h-2">
+                        <div className={`h-2 rounded-full transition-all ${achievement >= 100 ? "bg-primary" : achievement >= 80 ? "bg-accent" : "bg-destructive"}`} style={{ width: `${Math.min(achievement, 100)}%` }} />
+                      </div>
+                      {kpi && (
+                        <div className="flex justify-between text-xs text-muted-foreground">
+                          <span>Realizado: {formatCurrency(kpi.total_value)}</span>
+                          <span>Meta: {formatCurrency(kpi.target_value)}</span>
+                        </div>
+                      )}
 
-                  {/* Vendor tiers preview */}
-                  <TiersPreview label="Faixas do vendedor" tiers={config.vendorTiers} achievement={achievement} kpi={kpi} formatCurrency={formatCurrency} />
+                      <Separator />
 
-                  {/* Client tiers preview (admin only) */}
-                  {canViewClientAmounts && config.clientTiers.length > 0 && (
-                    <TiersPreview label="Faixas do cliente → UNV" tiers={config.clientTiers} achievement={achievement} kpi={kpi} formatCurrency={formatCurrency} />
-                  )}
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                      <div className="space-y-1.5 text-sm">
+                        {canViewClientAmounts && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Cliente paga à UNV</span>
+                            <span className="font-medium text-primary">{formatCurrency(clientPays)}</span>
+                          </div>
+                        )}
+                        {canViewBaseSalary && (
+                          <div className="flex justify-between">
+                            <span className="text-muted-foreground">Salário base</span>
+                            <span className="font-medium">{formatCurrency(config.base_salary)}</span>
+                          </div>
+                        )}
+                        <div className="flex justify-between">
+                          <span className="text-muted-foreground">Comissão vendedor</span>
+                          <span className="font-medium text-primary">{formatCurrency(vendorCommission)}</span>
+                        </div>
+                        {canViewBaseSalary && (
+                          <>
+                            <Separator />
+                            <div className="flex justify-between font-bold">
+                              <span>Total a pagar ao vendedor</span>
+                              <span className="text-primary">{formatCurrency(totalPayable)}</span>
+                            </div>
+                          </>
+                        )}
+                        {canViewClientAmounts && (
+                          <div className="flex justify-between text-xs">
+                            <span className="text-muted-foreground">Margem UNV</span>
+                            <span className={`font-medium ${clientPays - totalPayable >= 0 ? "text-primary" : "text-destructive"}`}>{formatCurrency(clientPays - totalPayable)}</span>
+                          </div>
+                        )}
+                      </div>
+
+                      <TiersPreview label="Faixas do vendedor" tiers={config.vendorTiers} achievement={achievement} kpi={kpi} formatCurrency={formatCurrency} />
+
+                      {canViewClientAmounts && config.clientTiers.length > 0 && (
+                        <TiersPreview label="Faixas do cliente → UNV" tiers={config.clientTiers} achievement={achievement} kpi={kpi} formatCurrency={formatCurrency} />
+                      )}
+                    </CardContent>
+                  </Card>
+                );
+              })}
+            </div>
+          </>
+        );
+      })()}
       )}
 
       {/* Config Dialog */}
