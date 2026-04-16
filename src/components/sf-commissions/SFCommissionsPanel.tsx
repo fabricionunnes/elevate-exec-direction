@@ -202,7 +202,15 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const openNewConfig = () => {
     if (!canManageConfigs) { toast.error("Consultores podem apenas visualizar"); return; }
     if (salespeople.length === 0) { toast.error("Cadastre os vendedores no menu KPIs primeiro"); return; }
-    if (availableSalespeople.length === 0) { toast.info("Todos os vendedores já possuem configuração"); return; }
+    if (availableSalespeople.length === 0) {
+      // If all salespeople already have configs, open edit for the first one
+      if (configs.length === 1) {
+        openEditConfig(configs[0]);
+        return;
+      }
+      toast.info("Todos os vendedores já possuem configuração. Clique no ícone ⚙️ no card do vendedor para editar.");
+      return;
+    }
     resetForm();
     setDialogOpen(true);
   };
@@ -283,7 +291,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const getTierValue = (tiers: TierData[], percent: number): number => {
     const sorted = [...tiers].sort((a, b) => a.sort_order - b.sort_order);
     for (const tier of sorted) {
-      if (percent >= tier.min_percent && (tier.max_percent === null || percent < tier.max_percent)) {
+      if (percent >= tier.min_percent && (tier.max_percent === null || percent <= tier.max_percent)) {
         return tier.commission_type === "fixed" ? tier.commission_value : 0;
       }
     }
