@@ -169,38 +169,72 @@ export default function SalesReportPage() {
       setConsultants((staffList || []) as Consultant[]);
       setCompanies((companiesList || []) as { id: string; name: string }[]);
 
-      // ── Projects created in period ──
-      const { data: projectsInPeriod } = await supabase
-        .from("onboarding_projects")
-        .select("id, company_id, product_name, consultant_id, created_at, created_by")
-        .gte("created_at", startDate.toISOString())
-        .lte("created_at", endDate.toISOString());
-
-      // For classification: a company is "new" if it has NO active project before this period
-      // (i.e., this is its first project ever, considering the project was created within period)
-      const candidateCompanyIds = Array.from(
-        new Set((projectsInPeriod || []).map((p) => p.company_id).filter(Boolean) as string[]),
-      );
-
-      let companyHasPriorProject: Record<string, boolean> = {};
-      if (candidateCompanyIds.length > 0) {
-        const { data: priorProjects } = await supabase
-          .from("onboarding_projects")
-          .select("company_id, created_at")
-          .in("company_id", candidateCompanyIds)
-          .lt("created_at", startDate.toISOString());
-        (priorProjects || []).forEach((p: any) => {
-          if (p.company_id) companyHasPriorProject[p.company_id] = true;
-        });
-      }
-
-      // ── Paid invoices in period ──
+      // ── Paid invoices in period (these carry the actual sale value) ──
       const { data: paidInvoices } = await supabase
         .from("financial_receivables")
         .select("id, company_id, description, paid_amount, amount, paid_date, contract_id")
         .in("status", ["paid", "received"])
         .gte("paid_date", format(startDate, "yyyy-MM-dd"))
         .lte("paid_date", format(endDate, "yyyy-MM-dd"));
+
+      // ── Resolve project_id of each invoice via financial_contracts ──
+      const contractIds = Array.from(
+        new Set((paidInvoices || []).map((i: any) => i.contract_id).filter(Boolean) as string[]),
+      );
+      const contractToProject = new Map<string, string | null>();
+      if (contractIds.length > 0) {
+        const { data: contractsData } = await supabase
+          .from("financial_contracts")
+          .select("id, project_id")
+          .in("id", contractIds);
+        (contractsData || []).forEach((c: any) =>
+          contractToProject.set(c.id, c.project_id || null),
+        );
+      }
+
+      // ── Fetch all referenced projects (from contracts) + projects created in period ──
+      const projectIdsFromInvoices = Array.from(
+        new Set(Array.from(contractToProject.values()).filter(Boolean) as string[]),
+      );
+
+      const { data: projectsInPeriod } = await supabase
+        .from("onboarding_projects")
+        .select("id, company_id, product_name, consultant_id, created_at")
+        .gte("created_at", startDate.toISOString())
+        .lte("created_at", endDate.toISOString());
+
+      let invoiceProjects: any[] = [];
+      if (projectIdsFromInvoices.length > 0) {
+        const { data: ip } = await supabase
+          .from("onboarding_projects")
+          .select("id, company_id, product_name, consultant_id, created_at")
+          .in("id", projectIdsFromInvoices);
+        invoiceProjects = ip || [];
+      }
+      const projectMap = new Map<string, any>();
+      [...(projectsInPeriod || []), ...invoiceProjects].forEach((p: any) =>
+        projectMap.set(p.id, p),
+      );
+
+      // For classification: a company is "new" if it has NO project before this period
+      const allInvolvedCompanyIds = Array.from(
+        new Set([
+          ...((projectsInPeriod || []).map((p: any) => p.company_id).filter(Boolean) as string[]),
+          ...((paidInvoices || []).map((i: any) => i.company_id).filter(Boolean) as string[]),
+        ]),
+      );
+
+      let companyHasPriorProject: Record<string, boolean> = {};
+      if (allInvolvedCompanyIds.length > 0) {
+        const { data: priorProjects } = await supabase
+          .from("onboarding_projects")
+          .select("company_id, created_at")
+          .in("company_id", allInvolvedCompanyIds)
+          .lt("created_at", startDate.toISOString());
+        (priorProjects || []).forEach((p: any) => {
+          if (p.company_id) companyHasPriorProject[p.company_id] = true;
+        });
+      }
 
       // ── Previous month total (paid invoices) for growth comparison ──
       const { data: prevPaid } = await supabase
@@ -233,42 +267,7 @@ export default function SalesReportPage() {
 
       const sales: SaleRow[] = [];
 
-      // From projects
-      (projectsInPeriod || []).forEach((p: any) => {
-        const cid = p.company_id;
-        const isNew = cid ? !companyHasPriorProject[cid] : true;
-        const consId = p.consultant_id || (cid ? companyConsultant.get(cid) : null) || null;
-        sales.push({
-          id: `proj-${p.id}`,
-          date: p.created_at,
-          amount: 0, // project creation has no direct value here
-          company_id: cid,
-          company_name: cid ? companyMap.get(cid) || "—" : "—",
-          product_name: p.product_name || null,
-          consultant_id: consId,
-          consultant_name: consId ? staffMap.get(consId) || "—" : "—",
-          source: "project",
-          classification: isNew ? "new" : "existing",
-        });
-      });
-
-      // For invoices: classify by whether the company already had a project BEFORE the period
-      const invCompanyIds = Array.from(
-        new Set((paidInvoices || []).map((i: any) => i.company_id).filter(Boolean) as string[]),
-      );
-      let invHasPrior: Record<string, boolean> = {};
-      if (invCompanyIds.length > 0) {
-        const { data: priorForInv } = await supabase
-          .from("onboarding_projects")
-          .select("company_id, created_at")
-          .in("company_id", invCompanyIds)
-          .lt("created_at", startDate.toISOString());
-        (priorForInv || []).forEach((p: any) => {
-          if (p.company_id) invHasPrior[p.company_id] = true;
-        });
-      }
-
-      // Track invoice count per company in period to mark renewal vs upsell heuristically
+      // Track which company_ids already had an invoice in this period (for upsell heuristic)
       const invoiceCountInPeriod: Record<string, number> = {};
       (paidInvoices || []).forEach((i: any) => {
         if (i.company_id) {
@@ -276,26 +275,75 @@ export default function SalesReportPage() {
         }
       });
 
+      // ── Build sales rows from PAID INVOICES (real sale value) ──
+      // Classification rule:
+      //  - The invoice belongs to a contract → contract → project.
+      //  - If that project was created within the period AND the company had no
+      //    prior project before the period → NEW CLIENT sale.
+      //  - Otherwise → EXISTING CLIENT sale.
+      //  - If the invoice has no contract/project, fall back to the company:
+      //    company has prior project → existing; else → new.
+      const projectsCovered = new Set<string>();
+
       (paidInvoices || []).forEach((i: any) => {
-        const cid = i.company_id;
-        const isExisting = cid ? !!invHasPrior[cid] : false;
-        const consId = cid ? companyConsultant.get(cid) || null : null;
+        const cid = i.company_id as string | null;
+        const projectId = i.contract_id ? contractToProject.get(i.contract_id) || null : null;
+        const project = projectId ? projectMap.get(projectId) : null;
+
+        let isNew = false;
+        if (project) {
+          const projectCreated = new Date(project.created_at);
+          const createdInPeriod =
+            projectCreated >= startDate && projectCreated <= endDate;
+          const companyHadPrior = cid ? !!companyHasPriorProject[cid] : false;
+          isNew = createdInPeriod && !companyHadPrior;
+          if (projectId) projectsCovered.add(projectId);
+        } else {
+          isNew = cid ? !companyHasPriorProject[cid] : true;
+        }
+
+        const consId =
+          (project?.consultant_id as string | null) ||
+          (cid ? companyConsultant.get(cid) || null : null);
         const value = Number(i.paid_amount || i.amount || 0);
-        let subtype: "renewal" | "upsell" = "renewal";
-        // heuristic: if there are multiple paid invoices in this period for same company, treat extras as upsell
-        if (isExisting && invoiceCountInPeriod[cid!] > 1) subtype = "upsell";
+
+        let subtype: "renewal" | "upsell" | undefined;
+        if (!isNew) {
+          subtype = cid && invoiceCountInPeriod[cid] > 1 ? "upsell" : "renewal";
+        }
+
         sales.push({
           id: `inv-${i.id}`,
           date: i.paid_date,
           amount: value,
           company_id: cid,
           company_name: cid ? companyMap.get(cid) || "—" : i.description || "—",
-          product_name: i.description || null,
+          product_name: project?.product_name || i.description || null,
           consultant_id: consId,
           consultant_name: consId ? staffMap.get(consId) || "—" : "—",
           source: "invoice",
-          classification: isExisting ? "existing" : "new",
-          existing_subtype: isExisting ? subtype : undefined,
+          classification: isNew ? "new" : "existing",
+          existing_subtype: subtype,
+        });
+      });
+
+      // ── Add projects created in period that have NO paid invoice yet ──
+      (projectsInPeriod || []).forEach((p: any) => {
+        if (projectsCovered.has(p.id)) return;
+        const cid = p.company_id;
+        const isNew = cid ? !companyHasPriorProject[cid] : true;
+        const consId = p.consultant_id || (cid ? companyConsultant.get(cid) : null) || null;
+        sales.push({
+          id: `proj-${p.id}`,
+          date: p.created_at,
+          amount: 0,
+          company_id: cid,
+          company_name: cid ? companyMap.get(cid) || "—" : "—",
+          product_name: p.product_name || null,
+          consultant_id: consId,
+          consultant_name: consId ? staffMap.get(consId) || "—" : "—",
+          source: "project",
+          classification: isNew ? "new" : "existing",
         });
       });
 
