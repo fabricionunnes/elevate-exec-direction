@@ -346,8 +346,10 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         )}
       </div>
 
-      {/* Summary cards */}
-      {configs.length > 0 && (
+      {/* Filtered configs */}
+      {(() => {
+        const filteredConfigs = selectedSalesperson === "all" ? configs : configs.filter(c => c.salesperson_id === selectedSalesperson);
+        return filteredConfigs.length > 0 && (
         <>
         {/* Result cards - UNV revenue & vendor payout */}
         <div className={`grid ${canViewClientAmounts ? "grid-cols-1 md:grid-cols-2" : "grid-cols-1"} gap-4`}>
