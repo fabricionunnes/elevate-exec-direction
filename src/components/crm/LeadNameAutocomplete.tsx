@@ -15,6 +15,11 @@ export interface LeadAutocompleteSelection {
   city?: string | null;
   state?: string | null;
   segment?: string | null;
+  address?: string | null;
+  address_number?: string | null;
+  address_complement?: string | null;
+  address_neighborhood?: string | null;
+  zipcode?: string | null;
 }
 
 interface Props {
