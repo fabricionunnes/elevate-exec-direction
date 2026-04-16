@@ -27260,6 +27260,7 @@ export type Database = {
           created_at: string
           id: string
           is_active: boolean
+          month_year: string
           notes: string | null
           project_id: string
           role: string
@@ -27272,6 +27273,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          month_year?: string
           notes?: string | null
           project_id: string
           role?: string
@@ -27284,6 +27286,7 @@ export type Database = {
           created_at?: string
           id?: string
           is_active?: boolean
+          month_year?: string
           notes?: string | null
           project_id?: string
           role?: string

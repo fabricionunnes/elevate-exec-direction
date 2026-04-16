@@ -38,6 +38,7 @@ interface CommissionConfig {
   client_pays_amount: number;
   notes: string | null;
   is_active: boolean;
+  month_year: string;
   vendorTiers: TierData[];
   clientTiers: TierData[];
 }
@@ -111,11 +112,11 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         .eq("company_id", companyId)
         .eq("is_active", true)
         .order("name"),
-      supabase
-        .from("sf_commission_configs")
+      (supabase.from("sf_commission_configs") as any)
         .select("*")
         .eq("project_id", projectId)
-        .eq("is_active", true),
+        .eq("is_active", true)
+        .eq("month_year", monthYear),
     ]);
 
     const spList: Salesperson[] = ((salespeopleRes?.data as any[]) || []).map((sp: any) => ({
@@ -147,7 +148,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
 
     await fetchKpiData(spList, companyId);
     setLoading(false);
-  }, [projectId, companyId]);
+  }, [projectId, companyId, monthYear]);
 
   const fetchKpiData = useCallback(async (spList: Salesperson[], cId: string) => {
     if (!cId) return;
@@ -187,6 +188,53 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   useEffect(() => { fetchAll(); }, [fetchAll]);
   useEffect(() => { if (salespeople.length > 0 && companyId) fetchKpiData(salespeople, companyId); }, [monthYear, salespeople, companyId, fetchKpiData]);
 
+  // ── Carry forward from previous month ─────────
+  const carryForwardFromPreviousMonth = async () => {
+    if (!canManageConfigs) return;
+    const prevDate = new Date(selectedDate);
+    prevDate.setMonth(prevDate.getMonth() - 1);
+    const prevMonthYear = `${prevDate.getFullYear()}-${String(prevDate.getMonth() + 1).padStart(2, "0")}`;
+
+    const { data: prevConfigs } = await (supabase.from("sf_commission_configs") as any)
+      .select("*").eq("project_id", projectId).eq("is_active", true).eq("month_year", prevMonthYear);
+
+    if (!prevConfigs || prevConfigs.length === 0) {
+      toast.error("Não há configurações no mês anterior para replicar");
+      return;
+    }
+
+    const prevIds = prevConfigs.map((c: any) => c.id);
+    const [vtRes, ctRes] = await Promise.all([
+      supabase.from("sf_commission_tiers").select("*").in("config_id", prevIds).order("sort_order"),
+      (supabase.from("sf_commission_client_tiers") as any).select("*").in("config_id", prevIds).order("sort_order"),
+    ]);
+
+    for (const prev of prevConfigs) {
+      const { data: newConfig, error } = await (supabase.from("sf_commission_configs") as any)
+        .insert({ project_id: projectId, salesperson_id: prev.salesperson_id, role: prev.role, base_salary: prev.base_salary, notes: prev.notes, month_year: monthYear })
+        .select("id").single();
+      if (error) { console.error(error); continue; }
+
+      const prevVT = (vtRes.data || []).filter((t: any) => t.config_id === prev.id);
+      if (prevVT.length > 0) {
+        await (supabase.from("sf_commission_tiers") as any).insert(prevVT.map((t: any) => ({
+          config_id: newConfig.id, min_percent: t.min_percent, max_percent: t.max_percent,
+          commission_type: t.commission_type, commission_value: t.commission_value, label: t.label, sort_order: t.sort_order,
+        })));
+      }
+      const prevCT = (ctRes.data || []).filter((t: any) => t.config_id === prev.id);
+      if (prevCT.length > 0) {
+        await (supabase.from("sf_commission_client_tiers") as any).insert(prevCT.map((t: any) => ({
+          config_id: newConfig.id, min_percent: t.min_percent, max_percent: t.max_percent,
+          commission_type: t.commission_type, commission_value: t.commission_value, label: t.label, sort_order: t.sort_order,
+        })));
+      }
+    }
+
+    toast.success("Configurações replicadas do mês anterior");
+    fetchAll();
+  };
+
   // ── Form helpers ───────────────────────────────
   const resetForm = () => {
     setForm({ salesperson_id: "", role: "closer", base_salary: "", notes: "" });
@@ -204,12 +252,11 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
     if (!canManageConfigs) { toast.error("Consultores podem apenas visualizar"); return; }
     if (salespeople.length === 0) { toast.error("Cadastre os vendedores no menu KPIs primeiro"); return; }
     if (availableSalespeople.length === 0) {
-      // If all salespeople already have configs, open edit for the first one
       if (configs.length === 1) {
         openEditConfig(configs[0]);
         return;
       }
-      toast.info("Todos os vendedores já possuem configuração. Clique no ícone ⚙️ no card do vendedor para editar.");
+      toast.info("Todos os vendedores já possuem configuração neste mês. Clique no ⚙️ para editar.");
       return;
     }
     resetForm();
@@ -242,11 +289,9 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
       if (editingConfig) {
         await (supabase.from("sf_commission_configs") as any).update({ role: form.role, base_salary: parseFloat(form.base_salary) || 0, notes: form.notes || null }).eq("id", editingConfig.id);
 
-        // Vendor tiers
         await (supabase.from("sf_commission_tiers") as any).delete().eq("config_id", editingConfig.id);
         await (supabase.from("sf_commission_tiers") as any).insert(vendorTiers.map((t, i) => ({ ...t, config_id: editingConfig.id, sort_order: i })));
 
-        // Client tiers
         await (supabase.from("sf_commission_client_tiers") as any).delete().eq("config_id", editingConfig.id);
         if (clientTiers.length > 0) {
           await (supabase.from("sf_commission_client_tiers") as any).insert(clientTiers.map((t, i) => ({ ...t, config_id: editingConfig.id, sort_order: i })));
@@ -255,10 +300,10 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
         toast.success("Configuração atualizada");
       } else {
         const existing = configs.find((c) => c.salesperson_id === form.salesperson_id);
-        if (existing) { toast.error("Já existe uma configuração para este vendedor"); return; }
+        if (existing) { toast.error("Já existe uma configuração para este vendedor neste mês"); return; }
 
         const { data: newConfig, error } = await (supabase.from("sf_commission_configs") as any)
-          .insert({ project_id: projectId, salesperson_id: form.salesperson_id, role: form.role, base_salary: parseFloat(form.base_salary) || 0, notes: form.notes || null })
+          .insert({ project_id: projectId, salesperson_id: form.salesperson_id, role: form.role, base_salary: parseFloat(form.base_salary) || 0, notes: form.notes || null, month_year: monthYear })
           .select("id").single();
         if (error) throw error;
 
@@ -353,10 +398,20 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
           return (
             <Card><CardContent className="py-12 text-center">
               <Users className="h-10 w-10 mx-auto text-muted-foreground mb-3" />
-              <p className="text-muted-foreground">{configs.length === 0 ? "Nenhum vendedor configurado ainda." : "Nenhum resultado para este filtro."}</p>
-              <p className="text-xs text-muted-foreground mt-1">
-                {configs.length === 0 && canManageConfigs ? 'Clique em "Configurar Vendedor" para começar.' : ""}
-              </p>
+              <p className="text-muted-foreground">{configs.length === 0 ? `Nenhum vendedor configurado para ${monthLabel}.` : "Nenhum resultado para este filtro."}</p>
+              {configs.length === 0 && canManageConfigs && (
+                <div className="mt-3 flex flex-col items-center gap-2">
+                  <p className="text-xs text-muted-foreground">Crie uma nova configuração ou replique do mês anterior.</p>
+                  <div className="flex gap-2">
+                    <Button size="sm" variant="outline" onClick={carryForwardFromPreviousMonth}>
+                      Replicar do mês anterior
+                    </Button>
+                    <Button size="sm" onClick={openNewConfig}>
+                      <Plus className="h-4 w-4 mr-1" /> Nova configuração
+                    </Button>
+                  </div>
+                </div>
+              )}
             </CardContent></Card>
           );
         }
@@ -529,7 +584,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
       <Dialog open={dialogOpen} onOpenChange={(o) => { if (!o) resetForm(); setDialogOpen(o); }}>
         <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle>{editingConfig ? "Editar Comissão" : "Configurar Comissão"}</DialogTitle>
+            <DialogTitle>{editingConfig ? "Editar Comissão" : "Configurar Comissão"} — <span className="capitalize">{monthLabel}</span></DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             {/* Vendedor + Função */}
