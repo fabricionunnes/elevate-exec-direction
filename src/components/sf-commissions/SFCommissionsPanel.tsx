@@ -64,8 +64,10 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingConfig, setEditingConfig] = useState<CommissionConfig | null>(null);
 
-  const canViewClientAmounts = viewerRole !== "consultant";
-  const canManageConfigs = viewerRole !== "consultant";
+  const isAdmin = viewerRole !== "consultant";
+  const canViewClientAmounts = isAdmin;
+  const canViewBaseSalary = isAdmin;
+  const canManageConfigs = isAdmin;
 
   const [selectedDate, setSelectedDate] = useState(() => new Date());
   const monthYear = useMemo(() => {
@@ -322,7 +324,7 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
 
       {/* Summary cards */}
       {configs.length > 0 && (
-        <div className={`grid grid-cols-2 ${canViewClientAmounts ? "md:grid-cols-4" : "md:grid-cols-3"} gap-3`}>
+        <div className={`grid grid-cols-2 ${canViewClientAmounts ? "md:grid-cols-4" : "md:grid-cols-2"} gap-3`}>
           <Card><CardContent className="p-4 text-center">
             <Users className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
             <p className="text-2xl font-bold">{configs.length}</p>
@@ -342,23 +344,25 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
             </CardContent></Card>
           )}
 
-          <Card><CardContent className="p-4 text-center">
-            <DollarSign className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
-            <p className="text-2xl font-bold">
-              {formatCurrency(configs.reduce((sum, c) => sum + c.base_salary, 0))}
-            </p>
-            <p className="text-xs text-muted-foreground">Salários base (total)</p>
-          </CardContent></Card>
+          {canViewBaseSalary && (
+            <Card><CardContent className="p-4 text-center">
+              <DollarSign className="h-5 w-5 mx-auto text-muted-foreground mb-1" />
+              <p className="text-2xl font-bold">
+                {formatCurrency(configs.reduce((sum, c) => sum + c.base_salary, 0))}
+              </p>
+              <p className="text-xs text-muted-foreground">Salários base (total)</p>
+            </CardContent></Card>
+          )}
 
           <Card><CardContent className="p-4 text-center">
             <TrendingUp className="h-5 w-5 mx-auto text-primary mb-1" />
             <p className="text-2xl font-bold">
               {formatCurrency(configs.reduce((sum, c) => {
                 const kpi = kpiData.find(k => k.salesperson_id === c.salesperson_id);
-                return sum + c.base_salary + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
+                return sum + getTierValue(c.vendorTiers, kpi?.achievement_percent || 0);
               }, 0))}
             </p>
-            <p className="text-xs text-muted-foreground">Total a pagar (mês)</p>
+            <p className="text-xs text-muted-foreground">{canViewBaseSalary ? "Total a pagar (mês)" : "Comissões (total)"}</p>
           </CardContent></Card>
         </div>
       )}
@@ -429,19 +433,25 @@ export function SFCommissionsPanel({ projectId, companyId, viewerRole }: Props) 
                         <span className="font-medium text-primary">{formatCurrency(clientPays)}</span>
                       </div>
                     )}
-                    <div className="flex justify-between">
-                      <span className="text-muted-foreground">Salário base</span>
-                      <span className="font-medium">{formatCurrency(config.base_salary)}</span>
-                    </div>
+                    {canViewBaseSalary && (
+                      <div className="flex justify-between">
+                        <span className="text-muted-foreground">Salário base</span>
+                        <span className="font-medium">{formatCurrency(config.base_salary)}</span>
+                      </div>
+                    )}
                     <div className="flex justify-between">
                       <span className="text-muted-foreground">Comissão vendedor</span>
                       <span className="font-medium text-primary">{formatCurrency(vendorCommission)}</span>
                     </div>
-                    <Separator />
-                    <div className="flex justify-between font-bold">
-                      <span>Total a pagar ao vendedor</span>
-                      <span className="text-primary">{formatCurrency(totalPayable)}</span>
-                    </div>
+                    {canViewBaseSalary && (
+                      <>
+                        <Separator />
+                        <div className="flex justify-between font-bold">
+                          <span>Total a pagar ao vendedor</span>
+                          <span className="text-primary">{formatCurrency(totalPayable)}</span>
+                        </div>
+                      </>
+                    )}
                     {canViewClientAmounts && (
                       <div className="flex justify-between text-xs">
                         <span className="text-muted-foreground">Margem UNV</span>
