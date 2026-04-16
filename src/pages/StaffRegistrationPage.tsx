@@ -374,8 +374,8 @@ const StaffRegistrationPage = () => {
                   <Input value={form.trade_name} onChange={(e) => handleChange("trade_name", e.target.value)} placeholder="Nome Fantasia" />
                 </div>
                 <div>
-                  <Label>Inscrição Municipal</Label>
-                  <Input value={form.municipal_registration} onChange={(e) => handleChange("municipal_registration", e.target.value)} placeholder="Inscrição Municipal" />
+                  <Label>Inscrição Municipal <span className="text-muted-foreground text-xs">(opcional)</span></Label>
+                  <Input value={form.municipal_registration} onChange={(e) => handleChange("municipal_registration", e.target.value)} placeholder="Inscrição Municipal (se houver)" />
                 </div>
               </div>
             </CardContent>
