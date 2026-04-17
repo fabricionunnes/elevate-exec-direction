@@ -46,6 +46,46 @@ export default function WhitelabelUNVAdminPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
+  const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
+  const [togglingId, setTogglingId] = useState<string | null>(null);
+  const [deletingId, setDeletingId] = useState<string | null>(null);
+
+  const handleToggleStatus = async (t: TenantRow) => {
+    const newStatus = t.status === "inactive" || t.status === "suspended" ? "active" : "inactive";
+    setTogglingId(t.id);
+    try {
+      const { error } = await supabase
+        .from("whitelabel_tenants")
+        .update({ status: newStatus, updated_at: new Date().toISOString() })
+        .eq("id", t.id);
+      if (error) throw error;
+      toast.success(newStatus === "active" ? "Tenant reativado" : "Tenant inativado");
+      queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+    } catch (err: any) {
+      toast.error("Erro: " + (err.message || "falha ao atualizar"));
+    } finally {
+      setTogglingId(null);
+    }
+  };
+
+  const handleDelete = async () => {
+    if (!deleteTenant) return;
+    setDeletingId(deleteTenant.id);
+    try {
+      const { error } = await supabase
+        .from("whitelabel_tenants")
+        .delete()
+        .eq("id", deleteTenant.id);
+      if (error) throw error;
+      toast.success(`Tenant "${deleteTenant.name}" excluído`);
+      setDeleteTenant(null);
+      queryClient.invalidateQueries({ queryKey: ["unv-whitelabel-tenants"] });
+    } catch (err: any) {
+      toast.error("Erro ao excluir: " + (err.message || "verifique dependências"));
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const { data: tenants, isLoading } = useQuery({
     queryKey: ["unv-whitelabel-tenants"],
