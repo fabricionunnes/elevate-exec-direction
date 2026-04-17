@@ -20,6 +20,7 @@ import { toast } from "sonner";
 import { Loader2 } from "lucide-react";
 import { productDetails } from "@/data/productDetails";
 import { UpgradePlanDialog } from "@/components/whitelabel/UpgradePlanDialog";
+import { useTenant } from "@/contexts/TenantContext";
 
 interface ServiceProduct {
   id: string;
@@ -61,6 +62,7 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
   const [selectedCompany, setSelectedCompany] = useState("");
   const [newCompanyName, setNewCompanyName] = useState("");
   const [createNewCompany, setCreateNewCompany] = useState(false);
+  const { isWhiteLabel } = useTenant();
 
   useEffect(() => {
     if (open) {
@@ -279,12 +281,15 @@ export const CreateProjectDialog = forwardRef<HTMLDivElement, CreateProjectDialo
     }
   };
 
-  // Merge hardcoded products with dynamic ones from DB, avoiding duplicates
-  const hardcodedProducts = Object.entries(productDetails).map(([id, product]) => ({
-    id,
-    name: product.name,
-  }));
-  
+  // Para tenants White-Label: usar APENAS os serviços cadastrados no banco (filtrados por RLS).
+  // Para a Master UNV: mesclar com os produtos hardcoded (catálogo institucional).
+  const hardcodedProducts = isWhiteLabel
+    ? []
+    : Object.entries(productDetails).map(([id, product]) => ({
+        id,
+        name: product.name,
+      }));
+
   const allProducts = [...hardcodedProducts];
   for (const sp of serviceProducts) {
     if (!allProducts.some(p => p.id === sp.id || p.name === sp.name)) {
