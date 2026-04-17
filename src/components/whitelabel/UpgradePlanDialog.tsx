@@ -47,10 +47,13 @@ export function UpgradePlanDialog({
   const [plans, setPlans] = useState<Plan[]>([]);
   const [loading, setLoading] = useState(true);
   const [processingSlug, setProcessingSlug] = useState<string | null>(null);
+  const [needsCustomerData, setNeedsCustomerData] = useState<Plan | null>(null);
+  const [customerForm, setCustomerForm] = useState({ name: "", email: "", cpf_cnpj: "", phone: "" });
 
   useEffect(() => {
     if (!open) return;
     setLoading(true);
+    setNeedsCustomerData(null);
     supabase
       .from("whitelabel_plans")
       .select("id, slug, name, price_monthly, max_projects, max_users, is_featured, sort_order")
@@ -68,12 +71,17 @@ export function UpgradePlanDialog({
     return Number(p.price_monthly) > Number(currentPlan.price_monthly);
   });
 
-  const handleUpgrade = async (plan: Plan) => {
+  const handleUpgrade = async (plan: Plan, customerOverride?: typeof customerForm) => {
     setProcessingSlug(plan.slug);
     try {
-      const { data, error } = await supabase.functions.invoke("whitelabel-upgrade-checkout", {
-        body: { tenant_id: tenantId, target_plan_slug: plan.slug },
-      });
+      const payload: any = { tenant_id: tenantId, target_plan_slug: plan.slug };
+      if (customerOverride) payload.customer = customerOverride;
+      const { data, error } = await supabase.functions.invoke("whitelabel-upgrade-checkout", { body: payload });
+      if (data?.error === "missing_customer_data") {
+        setNeedsCustomerData(plan);
+        toast.message(data.message || "Informe seus dados para gerar a cobrança.");
+        return;
+      }
       if (error) throw error;
       if (data?.invoice_url) {
         window.open(data.invoice_url, "_blank");
@@ -87,6 +95,13 @@ export function UpgradePlanDialog({
     } finally {
       setProcessingSlug(null);
     }
+  };
+
+  const submitCustomerData = async () => {
+    if (!needsCustomerData) return;
+    if (!customerForm.cpf_cnpj.replace(/\D/g, "")) return toast.error("Informe o CPF ou CNPJ");
+    if (!customerForm.name || !customerForm.email) return toast.error("Informe nome e email");
+    await handleUpgrade(needsCustomerData, customerForm);
   };
 
   const fmt = (v: number) =>
