@@ -49,6 +49,7 @@ export default function WhitelabelUNVAdminPage() {
   const [search, setSearch] = useState("");
   const [createOpen, setCreateOpen] = useState(false);
   const [editTenant, setEditTenant] = useState<TenantRow | null>(null);
+  const [modulesTenant, setModulesTenant] = useState<TenantRow | null>(null);
   const [deleteTenant, setDeleteTenant] = useState<TenantRow | null>(null);
   const [togglingId, setTogglingId] = useState<string | null>(null);
   const [deletingId, setDeletingId] = useState<string | null>(null);
